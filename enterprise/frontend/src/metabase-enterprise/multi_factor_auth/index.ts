@@ -1,8 +1,7 @@
-import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
-
-import { AccountSecurityPanel } from "./components/AccountSecurityPanel";
-import { AdminAuthCard } from "./components/AdminAuthCard";
-import { AuthChallengeForm } from "./components/AuthChallengeForm";
+import {
+  PLUGIN_MULTI_FACTOR_AUTH,
+  lazyPluginComponent,
+} from "metabase/plugins";
 
 const enrolledUsersPage = () =>
   import(
@@ -17,9 +16,21 @@ const unenrolledUsersPage = () =>
   ).then(({ UnenrolledUsersPage }) => ({ Component: UnenrolledUsersPage }));
 
 export function initializePlugin() {
-  PLUGIN_MULTI_FACTOR_AUTH.AuthChallengeForm = AuthChallengeForm;
-  PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel = AccountSecurityPanel;
-  PLUGIN_MULTI_FACTOR_AUTH.AdminAuthCard = AdminAuthCard;
+  PLUGIN_MULTI_FACTOR_AUTH.AuthChallengeForm = lazyPluginComponent(() =>
+    import("./components/AuthChallengeForm").then(
+      ({ AuthChallengeForm }) => AuthChallengeForm,
+    ),
+  );
+  PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel = lazyPluginComponent(() =>
+    import("./components/AccountSecurityPanel").then(
+      ({ AccountSecurityPanel }) => AccountSecurityPanel,
+    ),
+  );
+  PLUGIN_MULTI_FACTOR_AUTH.AdminAuthCard = lazyPluginComponent(() =>
+    import("./components/AdminAuthCard").then(
+      ({ AdminAuthCard }) => AdminAuthCard,
+    ),
+  );
   PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage = enrolledUsersPage;
   PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage = unenrolledUsersPage;
 }
