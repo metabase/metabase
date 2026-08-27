@@ -26,4 +26,15 @@
             (type/generic "Promise"
                           [(type/array
                             (type/union [(type/primitive "string")
-                                         (type/primitive "null")]))]))))))
+                                         (type/primitive "null")]))])))))
+  (testing "supported literal nodes are always valid TypeScript"
+    (are [expected value] (= expected (type/render (type/literal value)))
+      "\"x\"" \x
+      "true" true
+      "false" false
+      "null" nil
+      "42" 42))
+  (testing "unsupported literal nodes fail before invalid TypeScript can be emitted"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unsupported TypeScript literal"
+                          (type/render (type/literal 'not-a-typescript-literal))))))

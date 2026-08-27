@@ -258,6 +258,7 @@ Put compiler metadata in the Malli schema's property map. The outer Malli schema
 | `:ts/promise-of S`             | Describe a JavaScript `Promise` resolving to schema `S`                                             |
 | `:ts/key-transform :camelCase` | Render object keys after a real camel-case conversion                                               |
 | `:ts/key-transform :none`      | Reset an inherited key transform for a nested object                                                |
+| `:ts/instance-of "Array"`      | Internal compatibility for `[:is-a js/Array]` or `js/Object`; prefer precise array/object metadata  |
 | `:ts/same-as N`                | Tie the return type to zero-based argument `N`                                                      |
 | `:ts/generic-bound S`          | Set the accepted generic domain for `:ts/same-as` when it is broader than the nominal return schema |
 
@@ -291,6 +292,8 @@ Use `[:sequential ...]` only when the function really returns a ClojureScript se
 ```
 
 Add `:ts/key-transform :camelCase` only when the implementation converts keys. It applies recursively; a nested `:ts/object-of` can reset it with `:ts/key-transform :none`.
+
+The resolver automatically translates `[:is-a js/Array]` and `[:is-a js/Object]` through the internal `:ts/instance-of` compatibility property. These render as `unknown[]` and `Record<string, unknown>` respectively; other class names remain `unknown`. Prefer `:ts/array-of` or `:ts/object-of` whenever the boundary has a precise shape, and don't author `:ts/instance-of` directly without a compiler-specific reason.
 
 ### Input-preserving return types
 
@@ -347,7 +350,7 @@ Schemas on `mu/defn` validate real values in development and tests. Don't replac
 - A ClojureScript map isn't automatically property-accessible from JavaScript.
 - A normalization or serialization function can change the exposed shape.
 
-The generator runs on the JVM. Avoid CLJS-only predicates in schemas used for generation. A schema stored only in a `.cljs` var can also be unavailable to JVM-side registry resolution; inline it or move it to `.cljc` when appropriate.
+The generator runs on the JVM. Avoid CLJS-only predicates in schemas used for generation. A schema stored only in a `.cljs` var can also be unavailable to JVM-side registry resolution; inline it or move it to `.cljc` when appropriate. Reader-conditional JVM and CLJS schemas can differ, so don't infer a JavaScript representation from JVM-only predicates such as `bytes?` or `uri?`; keep it `unknown` unless the exported boundary performs a documented conversion.
 
 ### Verify generated declarations
 

@@ -20,6 +20,12 @@ shared_specs: &shared_specs
   - "test/**/*.cljc"
   - "test/**/*.cljs"
 
+cljs_typescript_declarations:
+  - "cljs/**"
+  - "shadow-cljs.edn"
+  - "bin/check-cljs-dts-exports.mjs"
+  - "bin/type-check-cljs-dts.mjs"
+
 shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"

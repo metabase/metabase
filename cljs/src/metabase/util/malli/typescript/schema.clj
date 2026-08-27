@@ -1,8 +1,10 @@
 (ns metabase.util.malli.typescript.schema
   (:require
+   [cljs.compiler :as comp]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.registry :as mregistry]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.typescript.type :as type]))
 
@@ -127,20 +129,16 @@
 
 (defn- camel-case-key
   [s]
-  (let [s     (if (str/ends-with? s "?")
-                (str "is-" (str/replace s #"\?$" ""))
-                s)
-        parts (remove str/blank? (str/split s #"[-_\s]+"))]
-    (if (seq parts)
-      (str (first parts)
-           (apply str (map str/capitalize (rest parts))))
-      s)))
+  (u/->camelCaseEn
+   (if (str/ends-with? s "?")
+     (str "is-" (str/replace s #"\?$" ""))
+     s)))
 
 (defn- transformed-map-key
   [key key-transform]
   (case key-transform
-    :camelCase (if (keyword? key)
-                 (camel-case-key (name key))
+    :camelCase (if (or (keyword? key) (string? key))
+                 (camel-case-key (if (keyword? key) (u/qualified-name key) key))
                  (str key))
     (if (keyword? key) (name key) (str key))))
 
@@ -156,10 +154,10 @@
     'pos? 'neg? 'zero? 'double 'double? 'float 'float?})
 
 (def ^:private string-schema-types
-  #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :uri :re
+  #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :re
     'string? 'ident? 'simple-ident? 'qualified-ident? 'keyword? 'simple-keyword?
     'qualified-keyword? 'symbol 'symbol? 'simple-symbol? 'qualified-symbol? 'uuid
-    'uuid? 'char? 'bytes?})
+    'uuid? 'char?})
 
 (def ^:private boolean-schema-types
   #{:boolean 'boolean 'boolean?})
@@ -295,7 +293,7 @@
   [key-schema options]
   (let [schema-type (mc/type (mc/schema key-schema))]
     (cond
-      (contains? #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :uri :re} schema-type)
+      (contains? #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :re} schema-type)
       (result (type/primitive "string"))
 
       (contains? #{:int :double} schema-type)
@@ -324,7 +322,7 @@
 
 (defn- catn-child-name
   [child]
-  (first child))
+  (name (first child)))
 
 (defn- fragment
   ([]
@@ -500,6 +498,31 @@
     (assoc (dissoc compiled :alternatives)
            :type (type/union (mapv fragment->tuple (:alternatives compiled))))))
 
+(def ^:private typescript-identifier-pattern
+  #"[A-Za-z_$][\w$]*")
+
+(defn- parameter-name
+  [raw-name index used-names]
+  (let [fallback (str "arg" index)
+        munged   (some-> raw-name symbol comp/munge str)
+        preferred (if (and munged (re-matches typescript-identifier-pattern munged))
+                    munged
+                    fallback)]
+    (first (remove used-names
+                   (concat [preferred fallback]
+                           (map #(str fallback "_" %) (iterate inc 2)))))))
+
+(defn- with-parameter-names
+  [parameters]
+  (:parameters
+   (reduce-kv (fn [{:keys [used-names] :as acc} index parameter]
+                (let [name (parameter-name (:name parameter) index used-names)]
+                  (-> acc
+                      (update :parameters conj (assoc parameter :name name))
+                      (update :used-names conj name))))
+              {:parameters [], :used-names #{}}
+              parameters)))
+
 (defn- parameters-from-alternatives
   [alternatives]
   (let [alternative-count (count alternatives)
@@ -508,18 +531,18 @@
         (mapv (fn [index]
                 (let [items (keep #(nth (:items %) index nil) alternatives)
                       names (keep :name items)]
-                  {:name (or (first names) (str "arg" index))
+                  {:name (first names)
                    :type (type/union (mapv :type items))
                    :optional? (< (count items) alternative-count)}))
               (range item-count))
         rest-types (keep :rest alternatives)]
-    (cond-> parameters
-      (seq rest-types)
-      (conj {:name (str "arg" item-count)
-             :type (if (= (count rest-types) alternative-count)
-                     (type/union (vec rest-types))
-                     (type/unknown))
-             :rest? true}))))
+    (with-parameter-names
+      (cond-> parameters
+        (seq rest-types)
+        (conj {:type (if (= (count rest-types) alternative-count)
+                       (type/union (vec rest-types))
+                       (type/unknown))
+               :rest? true})))))
 
 (defn- function-result
   [malli-schema options]
@@ -586,13 +609,23 @@
       :else
       (unknown-result (mc/form malli-schema) :weak-schema))))
 
+(defn- typescript-literal-value
+  [value]
+  (cond
+    (qualified-keyword? value)       {:supported? true, :value (str (namespace value) "/" (name value))}
+    (keyword? value)                 {:supported? true, :value (name value)}
+    (string? value)                  {:supported? true, :value value}
+    (char? value)                    {:supported? true, :value (str value)}
+    (or (boolean? value) (nil? value)) {:supported? true, :value value}
+    (finite-typescript-number? value)  {:supported? true, :value value}
+    :else                              {:supported? false}))
+
 (defn- literal-result
   [value]
-  (result
-   (type/literal
-    (if (qualified-keyword? value)
-      (str (namespace value) "/" (name value))
-      (if (keyword? value) (name value) value)))))
+  (let [{:keys [supported?] literal-value :value} (typescript-literal-value value)]
+    (if supported?
+      (result (type/literal literal-value))
+      (unknown-result [:= value] :unsupported-literal))))
 
 (defn- multi-child-schema
   [child]

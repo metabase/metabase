@@ -491,7 +491,7 @@
       "string"  qualified-ident?
       "string"  uuid?
       "string"  char?
-      "string"  bytes?
+      "unknown" bytes?
       "true"    true?
       "false"   false?))
   (testing "numeric comparator schemas fall back to number"

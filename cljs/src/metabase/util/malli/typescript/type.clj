@@ -110,6 +110,12 @@
   [typescript]
   (boolean (re-find #"\s(?:\||&|=>)\s" typescript)))
 
+(defn- finite-typescript-number?
+  [value]
+  (and (number? value)
+       (not (ratio? value))
+       (Double/isFinite (double value))))
+
 (defn- render-child
   [node parent-precedence options]
   (let [{:keys [text precedence]} (render* node options)]
@@ -152,11 +158,15 @@
        :literal
        (let [value (:value node)]
          (cond
-           (string? value)  (pr-str value)
-           (keyword? value) (pr-str (cond->> (name value)
-                                      (namespace value) (str (namespace value) "/")))
-           (nil? value)     "null"
-           :else            (str value)))
+           (string? value)                   (pr-str value)
+           (keyword? value)                  (pr-str (cond->> (name value)
+                                                       (namespace value) (str (namespace value) "/")))
+           (char? value)                     (pr-str (str value))
+           (boolean? value)                  (str value)
+           (nil? value)                      "null"
+           (finite-typescript-number? value) (str value)
+           :else
+           (throw (ex-info "Unsupported TypeScript literal" {:value value}))))
 
        :raw
        (:typescript node)

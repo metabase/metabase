@@ -32,14 +32,12 @@
         defs))
 
 (defn entry-definitions
-  "Return exported schema defs for configured Shadow entry namespaces."
+  "Return exported schema defs for every configured Shadow entry namespace."
   [state]
   (let [namespaces (get-in state [:compiler-env ::ana/namespaces])]
     (into (sorted-map-by #(compare (str %1) (str %2)))
-          (keep (fn [entry-ns]
-                  (let [defs (exported-defs (get-in namespaces [entry-ns :defs]))]
-                    (when (seq defs)
-                      [entry-ns defs]))))
+          (map (fn [entry-ns]
+                 [entry-ns (exported-defs (get-in namespaces [entry-ns :defs]))]))
           (entry-namespaces state))))
 
 (defn module-reexports
@@ -64,9 +62,9 @@
               nil))
           (when-let [ns-name (namespace schema-keyword)]
             (let [ns-sym (symbol ns-name)]
-              (when-not (contains? @attempted-namespaces ns-sym)
-                (swap! attempted-namespaces conj ns-sym)
-                (require-ns ns-sym))
+              (when (and (not (contains? @attempted-namespaces ns-sym))
+                         (require-ns ns-sym))
+                (swap! attempted-namespaces conj ns-sym))
               (try
                 (resolve-schema schema-keyword)
                 (catch Exception _
@@ -162,10 +160,12 @@
         shared-refs-used (filter shared-types (:refs-used alias-result))
         import-stmt    (when (seq shared-refs-used)
                          "import type * as Shared from './metabase.lib.shared';\n\n")]
-    {:content (str (or import-stmt "")
-                   (if (seq type-aliases)
-                     (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
-                     declarations))
+    {:content (if (or import-stmt (seq type-aliases) (seq declarations))
+                (str (or import-stmt "")
+                     (if (seq type-aliases)
+                       (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
+                       declarations))
+                "export {};")
      :diagnostics (vec (concat (mapcat :diagnostics results)
                                local-diagnostics
                                (:diagnostics alias-result)))
@@ -179,7 +179,7 @@
                       {}
                       (constantly true)
                       #(declaration/registry-type-name % #{}))]
-    {:content (str "// Shared type aliases for registry schemas used by multiple modules\n"
+    {:content (str "// Shared type aliases for registry schemas reachable from generated declarations\n"
                    "// Auto-generated - do not edit\n\n"
                    (str/join "\n\n" (:declarations alias-result)))
      :diagnostics (:diagnostics alias-result)}))
@@ -240,6 +240,33 @@
     (->> (slurp manifest-file) str/split-lines (remove str/blank?) vec)
     []))
 
+(defn- write-file-atomically!
+  [^java.io.File file content]
+  (let [directory (.toPath (.getParentFile file))
+        temporary-path (java.nio.file.Files/createTempFile
+                        directory
+                        (str "." (.getName file) ".")
+                        ".tmp"
+                        (make-array java.nio.file.attribute.FileAttribute 0))
+        destination-path (.toPath file)]
+    (try
+      (spit (.toFile temporary-path) content)
+      (try
+        (java.nio.file.Files/move
+         temporary-path
+         destination-path
+         (into-array java.nio.file.CopyOption
+                     [java.nio.file.StandardCopyOption/ATOMIC_MOVE
+                      java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
+        (catch java.nio.file.AtomicMoveNotSupportedException _
+          (java.nio.file.Files/move
+           temporary-path
+           destination-path
+           (into-array java.nio.file.CopyOption
+                       [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))))
+      (finally
+        (java.nio.file.Files/deleteIfExists temporary-path)))))
+
 (defn produce-dts
   "Shadow-cljs build hook that writes generated TypeScript declaration files for exported CLJS values."
   {:shadow.build/stage :flush}
@@ -260,32 +287,39 @@
                           [ns (collect-refs-from-defs ns defs)]))
           ;; Registry aliases used by entry declarations form the shared type surface;
           ;; inline registries remain local to their entry module.
-          shared-refs (into #{} (mapcat val) ns-refs)]
+          shared-refs (into #{} (mapcat val) ns-refs)
+          shared-result (when (seq shared-refs)
+                          (generate-shared-types-result shared-refs))
+          module-results
+          (mapv (fn [[ns defs]]
+                  (let [t            (u/start-timer)
+                        fname        (comp/munge (str ns))
+                        this-ns-refs (get ns-refs ns #{})
+                        result       (ts-content ns defs shared-refs this-ns-refs)]
+                    (swap! weak-types #(merge-with into % (:weak-types result)))
+                    (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})
+                    {:file (b.data/output-file state (str fname ".d.ts"))
+                     :ns ns
+                     :result result}))
+                nses-defs)]
       (log/info "Shared types analysis" {:total-refs (count shared-refs)
                                          :shared-refs (count shared-refs)})
-      (when (seq shared-refs)
-        (let [f      (b.data/output-file state "metabase.lib.shared.d.ts")
-              result (generate-shared-types-result shared-refs)]
-          (spit f (:content result))
-          (when (seq (:diagnostics result))
-            (log/debug "Shared TypeScript schema diagnostics"
-                       {:diagnostics (:diagnostics result)}))
-          (log/debug "Generated shared types file" {:types (count shared-refs)})))
-      (log/debug "Pass 2: Generating per-namespace type files")
-      (doseq [[ns defs] nses-defs]
-        (let [t            (u/start-timer)
-              fname        (comp/munge (str ns))
-              f            (b.data/output-file state (str fname ".d.ts"))
-              this-ns-refs (get ns-refs ns #{})
-              result       (ts-content ns defs shared-refs this-ns-refs)]
-          (spit f (:content result))
-          (swap! weak-types #(merge-with into % (:weak-types result)))
-          (when (seq (:diagnostics result))
-            (log/debug "TypeScript schema diagnostics" {:ns ns
-                                                        :diagnostics (:diagnostics result)}))
-          (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})))
+      (when (seq (:diagnostics shared-result))
+        (log/debug "Shared TypeScript schema diagnostics"
+                   {:diagnostics (:diagnostics shared-result)}))
+      (doseq [{:keys [ns result]} module-results
+              :when (seq (:diagnostics result))]
+        (log/debug "TypeScript schema diagnostics" {:ns ns
+                                                    :diagnostics (:diagnostics result)}))
+      (when shared-result
+        (write-file-atomically! (b.data/output-file state "metabase.lib.shared.d.ts")
+                                (:content shared-result))
+        (log/debug "Generated shared types file" {:types (count shared-refs)}))
+      (log/debug "Pass 2: Writing per-namespace type files")
+      (doseq [{:keys [file result]} module-results]
+        (write-file-atomically! file (:content result)))
       (cleanup-stale-declarations! output-directory previous-modules module-names (seq shared-refs))
-      (spit manifest-file (str (str/join "\n" module-names) "\n")))
+      (write-file-atomically! manifest-file (str (str/join "\n" module-names) "\n")))
     (when (debug-cljs?)
       (output-weak-type-warnings! @weak-types))
     (log/info "TypeScript defs compilation complete" {:namespaces defs-count}))

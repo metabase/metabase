@@ -59,6 +59,7 @@ jobs:
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
+      cljs_typescript_declarations: ${{ steps.changes.outputs.cljs_typescript_declarations }}
       documentation: ${{ steps.changes.outputs.documentation }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
@@ -268,7 +269,8 @@ jobs:
     with:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' }}
+        needs.files-changed.outputs.frontend_all != 'true' &&
+        needs.files-changed.outputs.cljs_typescript_declarations != 'true' }}
       skip-lint: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' &&
@@ -318,6 +320,7 @@ jobs:
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.embedding_sdk_components == 'true' ||
+      needs.files-changed.outputs.cljs_typescript_declarations == 'true' ||
       needs.files-changed.outputs.frontend_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true' ||
       needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
