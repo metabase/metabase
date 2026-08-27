@@ -48,4 +48,32 @@ describe("TableBrowser", () => {
     );
     await waitForLoaderToBeRemoved();
   });
+
+  it("skips fields when loading tables of a schema-less database", async () => {
+    const table = {
+      id: 123,
+      name: "foo",
+      display_name: "foo",
+      initial_sync_status: "complete",
+    };
+    const database = { id: 1, name: "db", tables: [table] };
+    fetchMock.get("path:/api/database/1", database);
+    fetchMock.get("path:/api/database/1/metadata", database);
+    fetchMock.get("path:/api/database/1/schema/", [table]);
+
+    renderWithProviders(<TableBrowser dbId={1} params={{}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("foo")).toBeInTheDocument();
+    });
+
+    const metadataCalls = fetchMock.callHistory.calls(
+      "path:/api/database/1/metadata",
+    );
+    expect(metadataCalls).toHaveLength(1);
+    expect(metadataCalls[0].url).toContain("skip_fields=true");
+    expect(
+      fetchMock.callHistory.calls("path:/api/database/1/schema/"),
+    ).toHaveLength(0);
+  });
 });
