@@ -40,7 +40,7 @@
                   :type-mismatch                                                       8
                   :uninitialized-var                                                   1
                   :unquote-not-syntax-quoted                                           1
-                  :unresolved-namespace                                                2
+                  :unresolved-namespace                                                3
                   :unresolved-require                                                  1
                   :unresolved-symbol                                                   11
                   :unsorted-required-namespaces                                        1
