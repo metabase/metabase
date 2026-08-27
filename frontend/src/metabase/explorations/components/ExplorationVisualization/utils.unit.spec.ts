@@ -387,6 +387,38 @@ describe("getExploreFurtherFilters", () => {
     ]);
   });
 
+  it("keeps an aligned temporal brush start instead of rounding it up a unit", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    // Start is exactly Jan 1, the January bar's tick, so the filter includes it
+    // (same as Lib.updateTemporalFilter).
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-01-01T00:00:00",
+        end: "2020-03-10T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "between",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        values: ["2020-01-01T00:00:00", "2020-03-01T00:00:00"],
+        display_value: "Jan 2020 – Mar 2020",
+      },
+    ]);
+  });
+
   it("returns an equality filter when a temporal brush covers a single dot", () => {
     const column = createMockDatetimeColumn({
       name: "CREATED_AT",
@@ -399,6 +431,36 @@ describe("getExploreFurtherFilters", () => {
         type: "temporal",
         // After clamp: start = Feb 1, end = Feb 1
         start: "2020-01-15T14:30:00",
+        end: "2020-02-20T09:05:00",
+      },
+      column,
+      event: new MouseEvent("click"),
+      settings: {
+        column: () => ({ column, date_abbreviate: true }),
+      },
+    };
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      {
+        operator: "=",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+        value: "2020-02-01T00:00:00",
+        display_value: "Feb 2020",
+      },
+    ]);
+  });
+
+  it("returns an equality filter when an aligned temporal brush start and end collapse to one dot", () => {
+    const column = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+      unit: "month",
+      field_ref: ["field", 20, { "temporal-unit": "month" }],
+    });
+    const clicked: ClickObject = {
+      brushRange: {
+        type: "temporal",
+        start: "2020-02-01T00:00:00",
         end: "2020-02-20T09:05:00",
       },
       column,

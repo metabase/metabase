@@ -287,6 +287,13 @@ export const {
 } = tableApi;
 
 /**
+ * Reads a table's already-fetched `query_metadata` out of the RTK cache. Use it
+ * after awaiting the fetch, where a hook is not an option.
+ */
+export const selectTableQueryMetadata =
+  tableApi.endpoints.getTableQueryMetadata.select;
+
+/**
  * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
  * Dispatches queries to load metadata for each related table.
  *

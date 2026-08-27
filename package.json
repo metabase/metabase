@@ -170,7 +170,6 @@
     "typescript7": "npm:typescript@7.0.2",
     "underscore": "^1.13.8",
     "url": "^0.11.4",
-    "use-sync-external-store": "^1.6.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -205,6 +204,7 @@
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@storybook/addon-a11y": "^8.5.0",
     "@storybook/addon-actions": "^8.5.0",
+    "@storybook/addon-docs": "^8.5.0",
     "@storybook/addon-essentials": "^8.5.0",
     "@storybook/addon-interactions": "^8.5.0",
     "@storybook/addon-links": "^8.5.0",
@@ -260,7 +260,6 @@
     "@types/semver": "^7.7.1",
     "@types/sinonjs__fake-timers": "^15.0.1",
     "@types/underscore": "^1.13.0",
-    "@types/use-sync-external-store": "^1.5.0",
     "@vitejs/plugin-react": "^6.0.2",
     "ajv": "^8.5.0",
     "babel-loader": "^9.1.2",
@@ -331,7 +330,6 @@
     "mochawesome": "^7.1.4",
     "mochawesome-merge": "^5.1.1",
     "mochawesome-report-generator": "^6.3.2",
-    "mockdate": "^2.0.2",
     "msw": "^2.7.5",
     "msw-storybook-addon": "^2.0.4",
     "mysql2": "^3.9.8",
