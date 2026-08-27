@@ -188,9 +188,8 @@ export function buildGridAndSeriesOption(
   const timelineEventsSeries = getTimelineSelectionSeries(
     timelineEventsModel,
     selectedTimelineEventIds,
+    chartModel,
     chartLayout,
-    panelCount,
-    isSplitPanels,
     renderingContext,
   );
 
@@ -317,17 +316,21 @@ export const getCartesianChartOption = (
   };
 };
 
-function getTimelineSelectionSeries(
+export function getTimelineSelectionSeries(
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventIds: TimelineEventId[],
+  chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
-  panelCount: number,
-  isSplitPanels: boolean,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption | null {
   if (timelineEventsModel == null) {
     return null;
   }
+
+  const panelCount = chartModel.seriesModels.filter(
+    (series) => series.visible,
+  ).length;
+  const isSplitPanels = chartLayout.panelHeight != null;
 
   const splitPanelYExtent = isSplitPanels
     ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
