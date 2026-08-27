@@ -576,12 +576,16 @@
         "PROHIBITED_CONTENT"        "content-filter"
         "SPII"                      "content-filter"
         "IMAGE_SAFETY"              "content-filter"
+        "IMAGE_PROHIBITED_CONTENT"  "content-filter"
+        "IMAGE_RECITATION"          "content-filter"
         "MODEL_ARMOR"               "content-filter"
         "LANGUAGE"                  "content-filter"
         "MALFORMED_FUNCTION_CALL"   "error"
         "UNEXPECTED_TOOL_CALL"      "error"
         "OTHER"                     "other"
         "FINISH_REASON_UNSPECIFIED" "other"
+        "IMAGE_OTHER"               "other"
+        "NO_IMAGE"                  "other"
         "SOMETHING_NEW"             "other"))))
 
 (deftest ^:parallel content-filter-finish-reason-emits-no-error-test
@@ -604,7 +608,8 @@
 (deftest ^:parallel finish-reasons-without-error-are-the-ones-the-client-renders-test
   (testing "STOP plus every reason translating to \"length\" or \"content-filter\" emits no error part"
     (is (= #{"STOP" "MAX_TOKENS"
-             "BLOCKLIST" "IMAGE_SAFETY" "LANGUAGE" "MODEL_ARMOR" "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"}
+             "BLOCKLIST" "IMAGE_PROHIBITED_CONTENT" "IMAGE_RECITATION" "IMAGE_SAFETY" "LANGUAGE" "MODEL_ARMOR"
+             "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"}
            @#'sgc/finish-reasons-without-error))))
 
 (deftest ^:parallel malformed-function-call-finish-reason-test
