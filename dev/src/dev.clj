@@ -396,7 +396,7 @@
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]
   (u/prog1 form
-           (tap> <>)))
+    (tap> <>)))
 
 (defn- tests-in-var-ns [test-var]
   (->> test-var meta :ns ns-interns vals

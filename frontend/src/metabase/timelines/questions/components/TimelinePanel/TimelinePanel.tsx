@@ -35,10 +35,11 @@ const TimelinePanel = ({
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
   const canWrite = collection.can_write;
+  const canCreateEvent = canWrite && onNewEvent != null;
 
   return (
     <Box mx="xl">
-      {!isEmpty && canWrite && (
+      {!isEmpty && canCreateEvent && (
         <Box mb="lg">
           <Button onClick={onNewEvent}>{t`Create event`}</Button>
         </Box>

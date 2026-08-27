@@ -80,8 +80,9 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
-tree may contain. `metabase.core.kondo-ratchet-test` fails when the budgets drift from the actual counts,
-in either direction. Prefer fixing the underlying warning over adding an ignore.
+tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
+`.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
+actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
 
 Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
 change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
