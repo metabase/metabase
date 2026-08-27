@@ -1,9 +1,10 @@
 {
-  "description": "Opt-in reviewer rotation. When a ready (non-draft) PR by one of `members` gets the `Reviewer-I-Choose-You` label, or a labeled draft is flipped to ready, auto-request-reviewer.yml requests `githubTeam` plus the other member with the lowest review load in the last 14 days. Add your team below to opt in.",
+  "description": "Opt-in reviewer rotation. When a ready (non-draft) PR by one of `members` gets the `Reviewer-I-Choose-You` label, or a labeled draft is flipped to ready, auto-request-reviewer.yml requests `githubTeam` plus the other member with the lowest review load in the last `loadWindowDays` days. Add your team below to opt in.",
   "teams": [
     {
       "name": "Gadget frontend",
       "githubTeam": "core-frontend-gadget",
+      "loadWindowDays": 14,
       "members": ["chodorowicz", "egorgrushin", "olehk-mb", "stasgavrylov", "uladzimirdev"]
     }
   ]

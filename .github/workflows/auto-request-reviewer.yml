@@ -67,7 +67,7 @@ jobs:
               return;
             }
 
-            const windowStart = Date.now() - 14 * 24 * 60 * 60 * 1000;
+            const windowStart = Date.now() - team.loadWindowDays * 24 * 60 * 60 * 1000;
 
             const search = async (q) => {
               const res = await github.graphql(
@@ -114,7 +114,7 @@ jobs:
             }
             ranked.sort((a, b) => a.load - b.load || a.last - b.last || a.login.localeCompare(b.login));
 
-            core.info(`load in last 14d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
+            core.info(`load in last ${team.loadWindowDays}d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
             const pick = ranked[0].login;
             core.info(`picked ${pick}${team.githubTeam ? ` + ${owner}/${team.githubTeam}` : ''}`);
 
