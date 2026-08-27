@@ -27,7 +27,7 @@
 (defn heading
   "`s` as a level-`n` heading. Callers that want a backticked heading compose the two: `(heading 3 (code s))`."
   [n s]
-  (str (apply str (repeat n "#")) " " s))
+  (str (str/join (repeat n "#")) " " s))
 
 (defn blockquote
   "`s` as a blockquote. Every line is prefixed, so a quote that runs to several lines stays one quote rather than
@@ -41,55 +41,51 @@
   ;; not `format`, whose grouping separator follows the default locale and so would differ between a laptop and CI
   (str/replace (str n) #"(\d)(?=(\d{3})+$)" "$1,"))
 
-(defn- add-period
-  "Terminate `s` with a period, unless it already terminates itself. Knows about the endings docs prose runs into: a
-  trailing `:` reads as a dangling lead-in once the text stands on its own, so it becomes a period, and a fenced code
-  block is left exactly as it is."
+(defn sentence
+  "`s` as a sentence: forced out of i18n and terminated with a period. Nil when there is nothing to say, so a field
+  whose text is blank contributes no stray `.` to its bullet.
+
+  Knows about the endings docs prose runs into: a trailing `:` reads as a dangling lead-in once the text stands on
+  its own, so it becomes a period, and a fenced code block is left exactly as it is."
   [s]
   (let [text (str s)]
     (cond
-      (str/blank? text) text
-      (#{\. \? \!} (last text)) text
+      (str/blank? text)           nil
+      (#{\. \? \!} (last text))   text
       (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
-      :else (str text "."))))
+      (str/ends-with? text ":")   (str (subs text 0 (dec (count text))) ".")
+      :else                       (str text "."))))
 
-(defn sentence
-  "`s` as a sentence: forced out of i18n and terminated with a period. Nil when there is nothing to say, so a field
-  whose text is blank contributes no stray `.` to its bullet."
-  [s]
-  (let [s (str s)]
-    (when-not (str/blank? s)
-      (add-period s))))
+(defn- parts
+  "`xs` stringified and trimmed, with the empties dropped — a nil `:help` leaves no gap where it was, and a resource
+  carrying its own trailing newline opens no extra blank line."
+  [xs]
+  (into [] (comp (map #(str/trim (str %))) (remove str/blank?)) xs))
 
 (defn sentences
   "Join the non-blank parts into one run of prose, a space between them."
-  [parts]
-  (str/join " " (remove str/blank? parts)))
+  [xs]
+  (str/join " " (parts xs)))
 
 (defn paragraphs
-  "Join the non-blank parts with blank lines between them, each trimmed of its own surrounding whitespace — a
-  resource that carries a trailing newline doesn't open an extra blank line."
-  [parts]
-  (->> parts
-       (map #(str/trim (str %)))
-       (remove str/blank?)
-       (str/join "\n\n")))
+  "Join the non-blank parts with blank lines between them."
+  [xs]
+  (str/join "\n\n" (parts xs)))
+
+(defn bullets
+  "Join the non-blank items as a Markdown list."
+  [xs]
+  (str/join "\n" (map #(str "- " %) (parts xs))))
 
 (defn document
-  "`parts` as a finished page: joined as [[paragraphs]] and terminated with exactly one newline."
-  [parts]
-  (str (paragraphs parts) "\n"))
+  "`xs` as a finished page: joined as [[paragraphs]] and terminated with exactly one newline."
+  [xs]
+  (str (paragraphs xs) "\n"))
 
 (defn labeled-block
   "A `label` line, then `body` beneath it — `Options:` over its list, `Credentials:` over its bullets."
   [label body]
   (paragraphs [label body]))
-
-(defn bullets
-  "Join the non-blank items as a Markdown list."
-  [items]
-  (str/join "\n" (map #(str "- " %) (remove str/blank? items))))
 
 (defn table
   "A Markdown table. `rows` is a sequence of already-rendered cell vectors."
@@ -102,5 +98,5 @@
     (str/join "\n"
               ;; the separator is just another row — its dashes are already exactly column width, so it pads to itself
               (list* (row->line headers)
-                     (row->line (map #(apply str (repeat % "-")) widths))
+                     (row->line (map #(str/join (repeat % "-")) widths))
                      (map row->line rows)))))

@@ -13,7 +13,7 @@
     (is (= "Defaults to global." (md/sentence "Defaults to global.")))
     (is (= "Which model?" (md/sentence "Which model?")))
     (is (= "This one doesn't need a period!" (md/sentence "This one doesn't need a period!"))))
-  (testing "the endings `add-period` knows about, which a docs page runs into"
+  (testing "the endings `sentence` knows about, which a docs page runs into"
     ;; a trailing colon reads as a dangling lead-in once the text is a
     ;; bullet of its own, and a fenced code block must not pick up a period after its closing fence
     (is (= "Pick one of." (md/sentence "Pick one of:")))

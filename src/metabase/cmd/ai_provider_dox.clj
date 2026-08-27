@@ -36,24 +36,20 @@
   ;; page as a single quote
   (str (:label x)))
 
-(defn- fields-by-key
-  "`fields` indexed by their `:key`."
-  [fields]
-  (into {} (map (juxt :key identity)) fields))
-
 (defn- field-at
-  "The field `k` names in a [[fields-by-key]] index. Throws when there is none."
-  [fields-index k]
+  "The field `k` names among `fields`. Throws when there is none."
+  [fields k]
   ;; a `:show-when`, `:requires`, or `:required-any` left pointing at a renamed key would otherwise render as an
   ;; empty `****`
-  (or (get fields-index k)
+  (or (some #(when (= k (:key %)) %) fields)
       (throw (ex-info (str "No credential field named " (pr-str k))
-                      {:field k :known-fields (vec (keys fields-index))}))))
+                      {:field k :known-fields (mapv :key fields)}))))
 
-(defn- field-label
-  "The label of the field `k` names in a [[fields-by-key]] index."
-  [fields-index k]
-  (label (field-at fields-index k)))
+(defn- field-labels
+  "The fields `field-keys` name among `fields`, as bolded labels joined with `and` —
+  `**Access key ID** and **API key**`."
+  [fields field-keys]
+  (str/join " and " (map #(md/bold (label (field-at fields %))) field-keys)))
 
 (defn- option-label
   "The label a field's form control shows for the stored `value`, or `value` itself when no `:options` entry claims it."
@@ -71,46 +67,31 @@
                           advanced? (conj "advanced")))]
     (str "(" (str/join ", " notes) ")")))
 
-(defn- field-name-sentence
-  "What the field is called, carrying its qualifier: `**API key** (required).`"
-  [field]
-  (str (md/bold (label field))
-       (some->> (field-qualifier field) (str " "))
-       "."))
-
 (defn- field-condition-sentence
   "The condition that reveals a field, or nil when it is always shown."
-  [{:keys [show-when]} {:keys [fields-index]}]
+  [{:keys [show-when]} {:keys [fields]}]
   (when-let [{:keys [field value]} show-when]
-    (let [controlling (field-at fields-index field)]
+    (let [controlling (field-at fields field)]
       (str "Only when " (md/bold (label controlling))
            " is " (md/bold (option-label controlling value)) "."))))
 
 (defn- field-requires-sentence
   "The siblings a field cannot be set without, or nil when it stands on its own. The registry keys `:requires` by
-  field, so this reads the map off the `ctx` rather than anything hung off the field itself."
-  [{:keys [key]} {:keys [requires fields-index]}]
+  field, so this reads the map off the provider rather than anything hung off the field itself."
+  [{:keys [key]} {:keys [requires fields]}]
   (when-let [dependency-keys (seq (get requires key))]
-    (str "Only together with "
-         (str/join " and " (map #(md/bold (field-label fields-index %)) dependency-keys))
-         ".")))
-
-(defn- field-help-sentence
-  "The registry's own explanation of the field, or nil when it carries none."
-  [{:keys [help]}]
-  (md/sentence help))
+    (str "Only together with " (field-labels fields dependency-keys) ".")))
 
 (defn- field-hosted-sentence
   "What Metabase Cloud asks of a field that a self-hosted Metabase does not, or nil when the two agree."
   [{:keys [help hosted-help hosted-required?]}]
-  (cond
-    ;; the `not=` is for a page generated with a hosting token, where the registry has already folded `:hosted-help`
-    ;; into `:help` and repeating it would stutter
-    (and hosted-help (not= (str help) (str hosted-help)))
-    (md/sentence hosted-help)
-
-    (and hosted-required? (not hosted-help))
-    "Required on Metabase Cloud."))
+  (if hosted-help
+    ;; nil on a page generated with a hosting token, where the registry has already folded `:hosted-help` into
+    ;; `:help` and repeating it would stutter
+    (when (not= (str help) (str hosted-help))
+      (md/sentence hosted-help))
+    (when hosted-required?
+      "Required on Metabase Cloud.")))
 
 (defn- field-options-sentence
   "The choices a `:select` or `:segmented` field offers: listed when there are at most [[max-enumerated-options]] of
@@ -129,13 +110,6 @@
     ;; a field with `:options` stores one value but displays another, so show what the form shows
     (str "Defaults to " (md/code (option-label field default)) ".")))
 
-(defn- field-docs-sentence
-  "A link to the provider's own instructions for filling the field in, or nil when there is nothing to link to."
-  [{:keys [docs-url]}]
-  ;; the words the admin form's own link uses, so the page and the UI agree; the `?` terminates it, so no period
-  (when docs-url
-    (md/link "Where do I find this?" docs-url)))
-
 (defn- field-env-var-sentence
   "How to set the field without writing JSON into the setting, or nil when no environment variable configures it."
   [{:keys [key]} {:keys [env-vars]}]
@@ -143,37 +117,25 @@
     (str "Set it with " (md/code env-var) ".")))
 
 (defn- field-entry
-  "One credential field as a Markdown bullet, rendered against its provider's `ctx`: the type's `:requires` map, the
-  environment variables that configure it, and its fields indexed by key."
-  [field ctx]
+  "One credential field as a Markdown bullet, rendered against its `provider`: the type's `:requires` map, the
+  environment variables that configure it, and its sibling fields."
+  [{:keys [help docs-url] :as field} provider]
   (md/sentences
-   [(field-name-sentence field)
-    (field-condition-sentence field ctx)
-    (field-requires-sentence field ctx)
-    (field-help-sentence field)
+   [;; what the field is called, carrying its qualifier: `**API key** (required).`
+    (str (md/sentences [(md/bold (label field)) (field-qualifier field)]) ".")
+    (field-condition-sentence field provider)
+    (field-requires-sentence field provider)
+    (md/sentence help)
     ;; straight after `:help`, which on Bedrock is the keyless mode this qualifies
     (field-hosted-sentence field)
     (field-options-sentence field)
     (field-default-sentence field)
-    (field-docs-sentence field)
-    (field-env-var-sentence field ctx)]))
+    ;; the words the admin form's own link uses, so the page and the UI agree; the `?` terminates it, so no period
+    (when docs-url
+      (md/link "Where do I find this?" docs-url))
+    (field-env-var-sentence field provider)]))
 
 ;;;; Models
-
-(defn- model-source
-  "Where a provider type's models come from, as `[:known models]`, `[:fixed models]`, `[:deployments field-keys]`, or
-  `[:dynamic]`. Throws when the type matches none of them."
-  [{:keys [type models model-fields] :as provider-type}]
-  (or (some->> (metabot.self/known-models type) not-empty (vector :known))
-      (some->> (not-empty models) (vector :fixed))
-      (some->> (not-empty model-fields) (vector :deployments))
-      (when (contains? dynamic-catalog-types type)
-        [:dynamic])
-      (throw (ex-info (str "No model source for provider type " (pr-str type)
-                           ". Add it to metabase.metabot.self/known-models, give it a :models or :model-fields key"
-                           " in the registry, or name it in dynamic-catalog-types.")
-                      {:provider type
-                       :registry-keys (vec (keys provider-type))}))))
 
 (defn- known-models-table
   "A `{model-id {:display-name ... :context-window ...}}` allow-list as a table, ordered by model ID."
@@ -181,7 +143,7 @@
   ;; the context window column is dropped when nothing in the table publishes one — DeepSeek would otherwise get a
   ;; column of dashes, which reads as missing data rather than as a column that doesn't apply
   (let [sorted   (sort-by key models)
-        windows? (boolean (some (comp :context-window val) sorted))
+        windows? (some (comp :context-window val) sorted)
         row      (fn [[model-id {:keys [display-name context-window]}]]
                    (cond-> [(or display-name model-id) (md/code model-id)]
                      windows? (conj (if context-window (md/thousands context-window) "—"))))]
@@ -196,24 +158,34 @@
             (for [{:keys [id display_name]} (sort-by :id models)]
               [(or display_name id) (md/code id)])))
 
-(defn- deployment-models-paragraph
-  "Prose for a provider type that has no catalog to list, whose model is composed from the fields labeled
-  `model-field-labels`."
-  [provider-label model-field-labels]
-  (str provider-label " serves the deployments you create, not a fixed catalog, so there's no model list to pick "
-       "from. Metabase works out the model from "
-       (str/join " and " (map md/bold model-field-labels))
-       " instead."))
-
 (defn- models-markdown
-  "A [[model-source]] rendered as the body of a provider's models block."
-  [[tag value] fields-index provider-label]
-  (case tag
-    :known       (known-models-table value)
-    :fixed       (fixed-models-table value)
-    :deployments (deployment-models-paragraph provider-label (mapv #(field-label fields-index %) value))
-    :dynamic     (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
-                      "pick depends on how you started it.")))
+  "Where a provider type's models come from, rendered as the body of its models block: an adapter allow-list, a
+  registry-pinned catalog, deployments the admin names, or a catalog only the running server knows. Throws when the
+  type matches none of them."
+  [{:keys [type models model-fields fields] :as provider}]
+  (let [known          (metabot.self/known-models type)
+        provider-label (label provider)]
+    (cond
+      (seq known)
+      (known-models-table known)
+
+      (seq models)
+      (fixed-models-table models)
+
+      (seq model-fields)
+      (str provider-label " serves the deployments you create, not a fixed catalog, so there's no model list to pick "
+           "from. Metabase works out the model from " (field-labels fields model-fields) " instead.")
+
+      (contains? dynamic-catalog-types type)
+      (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
+           "pick depends on how you started it.")
+
+      :else
+      (throw (ex-info (str "No model source for provider type " (pr-str type)
+                           ". Add it to metabase.metabot.self/known-models, give it a :models or :model-fields key"
+                           " in the registry, or name it in dynamic-catalog-types.")
+                      {:provider type
+                       :registry-keys (vec (keys provider))})))))
 
 ;;;; Sections
 
@@ -235,20 +207,20 @@
 
 (defn- required-any-sentence
   "The `:required-any` credential groups spelled out, or nil for a type that has none."
-  [provider-label required-any fields-index]
+  [{:keys [required-any fields] :as provider}]
   ;; the per-field `(optional)` markers on their own would read as though none of the credentials were needed
   (when (seq required-any)
-    (let [group (fn [field-keys]
-                  (str/join " and " (map #(md/bold (field-label fields-index %)) field-keys)))]
-      (str provider-label " needs either " (str/join ", or " (map group required-any)) "."))))
+    (str (label provider) " needs either "
+         (str/join ", or " (map #(field-labels fields %) required-any))
+         ".")))
 
 (defn- credentials-section
   "What an admin has to enter to connect, and which combinations of it are enough."
-  [{:keys [type fields managed? required-any] :as provider-type} {:keys [fields-index] :as ctx}]
+  [{:keys [type fields managed?] :as provider}]
   (md/paragraphs
    [(cond
       (seq fields)
-      (md/labeled-block "Credentials:" (md/bullets (map #(field-entry % ctx) fields)))
+      (md/labeled-block "Credentials:" (md/bullets (map #(field-entry % provider) fields)))
 
       ;; only the managed provider has nothing to enter; saying so about any other type would tell an admin their
       ;; credentials are Metabase's problem when they are not
@@ -259,22 +231,18 @@
       (throw (ex-info (str "No credential fields for provider type " (pr-str type)
                            ". Give it a :fields key in the registry, or mark it :managed?.")
                       {:provider type})))
-    (required-any-sentence (label provider-type) required-any fields-index)]))
+    (required-any-sentence provider)]))
 
 (defn- provider-section
   "One provider's section of the page: heading, facts, models, then credentials."
-  [{:keys [type fields requires] :as provider-type}]
-  (let [fields-index   (fields-by-key fields)
-        provider-label (label provider-type)
-        ctx            {:requires     requires
-                        :env-vars     (llm.provider/connection-env-vars type)
-                        :fields-index fields-index}]
+  [{:keys [type] :as registry-entry}]
+  ;; one map carries the whole section: the registry entry, plus the environment variables that configure it
+  (let [provider (assoc registry-entry :env-vars (llm.provider/connection-env-vars type))]
     (md/paragraphs
-     [(md/heading 2 provider-label)
-      (provider-facts provider-type)
-      (md/labeled-block "Supported models:"
-                        (models-markdown (model-source provider-type) fields-index provider-label))
-      (credentials-section provider-type ctx)])))
+     [(md/heading 2 (label provider))
+      (provider-facts provider)
+      (md/labeled-block "Supported models:" (models-markdown provider))
+      (credentials-section provider)])))
 
 (defn- document-markdown
   "The whole page: the `intro` resource, then a section per registered provider type."
