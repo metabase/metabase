@@ -98,13 +98,20 @@
   (boolean (some (fn [[table column]] (column-has-values? table column))
                  (concat encrypted-string-columns encrypted-bytes-columns))))
 
+(defn- replace-encryption-check!
+  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with nothing when
+  `encrypt-fn` is nil (the database is being decrypted)."
+  [conn encrypt-fn]
+  (t2/delete! :conn conn :setting :key encryption-check-key)
+  (when encrypt-fn
+    (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encrypt-fn (str (random-uuid)))})))
+
 (defn write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
   (t2/with-transaction [conn]
-    (t2/delete! :conn conn :setting :key encryption-check-key)
-    (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encryption/encrypt (str (random-uuid)))})))
+    (replace-encryption-check! conn encryption/encrypt)))
 
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the
@@ -172,9 +179,7 @@
           (t2/update! :conn conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-      (t2/delete! :conn conn :setting :key encryption-check-key)
-      (when encrypting?
-        (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encrypt-str-fn (str (random-uuid)))}))
+      (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))
