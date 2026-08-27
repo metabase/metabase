@@ -91,8 +91,8 @@ describe("scenarios > monitor > content diagnostics > permissions", () => {
       );
     });
 
-    // Monitoring access opens the Monitor section, but the diagnostics pages sit behind being an admin
-    // or an analyst, which this user is neither of.
+    // Monitoring permission gives access to some of Monitor's sections, but the diagnostics pages
+    // require being an admin or an analyst, which this user is neither of.
     it("keeps the section from a monitoring user who is not an analyst", () => {
       H.updateAdvancedPermissionsGraph({
         [ALL_USERS_GROUP_ID]: { monitoring: "yes" },

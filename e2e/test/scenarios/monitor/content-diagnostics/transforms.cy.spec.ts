@@ -62,7 +62,6 @@ function createTransformInArchivedFolder() {
   );
 }
 
-// Names cluster, targets must not: a transform cannot be created onto a table that already exists.
 function createTransformNamed(name: string, targetTable: string) {
   return H.createTransform({
     name,
