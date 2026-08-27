@@ -347,53 +347,107 @@
     (close []
       (reset! closed? true))))
 
-(defn- reject-400
-  [closed? message]
-  (ex-info "clj-http: status 400"
-           {:status  400
+(defn- rejection-ex
+  [closed? status message]
+  (ex-info (str "clj-http: status " status)
+           {:status  status
             :headers {"content-type" "application/json"}
             :body    (close-tracking-json-body
                       closed?
                       {:type  "error"
-                       :error {:type "invalid_request_error" :message message}})}))
+                       :error {:type    ({400 "invalid_request_error"
+                                          429 "rate_limit_error"
+                                          529 "overloaded_error"} status)
+                               :message message}})}))
 
 (deftest claude-raw-fast-mode-fallback-test
-  (testing "a fast-mode rejection 400 is retried once at standard speed, closing the failed body"
-    (let [requests (atom [])
-          closed?  (atom false)]
+  (testing "a fast-mode rejection is retried once at standard speed, closing the failed body"
+    (doseq [[status message] [[400 "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"]
+                              [429 "This request would exceed the rate limit for your organization"]]]
+      (testing (str "HTTP " status)
+        (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+          (let [requests (atom [])
+                closed?  (atom false)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (swap! requests conj req)
+                                                                  (if (:speed (json/decode+kw (:body req)))
+                                                                    (throw (rejection-ex closed? status message))
+                                                                    {:body req}))]
+              (claude/claude-raw {:model       "claude-opus-5"
+                                  :fast?       true
+                                  :credentials byok-credentials
+                                  :input       [{:role :user :content "hi"}]})
+              (let [[fast-req retry-req] @requests]
+                (is (= 2 (count @requests)))
+                (is (true? @closed?))
+                (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
+                (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
+                (is (nil? (:speed (json/decode+kw (:body retry-req)))))
+                (is (nil? (get-in retry-req [:headers "anthropic-beta"])))))))))))
+
+(deftest claude-raw-unrelated-400-not-retried-test
+  (testing "a 400 that does not read as a fast-mode rejection surfaces instead of retrying"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (throw (rejection-ex closed? 400 "max_tokens: Input should be greater than 0")))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API error \(HTTP 400\)"
+                                (claude/claude-raw {:model       "claude-opus-5"
+                                                    :fast?       true
+                                                    :credentials byok-credentials
+                                                    :input       [{:role :user :content "hi"}]})))
+          (is (= 1 (count @requests)))
+          (is (true? @closed?)))))))
+
+(deftest claude-raw-fast-mode-529-test
+  (testing "a fast-mode 529 arms the cooldown but surfaces for the caller's retry loop to pace"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)
+            call!    #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (if (:speed (json/decode+kw (:body req)))
+                                                                (throw (rejection-ex closed? 529 "Overloaded"))
+                                                                {:body req}))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API is overloaded"
+                                (call!)))
+          (is (true? @closed?))
+          (call!)
+          (is (= ["fast" nil]
+                 (map (comp :speed json/decode+kw :body) @requests))))))))
+
+(deftest claude-raw-fast-mode-cooldown-test
+  (let [cooldown (atom 0)
+        requests (atom [])]
+    (with-redefs [claude/fast-mode-cooldown-until cooldown]
       (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
                                   http/request            (fn [req]
                                                             (swap! requests conj req)
                                                             (if (:speed (json/decode+kw (:body req)))
-                                                              (throw (reject-400 closed? "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"))
+                                                              (throw (rejection-ex (atom false) 429 "This request would exceed the rate limit for your organization"))
                                                               {:body req}))]
-        (claude/claude-raw {:model       "claude-opus-5"
-                            :fast?       true
-                            :credentials byok-credentials
-                            :input       [{:role :user :content "hi"}]})
-        (let [[fast-req retry-req] @requests]
-          (is (= 2 (count @requests)))
-          (is (true? @closed?))
-          (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
-          (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
-          (is (nil? (:speed (json/decode+kw (:body retry-req)))))
-          (is (nil? (get-in retry-req [:headers "anthropic-beta"]))))))))
-
-(deftest claude-raw-unrelated-400-not-retried-test
-  (testing "a 400 that does not read as a fast-mode rejection surfaces instead of retrying"
-    (let [requests (atom [])
-          closed?  (atom false)]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  http/request            (fn [req]
-                                                            (swap! requests conj req)
-                                                            (throw (reject-400 closed? "max_tokens: Input should be greater than 0")))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API error \(HTTP 400\)"
-                              (claude/claude-raw {:model       "claude-opus-5"
-                                                  :fast?       true
-                                                  :credentials byok-credentials
-                                                  :input       [{:role :user :content "hi"}]})))
-        (is (= 1 (count @requests)))
-        (is (true? @closed?))))))
+        (let [call!  #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})
+              speeds #(map (comp :speed json/decode+kw :body) @requests)]
+          (testing "a rejection arms the cooldown, so the next call goes straight to standard speed"
+            (call!)
+            (call!)
+            (is (= ["fast" nil nil] (speeds))))
+          (testing "fast mode is attempted again once the cooldown expires"
+            (reset! cooldown 0)
+            (call!)
+            (is (= ["fast" nil nil "fast" nil] (speeds)))))))))
 
 (deftest claude-fast-mode-beta-header-test
   (let [headers (fn [opts]

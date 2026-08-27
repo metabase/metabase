@@ -508,13 +508,30 @@
   (boolean (re-find #"(?i)fast[ _-]?mode|\bspeed\b"
                     (str (get-in res [:body :error :message])))))
 
+(def ^:private fast-mode-cooldown-ms
+  "How long to stop requesting fast mode after Anthropic rejects a fast-mode request.
+  Fast and standard speed don't share prompt-cache prefixes, so flapping between them
+  rewrites the conversation cache on every flip; holding standard for a window keeps
+  the speed (and the cache) stable, and spares doomed fast attempts while the account
+  is over its fast-mode limits or not enrolled at all."
+  (* 5 60 1000))
+
+(def ^:private fast-mode-cooldown-until
+  "Epoch millis until which fast mode is skipped. Process-local, resets on restart."
+  (atom 0))
+
+(defn- fast-mode-cooling-down?
+  []
+  (< (System/currentTimeMillis) @fast-mode-cooldown-until))
+
 (mu/defn claude-raw
   "Perform a streaming request to Claude API.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [req (claude-request-body opts)]
+  (let [opts (cond-> opts (fast-mode-cooling-down?) (assoc :fast? false))
+        req  (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)
@@ -545,12 +562,22 @@
               (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
         (catch Exception e
           ;; decoding the error body also closes the streamed response, so the connection is
-          ;; not leaked when the exception is swallowed by the retry below
-          (let [res (when (and (:speed req) (= 400 (:status (ex-data e))))
-                      (core/decode-error-body e))]
-            (if (fast-mode-rejection? res)
-              (do (log/warn "Anthropic rejected the fast-mode request; retrying at standard speed")
-                  (claude-raw (assoc opts :fast? false)))
+          ;; not leaked when the exception is swallowed by the retry below. Fast mode has its
+          ;; own rate-limit pool, so a 429 here doesn't imply standard speed is limited;
+          ;; a 400 needs its message checked to keep unrelated malformed requests failing fast.
+          (let [status    (:status (ex-data e))
+                res       (when (and (:speed req) (contains? #{400 429 529} status))
+                            (core/decode-error-body e))
+                rejected? (and res (or (not= 400 status) (fast-mode-rejection? res)))]
+            (when rejected?
+              (reset! fast-mode-cooldown-until (+ (System/currentTimeMillis) fast-mode-cooldown-ms))
+              (log/warn "Anthropic rejected the fast-mode request; falling back to standard speed"
+                        {:status status}))
+            ;; 529 means the API itself is overloaded, so no immediate retry: surface it and
+            ;; let the caller's retry loop pace the next attempt, which the armed cooldown
+            ;; keeps at standard speed.
+            (if (and rejected? (not= 529 status))
+              (claude-raw (assoc opts :fast? false))
               (core/rethrow-api-error! "anthropic" anthropic-error-msg
                                        (if res (ex-info (str (ex-message e)) res e) e)))))))))
 
