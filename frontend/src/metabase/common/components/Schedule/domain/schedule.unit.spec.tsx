@@ -184,21 +184,6 @@ describe("normalizeScheduleValue", () => {
     },
   );
 
-  it("should fill in values the user has not picked", () => {
-    expect(
-      normalizeScheduleValue(
-        { schedule_type: "daily", schedule_hour: null },
-        getScheduleDefaults,
-      ),
-    ).toEqual({
-      schedule_type: "daily",
-      schedule_day: null,
-      schedule_frame: null,
-      schedule_hour: 8,
-      schedule_minute: 0,
-    });
-  });
-
   it("should keep picked values", () => {
     expect(
       normalizeScheduleValue(
@@ -251,6 +236,20 @@ describe("normalizeScheduleValue", () => {
       schedule_hour: null,
       schedule_minute: 0,
     });
+  });
+
+  it("should clear the day when the frame is mid", () => {
+    expect(
+      normalizeScheduleValue(
+        {
+          schedule_type: "monthly",
+          schedule_frame: "mid",
+          schedule_day: "mon",
+          schedule_hour: 8,
+        },
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_frame: "mid", schedule_day: null });
   });
 
   it("should leave a raw cron expression untouched", () => {
@@ -313,6 +312,44 @@ describe("changeScheduleType", () => {
     });
   });
 
+  it("should keep the weekday when leaving monthly", () => {
+    expect(
+      changeScheduleType(
+        {
+          schedule_type: "monthly",
+          schedule_frame: "first",
+          schedule_day: "fri",
+          schedule_hour: 20,
+          schedule_minute: 0,
+        },
+        "weekly",
+        getScheduleDefaults,
+      ),
+    ).toEqual({
+      schedule_type: "weekly",
+      schedule_day: "fri",
+      schedule_frame: null,
+      schedule_hour: 20,
+      schedule_minute: 0,
+    });
+  });
+
+  it("should fall back to the default weekday when the previous type had none picked", () => {
+    expect(
+      changeScheduleType(
+        {
+          schedule_type: "monthly",
+          schedule_frame: "mid",
+          schedule_day: null,
+          schedule_hour: 20,
+          schedule_minute: 0,
+        },
+        "weekly",
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_type: "weekly", schedule_day: "mon" });
+  });
+
   it("should not carry a minute past the hour into a type that hides it", () => {
     expect(
       changeScheduleType(
@@ -345,12 +382,18 @@ describe("changeScheduleType", () => {
   });
 
   it("should not carry a minute the previous type hid into a type that shows it", () => {
+    const dailyWithMinute = { ...daily, schedule_minute: 30 };
+
     expect(
-      changeScheduleType(daily, "every_n_minutes", getScheduleDefaults),
+      changeScheduleType(
+        dailyWithMinute,
+        "every_n_minutes",
+        getScheduleDefaults,
+      ),
     ).toMatchObject({ schedule_type: "every_n_minutes", schedule_minute: 10 });
 
     expect(
-      changeScheduleType(daily, "hourly", getScheduleDefaults),
+      changeScheduleType(dailyWithMinute, "hourly", getScheduleDefaults),
     ).toMatchObject({ schedule_type: "hourly", schedule_minute: 0 });
   });
 

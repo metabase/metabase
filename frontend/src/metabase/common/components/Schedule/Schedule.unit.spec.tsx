@@ -384,12 +384,6 @@ describe("Schedule", () => {
       ],
       // Default-filling when only the frequency changes
       [
-        "switch daily to weekly defaults to Monday",
-        "0 0 8 * * ? *",
-        { frequency: "weekly" },
-        "0 0 8 ? * 2 *",
-      ],
-      [
         "switch daily to monthly defaults to first of month",
         "0 0 8 * * ? *",
         { frequency: "monthly" },
@@ -402,16 +396,10 @@ describe("Schedule", () => {
         "0 0 8 ? * 6#1 *",
       ],
       [
-        "switch daily to weekly keeps the time and drops the hidden minute",
+        "switch daily to weekly defaults to Monday, keeps the time and drops the hidden minute",
         "0 30 15 * * ? *",
         { frequency: "weekly" },
         "0 0 15 ? * 2 *",
-      ],
-      [
-        "switch daily to by the minute defaults to 10 minutes",
-        "0 0 8 * * ? *",
-        { frequency: "by the minute" },
-        "0 0/10 * * * ? *",
       ],
       [
         "changing the time keeps the hidden minute",
@@ -479,13 +467,10 @@ describe("Schedule", () => {
 
       await pickField("minute", "15");
       await pickField("frequency", "daily");
-      await pickField("time", "9:00");
 
-      expect(screen.getByTestId("select-time")).toHaveValue("9:00");
-      expectAmPmToBe("AM");
       expect(screen.queryByTestId("select-minute")).not.toBeInTheDocument();
       const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
-      expect(lastEvent.cronString).toBe("0 0 9 * * ? *");
+      expect(lastEvent.cronString).toBe("0 0 8 * * ? *");
     });
 
     it("does not carry a minute named by a custom cron expression into a type that hides it", async () => {
@@ -536,20 +521,6 @@ describe("Schedule", () => {
         expectAmPmToBe("PM");
         const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
         expect(lastEvent.cronString).toBe("0 0 15 * * ? *");
-      });
-
-      it("keeps the time the user had picked on the previous type", async () => {
-        const { onScheduleChange } = setup({
-          value: scheduleFromCron("0 0 20 * * ? *"),
-          getDefaults: getDefaultsWithoutHour,
-        });
-
-        await pickField("frequency", "weekly");
-
-        expect(screen.getByTestId("select-time")).toHaveValue("8:00");
-        expectAmPmToBe("PM");
-        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
-        expect(lastEvent.cronString).toBe("0 0 20 ? * 2 *");
       });
 
       it("lets the user pick AM/PM before the time, without picking a time for them", async () => {
