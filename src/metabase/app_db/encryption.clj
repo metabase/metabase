@@ -3,6 +3,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
    [toucan2.core :as t2])
@@ -20,32 +21,37 @@
   (cond-> v
     (instance? Blob v) blob->bytes))
 
+(def dwh-derived-columns
+  "Warehouse-derived columns that became encrypted at rest in v64. Raw table names so this keeps working as the
+  models move around."
+  [[:report_card :result_metadata]
+   [:metabase_field :fingerprint]
+   [:metabase_fieldvalues :values]
+   [:metabase_fieldvalues :human_readable_values]
+   [:user_parameter_value :value]])
+
 ;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, `mi/transform-encrypted`, or
 ;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
 ;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
 ;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
 (def ^:private encrypted-string-columns
-  [[:metabase_database :details]
-   [:metabase_database :settings]
-   [:metabase_database :write_data_details]
-   [:metabase_database :admin_details]
-   [:core_user :settings]
-   [:channel :details]
-   [:api_key :key]
-   [:auth_identity :credentials]
-   [:exploration_query_result :chart_stats]
-   [:exploration_query_result :metric_description]
-   [:exploration_query_result :chart_description]
-   [:report_card :public_uuid]
-   [:report_dashboard :public_uuid]
-   [:action :public_uuid]
-   [:document :public_uuid]
-   ;; warehouse-derived columns, encrypted as of v64
-   [:report_card :result_metadata]
-   [:metabase_field :fingerprint]
-   [:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]
-   [:user_parameter_value :value]])
+  (into
+   [[:metabase_database :details]
+    [:metabase_database :settings]
+    [:metabase_database :write_data_details]
+    [:metabase_database :admin_details]
+    [:core_user :settings]
+    [:channel :details]
+    [:api_key :key]
+    [:auth_identity :credentials]
+    [:exploration_query_result :chart_stats]
+    [:exploration_query_result :metric_description]
+    [:exploration_query_result :chart_description]
+    [:report_card :public_uuid]
+    [:report_dashboard :public_uuid]
+    [:action :public_uuid]
+    [:document :public_uuid]]
+   dwh-derived-columns))
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -126,15 +132,6 @@
               (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
         (t2/reducible-select [table :id [column :value]])))
 
-(def dwh-derived-columns
-  "Warehouse-derived columns that became encrypted at rest in v64. Raw table names so this keeps working as the
-  models move around."
-  [[:report_card :result_metadata]
-   [:metabase_field :fingerprint]
-   [:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]
-   [:user_parameter_value :value]])
-
 (def ^:private max-update-bytes
   "Cap on how much column data one UPDATE carries. MariaDB's `max_allowed_packet` defaults to 16MB, the smallest
   limit in play, so stay comfortably under it."
@@ -209,6 +206,38 @@
   [progress]
   (nil? (pending progress)))
 
+(def ^:private progress-key
+  "Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
+  module can't depend on the settings module without a cycle."
+  "encryption-backfill-progress")
+
+(defn read-progress
+  "Per-column sweep progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it
+  survives the round trip unchanged, and read plaintext-tolerantly because key rotation re-encrypts every `setting`
+  row, including this one."
+  []
+  (when-let [raw (t2/select-one-fn :value :setting :key progress-key)]
+    (try
+      (json/decode (encryption/maybe-decrypt-accepting-plaintext raw))
+      (catch Throwable e
+        ;; unreadable progress just means starting over; the sweep skips rows it already converted
+        (log/warn e "Could not read encryption backfill progress, starting from the beginning")
+        nil))))
+
+(defn save-progress!
+  "Write sweep progress, or clear it when `progress` is nil so the next sweep starts from the beginning."
+  ([progress] (save-progress! nil progress))
+  ([conn progress]
+   (if (nil? progress)
+     (t2/delete! :conn conn :setting :key progress-key)
+     (let [value (encryption/maybe-encrypt (json/encode progress))]
+       (when (zero? (t2/update! :conn conn :setting {:key progress-key} {:value value}))
+         (t2/insert! :conn conn :setting {:key progress-key :value value}))))))
+
+(def ^:private complete-progress
+  "Progress marking every column swept, for when something else has already converted them all."
+  (into {} (map (juxt column-key (constantly done))) dwh-derived-columns))
+
 (defn rewrite-dwh-derived-columns!
   "Convert [[dwh-derived-columns]] with `f`, resuming from `progress` and stopping once `deadline-ms` has passed (nil
   runs to completion). Returns `{:progress <map> :pages <n> :converted <n>}`; ask [[sweep-complete?]] whether it
@@ -243,16 +272,23 @@
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 
-  The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it."
-  [db-type data-source encrypting? make-encrypt-fn]
+  The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it.
+
+  With `defer-dwh-derived?`, [[dwh-derived-columns]] are left alone and the sweep cursor is cleared so
+  `metabase.app-db.task.encryption-backfill` picks them up in the background instead. Only safe when encrypting with
+  the current key, since those columns read plaintext-tolerantly: a rotation or a decryption has to rewrite them here
+  or they become unreadable."
+  [db-type data-source encrypting? make-encrypt-fn defer-dwh-derived?]
   (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
-        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)
+        string-columns (cond->> encrypted-string-columns
+                         defer-dwh-derived? (remove (set dwh-derived-columns)))]
     (t2/with-transaction [conn {:datasource data-source}]
       (let [check-status (encryption-check-status)]
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
-        (doseq [[table column] encrypted-string-columns]
+        (doseq [[table column] string-columns]
           (reencrypt-encrypted-column! conn table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))
@@ -267,20 +303,28 @@
                       {:value (encrypt-str-fn value)})))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
+      ;; a sweep that has already run says nothing about the key we just switched to, so either hand the columns to
+      ;; the backfill task or record that we did its job for it
+      (save-progress! conn (when (and encrypting? (not defer-dwh-derived?)) complete-progress))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.
-  If passed to-key is nil, it encrypts with the current MB_ENCRYPTION_SECRET_KEY value."
-  [db-type data-source to-key]
+  If passed to-key is nil, it encrypts with the current MB_ENCRYPTION_SECRET_KEY value.
+
+  Pass `:defer-dwh-derived? true` off the boot path: [[dwh-derived-columns]] can run to millions of rows, and this is
+  called synchronously from `metabase.app-db.setup/check-encryption` when a key is first set."
+  [db-type data-source to-key & {:keys [defer-dwh-derived?]}]
   (when (and (not (nil? to-key)) (empty? to-key))
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
-  (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
-                                            (if
-                                             (nil? to-key) maybe-encrypt-fn
-                                             (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
+  (do-encryption db-type data-source true
+                 (fn [maybe-encrypt-fn]
+                   (if
+                    (nil? to-key) maybe-encrypt-fn
+                    (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))
+                 (boolean defer-dwh-derived?)))
 
 (defn decrypt-db
   "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
-  (do-encryption db-type data-source false (constantly identity)))
+  (do-encryption db-type data-source false (constantly identity) false))

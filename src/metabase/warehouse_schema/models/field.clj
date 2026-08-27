@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field
   (:require
+   [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -102,11 +103,14 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-;; the metadata provider reads this for every field of every table in a query, so decrypting it uncached shows up
-;; on the hot path. Same one-hour TTL as `mi/transform-encrypted-json`.
+;; the metadata provider reads this for every field of every table in a query, so decrypting it uncached shows up on
+;; the hot path. Bounded by count as well as age: sync walks every field of every table in quick succession, so a
+;; TTL-only cache would hold every fingerprint in the instance at once.
 (def ^:private cached-encrypted-fingerprints
   (update (mi/transform-encrypted transform-json-fingerprints)
-          :out memoize/ttl :ttl/threshold (* 60 60 1000)))
+          :out #(memoize/memoizer % (-> {}
+                                        (cache/lru-cache-factory :threshold 5000)
+                                        (cache/ttl-cache-factory :ttl (* 60 60 1000))))))
 
 (t2/deftransforms :model/Field
   {:base_type         transform-field-base-type

@@ -24,6 +24,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
@@ -3045,5 +3046,8 @@
             (testing "forward leaves the row alone"
               (is (not= plaintext (stored field-id))))
             (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
+              (mdb.encryption/save-progress! {"metabase_field/fingerprint" "done"})
               (migrate! :down 63)
-              (is (= plaintext (stored field-id))))))))))
+              (is (= plaintext (stored field-id)))
+              (testing "and forgets the sweep, so upgrade -> downgrade -> upgrade re-encrypts"
+                (is (nil? (mdb.encryption/read-progress)))))))))))

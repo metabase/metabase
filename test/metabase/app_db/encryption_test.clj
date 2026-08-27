@@ -1,8 +1,8 @@
 (ns metabase.app-db.encryption-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.encryption :as mdb.encryption]
-   [metabase.app-db.task.encryption-backfill :as task.encryption-backfill]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -98,8 +98,8 @@
               ;; stop mid-sweep so there is real progress to persist
               {:keys [progress]} (mdb.encryption/rewrite-dwh-derived-columns!
                                   mdb.encryption/encrypt-value nil (System/currentTimeMillis) 1)
-              round-tripped      (do (#'task.encryption-backfill/save-progress! progress)
-                                     (#'task.encryption-backfill/read-progress))]
+              round-tripped      (do (mdb.encryption/save-progress! progress)
+                                     (mdb.encryption/read-progress))]
           (is (= progress round-tripped)
               "stored progress comes back identical")
           (is (not (mdb.encryption/sweep-complete? round-tripped)))
@@ -129,3 +129,44 @@
             (is (= (fingerprint-json i)
                    (encryption/maybe-decrypt (stored-fingerprint id)))
                 "every row is converted even though the list was reordered mid-sweep")))))))
+
+;;; ------------------------------------- boot-path deferral / sweep cursor -------------------------------------
+
+(defn- data-source [] (:data-source mdb.connection/*application-db*))
+
+(deftest encrypt-db-defers-dwh-derived-columns-test
+  (testing "the boot path leaves the big columns for the backfill task rather than encrypting them inline"
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key secret-key
+        (let [ids (plaintext-fields! 3)]
+          (mdb.encryption/save-progress! {"metabase_field/fingerprint" "done"})
+          (mdb.encryption/encrypt-db :h2 (data-source) nil :defer-dwh-derived? true)
+          (doseq [[i id] (map-indexed vector ids)]
+            (is (= (fingerprint-json i) (stored-fingerprint id))
+                "fingerprints are still plaintext"))
+          (is (nil? (mdb.encryption/read-progress))
+              "and the cursor is cleared, so a stale one can't make the backfill skip them"))))))
+
+(deftest encrypt-db-inline-marks-the-sweep-complete-test
+  (testing "encrypting them inline records that the backfill has nothing left to do"
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key secret-key
+        (let [ids (plaintext-fields! 3)]
+          (mdb.encryption/encrypt-db :h2 (data-source) nil)
+          (doseq [[i id] (map-indexed vector ids)]
+            (is (= (fingerprint-json i) (encryption/maybe-decrypt (stored-fingerprint id)))))
+          (is (mdb.encryption/sweep-complete? (mdb.encryption/read-progress))))))))
+
+(deftest decrypt-db-clears-the-sweep-cursor-test
+  (testing "removing the key resets progress, so setting one again re-encrypts instead of skipping"
+    (mt/with-empty-h2-app-db!
+      (let [ids (encryption-test/with-secret-key secret-key
+                  (let [ids (plaintext-fields! 3)]
+                    (mdb.encryption/encrypt-db :h2 (data-source) nil)
+                    (is (mdb.encryption/sweep-complete? (mdb.encryption/read-progress)))
+                    (mdb.encryption/decrypt-db :h2 (data-source))
+                    ids))]
+        (doseq [[i id] (map-indexed vector ids)]
+          (is (= (fingerprint-json i) (stored-fingerprint id))
+              "back to plaintext"))
+        (is (nil? (mdb.encryption/read-progress)))))))

@@ -2327,4 +2327,6 @@
   ;; hand these back to the older version as plaintext it can read
   (rollback [_ _database]
     (when (should-execute-change?)
-      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt-accepting-plaintext nil nil 500))))
+      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt-accepting-plaintext nil nil 500)
+      ;; a finished sweep would otherwise make upgrade -> downgrade -> upgrade skip the re-encryption
+      (mdb.encryption/save-progress! nil))))

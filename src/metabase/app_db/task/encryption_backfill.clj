@@ -1,10 +1,12 @@
 (ns metabase.app-db.task.encryption-backfill
   "Encrypts the warehouse-derived columns that already existed when an instance upgraded to v64.
 
-  An instance that already had `MB_ENCRYPTION_SECRET_KEY` set never re-runs `encrypt-db`, so those rows would
-  otherwise stay in the clear until something happened to rewrite them, which for a stable schema may be never. It
-  runs here rather than as a migration because `metabase_field` can hold millions of rows, and a migration that long
-  blocks startup, holds the changelog lock, and can trip container startup probes."
+  Nothing else converts them: an instance that already had `MB_ENCRYPTION_SECRET_KEY` set never re-runs `encrypt-db`,
+  and one setting a key for the first time asks `encrypt-db` to defer them here. Otherwise they would stay in the
+  clear until something happened to rewrite them, which for a stable schema may be never.
+
+  It runs here rather than as a migration, or inline in `encrypt-db`, because `metabase_field` can hold millions of
+  rows: that long on the boot path blocks startup, holds the changelog lock, and can trip container startup probes."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
@@ -12,9 +14,7 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.task.core :as task]
    [metabase.util.encryption :as encryption]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -37,35 +37,14 @@
   "How often the job fires. `DisallowConcurrentExecution` keeps a slow run from overlapping the next fire."
   20)
 
-;; Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
-;; module can't depend on the settings module without a cycle.
-(def ^:private progress-key "encryption-backfill-progress")
 (def ^:private job-key (jobs/key "metabase.task.encryption-backfill.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.encryption-backfill.trigger"))
 
-(defn- read-progress
-  "Per-column progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it survives
-  the round trip unchanged, and read plaintext-tolerantly because key rotation re-encrypts every `setting` row,
-  including this one."
-  []
-  (when-let [raw (t2/select-one-fn :value :setting :key progress-key)]
-    (try
-      (json/decode (encryption/maybe-decrypt-accepting-plaintext raw))
-      (catch Throwable e
-        ;; unreadable progress just means starting over; the sweep skips rows it already converted
-        (log/warn e "Could not read encryption backfill progress, starting from the beginning")
-        nil))))
-
-(defn- save-progress! [progress]
-  (let [value (encryption/maybe-encrypt (json/encode progress))]
-    (when (zero? (t2/update! :setting {:key progress-key} {:value value}))
-      (t2/insert! :setting {:key progress-key :value value}))))
-
 (defn- readiness []
   (cond
-    (not (encryption/default-encryption-enabled?))         :no-key
-    (mdb.encryption/sweep-complete? (read-progress))       :already-complete
-    :else                                                  :ready))
+    (not (encryption/default-encryption-enabled?))                    :no-key
+    (mdb.encryption/sweep-complete? (mdb.encryption/read-progress))   :already-complete
+    :else                                                             :ready))
 
 (defn- log-skip [reason]
   (case reason
@@ -81,8 +60,8 @@
       {:status :skipped :reason reason}
       (let [deadline (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
             {:keys [progress] :as result} (mdb.encryption/rewrite-dwh-derived-columns!
-                                           mdb.encryption/encrypt-value (read-progress) deadline batch-size)]
-        (save-progress! progress)
+                                           mdb.encryption/encrypt-value (mdb.encryption/read-progress) deadline batch-size)]
+        (mdb.encryption/save-progress! progress)
         (assoc result :status (if (mdb.encryption/sweep-complete? progress) :complete :more))))))
 
 (task/defjob ^{DisallowConcurrentExecution true
