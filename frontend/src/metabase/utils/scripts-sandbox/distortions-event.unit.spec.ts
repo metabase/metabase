@@ -1,17 +1,12 @@
 import { makeSandboxDistortionCallback } from "./distortions";
+import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
 
 const setterOf = (proto: object, key: string) =>
   Object.getOwnPropertyDescriptor(proto, key)?.set;
 
-const GLOBAL_EVENT_HANDLER_SETTERS = [
-  "onkeydown",
-  "onkeyup",
-  "onkeypress",
-  "oninput",
-  "onbeforeinput",
-  "onpaste",
-  "oncopy",
-  "oncut",
+const GLOBAL_TARGETS = [
+  { name: "Document", proto: Document.prototype },
+  { name: "Window", proto: Window.prototype },
 ];
 
 describe("scripts-sandbox global event-handler setter distortions", () => {
@@ -34,16 +29,29 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
     expect(distort(cookieSetter)).not.toBe(cookieSetter);
   });
 
-  it("distorts every global event-handler setter on Document", () => {
+  it("distorts every on* setter that mirrors a blocked global event type", () => {
     const distort = makeSandboxDistortionCallback("plugin 1");
 
-    const undistorted = GLOBAL_EVENT_HANDLER_SETTERS.filter((name) => {
-      const setter = setterOf(Document.prototype, name);
-      // Only consider handlers present in this environment.
-      return setter !== undefined && distort(setter) === setter;
-    });
+    // filter out the event types that don't have an on* setter in this environment
+    const results = [...GLOBAL_BLOCKED_EVENT_TYPES].flatMap((type) =>
+      GLOBAL_TARGETS.flatMap(({ name, proto }) => {
+        const setter = setterOf(proto, `on${type}`);
+        // filter out the event types that don't have an on* setter in this environment
+        return setter
+          ? [
+              {
+                label: `${name}.on${type}`,
+                distorted: distort(setter) !== setter,
+              },
+            ]
+          : [];
+      }),
+    );
 
+    const undistorted = results.filter((r) => !r.distorted).map((r) => r.label);
     expect(undistorted).toEqual([]);
+    // make sure that at least some setter in the env were found
+    expect(results.length).toBeGreaterThan(0);
   });
 
   it("replaces the Document.onkeydown setter with a distortion that refuses the assignment", () => {
