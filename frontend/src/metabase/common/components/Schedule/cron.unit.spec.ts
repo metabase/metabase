@@ -7,7 +7,7 @@ import {
   scheduleValueToCron,
   toCronString,
 } from "./cron";
-import type { ScheduleBuilderValue } from "./types";
+import type { ScheduleBuilderValue } from "./domain";
 
 describe("formatCron", () => {
   it("converts every_n_minutes schedule to cron", () => {
