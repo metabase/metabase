@@ -73,6 +73,7 @@ export const SecretKeyModal = ({
           aria-label={t`New secret key`}
           value={secretKey}
           classNames={{ input: S.secretKeyInput }}
+          tabIndex={-1}
           {...copyFieldProps}
           rightSection={
             !secretKey ? <Loader size="xs" /> : copyFieldProps.rightSection
@@ -82,6 +83,7 @@ export const SecretKeyModal = ({
         <Group justify="flex-end" gap="sm">
           {withCancelButton && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
+            data-autofocus
             disabled={!secretKey}
             onClick={() => onConfirm(secretKey)}
             variant="filled"
