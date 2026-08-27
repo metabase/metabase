@@ -261,9 +261,9 @@
              (vals endpoints))
      :components {:schemas @*definitions*}}))
 
-;; REPL example; api.macros requires this ns, so it can't be required back without a cycle
-#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
+  (require '[metabase.api.macros])
+
   (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 
   (metabase.api.macros.defendpoint.open-api/path-item
