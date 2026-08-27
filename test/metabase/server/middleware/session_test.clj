@@ -55,6 +55,36 @@
                   (is (nil? session))
                   (is (some? session)))))))))))
 
+(defn- insert-test-session!
+  "Insert a `core_session` row directly, bypassing the model hooks so that columns like `created_at` and `expires_at`
+  can be set to arbitrary (including DB-side) expressions. Returns the plaintext session key."
+  [user-id extra-cols]
+  (let [session-key (str (random-uuid))]
+    (t2/insert! (t2/table-name :model/Session)
+                (merge {:id         (session/generate-session-id)
+                        :key_hashed (session/hash-session-key session-key)
+                        :user_id    user-id}
+                       extra-cols))
+    session-key))
+
+(deftest session-expires-at-test
+  (init-status/set-complete!)
+  (testing "`expires_at` is enforced server-side, even for a session well within `max-session-age`"
+    (let [db-type (mdb/db-type)
+          now     (h2x/current-datetime-honeysql-form db-type)]
+      (doseq [[expires-at expected msg]
+              [[nil                                                    false "session with no expires_at"]
+               [(h2x/add-interval-honeysql-form db-type now 60 :second) false "session that expires in 60 seconds"]
+               [(h2x/add-interval-honeysql-form db-type now -1 :second) true  "session that expired 1 second ago"]
+               [#t "1970-01-01T00:00:01Z"                              true  "session that expired long ago"]]]
+        (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
+          (mt/with-temp [:model/User {user-id :id}]
+            (let [session-key (insert-test-session! user-id {:created_at now, :expires_at expires-at})
+                  session     (#'mw.session/current-user-info-for-session session-key nil)]
+              (if expected
+                (is (nil? session))
+                (is (some? session))))))))))
+
 ;;; ---------------------------------------- TEST wrap-session-key middleware -----------------------------------------
 
 (def ^:private session-header @#'mw.session/metabase-session-header)
