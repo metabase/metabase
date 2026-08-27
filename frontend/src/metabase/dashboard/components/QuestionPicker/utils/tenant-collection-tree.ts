@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export type ExpandedCollection = Omit<

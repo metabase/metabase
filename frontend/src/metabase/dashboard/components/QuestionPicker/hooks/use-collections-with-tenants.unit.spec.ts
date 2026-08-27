@@ -3,7 +3,7 @@ import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
+import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId, Tenant } from "metabase-types/api";
 import {

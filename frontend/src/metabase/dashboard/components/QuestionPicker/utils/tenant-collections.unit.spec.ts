@@ -1,5 +1,5 @@
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 

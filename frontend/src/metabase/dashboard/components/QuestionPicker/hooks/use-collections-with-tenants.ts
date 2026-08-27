@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
 import { useSetting } from "metabase/common/hooks/use-setting";
+import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -112,7 +112,7 @@ export function useCollectionsWithTenants(
         PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
       ) ?? t`Shared collections`;
 
-    return isTenantUser
+    const tenantCollections = isTenantUser
       ? mergeTenantUserCollections({
           baseCollectionsById,
           sharedCollectionsById,
@@ -126,6 +126,8 @@ export function useCollectionsWithTenants(
           sharedCollectionsName: displayName,
           tenantCollectionNamesById,
         });
+
+    return tenantCollections as unknown as Record<CollectionId, Collection>;
   }, [
     isTenantsActive,
     sharedTenantCollections,
