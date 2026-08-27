@@ -110,11 +110,11 @@ describe("SettingsJWTForm", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Set up key/ }),
     );
-    expect(await screen.findByLabelText(/New secret key/)).toHaveValue(
+    expect(await screen.findByLabelText("New secret key")).toHaveValue(
       GENERATED_TOKEN,
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /Create/ }),
+      await screen.findByRole("button", { name: "Create" }),
     );
     await expandUserAttributeSection();
     await userEvent.type(
