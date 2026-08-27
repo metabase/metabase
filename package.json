@@ -142,7 +142,6 @@
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
     "react-grid-layout": "^1.5.3",
-    "react-innertext": "^1.1.5",
     "react-is": "^18.2.0",
     "react-markdown": "^9.0.0",
     "react-qr-code": "^2.0.15",
