@@ -111,12 +111,24 @@ describe("canAccessMonitorDiagnostics", () => {
     expect(canAccessMonitorDiagnostics(state)).toBe(true);
   });
 
-  it("returns false for a monitoring-only user (no diagnostics access)", () => {
+  it("returns true for a non-admin with the monitoring application permission", () => {
     const state = createMockState({
       currentUser: createMockUser({
         is_superuser: false,
         is_data_analyst: false,
         permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+  });
+
+  it("returns false without admin, analyst or the monitoring permission", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: false,
+        permissions: { can_access_monitoring: false },
       }),
     });
 

@@ -158,8 +158,8 @@ export function getMonitorRoutes() {
   );
 }
 
-// Diagnostics for analysts/admins; otherwise the Tools pages for users who only
-// hold the monitoring application permission.
+// Diagnostics for anyone who may see them; the Tools pages are the fallback for
+// the rest.
 function getMonitorIndexPath(state: State) {
   return canAccessMonitorDiagnostics(state)
     ? Urls.dependencyDiagnostics()

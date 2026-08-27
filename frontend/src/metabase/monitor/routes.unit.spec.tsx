@@ -1,6 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { lazyLoaders } from "__support__/lazy-routes";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
@@ -290,7 +290,7 @@ describe("monitor routes", () => {
 
     describe("index redirect (/monitor)", () => {
       it("sends analysts to the diagnostics section", async () => {
-        setup({
+        const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
             is_superuser: false,
@@ -298,11 +298,15 @@ describe("monitor routes", () => {
           }),
         });
 
-        expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+        await waitFor(() =>
+          expect(router?.location.pathname).toBe(
+            "/monitor/dependency-diagnostics",
+          ),
+        );
       });
 
-      it("sends monitoring-only users to the Tools pages", async () => {
-        setup({
+      it("sends monitoring-only users to the diagnostics section", async () => {
+        const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
             is_superuser: false,
@@ -311,7 +315,11 @@ describe("monitor routes", () => {
           }),
         });
 
-        expect(await screen.findByTestId("task-list-page")).toBeInTheDocument();
+        await waitFor(() =>
+          expect(router?.location.pathname).toBe(
+            "/monitor/dependency-diagnostics",
+          ),
+        );
       });
     });
 

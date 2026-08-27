@@ -319,7 +319,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Alerts management from a monitoring-only user", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -332,10 +332,9 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("link", { name: "Dependency diagnostics" }),
-    ).not.toBeInTheDocument();
     [
+      "Dependency diagnostics",
+      "Content diagnostics",
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
