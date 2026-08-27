@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.test :as mt]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.usage-metadata.insights :as insights]))
 
@@ -34,56 +35,56 @@
    :observation {:type :low-cardinality, :value 5}
    :count       1})
 
-(deftest implicit-segments-delegate-to-insights-test
+(deftest ^:parallel implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-segments
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-segment])]
+    (mt/with-dynamic-fn-redefs [insights/implicit-segments
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-segment])]
       (is (= [sample-segment]
              (usage-metadata/implicit-segments {:source-type :card, :source-id 99, :limit 3})))
       (is (= {:source-type :card, :source-id 99, :limit 3}
              @captured-args)))))
 
-(deftest implicit-metrics-delegate-to-insights-test
+(deftest ^:parallel implicit-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-metrics
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-metric])]
+    (mt/with-dynamic-fn-redefs [insights/implicit-metrics
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-metric])]
       (is (= [sample-metric]
              (usage-metadata/implicit-metrics {:source-type :table, :source-id 42, :limit 7})))
       (is (= {:source-type :table, :source-id 42, :limit 7}
              @captured-args)))))
 
-(deftest implicit-dimensions-delegate-to-insights-test
+(deftest ^:parallel implicit-dimensions-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-dimensions
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-dimension])]
+    (mt/with-dynamic-fn-redefs [insights/implicit-dimensions
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-dimension])]
       (is (= [sample-dimension]
              (usage-metadata/implicit-dimensions {:source-type :table, :source-id 42, :limit 9})))
       (is (= {:source-type :table, :source-id 42, :limit 9}
              @captured-args)))))
 
-(deftest suggested-segments-delegate-to-insights-test
+(deftest ^:parallel suggested-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/suggested-segments-for-owner
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-suggested-segment])]
+    (mt/with-dynamic-fn-redefs [insights/suggested-segments-for-owner
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-suggested-segment])]
       (is (= [sample-suggested-segment]
              (usage-metadata/suggested-segments {:source-type :table, :source-id 42, :limit 5})))
       (is (= {:source-type :table, :source-id 42, :limit 5}
              @captured-args)))))
 
-(deftest profile-observations-delegate-to-insights-test
+(deftest ^:parallel profile-observations-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/profile-observations
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-profile-observation])]
+    (mt/with-dynamic-fn-redefs [insights/profile-observations
+                                (fn [opts]
+                                  (reset! captured-args opts)
+                                  [sample-profile-observation])]
       (is (= [sample-profile-observation]
              (usage-metadata/profile-observations {:source-type :table, :source-id 42, :limit 4})))
       (is (= {:source-type :table, :source-id 42, :limit 4}

@@ -4,13 +4,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
+   [metabase.measures.create :as measures.create]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -34,31 +33,15 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- definition-table-id
-  "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
-  [normalized-definition]
-  (api/check-400 (when (seq normalized-definition)
-                   (lib/primary-source-table-id normalized-definition))
-                 (tru "Measure definition must specify a source table.")))
-
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ::measures.schema/definition]
-                                                       [:description {:optional true} [:maybe :string]]]]
-  (let [table-id (definition-table-id definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
-    (let [measure (api/check-500
-                   (first (t2/insert-returning-instances! :model/Measure
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-      (t2/hydrate measure :creator))))
+   body :- [:map
+            [:name        ms/NonBlankString]
+            [:definition  ::measures.schema/definition]
+            [:description {:optional true} [:maybe :string]]]]
+  (measures.create/create! body))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
@@ -114,7 +97,7 @@
     ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
     ;; new one.
     (when-let [new-def (:definition clean-body)]
-      (let [new-table-id (definition-table-id new-def)]
+      (let [new-table-id (measures.create/definition-table-id new-def)]
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes

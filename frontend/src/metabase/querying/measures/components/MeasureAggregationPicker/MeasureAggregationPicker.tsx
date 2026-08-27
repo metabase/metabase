@@ -14,11 +14,28 @@ type MeasureAggregationPickerProps = {
   readOnly?: boolean;
 };
 
-export function MeasureAggregationPicker({
+type MeasureAggregationPickerContentProps = Omit<
+  MeasureAggregationPickerProps,
+  "onChange"
+> & {
+  onChange?: MeasureAggregationPickerProps["onChange"];
+};
+
+export function MeasureAggregationPicker(props: MeasureAggregationPickerProps) {
+  return <MeasureAggregationPickerContent {...props} />;
+}
+
+export function ReadOnlyMeasureAggregationPicker({
+  query,
+}: Pick<MeasureAggregationPickerProps, "query">) {
+  return <MeasureAggregationPickerContent query={query} readOnly />;
+}
+
+function MeasureAggregationPickerContent({
   query,
   onChange,
   readOnly = false,
-}: MeasureAggregationPickerProps) {
+}: MeasureAggregationPickerContentProps) {
   const aggregations = useMemo(
     () => Lib.aggregations(query, STAGE_INDEX),
     [query],
@@ -40,7 +57,7 @@ export function MeasureAggregationPicker({
 
   const handleQueryChange = useCallback(
     (newQuery: Lib.Query) => {
-      onChange(newQuery);
+      onChange?.(newQuery);
     },
     [onChange],
   );
@@ -56,7 +73,7 @@ export function MeasureAggregationPicker({
         sourceClause,
         targetClause,
       );
-      onChange(nextQuery);
+      onChange?.(nextQuery);
     },
     [query, onChange],
   );
@@ -64,7 +81,7 @@ export function MeasureAggregationPicker({
   const handleRemoveAggregation = useCallback(
     (clause: Lib.AggregationClause) => {
       const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
-      onChange(nextQuery);
+      onChange?.(nextQuery);
     },
     [query, onChange],
   );

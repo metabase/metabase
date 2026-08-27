@@ -1,15 +1,17 @@
 (ns metabase.usage-metadata.insights
-  "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
+  "Read-side projections over persisted usage-metadata rollups."
   (:require
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
+   [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -47,42 +49,16 @@
                       :display-name (or display_name name)}]))
           rows)))
 
-(defn- build-source-index
-  "Bulk-fetch Table and Card rows for the `[source-type source-id]` tuples present in
-  `source-keys` and return a map keyed by `[source-type source-id]`."
-  [source-keys]
-  (let [by-type   (group-by first source-keys)
-        table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
-        card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
-        tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema]
-                               :id [:in table-ids]))
-        cards     (when (seq card-ids)
-                    (t2/select [:model/Card :id :name] :id [:in card-ids]))]
-    (into {}
-          cat
-          [(map (fn [{:keys [id name display_name db_id schema]}]
-                  [[:table id] {:type         :table
-                                :id           id
-                                :db-id        db_id
-                                :schema       schema
-                                :name         name
-                                :display-name (or display_name name)}])
-                tables)
-           (map (fn [{:keys [id name]}]
-                  [[:card id] {:type         :card
-                               :id           id
-                               :name         name
-                               :display-name name}])
-                cards)])))
-
 (defn- predicate-field-ids
   "Return distinct field ids referenced in a decoded predicate."
   [predicate]
   (when predicate
     (try
       (vec (lib/all-field-ids predicate))
-      (catch Throwable e
+      (catch InterruptedException e
+        (.interrupt (Thread/currentThread))
+        (throw e))
+      (catch Exception e
         (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
         []))))
 
@@ -198,29 +174,22 @@
                 :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
                 :order-by [[:total_count :desc]]})))
 
-(defn- wrap-query
-  "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
-  [database-id query-map]
-  (when (and (pos-int? database-id) (seq query-map))
-    (try
-      (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
-      (catch Throwable e
-        (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
-        nil))))
-
 (defn- extract-facts
   [database-id query-map]
-  (when-let [q (wrap-query database-id query-map)]
+  (when-let [q (query-utils/wrap-query database-id query-map)]
     (try
       (usage-metadata.extract/extract-usage-facts q)
-      (catch Throwable e
+      (catch InterruptedException e
+        (.interrupt (Thread/currentThread))
+        (throw e))
+      (catch Exception e
         (log/debugf "Failed to extract usage facts for usage-metadata insights: %s" (ex-message e))
         nil))))
 
 (def ^:private cache-ttl-ms
   (* 60 1000))
 
-(defn- existing-segment-predicates*
+(defn- existing-segment-facts*
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
@@ -231,24 +200,39 @@
                           (map (juxt :id :db_id))
                           (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
     (lib-be/with-metadata-provider-cache
-      (into #{}
-            (mapcat (fn [{:keys [table_id definition]}]
-                      (when (and (pos-int? table_id) (seq definition))
-                        (when-let [db-id (get table->db table_id)]
-                          (let [facts (:segments (extract-facts db-id definition))]
-                            (for [{:keys [predicate]} facts
-                                  :when predicate]
-                              [:table table_id predicate]))))))
-            segments))))
+      (reduce (fn [result {:keys [table_id definition]}]
+                (if-let [db-id (and (pos-int? table_id)
+                                    (seq definition)
+                                    (get table->db table_id))]
+                  (let [{:keys [segments composites]} (extract-facts db-id definition)]
+                    (-> result
+                        (update :predicates into
+                                (keep (fn [{:keys [predicate]}]
+                                        (when predicate
+                                          [:table table_id predicate])))
+                                segments)
+                        (update :composite-atomsets into
+                                (keep (fn [{:keys [atom-fingerprints]}]
+                                        (when (>= (count atom-fingerprints)
+                                                  frequent-itemsets/minimum-itemset-size)
+                                          [:table table_id (set atom-fingerprints)])))
+                                composites)))
+                  result))
+              {:predicates #{}, :composite-atomsets #{}}
+              segments))))
 
-(def ^:private existing-segment-predicates*-memo
-  (memoize/ttl existing-segment-predicates* :ttl/threshold cache-ttl-ms))
+(defn- ttl-memoized
+  [f]
+  (memoize/ttl f :ttl/threshold cache-ttl-ms))
+
+(def ^:private existing-segment-facts*-memo
+  (ttl-memoized existing-segment-facts*))
 
 (defn- existing-segment-predicates
   "Set of `[source-type source-id predicate-json]` tuples for non-archived Segments whose
   atomic filter clauses would collide with stored implicit segment predicates."
   [{:keys [source-type source-id]}]
-  (existing-segment-predicates*-memo [source-type source-id]))
+  (:predicates (existing-segment-facts*-memo [source-type source-id])))
 
 (defn- existing-metric-signatures*
   []
@@ -268,7 +252,7 @@
             cards))))
 
 (def ^:private existing-metric-signatures*-memo
-  (memoize/ttl (fn [_] (existing-metric-signatures*)) :ttl/threshold cache-ttl-ms))
+  (ttl-memoized (fn [_] (existing-metric-signatures*))))
 
 (defn- existing-metric-signatures
   "Set of `[source-type source-id agg-type agg-field-id temporal-field-id temporal-unit]`
@@ -295,7 +279,7 @@
                                       ::decoded   decoded
                                       ::field-ids (predicate-field-ids decoded))))
                            raw-rows)
-         source-idx  (build-source-index
+         source-idx  (query-utils/build-source-index
                       (into #{} (map (juxt :source_type :source_id)) enriched))
          field-idx   (build-field-index
                       (into #{} (mapcat ::field-ids) enriched))]
@@ -323,7 +307,7 @@
          rows       (remove (fn [{:keys [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]}]
                               (contains? existing [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]))
                             (grouped-metric-rows opts))
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (mapcat (juxt :agg_field_id :temporal_field_id)) rows))]
@@ -345,7 +329,7 @@
   ([] (implicit-dimensions {}))
   ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-dimension-rows opts)
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (keep :field_id) rows))]
@@ -362,156 +346,19 @@
             (take limit))
            rows))))
 
-(def ^:private fim-absolute-support-floor 2)
-(def ^:private fim-relative-support-floor 0.2)
-(def ^:private fim-k-min 2)
-(def ^:private fim-k-max 5)
-(def ^:private fim-default-limit 20)
-
-(defn- rows->baskets
-  "Project rollup rows to `{:atoms #{...} :count n}` baskets for mining.
-
-  Coerces `total_count` to `long` so downstream FIM math (and the `:support` field) stays
-  integer — MariaDB/MySQL return `SUM(int_col)` as `BigDecimal`."
-  [rows]
-  (into []
-        (keep (fn [{:keys [atom_fingerprints total_count]}]
-                (when (>= (count atom_fingerprints) fim-k-min)
-                  {:atoms (set atom_fingerprints)
-                   :count (long total_count)})))
-        rows))
-
-(defn- itemset-support
-  [baskets itemset]
-  (reduce (fn [acc {:keys [atoms count]}]
-            (if (every? atoms itemset)
-              (+ acc count)
-              acc))
-          0
-          baskets))
-
-(defn- any-atom-support
-  "Number of baskets containing at least one atom of `itemset` (denominator for the relative support check)."
-  [baskets itemset]
-  (reduce (fn [acc {:keys [atoms count]}]
-            (if (some atoms itemset)
-              (+ acc count)
-              acc))
-          0
-          baskets))
-
-(defn- frequent-singletons
-  [baskets absolute-floor]
-  (let [counts (reduce (fn [m {:keys [atoms count]}]
-                         (reduce (fn [m a] (update m a (fnil + 0) count)) m atoms))
-                       {}
-                       baskets)]
-    (into {}
-          (filter (fn [[_ n]] (>= n absolute-floor)))
-          counts)))
-
-(defn- apriori-join
-  "Generate k+1 candidate itemsets by joining k-itemsets sharing a k-1 prefix."
-  [lk-vecs]
-  (let [by-prefix (group-by (fn [is] (subvec is 0 (dec (count is)))) lk-vecs)]
-    (into #{}
-          (mapcat (fn [group]
-                    (for [a group
-                          b group
-                          :when (neg? (compare (peek a) (peek b)))]
-                      (conj a (peek b)))))
-          (vals by-prefix))))
-
-(defn- has-all-k-subsets?
-  [lk-set candidate]
-  (let [n (count candidate)]
-    (every? (fn [i]
-              (let [sub (into (subvec candidate 0 i) (subvec candidate (inc i)))]
-                (contains? lk-set sub)))
-            (range n))))
-
-(defn- mine-itemsets
-  "Apriori up to size `fim-k-max`. Returns `{itemset-vec support}` for itemsets of size ≥ `fim-k-min`."
-  [baskets]
-  (let [singletons (frequent-singletons baskets fim-absolute-support-floor)
-        l1-vecs    (vec (sort (map vector (keys singletons))))]
-    (loop [lk       l1-vecs
-           k        1
-           acc      {}]
-      (if (or (empty? lk) (>= k fim-k-max))
-        acc
-        (let [lk-set     (set lk)
-              candidates (apriori-join lk)
-              pruned     (into [] (filter (partial has-all-k-subsets? lk-set)) candidates)
-              counted    (into {}
-                               (keep (fn [c]
-                                       (let [s (itemset-support baskets (set c))]
-                                         (when (>= s fim-absolute-support-floor) [c s]))))
-                               pruned)
-              next-k     (inc k)
-              acc        (if (>= next-k fim-k-min)
-                           (merge acc counted)
-                           acc)]
-          (recur (vec (sort (keys counted))) next-k acc))))))
-
-(defn- closed-only
-  "Keep only itemsets that have no proper superset of equal support — the closed frequent itemsets."
-  [itemset->support]
-  (let [entries (vec itemset->support)]
-    (into {}
-          (remove (fn [[is sup]]
-                    (let [is-set (set is)
-                          is-n   (count is)]
-                      (some (fn [[other other-sup]]
-                              (and (= sup other-sup)
-                                   (> (count other) is-n)
-                                   (every? (set other) is-set)))
-                            entries))))
-          entries)))
-
-(defn- relative-support-ok?
-  [baskets itemset support]
-  (let [denom (any-atom-support baskets itemset)]
-    (or (zero? denom)
-        (>= (/ support (double denom)) fim-relative-support-floor))))
-
 (defn- rebuild-and-clause
   [fingerprints]
   (let [atoms (into []
                     (keep decode-predicate)
                     fingerprints)]
-    (when (>= (count atoms) fim-k-min)
+    (when (>= (count atoms) frequent-itemsets/minimum-itemset-size)
       (lib/simplify-compound-filter (apply lib/and atoms)))))
-
-(defn- existing-composite-atomsets*
-  [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
-        table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
-        table->db (when (seq table-ids)
-                    (into {}
-                          (map (juxt :id :db_id))
-                          (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
-    (lib-be/with-metadata-provider-cache
-      (into #{}
-            (mapcat (fn [{:keys [table_id definition]}]
-                      (when (and (pos-int? table_id) (seq definition))
-                        (when-let [db-id (get table->db table_id)]
-                          (let [facts (:composites (extract-facts db-id definition))]
-                            (for [{:keys [atom-fingerprints]} facts
-                                  :when (>= (count atom-fingerprints) fim-k-min)]
-                              [:table table_id (set atom-fingerprints)]))))))
-            segments))))
-
-(def ^:private existing-composite-atomsets*-memo
-  (memoize/ttl existing-composite-atomsets* :ttl/threshold cache-ttl-ms))
 
 (defn- existing-composite-atomsets
   "Set of `[source-type source-id #{atom-fingerprint ...}]` tuples for non-archived Segments whose
   definitions are whole-:and baskets. Used to filter out suggestions that already exist as saved Segments."
   [{:keys [source-type source-id]}]
-  (existing-composite-atomsets*-memo [source-type source-id]))
+  (:composite-atomsets (existing-segment-facts*-memo [source-type source-id])))
 
 (mu/defn suggested-segments-for-owner :- [:sequential ::usage-metadata.schema/suggested-segment]
   "Suggest composite (`:and`) segment definitions that recur across a source's query history but
@@ -519,30 +366,31 @@
   each rollup row is a basket whose items are the atomic predicates of one stage's top-level `:and`.
   We mine closed frequent itemsets and reconstruct each surviving itemset as an `:and` MBQL clause.
 
-  `:itemset-size` is bounded by `fim-k-min`/`fim-k-max` (2..5). `:support` is the weighted count of
+  `:itemset-size` is bounded to 2..5. `:support` is the weighted count of
   baskets containing ALL of the itemset's atoms (basket weight = the rollup row's `:count`).
-  `:support-ratio` is `support / any-atom-support` and is floored by `fim-relative-support-floor`.
+  `:support-ratio` is `support / any-atom-support` and is floored by the miner's relative-support threshold.
 
   Results are sorted by `:support` desc, then by `:itemset-size` desc — at equal support, larger
   recurring `:and`s rank higher, since they encode more user intent. Truncated to `:limit`."
   ([] (suggested-segments-for-owner {}))
-  ([{:keys [limit] :or {limit fim-default-limit} :as opts} :- ::usage-metadata.schema/opts]
+  ([{:keys [limit] :or {limit frequent-itemsets/default-limit} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows          (grouped-composite-rows opts)
          by-source     (group-by (juxt :source_type :source_id) rows)
-         source-idx    (build-source-index (keys by-source))
+         source-idx    (query-utils/build-source-index (keys by-source))
          candidates    (into []
                              (mapcat (fn [[[source-type source-id] source-rows]]
                                        (when-let [source (source-idx [source-type source-id])]
-                                         (let [baskets  (rows->baskets source-rows)
+                                         (let [baskets  (frequent-itemsets/rows->baskets source-rows)
                                                existing (existing-composite-atomsets {:source-type source-type
                                                                                       :source-id   source-id})
-                                               mined    (closed-only (mine-itemsets baskets))]
+                                               mined    (frequent-itemsets/mine-closed-itemsets baskets)]
                                            (for [[itemset-vec support] mined
                                                  :let  [itemset (set itemset-vec)]
-                                                 :when (and (relative-support-ok? baskets itemset-vec support)
+                                                 :when (and (frequent-itemsets/relative-support-ok?
+                                                             baskets itemset-vec support)
                                                             (not (contains? existing [source-type source-id itemset])))
                                                  :let  [clause (rebuild-and-clause itemset-vec)
-                                                        denom  (any-atom-support baskets itemset-vec)]
+                                                        denom  (frequent-itemsets/any-atom-support baskets itemset-vec)]
                                                  :when clause]
                                              {:clause        clause
                                               :itemset-size  (count itemset-vec)
@@ -559,7 +407,7 @@
   ([] (profile-observations {}))
   ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-profile-rows opts)
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (keep :field_id) rows))]

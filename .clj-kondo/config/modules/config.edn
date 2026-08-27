@@ -1346,8 +1346,10 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api}
+   :api  #{metabase.measures.api
+           metabase.measures.create}
    :uses #{api
+           app-db
            events
            lib
            lib-be
@@ -2144,8 +2146,10 @@
   segments
   {:team "Graphy"
    :api  #{metabase.segments.api
+           metabase.segments.create
            metabase.segments.schema}
    :uses #{api
+           app-db
            events
            lib
            lib-be
@@ -2662,17 +2666,25 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.candidate-refresh metabase.usage-metadata.candidate-repository metabase.usage-metadata.init}
    :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
                     :model/Field
+                    :model/Measure
+                    :model/ModerationReview
                     :model/Query
                     :model/QueryExecution
                     :model/Segment
-                    :model/Table}
+                    :model/Table
+                    :model/ViewLog}
    :uses #{app-db
+           collections
            lib
            lib-be
            models
+           mq
+           premium-features
            settings
            task
            util}}
@@ -3234,13 +3246,20 @@
    :uses #{api
            collections
            events
+           lib
+           measures
            models
            permissions
            premium-features
+           request
+           segments
+           usage-metadata
            util}
    :model-imports #{:model/Collection
                     :model/Dimension
                     :model/Field
+                    :model/Measure
+                    :model/Segment
                     :model/Table}}
 
   enterprise/database-replication
