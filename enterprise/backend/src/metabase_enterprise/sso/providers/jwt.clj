@@ -147,10 +147,10 @@
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
-    (set
-     (mapcat name-mappings
-             (map keyword group-names)))
-    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
+    (sso-utils/group-names->ids group-names name-mappings)
+    (let [names (into #{} (sso-utils/group-names->strings group-names))]
+      (when (seq names)
+        (t2/select-pks-set :model/PermissionsGroup :name [:in names])))))
 
 (defn- all-mapped-group-ids
   "Returns the set of all MB group IDs that have configured mappings"
