@@ -27,7 +27,7 @@ import { createRoot } from "react-dom/client";
 
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
-import { createSnowplowTracker } from "metabase/analytics";
+import { initAnalytics } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
@@ -49,7 +49,6 @@ import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -98,10 +97,7 @@ function _init(
   const routes = getRoutes(store);
   const mirrorLocation = createLocationMirror(store.dispatch);
 
-  createSnowplowTracker(() => getUserId(store.getState()));
-  initMetaplow({
-    getUserId: () => getUserId(store.getState()),
-  });
+  initAnalytics({ getUserId: () => getUserId(store.getState()) });
 
   initializeInteractiveEmbedding(store.dispatch);
 
