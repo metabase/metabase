@@ -24,12 +24,15 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
+   (com.mchange.v2.c3p0 PooledDataSource)
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
@@ -217,16 +220,16 @@
     (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
-          (log/debugf "Setting %s database timezone with statement: %s" driver (pr-str sql))
+          (log/debugf "Setting %s database timezone to %s" driver timezone-id)
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/debug e "Error setting connection to readwrite")))
+              (log/debugf "Error setting connection to readwrite: %s" (ex-message e))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
         (catch Throwable e
-          (log/errorf e "Failed to set timezone '%s' for %s database" timezone-id driver))))))
+          (log/errorf "Failed to set timezone '%s' for %s database: %s" timezone-id driver (ex-message e)))))))
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
@@ -250,7 +253,7 @@
           (try
             (.setTransactionIsolation conn level)
             (catch Throwable e
-              (log/debugf e "Error setting transaction isolation level for %s database to %s" (name driver) level-name))))
+              (log/debugf "Error setting transaction isolation level for %s database to %s: %s" (name driver) level-name (ex-message e)))))
 
         (seq more)
         (recur more)))))
@@ -288,7 +291,6 @@
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
         (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   #_{:clj-kondo/ignore [:deprecated-var]}
                    'connection-with-timezone
                    'do-with-connection-with-options)
         ;; for compatibility, make sure we pass it an actual Database instance.
@@ -320,6 +322,33 @@
   []
   (pos? *connection-recursion-depth*))
 
+(defn- connection-checkout-timeout?
+  "True if `e` (or anything in its cause chain) is a c3p0 pool-checkout timeout, i.e. the data-warehouse connection
+  pool was exhausted and the wait exceeded [[driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms]].
+  c3p0 signals this by throwing a `SQLException` caused by a `com.mchange.v2.resourcepool.TimeoutException`."
+  [^Throwable e]
+  (loop [cause e]
+    (cond
+      (nil? cause)                        false
+      (instance? TimeoutException cause)  true
+      :else                               (recur (.getCause cause)))))
+
+(defn- checkout-queue-full?
+  "True if `data-source` already has at least
+  [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]] queries waiting for a free connection.
+  Used to shed load: rather than letting the checkout queue grow without bound when the pool is saturated, additional
+  queries are rejected immediately. A limit of `0` (the default) disables the check. Only c3p0 `PooledDataSource`s
+  expose the waiting-thread count; any other data source is never considered full."
+  [data-source]
+  (let [max-pending (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)]
+    (and (pos? max-pending)
+         (instance? PooledDataSource data-source)
+         (try
+           (>= (.getNumThreadsAwaitingCheckoutDefaultUser ^PooledDataSource data-source) max-pending)
+           (catch Throwable _
+             ;; if we can't read the stat for some reason, fail open rather than blocking queries
+             false)))))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -338,13 +367,22 @@
       (f conn)
       (let [get-conn (^:once fn* []
                        (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (when (checkout-queue-full? conn-data-source)
+                           (throw (ex-info (tru "Too many queries are running. Please try again in a moment.")
+                                           {:type   driver-api/qp.error-type.connection-pool-checkout-queue-full
+                                            :driver driver})))
                          (try
                            (.getConnection conn-data-source)
                            (catch Throwable e
-                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
-                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
-                                              :driver driver}
-                                             e))))))]
+                             (let [timed-out? (connection-checkout-timeout? e)]
+                               (throw (ex-info (if timed-out?
+                                                 (tru "Too many queries are running. Please try again in a moment.")
+                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                               {:type   (if timed-out?
+                                                          driver-api/qp.error-type.connection-pool-checkout-timeout
+                                                          driver-api/qp.error-type.unable-to-acquire-connection)
+                                                :driver driver}
+                                               e)))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -387,7 +425,7 @@
         (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+          (log/debugf "Error setting connection readOnly to %s: %s" (pr-str read-only?) (ex-message e)))))
     ;; If this is (supposedly) a read-only connection, we would prefer enable auto-commit
     ;; so this IS NOT ran inside of a transaction, but without transaction the read-only
     ;; flag has no effect for most of the drivers.
@@ -401,7 +439,7 @@
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
             (catch Throwable e
-              (log/debug e "Error enabling connection autoCommit")))
+              (log/debugf "Error enabling connection autoCommit: %s" (ex-message e))))
 
           ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
           ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
@@ -411,18 +449,18 @@
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
             (catch Throwable e
-              (log/debug e "Error setting connection autoCommit to false"))))
+              (log/debugf "Error setting connection autoCommit to false: %s" (ex-message e)))))
     (try
       ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
       ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
       (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
       (catch Throwable e
-        (log/debug e "Error setting network timeout for connection")))
+        (log/debugf "Error setting network timeout for connection: %s" (ex-message e))))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (log/debug e "Error setting default holdability for connection")))))
+        (log/debugf "Error setting default holdability for connection: %s" (ex-message e))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -439,12 +477,12 @@
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
-   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (some-> object class .getName) (pr-str object))
+   (log/tracef "(set-object prepared-statement %d ^%s)" index (some-> object class .getName))
    (.setObject prepared-statement index object))
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
-   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (some-> object class .getName)
-               (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
+   (log/tracef "(set-object prepared-statement %d ^%s java.sql.Types/%s)" index (some-> object class .getName)
+               (.getName (JDBCType/valueOf target-sql-type)))
    (.setObject prepared-statement index object target-sql-type)))
 
 (defmethod set-parameter :default
@@ -500,7 +538,7 @@
   (dorun
    (map-indexed
     (fn [i param]
-      (log/tracef "Set param %d -> %s" (inc i) (pr-str param))
+      (log/tracef "Set param %d ^%s" (inc i) (some-> param class .getName))
       (set-parameter driver stmt (inc i) param))
     params)))
 
@@ -515,12 +553,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch size to fetch-size")))
+          (log/debugf "Error setting prepared statement fetch size to fetch-size: %s" (ex-message e))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -537,12 +575,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (driver.settings/sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e "Error setting statement fetch size to fetch-size")))
+          (log/debugf "Error setting statement fetch size to fetch-size: %s" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -564,13 +602,15 @@
   `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
   the transform timeout instead of the shorter default. Drivers that opt out via the `:jdbc/set-query-timeout`
   feature flag (e.g. SparkSQL — calling it closes the Hive Thrift transport) skip the call entirely; for the rest,
-  individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`."
+  individual implementations that throw fall back to the c3p0 leak-detector via the `catch Throwable`.
+  A MySQL 26 or newer warehouse also falls back, because there the driver would turn the timeout into MariaDB syntax
+  the server rejects, failing every query outright — the query is still bounded by the QP's own cancelation."
   [driver ^Statement stmt]
   (when (driver/database-supports? driver :jdbc/set-query-timeout nil)
     (try
-      (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
+      (u.connection/set-query-timeout! stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
       (catch Throwable e
-        (log/debug e "Error setting statement query timeout")))))
+        (log/debugf "Error setting statement query timeout: %s" (ex-message e))))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
@@ -835,7 +875,7 @@
                              (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                         (name driver)))
                            (catch Throwable e
-                             (log/info e "Statement cancelation failed.")))))))))))))
+                             (log/infof "Statement cancelation failed: %s" (ex-message e))))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
@@ -1010,5 +1050,5 @@
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
         (catch Throwable e
-          (log/warn e "Failed obtaining a new resilient connection")
+          (log/warnf "Failed obtaining a new resilient connection: %s" (ex-message e))
           connection)))))

@@ -1,5 +1,5 @@
 .wrapper {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-left: 1px solid var(--mb-color-border-neutral);
   height: 100%;
   border-top-right-radius: var(--mantine-radius-md);
@@ -29,12 +29,12 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-focus);
+    background-color: var(--mb-color-input-focus);
   }
 }
 
 .structure {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border-bottom: 1px solid var(--mb-color-border-neutral);
   font-size: 0.75rem;
   color: var(--mb-color-text-secondary);

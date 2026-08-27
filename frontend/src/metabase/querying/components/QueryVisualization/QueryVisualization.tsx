@@ -1,18 +1,18 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { prefetchVisualizationComponent } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -40,6 +40,14 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // The result is not rendered until the query returns, so the chart chunk
+  // would only start downloading then. Start it from the display alone, so it
+  // loads in parallel with the query.
+  const display = question.display();
+  useEffect(() => {
+    prefetchVisualizationComponent(display);
+  }, [display]);
   const isDirtyStateShown =
     canRun &&
     isResultDirty &&
@@ -130,13 +138,13 @@ export function VisualizationRunningState({
   return (
     <Flex
       className={cx(className, QueryBuilderS.Overlay)}
-      c="brand"
+      c="core-brand"
       direction="column"
       justify="center"
       align="center"
     >
-      <LoadingSpinner />
-      <Title c="brand" order={3} mt="lg">
+      <Loader size="lg" />
+      <Title c="core-brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>

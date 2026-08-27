@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.models.collection :as collections]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -552,7 +553,7 @@
 
 (deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -611,7 +612,7 @@
 
 (deftest transform-writable-when-remote-sync-read-write-test
   (testing "can_write should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -632,7 +633,7 @@
 
 (deftest transform-writable-when-remote-sync-disabled-test
   (testing "can_write should be true for transforms when remote-sync is not enabled"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         ;; remote-sync-url is not set, so remote-sync-enabled returns false
         (mt/with-temporary-setting-values [settings/remote-sync-url nil
@@ -674,7 +675,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -711,6 +712,30 @@
                                                                        :name "target_table"}}]
             (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
                 "Non-superuser should not be able to write transforms even when remote-sync-type is read-write")))))))
+
+(deftest transform-write-endpoints-return-403-in-read-only-remote-sync-test
+  (testing "PUT/DELETE /api/transform/:id reject with 403 when remote-sync is enabled and read-only"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                         settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace :transforms}
+                       :model/Transform {transform-id :id} {:name "Read-only Transform"
+                                                            :collection_id coll-id
+                                                            :source {:type "query"
+                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                            :target {:database (mt/id)
+                                                                     :type "table"
+                                                                     :schema "public"
+                                                                     :name "target_table"}}]
+          (testing "PUT is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :put 403 (str "transform/" transform-id) {:name "renamed"}))))
+          (testing "DELETE is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id)))))
+          (testing "transform is untouched"
+            (is (= "Read-only Transform" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
 
 (deftest transform-non-superuser-cannot-create-test
   (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"

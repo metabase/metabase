@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.llm.anthropic :as anthropic]
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]))
@@ -103,6 +104,26 @@
            clojure.lang.ExceptionInfo
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
+
+(deftest chat-completion-e2e-localhost-safeguard-test
+  (testing "during e2e tests, refuses a non-localhost base URL before making any request"
+    (with-redefs [config/is-e2e? true]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key       "sk-ant-test-key"
+                                         llm-anthropic-api-base-url  "https://api.anthropic.com"]
+        (mt/with-dynamic-fn-redefs [http/post (fn [& _] (throw (ex-info "http/post should not be called" {})))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"non-localhost"
+               (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))))))
+  (testing "during e2e tests, a localhost base URL is allowed through to the request"
+    (let [mock-response {:body {:content [{:type "tool_use" :name "generate_sql" :input {:sql "SELECT 1"}}]
+                                :usage   {:input_tokens 1 :output_tokens 1}}}]
+      (with-redefs [config/is-e2e? true]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
+                                           llm-anthropic-api-base-url "http://localhost:6123"]
+          (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
+            (is (=? {:result {:sql "SELECT 1"}}
+                    (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))))))))
 
 (deftest chat-completion-returns-usage-test
   (testing "chat-completion returns result, usage, and duration"

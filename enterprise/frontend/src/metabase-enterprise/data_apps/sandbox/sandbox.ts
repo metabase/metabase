@@ -1,0 +1,194 @@
+import createVirtualEnvironment from "@locker/near-membrane-dom";
+
+import { setChartExportIframeGrant } from "metabase/visualizations/lib/chart-export-iframe-grant";
+
+import { blockHostRealmXhr } from "./allowed-hosts";
+import { makeDistortionCallback } from "./distortions";
+import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import { hostRealmElementGuard } from "./host-element-guard";
+import type { DataAppFactory, SandboxBlockedListener } from "./types";
+
+/**
+ * The realm objects the sandbox exposes to the bundle as globals.
+ *
+ * These are injected by the caller rather than imported here so the sandbox
+ * stays decoupled from any single SDK instance: the host passes its own realm's
+ * React/SDK, and the data-app template's dev entry passes the React/SDK from
+ * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
+ * against exactly one SDK instance. (Importing them here would bundle a second
+ * SDK copy into the published `data-app-dev` entry.)
+ */
+export interface DataAppSandboxEndowments {
+  /** Endowed as the `React` global the bundle externalizes `react` to. */
+  React: unknown;
+  /** Endowed as `__react_dom__` (the `react-dom` external). */
+  reactDom: unknown;
+  /** Endowed as `__react_dom_client__` (the `react-dom/client` external). */
+  reactDomClient: unknown;
+  /** Endowed as `__react_dom_server__` (the `react-dom/server` external). */
+  reactDomServer: unknown;
+  /** Endowed as `__react_jsx_runtime__` (the `react/jsx-runtime` external). */
+  reactJsxRuntime: unknown;
+  /**
+   * Endowed as `__react_jsx_dev_runtime__` (the `react/jsx-dev-runtime`
+   * external). Only a development-mode bundle references it (jsxDEV), so the
+   * production host can omit it.
+   */
+  reactJsxDevRuntime?: unknown;
+  /** Endowed as `__metabase_sdk__` (the `@metabase/embedding-sdk-react` external). */
+  sdkExports: object;
+  /** Endowed as `__metabase_data_app__` (the `.../data-app` external). */
+  dataAppExports: object;
+}
+
+export interface CreateDataAppSandboxOptions {
+  /** Human-readable label used in sandbox diagnostics, e.g. the app slug. */
+  label?: string;
+  /** Realm the membrane binds to. Defaults to the current `window`. */
+  targetWindow?: Window & typeof globalThis;
+  /** Origins the bundle may fetch; empty keeps the default hard block. */
+  allowedHosts?: string[];
+  /**
+   * Same-origin URL serving the document Near-Membrane loads as its realm iframe.
+   */
+  realmHostUrl?: string;
+  /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
+  endowments: DataAppSandboxEndowments;
+  /**
+   * Structured listener for sandbox blocks (dev toolbar). When absent the
+   * sandbox keeps its default reporting (`console.error` / reject).
+   */
+  onBlocked?: SandboxBlockedListener;
+}
+
+function isLiveTarget(target: object): boolean {
+  return target instanceof CSSStyleDeclaration;
+}
+
+function isDataAppFactory(value: unknown): value is DataAppFactory {
+  return typeof value === "function";
+}
+
+export async function createDataAppSandbox({
+  label = "",
+  targetWindow = window,
+  allowedHosts = [],
+  realmHostUrl,
+  endowments,
+  onBlocked,
+}: CreateDataAppSandboxOptions) {
+  let captured: unknown;
+
+  // Before the membrane, so the guest is handed the blocked stub rather than
+  // the native constructor. See [[blockHostRealmXhr]] — XHR is removed from the
+  // data-app document entirely, host realm included.
+  blockHostRealmXhr(targetWindow);
+
+  const env = await createVirtualEnvironment(targetWindow, {
+    ...(realmHostUrl ? { iframeSrc: realmHostUrl } : {}),
+    // Default `true` leaves the realm iframe attached as a reachable same-origin
+    // ancestor window; detach it so the guest can't reach one.
+    keepAlive: false,
+    distortionCallback: makeDistortionCallback(
+      label,
+      targetWindow,
+      allowedHosts,
+      onBlocked,
+    ),
+    liveTargetCallback: isLiveTarget,
+    // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
+    // externals (defined by the SDK build) and these endowments can't drift.
+    endowments: Object.getOwnPropertyDescriptors({
+      [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
+      [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
+      [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
+      [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
+      [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
+      ...(!!endowments.reactJsxDevRuntime && {
+        [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
+          endowments.reactJsxDevRuntime,
+      }),
+      [DATA_APP_GLOBAL_NAMES.sdk]: {
+        ...endowments.sdkExports,
+        // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
+      },
+      [DATA_APP_GLOBAL_NAMES.dataApp]: {
+        ...endowments.dataAppExports,
+        // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
+      },
+      get [DATA_APP_GLOBAL_NAMES.factory]() {
+        return captured;
+      },
+      set [DATA_APP_GLOBAL_NAMES.factory](value: unknown) {
+        captured = value;
+      },
+    }),
+  });
+
+  // Gate `Error.prepareStackTrace` in the guest realm before any bundle runs: a
+  // function formatter receives V8 `CallSite[]` that can hand back non-membrane
+  // host references, so keep the guest from installing one.
+  // A non-configurable accessor drops function assignments but allows `undefined`
+  // (React dev sets it so, then restores). Must be an evaluate prelude, not a
+  // distortion — it's a red-realm property the guest owns. (Host storage is handled
+  // separately, in the shared distortion.)
+  // `prepareStackTrace` is a V8-only hook, so this vector (and this gate) only
+  // exists on Chromium — Safari/Firefox never expose the CallSite formatter.
+  env.evaluate(`(() => {
+    try {
+      let stored;
+      Object.defineProperty(Error, "prepareStackTrace", {
+        configurable: false,
+        get() {
+          return stored;
+        },
+        set(value) {
+          if (typeof value !== "function") {
+            stored = value;
+          }
+        },
+      });
+    } catch (e) {}
+  })();`);
+
+  // After the membrane built its own realm iframe — from here on, nothing in this
+  // document may create another realm, whichever React renders it.
+  hostRealmElementGuard.install(targetWindow);
+
+  // Let the chart PNG export create html2canvas's transient clone <iframe> despite
+  // the guard above — safe because the distortion collapses that iframe's realm to
+  // the gated realm, so the guest can't reach it.
+  setChartExportIframeGrant(hostRealmElementGuard.withIframeGrant);
+
+  return {
+    evaluate(code: string): DataAppFactory {
+      try {
+        env.evaluate(code);
+      } catch (error) {
+        let message: string;
+
+        try {
+          // Reading `message` off a membrane-opaque throw can itself throw, so
+          // the read stays inside this try.
+          message = String(
+            typeof error === "object" && error !== null && "message" in error
+              ? (error.message ?? error)
+              : error,
+          );
+        } catch {
+          message = "Unknown error inside data-app sandbox";
+        }
+
+        throw new Error(message);
+      }
+
+      if (!isDataAppFactory(captured)) {
+        throw new Error(
+          "Bundle did not assign a function to __dataAppFactory__",
+        );
+      }
+
+      return captured;
+    },
+  };
+}

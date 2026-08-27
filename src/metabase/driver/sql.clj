@@ -5,15 +5,16 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution]
+   [metabase.driver.sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.values :as params.values]
@@ -25,7 +26,8 @@
    [potemkin :as p]))
 
 (comment metabase.driver.sql.parameters.substitution/keep-me
-         metabase.driver.sql.normalize/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
+         metabase.driver.sql.normalize/keep-me ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
+         metabase.driver.sql.pivot/keep-me)    ; loading `sql.pivot` registers the `[:sql :pivot]` GROUPING SETS emitter
 
 (driver/register! :sql, :abstract? true)
 
@@ -79,19 +81,23 @@
   [driver native-form]
   (sql.u/format-sql-and-fix-params driver native-form))
 
-(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/stage.native
-  [_driver                                  :- :keyword
-   metadata-providerable                    :- ::lib.schema.metadata/metadata-providerable
-   {native-query :native, :as native-stage} :- ::lib.schema/stage.native]
-  (let [params-map            (params.values/stage->params-map metadata-providerable native-stage)
-        referenced-card-ids   (params.values/referenced-card-ids params-map)
-        parsed-query          (lib/parse-parameters native-query)
-        [native-query params] (sql.params.substitute/substitute metadata-providerable parsed-query params-map)]
-    (cond-> (assoc native-stage
-                   :native native-query
-                   :params params)
-      (seq referenced-card-ids)
-      (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
+(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/query
+  [_driver      :- :keyword
+   query        :- ::lib.schema/query
+   stage-number :- :int]
+  (lib/update-query-stage
+   query
+   stage-number
+   (fn [{native-query :native, :as native-stage}]
+     (let [params-map            (params.values/stage->params-map query native-stage)
+           referenced-card-ids   (params.values/referenced-card-ids params-map)
+           parsed-query          (lib/parse-parameters native-query)
+           [native-query params] (sql.params.substitute/substitute query parsed-query params-map)]
+       (cond-> (assoc native-stage
+                      :native native-query
+                      :params params)
+         (seq referenced-card-ids)
+         (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.
@@ -188,7 +194,7 @@
         (driver/drop-table! driver (:id database) old-temp)
         result)
       (catch Exception e
-        (log/error e "Failed to run transform using rename-tables strategy")
+        (log/errorf "Failed to run transform using rename-tables strategy: %s" (ex-message e))
         (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
         (throw e)))))
 
@@ -202,7 +208,7 @@
         (driver/rename-table! driver (:id database) tmp-table output-table)
         result)
       (catch Exception e
-        (log/error e "Failed to run transform using create-drop-rename strategy")
+        (log/errorf "Failed to run transform using create-drop-rename strategy: %s" (ex-message e))
         (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
         (throw e)))))
 
@@ -212,7 +218,7 @@
     (driver/drop-table! driver (:id database) output-table)
     (create-table-and-insert-data! driver transform-details conn-spec)
     (catch Exception e
-      (log/error e "Failed to run transform using drop-create strategy")
+      (log/errorf "Failed to run transform using drop-create strategy: %s" (ex-message e))
       (throw e))))
 
 ;; Follows similar logic to `transfer-file-to-db :table`
@@ -238,15 +244,63 @@
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
+(defn- merge-delete-query
+  "DELETE the rows of `target` whose `unique-key` matches a row in `temp`.
+
+   `delete-strategy` selects how the match is expressed:
+     - `:in`     — uncorrelated `WHERE (k…) IN (SELECT k… FROM temp)`
+     - `:exists` — correlated `WHERE EXISTS (SELECT 1 FROM temp WHERE temp.k = target.k …)"
+  [driver target temp unique-key delete-strategy]
+  (let [honeysql (case delete-strategy
+                   :exists (let [temp-col   (fn [c] (keyword (name temp) c))
+                                 target-col (fn [c] (keyword (name target) c))]
+                             {:delete-from target
+                              :where       [:exists {:select [[[:inline 1]]]
+                                                     :from   [temp]
+                                                     :where  (into [:and]
+                                                                   (map (fn [c] [:= (temp-col c) (target-col c)]))
+                                                                   unique-key)}]})
+                   :in     (let [cols (mapv keyword unique-key)
+                                 lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
+                             {:delete-from target
+                              :where       [:in lhs {:select cols, :from [temp]}]}))]
+    (sql.qp/format-honeysql driver honeysql)))
+
+(defn- merge-insert-query
+  "INSERT every row of `temp` into `target`."
+  [driver target temp]
+  (sql.qp/format-honeysql driver
+                          {:insert-into [target {:select [:*] :from [temp]}]}))
+
+(defn compile-merge
+  "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
+   into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names] :delete-strategy k}`."
+  [driver target select {:keys [unique-key delete-strategy] :or {delete-strategy :in}}]
+  (let [temp (driver.u/temp-table-name driver target)]
+    [(driver/compile-transform driver {:query select, :output-table temp})
+     (merge-delete-query driver target temp unique-key delete-strategy)
+     (merge-insert-query driver target temp)
+     (driver/compile-drop-table driver temp)]))
+
 (mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
-  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
-  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
-                                                           :name (name output-table)})
-                  (driver/compile-insert driver transform-details)
-                  (driver/compile-transform driver transform-details))]
-    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
-    ;; `execute-raw-queries!` already yields `{:rows-affected N}` maps; take the last as-is.
-    (last (driver/execute-raw-queries! driver conn-spec [queries]))))
+  [driver {:keys [conn-spec database output-table query] :as transform-details} {merge-opts :merge}]
+  (let [table-exists? (driver/table-exists? driver database {:schema (namespace output-table)
+                                                             :name   (name output-table)})]
+    (cond
+      ;; First run — no target yet — create it.
+      (not table-exists?)
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-transform driver transform-details)]))
+
+      ;; Key-based upsert
+      merge-opts
+      (let [results (driver/execute-raw-queries!
+                     driver conn-spec
+                     (compile-merge driver output-table query merge-opts))]
+        {:rows-affected (reduce max 0 (keep :rows-affected results))})
+
+      ;; Append.
+      :else
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-insert driver transform-details)])))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -300,14 +354,14 @@
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
+                      (let [[stmt-type allowed-stmts] (if driver.settings/*impersonation-allow-write?*
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
                             {:keys [is-single-stmt? allowed-stmt-type? sql error]}
                             (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
-                                (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
+                                (log/warnf "Failed to parse native query: %s" error)
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))

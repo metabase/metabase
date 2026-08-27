@@ -1,7 +1,4 @@
-import type { Element, ElementContent } from "hast";
-import { fromHtml } from "hast-util-from-html";
-
-import { patchDominantBaseline } from "./svg";
+import { patchDominantBaseline, replaceFunctionalColors } from "./svg";
 
 const OUTER_TEXT = "outer-text";
 const G_ELEM = "g-elem";
@@ -52,32 +49,33 @@ const SVG_STR = `<svg width="500" height="500">
 </svg>
 `;
 
+describe("replaceFunctionalColors", () => {
+  it("should rewrite hsl/hsla/rgb/rgba attribute values to hex", () => {
+    const svg = `<svg><text fill="hsla(0, 0%, 100%, 0.95)" stroke="hsl(208, 95%, 42%)">a</text><rect fill="rgba(255, 255, 255, 0.5)" stroke="rgb(80, 158, 227)"/></svg>`;
+
+    expect(replaceFunctionalColors(svg)).toBe(
+      `<svg><text fill="#FFFFFF" stroke="#0572D1">a</text><rect fill="#FFFFFF" stroke="#509EE3"/></svg>`,
+    );
+  });
+
+  it("should leave hex colors, keywords, and text content alone", () => {
+    const svg = `<svg><text fill="#509ee3" stroke="none">hsla(0, 0%, 100%, 0.95)</text></svg>`;
+
+    expect(replaceFunctionalColors(svg)).toBe(svg);
+  });
+});
+
 describe("patchDominantBaseline", () => {
   it(`should add "dy='0.5em'" to all text nodes with "dominant-baseline='central'`, () => {
     const patchedSvgStr = patchDominantBaseline(SVG_STR);
-    const patchedSvgElem = fromHtml(patchedSvgStr, {
-      fragment: true,
-      space: "svg",
-    }).children[0] as Element;
+    const doc = new DOMParser().parseFromString(patchedSvgStr, "image/svg+xml");
+    const dyOf = (id: string) =>
+      doc.querySelector(`[id="${id}"]`)?.getAttribute("dy") ?? undefined;
 
-    const nodes: Record<string, Element> = {};
-    function recordNode(node: ElementContent) {
-      if (node.type !== "element") {
-        return;
-      }
-
-      if (typeof node.properties.id === "string") {
-        nodes[node.properties.id] = node;
-      }
-
-      node.children.forEach((child) => recordNode(child));
-    }
-    recordNode(patchedSvgElem);
-
-    expect(nodes[OUTER_TEXT].properties.dy).toBe("0.5em");
-    expect(nodes[G_ELEM].properties.dy).toBe(undefined);
-    expect(nodes[IN_FIRST_G].properties.dy).toBe("0.5em");
-    expect(nodes[WITHOUT_DOMINANT_BASELINE].properties.dy).toBe(undefined);
-    expect(nodes[DEEPLY_NESTED].properties.dy).toBe("0.5em");
+    expect(dyOf(OUTER_TEXT)).toBe("0.5em");
+    expect(dyOf(G_ELEM)).toBe(undefined);
+    expect(dyOf(IN_FIRST_G)).toBe("0.5em");
+    expect(dyOf(WITHOUT_DOMINANT_BASELINE)).toBe(undefined);
+    expect(dyOf(DEEPLY_NESTED)).toBe("0.5em");
   });
 });

@@ -1,9 +1,8 @@
-import { Route } from "react-router";
-
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenStatus } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -44,7 +43,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={AppBanner} />, {
+  renderWithProviders(<Route path="*" element={<AppBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,

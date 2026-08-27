@@ -8,16 +8,9 @@ import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { useDndSensors } from "metabase/common/hooks";
 import type { IconProps } from "metabase/ui";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
+import type { ChartSettingOrderedItem } from "metabase/visualizations/types";
 
 import { ColumnItem } from "../ColumnItem";
-
-export interface SortableItem {
-  enabled: boolean;
-  color?: string;
-  icon?: IconProps["name"];
-  isOther?: boolean;
-  hideSettings?: boolean;
-}
 
 interface SortableColumnFunctions<T> {
   onRemove?: (item: T) => void;
@@ -29,18 +22,19 @@ interface SortableColumnFunctions<T> {
   onColorChange?: (item: T, color: string) => void;
 }
 interface ChartSettingOrderedItemsProps<
-  T extends SortableItem,
+  T extends ChartSettingOrderedItem,
 > extends SortableColumnFunctions<T> {
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;
+  isSortable?: boolean;
   removeIcon?: IconProps["name"];
   accentColorOptions?: AccentColorOptions;
-  getItemColor?: (item: SortableItem) => string | undefined;
+  getItemColor?: (item: ChartSettingOrderedItem) => string | undefined;
   dividers?: SortableDivider[];
 }
 
-export function ChartSettingOrderedItems<T extends SortableItem>({
+export function ChartSettingOrderedItems<T extends ChartSettingOrderedItem>({
   onRemove,
   onSortEnd,
   onEdit,
@@ -51,12 +45,13 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   items,
   onColorChange,
   getId,
+  isSortable = true,
   removeIcon,
   accentColorOptions,
   getItemColor = (item) => item.color,
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
-  const isDragDisabled = items.length < 1;
+  const isDragDisabled = !isSortable || items.length < 2;
   const sensors = useDndSensors({ distance: 15 });
 
   const renderItem = useCallback(

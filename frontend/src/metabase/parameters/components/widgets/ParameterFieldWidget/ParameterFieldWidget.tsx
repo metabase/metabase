@@ -69,6 +69,7 @@ export function ParameterFieldWidget({
 
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
+        // Unjustified type cast. FIXME
         setValue(parameter.default as RowValue[]);
       }
       return;
@@ -114,7 +115,6 @@ export function ParameterFieldWidget({
                   getFilterArgumentFormatOptions(operator, index)),
                 ...fields?.[0]?.settings,
               }}
-              color="core-brand"
               minWidth={300}
               maxWidth={400}
             />

@@ -12,7 +12,8 @@ export function tableThemeToDataGridTheme(
     fontSize: resolveFontSizeToPx(tableTheme.cell.fontSize, baseFontSize),
     cell: {
       backgroundColor:
-        tableTheme.cell.backgroundColor ?? "var(--mb-color-background-primary)",
+        tableTheme.cell.backgroundColor ??
+        "var(--mb-color-background_page-primary)",
       textColor: tableTheme.cell.textColor,
     },
     pillCell: {

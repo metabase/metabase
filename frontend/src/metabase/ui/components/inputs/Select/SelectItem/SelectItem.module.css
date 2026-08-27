@@ -4,12 +4,12 @@
   overflow-wrap: break-word;
 
   &:hover {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   [aria-selected="true"] & {
     color: var(--mb-color-text-selected) !important;
-    background-color: var(--mb-color-background-selected) !important;
+    background-color: var(--mb-color-background_surface-selected) !important;
   }
 }

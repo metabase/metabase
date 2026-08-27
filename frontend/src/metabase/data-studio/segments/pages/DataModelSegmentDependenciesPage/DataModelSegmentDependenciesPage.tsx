@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -14,15 +13,8 @@ type DataModelSegmentDependenciesPageParams = {
   segmentId: string;
 };
 
-type DataModelSegmentDependenciesPageProps = {
-  params: DataModelSegmentDependenciesPageParams;
-  children?: ReactNode;
-};
-
-export function DataModelSegmentDependenciesPage({
-  params,
-  children,
-}: DataModelSegmentDependenciesPageProps) {
+export function DataModelSegmentDependenciesPage() {
+  const params = useParams<DataModelSegmentDependenciesPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     useDataModelSegmentPage(params);
 
@@ -43,7 +35,7 @@ export function DataModelSegmentDependenciesPage({
       }
       onRemove={onRemove}
     >
-      {children}
+      <Outlet />
     </SegmentDependenciesPage>
   );
 }

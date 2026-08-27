@@ -19,23 +19,23 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
       <Flex
         direction="row"
         align="center"
-        bg="background-primary"
+        bg="background_page-primary"
         px="sm"
         data-testid="well-item"
         {...props}
         style={{
           borderRadius: "var(--border-radius-xl)",
           border: `1px solid var(--mb-color-border-neutral)`,
-          boxShadow: "0 0 1px var(--mb-color-shadow)",
+          boxShadow: "0 0 1px var(--mb-color-shadow-default)",
           cursor: "grab",
           userSelect: "none",
 
           ...(highlightedForDrag
             ? {
                 border: "2px solid var(--mb-color-core-brand)",
-                boxShadow: "0px 1px 4px 1px var(--mb-color-shadow)",
+                boxShadow: "0px 1px 4px 1px var(--mb-color-shadow-default)",
                 cursor: "grab",
-                backgroundColor: "var(--mb-color-background-secondary)",
+                backgroundColor: "var(--mb-color-background_page-secondary)",
                 borderRadius: "var(--border-radius-xl)",
               }
             : {}),

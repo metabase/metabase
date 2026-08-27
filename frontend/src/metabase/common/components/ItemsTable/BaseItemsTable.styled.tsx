@@ -9,10 +9,8 @@ import {
   forwardRef,
 } from "react";
 
-import { EntityItem } from "metabase/common/components/EntityItem";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
-import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
 import AdminS from "metabase/css/admin.module.css";
 import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
@@ -20,19 +18,10 @@ import { FixedSizeIcon, Text } from "metabase/ui";
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
-type TableProps = TableHTMLAttributes<HTMLTableElement> & {
-  isInDragLayer?: boolean;
-};
-
-export const Table = styled(
-  (props: TableProps) => (
-    <table {...props} className={cx(props.className, AdminS.ContentTable)} />
-  ),
-  {
-    shouldForwardProp: (prop) => prop !== "isInDragLayer",
-  },
-)`
-  background-color: var(--mb-color-background-primary);
+export const Table = styled((props: TableHTMLAttributes<HTMLTableElement>) => (
+  <table {...props} className={cx(props.className, AdminS.ContentTable)} />
+))`
+  background-color: var(--mb-color-background_page-primary);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;
@@ -53,8 +42,6 @@ export const Table = styled(
       }
     }
   }
-
-  ${(props) => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
 
 export const hideResponsively = ({
@@ -91,11 +78,6 @@ export const TableColumn = styled.col<ResponsiveProps>`
   ${hideResponsively}
 `;
 
-export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
-  width: 3em;
-  height: 3em;
-`;
-
 const itemLinkStyle = css`
   display: flex;
   grid-gap: 0.5rem;
@@ -112,17 +94,15 @@ export const ItemButton = styled(Text)<
 
 export const ItemLink = styled(Link)(itemLinkStyle);
 
-export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
-
 export const ItemNameCell = styled.td`
   padding: 0 !important;
 
-  ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
+  & > * {
     padding: 1em;
   }
 
   &:hover {
-    ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
+    & > * {
       color: var(--mb-color-core-brand);
     }
 

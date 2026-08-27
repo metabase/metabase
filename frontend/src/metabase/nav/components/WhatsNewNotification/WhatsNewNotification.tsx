@@ -1,20 +1,22 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetVersionInfoQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { useSelector } from "metabase/redux";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
+import {
+  useGetVersionInfoQuery,
+  useSetting,
+  useUpdateSettingMutation,
+} from "metabase/settings";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
-  const dispatch = useDispatch();
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const [updateSetting] = useUpdateSettingMutation();
+  const isEmbeddingIframe = isWithinIframe();
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
@@ -39,13 +41,11 @@ export function WhatsNewNotification() {
   ]);
 
   const dismiss = useCallback(() => {
-    dispatch(
-      updateSetting({
-        key: "last-acknowledged-version",
-        value: currentVersion.tag,
-      }),
-    );
-  }, [currentVersion.tag, dispatch]);
+    updateSetting({
+      key: "last-acknowledged-version",
+      value: currentVersion.tag,
+    });
+  }, [currentVersion.tag, updateSetting]);
 
   if (!url) {
     return null;

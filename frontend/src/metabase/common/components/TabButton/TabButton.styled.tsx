@@ -104,6 +104,6 @@ export const MenuItem = styled.li`
   &:focus,
   :hover {
     color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 `;

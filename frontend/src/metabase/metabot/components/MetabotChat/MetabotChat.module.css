@@ -12,11 +12,23 @@
   padding: 1.25rem 1.5rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.headerTitle {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.25;
+}
+
+.headerActions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .inputContainer {
-  padding: 0 0.75rem 0 0.3rem;
+  position: relative;
+  padding: 0 0.75rem 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -31,7 +43,7 @@
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .messagesScrollArea {
@@ -88,7 +100,7 @@
 .messageUser {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
   max-width: 100%;
   overflow: hidden;
 }
@@ -113,7 +125,7 @@
 }
 
 .agentPartClickable:hover {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .agentPartActions {
@@ -122,7 +134,7 @@
 }
 
 .agentPartActionIcon:hover {
-  background-color: var(--mb-color-background-tertiary) !important;
+  background-color: var(--mb-color-background_page-tertiary) !important;
 }
 
 .agentPartCard:hover .agentPartActions,
@@ -158,9 +170,35 @@
   }
 }
 
-.textInputContainer {
-  padding: 0 1rem 1rem;
+.footerContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem;
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
+}
+
+.textInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.footerRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+
+  > :first-child {
+    grid-column: 2;
+  }
+}
+
+.contextUsage {
+  grid-column: 3;
+  justify-self: end;
 }

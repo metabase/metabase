@@ -5,11 +5,15 @@ import _ from "underscore";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
-import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
+import { getErrorMessage } from "metabase/api/utils";
 import type { SearchSettingsWidgetProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getPlan,
+  getSetting,
+  isProPlan,
+  useAdminSetting,
+} from "metabase/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
@@ -92,7 +96,7 @@ export function SearchSettingsWidget({
           </Box>
 
           {response.error && (
-            <Text c="error">
+            <Text c="feedback-negative">
               {getErrorMessage(
                 response,
                 t`Unable to fetch health status of search index.`,
@@ -108,7 +112,7 @@ export function SearchSettingsWidget({
                 maw="25rem"
                 animated={progress < 100}
               />
-              <Text c="text-tertiary" size="md">
+              <Text c="text-disabled" size="md">
                 {progress === 100
                   ? t`Initialized search index`
                   : t`Initializing search index...`}

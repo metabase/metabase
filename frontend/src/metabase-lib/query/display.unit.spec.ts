@@ -1,6 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDatetimeColumn,
+  createMockField,
+  createMockNumericColumn,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createSampleDatabase,
@@ -161,6 +166,30 @@ describe("defaultDisplay", () => {
     });
 
     expect(defaultDisplay(query)).toEqual({ display: "line" });
+  });
+
+  it("uses result columns when query metadata is unavailable (UXW-4958)", () => {
+    const queryWithMetadata = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+          ],
+        },
+      ],
+    });
+    const query = Lib.fromJsQueryAndMetadata(
+      createMockMetadata(),
+      Lib.toJsQuery(queryWithMetadata),
+    );
+    const resultColumns = [
+      createMockDatetimeColumn({ source: "breakout" }),
+      createMockNumericColumn({ source: "aggregation" }),
+    ];
+
+    expect(defaultDisplay(query, resultColumns)).toEqual({ display: "line" });
   });
 
   it("returns 'bar' display for queries with aggregations and 1 breakout with binning", () => {

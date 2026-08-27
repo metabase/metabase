@@ -77,9 +77,7 @@ export const SlackChannelField = ({
 
   return (
     <div>
-      <span className={cx(CS.block, CS.textBold, CS.pb2)}>
-        {channelField?.displayName}
-      </span>
+      <span className={cx(CS.block, CS.pb2)}>{channelField?.displayName}</span>
       <Autocomplete
         data={displayNames}
         value={value}

@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -22,8 +21,8 @@
   "Log changes to the permissions graph."
   [old new]
   (log/debug "Changing permissions"
-             "\n FROM:" (u/pprint-to-str :magenta old)
-             "\n TO:"   (u/pprint-to-str :blue new)))
+             "FROM:" (pr-str old)
+             "TO:"   (pr-str new)))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
@@ -349,6 +348,16 @@
                     {:status-code 403})))
   ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
   ;; ee version becomes available
+  false)
+
+(defenterprise sandboxed-user-for-db?
+  "Returns a boolean if the current user has any enforced sandbox for the given database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
   false)
 
 (defn sandboxed-or-impersonated-user?

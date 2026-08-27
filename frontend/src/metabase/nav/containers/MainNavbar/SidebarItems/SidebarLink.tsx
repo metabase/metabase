@@ -28,6 +28,8 @@ interface SidebarLinkProps {
   left?: ReactNode;
   right?: ReactNode;
   onClick?: (event: MouseEvent) => void;
+  target?: string;
+  rel?: string;
 }
 
 type ContentProps = {
@@ -57,6 +59,8 @@ function SidebarLink({
   left = null,
   right = null,
   onClick,
+  target,
+  rel,
   ...props
 }: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
@@ -88,7 +92,13 @@ function SidebarLink({
   const Content = useMemo(() => {
     return url
       ? (props: ContentProps) => (
-          <FullWidthLink {...props} to={url} onClick={onClick} />
+          <FullWidthLink
+            {...props}
+            to={url}
+            target={target}
+            rel={rel}
+            onClick={onClick}
+          />
         )
       : (props: ContentProps) => (
           <FullWidthButton
@@ -97,7 +107,7 @@ function SidebarLink({
             onClick={onClick}
           />
         );
-  }, [url, isSelected, onClick]);
+  }, [url, isSelected, onClick, target, rel]);
 
   return (
     <NodeRoot

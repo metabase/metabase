@@ -76,9 +76,10 @@
 (defn- params->where
   [{:keys [status task]}]
   (when (or status task)
+    ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
     {:where (cond-> [:and]
-              task   (conj [:= :task task])
-              status (conj [:= :status (name status)]))}))
+              task   (conj [:= :task_history.task task])
+              status (conj [:= :task_history.status (name status)]))}))
 
 (def FilterParams
   "Schema for filter for task history."
@@ -86,13 +87,25 @@
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
+(def ^:private join-sort-columns
+  "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
+  {:db_name   :metabase_database.name
+   :db_engine :metabase_database.engine})
+
 (defn- params->order-by
+  "Build the honeysql fragment needed to order the task history list. For `:db_name`/`:db_engine` this adds a LEFT JOIN
+  to `metabase_database` (ordering by the joined name/engine) while keeping the selected row shape to `task_history.*`.
+  A secondary `[:id :desc]` key makes ordering deterministic for low-cardinality columns."
   [{col :sort_column
     dir :sort_direction}]
-  {:order-by [[col dir]]})
+  (if-let [order-col (join-sort-columns col)]
+    {:select    [:task_history.*]
+     :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
+     :order-by  [[order-col dir] [:task_history.id :desc]]}
+    {:order-by [[col dir] [:id :desc]]}))
 
 (def ^:private available-sort-columns
-  #{:duration :ended_at :started_at})
+  #{:started_at :ended_at :duration :task :status :db_name :db_engine})
 
 (def SortParams
   "Sorting map schema."

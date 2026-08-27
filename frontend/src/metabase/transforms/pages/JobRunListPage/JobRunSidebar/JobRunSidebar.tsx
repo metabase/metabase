@@ -75,6 +75,7 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         className={S.sidebar}
         direction="column"
         flex={1}
+        miw={0}
         h="100%"
         bg="background_page-primary"
         data-testid="job-run-list-sidebar"
@@ -87,7 +88,7 @@ export const JobRunSidebar = memo(function JobRunSidebar({
             <JobRunInfoSection run={run} />
             <Stack gap="md">
               <Group gap="sm" wrap="nowrap">
-                <Badge variant="filled" bg="core-brand">
+                <Badge color="brand" size="sm" variant="filled">
                   {transformRuns.length}
                 </Badge>
                 <Title order={5}>{t`Transforms`}</Title>

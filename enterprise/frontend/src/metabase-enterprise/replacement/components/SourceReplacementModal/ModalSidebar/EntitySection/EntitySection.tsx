@@ -12,13 +12,13 @@ export function EntitySection({ icon, error, children }: EntitySectionProps) {
   return (
     <Card px="md" py="lg" withBorder shadow="none">
       <Group align="start" wrap="nowrap">
-        <Box p="sm" bg="background-brand" bdrs="md">
+        <Box p="sm" bg="background_surface-brand-subtle" bdrs="md">
           <FixedSizeIcon c="core-brand" name={icon} />
         </Box>
         <Stack gap="sm" miw={0}>
           {children}
           {error && (
-            <Text c="error" size="sm">
+            <Text c="feedback-negative" size="sm">
               {error}
             </Text>
           )}

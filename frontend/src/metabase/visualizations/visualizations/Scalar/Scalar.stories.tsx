@@ -20,9 +20,9 @@ export default {
   component: Scalar,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Scalar);
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ name: "Card", display: "scalar" }),
@@ -83,6 +83,7 @@ WithFormattingAndHover.play = async ({
 }) => {
   const asyncCallback = createAsyncCallback();
   try {
+    // Unjustified type cast. FIXME
     const canvas = within(canvasElement.parentElement as HTMLElement);
     const value = (await canvas.findAllByTestId("scalar-value"))[2];
 

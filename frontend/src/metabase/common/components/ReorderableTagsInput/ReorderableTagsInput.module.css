@@ -3,8 +3,8 @@
   flex-wrap: wrap;
   gap: var(--mantine-spacing-xs);
   align-items: center;
-  border: 1px dashed var(--mb-color-saturated-blue) !important;
-  background-color: var(--mb-color-background-brand);
+  border: 1px dashed var(--mb-color-core-blue-saturated) !important;
+  background-color: var(--mb-color-background_surface-brand-subtle);
   border-radius: var(--mantine-radius-md);
   transition: box-shadow 250ms ease;
   min-height: 3.25rem;
@@ -15,21 +15,14 @@
 }
 
 .dragOver:not(.max) {
-  box-shadow: 0 0 2px 1px var(--mb-color-saturated-blue);
+  box-shadow: 0 0 2px 1px var(--mb-color-core-blue-saturated);
   cursor: none !important;
 }
 
 .pill {
   display: flex;
   flex: 0 0 auto;
-  padding-inline: 0.5rem;
-  height: 100%;
-  background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-xl);
   cursor: pointer;
-  color: var(--mb-color-text-primary);
-  font-weight: bold;
   min-width: 4rem;
   text-overflow: ellipsis;
   overflow: hidden;

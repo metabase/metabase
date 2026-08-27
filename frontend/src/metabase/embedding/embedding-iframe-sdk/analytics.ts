@@ -442,6 +442,7 @@ function countPropertyValues<
   const counts = new Map<string, number>();
 
   options.embeds.forEach((embed) => {
+    // Unjustified type cast. FIXME
     const propertyValue = (embed.properties as Record<string, any>)[
       options.propertyName
     ];

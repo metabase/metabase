@@ -1,5 +1,9 @@
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { ConcreteFieldReference } from "metabase-types/api";
+import type {
+  ConcreteFieldReference,
+  Dataset,
+  MetricDatasetRequest,
+} from "metabase-types/api";
 
 const { H } = cy;
 const { SourceReplacement } = H.DataModel;
@@ -194,8 +198,21 @@ describe(
 
         cy.log("metric now aggregates data from the new table");
         cy.get<Cypress.Response<{ id: number }>>("@metric").then(({ body }) => {
+          cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
           H.visitMetric(body.id);
-          H.main().findByText("800").should("be.visible");
+          cy.wait<MetricDatasetRequest, Dataset>("@metricDataset").then(
+            ({ response }) => {
+              expect(response?.statusCode).to.equal(202);
+              const total = response?.body.data.rows.reduce((sum, row) => {
+                return sum + Number(row[row.length - 1]);
+              }, 0);
+              expect(total).to.equal(800);
+            },
+          );
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .and("have.attr", "data-viz-ui-name", "Number");
+          cy.findByTestId("scalar-value").should("have.text", "800");
         });
       });
 
@@ -403,6 +420,11 @@ describe(
       it("opens replacement from the dependency graph and replaces successfully", () => {
         createTestTables();
         createSourceQuestion("Graph question").as("question");
+
+        // The replacement modal fetches the dependents of the source table
+        // exactly once when it opens; wait for the async dependency backfill
+        // so the question's dependency row exists by then.
+        H.waitForBackfillComplete();
 
         getTableId(SOURCE_TABLE).then((sourceTableId) => {
           cy.visit(`/data-studio/dependencies?id=${sourceTableId}&type=table`);
@@ -821,6 +843,12 @@ function getTableId(tableName: string) {
 }
 
 function openReplacementModal(sourceTableLabel: string) {
+  // The modal fetches the dependents of the source table exactly once when it
+  // opens, and the card -> table dependency rows are written by an async
+  // backfill job. Wait for the backfill so the modal doesn't race it and show
+  // "Nothing uses this data source" for a table that does have dependents.
+  H.waitForBackfillComplete();
+
   H.DataModel.visitDataStudio();
 
   H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
@@ -1042,7 +1070,6 @@ function createHighAmountSegment() {
       (amountFieldId) =>
         H.createSegment({
           name: "High amount",
-          table_id: sourceTableId,
           definition: {
             type: "query",
             database: WRITABLE_DB_ID,
@@ -1062,10 +1089,13 @@ function createSourceTotalAmountMeasure() {
       (amountFieldId) =>
         H.createMeasure({
           name: "Total amount",
-          table_id: sourceTableId,
           definition: {
-            "source-table": sourceTableId,
-            aggregation: [["sum", ["field", amountFieldId, null]]],
+            database: WRITABLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": sourceTableId,
+              aggregation: [["sum", ["field", amountFieldId, null]]],
+            },
           },
         }),
     ),

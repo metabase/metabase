@@ -2,6 +2,7 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
+  PermissionsDatabase,
   Revision,
 } from "metabase-types/api";
 
@@ -14,7 +15,7 @@ export type AdminPathKey =
   | "databases"
   | "permissions"
   | "audit"
-  | "tools"
+  | "help"
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"
@@ -33,6 +34,8 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    /** Databases whose tables the permissions tree has seen, kept while the page is open. */
+    databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
     dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;

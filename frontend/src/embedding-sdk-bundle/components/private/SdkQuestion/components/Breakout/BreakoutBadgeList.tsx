@@ -6,7 +6,7 @@ import {
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Breakout/use-breakout-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import { BadgeList } from "../util/BadgeList";

@@ -1,0 +1,44 @@
+/* Extends 5/8 of the pinned grid's `md` spacing (see PinnedItemsGrid) into the
+   gaps so the drop slots between cards are reachable. */
+.dropTarget {
+  position: absolute !important;
+  top: 0;
+  bottom: 0;
+  left: -0.625rem;
+  right: -0.625rem;
+  pointer-events: none;
+  background-color: transparent;
+}
+
+/* The drop area renders arbitrary children through a render prop; re-enable
+   pointer events on all of them. */
+.dropTarget * {
+  pointer-events: all;
+}
+
+.indicator {
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.visible {
+  display: block;
+}
+
+.front {
+  border-left: 4px solid var(--mb-color-background_page-tertiary);
+}
+
+.back {
+  border-right: 4px solid var(--mb-color-background_page-tertiary);
+}
+
+.hovered.front {
+  border-left-color: var(--mb-color-core-brand);
+}
+
+.hovered.back {
+  border-right-color: var(--mb-color-core-brand);
+}

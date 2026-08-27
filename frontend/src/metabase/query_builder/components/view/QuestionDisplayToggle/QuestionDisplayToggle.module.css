@@ -3,20 +3,20 @@
   align-items: center;
   padding: 4px 6px;
   border-radius: 99px;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   transition: background 300ms linear;
   cursor: pointer;
 
   &:hover {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-tertiary),
+      var(--mb-color-background_page-tertiary),
       black 5%
     );
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
     outline-offset: 1px;
   }
 }

@@ -55,6 +55,20 @@
                          :user-id (str (mt/user->id :crowberto))}]
                        (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
+(deftest enabling-embedding-generates-secret-key-test
+  (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:embedding}
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
+            (embed.settings/enable-embedding-simple! true)
+            (is (true? (embed.settings/enable-embedding-simple)))
+            (is (not (str/blank? (embed.settings/embedding-secret-key))))
+            (let [generated-key (embed.settings/embedding-secret-key)]
+              (embed.settings/enable-embedding-static! true)
+              (is (= generated-key (embed.settings/embedding-secret-key))
+                  "an existing secret key is preserved, not regenerated"))))))))
+
 (def ^:private other-ip "1.2.3.4:5555")
 
 (deftest enable-embedding-SDK-true-ignores-localhosts
@@ -123,7 +137,7 @@
   (depricated-setting-throws #'embed.settings/check-origins-settings! {:mb-embedding-app-origin true :mb-embedding-app-origins-interactive true :mb-embedding-app-origins-sdk false}))
 
 (defn test-enabled-sync! [env expected-behavior]
-  (let [unsyncd-settings {:enable-embedding             #_:clj-kondo/ignore (embed.settings/enable-embedding)
+  (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
                           :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
                           :enable-embedding-static      (embed.settings/enable-embedding-static)}]
@@ -162,7 +176,7 @@
 
 (defn test-origin-sync! [env expected-behavior]
   (testing (str "origin sync with expected-behavior: " expected-behavior)
-    (let [unsyncd-setting {:embedding-app-origin              #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+    (let [unsyncd-setting {:embedding-app-origin              #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/embedding-app-origin)
                            :embedding-app-origins-interactive (embed.settings/embedding-app-origins-interactive)
                            :embedding-app-origins-sdk         (embed.settings/embedding-app-origins-sdk)}]
       ;; called for side effects

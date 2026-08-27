@@ -58,6 +58,7 @@ const makeRawSeries = (
   rows: unknown[][],
   visualizationSettings: Record<string, unknown> = {},
 ): RawSeries =>
+  // Unjustified type cast. FIXME
   [
     {
       card: { display: "map", visualization_settings: visualizationSettings },

@@ -10,7 +10,7 @@ import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
-  resetConversation,
+  startNewConversation,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -32,11 +32,7 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
   return (
     isFulfilled(action) &&
     action.payload.data?.processedResponse.data.some(
-      (dp) =>
-        typeof dp === "object" &&
-        dp !== null &&
-        "type" in dp &&
-        (dp as { type: string }).type === "code_edit",
+      (dp) => dp.type === "data-code_edit",
     )
   );
 };
@@ -45,7 +41,8 @@ export function useMetabotSQLSuggestion({
   bufferId,
   onGenerated,
 }: UseMetabotSQLSuggestionOptions) {
-  const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
+  const { isDoingScience, submitInput, cancelRequest, conversationId } =
+    useMetabotAgent("sql");
 
   const [error, setError] = useState<MetabotAgentTurnDisplayError>();
 
@@ -93,11 +90,11 @@ export function useMetabotSQLSuggestion({
   const reject = useCallback(() => {
     dispatch(
       addDeveloperMessage({
-        agentId: "sql",
+        conversationId,
         message: `User rejected the following suggestion:\n\n${source}`,
       }),
     );
-  }, [dispatch, source]);
+  }, [dispatch, source, conversationId]);
 
   const clear = useCallback(() => {
     dispatch(removeSuggestedCodeEdit(bufferId));
@@ -105,7 +102,7 @@ export function useMetabotSQLSuggestion({
 
   const reset = useCallback(() => {
     dispatch(removeSuggestedCodeEdit(bufferId));
-    dispatch(resetConversation({ agentId: "sql" }));
+    dispatch(startNewConversation({ agentId: "sql" }));
   }, [dispatch, bufferId]);
 
   const suggestionModels: SuggestionModel[] = useMemo(

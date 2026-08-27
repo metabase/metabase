@@ -147,7 +147,6 @@
   (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
 (deftest ^:parallel compatible-type?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/compatible-type?
                                                        {:base-type      base-lhs
                                                         :effective-type eff-lhs}

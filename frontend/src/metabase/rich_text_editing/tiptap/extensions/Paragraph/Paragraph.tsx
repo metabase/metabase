@@ -1,19 +1,13 @@
 import type { NodeViewProps } from "@tiptap/core";
-import { Paragraph } from "@tiptap/extension-paragraph";
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react";
-import cx from "classnames";
-
-import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
-import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
+import { Paragraph, type ParagraphOptions } from "@tiptap/extension-paragraph";
+import { NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-import S from "../extensions.module.css";
+import { type BlockNodeOptions, DefaultBlockShell } from "../shared/BlockShell";
 
-export const CustomParagraph = Paragraph.extend({
+export const CustomParagraph = Paragraph.extend<
+  ParagraphOptions & BlockNodeOptions
+>({
   addAttributes() {
     return {
       ...createIdAttribute(),
@@ -35,53 +29,16 @@ export const ParagraphNodeView = ({
   getPos,
   extension,
 }: NodeViewProps) => {
-  const editorContext = extension?.options?.editorContext || "document";
-  const hideMenusInContext = editorContext === "comments";
-
-  const {
-    _id,
-    isOpen,
-    isHovered,
-    hovered,
-    setHovered,
-    unresolvedCommentsCount,
-    document,
-    shouldShowMenus,
-    setReferenceElement,
-    commentsRefs,
-    commentsFloatingStyles,
-  } = useBlockMenus({
-    node,
-    editor,
-    getPos,
-    shouldHideMenus: hideMenusInContext,
-  });
+  const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <>
-      <NodeViewWrapper
-        aria-expanded={isOpen}
-        className={cx(S.root, {
-          [S.open]: isOpen || isHovered,
-        })}
-        data-node-id={_id}
-        ref={setReferenceElement}
-        onMouseOver={() => setHovered(true)}
-        onMouseOut={() => setHovered(false)}
-      >
-        <NodeViewContent<"p"> as="p" />
-      </NodeViewWrapper>
-
-      {shouldShowMenus && document && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={commentsRefs.setFloating}
-          show={isOpen || hovered}
-          style={commentsFloatingStyles}
-          unresolvedCommentsCount={unresolvedCommentsCount}
-        />
-      )}
-    </>
+    <BlockShell
+      node={node}
+      editor={editor}
+      getPos={getPos}
+      hideMenus={extension.options.editorContext === "comments"}
+    >
+      <NodeViewContent<"p"> as="p" />
+    </BlockShell>
   );
 };

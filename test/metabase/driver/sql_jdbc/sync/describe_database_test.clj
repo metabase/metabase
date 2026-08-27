@@ -36,11 +36,12 @@
 
 (deftest ^:parallel simple-select-probe-query-test-2
   ;; this is mostly a sanity check against some of our known drivers so ok to hardcode driver names.
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (testing "real drivers produce correct query"
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
       :h2
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       :postgres)))
 
 (deftest ^:parallel simple-select-probe-query-test-3
@@ -101,7 +102,7 @@
                      {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}
-                   (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id))))))
+                   (into #{} (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))))
 
 (defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
@@ -123,9 +124,10 @@
        db
        nil
        (fn [_conn]
-         (sql-jdbc.describe-database/describe-database driver db)
-         (reduce + (for [^ResultSet rs @resultsets]
-                     (if (.isClosed rs) 0 1))))))))
+         ;; `:tables` is a reducible -- realize it so `active-tables` actually opens (and closes) its ResultSets
+         (let [_ (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))]
+           (reduce + (for [^ResultSet rs @resultsets]
+                       (if (.isClosed rs) 0 1)))))))))
 
 (defn- count-active-tables-in-db
   [db-id]
@@ -261,8 +263,9 @@
                                  driver/*driver* conn schema table-name))))))))))))))
 
 ;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest sync-table-with-backslash-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers #{:postgres}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
@@ -297,7 +300,7 @@
                                           (vreset! closed-first true)
                                           (.close conn))
                                         (execute-select-probe-query driver conn query))]
-            (let [table-names #(->> % :tables (map :name) set)
+            (let [table-names #(into #{} (map :name) (:tables %))
                   all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))

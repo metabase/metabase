@@ -141,5 +141,6 @@ export default (ComposedComponent: ComponentType<any>) => {
   return connect(
     mapStateToProps,
     mapDispatchToProps,
+    // Unjustified type cast. FIXME
   )(RemappedComponent as ComponentType<any>) as unknown as ComponentType<any>;
 };

@@ -4,8 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.system.core :as system]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.markdown.image :as markdown.image])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
                              Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -17,7 +17,7 @@
    (com.vladsch.flexmark.parser Parser)
    (com.vladsch.flexmark.util.ast Document Node)
    (com.vladsch.flexmark.util.data MutableDataSet)
-   (java.net URI)))
+   (java.net URI URISyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -197,17 +197,34 @@
       (str/replace "`" "\u00ad`\u00ad")
       (str/replace "~" "\u00ad~\u00ad")))
 
+(def ^:private ^:dynamic *site-url*
+  "The instance's site URL, bound by [[process-markdown]] from its `site-url` argument. A dynamic var rather
+  than a threaded parameter because [[resolve-uri]] is reached through the AST multimethods and flexmark's
+  link-resolver callback."
+  nil)
+
+(def ^:private allowed-link-schemes
+  "URI schemes markdown links/images may use in rendered notifications; links with other schemes are dropped."
+  #{"http" "https" "mailto"})
+
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
-  correctly in Slack/Email."
+  correctly in Slack/Email. Returns nil for URIs that are malformed or whose scheme isn't in
+  [[allowed-link-schemes]] — callers should drop the link."
   [^String uri]
   (letfn [(ensure-slash ^String [s] (when s
                                       (cond-> s
                                         (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [site-url (ensure-slash (system/site-url))]
-        (.. (URI. site-url) (resolve uri) toString)
-        uri))))
+      (if (re-find markdown.image/data-image-uri-pattern uri)
+        uri
+        (try
+          (let [scheme (.getScheme (URI. uri))]
+            (when (or (nil? scheme) (allowed-link-schemes (u/lower-case-en scheme)))
+              (if-let [site-url (ensure-slash *site-url*)]
+                (.. (URI. site-url) (resolve uri) toString)
+                uri)))
+          (catch URISyntaxException _ nil))))))
 
 (defn- ^:private strip-tag
   "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
@@ -312,20 +329,35 @@
   [{:keys [content attrs]}]
   (let [resolved-uri     (resolve-uri (:href attrs))
         resolved-content (resolved-content content)]
-    (if (contains? #{:image :image-ref} (:tag (first content)))
+    (cond
+      ;; a dropped (malformed or non-allow-listed) link renders as its text alone
+      (nil? resolved-uri)
+      resolved-content
+
       ;; If this is a linked image, add link target on separate line after image placeholder
+      (contains? #{:image :image-ref} (:tag (first content)))
       [resolved-content "\n(" resolved-uri ")"]
+
+      :else
       ["<" resolved-uri "|" resolved-content ">"])))
 
 (defmethod ast->slack :link-ref
   [{:keys [content attrs]}]
-  (let [resolved-uri     (resolve-uri (-> attrs :reference :attrs :url))
+  (let [url              (-> attrs :reference :attrs :url)
+        resolved-uri     (resolve-uri url)
         resolved-content (resolved-content content)]
-    (if resolved-uri
+    (cond
+      resolved-uri
       ["<" resolved-uri "|" resolved-content ">"]
+
       ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
       ;; restore them. This is a known discrepancy between flexmark-java and Markdown rendering on the frontend.
-      ["[" resolved-content "]"])))
+      (nil? url)
+      ["[" resolved-content "]"]
+
+      ;; a dropped (malformed or non-allow-listed) reference renders as its text alone, like a dropped inline link
+      :else
+      resolved-content)))
 
 (defmethod ast->slack :auto-link
   [{{href :href} :attrs}]
@@ -358,20 +390,23 @@
   (map-indexed (fn [idx list-item] [(inc idx) ". " list-item])
                (resolved-content content)))
 
+(defn- slack-image
+  "Replace an image with text that links to its source, including alt text if available. A dropped (malformed
+  or non-allow-listed) source renders the placeholder text alone."
+  [src alt]
+  (let [placeholder (if (str/blank? alt) "[Image]" (str "[Image: " alt "]"))]
+    (if-let [resolved-uri (resolve-uri src)]
+      ["<" resolved-uri "|" placeholder ">"]
+      placeholder)))
+
 (defmethod ast->slack :image
   [{{:keys [src alt]} :attrs}]
-  ;; Replace images with text that links to source, including alt text if available
-  (if (str/blank? alt)
-    ["<" src "|[Image]>"]
-    ["<" src "|[Image: " alt "]>"]))
+  (slack-image src alt))
 
 (defmethod ast->slack :image-ref
   [{:keys [content attrs]}]
-  (let [src (-> attrs :reference :attrs :url)
-        alt (-> content resolved-content resolved-content-string)]
-    (if (str/blank? alt)
-      ["<" src "|[Image]>"]
-      ["<" src "|[Image: " alt "]>"])))
+  (slack-image (-> attrs :reference :attrs :url)
+               (-> content resolved-content resolved-content-string)))
 
 (defmethod ast->slack :html-entity
   [{content :content}]
@@ -398,32 +433,42 @@
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
                        (reify LinkResolver
                          (resolveLink [_this node _context link]
-                           (if-let [url (cond
-                                          (instance? MailLink node) (.getUrl link)
-                                          (empty-link-ref? node) nil
-                                          :else (resolve-uri (.getUrl link)))]
+                           (cond
+                             (instance? MailLink node)
                              (.. link
                                  (withStatus LinkStatus/VALID)
-                                 (withUrl url))
-                             link)))))]
+                                 (withUrl (.getUrl link)))
+
+                             (empty-link-ref? node)
+                             link
+
+                             :else
+                             ;; nil from resolve-uri means the URL is malformed or not allow-listed —
+                             ;; blank it out rather than let flexmark render the original one
+                             (.. link
+                                 (withStatus LinkStatus/VALID)
+                                 (withUrl (or (resolve-uri (.getUrl link)) ""))))))))]
     (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
-  (Slack's markup language, or HTML for email)."
-  {:arglists '([markdown channel-type])}
-  (fn [_markdown channel-type] channel-type))
+  (Slack's markup language, or HTML for email). `site-url` is the instance's site URL, used to absolutize
+  relative links; callers look it up so this namespace stays settings-free."
+  {:arglists '([markdown channel-type site-url])}
+  (fn [_markdown channel-type _site-url] channel-type))
 
 (defmethod process-markdown :slack
-  [markdown _channel-type]
-  (-> (.parse ^Parser parser ^String markdown)
-      to-clojure
-      ast->slack
-      flatten
-      str/join
-      str/trim))
+  [markdown _channel-type site-url]
+  (binding [*site-url* site-url]
+    (-> (.parse ^Parser parser ^String markdown)
+        to-clojure
+        ast->slack
+        flatten
+        str/join
+        str/trim)))
 
 (defmethod process-markdown :html
-  [markdown _channel-type]
-  (let [ast (.parse ^Parser parser ^String markdown)]
-    (.render ^HtmlRenderer renderer ^Document ast)))
+  [markdown _channel-type site-url]
+  (binding [*site-url* site-url]
+    (let [ast (.parse ^Parser parser ^String markdown)]
+      (.render ^HtmlRenderer renderer ^Document ast))))

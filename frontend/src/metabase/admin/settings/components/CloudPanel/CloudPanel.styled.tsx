@@ -7,7 +7,7 @@ export const MigrationCard = styled.div`
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   padding: 2rem 3rem;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
 `;
 
 export const LargeIconContainer = styled.div<{

@@ -7,12 +7,12 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   SettingsExtra,
   Widget,
-} from "metabase/visualizations/types/visualization";
+} from "metabase/visualizations/types/definition";
 import type Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,

@@ -189,4 +189,13 @@ describe("DatabaseConnectionInfoSection", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("Sample database", () => {
+    it("should disable editing the connection details", async () => {
+      setup({ database: createMockDatabase({ is_sample: true }) });
+      expect(
+        await screen.findByRole("button", { name: /Edit connection details/i }),
+      ).toBeDisabled();
+    });
+  });
 });

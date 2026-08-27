@@ -84,58 +84,63 @@
           accum
           (t2/reducible-query
            {:with [[:eligible_collections
+                    ^:allow-subquery
                     {:select [:id]
                      :from [:collection]
                      :where [:and
-                             [:or [:= :type nil] [:not= :type [:inline "trash"]]]
+                             [:or [:= :type nil] [:not= :type "trash"]]
                              (perms/namespace-clause
                               :namespace (u/qualified-name collection-namespace))
                              [:not :archived]
                              [:= :personal_owner_id nil]
                              (when (seq ids-without-root)
                                [:in :id ids-without-root])
-                             [:not [:exists {:select [1]
-                                             :from [[:collection :pc]]
-                                             :where [:and
-                                                     [:not= :pc.personal_owner_id nil]
-                                                     [:like :collection.location
-                                                      [:concat "/" :pc.id "/%"]]]}]]]}]
+                             [:not [:exists ^:allow-subquery
+                                    {:select [1]
+                                     :from [[:collection :pc]]
+                                     :where [:and
+                                             [:not= :pc.personal_owner_id nil]
+                                             [:like :collection.location
+                                              [:concat "/" :pc.id "/%"]]]}]]]}]
                    [:relevant_permissions
+                    ^:allow-subquery
                     {:select [:group_id :collection_id :perm_value]
                      :from [:permissions]
                      :where (into [:and
-                                   [:= :perm_type [:inline "perms/collection-access"]]
+                                   [:= :perm_type "perms/collection-access"]
                                    [:not= :collection_id nil]]
                                   (when (seq group-ids)
                                     [[:in :group_id group-ids]]))}]]
             :union-all
             [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
              ;; and :root is not present in that collection
+             ^:allow-subquery
              {:select [[:pg.id :group_id]
                        [nil :collection_id]
-                       [[:max [:case [:= :p.object [:inline root-object]]
+                       [[:max [:case [:= :p.object root-object]
                                [:inline 1]
                                :else [:inline 0]]] :writable]
-                       [[:max [:case [:= :p.object [:inline (str root-object "read/")]]
+                       [[:max [:case [:= :p.object (str root-object "read/")]
                                [:inline 1]
                                :else [:inline 0]]] :readable]]
               :from [[:permissions_group :pg]]
               :join [[:permissions :p] [:and
                                         [:= :p.group_id :pg.id]
-                                        [:or [:= :p.object [:inline root-object]]
-                                         [:= :p.object [:inline (str root-object "read/")]]]]]
+                                        [:or [:= :p.object root-object]
+                                         [:= :p.object (str root-object "read/")]]]]
               :where (into [:and [:inline include-root?]]
                            (when (seq group-ids)
                              [[:in :pg.id group-ids]]))
               :group-by [:pg.id]}
              ;; Query 2: Regular collection permissions
+             ^:allow-subquery
              {:select [[:pg.id :group_id]
                        [:c.id :collection_id]
-                       [[:max [:case [:= :p.perm_value [:inline "read-and-write"]]
+                       [[:max [:case [:= :p.perm_value "read-and-write"]
                                [:inline 1]
                                :else [:inline 0]]] :writable]
-                       [[:max [:case [:or [:= :p.perm_value [:inline "read-and-write"]]
-                                      [:= :p.perm_value [:inline "read"]]]
+                       [[:max [:case [:or [:= :p.perm_value "read-and-write"]
+                                      [:= :p.perm_value "read"]]
                                [:inline 1]
                                :else [:inline 0]]] :readable]]
               :from [[:permissions_group :pg]]
@@ -145,6 +150,7 @@
               :group-by [:pg.id :c.id]}
              ;; Query 3: The Administrators group has write access to all collections
              ;; but does not have any explicit permissions.
+             ^:allow-subquery
              {:select [[(u/the-id (perms-group/admin)) :group_id]
                        [:c.id :collection_id]
                        [[:inline 1] :writable]
@@ -270,12 +276,13 @@
        [:and
         [:in :id id-set]
         [:or [:not= :personal_owner_id nil]
-         [:exists {:select [1]
-                   :from [[:collection :pc]]
-                   :where [:and
-                           [:not= :pc.personal_owner_id nil]
-                           [:like :collection.location
-                            [:concat "/" :pc.id "/%"]]]}]]]))))
+         [:exists ^:allow-subquery
+          {:select [1]
+           :from [[:collection :pc]]
+           :where [:and
+                   [:not= :pc.personal_owner_id nil]
+                   [:like :collection.location
+                    [:concat "/" :pc.id "/%"]]]}]]]))))
 
 (defn- remove-personal-collections-from-graph
   "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."

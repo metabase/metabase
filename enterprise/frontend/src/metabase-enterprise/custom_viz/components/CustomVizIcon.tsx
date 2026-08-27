@@ -17,7 +17,7 @@ export function CustomVizIcon({ plugin }: Props) {
       align="center"
       bd="1px solid var(--mb-color-border-neutral)"
       bdrs="xl"
-      bg="background-secondary"
+      bg="background_page-secondary"
       justify="center"
       w="3.125rem"
       h="3.125rem"

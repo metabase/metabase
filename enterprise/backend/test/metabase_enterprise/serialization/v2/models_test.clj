@@ -3,10 +3,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.models]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -37,31 +36,7 @@
                                       serdes.models/inlined-models
                                       serdes.models/excluded-models))]
         (is (= (set known-models)
-               (set (map name (v2.entity-ids/toucan-models)))))))))
-
-(deftest ^:parallel every-model-is-supported-test-2
-  (testing "Serialization support\n"
-    (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))
-          excluded              (set serdes.models/excluded-models)]
-      (doseq [model (v2.entity-ids/toucan-models)]
-        (let [custom-entity-id?   (not= (get-method serdes/entity-id (name model))
-                                        (get-method serdes/entity-id :default))
-              custom-hash-fields? (not= (get-method serdes/hash-fields model)
-                                        (get-method serdes/hash-fields :default))
-              random-entity-id?   (and custom-hash-fields?
-                                       (serdes.backfill/has-entity-id? model))]
-          ;; we're not checking inline-models for anything here, since some of them have (and use) entity_id, like
-          ;; dashcards, and some (ParameterCard) do not
-          (when (contains? should-have-entity-id (name model))
-            (testing (str "Model should either have entity_id or a hash key: " (name model))
-              ;; `not=` is effectively `xor`
-              (is (not= custom-entity-id? random-entity-id?))))
-          (when (contains? excluded (name model))
-            (testing (str "Model shouldn't have entity_id defined: " (name model))
-              (is (not custom-entity-id?))
-              ;; TODO: strip serialization stuff off Pulse*
-              (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"} (name model))
-                (is (not random-entity-id?))))))))))
+               (set (map name (keys models.resolution/model->namespace)))))))))
 
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
@@ -138,7 +113,7 @@
 
 (def ^:private auto-synthesized-fk-targets
   "FK target models whose importers auto-create a stub entity if the target is missing, so
-  they don't have to be declared in `serdes/dependencies`. Everything else MUST be declared
+  they don't have to be declared in `serdes/deserialization-dependencies`. Everything else MUST be declared
   — otherwise `*import-fk*` throws \"Could not find foreign key target\" and aborts the
   whole import (see GDGT-2444 for an example)."
   #{:model/User :model/Table :model/Field})
@@ -174,7 +149,7 @@
 
 (deftest ^:parallel serialization-direct-fk-dependencies-completeness-test
   (testing (str "Every direct FK declared via `(serdes/fk ...)` in a loadable (non-inlined) "
-                "model's `make-spec` is surfaced in that model's `serdes/dependencies` — "
+                "model's `make-spec` is surfaced in that model's `serdes/deserialization-dependencies` — "
                 "otherwise `*import-fk*` will throw \"Could not find foreign key target\" at "
                 "import time (see GDGT-2444).")
     (let [inlined? (set serdes.models/inlined-models)]
@@ -194,13 +169,13 @@
           (let [entity     (into {:serdes/meta [{:model m :id "self"}]}
                                  (for [[field _] fks]
                                    [field (str "fake-eid-" (name field))]))
-                deps       (set (serdes/dependencies entity))
+                deps       (set (serdes/deserialization-dependencies entity))
                 dep-models (set (keep (comp :model peek) deps))]
             (doseq [[field target] fks]
-              (testing (format "FK `%s` -> `%s` must appear in `(serdes/dependencies)`"
+              (testing (format "FK `%s` -> `%s` must appear in `(serdes/deserialization-dependencies)`"
                                field target)
                 (is (contains? dep-models (name target))
-                    (format (str "`(serdes/dependencies %s)` did not include a `%s` entry "
+                    (format (str "`(serdes/deserialization-dependencies %s)` did not include a `%s` entry "
                                  "when `%s` was populated. Add the FK to the model's "
                                  "`dependencies` method (see Table/Transform for an example).")
                             m (name target) field))))))))))

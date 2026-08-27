@@ -39,7 +39,7 @@ jest.mock("../FilterPopover/FilterPopoverContent", () => ({
         onClick={() => {
           onSourceDefinitionChange(definitionSources[0], {
             __after: "filter-popover-apply",
-          } as unknown);
+          });
           onFilterApplied();
         }}
       >
@@ -49,10 +49,13 @@ jest.mock("../FilterPopover/FilterPopoverContent", () => ({
   ),
 }));
 
+// Unjustified type cast. FIXME
 const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
+// Unjustified type cast. FIXME
 const mockTrackEdited = trackMetricsViewerFilterEdited as jest.MockedFunction<
   typeof trackMetricsViewerFilterEdited
 >;
+// Unjustified type cast. FIXME
 const mockTrackRemoved = trackMetricsViewerFilterRemoved as jest.MockedFunction<
   typeof trackMetricsViewerFilterRemoved
 >;
@@ -60,14 +63,18 @@ const mockTrackRemoved = trackMetricsViewerFilterRemoved as jest.MockedFunction<
 function makeDefinitionSource(): DefinitionSource {
   return {
     index: 0,
+    // Unjustified type cast. FIXME
     id: "src-0" as DefinitionSource["id"],
+    // Unjustified type cast. FIXME
     definition: { __fakeDef: 0 } as unknown as LibMetric.MetricDefinition,
+    // Unjustified type cast. FIXME
     entity: {} as DefinitionSource["entity"],
     entityIndex: 0,
     token: undefined,
   };
 }
 
+// Unjustified type cast. FIXME
 const oldFilter = {
   __clause: "old-segment",
 } as unknown as LibMetric.FilterClause;
@@ -122,6 +129,7 @@ describe("MetricsSegmentFilterPillPopover", () => {
 
   it("removes the original segment from the picked definition before propagating up", async () => {
     const source = makeDefinitionSource();
+    // Unjustified type cast. FIXME
     const replaced = {
       __after: "old-segment-removed",
     } as unknown as LibMetric.MetricDefinition;

@@ -2,8 +2,9 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useSendTestNotificationMutation } from "metabase/api/security-center";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
 import {
@@ -39,13 +40,13 @@ export function NotificationChannelConfigModal({
       await save();
       sendToast({
         message: t`Notification settings saved`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
       onClose();
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to save notification settings`,
       });
     } finally {
@@ -59,12 +60,12 @@ export function NotificationChannelConfigModal({
       await sendTestNotification(serializeNotificationConfig(config)).unwrap();
       sendToast({
         message: t`Test notification sent`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to send test notification`,
       });
     } finally {

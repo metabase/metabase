@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   min-width: 310px;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   overflow: auto;
 
   @media screen and (max-width: 40em) {

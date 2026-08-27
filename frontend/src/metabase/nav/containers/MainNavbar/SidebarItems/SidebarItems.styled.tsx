@@ -56,7 +56,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
   border-radius: 4px;
 
   &:focus-within {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
     outline-offset: -2px;
   }
 

@@ -1,8 +1,8 @@
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 
-import { apiRequestManipulationMiddleware } from "./middleware";
+import { runBeforeRequestHandlers } from "./middleware";
 
-describe("apiRequestManipulationMiddleware", () => {
+describe("runBeforeRequestHandlers", () => {
   it("should return the original data when there are no handlers", async () => {
     const inputData = {
       method: "GET" as const,
@@ -11,7 +11,7 @@ describe("apiRequestManipulationMiddleware", () => {
       data: {},
     };
 
-    const result = await apiRequestManipulationMiddleware([], inputData);
+    const result = await runBeforeRequestHandlers([], inputData);
     expect(result).toEqual(inputData);
   });
 
@@ -28,7 +28,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return;
     });
 
-    const result = await apiRequestManipulationMiddleware([handler], inputData);
+    const result = await runBeforeRequestHandlers([handler], inputData);
 
     expect(result).toEqual(inputData);
     expect(handler).toHaveBeenCalledWith(inputData);
@@ -51,7 +51,7 @@ describe("apiRequestManipulationMiddleware", () => {
       };
     });
 
-    const result = await apiRequestManipulationMiddleware([handler], inputData);
+    const result = await runBeforeRequestHandlers([handler], inputData);
 
     expect(result).toEqual({
       ...inputData,
@@ -77,7 +77,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return modifications;
     });
 
-    const result = await apiRequestManipulationMiddleware([handler], inputData);
+    const result = await runBeforeRequestHandlers([handler], inputData);
 
     expect(result).toEqual({ ...inputData, ...modifications });
   });
@@ -103,7 +103,7 @@ describe("apiRequestManipulationMiddleware", () => {
       };
     });
 
-    const result = await apiRequestManipulationMiddleware([handler], inputData);
+    const result = await runBeforeRequestHandlers([handler], inputData);
 
     expect(result.headers).toEqual({
       "X-Original": "value",
@@ -126,6 +126,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step1",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) + 2 },
       };
     });
@@ -135,6 +136,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step2",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) * 10 },
       };
     });
@@ -144,11 +146,12 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step3",
+        // Unjustified type cast. FIXME
         data: { ...data.data, value: (data.data.value as number) - 4 },
       };
     });
 
-    const result = await apiRequestManipulationMiddleware(
+    const result = await runBeforeRequestHandlers(
       [handler1, handler2, handler3],
       inputData,
     );
@@ -181,7 +184,7 @@ describe("apiRequestManipulationMiddleware", () => {
       };
     });
 
-    const result = await apiRequestManipulationMiddleware([handler], inputData);
+    const result = await runBeforeRequestHandlers([handler], inputData);
 
     expect(result.url).toBe("/api/modified-url");
     expect(result.headers).toEqual(inputData.headers);

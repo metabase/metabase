@@ -135,6 +135,7 @@ export interface AvailableDimension {
   group?: DimensionGroup;
   canListValues?: boolean;
   isPreferred?: boolean;
+  isDefault?: boolean;
   geoSubtype?: GeoSubtype | null;
   dimensionBreakoutInfo: DimensionBreakoutInfo;
 }

@@ -1,7 +1,7 @@
 import {
   type ContentTranslationTestSetupOptions,
   setupForContentTranslationTest,
-} from "metabase/i18n/test-utils";
+} from "metabase/content-translation/test-utils";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { createMockParameter } from "metabase-types/api/mocks";

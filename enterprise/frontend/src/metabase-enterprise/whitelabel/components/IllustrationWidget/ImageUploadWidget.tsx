@@ -4,9 +4,9 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useAdminSetting } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
@@ -47,6 +47,7 @@ export function ImageUploadWidget({
 
       const reader = new FileReader();
       reader.onload = async (readerEvent) => {
+        // Unjustified type cast. FIXME
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -87,7 +88,7 @@ export function ImageUploadWidget({
         description={descriptionProp ?? description}
       />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}

@@ -11,7 +11,7 @@ import {
   trackDataStudioTableFieldValuesDiscardStarted,
   trackDataStudioTableFieldsRescanStarted,
   trackDataStudioTableSchemaSyncStarted,
-} from "metabase/data-studio/analytics";
+} from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

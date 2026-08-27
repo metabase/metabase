@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCreateLlmProviderEndpoint,
   setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
@@ -13,6 +14,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type { MetabotUsageResponse } from "metabase-enterprise/api";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {
+  createMockLlmProviderConnection,
   createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
@@ -41,7 +43,10 @@ type SetupOptions = {
   offerMetabaseManagedAi?: boolean;
   metabasePricePerUnit?: number;
   pauseAddOnsResponse?: boolean;
+  purchaseCloudAddOnResponse?: RouteResponse;
   metabotUsageQuota?: MetabotUsageQuota | null;
+  onConnect?: () => void;
+  onCancel?: () => void;
 };
 
 function setup({
@@ -52,7 +57,10 @@ function setup({
   offerMetabaseManagedAi = false,
   metabasePricePerUnit = 3.0,
   pauseAddOnsResponse = false,
+  purchaseCloudAddOnResponse = 200,
   metabotUsageQuota = null,
+  onConnect,
+  onCancel,
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -86,6 +94,7 @@ function setup({
 
   setupMetabaseManagedAiEndpoints({
     metabasePricePerUnit,
+    purchaseCloudAddOnResponse,
     metabotUsageQuota: metabotUsageQuota
       ? {
           tokens: metabotUsageQuota.tokens ?? null,
@@ -109,6 +118,14 @@ function setup({
     () => sessionProperties["token-status"],
   );
 
+  setupCreateLlmProviderEndpoint(
+    createMockLlmProviderConnection({
+      key: "metabase",
+      type: "metabase",
+      name: "Metabase AI",
+    }),
+  );
+
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings(sessionProperties),
@@ -116,9 +133,12 @@ function setup({
 
   setupEnterpriseOnlyPlugin("metabot");
 
-  return renderWithProviders(<MetabaseAIProviderSetup />, {
-    storeInitialState,
-  });
+  return renderWithProviders(
+    <MetabaseAIProviderSetup onConnect={onConnect} onCancel={onCancel} />,
+    {
+      storeInitialState,
+    },
+  );
 }
 
 const PRICING: MetabaseManagedAiPricing = {
@@ -151,10 +171,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup();
 
       expect(
-        await screen.findByText("About Metabase AI service"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/The simplest way to get started with AI in Metabase/),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         await screen.findByText("Price per token - $3.00 per 1M tokens"),
@@ -165,7 +184,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup({ pauseAddOnsResponse: true });
 
       expect(screen.queryByText(/Price per token/i)).not.toBeInTheDocument();
-      expect(screen.getByText("About Metabase AI service")).toBeInTheDocument();
+      expect(
+        screen.getByText(/The simplest way to get started with AI in Metabase/),
+      ).toBeInTheDocument();
     });
 
     it("shows the Terms of Service checkbox when no managed AI feature is enabled", async () => {
@@ -214,7 +235,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup({ hasManagedAi: true });
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", {
@@ -230,7 +253,9 @@ describe("MetabaseAIProviderSetup", () => {
       });
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", {
@@ -238,6 +263,139 @@ describe("MetabaseAIProviderSetup", () => {
         }),
       ).not.toBeInTheDocument();
       expect(screen.queryByText(/legacy tiered AI/i)).not.toBeInTheDocument();
+    });
+
+    it("creates a managed provider connection when the managed AI feature is already enabled", async () => {
+      const onConnect = jest.fn();
+      setup({ hasManagedAi: true, onConnect });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Connect" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/llm/providers", {
+            method: "POST",
+            body: { type: "metabase" },
+          }),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+          { method: "POST" },
+        ),
+      ).toBe(false);
+      await waitFor(() => {
+        expect(onConnect).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("keeps the Connect button visible but disabled until the Terms are accepted", async () => {
+      setup();
+
+      const connect = await screen.findByRole("button", { name: "Connect" });
+      expect(connect).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+
+      expect(connect).toBeEnabled();
+    });
+
+    it("returns to provider selection when requested by the connection flow", async () => {
+      const onCancel = jest.fn();
+      setup({ hasManagedAi: true, onCancel });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Back" }),
+      );
+
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it("waits for the add-on purchase to finish before creating the connection", async () => {
+      let completePurchase = () => {};
+      const purchased = new Promise<void>((resolve) => {
+        completePurchase = resolve;
+      });
+      setup({ purchaseCloudAddOnResponse: () => purchased.then(() => 200) });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+            { method: "POST", body: { terms_of_service: true } },
+          ),
+        ).toBe(true);
+      });
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+        }),
+      ).toBe(false);
+
+      completePurchase();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/llm/providers", {
+            method: "POST",
+            body: { type: "metabase" },
+          }),
+        ).toBe(true);
+      });
+    });
+
+    it("does not create the connection when the add-on purchase fails", async () => {
+      setup({ purchaseCloudAddOnResponse: 500 });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+            { method: "POST" },
+          ),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+        }),
+      ).toBe(false);
+    });
+
+    it("does not offer a Connect button to non-admin users who must accept terms", async () => {
+      setup({ isAdmin: false });
+
+      expect(
+        await screen.findByText(
+          "Please ask an Admin user to enable this for you.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Connect" }),
+      ).not.toBeInTheDocument();
     });
 
     it("asks non-admin users to contact an admin instead of showing the Terms checkbox", async () => {
@@ -306,7 +464,7 @@ describe("MetabaseAIProviderSetup", () => {
         await screen.findByText("Current billing cycle"),
       ).toBeInTheDocument();
       expect(screen.getByText("Total tokens")).toBeInTheDocument();
-      expect(screen.getByText("3,000,000")).toBeInTheDocument();
+      expect(await screen.findByText("3,000,000")).toBeInTheDocument();
       expect(screen.getByText("Total cost")).toBeInTheDocument();
       // (3M - 1M) tokens at $3 per 1M tokens = $6.00
       expect(await screen.findByText("$6.00")).toBeInTheDocument();
@@ -380,10 +538,9 @@ describe("MetabasePricingText", () => {
       <MetabasePricingText pricing={{ ...PRICING, freeUnits: "1M" }} />,
     );
 
+    expect(screen.getByText("You get 1M tokens for free.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You get 1M tokens for free. Price per token afterward - $3.00 per 1M tokens",
-      ),
+      screen.getByText("Price per token afterward - $3.00 per 1M tokens"),
     ).toBeInTheDocument();
   });
 

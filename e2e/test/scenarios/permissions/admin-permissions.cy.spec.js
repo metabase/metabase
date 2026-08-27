@@ -88,7 +88,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       H.modal().should("not.exist");
 
       // Switching to data permissions page
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?");
@@ -102,7 +102,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/collections/root");
 
       // Switching to data permissions page again
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().button("Discard changes").click();
 
@@ -282,13 +282,13 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
-      cy.get("label").contains("Databases").click();
+      cy.findByRole("tab", { name: "Databases" }).click();
 
       cy.url().should("include", "/admin/permissions/data/database");
       H.modal().should("not.exist");
 
       // Switching to collection permissions page
-      cy.get("label").contains("Collection").click();
+      cy.findByRole("tab", { name: "Collections" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?");
@@ -302,7 +302,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/data/database");
 
       // Switching to collection permissions page again
-      cy.get("label").contains("Collection").click();
+      cy.findByRole("tab", { name: "Collections" }).click();
 
       H.modal().button("Discard changes").click();
 
@@ -310,41 +310,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("group focused view", () => {
-      it("shows filterable list of groups", () => {
-        cy.visit("/admin/permissions");
-
-        // no groups selected initially and it shows an empty state
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Select a group to see its data permissions");
-
-        const groups = [
-          "Administrators",
-          "All Users",
-          "collection",
-          "data",
-          "nosql",
-          "readonly",
-        ];
-
-        H.assertSidebarItems(groups);
-
-        // filter groups
-        cy.findByPlaceholderText("Search for a group").type("a");
-
-        const filteredGroups = [
-          "Administrators",
-          "All Users",
-          "data",
-          "readonly",
-        ];
-
-        cy.findAllByRole("menuitem").should(
-          "have.length",
-          filteredGroups.length,
-        );
-        H.assertSidebarItems(filteredGroups);
-      });
-
       it("allows to only view Administrators permissions", () => {
         cy.visit("/admin/permissions");
 
@@ -422,7 +387,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
             groups: {},
             revision: data.response.body.revision,
           }).then(() => {
-            cy.get("label").contains("Databases").click();
+            cy.findByRole("tab", { name: "Databases" }).click();
             H.selectSidebarItem("Sample Database");
 
             H.modal().findByText("Someone just changed permissions");
@@ -600,7 +565,7 @@ describe("scenarios > admin > permissions", () => {
     // from the browser, they will get the new values from local state
     cy.intercept("api/setting/show-updated-permission-modal", () => {
       tempState["show-updated-permission-modal"] = false;
-    });
+    }).as("updateModalSetting");
 
     cy.intercept("api/setting/show-updated-permission-banner", () => {
       tempState["show-updated-permission-banner"] = false;
@@ -612,7 +577,9 @@ describe("scenarios > admin > permissions", () => {
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
       .click();
-    cy.wait("@sessionProps");
+    // Dismissing writes the setting optimistically and does not refetch the
+    // session properties, so wait on the save itself.
+    cy.wait("@updateModalSetting");
 
     cy.findByRole("menuitem", { name: "All Users" }).click();
     cy.findByRole("alert").should(
@@ -647,11 +614,9 @@ describe("scenarios > admin > permissions", () => {
       });
     }).as("sessionProps");
 
-    // These calls are setting the permission to false, so update the local state. When the settings are refreshed
-    // from the browser, they will get the new values from local state
     cy.intercept("api/setting/show-updated-permission-modal", {
       statusCode: 500,
-    });
+    }).as("updateModalSetting");
 
     cy.visit("/admin/permissions/");
     cy.wait("@sessionProps");
@@ -659,8 +624,11 @@ describe("scenarios > admin > permissions", () => {
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
       .click();
-    cy.wait("@sessionProps");
+    cy.wait("@updateModalSetting");
 
+    cy.findByRole("dialog", { name: /permissions may look different/ }).should(
+      "not.exist",
+    );
     cy.findByRole("menuitem", { name: "All Users" }).click();
   });
 });

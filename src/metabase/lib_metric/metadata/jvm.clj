@@ -32,7 +32,7 @@
    Metrics are Cards with type='metric' - not scoped to any database."
   [{id-set :id, name-set :name, :keys [table-ids card-ids], :as _metadata-spec}]
   (let [active-only? (not (or id-set name-set))
-        where-clauses (cond-> [[:= :type [:inline "metric"]]]
+        where-clauses (cond-> [[:= :type "metric"]]
                         id-set       (conj [:in :id id-set])
                         name-set     (conj [:in :name name-set])
                         table-ids    (conj [:in :table_id table-ids])

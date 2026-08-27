@@ -1,10 +1,11 @@
-import innerText from "react-innertext";
+import { isValidElement } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { formatValue } from "metabase/visualizations/lib/formatting/value";
-import type { ColumnSettings } from "metabase/visualizations/types";
+import { formatValue } from "metabase/value-formatting";
+import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
+import type { ColumnSettings } from "metabase-types/api";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
 import {
@@ -20,6 +21,25 @@ import { DetailCandidate } from "./DetailCandidate";
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import { VariationDetails } from "./VariationDetails";
 import { VariationPercent } from "./VariationPercent";
+
+export function innerText(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") {
+    return "";
+  }
+  if (typeof node === "string") {
+    return node;
+  }
+  if (typeof node === "number") {
+    return node.toString();
+  }
+  if (Array.isArray(node)) {
+    return node.map(innerText).join("");
+  }
+  if (isValidElement<{ children?: React.ReactNode }>(node)) {
+    return innerText(node.props.children);
+  }
+  return "";
+}
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
@@ -42,7 +62,8 @@ export function PreviousValueComparison({
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChangeAutoPrecision(percentChange as number, {
+      ? // Unjustified type cast. FIXME
+        formatChangeAutoPrecision(percentChange as number, {
           fontFamily,
           fontWeight: 900,
           width: getChangeWidth(width),
@@ -120,7 +141,7 @@ export function PreviousValueComparison({
         className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent
-          color="text-tertiary"
+          color="text-disabled"
           comparison={comparison}
           iconSize={ICON_SIZE}
         >
@@ -132,7 +153,13 @@ export function PreviousValueComparison({
         </VariationDetails>
 
         {showsOtherValuesInTooltip && (
-          <Badge px="xs" size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
+          <Badge
+            px="xs"
+            size="xs"
+            variant="light"
+            w={ELLIPSIS_BADGE_WIDTH}
+            className={SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS}
+          >
             <Group align="center" h="100%">
               <Icon name="ellipsis" size={12} />
             </Group>

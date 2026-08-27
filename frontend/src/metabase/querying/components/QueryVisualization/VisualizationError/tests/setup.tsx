@@ -66,6 +66,7 @@ export const setup = ({
     <VisualizationError
       question={question}
       duration={0}
+      // Unjustified type cast. FIXME
       error={error as DatasetError}
       via={[]}
     />,

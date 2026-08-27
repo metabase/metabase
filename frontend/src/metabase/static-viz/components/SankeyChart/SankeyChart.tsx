@@ -48,6 +48,7 @@ export const SankeyChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>

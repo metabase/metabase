@@ -62,11 +62,11 @@ export const ForcePushWarning = ({
     <Box
       mt="md"
       p="md"
-      bg="background-error-secondary"
+      bg="background_surface-error-subtle"
       style={{ borderRadius: "var(--mantine-radius-md)" }}
     >
       <Group gap="sm" align="flex-start" wrap="nowrap">
-        <Icon name="warning" c="error" mt="2px" />
+        <Icon name="warning" c="feedback-negative" mt="2px" />
         <Box>
           {historyRewritten && (
             <Text fw="bold" mb="xs">
@@ -75,7 +75,7 @@ export const ForcePushWarning = ({
           )}
           <Stack gap="xs">
             {deletedText && (
-              <Text fw="bold" c="error">
+              <Text fw="bold" c="feedback-negative">
                 {deletedText}
               </Text>
             )}

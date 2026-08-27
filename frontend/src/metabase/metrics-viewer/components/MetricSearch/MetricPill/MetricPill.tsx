@@ -124,7 +124,7 @@ export function MetricPill({
           <Pill
             className={S.metricPill}
             c="text-primary"
-            h="2rem"
+            fz="md"
             px="sm"
             py="xs"
             fw={600}
@@ -151,7 +151,7 @@ export function MetricPill({
                 <>
                   <SourceColorIndicator
                     colors={
-                      isDisabled ? ["var(--mb-color-icon-disabled)"] : colors
+                      isDisabled ? ["var(--mb-color-icon-secondary)"] : colors
                     }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"

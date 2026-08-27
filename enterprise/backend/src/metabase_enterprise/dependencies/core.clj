@@ -77,7 +77,7 @@
             :let [bad-refs (try
                              (deps.analysis/check-entity provider entity-type id)
                              (catch Exception e
-                               (log/warnf e "Error checking %s %s" entity-type id)
+                               (log/warnf "Error checking %s %s: %s" entity-type id (ex-message e))
                                #{(lib/validation-exception-error (ex-message e))}))]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))

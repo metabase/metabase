@@ -19,6 +19,7 @@ jest.mock("metabase/visualizations/lib/sensibility", () => ({
 const mockGetSensibleVisualizations = jest.mocked(getSensibleVisualizations);
 
 const createQuestion = (display: CardDisplayType): Question =>
+  // Unjustified type cast. FIXME
   ({
     display: jest.fn(() => display),
     setDisplay: jest.fn(
@@ -30,6 +31,7 @@ const createQuestion = (display: CardDisplayType): Question =>
   }) as unknown as Question;
 
 const createQueryResult = (rowCount: number) =>
+  // Unjustified type cast. FIXME
   ({
     data: { rows: Array.from({ length: rowCount }, () => []) },
   }) as unknown as Dataset;

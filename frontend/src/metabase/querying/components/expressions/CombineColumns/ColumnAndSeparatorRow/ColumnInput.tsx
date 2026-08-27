@@ -3,7 +3,7 @@ import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -48,7 +48,7 @@ export function ColumnInput({
     if (!event.currentTarget || !event.relatedTarget) {
       return;
     }
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
       setTimeout(() => setOpen(false), 100);
     }
   }

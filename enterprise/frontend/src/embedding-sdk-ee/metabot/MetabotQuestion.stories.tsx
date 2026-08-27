@@ -8,6 +8,7 @@ import { MetabaseProvider } from "embedding-sdk-package/components/public/Metaba
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {
   MOCK_AD_HOC_QUESTION_ID,
+  mockGeneratedCardChunk,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 import { Flex, Stack } from "metabase/ui";
@@ -53,15 +54,21 @@ export const Centered = {
   },
 };
 
-export const RedirectReaction = {
+export const GeneratedChart = {
   render: Template,
   parameters: {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          mockGeneratedCardChunk(),
+          { type: "finish", finishReason: "stop" },
         ]),
       ],
     },
@@ -116,7 +123,7 @@ const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
   <Stack align="center" justify="center">
     <Flex
       m="40px"
-      bg="background-primary"
+      bg="background_page-primary"
       style={{
         border: "1px solid var(--mb-color-border-neutral)",
         borderRadius: "16px",

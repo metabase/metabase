@@ -36,7 +36,7 @@ export function TableActionFormModalParameter({
           <Text truncate maw="100%">
             {parameter.display_name}
             {!parameter.optional && (
-              <Text component="span" c="error">
+              <Text component="span" c="feedback-negative">
                 *
               </Text>
             )}

@@ -20,9 +20,12 @@ jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
   getCardUiParameters: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useSelectorMock = useSelector as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const getCardUiParametersMock = getCardUiParameters as unknown as jest.Mock;
 
+// Unjustified type cast. FIXME
 const STATE_PARAM = {
   id: "p1",
   slug: "state",
@@ -31,6 +34,7 @@ const STATE_PARAM = {
   target: ["variable", ["template-tag", "state"]],
 } as unknown as UiParameter;
 
+// Unjustified type cast. FIXME
 const CITY_PARAM = {
   id: "p2",
   slug: "city",
@@ -42,8 +46,10 @@ const CITY_PARAM = {
 const DEFAULT_DEFINITIONS: UiParameter[] = [STATE_PARAM, CITY_PARAM];
 
 const makeQuestion = (id: number): Question =>
+  // Unjustified type cast. FIXME
   ({
     id: () => id,
+    // Unjustified type cast. FIXME
     card: () => ({}) as unknown,
     parameters: () => undefined,
   }) as unknown as Question;

@@ -4,12 +4,14 @@ import type { DropzoneRootProps } from "react-dropzone";
 import { composeFileEventHandler, getComposedDragProps } from "./dropzone";
 
 describe("Collections > containers > utils", () => {
+  // Unjustified type cast. FIXME
   const testNonFileEvent = {
     dataTransfer: {
       types: ["text/plain"],
     },
   } as unknown as DragEvent<HTMLElement>;
 
+  // Unjustified type cast. FIXME
   const testFileEvent = {
     dataTransfer: {
       types: ["Files"],
@@ -21,6 +23,7 @@ describe("Collections > containers > utils", () => {
       const dragEventSpy = jest.fn();
       const nonDragEventSpy = jest.fn();
 
+      // Unjustified type cast. FIXME
       const mockProps = {
         onDragEnter: dragEventSpy,
         onDragLeave: dragEventSpy,

@@ -9,7 +9,9 @@
 
 (def feature-predicates
   "Registry of feature keywords to predicate functions."
-  {:semantic-search #(search.engine/supported-engine? :search.engine/semantic)})
+  ;; Status, not capability: advertising semantic_queries in tool schemas when no semantic index is
+  ;; maintained makes the LLM emit semantic queries that would run as keyword searches.
+  {:semantic-search #(= :ok (search.engine/engine-status :search.engine/semantic))})
 
 (defn feature-available?
   "Check if a feature is available. Unknown features return true (fail-open)."

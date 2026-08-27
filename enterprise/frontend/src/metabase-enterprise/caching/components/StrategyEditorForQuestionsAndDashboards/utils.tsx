@@ -3,24 +3,29 @@ import _ from "underscore";
 
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { getCollectionPathAsString } from "metabase/common/collections/utils";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import type { CacheableItem } from "../types";
+
+const DURATION_UNIT_SECONDS: Record<CacheDurationUnit, number> = {
+  [CacheDurationUnit.Seconds]: 1,
+  [CacheDurationUnit.Minutes]: 60,
+  [CacheDurationUnit.Hours]: 3600,
+  [CacheDurationUnit.Days]: 86400,
+};
 
 export const formatValueForSorting = (
   row: CacheableItem,
   columnName: string,
 ) => {
   if (columnName === "policy") {
-    const label = getShortStrategyLabel(row.strategy, row.model);
     if (row.strategy.type === "duration") {
       // Sort durations in ascending order of length
-      return label?.replace(/(\d+)h/, (_, num) => {
-        const paddedNumber = num.padStart(5, "0");
-        return `${t`Duration`} ${paddedNumber}`;
-      });
-    } else {
-      return label;
+      const seconds =
+        row.strategy.duration * DURATION_UNIT_SECONDS[row.strategy.unit];
+      return `${t`Duration`} ${String(seconds).padStart(12, "0")}`;
     }
+    return getShortStrategyLabel(row.strategy, row.model);
   }
   if (columnName === "collection") {
     return row.collection ? getCollectionPathAsString(row.collection) : "";

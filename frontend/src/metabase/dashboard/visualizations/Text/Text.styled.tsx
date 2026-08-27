@@ -81,7 +81,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-core-brand);
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile, isFixedWidth }) => {
@@ -275,7 +275,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown tr:nth-of-type(even) {
-    background-color: ${() => alpha("background-primary-inverse", 0.05)};
+    background-color: ${() => alpha("background_page-primary-inverse", 0.05)};
   }
 
   .text-card-markdown th,
@@ -289,7 +289,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
     border-radius: 8px;
   }
 
@@ -331,7 +331,7 @@ export const TextInput = styled.textarea<TextAreaProps>`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border: none;
   border-radius: 8px;
   box-shadow: none;

@@ -32,33 +32,33 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
-  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.2"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
-  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.2"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.5"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.5"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
-  com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
-  {:mvn/version "4.3.1"}              ; templating engine
+  com.github.jknack/handlebars              {:mvn/version "4.5.3"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
-  com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
+  com.github.seancorfield/honeysql          {:mvn/version "2.7.1437"}           ; Honey SQL 2. SQL generation from Clojure data maps. SECURITY FLOOR: >= 2.7.1392 fixes CVE-2026-61620 (unchecked entity names -> SQL injection). Do not drop below 2.7.1392; do not remove this direct pin (Toucan2 pulls a strictly-worse transitive 2.6.1147).
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.10"}             ; Telemetry library
   com.github.steffan-westcott/clj-otel-exporter-otlp {:mvn/version "0.2.10"}    ; OTLP span exporter (gRPC and HTTP)
   com.github.steffan-westcott/clj-otel-sdk  {:mvn/version "0.2.10"}             ; OpenTelemetry SDK for programmatic configuration
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
+  com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}       ; Token refresh for the Metabot Google provider. Also a dep for BigQuery. Keep the version in step with google-auth-library-credentials
   com.google.code.gson/gson                 {:mvn/version "2.12.1"}             ; dep for BigQuery, Databricks, and Snowflake. Pin here so driver plugin JARs all use the same version — see #73736
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
   {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
-  com.mchange/c3p0                          {:mvn/version "0.12.0"}             ; DB connection pool
+  com.mchange/c3p0                          {:mvn/version "0.14.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
+  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
   com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
@@ -81,14 +81,15 @@
   hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.571"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.572"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
+  io.opentelemetry/opentelemetry-api        {:mvn/version "1.62.0"}             ; pinned: clj-otel-api 0.2.10 pulls 1.54.1 (W3CBaggagePropagator DoS vuln)
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
-  kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
+  kixi/stats                                {:mvn/version "0.5.9"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
@@ -113,19 +114,20 @@
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.datasketches/datasketches-java     ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
-                                                {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
-  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
-  org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.5"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
-  org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.5"}              ; pinned: must match httpcore5 version
-  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.4"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.4"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.4"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
+  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.6.2"}              ; pinned: must pair with httpcore5 5.4.x (upstream pairing); ClickHouse JDBC needs httpcore5 5.3.4+
+  org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.4.3"}              ; pinned: 5.4.2+
+  org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.4.3"}              ; pinned: must match httpcore5 version
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.26.1"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.26.1"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.26.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.25.4"}             ; allows the custom json logging format
+  {:mvn/version "2.26.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.26.1"}             ; allows the slf4j2 API to work with log4j 2
+  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.8"}              ; PDF generation (backend dashboard PDF prototype)
   org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -148,7 +150,6 @@
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.memoize                  {:mvn/version "1.1.266"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.1.0"}              ; CSV parsing / generation
-  org.clojure/data.xml                      {:mvn/version "0.2.0-alpha10"}      ; XML parsing / generation
   org.clojure/java.classpath                {:mvn/version "1.1.0"}              ; examine the Java classpath from Clojure programs
   org.clojure/java.jdbc                     {:mvn/version "0.7.12"}             ; basic JDBC access from Clojure
   org.clojure/java.jmx                      {:mvn/version "1.1.0"}              ; JMX bean library, for exporting diagnostic info
@@ -160,10 +161,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.7"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.7"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.7"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.1.11"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.1.11"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.1.11"}
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
@@ -176,11 +177,12 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.11"}            ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.12"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
+  org.xerial/sqlite-jdbc                    {:mvn/version "3.50.3.0"}           ; SQLite driver -- ships in core because the bundled Sample Database runs on it
   potemkin/potemkin                         {:mvn/version "0.4.8"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
@@ -211,7 +213,7 @@
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
   xerces/xercesImpl                         {:mvn/version "2.12.2"}}            ; SAX2 parser, transient dependency of batik
 
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
  ;; !!                            *PLEASE DO NOT* ADD NEW ONES TO THE BOTTOM OF THE LIST.                            !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -253,7 +255,7 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -265,8 +267,8 @@
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
-    io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
-    io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; pinned to match the resolved OTel SDK version
+    io.github.metabase/hawk      {:mvn/version "1.0.19"}                    ; test runner
+    io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; matches sdk impl (clj-otel-sdk 0.2.10 → 1.54.1); api is separately pinned to 1.62.0
     io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     ;; Native postgres binaries for every OS/arch we're likely to run on in
     ;; dev or CI. Without these Zonky falls back to x86_64 under Rosetta on
@@ -288,14 +290,15 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.54"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=dev"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
@@ -337,6 +340,7 @@
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
   :dev-start {:main-opts ["-m" "user"]
               :jvm-opts ["-Dmb.run.mode=dev"
+                         "-Dmb.warehouse.allowed.networks=allow-all"
                          "-Dmacaw.run.mode=dev"
                          "-Djava.awt.headless=true"]}
 
@@ -351,6 +355,9 @@
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.api.key=test-api-key"
+                 ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
+                 ;; that creates one breaks.
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  ;; Port 0 tells the OS to assign a random free port, allowing parallel test runs.
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}
@@ -362,6 +369,7 @@
   :run
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
@@ -373,6 +381,7 @@
   ;; clojure -M:dev:drivers:(oss|ee):run:e2e
   :e2e
   {:jvm-opts  ["-Dmb.run.mode=e2e"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
                ;; prevent Java icon from randomly popping up in macOS dock
                "-Djava.awt.headless=true"
@@ -385,6 +394,14 @@
                "-Duser.timezone=US/Pacific"
                "-Dmb.db.type=h2"
                "-Dmb.enable.test.endpoints=true"
+               ;; Use the in-memory queue backend in e2e. The persistent Quartz backend keeps its
+               ;; durable-job state in the app DB's QRTZ_* tables, but e2e restores app-db snapshots
+               ;; between tests (`H.restore`), which drops those tables out from under the running
+               ;; scheduler while the per-process `ensured-jobs` cache still thinks the jobs exist —
+               ;; so post-restore publishes target a non-existent job and never deliver. e2e is a
+               ;; single node, so the in-memory backend (no app-db state, unaffected by restore) is
+               ;; the correct fit.
+               "-Dmb.queue.backend=memory"
                "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
                ;; Ignore connection URI in favor of the MB_DB_FILE
                "-Dmb.db.connection.uri="
@@ -409,6 +426,7 @@
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
@@ -465,14 +483,15 @@
 
   :cljs
   {:extra-paths ["test"]
-   :jvm-opts    ["-Dmb.run.mode=dev"]
+   :jvm-opts    ["-Dmb.run.mode=dev"
+                 "-Dmb.warehouse.allowed.networks=allow-all"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}
     cider/piggieback                   {:mvn/version "0.6.1"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.13"}
+    io.github.metabase/hawk            {:mvn/version "1.0.19"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     org.clojure/clojurescript          {:mvn/version "1.12.134"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
@@ -505,7 +524,6 @@
     "modules/drivers/redshift/test"
     "modules/drivers/snowflake/test"
     "modules/drivers/sparksql/test"
-    "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/test"
     "modules/drivers/vertica/test"]}
@@ -524,7 +542,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.07.24"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
@@ -548,6 +566,8 @@
     "bin/build/test"
     "bin/lint-migrations-file/src"
     "bin/lint-migrations-file/test"
+    "bin/load-namespaces/src"
+    "bin/load-namespaces/test"
     "bin/release-list/src"
     "bin/release-list/test"
     "modules/drivers/athena/src"
@@ -574,8 +594,6 @@
     "modules/drivers/snowflake/test"
     "modules/drivers/sparksql/src"
     "modules/drivers/sparksql/test"
-    "modules/drivers/sqlite/src"
-    "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/src"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/src"
@@ -583,33 +601,31 @@
     "modules/drivers/vertica/src"
     "modules/drivers/vertica/test"]}
 
-  ;; clojure -M:ee:drivers:check
+  ;; clojure -M:ee:drivers:load-namespaces
   ;;
-  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; checks that all the namespaces we actually ship can be loaded, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
-  :check
-  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
-                                 :sha     "d997df866b2a04b7ce7b17533093ee0a2e2cb729"}}
-   :main-opts  ["-m" "clj-check.check"
-                "src"
-                "enterprise/backend/src"
-                "modules/drivers/athena/src"
-                "modules/drivers/bigquery-cloud-sdk/src"
-                "modules/drivers/clickhouse/src"
-                "modules/drivers/databricks/src"
-                "modules/drivers/druid-jdbc/src"
-                "modules/drivers/hive-like/src"
-                "modules/drivers/mongo/src"
-                "modules/drivers/oracle/src"
-                "modules/drivers/presto-jdbc/src"
-                "modules/drivers/redshift/src"
-                "modules/drivers/snowflake/src"
-                "modules/drivers/sparksql/src"
-                "modules/drivers/sqlite/src"
-                "modules/drivers/sqlserver/src"
-                "modules/drivers/starburst/src"
-                "modules/drivers/vertica/src"]
-   :jvm-opts   ["-Dclojure.main.report=stderr"]}
+  :load-namespaces
+  {:extra-paths ["bin/load-namespaces/src"]
+   :main-opts   ["-m" "load-namespaces.core"
+                 "src"
+                 "enterprise/backend/src"
+                 "modules/drivers/athena/src"
+                 "modules/drivers/bigquery-cloud-sdk/src"
+                 "modules/drivers/clickhouse/src"
+                 "modules/drivers/databricks/src"
+                 "modules/drivers/druid-jdbc/src"
+                 "modules/drivers/hive-like/src"
+                 "modules/drivers/mongo/src"
+                 "modules/drivers/oracle/src"
+                 "modules/drivers/presto-jdbc/src"
+                 "modules/drivers/redshift/src"
+                 "modules/drivers/snowflake/src"
+                 "modules/drivers/sparksql/src"
+                 "modules/drivers/sqlserver/src"
+                 "modules/drivers/starburst/src"
+                 "modules/drivers/vertica/src"]
+   :jvm-opts    ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
@@ -630,7 +646,6 @@
                                  "modules/drivers/redshift/src"
                                  "modules/drivers/snowflake/src"
                                  "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/starburst/src"
                                  "modules/drivers/vertica/src"]
@@ -654,7 +669,15 @@
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
                ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
-               :exclude-namespaces [metabase.analytics.snowplow]}}
+               ;;
+               ;; The two Quartz queue-affinity DriverDelegate shims are `gen-class` namespaces whose
+               ;; only body is a `(.superRtp this ...)` call to their own exposed super method. That
+               ;; method exists only on the class the namespace itself generates, so `this` can't be
+               ;; type-hinted with it at compile time (the class isn't defined yet) — the reflective
+               ;; call is unavoidable. Eastwood also can't reliably analyze these gen-class shims.
+               :exclude-namespaces [metabase.analytics.snowplow
+                                    metabase.mq.quartz-affinity-delegate-std
+                                    metabase.mq.quartz-affinity-delegate-postgres]}}
 
   ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
   ;; issues in tests.
@@ -843,6 +866,12 @@
   :build/verify-driver
   {:exec-fn verify-driver/verify-driver}
 
+  ;; Build the separately installed in-process embedder plugin jar.
+  ;;
+  ;;    clojure -X:build:build/embedder-plugin
+  :build/embedder-plugin
+  {:exec-fn build-embedder-plugin/build-plugin!}
+
   ;; Build i18n artifacts.
   ;;
   ;;    clojure -X:build:build/i18n
@@ -870,6 +899,21 @@
   {:main-opts ["-m" "metabase.core.bootstrap" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
+
+  ;; Run tests under clj-async-profiler; writes a flamegraph to target/clj-async-profiler/results.
+  ;; Must come after `:test`, whose `:exec-fn` it overrides:
+  ;; clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test:profile-tests :only '[metabase.some-test]'
+  :profile-tests
+  {;; `dev.profile-tests` lives in dev/src and clj-async-profiler is otherwise a `:dev`-only dep;
+   ;; declared here too so the alias stands on its own instead of failing at exec time when `:dev`
+   ;; happens to be absent. Keep the version in step with the one in `:dev`.
+   :extra-paths ["dev/src"]
+   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+   :exec-fn  dev.profile-tests/run
+   :jvm-opts ["-Dclj-async-profiler.output-dir=target"
+              ;; without these, inlined frames are attributed to the wrong method
+              "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
@@ -941,7 +985,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
+  ;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
@@ -1001,4 +1045,4 @@
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; on them all from a single REPL process.

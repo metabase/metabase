@@ -1,93 +1,58 @@
-import type { Dayjs } from "dayjs";
 import { useCallback } from "react";
-import { t } from "ttag";
 
-import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
-import type Question from "metabase-lib/v1/Question";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import {
+  getTimeseriesDataInterval,
+  getUiControls,
+} from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
+import { onOpenTimelines } from "metabase/redux/query-builder";
+import {
+  TimelineSidebar as SharedTimelineSidebar,
+  type TimelineSidebarProps as SharedTimelineSidebarProps,
+} from "metabase/timelines/questions/components/TimelineSidebar";
 
-export interface TimelineSidebarProps {
-  question: Question;
-  timelines: Timeline[];
-  visibleTimelineEventIds: number[];
-  selectedTimelineEventIds: number[];
-  xDomain?: [Dayjs, Dayjs];
-  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
-  onDeselectTimelineEvents?: () => void;
-  onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
-  onClose?: () => void;
-}
+export type TimelineSidebarProps = Omit<
+  SharedTimelineSidebarProps,
+  "focusedTimelineEventIds" | "dataInterval" | "onShowAllEvents"
+>;
 
 export const TimelineSidebar = ({
-  question,
+  collectionId,
   timelines,
   visibleTimelineEventIds,
   selectedTimelineEventIds,
   xDomain,
-  onOpenModal,
   onShowTimelineEvents,
   onHideTimelineEvents,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onOpenModal,
   onClose,
 }: TimelineSidebarProps) => {
-  const handleNewEvent = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.NEW_EVENT);
-  }, [onOpenModal]);
+  const dispatch = useDispatch();
+  const { focusedTimelineEventIds } = useSelector(getUiControls);
+  const dataInterval = useSelector(getTimeseriesDataInterval);
 
-  const handleEditEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
-    },
-    [onOpenModal],
-  );
-
-  const handleMoveEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.MOVE_EVENT, event.id);
-    },
-    [onOpenModal],
-  );
-
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      if (isSelected) {
-        onSelectTimelineEvents?.([event]);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [onSelectTimelineEvents, onDeselectTimelineEvents],
-  );
+  const handleShowAllEvents = useCallback(() => {
+    dispatch(onOpenTimelines());
+  }, [dispatch]);
 
   return (
-    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
-      <TimelinePanel
-        timelines={timelines}
-        collectionId={question.collectionId()}
-        visibleEventIds={visibleTimelineEventIds}
-        selectedEventIds={selectedTimelineEventIds}
-        onNewEvent={handleNewEvent}
-        onEditEvent={handleEditEvent}
-        onMoveEvent={handleMoveEvent}
-        onToggleEventSelected={handleToggleEventSelected}
-        onShowTimelineEvents={onShowTimelineEvents}
-        onHideTimelineEvents={onHideTimelineEvents}
-      />
-    </SidebarContent>
+    <SharedTimelineSidebar
+      collectionId={collectionId}
+      timelines={timelines}
+      visibleTimelineEventIds={visibleTimelineEventIds}
+      selectedTimelineEventIds={selectedTimelineEventIds}
+      focusedTimelineEventIds={focusedTimelineEventIds}
+      dataInterval={dataInterval}
+      xDomain={xDomain}
+      onShowTimelineEvents={onShowTimelineEvents}
+      onHideTimelineEvents={onHideTimelineEvents}
+      onSelectTimelineEvents={onSelectTimelineEvents}
+      onDeselectTimelineEvents={onDeselectTimelineEvents}
+      onShowAllEvents={handleShowAllEvents}
+      onOpenModal={onOpenModal}
+      onClose={onClose}
+    />
   );
-};
-
-const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
-  return xDomain
-    ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
-    : t`Events`;
-};
-
-const formatDate = (date: Dayjs) => {
-  return date.format("ll");
 };

@@ -127,6 +127,7 @@ const VisualizerInner = (props: VisualizerProps) => {
     (event: DragStartEvent) => {
       if (isValidDraggedItem(event.active)) {
         dispatch(
+          // Unjustified type cast. FIXME
           setDraggedItem({
             id: event.active.id,
             data: {

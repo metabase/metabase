@@ -20,7 +20,7 @@
 }
 
 .RemoveButton:hover {
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
   color: var(--mb-color-text-primary);
 }
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createOrdersTable,
   createOrdersTotalField,

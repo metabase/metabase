@@ -23,7 +23,7 @@
 }
 
 .tableFooter {
-  border-top: 1px solid var(--mb-color-background-secondary-inverse);
+  border-top: 1px solid var(--mb-color-background_page-secondary-inverse);
 
   &::before {
     line-height: var(--mantine-spacing-sm);

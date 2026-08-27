@@ -4,10 +4,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -17,6 +13,10 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/settings";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
@@ -124,7 +124,7 @@ export const BaseSMTPConnectionForm = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: isErrorWithMessage(result.error)
           ? result.error.data.message
           : t`Error clearing email settings`,
@@ -151,7 +151,7 @@ export const BaseSMTPConnectionForm = ({
       } catch (error) {
         sendToast({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 
@@ -169,6 +169,7 @@ export const BaseSMTPConnectionForm = ({
         .map((formKey) => getFullFormKey(formKey))
         .every(
           (field) =>
+            // Unjustified type cast. FIXME
             settingsDetails[field as keyof typeof settingsDetails]
               ?.is_env_setting,
         )

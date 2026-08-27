@@ -119,7 +119,7 @@ export const NotebookContainer = ({
     <Flex
       pos="absolute"
       inset={0}
-      bg="background-primary"
+      bg="background_page-primary"
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,

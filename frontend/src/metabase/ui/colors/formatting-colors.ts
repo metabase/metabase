@@ -6,10 +6,10 @@ export function assignUserColors(
   colors = [
     color("core-brand"),
     color("accent2"),
-    color("error"),
+    color("feedback-negative"),
     color("accent1"),
     color("accent4"),
-    color("background-tertiary"),
+    color("background_page-tertiary"),
   ],
 ) {
   const assignments: { [index: string]: string } = {};

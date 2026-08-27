@@ -23,10 +23,20 @@
             :name target-name
             :type :table}})
 
+;; TODO: these tests create new tables in the default schema, which is fine for
+;; most drivers, but not for cloud DBs like snowflake and bigquery, because
+;; concurrent CI jobs share the same jobs, which means this will cause test
+;; failures in other unrelated tests which list tables, such as
+;; metabase-enterprise.impersonation.driver-test/resilient-connection-options-test
+;;
+;; we need to get these tests to stop creating tables in the default schema,
+;; then we can drop the requirement for the :test/dynamic-dataset-loading feature.
+
 ;;; -------------------------------------------------- discover-lenses --------------------------------------------------
 
 (deftest discover-lenses-not-run-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                   :test/dynamic-dataset-loading)
     (testing "discover-lenses returns :not-run when transform has no target table"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -46,7 +56,8 @@
               (is (= [] (:available_lenses result))))))))))
 
 (deftest discover-lenses-ready-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                   :test/dynamic-dataset-loading)
     (testing "discover-lenses returns :ready with available lenses after transform is run"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -73,7 +84,8 @@
                 (is (some #(= "generic-summary" (:id %)) (:available_lenses result)))))))))))
 
 (deftest discover-lenses-source-info-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                   :test/dynamic-dataset-loading)
     (testing "discover-lenses populates source table info with fields"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -106,7 +118,8 @@
 ;;; -------------------------------------------------- get-lens --------------------------------------------------
 
 (deftest get-lens-generic-summary-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                   :test/dynamic-dataset-loading)
     (testing "get-lens returns generic-summary lens with sections and cards"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -135,7 +148,8 @@
                   (is (map? (:dataset_query card))))))))))))
 
 (deftest get-lens-join-analysis-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join
+                                                   :test/dynamic-dataset-loading)
     (testing "get-lens returns join-analysis lens for transforms with joins"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -174,7 +188,8 @@
                 (is (seq (:drill_lens_triggers lens)))))))))))
 
 (deftest get-lens-inapplicable-throws-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                   :test/dynamic-dataset-loading)
     (testing "get-lens throws for inapplicable lens"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table
@@ -197,7 +212,8 @@
 ;;; -------------------------------------------------- Context building --------------------------------------------------
 
 (deftest discover-lenses-with-joins-has-join-info-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join
+                                                   :test/dynamic-dataset-loading)
     (testing "discover-lenses includes join-related lenses for transforms with joins"
       (transforms.tu/with-transform-cleanup!
         [{target-name :name} {:type :table

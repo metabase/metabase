@@ -42,6 +42,7 @@ export function addCustomVizPlugin(
         );
         throw new Error(`upload failed (${status}): ${text}`);
       }
+      // Unjustified type cast. FIXME
       return JSON.parse(text) as CustomVizPlugin;
     });
 }

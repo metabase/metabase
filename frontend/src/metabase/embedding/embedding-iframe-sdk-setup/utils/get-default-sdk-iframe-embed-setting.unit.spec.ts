@@ -121,6 +121,7 @@ describe("getResourceIdFromSettings", () => {
     { settings: {}, expected: undefined },
     { settings: { componentName: "metabase-metabot" }, expected: undefined },
   ])("returns $expected for $settings", ({ settings, expected }) => {
+    // Unjustified type cast. FIXME
     expect(getResourceIdFromSettings(settings as never)).toBe(expected);
   });
 });
@@ -151,6 +152,7 @@ describe("getExperienceFromSettings", () => {
       expected: "metabot",
     },
   ])("returns $expected for $settings", ({ settings, expected }) => {
+    // Unjustified type cast. FIXME
     expect(getExperienceFromSettings(settings as never)).toBe(expected);
   });
 });

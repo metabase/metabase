@@ -167,19 +167,16 @@
                                               :stages   [{:lib/type     :mbql.stage/mbql
                                                           :source-table 1
                                                           :joins        [{:lib/type    :mbql/join
-                                                                          :lib/options {:lib/uuid (str (random-uuid))}
                                                                           :stages      [{}]
                                                                           :conditions  [true]}]}]})]
     (are [f expected] (= expected
                          (f error))
       ;; not sure why these errors are repeated.
       me/humanize
-      {:stages [{:joins [{:stages [{:lib/type    ["missing required key"]
-                                    :malli/error ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
-                                                  "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]}]
+      {:stages [{:joins [{:stages [["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+                                    "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]
                           :alias  ["missing required key"]}]}]}
 
       mu.humanize/humanize
-      {:stages [{:joins [{:stages
-                          [[{:lib/type "missing required key"} "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]],
-                          :alias "missing required key"}]}]})))
+      {:stages [{:joins [{:stages ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]
+                          :alias  "missing required key"}]}]})))

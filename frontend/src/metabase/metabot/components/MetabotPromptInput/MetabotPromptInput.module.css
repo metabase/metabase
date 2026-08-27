@@ -41,11 +41,11 @@
 }
 
 .content :global(.ProseMirror)::-webkit-scrollbar-thumb:hover {
-  background: var(--mb-color-text-tertiary);
+  background: var(--mb-color-text-disabled);
 }
 
 .content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   content: attr(data-placeholder);
   height: 0;
   pointer-events: none;
@@ -63,7 +63,7 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0 0.25rem;
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
   border-radius: 0.25rem;
   color: var(--mb-color-core-brand);
   text-decoration: none;

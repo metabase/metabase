@@ -60,25 +60,26 @@
   (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
-    (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Card x y)))
+    (mt/with-test-user :crowberto
+      (are [x y expected] (= expected
+                             (u/build-sentence (revision/diff-strings :model/Card x y)))
 
-      {:name "Apple"}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card to New collection."
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card to New collection."
 
-      {:name        "Diff Test"
-       :description nil}
-      {:name        "Diff Test changed"
-       :description "New description"}
-      "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+        {:name        "Diff Test"
+         :description nil}
+        {:name        "Diff Test changed"
+         :description "New description"}
+        "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
 
-      {:name          "Apple"
-       :collection_id coll-id-1}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card from Old collection to New collection.")))
+        {:name          "Apple"
+         :collection_id coll-id-1}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card from Old collection to New collection."))))
 
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
@@ -187,6 +188,13 @@
                        :model/Dashboard
                        before
                        changes)))))))))
+
+(deftest card-revision-excludes-metabot-origin-test
+  (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
+    (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
+      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+        (is (not (contains? serialized :metabot_chart_id)))
+        (is (not (contains? serialized :metabot_conversation_id)))))))
 
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"

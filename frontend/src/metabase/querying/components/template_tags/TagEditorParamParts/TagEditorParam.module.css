@@ -6,7 +6,7 @@
 }
 
 .ErrorSpan {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .DefaultParameterValueWidget {
@@ -14,6 +14,6 @@
   padding: 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 4px;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   font-weight: normal;
 }

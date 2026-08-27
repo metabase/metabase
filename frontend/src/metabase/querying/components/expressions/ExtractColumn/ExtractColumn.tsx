@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import { getExample } from "metabase/querying/drills/utils/column-extract-drill";
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -202,7 +202,7 @@ function ExtractColumnButton({
         <Text color="text-primary" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
-        <Text color="text-tertiary" size="sm" className={styles.example}>
+        <Text color="text-disabled" size="sm" className={styles.example}>
           {example}
         </Text>
       </Flex>

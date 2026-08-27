@@ -9,7 +9,7 @@ import {
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import type {
   ChartColor,
   MetabaseColor,
@@ -17,6 +17,7 @@ import type {
 } from "metabase/embedding-sdk/theme";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useSetting } from "metabase/settings";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api";
 import type { ColorSettings } from "metabase-types/api/settings";
@@ -87,7 +88,7 @@ const seedDraftFromHarmony = (
   const harmony = suggestHarmonyColors(brand);
   const existingCharts = settings.colors?.charts ?? [];
   const charts: ChartColor[] = harmony.charts.map((harmonyChart, i) => {
-    const accentKey = `accent${i}` as keyof ColorSettings;
+    const accentKey = `accent${i}`;
     if (whitelabelColors[accentKey] !== undefined) {
       return existingCharts[i] ?? harmonyChart;
     }
@@ -239,6 +240,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     const colors = currentTheme.settings.colors ?? {};
     const defaultColors = defaultThemeSettings.colors ?? {};
     return PRIMARY_COLORS_KEYS.some(
+      // Unjustified type cast. FIXME
       (key) => (colors[key] ?? "") !== ((defaultColors[key] as string) ?? ""),
     );
   }, [currentTheme, defaultThemeSettings]);
@@ -298,7 +300,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     const defaultColors = defaultThemeSettings.colors ?? {};
     const updatedColors = { ...currentTheme.settings.colors };
     for (const key of PRIMARY_COLORS_KEYS) {
-      updatedColors[key] = (defaultColors[key] as string) ?? "";
+      updatedColors[key] = defaultColors[key] ?? "";
     }
     setCurrentTheme({
       ...currentTheme,
@@ -327,7 +329,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
         return created;
       }
       const updated = await updateTheme({
-        id: themeId as number,
+        id: themeId,
         name: currentTheme.name,
         settings: currentTheme.settings,
       }).unwrap();

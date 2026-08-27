@@ -15,12 +15,12 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-import { updateMetadata } from "./metadata";
+import { getFieldRemappings, updateMetadata } from "./metadata";
 
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const existing = getState().entities.fields?.[fieldId]?.remappings ?? [];
+    const existing = getFieldRemappings(getState(), fieldId);
     const merged = Array.from(
       new Map(
         existing
@@ -77,8 +77,8 @@ export const fetchRemapping = createThunkAction(
           {
             ...(entityIdentifier
               ? { entityIdentifier }
-              : { dashboard_id: dashboardId }),
-            parameter_id: parameter.id,
+              : { dashId: dashboardId }),
+            paramId: parameter.id,
             value,
           },
           dispatch,
@@ -88,8 +88,8 @@ export const fetchRemapping = createThunkAction(
       } else if (cardId != null) {
         remapping = await runRtkEndpoint(
           {
-            ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
-            parameter_id: parameter.id,
+            ...(entityIdentifier ? { entityIdentifier } : { cardId }),
+            paramId: parameter.id,
             value,
           },
           dispatch,

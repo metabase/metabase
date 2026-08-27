@@ -5,6 +5,7 @@
    [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -15,6 +16,18 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest lock-wait-timed-out?-test
+  (testing "MySQL's ER_LOCK_WAIT_TIMEOUT decides whether we fall back to an in-band insert"
+    (let [timed-out (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)
+          other     (SQLException. "You have an error in your SQL syntax" "42000" 1064)]
+      (testing "recognised on its own"
+        (is (#'sut/lock-wait-timed-out? timed-out)))
+      (testing "and through a cause chain, which is how it usually arrives"
+        (is (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} timed-out))))
+      (testing "any other error still propagates"
+        (is (not (#'sut/lock-wait-timed-out? other)))
+        (is (not (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} other))))))))
 
 (defn- deadlock-exception
   "Build a deadlock SQLException for the current appdb type. Mirrors the codes in
@@ -92,6 +105,13 @@
         (future (Thread/sleep 500) (a/>!! fin-chan :done))
         (is (nil? (sut/with-cluster-lock ::test-lock (Thread/sleep 1))))))))
 
+(defn- do-with-lock-opts
+  "Route on the test-only :detached? key so every helper call site can exercise either entry point."
+  [lock-opts thunk]
+  (if (:detached? lock-opts)
+    (sut/do-with-detached-cluster-lock (dissoc lock-opts :detached?) thunk)
+    (sut/do-with-cluster-lock lock-opts thunk)))
+
 (defn- run-with-lock
   "Run `thunk` with the given lock opts on a future. Returns a map of
   `{:entered, :release, :done}` latches/promise the caller can use to
@@ -102,9 +122,10 @@
         done    (promise)]
     (future
       (try
-        (sut/with-cluster-lock lock-opts
-          (.countDown entered)
-          (.await release))
+        (do-with-lock-opts lock-opts
+                           (fn []
+                             (.countDown entered)
+                             (.await release)))
         (deliver done :ok)
         (catch Throwable e
           (deliver done [:err (ex-message e)]))))
@@ -116,8 +137,7 @@
   (let [entered  (promise)
         acquired (future
                    (try
-                     (sut/with-cluster-lock lock-opts
-                       (deliver entered :yes))
+                     (do-with-lock-opts lock-opts (fn [] (deliver entered :yes)))
                      (catch Throwable _
                        (deliver entered :err))))
         result   (deref entered timeout-ms :timeout)]
@@ -226,3 +246,182 @@
         (is (= [[:a :failed :timeout]
                 [:b :done]]
                @results))))))
+
+(deftest fall-back-in-band?-test
+  (testing "the out-of-band insert retries on the caller's connection when"
+    (testing "the pool cannot provide a second connection"
+      (is (#'sut/fall-back-in-band? (ex-info "checkout timed out" {::sut/checkout-failed true}))))
+    (testing "the dedicated connection timed out on a row lock"
+      (is (#'sut/fall-back-in-band?
+           (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)))))
+  (testing "other errors still propagate"
+    (is (not (#'sut/fall-back-in-band?
+              (SQLException. "You have an error in your SQL syntax" "42000" 1064))))))
+
+(deftest checkout-connection!-tags-pool-failures-test
+  (testing "a failed checkout produces an error that triggers the fallback"
+    (let [exhausted-pool (reify javax.sql.DataSource
+                           (getConnection [_]
+                             (throw (SQLException. "An attempt by a client to checkout a Connection has timed out."))))]
+      (mdb/with-application-db exhausted-pool
+        (is (#'sut/fall-back-in-band? (try
+                                        (#'sut/checkout-connection!)
+                                        (catch Exception e e))))))))
+
+(deftest checkout-failure-still-acquires-a-first-time-lock-test
+  (testing "a first-time lock is acquired even when the pool cannot provide a second connection"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::checkout-failure-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn [] (throw (ex-info "checkout timed out" {::sut/checkout-failed true})))]
+          ;; An ambient transaction is what sends the insert out of band in the first place.
+          (t2/with-transaction [_conn]
+            (is (= :ok (sut/with-cluster-lock ::checkout-failure-lock :ok)))
+            (is (t2/exists? :metabase_cluster_lock :lock_name lock-name))))))))
+
+(deftest out-of-band-insert-commits-without-help-from-the-pool-test
+  (testing "the lock row outlives the caller's rollback even when the dedicated connection arrives in a transaction"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::autocommit-off-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn []
+                                      (doto (.getConnection (mdb/data-source))
+                                        (.setAutoCommit false)))]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (is (= :ok (sut/with-cluster-lock ::autocommit-off-lock :ok)))))
+        (is (t2/exists? :metabase_cluster_lock :lock_name lock-name)
+            "the dedicated connection committed it, so the caller's rollback cannot take it away")))))
+
+(deftest detached-lock-basic-test
+  (testing "returns the body's value and works non-concurrently"
+    (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-basic} :ok)))))
+
+(deftest detached-lock-body-commits-incrementally-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "body work commits as it goes and survives a later throw in the body"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                              (sut/with-detached-cluster-lock {:lock ::detached-commit}
+                                (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+                                (throw (ex-info "boom" {})))))
+        (is (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest detached-lock-reentry-throws-test
+  (testing "re-acquiring a held detached lock throws instead of self-deadlocking"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
+                          (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                            (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                              :nope)))))
+  ;; the transactional-path guard lives in the row-lock impl; h2 takes its in-process reentrant lock
+  (when (not= (mdb/db-type) :h2)
+    (testing "a transactional acquisition of a lock this scope holds detached also throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already held detached"
+                            (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                              (sut/with-cluster-lock ::detached-reentry
+                                :nope)))))
+    (testing "taking a different lock inside a detached body works normally"
+      (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-reentry}
+                   (sut/with-cluster-lock ::detached-reentry-other
+                     :ok)))))))
+
+(deftest detached-lock-mutual-exclusion-test
+  ;; h2 uses the in-process rw-lock path; real row-lock semantics only.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-detached-cluster-lock {:lock ::detached-mutex} :warm)
+    (let [held (run-with-lock {:lock ::detached-mutex :detached? true})]
+      (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
+      (testing "a detached holder blocks another detached acquirer"
+        (is (not (acquirable-within? {:lock ::detached-mutex :detached? true
+                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                     3000))))
+      (testing "a detached holder blocks a transactional acquirer"
+        (is (not (acquirable-within? {:lock ::detached-mutex
+                                      :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                     3000))))
+      (.countDown ^CountDownLatch (:release held))
+      (is (= :ok (deref (:done held) 3000 :timeout)))
+      (testing "released once the body completes"
+        (is (acquirable-within? {:lock ::detached-mutex :detached? true} 3000))))))
+
+(defn- query-canceled-exception
+  "Build a query-canceled SQLException for the current appdb type. Mirrors the codes in
+  [[metabase.app-db.query-cancelation]] so the test exercises the real db-type path."
+  []
+  (case (mdb/db-type)
+    :postgres (SQLException. "ERROR: canceling statement due to user request" "57014")
+    :mysql    (SQLException. "Statement cancelled due to timeout or client request" "70100" 1317)))
+
+(deftest detached-lock-body-error-not-retried-test
+  ;; h2 takes an in-process lock and bypasses the retry path entirely, so this only exercises real row locks.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-detached-cluster-lock {:lock ::detached-body-error} :warm)
+    (let [attempts (atom 0)
+          e        (is (thrown? Throwable
+                                (sut/with-detached-cluster-lock {:lock ::detached-body-error
+                                                                 :retry-config {:max-retries 2 :delay-ms 1}}
+                                  (swap! attempts inc)
+                                  (throw (query-canceled-exception)))))]
+      (testing "an acquisition-retryable error raised by the body must not re-run the body: its work commits
+                incrementally, so a re-run double-applies it"
+        (is (= 1 @attempts)))
+      (testing "a body error must not be rewrapped as an acquisition failure — the lock WAS obtained"
+        (is (not (re-find #"Failed to obtain cluster lock" (str (ex-message e)))))))))
+
+(deftest detached-lock-nested-lock-timeout-not-retried-test
+  ;; The audit-pipeline shape: a detached body that takes another cluster lock inside (serdes takes the
+  ;; permissions lock when inserting a Database). When the inner acquisition times out, the canceled
+  ;; SELECT stays in the cause chain of the inner "Failed to obtain cluster lock" wrapper, so the outer
+  ;; machinery must not read it as a failure to acquire the OUTER lock: re-running the body would
+  ;; double-apply its committed work, and attributing the error to the outer lock makes callers that
+  ;; treat outer-lock contention as benign (ensure-audit-db-installed!) swallow a genuine body failure.
+  (when (not= (mdb/db-type) :h2)
+    (sut/with-cluster-lock ::nested-timeout-inner :warm)
+    (sut/with-detached-cluster-lock {:lock ::nested-timeout-outer} :warm)
+    (let [held (run-with-lock {:lock ::nested-timeout-inner})]
+      (try
+        (is (.await ^CountDownLatch (:entered held) 3 TimeUnit/SECONDS))
+        (let [attempts (atom 0)
+              e        (is (thrown? Throwable
+                                    (sut/with-detached-cluster-lock {:lock ::nested-timeout-outer
+                                                                     :retry-config {:max-retries 2 :delay-ms 1}}
+                                      (swap! attempts inc)
+                                      (sut/with-cluster-lock {:lock ::nested-timeout-inner
+                                                              :timeout-seconds 1 :retry-config {:max-retries 0}}
+                                        :never))))]
+          (testing "the incrementally-committing outer body must run exactly once"
+            (is (= 1 @attempts)))
+          (testing "the failure must not be attributed to the outer lock the body already holds"
+            (is (not= [(u/qualified-name ::nested-timeout-outer)]
+                      (:lock-names (ex-data e))))))
+        (finally
+          (.countDown ^CountDownLatch (:release held))
+          (is (= :ok (deref (:done held) 3000 :timeout))))))))
+
+(deftest detached-lock-released-after-body-throw-test
+  ;; The throw path has no explicit rollback: it relies on with-open closing the dedicated
+  ;; connection and the pool rolling back the unresolved transaction on check-in. If that ever
+  ;; stopped happening (pool swap or misconfiguration), a boot-time audit failure would leave the
+  ;; row lock held until the connection ages out, silently stalling other nodes' boots — the class
+  ;; of bug the detached lock exists to fix. Release after *normal* completion is covered by
+  ;; detached-lock-mutual-exclusion-test; this pins the throw path.
+  (when (not= (mdb/db-type) :h2)
+    ;; warm up the row first so we're not racing on the initial INSERT
+    (sut/with-detached-cluster-lock {:lock ::detached-throw-release} :warm)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                          (sut/with-detached-cluster-lock {:lock ::detached-throw-release}
+                            (throw (ex-info "boom" {})))))
+    (testing "the row lock is released once the throwing body's connection is checked back in"
+      (is (acquirable-within? {:lock ::detached-throw-release :detached? true
+                               :timeout-seconds 1 :retry-config {:max-retries 0}}
+                              3000))
+      (is (acquirable-within? {:lock ::detached-throw-release
+                               :timeout-seconds 1 :retry-config {:max-retries 0}}
+                              3000)))))

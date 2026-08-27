@@ -17,6 +17,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -145,6 +146,50 @@
       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
       pulse)))
 
+(def ^:private PulseChannelType
+  [:enum "email" "slack" "http"])
+
+(def ^:private PulseScheduleType
+  [:enum "hourly" "daily" "weekly" "monthly"])
+
+(def ^:private PulseScheduleDay
+  [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"])
+
+(def ^:private PulseScheduleFrame
+  [:enum "first" "mid" "last"])
+
+(def ^:private PulseScheduleHour
+  [:int {:min 0 :max 23}])
+
+(def ^:private PulseChannelRecipient
+  [:map
+   [:id    {:optional true} [:maybe ms/PositiveInt]]
+   [:email {:optional true} [:maybe ms/Email]]])
+
+(def ^:private PulseChannelDetails
+  [:map
+   [:attachment_only {:optional true} [:maybe :boolean]]
+   [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:channel         {:optional true} [:maybe :string]]
+   [:channels        {:optional true} [:maybe :string]]
+   [:channel_id      {:optional true} [:maybe :string]]
+   [:emails          {:optional true} [:maybe [:sequential ms/Email]]]])
+
+(def ^:private PulseChannel
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  [:map
+   [:id             {:optional true}   [:maybe ms/PositiveInt]]
+   [:channel_type                      PulseChannelType]
+   [:enabled        {:optional true}   [:maybe :boolean]]
+   [:pulse_id       {:optional true}   [:maybe ms/PositiveInt]]
+   [:channel_id     {:optional true}   [:maybe ms/PositiveInt]]
+   [:details        {:optional true}   [:maybe PulseChannelDetails]]
+   [:recipients     {:optional true}   [:sequential PulseChannelRecipient]]
+   [:schedule_type  {:optional true}   [:maybe PulseScheduleType]]
+   [:schedule_day   {:optional true}   [:maybe PulseScheduleDay]]
+   [:schedule_hour  {:optional true}   [:maybe PulseScheduleHour]]
+   [:schedule_frame {:optional true}   [:maybe PulseScheduleFrame]]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -161,12 +206,12 @@
    :- [:map
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
-       [:channels            [:+ :map]]
+       [:channels            [:+ PulseChannel]]
        [:skip_if_empty       {:default false} [:maybe :boolean]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
   (create-pulse-with-perm-checks!
    cards
@@ -233,11 +278,12 @@
    {:keys [cards], :as pulse-updates} :- [:map
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ :map]]]
+                                          [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
@@ -249,8 +295,11 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (email-channel pulse-updates))))
-                                          (set (map :id (:recipients (email-channel pulse-before-update)))))
+      ;; key recipients the same way pulse-channel does: user recipients by :id, external recipients by
+      ;; :email, so changes to external addresses are part of the diff too
+      (let [recipient-key     (some-fn :id :email)
+            to-add-recipients (difference (set (keep recipient-key (:recipients (email-channel pulse-updates))))
+                                          (set (keep recipient-key (:recipients (email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
@@ -321,15 +370,24 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
+                                         ;; the saved subscription this is a test send of, when there is one.
+                                         ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
+                                         ;; email template drops the whole "Unsubscribe" footer without a link
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
-                                         [:channels            [:+ :map]]
+                                         [:channels            [:+ PulseChannel]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                                         [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
+                                         [:alert_first_only    {:optional true} [:maybe :boolean]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]]
    request]
+  (perms/check-has-application-permission :subscription false)
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]

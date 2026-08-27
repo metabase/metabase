@@ -79,9 +79,11 @@ function DocumentProviders({
       entities: createMockEntitiesState({}),
     });
     const commonReducerNames = Object.keys(commonReducers);
+    // Unjustified type cast. FIXME
     const initialState = _.pick(
       storeInitialState,
       ...commonReducerNames,
+      "settings", // `getStore` uses settings to seed the `getSessionProperties` cache entry
     ) as State;
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);

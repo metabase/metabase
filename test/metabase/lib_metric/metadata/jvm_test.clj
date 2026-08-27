@@ -13,7 +13,6 @@
 
 (deftest ^:synchronized metadatas-fetches-metrics-test
   (testing "metadatas should fetch metrics from the database"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Test Metric"
                                        :database_id  (mt/id)
@@ -30,7 +29,6 @@
 
 (deftest ^:synchronized metadatas-fetches-metrics-by-table-id-test
   (testing "metadatas should fetch metrics by table-id"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Table Metric"
                                        :database_id  (mt/id)
@@ -46,7 +44,6 @@
 
 (deftest ^:synchronized metadatas-excludes-archived-metrics-test
   (testing "metadatas should exclude archived metrics when not filtering by ID"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card active-metric   {:type         :metric
                                                 :name         "Active Metric"
                                                 :archived     false
@@ -72,7 +69,6 @@
 
 (deftest ^:synchronized metadatas-includes-archived-when-filtering-by-id-test
   (testing "metadatas should include archived metrics when filtering by ID"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card archived-metric {:type         :metric
                                                 :name         "Archived Metric"
                                                 :archived     true

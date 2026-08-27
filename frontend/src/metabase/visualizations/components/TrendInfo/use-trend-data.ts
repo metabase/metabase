@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import {
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/value-formatting";
 import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import {
   computePreviousPeriodChange,
@@ -57,6 +59,7 @@ function computeTrendData(
   }
 
   const latestValue = rows[latestRowIndex][metricColumnIndex];
+  // Unjustified type cast. FIXME
   const latestDate = rows[latestRowIndex][dateColumnIndex] as string;
 
   const formattedValue = formatValue(latestValue, { column: metricColumn });

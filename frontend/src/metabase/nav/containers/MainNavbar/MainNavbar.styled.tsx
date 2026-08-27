@@ -22,7 +22,7 @@ export const Sidebar = styled.aside<{
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
   ${(props) =>
@@ -65,6 +65,7 @@ export const SidebarContentRoot = styled.div`
   justify-content: space-between;
 `;
 
+// Unjustified type cast. FIXME
 export const SidebarSection = styled(Box)<BoxProps>`
   margin-top: var(--mantine-spacing-sm);
   margin-bottom: var(--mantine-spacing-md);
@@ -72,6 +73,7 @@ export const SidebarSection = styled(Box)<BoxProps>`
   padding-inline-end: var(--mantine-spacing-md);
 ` as unknown as typeof Box;
 
+// Unjustified type cast. FIXME
 export const TrashSidebarSection = styled(SidebarSection)`
   ${ExpandToggleButton} {
     width: 12px;

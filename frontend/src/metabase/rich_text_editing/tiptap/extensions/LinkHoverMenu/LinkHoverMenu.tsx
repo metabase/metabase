@@ -52,6 +52,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     }
 
     const handleMouseOver = (event: MouseEvent) => {
+      // Unjustified type cast. FIXME
       const target = event.target as HTMLElement;
       if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
         clearHoverTimeout();
@@ -60,6 +61,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     };
 
     const handleMouseOut = (event: MouseEvent) => {
+      // Unjustified type cast. FIXME
       const target = event.target as HTMLElement;
       if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
         startHoverTimeout();
@@ -109,7 +111,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
       onMouseLeave={() => startHoverTimeout()}
     >
       <Card
-        shadow="0 2px 8px var(--mb-color-shadow)"
+        shadow="0 2px 8px var(--mb-color-shadow-default)"
         bd="1px solid var(--mb-color-border-neutral)"
         bdrs="sm"
         px="sm"

@@ -10,6 +10,7 @@ import {
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
 import { useConfirmation } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_LIBRARY,
@@ -18,7 +19,6 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -184,7 +184,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={onArchiveClick}
-              c="error"
+              c="feedback-negative"
             >
               {t`Archive`}
             </Menu.Item>

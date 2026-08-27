@@ -9,7 +9,7 @@
 
 .smartLink {
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 

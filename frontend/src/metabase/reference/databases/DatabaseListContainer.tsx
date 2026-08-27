@@ -1,72 +1,52 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { Component } from "react";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
+import { useListDatabasesQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import DatabaseList from "metabase/reference/databases/DatabaseList";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
+import { useLocation } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import { getDatabaseId, getIsEditing } from "../selectors";
-
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-});
+import type { ClearStateProps } from "../reference";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface DatabaseListContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  location: Location;
+type DatabaseListContainerProps = ClearStateProps;
 
-  // From mapDispatchToProps (metadataActions spread)
-  fetchRealDatabases: (args: unknown) => Promise<unknown>;
-}
+function DatabaseListContainer(props: DatabaseListContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
 
-class DatabaseListContainer extends Component<DatabaseListContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchDatabases(this.props);
-  }
+  const { isFetching, error } = useListDatabasesQuery({ include: "tables" });
 
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: DatabaseListContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        sidebar={<BaseSidebar />}
-      >
-        <DatabaseList />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      sidebar={<BaseSidebar />}
+    >
+      <DatabaseList loading={isFetching} loadingError={error} />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
-  mapStateToProps,
+  null,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(DatabaseListContainer as unknown as React.ComponentType);

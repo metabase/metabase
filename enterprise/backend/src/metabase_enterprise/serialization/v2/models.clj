@@ -13,9 +13,11 @@
 
 (def data-model-in-collection
   "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set."
+   These are extracted by ID when discovered via descendants, even if no-data-model is set.
+   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
   ["Table"
    "Field"
+   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -33,11 +35,11 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["CuratedSearchEntry"
-           "CustomVizPlugin"
+          ["CustomVizPlugin"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
+           "OsiAiContext"
            "PythonLibrary"
            "Setting"
            "Transform"
@@ -54,13 +56,15 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["AiUsageLog"
+  ["AgentApiCallLog"
+   "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
@@ -79,16 +83,28 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
    "DependencyStatus"
    "DocumentBookmark"
+   "Exploration"
+   "ExplorationBlock"
+   "ExplorationBookmark"
+   "ExplorationPage"
+   "ExplorationQuery"
+   "ExplorationQueryResult"
+   "ExplorationThread"
+   "ExplorationThreadTimeline"
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpFeedback"
    "McpQueryHandle"
+   "McpSessionLog"
+   "McpToolCallLog"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"
@@ -143,11 +159,13 @@
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
    "SsoRelayState"
+   "StoredResult"
+   "StoredResultUse"
    "SupportAccessGrantLog"
-   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
+   "TransformDagRun"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
@@ -155,6 +173,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "ViewLog"])

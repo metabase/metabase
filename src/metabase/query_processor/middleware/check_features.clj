@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.check-features
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -9,7 +10,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (defn- assert-driver-supports
   "Assert that the driver/database supports keyword `feature`."
@@ -38,6 +40,8 @@
        (when (= path-type :lib.walk/join)
          (vswap! required-features conj! (:strategy join)))
        nil))
+    (when (some :pivot (:stages query))
+      (vswap! required-features conj! :native-pivot-tables))
     (persistent! @required-features)))
 
 (defn check-features

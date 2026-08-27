@@ -7,7 +7,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
-import { allCollectionModels } from "metabase/common/components/Pickers/EntityPicker/utils";
+import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,
@@ -22,10 +22,11 @@ const isLibrary = (
 export const useGetLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
-  const { data, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip },
-  );
+  const {
+    data,
+    isLoading: isLoadingCollection,
+    error,
+  } = useGetLibraryCollectionQuery(undefined, { skip });
 
   const maybeLibrary = useMemo(
     () => (isLibrary(data) ? data : undefined),
@@ -35,6 +36,7 @@ export const useGetLibraryCollection = ({
   return {
     isLoading: isLoadingCollection,
     data: maybeLibrary,
+    error,
   };
 };
 export const useGetLibraryChildCollectionByType = ({

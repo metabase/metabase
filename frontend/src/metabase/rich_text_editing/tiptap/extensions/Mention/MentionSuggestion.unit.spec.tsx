@@ -58,6 +58,7 @@ const setup = (props: SetupProps = {}) => {
     run: jest.fn().mockReturnThis(),
   };
 
+  // Unjustified type cast. FIXME
   const editor = {
     commands: {
       focus: jest.fn(),

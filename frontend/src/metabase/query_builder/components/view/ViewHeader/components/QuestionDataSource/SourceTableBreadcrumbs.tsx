@@ -73,7 +73,7 @@ export function SourceTableBreadcrumbs({
               ? Urls.queryBuilderTable(table.id, table.db_id)
               : undefined
           }
-          color={isSubhead ? "text-tertiary" : "text-primary"}
+          color={isSubhead ? "text-disabled" : "text-primary"}
         >
           <span>
             {table.display_name}

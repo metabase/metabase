@@ -6,18 +6,22 @@ const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
 const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
 const UNAGGREGATED_DATA_WARNING = "UNAGGREGATED_DATA_WARNING";
 const UNAGGREGATED_DATA_WARNING_PIE = "UNAGGREGATED_DATA_WARNING_PIE";
+const UNAGGREGATED_DATA_WARNING_MAP = "UNAGGREGATED_DATA_WARNING_MAP";
 const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
 const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
 const PIE_NEGATIVES = "PIE_NEGATIVES";
+const TREEMAP_NEGATIVES = "TREEMAP_NEGATIVES";
 
 type VisualizationWarningKey =
   | typeof NULL_DIMENSION_WARNING
   | typeof INVALID_DATE_WARNING
   | typeof UNAGGREGATED_DATA_WARNING
   | typeof UNAGGREGATED_DATA_WARNING_PIE
+  | typeof UNAGGREGATED_DATA_WARNING_MAP
   | typeof UNEXPECTED_QUERY_TIMEZONE
   | typeof MULTIPLE_TIMEZONES
-  | typeof PIE_NEGATIVES;
+  | typeof PIE_NEGATIVES
+  | typeof TREEMAP_NEGATIVES;
 
 export type VisualizationWarning = {
   key: VisualizationWarningKey;
@@ -61,6 +65,25 @@ export function unaggregatedDataWarningPie(
   };
 }
 
+export function unaggregatedDataWarningMap(
+  columns: DatasetColumn[],
+): VisualizationWarning {
+  if (columns.length === 1) {
+    return {
+      key: UNAGGREGATED_DATA_WARNING_MAP,
+      text: t`"${
+        columns[0].display_name
+      }" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed.`,
+    };
+  }
+
+  const fields = columns.map((column) => `"${column.display_name}"`).join(", ");
+  return {
+    key: UNAGGREGATED_DATA_WARNING_MAP,
+    text: t`${fields} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed.`,
+  };
+}
+
 export function unexpectedTimezoneWarning({
   results_timezone,
   requested_timezone,
@@ -88,5 +111,12 @@ export function pieNegativesWarning(): VisualizationWarning {
   return {
     key: PIE_NEGATIVES,
     text: t`Negative values in measure column have been omitted from pie chart.`,
+  };
+}
+
+export function treemapNegativesWarning(): VisualizationWarning {
+  return {
+    key: TREEMAP_NEGATIVES,
+    text: t`Negative values in measure column have been omitted from treemap chart.`,
   };
 }

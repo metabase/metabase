@@ -101,6 +101,7 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
       )
         .unwrap()
         .then((res) => res.data.map((db) => db.id))
+        // Unjustified type cast. FIXME
         .catch(() => [] as DatabaseId[]);
 
       // get the revision number of the graph

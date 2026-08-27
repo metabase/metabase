@@ -85,7 +85,7 @@ Whether AI features are enabled.
 - Type: integer
 - Default: `null`
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
-- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -94,9 +94,10 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows.
+If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -294,6 +295,7 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 
 - Type: string
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -331,13 +333,6 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
-### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
-
-- Type: integer
-- Default: `250`
-
-Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
-
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -361,7 +356,7 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 - [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
 - [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
 
-Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.
 
 ### `MB_CSP_IMG_ENABLED`
 
@@ -784,6 +779,23 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 
 Allow users to explore data using X-rays.
 
+### `MB_EXPLORATIONS_WORKER_COUNT`
+
+- Type: integer
+- Default: `2`
+
+How many exploration queries a single Metabase node runs at once.
+
+### `MB_FINGERPRINT_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `fingerprint-max-fields-per-table`.
+
+Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
+  skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has
+  OOM'd instances syncing document databases like MongoDB with very large or dynamic schemas).
+
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
 - Type: boolean
@@ -893,11 +905,44 @@ Number of threads to use for batched index updates, including embedding requests
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable.
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  jdbc-data-warehouse-max-connection-pool-size before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a "service unavailable" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_MAX_PENDING_CHECKOUTS`
+
+- Type: integer
+- Default: `0`
+
+Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit jdbc-data-warehouse-max-connection-pool-size. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements jdbc-data-warehouse-connection-pool-checkout-timeout-ms, which bounds how long each query
+  waits; this bounds how many can wait at the same time.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  "service unavailable" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
@@ -1245,6 +1290,16 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ANTHROPIC_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.anthropic.com`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-base-url`
+
+The Anthropic API base URL.
+
+Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_ANTHROPIC_API_KEY`
 
 - Type: string
@@ -1253,18 +1308,375 @@ The array of last two ISO8601 dates when an admin dismissed the license token mi
 
 The Anthropic API Key.
 
+Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_ANTHROPIC_MODEL`
+
+- Type: string
+- Default: `claude-opus-4-5-20251101`
+- [Configuration file name](./config-file.md): `llm-anthropic-model`
+
+The Anthropic model to use.
+
+### `MB_LLM_AZURE_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-base-url`
+
+The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_AZURE_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-api-key`
+
+The API key for the Azure resource hosting your models.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_AZURE_DEPLOYMENT_NAME`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-deployment-name`
+
+The name of the model deployment served by the Azure connection configured from the environment.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_AZURE_MODEL_FAMILY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-model-family`
+
+Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
+
+The AWS Access Key ID for Amazon Bedrock.
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_BEDROCK_REGION`
+
+- Type: string
+- Default: `us-east-1`
+- [Configuration file name](./config-file.md): `llm-bedrock-region`
+
+The AWS region for Amazon Bedrock (e.g. us-east-1).
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
+
+The AWS Secret Access Key for Amazon Bedrock.
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_BEDROCK_SESSION_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-bedrock-session-token`
+
+The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_CONNECTION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `10000`
+- [Configuration file name](./config-file.md): `llm-connection-timeout-ms`
+
+TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
+
+### `MB_LLM_DEEPSEEK_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.deepseek.com`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-base-url`
+
+The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_DEEPSEEK_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-key`
+
+The DeepSeek API Key.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_GOOGLE_API_BASE_URL`
+
+- Type: string
+- Default: `https://aiplatform.googleapis.com`
+- [Configuration file name](./config-file.md): `llm-google-api-base-url`
+
+The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_GOOGLE_LOCATION`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-location`
+
+The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-oauth-access-token`
+
+A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_GOOGLE_PROJECT_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-project-id`
+
+The Google Cloud project ID for the Gemini Enterprise Agent Platform.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-service-account-key`
+
+A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_MAX_TOKENS`
+
+- Type: integer
+- Default: `4096`
+- [Configuration file name](./config-file.md): `llm-max-tokens`
+
+Maximum tokens for LLM responses.
+
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.
+
+### `MB_LLM_MINI_MODEL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-mini-model`
+
+The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.
+
+### `MB_LLM_MISTRAL_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.mistral.ai/v1`
+- [Configuration file name](./config-file.md): `llm-mistral-api-base-url`
+
+The Mistral API base URL used for Chat Completions.
+
+Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_MISTRAL_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-mistral-api-key`
+
+The Mistral API Key.
+
+Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_MOONSHOT_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.moonshot.ai/v1`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-base-url`
+
+The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
+
+Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_MOONSHOT_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-key`
+
+The Moonshot AI API Key.
+
+Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.openai.com`
+- [Configuration file name](./config-file.md): `llm-openai-api-base-url`
+
+The OpenAI API base URL.
+
+Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-api-key`
+
+The OpenAI API Key.
+
+Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENAI_MODEL`
+
+- Type: string
+- Default: `gpt-5.4`
+- [Configuration file name](./config-file.md): `llm-openai-model`
+
+The OpenAI Model (e.g. 'gpt-5.5', 'gpt-5.4-mini').
+
+### `MB_LLM_OPENROUTER_API_BASE_URL`
+
+- Type: string
+- Default: `https://openrouter.ai/api`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-base-url`
+
+The OpenRouter API base URL used for Chat Completions.
+
+Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENROUTER_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openrouter-api-key`
+
+The OpenRouter API Key.
+
+Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_PROVIDERS`
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `llm-providers`
+
+JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields.
+
+Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
+
+Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
+
+### `MB_LLM_RATE_LIMIT_PER_IP`
+
+- Type: integer
+- Default: `100`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
+
+Maximum SQL generation requests per IP address per minute.
+
+### `MB_LLM_RATE_LIMIT_PER_USER`
+
+- Type: integer
+- Default: `20`
+- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
+
+Maximum SQL generation requests per user per minute.
+
+### `MB_LLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `120000`
+- [Configuration file name](./config-file.md): `llm-request-timeout-ms`
+
+Socket (inter-byte read) timeout in milliseconds for LLM API requests. For streaming responses this bounds the gap between successive chunks, NOT the total response time. Picked generously: extended thinking can pause for tens of seconds between chunks. Without it, a hung read inside the stream blocks the worker indefinitely — observed in production when an upstream proxy held the connection open without sending data.
+
+### `MB_LLM_VLLM_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-base-url`
+
+The base URL of your vLLM server's OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-key`
+
+The API key for your vLLM server. Only needed when the server was started with `--api-key`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-vllm-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your vLLM server.
+
+### `MB_LLM_ZAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.z.ai/api/paas/v4`
+- [Configuration file name](./config-file.md): `llm-zai-api-base-url`
+
+The Z.AI API base URL used for Chat Completions.
+
+Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_ZAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-zai-api-key`
+
+The Z.AI API Key.
+
+Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`,
   which defaults to true, but can be disabled via environment variable.
@@ -1328,6 +1740,28 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
 
+### `MB_METABOT_ADVANCED_PERMISSIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-advanced-permissions`.
+- [Configuration file name](./config-file.md): `metabot-advanced-permissions`
+
+Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-chat-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-chat-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the chat experience (the AI sidebar and embedded Metabot).
+
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
@@ -1337,12 +1771,89 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_ICON`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-icon`.
+- [Configuration file name](./config-file.md): `metabot-icon`
+
+The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).
+
+### `MB_METABOT_LIMIT_RESET_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `monthly`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-reset-rate`.
+- [Configuration file name](./config-file.md): `metabot-limit-reset-rate`
+
+How often Metabot usage limits reset: `daily`, `weekly`, or `monthly`.
+
+### `MB_METABOT_LIMIT_UNIT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `tokens`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-unit`.
+- [Configuration file name](./config-file.md): `metabot-limit-unit`
+
+The unit used for Metabot usage limits: `tokens` or `messages`.
+
+### `MB_METABOT_NAME`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `Metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-name`.
+- [Configuration file name](./config-file.md): `metabot-name`
+
+The display name for Metabot, shown throughout the Metabase UI.
+
+### `MB_METABOT_NLQ_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-nlq-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-nlq-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the natural language query (AI exploration) experience.
+
+### `MB_METABOT_QUOTA_REACHED_MESSAGE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `You have reached your AI usage limit for the current period. Please contact your administrator.`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-quota-reached-message`.
+- [Configuration file name](./config-file.md): `metabot-quota-reached-message`
+
+The message shown to users when they reach their usage quota.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
 - Default: `true`
 
 Whether the user's recently viewed items are included in the Metabot system prompt.
+
+### `MB_METABOT_SHOW_ILLUSTRATIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-show-illustrations`.
+- [Configuration file name](./config-file.md): `metabot-show-illustrations`
+
+Whether to show Metabot illustrations in the UI.
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
@@ -1351,6 +1862,32 @@ Whether the user's recently viewed items are included in the Metabot system prom
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-sql-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-sql-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the SQL generation experience.
+
+### `MB_MFA_CHALLENGE_SIGNING_KEY`
+
+- Type: string
+- Default: `null`
+
+Key used to sign MFA challenge tokens. Generated automatically on first use.
+
+### `MB_MFA_ENFORCEMENT`
+
+- Type: keyword
+- Default: `off`
+- [Configuration file name](./config-file.md): `mfa-enforcement`
+
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1452,6 +1989,7 @@ The size of the thread pool used to send system event notifications.
 
 - Type: integer
 - Default: `10485760`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The maximum file size that will be created when storing notification query results on disk.
   Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
@@ -1523,6 +2061,14 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_EARLY_REFRESH_RATIO`
+
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `query-caching-early-refresh-ratio`
+
+Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1538,6 +2084,27 @@ The maximum size of the cache, per saved question, in kilobytes.
 - [Configuration file name](./config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
+
+### `MB_QUEUE_BACKEND`
+
+- Type: string
+- Default: `null`
+
+Which queue backend to use. Valid values: `quartz`, `memory`. When unset, defaults to `quartz`, or to `memory` when the task scheduler is disabled (`MB_DISABLE_SCHEDULER`).
+
+### `MB_QUEUE_MAX_RETRIES`
+
+- Type: integer
+- Default: `5`
+
+Maximum number of times a failed queue message will be retried before being dropped.
+
+### `MB_QUEUE_NO_LISTENER_MAX_AGE_MS`
+
+- Type: integer
+- Default: `86400000`
+
+How long (in milliseconds) a Quartz queue message with no listener anywhere in the cluster is kept before the reaper drops it. With node-affinity, such a message is never acquired and just waits in the store; this bounds that wait so a message for a queue no node handles (e.g. a new queue whose node was rolled back) does not linger forever. Generous by default (1 day) so a node can restart or be re-upgraded and still deliver it.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
@@ -1803,8 +2370,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 - Default: `null`
 - [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
 
-This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1855,7 +2421,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 - Default: `false`
 - [Configuration file name](./config-file.md): `saml-slo-enabled`
 
-Is SAML Single Log Out enabled?
+If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
@@ -1868,6 +2434,16 @@ Is SAML Single Log Out enabled?
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
 When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
+
+### `MB_SCAN_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `scan-max-fields-per-table`.
+
+Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
+  are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
+  drivers like MongoDB, issue a warehouse request per field.
 
 ### `MB_SCIM_ENABLED`
 
@@ -1905,6 +2481,7 @@ Enable typeahead search in the Metabase navbar?
 
 - Type: boolean
 - Default: `true`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Should we send users a notification email the first time they log in from a new device? (Default: true). This is
   currently only configurable via environment variable so users who gain access to an admin's credentials cannot
@@ -1921,6 +2498,16 @@ This variable also controls the geocoding service that Metabase uses to know the
 
 Should new email notifications be sent to admins, for all new SSO users?
 
+### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false.
+
+On import, Metabase validates every question against the query format this version understands, and refuses any it cannot read. Set this to true to skip that validation. Skipping it will not necessarily make the import succeed. Import may still fail on a later step.
+
 ### `MB_SESSION_COOKIE_SAMESITE`
 
 - Type: keyword
@@ -1936,7 +2523,7 @@ See [Embedding Metabase in a different domain](../embedding/full-app-embedding.m
 ### `MB_SESSION_COOKIES`
 
 - Type: boolean
-- Default: `null`
+- Default: `false`
 - [Configuration file name](./config-file.md): `session-cookies`
 
 When set, enforces the use of session cookies for all users which expire when the browser is closed.
@@ -1985,7 +2572,7 @@ Whether an introductory modal should be shown after the next database connection
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `show-google-sheets-integration`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether or not to show the user a button that sets up Google Sheets integration.
 
@@ -2216,6 +2803,16 @@ Enable or disable surveys.
 
 Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
+### `MB_SYNC_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-max-fields-per-table`.
+
+Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields.
+
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
 - Type: boolean
@@ -2265,10 +2862,14 @@ Controls the timeout for transform runs, including the queries they execute. Thi
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
@@ -2353,6 +2954,13 @@ How many days of usage metadata rollups to retain.
 
 Cron schedule (in UTC) for usage metadata batch processing.
 
+### `MB_USE_NATIVE_PIVOT_TABLES`
+
+- Type: boolean
+- Default: `false`
+
+When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination.
+
 ### `MB_USER_VISIBILITY`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -2361,7 +2969,20 @@ Cron schedule (in UTC) for usage metadata batch processing.
 - Default: `all`
 - [Configuration file name](./config-file.md): `user-visibility`
 
-Note: Sandboxed users will never see suggestions.
+Note: Users with row or column security restrictions will never see suggestions.
+
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
 
 ## Other environment variables
 
@@ -2633,7 +3254,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Application logs](../monitor/application-logs.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -2858,6 +3479,13 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_SESSION_SECRET_KEY`
+
+Type: string<br>
+Default: `null`
+
+When set, session keys are stored in the application database signed with this secret, so a valid session cannot be created or used with database access alone. Requirement: minimum 16 characters. Setting or changing this value logs out all active sessions.
 
 ### `MB_SETUP_TOKEN`
 

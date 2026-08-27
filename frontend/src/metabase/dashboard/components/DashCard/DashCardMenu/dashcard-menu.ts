@@ -1,10 +1,8 @@
-/* eslint-disable-next-line no-restricted-imports */
-import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 
-import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardContextProps } from "metabase/dashboard/context";
-import type { IconName } from "metabase/embedding-sdk/types/icon";
+import type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
+import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
 export type DashboardCardMenuCustomElement = ({
@@ -35,50 +33,3 @@ export type DashboardCardCustomMenuItem = {
 export type DashboardCardMenu =
   | DashboardCardMenuCustomElement
   | DashboardCardCustomMenuItem;
-
-export type DashCardMenuItem = {
-  /**
-   * Icon name
-   */
-  iconName: IconName;
-
-  /**
-   * Item label
-   **/
-  label: string;
-
-  /**
-   * Item children
-   */
-  children?: ReactNode;
-
-  /**
-   * Key of `theme.colors` or any valid CSS color
-   **/
-  color?: MantineColor;
-
-  /**
-   * Determines whether the menu should be closed when the item is clicked, overrides `closeOnItemClick` prop on the `Menu` component
-   **/
-  closeMenuOnClick?: boolean;
-
-  /**
-   * Section displayed on the left side of the label
-   **/
-  leftSection?: ReactNode;
-
-  /**
-   * Section displayed on the right side of the label
-   **/
-  rightSection?: ReactNode;
-
-  /**
-   * Disables item
-   **/
-  disabled?: boolean;
-
-  /**
-   * Click handler
-   */
-  onClick: () => void;
-};

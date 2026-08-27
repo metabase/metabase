@@ -2,14 +2,21 @@
   max-width: 100%;
 
   &.headVariant {
-    .HeaderBreadcrumb {
+    .HeaderBreadcrumb,
+    .HeaderBreadcrumbs {
       font-size: 1.25rem;
+    }
+
+    .HeaderBreadcrumbIcon {
+      width: 1.125rem;
+      height: 1.125rem;
+      transform: translateY(1px);
     }
   }
 }
 
 .HeaderBreadcrumbs {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-size: 0.8em;
   font-weight: bold;
   padding-left: 0.5em;

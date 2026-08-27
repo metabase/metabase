@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
-import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
+import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 

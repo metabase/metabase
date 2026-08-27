@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   AggregateFieldReference,
   DimensionReference,
@@ -36,6 +35,7 @@ export const isTemplateTagReference = (
 
 export const createFieldReference = (
   columnNameOrFieldId: string | FieldId,
+  // Unjustified type cast. FIXME
 ): FieldReference => ["field", columnNameOrFieldId, null] as FieldReference;
 
 export const isValidDimensionReference = (
@@ -83,11 +83,19 @@ export const getNormalizedDimensionReference = (
     isExpressionReference(mbql) ||
     isAggregationReference(mbql)
   ) {
+    // Unjustified type cast. FIXME
     const normalizedReference = [...mbql] as DimensionReference;
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(normalizedReference);
+    // MBQL normalization drops empty options from expression and aggregation
+    // references, while field references keep the options position.
+    if (normalizedOptions == null && !isFieldReference(normalizedReference)) {
+      // slice does not narrow the tuple type
+      return normalizedReference.slice(0, 2) as DimensionReference;
+    }
+
+    return normalizedReference;
   }
 
   return mbql;
@@ -97,6 +105,7 @@ const getDimensionReferenceWithoutOptions = (
   mbql: DimensionReferenceWithOptions,
   optionsKeysToOmit: string[],
 ): DimensionReferenceWithOptions => {
+  // Unjustified type cast. FIXME
   const newReference = mbql.slice() as DimensionReferenceWithOptions;
   const options = newReference[2];
 

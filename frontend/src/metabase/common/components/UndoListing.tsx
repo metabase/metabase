@@ -40,6 +40,7 @@ import {
 
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
+const TOAST_MESSAGE_MAX_LINES = 4;
 
 function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
@@ -100,7 +101,7 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      bg={dark ? "background-primary-inverse" : "background-primary"}
+      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
       radius="md"
@@ -116,7 +117,9 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "background-tertiary-inverse" : "core-brand"}
+          color={
+            undo.pausedAt ? "background_page-tertiary-inverse" : "core-brand"
+          }
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -141,7 +144,9 @@ function UndoToast({
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Ellipsified showTooltip={false} lines={TOAST_MESSAGE_MAX_LINES}>
+              {renderMessage(undo)}
+            </Ellipsified>
           )}
         </CardContentSide>
         <ControlsCardContent>

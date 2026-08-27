@@ -1,5 +1,6 @@
 (ns metabase.search.filter
   (:require
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
@@ -17,7 +18,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -32,15 +36,11 @@
              (dissoc search.config/filters :id)))
 
 (defn- spec-supported-attr-keys
-  "All attr keys a spec supports, including those provided by function attrs.
+  "All attr keys a spec supports.
   Keys with value false are excluded — false means 'not present' in the spec DSL."
   [spec]
   (into #{}
-        (mapcat (fn [[k v]]
-                  (cond
-                    (search.spec/function-attr? v) (conj (search.spec/function-attr-provides v) k)
-                    v [k]
-                    :else [])))
+        (keep (fn [[k v]] (when v k)))
         (:attrs spec)))
 
 (defn search-context->applicable-models
@@ -50,14 +50,23 @@
   [search-ctx]
   ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
   ;; TODO move this behavior to the spec somehow
-  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
-    (into #{}
-          (remove nil?)
-          (for [search-model (:models search-ctx)
-                :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec)
-                       (every? (spec-supported-attr-keys spec) required))
-              (:name spec))))))
+  ;; :curated? is a precomputed flag every index row carries, so it isn't a per-spec attr; handle it
+  ;; explicitly below rather than through the spec-attr gate (which would drop every model). It restricts
+  ;; to the curatable models — which include `table`, so curated content stays visible where the
+  ;; verified-only filter dropped it (BOT-1536) — and matches the in-place engine for consistency.
+  (let [required (->> (remove-if-falsey search-ctx :archived?)
+                      (#(dissoc % :curated?))
+                      keys
+                      (keep context-key->filter))
+        models   (into #{}
+                       (remove nil?)
+                       (for [search-model (:models search-ctx)
+                             :let [spec (search.spec/spec search-model)]]
+                         (when (and (visible-to? search-ctx spec)
+                                    (every? (spec-supported-attr-keys spec) required))
+                           (:name spec))))]
+    (cond-> models
+      (:curated? search-ctx) (set/intersection search.config/curated-search-models))))
 
 (defn models-without-collection
   "A list of the search models which are not associated with collections, even indirectly."
@@ -111,7 +120,7 @@
     (if (premium-features/has-feature? :library)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
@@ -139,13 +148,13 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists {:select [[[:inline 1]]]
-                    :from   [[:collection :pc]]
-                    :where  [:and
-                             [:not= :pc.personal_owner_id nil]
-                             [:= :pc.location "/"]
-                             [:like :collection.location
-                              [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [[:collection :pc]]
+                                     :where  [:and
+                                              [:not= :pc.personal_owner_id nil]
+                                              [:= :pc.location "/"]
+                                              [:like :collection.location
+                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
         [:or
@@ -174,7 +183,7 @@
        [:= [:inline 0] [:inline 1]])))
   ([search-context model-col source-type-col]
    [:or
-    [:!= model-col [:inline "transform"]]
+    [:!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn filter-clauses
@@ -195,11 +204,15 @@
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
-    [[:dashboard-questions [:or
-                            ;; leverage the fact that only card-related models populate this attribute
-                            [:= nil :search_index.dashboard_id]
-                            (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
+    [[:dashboard-questions [:and
+                            [:or
+                             ;; leverage the fact that only card-related models populate this attribute
+                             [:= nil :search_index.dashboard_id]
+                             (when (:include-dashboard-questions? search-context)
+                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
+                            ;; documents with an exploration id are similar to a Dashboard Question - they aren't
+                            ;; searchable outside of their owning Exploration.
+                            [:= nil :search_index.exploration_id]]]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]

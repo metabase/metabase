@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import {
   isInvalidMetabaseVersion,

@@ -896,3 +896,18 @@
           ref-no-types (lib.options/update-options a-ref dissoc :base-type :effective-type)
           query''  (lib/order-by query' ref-no-types)]
       (is (= 1 (count (lib/order-bys query'')))))))
+
+(deftest ^:parallel order-by-source-card-expression-breakout-test
+  (testing "#49305 a custom-column breakout inherited from a source card can be used in order-by"
+    (let [q0     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/expression "CC" (lib/+ (meta/field-metadata :orders :total) 1)))
+          cc     (m/find-first #(= "CC" (:name %)) (lib/breakoutable-columns q0))
+          source (-> q0
+                     (lib/aggregate (lib/count))
+                     (lib/breakout cc))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 source)
+          query  (lib/query mp (lib.metadata/card mp 1))
+          cc-col (m/find-first #(= "CC" (:display-name %)) (lib/orderable-columns query))]
+      (is (some? cc-col))
+      (is (=? [[:desc {} [:field {} "CC"]]]
+              (lib/order-bys (lib/order-by query cc-col :desc)))))))

@@ -4,24 +4,22 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getHasSingleSchema,
-  getLoading,
   getTablesByDatabase,
 } from "../selectors";
+import type { ReferenceLoadingProps } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -37,13 +35,7 @@ const mapStateToProps = (
   database: getDatabase(state, props),
   entities: getTablesByDatabase(state, props),
   hasSingleSchema: getHasSingleSchema(state, props),
-  loading: getLoading(state),
-  loadingError: getError(state),
 });
-
-const mapDispatchToProps = {
-  ...metadataActions,
-};
 
 interface TableLike {
   id?: number | string;
@@ -112,7 +104,6 @@ class TableList extends Component<TableListProps> {
       <div data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
-          type="tables"
           headerIcon="database"
         />
         <LoadingAndErrorWrapper
@@ -153,5 +144,12 @@ class TableList extends Component<TableListProps> {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
-  mapDispatchToProps,
-)(TableList as unknown as React.ComponentType);
+  // Unjustified type cast. FIXME
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableList as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

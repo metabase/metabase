@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import {
   FieldEmptyState,
   FieldSection,
@@ -15,6 +15,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "metabase/metadata/components";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -37,11 +38,8 @@ type TableFieldsPageParams = {
   fieldId?: string;
 };
 
-type TableFieldsPageProps = {
-  params: TableFieldsPageParams;
-};
-
-export function TableFieldsPage({ params }: TableFieldsPageProps) {
+export function TableFieldsPage() {
+  const params = useParams<TableFieldsPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
@@ -108,7 +106,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               pos="sticky"
               top={0}
               className={S.header}
-              bg="background-secondary"
+              bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button

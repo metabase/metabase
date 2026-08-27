@@ -140,10 +140,43 @@
    query stage-number (cond-> clause
                         (expandable-temporal-expression? clause) expand-temporal-expression)))
 
+(defn- composite-clause-in-stages-0-to?
+  "True when any stage 0..`max-stage` contains an `:aggregation` or `:expressions` clause with
+  `:lib/uuid = target-uuid`. Searched latest-first since the originating aggregation is usually close to the
+  current stage."
+  [query max-stage target-uuid]
+  (loop [stage-number max-stage]
+    (cond
+      (neg? stage-number) false
+      (let [stage (lib.util/query-stage query stage-number)]
+        (some (fn [clause] (= (lib.options/uuid clause) target-uuid))
+              (concat (:aggregation stage) (:expressions stage)))) true
+      :else (recur (dec stage-number)))))
+
+(defn- restore-previous-stage-source-uuid
+  "Nominal `:field` refs into a previous stage lose the connection to their originating aggregation/expression
+  clause because `resolve-field-ref` overwrites `:lib/source-uuid` with the ref's own uuid. That breaks the
+  `:long` display-name traceback in [[metabase.lib.field]] (source-uuid → source clause), so two same-named
+  aggregations from different joins render identically (#76986). For expression-parts consumers we recover the
+  link: look up the previous-stage returned column by `:lib/deduplicated-name` and copy its `:lib/source-uuid`
+  onto the resolved col — but only when that uuid points at a composite (aggregation/expression) clause
+  somewhere upstream. Scoped to expression-parts; a broader display-name-level fix has a wider blast radius and
+  is deferred to the Column Heritage effort."
+  [query stage-number col]
+  (or (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+        (when-let [dedup-name (:lib/deduplicated-name col)]
+          (when-let [prev-col (m/find-first #(= (:lib/deduplicated-name %) dedup-name)
+                                            (lib.metadata.calculation/returned-columns query previous-stage-number))]
+            (when-let [prev-source-uuid (:lib/source-uuid prev-col)]
+              (when (composite-clause-in-stages-0-to? query previous-stage-number prev-source-uuid)
+                (assoc col :lib/source-uuid prev-source-uuid))))))
+      col))
+
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
   (let [stripped-ref (lib.options/update-options field-ref #(dissoc % :lib/expression-name))]
-    (column-metadata-from-ref query stage-number stripped-ref)))
+    (->> (column-metadata-from-ref query stage-number stripped-ref)
+         (restore-previous-stage-source-uuid query stage-number))))
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
@@ -631,15 +664,15 @@
                    :get-quarter :quarter-of-year}]
     (match/match-one filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
@@ -856,7 +889,7 @@
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (:template-tags base-stage)
               :when                                           (and (= tag-type :dimension)
                                                                    (= dim-tag :field)
                                                                    (integer? id))]
@@ -872,7 +905,7 @@
                (query-dependents-snippets metadata-providerable snippet-id #{})
                ;; If we don't have a real metadata provider, just return the direct dependency
                [{:type :native-query-snippet, :id snippet-id}])))
-         (vals (:template-tags base-stage)))))
+         (:template-tags base-stage))))
      (when-let [card-id (:source-card base-stage)]
        (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]

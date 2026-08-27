@@ -166,9 +166,7 @@ describe("Collections > utils", () => {
     it("returns true if there is no collection", () => {
       /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection({})).toBe(true);
-      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection(null)).toBe(true);
-      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection(undefined)).toBe(true);
     });
 
@@ -271,7 +269,9 @@ describe("Collections > utils", () => {
 
     describe("root collection forms", () => {
       it.each([
+        // Unjustified type cast. FIXME
         ["id is null", { id: null as never }],
+        // Unjustified type cast. FIXME
         ["id is undefined", { id: undefined as never }],
         ['id is "root"', { id: "root" as const }],
       ])("returns ROOT_COLLECTION when %s", (_label, override) => {
@@ -330,6 +330,7 @@ describe("Collections > utils", () => {
         (model) => {
           const collection = createMockCollection({ id: 99, name: "Library" });
           const result = createMockSearchResult({ model, collection });
+          // Unjustified type cast. FIXME
           expect(normalizedCollection(result.collection as Collection)).toEqual(
             collection,
           );
@@ -343,6 +344,7 @@ describe("Collections > utils", () => {
             model,
             collection: createMockCollection({ id: "root" as const }),
           });
+          // Unjustified type cast. FIXME
           expect(normalizedCollection(result.collection as Collection)).toBe(
             ROOT_COLLECTION,
           );

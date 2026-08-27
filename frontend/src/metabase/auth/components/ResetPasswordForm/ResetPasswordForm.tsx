@@ -3,10 +3,14 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
@@ -66,23 +70,27 @@ export const ResetPasswordForm = ({
         validationContext={validationContext}
         onSubmit={onSubmit}
       >
-        <Form>
-          <FormInput
+        <Form as={Stack} gap="md">
+          <FormTextInput
             name="password"
             type="password"
-            title={t`Create a password`}
+            label={t`Create a password`}
             placeholder={t`Shhh...`}
             autoComplete="new-password"
             autoFocus
           />
-          <FormInput
+          <FormTextInput
             name="password_confirm"
             type="password"
-            title={t`Confirm your password`}
+            label={t`Confirm your password`}
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
-          <FormSubmitButton title={t`Save new password`} primary fullWidth />
+          <FormSubmitButton
+            label={t`Save new password`}
+            variant="filled"
+            fullWidth
+          />
           <FormErrorMessage />
         </Form>
       </FormProvider>

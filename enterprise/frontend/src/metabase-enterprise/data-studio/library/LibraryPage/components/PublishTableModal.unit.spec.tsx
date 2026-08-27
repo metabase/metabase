@@ -43,7 +43,7 @@ jest.mock("metabase/common/components/Pickers/EntityPicker", () => ({
             id: 1,
             name: "ORDERS",
             database_id: 1,
-          } as OmniPickerItem)
+          })
         }
       >
         Select Orders
@@ -86,6 +86,7 @@ function setup({
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",

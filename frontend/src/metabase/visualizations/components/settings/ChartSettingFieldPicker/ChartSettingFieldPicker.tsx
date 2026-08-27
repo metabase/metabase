@@ -37,14 +37,14 @@ type ChartSettingFieldPickerProps = {
   fieldSettingWidget?: string | null;
   onChange?: (value: string) => void;
   onChangeSeriesColor?: (seriesKey: string, value: string) => void;
-  onRemove?: () => void;
+  onRemove?: (() => void) | null;
   onShowWidget?: (widget: MenuWidgetInfo, target: HTMLElement) => void;
   options?: Array<{ name: string; value: string }>;
   series?: Series;
   showColorPicker?: boolean;
   showColumnSetting?: boolean;
   showDragHandle?: boolean;
-  value?: string;
+  value?: string | null;
 };
 
 export const ChartSettingFieldPicker = ({
@@ -122,10 +122,11 @@ export const ChartSettingFieldPicker = ({
     <Group
       className={cx(S.root, className)}
       data-testid="chartsettings-field-picker"
-      bg="background-primary"
+      bg="background_page-primary"
       align="center"
     >
       <ChartSettingSelect
+        variant="unstyled"
         pl={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
@@ -137,6 +138,7 @@ export const ChartSettingFieldPicker = ({
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <Icon
+                  // Unjustified type cast. FIXME
                   ref={dragHandleRef as Ref<SVGSVGElement>}
                   name="grabber"
                   {...dragHandleListeners}

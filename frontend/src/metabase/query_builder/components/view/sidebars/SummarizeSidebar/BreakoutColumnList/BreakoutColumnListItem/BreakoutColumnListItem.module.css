@@ -79,7 +79,7 @@
 
   &.isNotSelected {
     .ColumnTypeIcon {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
 
     &:hover {
@@ -87,17 +87,17 @@
       .Content,
       .ColumnTypeIcon {
         color: var(--mb-color-core-summarize);
-        background-color: var(--mb-color-background-secondary);
+        background-color: var(--mb-color-background_page-secondary);
       }
 
       .AddButton:hover {
-        background-color: var(--mb-color-background-tertiary);
+        background-color: var(--mb-color-background_page-tertiary);
       }
 
       .BucketTriggerButton {
         visibility: visible;
         opacity: 1;
-        color: var(--mb-color-text-tertiary);
+        color: var(--mb-color-text-disabled);
 
         &:hover {
           color: var(--mb-color-text-secondary);

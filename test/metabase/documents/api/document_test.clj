@@ -8,10 +8,13 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
@@ -246,6 +249,63 @@
            (mt/user-http-request :crowberto :post 404
                                  (format "document/%d/copy" Integer/MAX_VALUE)
                                  {:name "Copy"})))))
+
+(deftest copy-document-read-checks-foreign-cards-test
+  (testing "POST /api/document/:id/copy read-checks every card it copies, so a card the caller cannot read is not
+            laundered into an owned copy"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {readable-coll :id} {}
+                       :model/Collection {secret-coll :id} {}
+                       :model/Document {doc-id :id} {:name "Source"
+                                                     :collection_id readable-coll
+                                                     :content_type prose-mirror/prose-mirror-content-type
+                                                     :document {:type "doc" :content []}}
+                       ;; The card belongs to the document by FK, but lives in a collection the caller cannot read and
+                       ;; is no longer embedded in the document body.
+                       :model/Card {secret-card :id} {:name "Secret"
+                                                      :document_id doc-id
+                                                      :collection_id secret-coll
+                                                      :dataset_query (mt/mbql-query venues)}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) readable-coll)
+          (testing "the caller can read the source document but not the foreign card"
+            (is (mt/user-http-request :rasta :get 200 (format "document/%d" doc-id)))
+            (mt/user-http-request :rasta :get 403 (format "card/%d" secret-card)))
+          (testing "copy refuses to duplicate the unreadable card and commits no copy"
+            (mt/user-http-request :rasta :post 403 (format "document/%d/copy" doc-id)
+                                  {:name "Copy" :collection_id readable-coll})
+            ;; only the original card remains — no laundered duplicate was committed
+            (is (= [secret-card] (map :id (t2/select :model/Card :name "Secret"))))))))))
+
+(deftest document-card-parameter-field-permissions-test
+  (testing "POST /api/document enforces the same parameter-target data-permission check POST /api/card enforces"
+    ;; mu.fn/*enforce* false reproduces a production JAR where mu/defn :- schemas are not compiled in, so the guard
+    ;; under test must be a plain runtime call that still fires here.
+    (binding [mu.fn/*enforce* false]
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {coll-id :id} {}]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (mt/with-no-data-perms-for-all-users!
+              (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+              ;; deliberately NOT granting create-queries on VENUES, the table the parameter target names
+              (let [card-body {:name "c" :display "table" :visualization_settings {}
+                               :dataset_query (mt/mbql-query categories)
+                               :parameters [{:id "pid" :name "p" :slug "p" :type "category"
+                                             :target [:dimension [:field (mt/id :venues :name) nil]]}]}]
+                (testing "the Card endpoint refuses it — the control"
+                  (is (re-find #"VENUES"
+                               (:message (mt/user-http-request :rasta :post 403 "card"
+                                                               (assoc card-body :collection_id coll-id))))))
+                (testing "the Document endpoint must refuse it too"
+                  (mt/user-http-request :rasta :post 403 "document/"
+                                        {:name "d"
+                                         :collection_id coll-id
+                                         :document {:type "doc" :content []}
+                                         :cards {"-1" card-body}}))
+                (testing "no Card carrying that target may exist afterwards"
+                  (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
 
 (deftest copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"
@@ -492,6 +552,32 @@
             (is (= "Updated Document with Generated Cards" (:name document)))
             (is (= col-id (:collection_id document)))))))))
 
+(deftest put-document-adhoc-card-without-stored-result-inserts-no-pairings-test
+  (testing "PUT /api/document/:id creating an ad-hoc card with no stored_result_id inserts no stored_result_use rows"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
+                                                      :collection_id col-id}]
+      (let [before (t2/count :model/StoredResultUse)
+            result (mt/user-http-request :crowberto
+                                         :put 200 (format "document/%s" document-id)
+                                         {:name "Updated"
+                                          :document {:type "doc"
+                                                     :content [{:type "cardEmbed"
+                                                                :attrs {:id -10}}]}
+                                          :cards {-10 {:name "Ad hoc Card"
+                                                       ;; Lib, not the deprecated `mt/mbql-query`
+                                                       :dataset_query (lib/->legacy-MBQL
+                                                                       (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                       :display :table
+                                                       :visualization_settings {}}}})
+            new-card-id (-> result :document :content first :attrs :id)]
+        (is (pos-int? new-card-id))
+        (is (= before (t2/count :model/StoredResultUse))
+            "no stored_result_use rows are created for a live ad-hoc embed")
+        (is (zero? (t2/count :model/StoredResultUse :card_id new-card-id)))))))
+
 (deftest cards-to-create-schema-validation-test
   (testing "POST /api/document/ - cards schema validation"
     (mt/with-model-cleanup [:model/Document]
@@ -528,7 +614,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :post 403 "document/"
+                              :post 400 "document/"
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -546,7 +632,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :put 403 (format "document/%s" document-id)
+                              :put 400 (format "document/%s" document-id)
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -2494,3 +2580,25 @@
                                 {:name "Should Fail"
                                  :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
+
+(deftest document-list-excludes-exploration-documents-test
+  (testing "GET /api/document excludes documents attached to an exploration"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Doc List Collection"}
+                   :model/Exploration {expl-id :id} {:name       "List Exclusion Expl"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :collection_id coll-id}
+                   :model/Document _ {:name          "Standalone Doc"
+                                      :document      (documents.test-util/text->prose-mirror-ast "standalone")
+                                      :collection_id coll-id}
+                   :model/Document _ {:name           "Exploration Summary"
+                                      :document       (documents.test-util/text->prose-mirror-ast "attached")
+                                      :collection_id  coll-id
+                                      :exploration_id expl-id}]
+      (let [doc-names (->> (mt/user-http-request :crowberto :get 200 "document/")
+                           :items
+                           (map :name)
+                           set)]
+        (testing "standalone documents are listed"
+          (is (contains? doc-names "Standalone Doc")))
+        (testing "exploration-attached documents are not (matching search / recents / collection items)"
+          (is (not (contains? doc-names "Exploration Summary"))))))))

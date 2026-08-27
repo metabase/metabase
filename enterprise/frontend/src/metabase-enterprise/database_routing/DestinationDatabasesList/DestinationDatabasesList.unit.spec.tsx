@@ -37,6 +37,7 @@ function setup({
     .map((_, i) => createMockDatabase({ id: i + 2 }));
   mockDbs.forEach((db) => setupDatabaseEndpoints(db));
 
+  // Unjustified type cast. FIXME
   (useListDatabasesQuery as jest.Mock).mockReturnValue(
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useListDatabasesQueryMockValue?.(mockDbs) ?? {

@@ -106,6 +106,24 @@
   (for [col (meta/fields table)]
     (meta/field-metadata table col)))
 
+(deftest ^:parallel columns-mapped-to-same-field-id-stay-distinct-test
+  (testing "distinct-named columns all mapped to the same field id remain separate columns (metabase#33427)"
+    (let [rm (for [[i n] (map-indexed vector ["A" "B" "C"])]
+               (assoc (meta/field-metadata :orders :id)
+                      :name         n
+                      :display-name (str "ID" (inc i))))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :name            "M"
+                        :database-id     (meta/id)
+                        :dataset-query   (lib.tu/native-query)
+                        :result-metadata (vec rm)}]})
+          q  (lib/query mp (lib.metadata/card mp 1))]
+      (is (= 3 (count (lib/returned-columns q))))
+      (is (= ["ID1" "ID2" "ID3"]
+             (map #(:display-name (lib/display-info q %)) (lib/returned-columns q)))))))
+
 (defn- sort-cols [cols]
   (sort-by (juxt :id :name :lib/join-alias :lib/desired-column-alias) cols))
 

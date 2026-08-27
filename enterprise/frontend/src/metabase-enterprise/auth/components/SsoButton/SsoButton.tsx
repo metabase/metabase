@@ -1,7 +1,10 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import { AuthButton } from "metabase/auth/components/AuthButton";
+import {
+  AuthCardButton,
+  AuthTextButton,
+} from "metabase/auth/components/AuthButton";
 import { useDispatch } from "metabase/redux";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -29,9 +32,6 @@ export const SsoButton = ({
     }
   }, [isEmbedded, handleLogin]);
 
-  return (
-    <AuthButton isCard={isCard} onClick={handleLogin}>
-      {t`Sign in with SSO`}
-    </AuthButton>
-  );
+  const Button = isCard ? AuthCardButton : AuthTextButton;
+  return <Button onClick={handleLogin}>{t`Sign in with SSO`}</Button>;
 };

@@ -101,7 +101,7 @@
     (try
       (copy-file! source target)
       (catch Throwable e
-        (log/error e "Failed to copy file")))))
+        (log/errorf "Failed to copy file: %s" (ex-message e))))))
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------
 

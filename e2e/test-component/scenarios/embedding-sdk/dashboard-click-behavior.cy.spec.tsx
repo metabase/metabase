@@ -424,6 +424,7 @@ const expectClickBehaviorForUrl = (url: string) => {
     expect(spy.callCount).to.be.greaterThan(0);
     const last = spy.getCalls().at(-1);
     expect(last?.thisValue.target).to.eq("_blank");
+    // Unjustified type cast. FIXME
     const href = (last?.thisValue as HTMLAnchorElement).href;
     const u = new URL(href);
     expect(`${u.origin}${u.pathname}`).to.eq(url);

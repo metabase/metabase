@@ -3,13 +3,14 @@ import type {
   CardId,
   DatabaseId,
   DatasetColumn,
+  DatetimeUnit,
   FieldId,
   FieldValuesType,
+  JoinConditionOperator,
   RowValue,
   SchemaId,
   TableId,
   TableVisibilityType,
-  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -108,7 +109,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type { JoinConditionOperator } from "metabase-types/api/query";
 
 export type Clause =
   | AggregationClause
@@ -148,7 +149,7 @@ declare const BucketSymbol: unique symbol;
 export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
-  shortName: TemporalUnit;
+  shortName: DatetimeUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;
@@ -589,6 +590,18 @@ export interface ClickObjectDataRow {
   value: RowValue;
 }
 
+export type BrushRange =
+  | {
+      type: "temporal";
+      start: string;
+      end: string;
+    }
+  | {
+      type: "numeric";
+      start: number;
+      end: number;
+    };
+
 export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
@@ -606,7 +619,22 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+  brushRange?: BrushRange;
 }
+
+export interface BrushClickObject extends ClickObject {
+  brushRange: BrushRange;
+  column: DatasetColumn;
+  event: MouseEvent;
+}
+
+export const isBrushClickObject = (
+  clicked: ClickObject | null | undefined,
+): clicked is BrushClickObject =>
+  clicked != null &&
+  clicked.brushRange != null &&
+  clicked.column != null &&
+  clicked.event != null;
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;

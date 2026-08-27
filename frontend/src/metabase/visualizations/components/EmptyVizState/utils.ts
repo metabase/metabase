@@ -224,6 +224,19 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
       return t`E.g. Count of orders grouped by Month`;
     },
   },
+  treemap: {
+    get imgSrc() {
+      return getSubpathSafeUrl(
+        "app/assets/img/empty-states/visualizations/treemap.svg",
+      );
+    },
+    get primaryText() {
+      return t`Then pick a metric and one or two columns to group by.`;
+    },
+    get secondaryText() {
+      return t`E.g., Revenue grouped by Region and Country`;
+    },
+  },
   waterfall: {
     get imgSrc() {
       return getSubpathSafeUrl(

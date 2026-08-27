@@ -47,6 +47,7 @@ export const automagicDashboardsApi = Api.injectEndpoints({
           url: `/api/automagic-dashboards/${subPath}`,
           params,
         });
+        // Unjustified type cast. FIXME
         return error ? { error } : { data: data as Dashboard };
       },
     }),
