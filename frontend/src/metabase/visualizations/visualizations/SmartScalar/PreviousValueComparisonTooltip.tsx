@@ -40,51 +40,39 @@ export function PreviousValueComparisonTooltip({
     : display.comparisonValue;
 
   return (
-    <Flex
-      h={32}
-      align="center"
-      justify="space-between"
-      gap="md"
-      className={className}
-    >
-      <Flex gap={12} align="center">
-        <Flex gap={4} align="center">
-          {symbolDirection != null && (
-            <TrendSymbol
-              direction={symbolDirection}
-              colorName={changeColorName}
-              size={SYMBOL_SIZE}
-            />
-          )}
-          <Text
-            component="span"
-            fw={700}
-            fz={14}
-            lh={1.22}
-            miw={PERCENT_MIN_WIDTH}
-            c={percentColor}
-          >
-            {display.percentChange}
-          </Text>
-        </Flex>
-        {comparisonDescStr && (
-          <Text component="span" fz={12} lh={1.15} c="text-secondary">
-            {comparisonDescStr}
-          </Text>
+    <div className={className}>
+      <Flex gap={4} align="center">
+        {symbolDirection != null && (
+          <TrendSymbol
+            direction={symbolDirection}
+            colorName={changeColorName}
+            size={SYMBOL_SIZE}
+          />
         )}
-      </Flex>
-      {valueFormatted != null && valueFormatted !== "" && (
         <Text
           component="span"
           fw={700}
           fz={14}
           lh={1.22}
-          c="text-primary"
-          ta="right"
+          miw={PERCENT_MIN_WIDTH}
+          c={percentColor}
         >
-          {valueFormatted}
+          {display.percentChange}
         </Text>
-      )}
-    </Flex>
+      </Flex>
+      <Text component="span" fz={12} lh={1.15} c="text-secondary">
+        {comparisonDescStr}
+      </Text>
+      <Text
+        component="span"
+        fw={700}
+        fz={14}
+        lh={1.22}
+        c="text-primary"
+        ta="right"
+      >
+        {valueFormatted}
+      </Text>
+    </div>
   );
 }

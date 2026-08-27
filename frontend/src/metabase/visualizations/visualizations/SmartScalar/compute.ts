@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
 import type { ColorGetter } from "metabase/ui/colors/types";
+import { formatNumber } from "metabase/utils/formatting";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
 import {
@@ -749,7 +750,10 @@ export const CHANGE_TYPE_OPTIONS = {
   get SAME() {
     return {
       CHANGE_TYPE: "PREVIOUS_VALUE_SAME" as const,
-      PERCENT_CHANGE_STR: t`No change`,
+      PERCENT_CHANGE_STR: formatNumber(0, {
+        number_style: "percent",
+        decimals: 2,
+      }),
       COMPARISON_VALUE_STR: "",
     };
   },
@@ -788,7 +792,9 @@ function computeChangeTypeWithOptions({
     };
   }
 
-  if (percentChange === 0) {
+  const roundsToZero =
+    percentChange != null && formatChange(percentChange) === formatChange(0);
+  if (roundsToZero) {
     return {
       changeType: CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE,
       percentChangeStr: CHANGE_TYPE_OPTIONS.SAME.PERCENT_CHANGE_STR,

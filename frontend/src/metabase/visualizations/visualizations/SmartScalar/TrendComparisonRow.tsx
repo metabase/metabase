@@ -1,4 +1,4 @@
-import { Badge, Ellipsified, Flex, Stack, Text, Tooltip } from "metabase/ui";
+import { Badge, Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type { ColumnSettings } from "metabase-types/api";
@@ -53,8 +53,9 @@ export function TrendComparisonRow({
   const changeDesc = isChanged
     ? (comparisonDescShortStr ?? comparisonDescStr)
     : comparisonDescStr;
+  const changeSign = isChanged ? getChangeSign(percentChange) : "";
   const changeText = [
-    `${getChangeSign(percentChange)}${comparison.display.percentChange}`,
+    `${changeSign}${comparison.display.percentChange}`,
     changeDesc,
   ]
     .filter(Boolean)
@@ -71,7 +72,7 @@ export function TrendComparisonRow({
       position="bottom"
       classNames={{ tooltip: S.comparisonPanel }}
       label={
-        <Stack gap={0}>
+        <div className={S.comparisonTable}>
           {comparisons.map((comparison, index) => (
             <PreviousValueComparisonTooltip
               comparison={comparison}
@@ -80,7 +81,7 @@ export function TrendComparisonRow({
               className={S.comparisonRow}
             />
           ))}
-        </Stack>
+        </div>
       }
     >
       <Flex
@@ -118,6 +119,7 @@ export function TrendComparisonRow({
             size="xs"
             variant="light"
             c="text-primary"
+            flex="0 0 auto"
             className={SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS}
           >
             +{extraComparisonsCount}

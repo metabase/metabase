@@ -124,9 +124,20 @@ describe("SmartScalar", () => {
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
       expect(getTrendSymbol()).toHaveAttribute("data-direction", "no_change");
-      expect(
-        screen.getByText("No change vs. previous month"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("0.00% vs. previous month")).toBeInTheDocument();
+    });
+
+    it("should show no change when the difference rounds to 0% (not an up/down arrow)", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 100.000001],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      setup(series({ rows, insights }), 400);
+
+      expect(getTrendSymbol()).toHaveAttribute("data-direction", "no_change");
+      expect(screen.getByText("0.00% vs. previous month")).toBeInTheDocument();
     });
 
     it("should show when data is missing", () => {
@@ -352,7 +363,7 @@ describe("SmartScalar", () => {
 
         expect(screen.getByText("100")).toBeInTheDocument();
         expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
-        expect(screen.getByText("No change vs. Sep")).toBeInTheDocument();
+        expect(screen.getByText("0.00% vs. Sep")).toBeInTheDocument();
       });
 
       it("should handle no previous value to compare to", () => {
@@ -394,7 +405,7 @@ describe("SmartScalar", () => {
 
         expect(screen.getByText("100")).toBeInTheDocument();
         expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
-        expect(screen.getByText("No change vs. Sep")).toBeInTheDocument();
+        expect(screen.getByText("0.00% vs. Sep")).toBeInTheDocument();
       });
     });
   });
@@ -444,8 +455,6 @@ describe("SmartScalar", () => {
     expect(screen.queryByLabelText("warning icon")).not.toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
-    expect(
-      screen.getByText("No change vs. previous month"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("0.00% vs. previous month")).toBeInTheDocument();
   });
 });
