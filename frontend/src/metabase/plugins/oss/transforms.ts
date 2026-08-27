@@ -6,16 +6,34 @@ import {
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
-import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
+import type {
+  PythonTransformSourceDraft,
+  Transform,
+  TransformId,
+} from "metabase-types/api";
 
 // Types
 export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
+export type TransformQueryResult = {
+  data?: Transform;
+  isLoading: boolean;
+  error?: unknown;
+};
+
 export type TransformsPlugin = {
   isEnabled: boolean;
   TransformsUpsellPage: ComponentType;
+  useGetTransformQuery: (
+    id: TransformId,
+    options?: { skip?: boolean },
+  ) => TransformQueryResult;
+  useLazyGetTransformQuery: () => [
+    (id: TransformId) => void,
+    TransformQueryResult,
+  ];
 };
 
 export type PythonTransformEditorUiOptions = {
@@ -65,9 +83,17 @@ export type PythonTransformsPlugin = {
   sharedLibImportPath: string;
 };
 
+const skippedTransformQuery: TransformQueryResult = {
+  data: undefined,
+  isLoading: false,
+  error: undefined,
+};
+
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
   isEnabled: true, // transforms are enabled by default in OSS
   TransformsUpsellPage: PluginPlaceholder,
+  useGetTransformQuery: () => skippedTransformQuery,
+  useLazyGetTransformQuery: () => [() => undefined, skippedTransformQuery],
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
