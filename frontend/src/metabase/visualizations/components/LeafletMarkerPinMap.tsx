@@ -1,6 +1,6 @@
-import L from "leaflet";
 import _ from "underscore";
 
+import { L } from "metabase/leaflet";
 import { getSubpathSafeUrl } from "metabase/urls";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";

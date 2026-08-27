@@ -383,7 +383,8 @@ describe("PinMap", () => {
 
     await userEvent.click(await screen.findByText("Draw box to filter"));
 
-    expect(screen.getByText("Cancel filter")).toBeInTheDocument();
+    // The draw handlers load on demand, so the label flips only after loadDraw() resolves.
+    expect(await screen.findByText("Cancel filter")).toBeInTheDocument();
     expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
   });
 

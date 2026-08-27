@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
-import L from "leaflet";
 import { createRef } from "react";
 
+import { L } from "metabase/leaflet";
 import MetabaseSettings from "metabase/utils/settings";
 import type { Point } from "metabase-types/api/dataset";
 import {

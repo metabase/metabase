@@ -1,7 +1,6 @@
 import cx from "classnames";
 import * as d3 from "d3";
 import type { Feature, FeatureCollection } from "geojson";
-import type L from "leaflet";
 import { useEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -10,6 +9,7 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { L } from "metabase/leaflet";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex, Loader, Text } from "metabase/ui";

@@ -1,11 +1,9 @@
-import "leaflet-draw";
-import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
 
-import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
+import { L, loadDraw } from "metabase/leaflet";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
@@ -14,7 +12,6 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
-import { isObject } from "metabase-types/guards/common";
 
 export type LeafletMapPoint<TExtra extends unknown[] = []> = [
   number,
@@ -71,7 +68,6 @@ export class LeafletMap<
 > extends Component<T> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
-  drawControl: L.Control.Draw | null = null;
   _filter?: L.Draw.Rectangle;
 
   componentDidMount() {
@@ -97,23 +93,6 @@ export class LeafletMap<
       };
       const map = (this.map = L.map(element, mapOptions));
 
-      const drawnItems = new L.FeatureGroup();
-      map.addLayer(drawnItems);
-      const drawControl = (this.drawControl = new L.Control.Draw({
-        draw: {
-          rectangle: false,
-          polyline: false,
-          polygon: false,
-          circle: false,
-          marker: false,
-        },
-        edit: {
-          featureGroup: drawnItems,
-          edit: false,
-          remove: false,
-        },
-      }));
-      map.addControl(drawControl);
       map.on("draw:created", this.onFilter);
 
       map.setView([0, 0], 8);
@@ -254,16 +233,15 @@ export class LeafletMap<
     return !isNative || question.isSaved();
   }
 
-  startFilter() {
-    if (!this.map || !this.drawControl) {
+  async startFilter() {
+    await loadDraw();
+
+    // The component can unmount while the draw chunk loads.
+    if (!this.map) {
       return;
     }
 
-    const { options } = this.drawControl;
-
-    const rectangleOptions = getRectangleDrawOptions(options);
-
-    this._filter = new L.Draw.Rectangle(this.map, rectangleOptions);
+    this._filter = new L.Draw.Rectangle(this.map);
     this._filter.enable();
     this.props.onFiltering(true);
   }
@@ -401,18 +379,4 @@ function shouldRecalculateZoom(
   }
 
   return !prevPoints || nextPoints !== prevPoints;
-}
-
-function getRectangleDrawOptions(
-  options: L.ControlOptions,
-): L.DrawOptions.RectangleOptions | undefined {
-  if (!("draw" in options)) {
-    return undefined;
-  }
-
-  if (!isObject(options.draw) || !isObject(options.draw.rectangle)) {
-    return undefined;
-  }
-
-  return options.draw.rectangle;
 }

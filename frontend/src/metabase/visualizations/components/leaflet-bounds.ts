@@ -1,6 +1,6 @@
 import type { Feature } from "geojson";
-import L from "leaflet";
 
+import { L } from "metabase/leaflet";
 import { computeMinimalBoundsCoordinates } from "metabase/visualizations/lib/mapping";
 
 // Builds an `L.LatLngBounds` from the leaflet-free bounds coordinates. Lives in

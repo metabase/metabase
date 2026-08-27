@@ -70,6 +70,13 @@ const dayjsExtendRestriction = {
   message: "Register dayjs plugins in `metabase/dayjs`, not locally.",
 };
 
+// The bare names are anchored with a leading slash because patterns use gitignore matching,
+// where an unanchored "leaflet" would also match "metabase/leaflet" itself.
+const leafletRestrictedPattern = {
+  group: ["/leaflet", "leaflet/*", "/leaflet-draw", "leaflet-draw/*"],
+  message: "Please import leaflet from `metabase/leaflet` instead.",
+};
+
 const e2eRestrictedConfig = {
   paths: [
     {
@@ -95,6 +102,7 @@ const baseMetabaseRestrictedConfig = {
     { group: ["cljs/metabase.lib*"] },
     { group: ["/embedding-sdk-package"] },
     dayjsRestrictedPattern,
+    leafletRestrictedPattern,
   ],
   paths: [
     dayjsRestrictedPath,
@@ -549,7 +557,11 @@ const configs = [
         "error",
         {
           paths: [...e2eRestrictedConfig.paths, dayjsRestrictedPath],
-          patterns: [...e2eRestrictedConfig.patterns, dayjsRestrictedPattern],
+          patterns: [
+            ...e2eRestrictedConfig.patterns,
+            dayjsRestrictedPattern,
+            leafletRestrictedPattern,
+          ],
         },
       ],
       "import/no-unresolved": [
@@ -571,7 +583,13 @@ const configs = [
     files: ["e2e/test-component/**/*.ts", "e2e/test-component/**/*.tsx"],
     rules: {
       // Component tests may not import `metabase/` code, so the dayjs facade rule does not apply.
-      "no-restricted-imports": ["error", e2eRestrictedConfig],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: e2eRestrictedConfig.paths,
+          patterns: [...e2eRestrictedConfig.patterns, leafletRestrictedPattern],
+        },
+      ],
       "@typescript-eslint/no-restricted-imports": [
         "warn",
         {
@@ -649,7 +667,10 @@ const configs = [
     files: ["frontend/src/metabase/**/*.stories.tsx"],
     rules: {
       "import/no-default-export": "off",
-      "no-restricted-imports": "off",
+      "no-restricted-imports": [
+        "error",
+        { patterns: [leafletRestrictedPattern] },
+      ],
     },
   },
   {
@@ -679,8 +700,8 @@ const configs = [
     },
   },
   {
-    // The router facade is the single seam allowed to import `react-router`
-    // directly; every other file goes through `metabase/router`.
+    // The router facade is the only module allowed to import `react-router` directly.
+    // Every other file goes through `metabase/router`.
     files: ["frontend/src/metabase/router/**/*"],
     rules: {
       "no-restricted-imports": "off",
@@ -696,6 +717,14 @@ const configs = [
     },
   },
   {
+    // The leaflet facade is the only module allowed to import `leaflet` and `leaflet-draw` directly.
+    // Every other file goes through `metabase/leaflet`.
+    files: ["frontend/src/metabase/leaflet/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -706,6 +735,7 @@ const configs = [
             { group: ["metabase-enterprise/*"] },
             { group: ["cljs/metabase.lib*"] },
             dayjsRestrictedPattern,
+            leafletRestrictedPattern,
           ],
           paths: [
             {
@@ -747,6 +777,7 @@ const configs = [
               ],
             },
             dayjsRestrictedPattern,
+            leafletRestrictedPattern,
           ],
           paths: [
             {
@@ -794,6 +825,7 @@ const configs = [
           paths: [dayjsRestrictedPath],
           patterns: [
             dayjsRestrictedPattern,
+            leafletRestrictedPattern,
             {
               group: [
                 "metabase/*",
@@ -938,6 +970,7 @@ const configs = [
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
             dayjsRestrictedPattern,
+            leafletRestrictedPattern,
           ],
           paths: [
             {
@@ -979,6 +1012,7 @@ const configs = [
               group: ["__support__/**"],
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
+            leafletRestrictedPattern,
           ],
           paths: [
             {
@@ -1016,7 +1050,11 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          patterns: [{ group: ["cljs/metabase.lib*"] }, dayjsRestrictedPattern],
+          patterns: [
+            { group: ["cljs/metabase.lib*"] },
+            dayjsRestrictedPattern,
+            leafletRestrictedPattern,
+          ],
           paths: [
             {
               name: "react-router",
@@ -1049,7 +1087,10 @@ const configs = [
     ],
     rules: {
       "import/no-default-export": "off",
-      "no-restricted-imports": "off",
+      "no-restricted-imports": [
+        "error",
+        { patterns: [leafletRestrictedPattern] },
+      ],
     },
   },
   {

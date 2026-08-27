@@ -1,8 +1,7 @@
-import "leaflet/dist/leaflet.css";
 import type { Feature, FeatureCollection } from "geojson";
-import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";
+import { L } from "metabase/leaflet";
 import { color } from "metabase/ui/utils/colors";
 import type { GeoJSONData, Series } from "metabase-types/api";
 
