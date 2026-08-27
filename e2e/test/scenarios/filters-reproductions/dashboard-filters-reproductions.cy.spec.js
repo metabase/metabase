@@ -406,67 +406,6 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ergonomic Silk Coat");
   });
-
-  it(
-    "should work for aggregated questions (metabase#12985-2)",
-    { tags: "@skip" },
-    () => {
-      const questionDetails = {
-        name: "12985-v2",
-        query: {
-          "source-query": {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", PRODUCTS.CATEGORY, null]],
-          },
-          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
-        },
-      };
-
-      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: { id, card_id, dashboard_id } }) => {
-          cy.log("Connect dashboard filter to the aggregated card");
-
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 11,
-                size_y: 6,
-                series: [],
-                visualization_settings: {},
-                // Connect filter to the card
-                parameter_mappings: [
-                  {
-                    parameter_id: categoryFilter.id,
-                    card_id,
-                    target: [
-                      "dimension",
-                      ["field", "CATEGORY", { "base-type": "type/Text" }],
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
-
-          H.visitDashboard(dashboard_id);
-        },
-      );
-
-      H.filterWidget().contains("Category").click();
-      // It will fail at this point until the issue is fixed because popover never appears
-      H.popover().contains("Gadget").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filter").click();
-      cy.url().should("contain", "?category=Gadget");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Ergonomic Silk Coat");
-    },
-  );
 });
 
 describe("issues 15119 and 16112", () => {
@@ -4520,61 +4459,6 @@ describe("issue 17061", () => {
 });
 
 // TODO ranquild unskip after v54 release
-describe("issue 48824", { tags: "@skip" }, () => {
-  const dateParameter = {
-    id: "abc",
-    name: "Date filter",
-    slug: "filter-date",
-    type: "date/all-options",
-    default: "past30days-from-7days",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should correctly translate relative filters in dashboards (metabase#48824)", () => {
-    cy.log("set locale");
-    cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
-    });
-
-    cy.log("add a date parameter with a relative default value to a dashboard");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      parameters: [dateParameter],
-    });
-    H.updateDashboardCards({
-      dashboard_id: ORDERS_DASHBOARD_ID,
-      cards: [
-        {
-          card_id: ORDERS_QUESTION_ID,
-          parameter_mappings: [
-            {
-              card_id: ORDERS_QUESTION_ID,
-              parameter_id: dateParameter.id,
-              target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
-            },
-          ],
-        },
-      ],
-    });
-
-    cy.log("check translations");
-    H.visitDashboard(ORDERS_DASHBOARD_ID, {
-      params: { [dateParameter.slug]: "past30days" },
-    });
-
-    cy.log("Previous 30 days");
-    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
-    H.filterWidget().icon("revert").click();
-
-    cy.log("Previous 30 days, starting 7 days ago");
-    H.filterWidget()
-      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
-      .should("be.visible");
-  });
-});
 
 describe("issue 62627", () => {
   beforeEach(() => {

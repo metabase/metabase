@@ -226,39 +226,63 @@
                       (codec/base64-decode s))]
       (possibly-encrypted-bytes? b))))
 
+(defn maybe-decrypt-accepting-plaintext
+  "Plaintext-tolerant decrypt of a String `s`. If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt it;
+  a value that is stored as plaintext is returned as-is. A value that *looks* encrypted but cannot be decrypted with
+  the current key (wrong key, tampering, corruption) throws — it must not be silently returned, or a re-encrypting
+  caller would double-encrypt it into something permanently unrecoverable. This differs from the strict
+  [[maybe-decrypt]] only in tolerating genuine plaintext; use it for values that may legitimately be plaintext at rest
+  (rows written before encryption was enabled, key rotation, settings, and migration reads).
+
+  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
+  parallel."
+  (^String [^String s] (maybe-decrypt-accepting-plaintext default-secret-key s))
+  (^String [secret-key ^String s]
+   (cond
+     (nil? secret-key)              s
+     (possibly-encrypted-string? s) (decrypt secret-key s)
+     :else                          s)))
+
+(defn maybe-decrypt-bytes-accepting-plaintext
+  "Plaintext-tolerant counterpart to [[maybe-decrypt-accepting-plaintext]] for a byte array `b` (e.g. secret values):
+  an encrypted value is decrypted, a plaintext value is returned as-is, and a value that looks encrypted but cannot be
+  decrypted with the current key throws rather than being returned (returning it would let a re-encrypting caller
+  double-encrypt it into something permanently unrecoverable)."
+  (^bytes [^bytes b] (maybe-decrypt-bytes-accepting-plaintext default-secret-key b))
+  (^bytes [secret-key ^bytes b]
+   (cond
+     (nil? secret-key)             b
+     (possibly-encrypted-bytes? b) (decrypt-bytes secret-key b)
+     :else                         b)))
+
 (defn maybe-decrypt
-  "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
-  whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
-  in which case the decrypted bytes are returned."
-  {:arglists '([secret-key? s])}
-  [& args]
-  ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
-  (let [[secret-key v]     (if (and (bytes? (first args)) (string? (second args)))
-                             args
-                             (cons default-secret-key args))
-        log-error-fn (fn [kind ^Throwable e]
-                       (log/warnf e
-                                  "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
-                                  kind))]
+  "Strict decrypt of a String `s`. When `MB_ENCRYPTION_SECRET_KEY` is set, `s` must be an encrypted value that decrypts
+  with the current key: a value that is not encrypted throws (it was written outside the encrypting path — a plaintext
+  value cannot stand in for an encrypted one), and a value that is encrypted but cannot be decrypted with the current
+  key (wrong key, tampering, or corruption) also throws rather than being trusted. When no key is set, `s` is returned
+  as-is (there is no key to decrypt with). For values that may legitimately be plaintext at rest, use
+  [[maybe-decrypt-accepting-plaintext]].
 
-    (cond (nil? secret-key)
-          v
+  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
+  parallel."
+  (^String [^String s] (maybe-decrypt default-secret-key s))
+  (^String [secret-key ^String s]
+   (cond
+     (nil? secret-key)              s
+     (nil? s)                       s
+     (possibly-encrypted-string? s) (decrypt secret-key s)
+     :else                          (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
+                                                    {:type ::not-encrypted})))))
 
-          (possibly-encrypted-string? v)
-          (try
-            (decrypt secret-key v)
-            (catch Throwable e
-              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
-              (log-error-fn "String" e)
-              v))
-
-          (possibly-encrypted-bytes? v)
-          (try
-            (decrypt-bytes secret-key v)
-            (catch Throwable e
-              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
-              (log-error-fn "bytes" e)
-              v))
-
-          :else
-          v)))
+(defn maybe-decrypt-bytes
+  "Strict counterpart to [[maybe-decrypt-bytes-accepting-plaintext]] for a byte array `b`: a value that is not encrypted,
+  or that cannot be decrypted with the current key, throws rather than being trusted. When no key is set, `b` is returned
+  as-is."
+  (^bytes [^bytes b] (maybe-decrypt-bytes default-secret-key b))
+  (^bytes [secret-key ^bytes b]
+   (cond
+     (nil? secret-key)             b
+     (nil? b)                      b
+     (possibly-encrypted-bytes? b) (decrypt-bytes secret-key b)
+     :else                         (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
+                                                   {:type ::not-encrypted})))))

@@ -62,6 +62,7 @@
            model-persistence
            models
            parameters
+           public-sharing
            queries
            query-processor
            search
@@ -246,9 +247,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/QueryCache
-                    :model/Secret
+   :model-imports #{:model/QueryCache
                     :model/Setting}}
 
   appearance
@@ -792,6 +791,7 @@
            metabase.driver.util}
    :uses #{app-db
            appearance
+           audit-app
            auth-provider
            classloader
            config
@@ -1359,7 +1359,8 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Document}}
@@ -1681,8 +1682,7 @@
   secrets
   {:team "Drivers"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:team "Querying"
@@ -1795,7 +1795,7 @@
            setup
            system
            util}
-   :model-imports #{:model/AuthIdentity :model/User}}
+   :model-imports #{:model/User}}
 
   sso
   {:team "UX West"
@@ -1989,11 +1989,9 @@
            tenants
            util}
    :model-exports #{:model/User :model/UserParameterValue}
-   :model-imports #{:model/AuthIdentity
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
-                    :model/Session
                     :model/Tenant}}
 
   users-rest
@@ -2018,8 +2016,7 @@
            users
            util
            enterprise/advanced-permissions}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -2249,6 +2246,7 @@
    :uses #{api
            api-keys
            app-db
+           auth-identity
            driver
            permissions
            premium-features
