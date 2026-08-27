@@ -3,6 +3,33 @@
 # env variable as it will still consider this migration as pending. Migrations that have an expected chance of
 # failure should generally use preConditions to detect these cases and mark the migration as ran.
 databaseChangeLog:
+  # The startup encryption check reads the encryption-check setting and treats an unreadable one as invalid, so give
+  # it a setting table with the "unencrypted" marker.
+  - changeSet:
+      id: '0'
+      author: noahmoss
+      changes:
+        - createTable:
+            tableName: setting
+            columns:
+              - column:
+                  name: key
+                  type: varchar(254)
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: value
+                  type: text
+        - insert:
+            tableName: setting
+            columns:
+              - column:
+                  name: key
+                  value: encryption-check
+              - column:
+                  name: value
+                  value: unencrypted
+
   - changeSet:
       id: '1'
       author: noahmoss

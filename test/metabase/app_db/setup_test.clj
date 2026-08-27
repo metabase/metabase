@@ -56,7 +56,7 @@
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
               (is (= :done
-                     (mdb.setup/setup-db! :h2 data-source {:create-sample-content? true})))
+                     (mdb.setup/setup-db! :h2 data-source true true)))
               (is (= ["Administrators" "All Users" "All tenant users" "Data Analysts"]
                      (mapv :name (jdbc/query {:datasource data-source}
                                              "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
@@ -72,7 +72,7 @@
         (testing "test `create-sample-content?` arg works"
           (doseq [create-sample-content? [true false]]
             (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:" (subname)))]
-              (mdb.setup/setup-db! :h2 data-source {:create-sample-content? create-sample-content?})
+              (mdb.setup/setup-db! :h2 data-source true create-sample-content?)
               (is (= (if create-sample-content?
                        ["E-commerce Insights"]
                        [])
@@ -84,7 +84,7 @@
     (testing "can setup a fresh db"
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:create-sample-content? true})))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
         (testing "migrations are executed in the order they are defined"
           (is (= (mdb.test-util/all-liquibase-ids false driver/*driver* conn)
                  (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
@@ -94,21 +94,20 @@
     (mt/with-temp-empty-app-db [_conn driver/*driver*]
       (testing "Running setup with `auto-migrate?`=false should pass if no migrations exist which need to be run"
         (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
         (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:auto-migrate? false})))))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false false)))))
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
-      ;; when we re-run `setup-db!`. That changelog never creates the `setting` table, so skip the encryption check,
-      ;; which treats an unreadable sentinel as invalid.
+      ;; when we re-run `setup-db!`
       (with-redefs [liquibase/changelog-file "error-migration.yaml"]
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (is (= :done
-                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:check-encryption? false})))
+                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
           (is (thrown-with-msg?
                Exception
                #"Database requires manual upgrade."
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:auto-migrate? false, :check-encryption? false}))))))))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false false))))))))
 
 (defn- update-to-changelog-id
   [change-log-id conn]
@@ -128,7 +127,7 @@
         ;; set up a db in a way we have a MB instance running metabase 44
         (update-to-changelog-id "v44.00-000" conn))
       (is (= :done
-             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source)))))))
+             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false))))))
 
 (deftest setup-a-mb-instance-running-version-greater-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -137,7 +136,7 @@
         ;; set up a db in a way we have a MB instance running metabase 45
         (update-to-changelog-id "v45.00-001" conn))
       (is (= :done
-             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source)))))))
+             (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false))))))
 
 (deftest downgrade-detection-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -161,7 +160,7 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; Run all real migrations first so the changelog table exists
-      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
+      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
       (liquibase/with-liquibase [liquibase conn]
         (let [table    (liquibase/changelog-table-name liquibase)
               db-conn  {:connection conn}

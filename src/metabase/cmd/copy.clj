@@ -14,7 +14,6 @@
    [metabase.models.init]
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -220,7 +219,7 @@
            (cond-> database
              (or (:is_attached_dwh database)
                  (and (not *copy-h2-database-details*)
-                      (= (:engine database) "h2"))) (assoc :details (encryption/maybe-encrypt "{}")))))
+                      (= (:engine database) "h2"))) (assoc :details "{}"))))
 
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.
@@ -457,16 +456,14 @@
                     (not config/ee-available?)
                     (remove #(str/starts-with? (str %) "metabase-enterprise")))]
     (classloader/require ns-symb))
-  ;; make sure the source database is up-do-date. Skip the encryption check: the source may legitimately be unencrypted
-  ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2), and it must be
-  ;; copied as-is rather than encrypted in place; the target is encrypted on its next startup.
+  ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-data-source {:check-encryption? false}))
+    (mdb.setup/setup-db! source-db-type source-data-source true false))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (mdb.setup/setup-db! target-db-type target-data-source))
+    (mdb.setup/setup-db! target-db-type target-data-source true false))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-has-no-users target-data-source))

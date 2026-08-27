@@ -1210,8 +1210,7 @@
             example-dashboard-id  1
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            dbs                   (map #(update % :details encryption/maybe-encrypt)
-                                       (table-name->rows table-name->raw-rows :metabase_database))
+            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that

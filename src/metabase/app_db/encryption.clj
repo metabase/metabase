@@ -58,8 +58,6 @@
 (def ^:private clearable-when-undecryptable
   #{[:core_user :settings]})
 
-(def ^:private encryption-check-key "encryption-check")
-
 (defn encryption-check-status
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
   `encryption-check` sentinel setting -- a random UUID encrypted under the key, or the plaintext marker
@@ -75,7 +73,7 @@
   absence of encryption."
   []
   (let [raw (try
-              (t2/select-one-fn :value :setting :key encryption-check-key)
+              (t2/select-one-fn :value :setting :key "encryption-check")
               (catch Exception e
                 (log/debugf "Could not read the encryption-check setting: %s" (ex-message e))
                 ::unreadable))]
@@ -180,13 +178,10 @@
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
                                     (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
-          "encryption-check" nil
+          "encryption-check" (t2/update! :conn conn :setting {:key key} {:value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
           (t2/update! :conn conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-      (t2/delete! :conn conn :setting :key encryption-check-key)
-      (t2/insert! :conn conn :setting {:key   encryption-check-key
-                                       :value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))

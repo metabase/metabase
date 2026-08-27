@@ -274,37 +274,22 @@
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
-  use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe.
-
-  Options:
-  - `:auto-migrate?` (default `true`): run pending migrations, otherwise only print them.
-  - `:create-sample-content?` (default `false`): create the sample content on a fresh install.
-  - `:check-encryption?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database after migrating, and
-    encrypt it when the key has just been added (see [[check-encryption]]). Only the commands that manage encryption
-    turn this off."
-  ([db-type data-source]
-   (setup-db! db-type data-source {}))
-
-  ([db-type     :- :keyword
-    data-source :- (ms/InstanceOfClass javax.sql.DataSource)
-    {:keys [auto-migrate? create-sample-content? check-encryption?]
-     :or   {auto-migrate? true, create-sample-content? false, check-encryption? true}}
-    :- [:map
-        [:auto-migrate?          {:optional true} :boolean]
-        [:create-sample-content? {:optional true} :boolean]
-        [:check-encryption?      {:optional true} :boolean]]]
-   (u/profile (trs "Database setup")
-     (u/with-us-locale
-       (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 config/*disable-setting-cache*            true
-                 custom-migrations/*create-sample-content* create-sample-content?]
-         (verify-db-connection db-type data-source)
-         (error-if-downgrade-required! data-source)
-         (let [encrypted-data? (and check-encryption? (encrypted-data-before-migrations?))]
-           (run-schema-migrations! data-source auto-migrate?)
-           (when check-encryption?
-             (check-encryption encrypted-data?))))))
-   :done))
+  use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe."
+  [db-type                :- :keyword
+   data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate?          :- :boolean
+   create-sample-content? :- :boolean]
+  (u/profile (trs "Database setup")
+    (u/with-us-locale
+      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*            true
+                custom-migrations/*create-sample-content* create-sample-content?]
+        (verify-db-connection db-type data-source)
+        (error-if-downgrade-required! data-source)
+        (let [encrypted-data? (encrypted-data-before-migrations?)]
+          (run-schema-migrations! data-source auto-migrate?)
+          (check-encryption encrypted-data?)))))
+  :done)
 
 (defn release-migration-locks!
   "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
