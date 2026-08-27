@@ -32,6 +32,7 @@ import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
+  GoalSegment,
   PieRow,
   ScalarSegment,
   SmartScalarComparison,
@@ -446,6 +447,9 @@ export type VisualizationSettings = {
 
   /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];
+
+  /** Colored ranges of the gauge; bounds may reference another column or entity. */
+  "gauge.segments"?: GoalSegment[];
 
   /** Result column name, or names, used as pie slice dimensions. */
   "pie.dimension"?: string | string[];

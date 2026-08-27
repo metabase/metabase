@@ -264,6 +264,8 @@ import grid_bordered_component from "./grid_bordered.svg?component";
 import grid_bordered_source from "./grid_bordered.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
+import hexagon_component from "./hexagon.svg?component";
+import hexagon_source from "./hexagon.svg?source";
 import history_component from "./history.svg?component";
 import history_source from "./history.svg?source";
 import home_component from "./home.svg?component";
@@ -1110,6 +1112,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     google_sheet: {
       component: google_sheet_component,
       source: google_sheet_source,
+    },
+    hexagon: {
+      component: hexagon_component,
+      source: hexagon_source,
     },
     history: {
       component: history_component,

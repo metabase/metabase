@@ -1,10 +1,12 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
   getDatasetEditorTab,
+  getFirstQueryResult,
   getPreviousQueryBuilderMode,
   getQueryBuilderMode,
   getQuestion,
@@ -38,10 +40,14 @@ export const onUpdateVisualizationSettings =
       return;
     }
 
+    const updatedQuestion = question.updateSettings(settings);
+
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
-      updateQuestion(question.updateSettings(settings), {
+      updateQuestion(updatedQuestion, {
+        run:
+          isEditable && shouldRunForGoalReferences(updatedQuestion, getState),
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -50,7 +56,8 @@ export const onUpdateVisualizationSettings =
 export const onReplaceAllVisualizationSettings =
   (settings: VisualizationSettings, newQuestion?: Question) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const question = newQuestion ?? getQuestion(getState());
+    const currentQuestion = getQuestion(getState());
+    const question = newQuestion ?? currentQuestion;
     if (question) {
       const updatedQuestion = question.setSettings(settings);
       const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
@@ -58,10 +65,20 @@ export const onReplaceAllVisualizationSettings =
 
       await dispatch(
         updateQuestion(updatedQuestion, {
-          // rerun the query when it is changed alongside settings
-          run: newQuestion != null && hasWritePermissions,
+          run:
+            hasWritePermissions &&
+            (newQuestion != null ||
+              shouldRunForGoalReferences(updatedQuestion, getState)),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
+
+function shouldRunForGoalReferences(
+  question: Question,
+  getState: GetState,
+): boolean {
+  const result = getFirstQueryResult(getState());
+  return hasUnresolvedGoalReferences(question.card(), result?.data);
+}

@@ -1,19 +1,25 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { color } from "metabase/ui/colors";
 import type {
+  Card,
   CardId,
   DatasetData,
   GoalForeignColumnRef,
+  GoalForeignEntityRef,
   GoalSegment,
   GoalValue,
   MeasureId,
   ReferencedEntity,
   ReferencedEntityType,
   RowValue,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
   isGoalForeignColumnRef,
+  isGoalSegment,
   isGoalSelfColumnRef,
   isGoalStaticValue,
 } from "metabase-types/guards";
@@ -51,7 +57,7 @@ export type GoalRefError =
 export type ResolvedGoalValue = {
   value: number | null;
   error?: GoalRefError;
-  isResolving?: boolean;
+  isUnanswered?: boolean;
 };
 
 export function resolveGoalValue(
@@ -108,12 +114,13 @@ function resolveSelfColumnValue(
 
 function resolveForeignColumnRef(
   data: DatasetData,
-  { type, id, column }: GoalForeignColumnRef,
+  ref: GoalForeignColumnRef,
 ): ResolvedGoalValue {
+  const { type, id, column } = ref;
   const result = data.referenced_entities?.[type]?.[id];
 
   if (result == null) {
-    return { value: null, isResolving: true };
+    return { value: null, isUnanswered: true };
   }
 
   if (result.status === "failed" || result.data == null) {
@@ -168,15 +175,15 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
+function validGoalSegments(segments: unknown): GoalSegment[] {
+  return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
+}
+
 export function resolveGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): ResolvedGoalSegment[] {
-  if (!Array.isArray(segments)) {
-    return [];
-  }
-
-  return segments.flatMap((segment) => {
+  return validGoalSegments(segments).flatMap((segment) => {
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
 
@@ -184,24 +191,48 @@ export function resolveGoalSegments(
       return [];
     }
 
-    return [{ color: segment.color, label: segment.label, min, max }];
+    return [
+      { color: getSegmentColor(segment), label: segment.label, min, max },
+    ];
   });
 }
 
-export function getGoalSegmentErrors(
+export function getSegmentColor(segment: GoalSegment): string {
+  return segment.color ?? color("text-secondary");
+}
+
+export function hasFailedGoalReferences(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalRefError[] {
-  if (!Array.isArray(segments)) {
-    return [];
-  }
+): boolean {
+  return validGoalSegments(segments)
+    .flatMap((segment) => [segment.min, segment.max])
+    .some((bound) => isFailed(bound, resolveGoalValue(data, bound)));
+}
 
-  return segments.flatMap((segment) => {
-    return [segment.min, segment.max].flatMap((bound) => {
-      const { error } = resolveGoalValue(data, bound);
-      return error ? [error] : [];
-    });
-  });
+export function getUnansweredGoalEntities(
+  data: DatasetData,
+  segments: GoalSegment[] | undefined,
+): ReferencedEntity[] {
+  const unansweredRefs = validGoalSegments(segments)
+    .flatMap((segment) => [segment.min, segment.max])
+    .filter(isGoalForeignColumnRef)
+    .filter((ref) => needsAnswer(resolveGoalValue(data, ref)));
+  const entities = new Map(
+    unansweredRefs.map((ref) => [
+      `${ref.type}:${ref.id}`,
+      toReferencedEntity(ref),
+    ]),
+  );
+
+  return Array.from(entities.values());
+}
+
+export function toReferencedEntity({
+  type,
+  id,
+}: GoalForeignEntityRef): ReferencedEntity {
+  return { type, id };
 }
 
 type ReferencedEntityColumns =
@@ -235,8 +266,73 @@ export function getReferencedEntitiesFromVizSettings(
 function getGoalForeignColumnRefs(
   settings: VisualizationSettings,
 ): GoalForeignColumnRef[] {
-  const segments: GoalSegment[] = settings["gauge.segments"] ?? [];
-  return segments
+  return validGoalSegments(settings["gauge.segments"])
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isGoalForeignColumnRef);
+}
+
+export type GoalCard = Pick<Card, "display" | "visualization_settings">;
+
+function hasGoalReferencesWhere(
+  card: GoalCard,
+  data: DatasetData | undefined,
+  predicate: (resolved: ResolvedGoalValue) => boolean,
+): boolean {
+  if (!supportsDynamicGoals(card.display)) {
+    return false;
+  }
+
+  return getGoalForeignColumnRefs(card.visualization_settings).some(
+    (ref) => data == null || predicate(resolveGoalValue(data, ref)),
+  );
+}
+
+// Skips failed references so dashboards don't re-run a failing query on every render.
+export function hasUnansweredGoalReferences(
+  card: GoalCard,
+  data: DatasetData | undefined,
+): boolean {
+  return hasGoalReferencesWhere(card, data, isUnanswered);
+}
+
+// Includes failed references so a user action in the query builder retries them.
+export function hasUnresolvedGoalReferences(
+  card: GoalCard,
+  data: DatasetData | undefined,
+): boolean {
+  return hasGoalReferencesWhere(card, data, isUnresolved);
+}
+
+// Missing columns are worth re-running for - failed queries would just fail again.
+export function needsAnswer(resolved: ResolvedGoalValue): boolean {
+  return (
+    isUnanswered(resolved) || resolved.error?.reason === "column-not-found"
+  );
+}
+
+// The result has no answer for the referenced entity.
+function isUnanswered(resolved: ResolvedGoalValue): boolean {
+  return resolved.isUnanswered === true;
+}
+
+// Unanswered, or answered with an error.
+function isUnresolved(resolved: ResolvedGoalValue): boolean {
+  return isUnanswered(resolved) || resolved.error != null;
+}
+
+// Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
+function isFailed(
+  bound: GoalValue | null,
+  resolved: ResolvedGoalValue,
+): boolean {
+  return (
+    resolved.error != null &&
+    !(isGoalForeignColumnRef(bound) && needsAnswer(resolved))
+  );
+}
+
+export function supportsDynamicGoals(display: VisualizationDisplay): boolean {
+  return match(display)
+    .with("gauge", () => true)
+    .otherwise(() => false);
 }

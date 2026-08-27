@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
@@ -8,6 +10,10 @@ import {
   shouldUsePivotEndpoint,
 } from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
+import {
+  getReferencedEntitiesFromVizSettings,
+  supportsDynamicGoals,
+} from "metabase/visualizations/lib/dynamic-goals";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -18,6 +24,7 @@ import type {
   DashboardCardQueryRequest,
   Dataset,
   DatasetQuery,
+  ReferencedEntity,
 } from "metabase-types/api";
 
 type RunQuestionQueryOptions = {
@@ -88,7 +95,11 @@ export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   card: Card,
   metadata: Metadata,
-  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  body: DatasetQuery & {
+    parameters?: unknown[];
+    ignore_cache?: boolean;
+    referenced_entities?: ReferencedEntity[];
+  },
   signal?: AbortSignal,
 ): Promise<Dataset> {
   const isPivot = shouldUsePivotEndpoint(card, metadata);
@@ -99,7 +110,11 @@ export function runAdhocDatasetQuery(
   // the request hits the server.
   const requestBody = {
     ...(isPivot
-      ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+      ? {
+          // the pivot endpoint's request schema has no `referenced_entities`
+          ..._.omit(body, "referenced_entities"),
+          ...getPivotOptions(new Question(card, metadata)),
+        }
       : body),
     [RTK_CACHE_KEY_PARAM]: ++adhocDatasetQueryCounter,
   };
@@ -215,13 +230,23 @@ export async function runQuestionQuery(
     ];
   }
 
+  const referencedEntities = supportsDynamicGoals(card.display)
+    ? getReferencedEntitiesFromVizSettings(card.visualization_settings ?? {})
+    : [];
+
   return [
     await handleQueryApiError(
       runAdhocDatasetQuery(
         dispatch,
         card,
         question.metadata(),
-        { ...question.datasetQuery(), parameters },
+        {
+          ...question.datasetQuery(),
+          parameters,
+          ...(referencedEntities.length > 0
+            ? { referenced_entities: referencedEntities }
+            : {}),
+        },
         signal,
       ),
     ),

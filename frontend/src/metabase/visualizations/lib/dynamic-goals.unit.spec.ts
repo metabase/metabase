@@ -1,11 +1,17 @@
+import { color } from "metabase/ui/colors";
+import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
+import type { GoalCard } from "./dynamic-goals";
 import {
-  getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
+  getUnansweredGoalEntities,
+  hasFailedGoalReferences,
+  hasUnansweredGoalReferences,
+  hasUnresolvedGoalReferences,
   resolveGoalSegments,
   resolveGoalValue,
 } from "./dynamic-goals";
@@ -142,7 +148,7 @@ describe("resolveGoalValue", () => {
       column: "total",
     });
 
-    expect(goalValue).toEqual({ value: null, isResolving: true });
+    expect(goalValue).toEqual({ value: null, isUnanswered: true });
   });
 
   it("is resolving while referenced results are unavailable", () => {
@@ -153,7 +159,7 @@ describe("resolveGoalValue", () => {
       column: "total",
     });
 
-    expect(goalValue).toEqual({ value: null, isResolving: true });
+    expect(goalValue).toEqual({ value: null, isUnanswered: true });
   });
 
   it("errors for a foreign column reference that does not exist", () => {
@@ -235,6 +241,24 @@ describe("resolveGoalSegments", () => {
 
     expect(segments).toEqual([
       { min: 0, max: 100, color: "red", label: "range" },
+    ]);
+  });
+
+  it("gives a legacy segment without a color a default fill", () => {
+    const segments = resolveGoalSegments(DATA, [{ min: 0, max: 100 }]);
+
+    expect(segments).toEqual([
+      { min: 0, max: 100, color: color("text-secondary"), label: undefined },
+    ]);
+  });
+
+  it("gives a legacy segment with a null color a default fill", () => {
+    const segments = resolveGoalSegments(DATA, [
+      { min: 0, max: 100, color: null },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 0, max: 100, color: color("text-secondary"), label: undefined },
     ]);
   });
 
@@ -327,27 +351,42 @@ describe("resolveGoalSegments", () => {
   });
 });
 
-describe("getGoalSegmentErrors", () => {
+describe("hasFailedGoalReferences", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
     rows: [[50]],
   });
+  const SEGMENTS: GoalSegment[] = [
+    { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+  ];
 
-  it("reports nothing when every bound resolves", () => {
+  it("is false when every bound resolves", () => {
     expect(
-      getGoalSegmentErrors(DATA, [{ min: 0, max: 100, color: "red" }]),
-    ).toEqual([]);
+      hasFailedGoalReferences(DATA, [{ min: 0, max: 100, color: "red" }]),
+    ).toBe(false);
   });
 
-  it("reports nothing while a reference is still resolving", () => {
-    const errors = getGoalSegmentErrors(DATA, [
-      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-    ]);
-
-    expect(errors).toEqual([]);
+  it("is false while a reference is still unanswered", () => {
+    expect(hasFailedGoalReferences(DATA, SEGMENTS)).toBe(false);
   });
 
-  it("reports a bound that will never resolve", () => {
+  it("is false when a foreign answer lacks the column: it gets re-asked", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
+          },
+        },
+      },
+    });
+
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(false);
+  });
+
+  it("is true when the referenced query failed", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
@@ -355,19 +394,29 @@ describe("getGoalSegmentErrors", () => {
       },
     });
 
-    const errors = getGoalSegmentErrors(data, [
-      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-    ]);
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+  });
 
-    expect(errors).toEqual([
-      {
-        type: "card",
-        id: 9,
-        column: "goal",
-        reason: "query-failed",
-        message: "boom",
+  it("is true when the referenced value is not a number", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [["x"]] },
+          },
+        },
       },
-    ]);
+    });
+
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+  });
+
+  it("is true for a self-column reference to a missing column: nothing re-asks it", () => {
+    expect(
+      hasFailedGoalReferences(DATA, [{ min: 0, max: "missing", color: "red" }]),
+    ).toBe(true);
   });
 });
 
@@ -417,5 +466,286 @@ describe("getReferencedEntitiesFromVizSettings", () => {
     });
 
     expect(referencedEntities).toEqual([]);
+  });
+});
+
+describe("malformed persisted segments", () => {
+  const data = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  const malformedSettings = [
+    { name: "a null segment", settings: { "gauge.segments": [null] } },
+    { name: "a non-object segment", settings: { "gauge.segments": [5] } },
+    { name: "a non-array value", settings: { "gauge.segments": 5 } },
+    {
+      name: "a segment with malformed bounds",
+      settings: { "gauge.segments": [{ min: {}, max: [1], color: "red" }] },
+    },
+  ].map(({ name, settings }) => ({
+    name,
+    // deliberately malformed input
+    settings: settings as unknown as VisualizationSettings,
+  }));
+
+  it.each(malformedSettings)("tolerates $name", ({ settings }) => {
+    const segments = settings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([]);
+    expect(hasFailedGoalReferences(data, segments)).toBe(false);
+    expect(getUnansweredGoalEntities(data, segments)).toEqual([]);
+    expect(getReferencedEntitiesFromVizSettings(settings)).toEqual([]);
+  });
+
+  it("keeps the valid segments and drops the rest", () => {
+    // deliberately malformed input
+    const segments = [
+      null,
+      { min: 0, max: 100, color: "red" },
+    ] as unknown as VisualizationSettings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([
+      { min: 0, max: 100, color: "red", label: undefined },
+    ]);
+  });
+});
+
+describe("getUnansweredGoalEntities", () => {
+  const DATA = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+  const SEGMENTS = [
+    {
+      min: { type: "card", id: 9, column: "goal" },
+      max: { type: "card", id: 9, column: "target" },
+      color: "red",
+    } as const,
+    {
+      min: 0,
+      max: { type: "measure", id: 4, column: "sum" },
+      color: "green",
+    } as const,
+  ];
+
+  it("returns the distinct entities the dataset has no answer for", () => {
+    expect(getUnansweredGoalEntities(DATA, SEGMENTS)).toEqual([
+      { type: "card", id: 9 },
+      { type: "measure", id: 4 },
+    ]);
+  });
+
+  it("skips entities that resolved", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [
+                createMockColumn({ name: "goal" }),
+                createMockColumn({ name: "target" }),
+              ],
+              rows: [[250, 300]],
+            },
+          },
+        },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
+      { type: "measure", id: 4 },
+    ]);
+  });
+
+  it("includes entities whose answer is missing a referenced column", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "goal" })],
+              rows: [[250]],
+            },
+          },
+        },
+        measure: {
+          4: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
+          },
+        },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
+      { type: "card", id: 9 },
+    ]);
+  });
+
+  it("skips entities that failed: the dataset answered them", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+        measure: { 4: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([]);
+  });
+});
+
+describe("hasUnansweredGoalReferences", () => {
+  const settings: VisualizationSettings = {
+    "gauge.segments": [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ],
+  };
+  const gauge: GoalCard = {
+    display: "gauge",
+    visualization_settings: settings,
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("ignores references on a display without dynamic goals", () => {
+    const card: GoalCard = {
+      display: "table",
+      visualization_settings: settings,
+    };
+
+    expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
+  });
+
+  it("returns true without any result data", () => {
+    expect(hasUnansweredGoalReferences(gauge, undefined)).toBe(true);
+  });
+
+  it("returns true when the result lacks the referenced entity", () => {
+    expect(hasUnansweredGoalReferences(gauge, baseData)).toBe(true);
+  });
+
+  it("returns false when the reference resolved", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
+  });
+
+  it("returns false for a failed reference: the result answered it", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
+  });
+
+  it("returns false without foreign references", () => {
+    const card: GoalCard = {
+      ...gauge,
+      visualization_settings: {
+        "gauge.segments": [{ min: 0, max: 100, color: "red" }],
+      },
+    };
+
+    expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
+  });
+});
+
+describe("hasUnresolvedGoalReferences", () => {
+  const gauge: GoalCard = {
+    display: "gauge",
+    visualization_settings: {
+      "gauge.segments": [
+        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+      ],
+    },
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("ignores references on a display without dynamic goals", () => {
+    const card: GoalCard = {
+      display: "table",
+      visualization_settings: {
+        "gauge.segments": [
+          {
+            min: 0,
+            max: { type: "card", id: 9, column: "goal" },
+            color: "red",
+          },
+        ],
+      },
+    };
+
+    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
+  });
+
+  it("is true without any result data", () => {
+    expect(hasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
+  });
+
+  it("is true for a failed reference, so it gets retried", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
+  });
+
+  it("is true when the referenced column is missing from the entity's answer", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
+          },
+        },
+      },
+    });
+
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
+  });
+
+  it("is false when every reference resolved", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(false);
   });
 });
