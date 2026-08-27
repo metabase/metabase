@@ -102,8 +102,9 @@
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
-  (t2/delete! :setting :key encryption-check-key)
-  (t2/insert! :setting {:key encryption-check-key, :value (encryption/encrypt (str (random-uuid)))}))
+  (t2/with-transaction [conn]
+    (t2/delete! :conn conn :setting :key encryption-check-key)
+    (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encryption/encrypt (str (random-uuid)))})))
 
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the
