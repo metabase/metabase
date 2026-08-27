@@ -1619,7 +1619,7 @@ databaseChangeLog:
         still sees the values.
       changes:
         - customChange:
-            class: metabase.app_db.custom_migrations.EncryptSettings
+            class: metabase.app_db.custom_migrations.EncryptSettingsV58
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

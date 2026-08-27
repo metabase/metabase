@@ -67,7 +67,7 @@
           (println "  " k))
         (println)
         (println (str/join "\n" ["A released version may have stored plaintext values for them, which the strict read rejects."
-                                 "Add a migration calling `encrypt-settings` / `decrypt-settings` (see `EncryptSettings` in"
+                                 "Add a migration calling `encrypt-settings` / `decrypt-settings` (see `EncryptSettingsV58` in"
                                  "metabase.app-db.custom-migrations) and list it in `encrypt-settings-migrations`. A setting that"
                                  "never shipped as plaintext still needs the entry; the migration is a no-op with nothing to encrypt."]))
         1)))

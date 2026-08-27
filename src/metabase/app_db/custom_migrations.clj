@@ -2309,7 +2309,7 @@
                                :from   [:setting]
                                :where  [:in :key setting-keys]}))))
 
-(def ^:private v58-encrypted-settings
+(def ^:private encrypted-settings-v58
   "Settings marked `:encryption :when-encryption-key-set` in v58 that were previously stored plaintext."
   ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
    "application-favicon-url" "application-font-files" "application-logo-url"
@@ -2337,16 +2337,16 @@
    "snowplow-url" "source-address-header" "store-api-url"
    "store-url" "subscription-allowed-domains"])
 
-(define-reversible-migration EncryptSettings
-  (encrypt-settings v58-encrypted-settings)
-  (decrypt-settings v58-encrypted-settings))
+(define-reversible-migration EncryptSettingsV58
+  (encrypt-settings encrypted-settings-v58)
+  (decrypt-settings encrypted-settings-v58))
 
 (def encrypt-settings-migrations
   "Migration id => the settings it moves from plaintext to encrypted at rest. `./bin/mage settings-encryption-check`
   (run by CI on every PR) fails when a setting flips to `:encryption :when-encryption-key-set` without an entry here,
   since the strict read would reject the plaintext values a released version stored. Add every [[encrypt-settings]]
   migration to this map."
-  {"v58.2026-08-25T00:00:19" v58-encrypted-settings})
+  {"v58.2026-08-25T00:00:19" encrypted-settings-v58})
 
 (define-reversible-migration EncryptPublicUuids
   (when (encryption/default-encryption-enabled?)
