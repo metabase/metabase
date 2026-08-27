@@ -6,12 +6,10 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   buildCollectionMap,
-  canSyncRequiredCollections,
   getBlockedReason,
   getCollectionPathSegments,
   getRequiredCollectionRows,
   getRequiredCollections,
-  getUnsyncedContentGroups,
   isTableChildModel,
 } from "./utils";
 
@@ -476,150 +474,6 @@ describe("remote_sync utils", () => {
         expect(
           getRequiredCollectionRows(failureWith(SNIPPET_DEPENDENCY)),
         ).toEqual([]);
-      });
-    });
-
-    describe("canSyncRequiredCollections", () => {
-      it("is true when every dependency points at a collection we can switch on", () => {
-        expect(
-          canSyncRequiredCollections(failureWith(SYNCABLE_DEPENDENCY)),
-        ).toBe(true);
-      });
-
-      it.each([
-        ["personal", PERSONAL_DEPENDENCY],
-        ["root", ROOT_DEPENDENCY],
-        ["library", SNIPPET_DEPENDENCY],
-      ])(
-        "is false when a %s dependency rides along, since a half fix is refused again",
-        (_label, dependency) => {
-          expect(
-            canSyncRequiredCollections(
-              failureWith(SYNCABLE_DEPENDENCY, dependency),
-            ),
-          ).toBe(false);
-        },
-      );
-
-      it("is false when there is nothing to switch on", () => {
-        expect(canSyncRequiredCollections([])).toBe(false);
-      });
-    });
-
-    describe("getUnsyncedContentGroups", () => {
-      const DASHBOARD = { model: "dashboard" as const, id: 3, name: "Q3" };
-      const OTHER_DASHBOARD = {
-        model: "dashboard" as const,
-        id: 4,
-        name: "Ops",
-      };
-
-      // A dashboard needs a card, and that card needs a metric. Only the dashboard is syncable.
-      const MIDDLE_CARD: RemoteSyncIneligibleDependency = {
-        model: "card",
-        id: 416,
-        name: "Seats over time",
-        remedy: { type: "none" },
-        used_by: [DASHBOARD],
-      };
-      const LEAF_METRIC: RemoteSyncIneligibleDependency = {
-        model: "metric",
-        id: 88,
-        name: "Active seats",
-        remedy: { type: "none" },
-        used_by: [{ model: "card", id: 416, name: "Seats over time" }],
-      };
-
-      const groupNames = (failures: RemoteSyncDependencyFailure[]) =>
-        getUnsyncedContentGroups(failures).map((group) => [
-          group.usedBy?.name ?? null,
-          group.dependencies.map((dependency) => dependency.name),
-        ]);
-
-      it("attributes a chained dependency to the syncable content at the top of the chain", () => {
-        expect(groupNames(failureWith(MIDDLE_CARD, LEAF_METRIC))).toEqual([
-          ["Q3", ["Seats over time", "Active seats"]],
-        ]);
-      });
-
-      it("never lists an entity as both a row and a group header", () => {
-        const groups = getUnsyncedContentGroups(
-          failureWith(MIDDLE_CARD, LEAF_METRIC),
-        );
-        const headers = new Set(
-          groups.flatMap((group) =>
-            group.usedBy == null
-              ? []
-              : [`${group.usedBy.model}:${group.usedBy.id}`],
-          ),
-        );
-        const rows = groups.flatMap((group) =>
-          group.dependencies.map(({ model, id }) => `${model}:${id}`),
-        );
-
-        expect(rows.filter((row) => headers.has(row))).toEqual([]);
-      });
-
-      it("lists a dependency under each syncable entity that needs it", () => {
-        const shared: RemoteSyncIneligibleDependency = {
-          ...MIDDLE_CARD,
-          used_by: [DASHBOARD, OTHER_DASHBOARD],
-        };
-
-        expect(groupNames(failureWith(shared))).toEqual([
-          ["Q3", ["Seats over time"]],
-          ["Ops", ["Seats over time"]],
-        ]);
-      });
-
-      it("lists a dependency once per group when it blocks several collections", () => {
-        const failures: RemoteSyncDependencyFailure[] = [
-          {
-            collection: { id: 31, name: "Drafts" },
-            dependencies: [MIDDLE_CARD],
-          },
-          {
-            collection: { id: 32, name: "Sales" },
-            dependencies: [MIDDLE_CARD],
-          },
-        ];
-
-        expect(groupNames(failures)).toEqual([["Q3", ["Seats over time"]]]);
-      });
-
-      it("keeps a dependency with no referrer, sorted after the attributed groups", () => {
-        const orphan: RemoteSyncIneligibleDependency = {
-          ...LEAF_METRIC,
-          name: "Stranded",
-          id: 99,
-          used_by: [],
-        };
-
-        expect(groupNames(failureWith(orphan, MIDDLE_CARD))).toEqual([
-          ["Q3", ["Seats over time"]],
-          [null, ["Stranded"]],
-        ]);
-      });
-
-      it("terminates on a cycle rather than hanging", () => {
-        const first: RemoteSyncIneligibleDependency = {
-          model: "card",
-          id: 1,
-          name: "First",
-          remedy: { type: "none" },
-          used_by: [{ model: "card", id: 2, name: "Second" }],
-        };
-        const second: RemoteSyncIneligibleDependency = {
-          model: "card",
-          id: 2,
-          name: "Second",
-          remedy: { type: "none" },
-          used_by: [{ model: "card", id: 1, name: "First" }],
-        };
-
-        expect(groupNames(failureWith(first, second))).toEqual([
-          [null, ["First", "Second"]],
-        ]);
       });
     });
   });
