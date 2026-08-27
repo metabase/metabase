@@ -2998,14 +2998,8 @@ function getClickMapping(columnName) {
     .findAllByText(columnName);
 }
 
-// Picks a source from the open click-mapping popover and waits for it to close.
-// Applying a mapping re-renders the unset-mappings list; without this barrier the
-// next index-based lookup (.first()/.last()/.eq()) can resolve mid-re-render and
-// land on the wrong target, producing a stable-but-wrong filter set.
-//
-// Unlike master, this branch's sidebar fully unmounts closed dropdowns, so the
-// bare not-exist settles; master's `.filter(":visible")` form instead times out
-// on cy.get existence once zero popover elements remain in the DOM.
+// Picks a source from the click-mapping popover and waits for it to unmount, so
+// the next index-based lookup does not resolve mid-re-render of the mappings list.
 function selectClickMappingSource(sourceName) {
   H.popover().findByText(sourceName).click();
   cy.get(H.POPOVER_ELEMENT).should("not.exist");
