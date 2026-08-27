@@ -52,6 +52,13 @@
 
 (driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/host-carrying-parameters :mysql [_driver] [])
+
+(defmethod driver/non-host-parameters :mysql
+  [_driver]
+  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverSslCert" "serverTimezone"
+   "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
+
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
 
@@ -489,7 +496,14 @@
         ;; equivalent; instead you can do `<string> + 0.0` =(
         ("float" "double") [:+ json-extract+jsonpath [:inline 0.0]]
 
-        [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
+        ;; CONVERT's target type cannot be a quoted identifier, so a `database-type` that isn't a plain type name
+        ;; (the same rule as [[h2x/cast]]) cannot be spliced into the SQL safely — reject it instead
+        (do
+          (when-not (h2x/raw-type-name? field-type)
+            (throw (ex-info (format "Invalid database type for MySQL CONVERT: %s" (pr-str field-type))
+                            {:type          driver-api/qp.error-type.invalid-query
+                             :database-type field-type})))
+          [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]])))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
@@ -554,9 +568,9 @@
 
 (defn- temporal-cast [type expr]
   ;; mysql does not allow casting to timestamp
-  (if (= "timestamp" (u/lower-case-en type))
-    (h2x/maybe-cast "datetime" expr)
-    (h2x/maybe-cast type expr)))
+  (if (= "date" (u/lower-case-en type))
+    (h2x/maybe-cast "date" expr)
+    (h2x/maybe-cast "datetime" expr)))
 
 (defmethod sql.qp/date [:mysql :day]
   [_ _ expr]
@@ -608,7 +622,9 @@
                        (h2x/is-of-type? expr "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
-     [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
+     [:convert_tz expr
+      (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))
+      (sql.qp/->honeysql driver target-timezone)]
      "datetime")))
 
 (defn- timestampdiff-dates [unit x y]

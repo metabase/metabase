@@ -59,11 +59,11 @@
   New rows participate via `metabot_message.user_id`; legacy rows created before
   message authors were stamped fall back to the conversation originator."
   [user-id]
-  (let [participation-exists [:exists {:select [[[:inline 1]]]
-                                       :from   [:metabot_message]
-                                       :where  [:and
-                                                [:= :conversation_id :metabot_conversation.id]
-                                                [:= :user_id user-id]]}]]
+  (let [participation-exists [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                                        :from   [:metabot_message]
+                                                        :where  [:and
+                                                                 [:= :conversation_id :metabot_conversation.id]
+                                                                 [:= :user_id user-id]]}]]
     [:or
      [:= :user_id user-id]
      participation-exists]))
@@ -88,17 +88,17 @@
         ;; `metabot_conversation.user_id`.
         rows            (t2/select :model/MetabotConversation
                                    {:select   [:id :created_at :summary :user_id
-                                               [{:select [[[:count :*]]]
-                                                 :from   [:metabot_message]
-                                                 :where  [:and
-                                                          [:= :conversation_id :metabot_conversation.id]
-                                                          [:= :deleted_at nil]]}
+                                               [^:allow-subquery {:select [[[:count :*]]]
+                                                                  :from   [:metabot_message]
+                                                                  :where  [:and
+                                                                           [:= :conversation_id :metabot_conversation.id]
+                                                                           [:= :deleted_at nil]]}
                                                 :message_count]
-                                               [{:select [[[:max :created_at]]]
-                                                 :from   [:metabot_message]
-                                                 :where  [:and
-                                                          [:= :conversation_id :metabot_conversation.id]
-                                                          [:= :deleted_at nil]]}
+                                               [^:allow-subquery {:select [[[:max :created_at]]]
+                                                                  :from   [:metabot_message]
+                                                                  :where  [:and
+                                                                           [:= :conversation_id :metabot_conversation.id]
+                                                                           [:= :deleted_at nil]]}
                                                 :last_message_at]]
                                     :where    visible-to-user
                                     :order-by [[:created_at :desc] [:id :asc]]

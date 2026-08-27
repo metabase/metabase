@@ -312,6 +312,19 @@
             (is (= :not-cached
                    (run-query :cache-strategy strategy)))))))))
 
+(deftest cancellation-mid-flight-does-not-throw-assertion-test
+  (testing (str "a cache-miss query canceled between the driver's respond callback and the reducer "
+                "returns nil silently #66655.")
+    (with-mock-cache! []
+      (let [qp (cache/maybe-return-cached-results qp.pipeline/*run*)]
+        (binding [driver.settings/*query-timeout-ms* 2000
+                  qp.pipeline/*canceled-chan*        (a/promise-chan)
+                  qp.pipeline/*execute*              (fn [_driver _query respond]
+                                                       (a/>!! qp.pipeline/*canceled-chan* ::test-cancel)
+                                                       (respond {} [[:toucan 1]]))]
+          (driver/with-driver :h2
+            (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
+
 (deftest not-eligible-refresh-deletes-outdated-entry-test
   (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
             is deleted so other processes recompute instead of serving it stale for the rest of the lease window"

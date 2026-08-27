@@ -1,6 +1,7 @@
 (ns metabase.permissions-rest.api-test
   "Tests for `/api/permissions` endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.config.core :as config]
@@ -434,9 +435,43 @@
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Sandboxes"
+           (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                 (assoc (data-perms.graph/api-graph)
+                                        :sandboxes [{:group_id group-id, :table_id table-id, :card_id 1}]))))))))
+
+(deftest update-perms-graph-sandbox-and-impersonation-shapes-test
+  (testing "PUT /api/permissions/graph"
+    (testing "a sandbox or impersonation that isn't a map of the keys the schema declares is refused, so nothing that
+             isn't a permissions record can reach the INSERT that writes one"
+      (mt/with-premium-features #{:sandboxes :advanced-permissions}
+        (let [injection "UPDATE core_user SET is_superuser = true"
+              admins    #(t2/count :model/User :is_superuser true)
+              put!      (fn [body] (mt/user-http-request :crowberto :put 400 "permissions/graph"
+                                                         (merge (data-perms.graph/api-graph) body)))]
+          (doseq [[label k body] [["an impersonation given as a string"  :impersonations {:impersonations [injection]}]
+                                  ["an impersonation of undeclared keys" :impersonations {:impersonations [{:raw injection}]}]
+                                  ["a sandbox given as a string"         :sandboxes      {:sandboxes [injection]}]
+                                  ["a sandbox of undeclared keys"        :sandboxes      {:sandboxes [{:raw injection}]}]]]
+            (testing label
+              (let [before (admins)]
+                (is (contains? (:errors (put! body)) k))
+                (is (= before (admins))
+                    "the injected UPDATE did not run")))))))))
+
+(deftest update-perms-graph-drops-unknown-db-perms-test
+  (testing "PUT /api/permissions/graph"
+    (testing "a per-database key the graph update doesn't act on is dropped rather than carried into the update"
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+        (let [graph (assoc-in (data-perms.graph/api-graph)
+                              [:groups group-id (mt/id)]
+                              {:view-data :unrestricted, :is_superuser true})]
+          (is (nil? (get-in (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
+                            [:groups (keyword (str group-id)) (keyword (str (mt/id))) :is_superuser]))))))))
 
 (deftest update-perms-graph-blocked-view-data-test
   (testing "PUT /api/permissions/graph"
@@ -635,3 +670,126 @@
                   (format "Expected at most 100 database calls, got %d" num-calls)))
             (finally
               (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                             PUT /api/permissions/graph REQUEST SCHEMA                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private sql-injection
+  "'; UPDATE core_user SET is_superuser = true; --")
+
+(def ^:private honeysql-forms
+  "Values Toucan would hand to HoneySQL as SQL rather than as data. A vector reaches the JSON body as
+  `[\"raw\", \"...\"]`, so both the keyword and the string spelling are worth refusing."
+  [[:raw sql-injection]
+   ["raw" sql-injection]
+   [:inline sql-injection]
+   ["inline" sql-injection]
+   [:nest sql-injection]
+   [:lift sql-injection]
+   [:param :x]
+   {:raw sql-injection}
+   {:select [:*] :from [:core_user]}])
+
+(defn- put-graph!
+  "PUT a graph update built by merging `body` onto the current graph, returning `[status body]`. Reads the revision
+  fresh so a rejected request earlier in a test doesn't turn a later one into a 409."
+  [body]
+  (let [graph (data-perms.graph/api-graph)
+        resp  (mt/user-http-request-full-response :crowberto :put "permissions/graph"
+                                                  (merge graph (assoc body :revision (:revision graph))))]
+    [(:status resp) (:body resp)]))
+
+(defn- admin-count []
+  (t2/count :model/User :is_superuser true))
+
+(deftest update-perms-graph-rejects-non-record-sandboxes-and-impersonations-test
+  (testing "PUT /api/permissions/graph"
+    (testing "a sandbox or impersonation that isn't a record of the keys the schema declares is refused, so nothing
+             that isn't one can reach the INSERT that writes it"
+      (mt/with-premium-features #{:sandboxes :advanced-permissions}
+        (doseq [[label k body] (concat
+                                [["a sandbox given as a string"          :sandboxes      {:sandboxes sql-injection}]
+                                 ["a sandbox given as a map"             :sandboxes      {:sandboxes {:table_id 1}}]
+                                 ["a null sandbox"                       :sandboxes      {:sandboxes [nil]}]
+                                 ["an empty sandbox"                     :sandboxes      {:sandboxes [{}]}]
+                                 ["a sandbox of undeclared keys"         :sandboxes      {:sandboxes [{:raw sql-injection}]}]
+                                 ["an impersonation given as a string"   :impersonations {:impersonations sql-injection}]
+                                 ["a null impersonation"                 :impersonations {:impersonations [nil]}]
+                                 ["an empty impersonation"               :impersonations {:impersonations [{}]}]
+                                 ["an impersonation of undeclared keys"  :impersonations {:impersonations [{:raw sql-injection}]}]
+                                 ["an impersonation missing db_id"       :impersonations {:impersonations [{:group_id 1 :attribute "role"}]}]
+                                 ["an impersonation with a blank role"   :impersonations {:impersonations [{:group_id 1 :db_id (mt/id) :attribute ""}]}]]
+                                ;; every value that reaches the INSERT has to be a scalar of the declared type: a
+                                ;; HoneySQL form in any of these positions would be rendered as SQL, not bound
+                                (for [form honeysql-forms
+                                      [k field] [[:sandboxes :id] [:sandboxes :group_id] [:sandboxes :table_id]
+                                                 [:sandboxes :card_id] [:sandboxes :permission_id]
+                                                 [:impersonations :group_id] [:impersonations :db_id]
+                                                 [:impersonations :attribute]]]
+                                  [(format "%s %s = %s" (name k) (name field) (pr-str form))
+                                   k
+                                   {k [(assoc (if (= k :sandboxes)
+                                                {:group_id 1 :table_id 1}
+                                                {:group_id 1 :db_id (mt/id) :attribute "role"})
+                                              field form)]}]))]
+          (testing label
+            (let [before        (admin-count)
+                  [status resp] (put-graph! body)]
+              (is (= 400 status))
+              (is (contains? (:errors resp) k))
+              (is (= before (admin-count)) "the injected SQL did not run"))))))))
+
+(deftest update-perms-graph-rejects-non-graph-bodies-test
+  (testing "PUT /api/permissions/graph"
+    (testing "junk anywhere in the graph is refused -- not dropped, leaving the rest of the update to go through,
+             and not thrown out of the decoder as a 500"
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+        (doseq [[label groups] [["a string for the graph"  sql-injection]
+                                ["a number for the graph"  5]
+                                ["a vector for the graph"  [1 2]]
+                                ["null for the graph"      nil]
+                                ["a scalar per group"      {group-id 5}]
+                                ["a scalar per database"   {group-id {(mt/id) 5}}]
+                                ["a scalar permission"     {group-id {(mt/id) {:view-data 5}}}]
+                                ["a scalar per schema"     {group-id {(mt/id) {:view-data {"PUBLIC" 5}}}}]
+                                ["an unrecognized permission value" {group-id {(mt/id) {:view-data "bogus"}}}]
+                                ["a HoneySQL permission"   {group-id {(mt/id) {:view-data [:raw sql-injection]}}}]
+                                ["a HoneySQL graph"        {group-id {:select [:*] :from [:core_user]}}]]]
+          (testing label
+            (let [before        (admin-count)
+                  [status resp] (put-graph! {:groups groups})]
+              (is (= 400 status))
+              (is (not (str/includes? (pr-str resp) "core_user"))
+                  "none of it came back out of the graph")
+              (is (= before (admin-count)) "the injected SQL did not run"))))))
+    (testing "so is a body that isn't a map at all"
+      (is (= 400 (:status (mt/user-http-request-full-response :crowberto :put "permissions/graph" [1 2 3])))))))
+
+(deftest update-perms-graph-rejects-out-of-range-ids-test
+  (testing "PUT /api/permissions/graph"
+    (testing "an id that isn't one is refused -- a negative group id used to reach `api-graph` as-is and come back
+             as a 500"
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+        (doseq [[label groups] [["a negative group id"    {-1 {(mt/id) {:view-data :unrestricted}}}]
+                                ["a zero group id"        {0 {(mt/id) {:view-data :unrestricted}}}]
+                                ["a non-numeric group id" {:abc {(mt/id) {:view-data :unrestricted}}}]
+                                ["a negative database id" {group-id {-1 {:view-data :unrestricted}}}]
+                                ["a negative table id"    {group-id {(mt/id) {:view-data {"PUBLIC" {-1 :unrestricted}}}}}]]]
+          (testing label
+            (let [[status _] (put-graph! {:groups groups})]
+              (is (= 400 status))
+              (is (not (t2/exists? :model/DataPermissions :group_id [:< 1]))
+                  "nothing was written for the out-of-range id")
+              (is (not (t2/exists? :model/DataPermissions :db_id [:< 1]))))))))))
+
+(deftest update-perms-graph-drops-undeclared-keys-test
+  (testing "PUT /api/permissions/graph"
+    (testing "keys the schema doesn't declare are dropped rather than carried into the update"
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+        (let [[status resp] (put-graph! {:groups {group-id {(mt/id) {:view-data :unrestricted
+                                                                     :is_superuser true
+                                                                     :evil sql-injection}}}
+                                         :evil   sql-injection})]
+          (is (= 200 status))
+          (is (nil? (get-in resp [:groups (keyword (str group-id)) (keyword (str (mt/id))) :is_superuser]))))))))

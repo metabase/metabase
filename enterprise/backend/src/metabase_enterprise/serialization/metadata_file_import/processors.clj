@@ -324,13 +324,14 @@
              ;; `(router_database_id, name)`, so two NULL-router databases
              ;; can share a name → two `(db_name, schema, name)` matches
              ;; (GHY-3549).
+             ^:allow-subquery
              {:select [[[:min :t.id]]]
               :from   [[:metabase_table :t]]
               :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where  [:and
                        [:= :metabase_table_import.db_name :d.name]
-                       [:= [:coalesce :t.schema [:inline ""]]
-                        [:coalesce :metabase_table_import.schema [:inline ""]]]
+                       [:= [:coalesce :t.schema ""]
+                        [:coalesce :metabase_table_import.schema ""]]
                        [:= :t.name :metabase_table_import.name]
                        [:= :t.is_defective_duplicate [:inline false]]]}}}))
 
@@ -368,30 +369,32 @@
       ;; defeating the optimization).
       (t2/query
        {:update :metabase_table
-        :set    {:description {;; ORDER BY + LIMIT 1: two staging rows can
-                               ;; resolve to the same `target_id` (GHY-3549).
-                               :select   [:it.description]
-                               :from     [[:metabase_table_import :it]]
-                               :where    [:= :it.target_id :metabase_table.id]
-                               :order-by [[:it.source_id :asc]]
-                               :limit    1}
+        :set    {:description ^:allow-subquery
+                 {;; ORDER BY + LIMIT 1: two staging rows can
+                  ;; resolve to the same `target_id` (GHY-3549).
+                  :select   [:it.description]
+                  :from     [[:metabase_table_import :it]]
+                  :where    [:= :it.target_id :metabase_table.id]
+                  :order-by [[:it.source_id :asc]]
+                  :limit    1}
                  ;; reactivate in place:
                  :active     [:inline true]
                  :updated_at :%now}
         :where  [:and
                  [:= :metabase_table.is_defective_duplicate [:inline false]]
-                 [:exists {:select [[[:inline 1]]]
-                           :from   [[:metabase_table_import :it]]
-                           :where  [:and
-                                    [:= :it.target_id :metabase_table.id]
-                                    ;; Fire when the description differs OR the row needs
-                                    ;; reactivating — otherwise re-importing a deactivated
-                                    ;; but otherwise-unchanged table would skip the UPDATE
-                                    ;; and leave it inactive.
-                                    [:or
-                                     [:!= [:coalesce :metabase_table.description [:inline ""]]
-                                      [:coalesce :it.description [:inline ""]]]
-                                     [:= :metabase_table.active [:inline false]]]]}]]})
+                 [:exists ^:allow-subquery
+                  {:select [[[:inline 1]]]
+                   :from   [[:metabase_table_import :it]]
+                   :where  [:and
+                            [:= :it.target_id :metabase_table.id]
+                            ;; Fire when the description differs OR the row needs
+                            ;; reactivating — otherwise re-importing a deactivated
+                            ;; but otherwise-unchanged table would skip the UPDATE
+                            ;; and leave it inactive.
+                            [:or
+                             [:!= [:coalesce :metabase_table.description ""]
+                              [:coalesce :it.description ""]]
+                             [:= :metabase_table.active [:inline false]]]]}]]})
       ;; INSERT bypasses :model/Table's :after-insert hook — that hook
       ;; schedules per-DB Quartz triggers we don't want and fires
       ;; `set-new-table-permissions!` once per row. The JOIN on db_name
@@ -401,8 +404,9 @@
         [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
                            :active :show_in_getting_started :is_defective_duplicate
                            :created_at :updated_at]]
+         ^:allow-subquery
          {:select [:d.id :it.schema :it.name :it.description :it.display_name
-                   [[:inline "internal"]]
+                   [^:allow-raw-sql [:inline "internal"]]
                    [[:inline true]] [[:inline false]] [[:inline false]]
                    :%now :%now]
           :from   [[:metabase_table_import :it]]
@@ -448,8 +452,10 @@
     [:and
      [:not= column-key nil]
      [:not [:exists
+            ^:allow-subquery
             {:select [[[:inline 1]]]
-             :from   [[{:select [:source_id]
+             :from   [[^:allow-subquery
+                       {:select [:source_id]
                         :from   [:metabase_field_import]} :s]]
              :where  [:= :s.source_id outer-col]}]]]))
 
@@ -539,8 +545,9 @@
   ;; MySQL forbids referencing the UPDATE's target table directly inside a
   ;; subquery; wrap in a derived table there. PG/H2 accept the direct form.
   (let [staging-source (case (mdb/db-type)
-                         :mysql {:select [:source_id :depth]
-                                 :from   [:metabase_field_import]}
+                         :mysql ^:allow-subquery
+                         {:select [:source_id :depth]
+                          :from   [:metabase_field_import]}
                          :metabase_field_import)]
     (t2/query
      {:update :metabase_field_import
@@ -549,20 +556,22 @@
                [:= :metabase_field_import.depth nil]
                [:or
                 [:= :metabase_field_import.source_parent_id nil]
-                [:exists {:select [[[:inline 1]]]
-                          :from   [[staging-source :p]]
-                          :where  [:and
-                                   [:= :p.source_id :metabase_field_import.source_parent_id]
-                                   [:not= :p.depth nil]
-                                   [:< :p.depth d]]}]]
+                [:exists ^:allow-subquery
+                 {:select [[[:inline 1]]]
+                  :from   [[staging-source :p]]
+                  :where  [:and
+                           [:= :p.source_id :metabase_field_import.source_parent_id]
+                           [:not= :p.depth nil]
+                           [:< :p.depth d]]}]]
                [:or
                 [:= :metabase_field_import.source_fk_target_id nil]
-                [:exists {:select [[[:inline 1]]]
-                          :from   [[staging-source :f]]
-                          :where  [:and
-                                   [:= :f.source_id :metabase_field_import.source_fk_target_id]
-                                   [:not= :f.depth nil]
-                                   [:< :f.depth d]]}]]]})))
+                [:exists ^:allow-subquery
+                 {:select [[[:inline 1]]]
+                  :from   [[staging-source :f]]
+                  :where  [:and
+                           [:= :f.source_id :metabase_field_import.source_fk_target_id]
+                           [:not= :f.depth nil]
+                           [:< :f.depth d]]}]]]})))
 
 (defn- untagged-staging-row-count
   "Number of `metabase_field_import` rows still at `depth IS NULL`. Used as
@@ -637,6 +646,7 @@
   "Correlated subquery yielding `staging-col`'s value from the staging row
   that resolved to this `metabase_field`."
   [staging-col]
+  ^:allow-subquery
   {:select   [(keyword (str "fi." (name staging-col)))]
    :from     [[:metabase_field_import :fi]]
    :where    [:= :fi.target_id :metabase_field.id]
@@ -651,16 +661,16 @@
   behavior."
   ;; Coalesce-with-sentinel is the portable NULL-safe `IS DISTINCT FROM`:
   ;; empty string for text columns, -1 (never a real id) for FK ids.
-  [[:!= [:coalesce :metabase_field.base_type         [:inline ""]]   [:coalesce :fi.base_type         [:inline ""]]]
-   [:!= [:coalesce :metabase_field.database_type     [:inline ""]]   [:coalesce :fi.database_type     [:inline ""]]]
-   [:!= [:coalesce :metabase_field.description       [:inline ""]]   [:coalesce :fi.description       [:inline ""]]]
+  [[:!= [:coalesce :metabase_field.base_type         ""]   [:coalesce :fi.base_type         ""]]
+   [:!= [:coalesce :metabase_field.database_type     ""]   [:coalesce :fi.database_type     ""]]
+   [:!= [:coalesce :metabase_field.description       ""]   [:coalesce :fi.description       ""]]
    ;; `effective_type` coalesces against `base_type`: the export omits it when
    ;; the two are equal, and the app reads NULL effective_type as base_type.
    [:!= [:coalesce :metabase_field.effective_type    :metabase_field.base_type]
     [:coalesce :fi.effective_type                :fi.base_type]]
-   [:!= [:coalesce :metabase_field.semantic_type     [:inline ""]]   [:coalesce :fi.semantic_type     [:inline ""]]]
-   [:!= [:coalesce :metabase_field.coercion_strategy [:inline ""]]   [:coalesce :fi.coercion_strategy [:inline ""]]]
-   [:!= [:coalesce :metabase_field.nfc_path          [:inline ""]]   [:coalesce :fi.nfc_path          [:inline ""]]]
+   [:!= [:coalesce :metabase_field.semantic_type     ""]   [:coalesce :fi.semantic_type     ""]]
+   [:!= [:coalesce :metabase_field.coercion_strategy ""]   [:coalesce :fi.coercion_strategy ""]]
+   [:!= [:coalesce :metabase_field.nfc_path          ""]   [:coalesce :fi.nfc_path          ""]]
    ;; staging's FK column is `target_fk_target_id`, not `fk_target_field_id`.
    [:!= [:coalesce :metabase_field.fk_target_field_id [:inline -1]]  [:coalesce :fi.target_fk_target_id [:inline -1]]]
    ;; `active` compares against TRUE — the merge SET always sets it TRUE.
@@ -680,6 +690,7 @@
   (t2/query
    {:update :metabase_field_import
     :set    {:target_table_id
+             ^:allow-subquery
              {:select [:ti.target_id]
               :from   [[:metabase_table_import :ti]]
               :where  [:= :ti.source_id :metabase_field_import.source_table_id]}}}))
@@ -693,12 +704,14 @@
   [d]
   ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
   (let [parent-source (case (mdb/db-type)
-                        :mysql {:select [:source_id :target_id]
-                                :from   [:metabase_field_import]}
+                        :mysql ^:allow-subquery
+                        {:select [:source_id :target_id]
+                         :from   [:metabase_field_import]}
                         :metabase_field_import)]
     (t2/query
      {:update :metabase_field_import
       :set    {:target_parent_id
+               ^:allow-subquery
                {:select [:p.target_id]
                 :from   [[parent-source :p]]
                 :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
@@ -712,12 +725,14 @@
   [d]
   ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
   (let [fk-source (case (mdb/db-type)
-                    :mysql {:select [:source_id :target_id]
-                            :from   [:metabase_field_import]}
+                    :mysql ^:allow-subquery
+                    {:select [:source_id :target_id]
+                     :from   [:metabase_field_import]}
                     :metabase_field_import)]
     (t2/query
      {:update :metabase_field_import
       :set    {:target_fk_target_id
+               ^:allow-subquery
                {:select [:f.target_id]
                 :from   [[fk-source :f]]
                 :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
@@ -739,6 +754,7 @@
     :set    {:target_id
              ;; MIN(f.id) tiebreaker — `metabase_field` has no uniqueness
              ;; constraint on `(table_id, name, parent_id)` (GHY-3549).
+             ^:allow-subquery
              {:select [[[:min :f.id]]]
               :from   [[:metabase_field :f]]
               :where  [:and
@@ -770,18 +786,20 @@
              ;; Scope the outer walk to the ~staging-row-count IDs at depth `d`.
              ;; Without this, PG starts from `metabase_field` and probes staging
              ;; per row — a full scan on an appdb with millions of field rows.
-             [:in :metabase_field.id {:select [:target_id]
-                                      :from   [:metabase_field_import]
-                                      :where  [:and
-                                               [:= :depth d]
-                                               [:not= :target_id nil]]}]
+             [:in :metabase_field.id ^:allow-subquery
+              {:select [:target_id]
+               :from   [:metabase_field_import]
+               :where  [:and
+                        [:= :depth d]
+                        [:not= :target_id nil]]}]
              ;; Skip-if-unchanged: only touch rows whose payload actually differs.
-             [:exists {:select [[[:inline 1]]]
-                       :from   [[:metabase_field_import :fi]]
-                       :where  [:and
-                                [:= :fi.target_id :metabase_field.id]
-                                [:= :fi.depth d]
-                                (into [:or] field-payload-changed-predicate)]}]]}))
+             [:exists ^:allow-subquery
+              {:select [[[:inline 1]]]
+               :from   [[:metabase_field_import :fi]]
+               :where  [:and
+                        [:= :fi.target_id :metabase_field.id]
+                        [:= :fi.depth d]
+                        (into [:or] field-payload-changed-predicate)]}]]}))
 
 (defn insert-new-fields-at-depth!
   "INSERT `metabase_field` for depth-`d` staging rows that didn't match a
@@ -800,6 +818,7 @@
                        :effective_type :semantic_type :coercion_strategy
                        :nfc_path :parent_id :fk_target_field_id
                        :is_defective_duplicate :active :created_at :updated_at]]
+     ^:allow-subquery
      {:select [:fi.target_table_id :fi.name :fi.base_type :fi.database_type :fi.description
                :fi.effective_type :fi.semantic_type :fi.coercion_strategy
                :fi.nfc_path :fi.target_parent_id :fi.target_fk_target_id

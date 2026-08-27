@@ -12,11 +12,11 @@
                                                       :where [:and
                                                               [:= :archived false]
                                                               [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+                                                              [:exists ^:allow-subquery {:select 1
+                                                                                         :from :report_dashboardcard
+                                                                                         :where [:and
+                                                                                                 [:= :report_dashboardcard.card_id :report_card.id]
+                                                                                                 [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
                                          (map :dashboard_id)
                                          (into #{}))]
     (for [dashboard dashboards]

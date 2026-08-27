@@ -1,8 +1,8 @@
 (ns metabase.transforms.schema
   (:require
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -13,15 +13,17 @@
    [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
 
 (mr/def ::source-incremental-strategy
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["checkpoint" ::checkpoint-strategy]])
 
 (mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:query
     [:map
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
-     [:query ::queries.schema/query]
+     [:query ::lib-be.schema/maybe-legacy-query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map
@@ -36,7 +38,8 @@
   [:map [:type [:= "append"]]])
 
 (mr/def ::target-incremental-strategy
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["append" ::append-config]])
 
 (mr/def ::table-target
@@ -55,7 +58,8 @@
    [:target-incremental-strategy ::target-incremental-strategy]])
 
 (mr/def ::transform-target
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
 

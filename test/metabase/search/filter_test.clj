@@ -123,7 +123,7 @@
               #{[:in :search_index.last_editor_id [321]]
                 [:in :search_index.creator_id [123]]
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
-                [:not= :search_index.model [:inline "table"]]
+                [:not= :search_index.model "table"]
                 [:= :search_index.archived true]
                 [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 [:or

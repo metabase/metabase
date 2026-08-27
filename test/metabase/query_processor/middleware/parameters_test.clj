@@ -15,7 +15,10 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- substitute-params
   ([query]

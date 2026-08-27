@@ -261,25 +261,22 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
-(deftest construct-query-rejects-legacy-envelope-test
+(deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
-                "is rejected by the now-closed request schema, instead of being silently ignored. "
-                "This guards against a regression where the LLM's stale memory keeps sending the old "
-                "shape and we silently drop the extra keys.")
-    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                "is dropped by the request schema, so a caller still sending the old shape is served.")
+    (is (=? {:query string?}
+            (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                   {:query          (orders-query)
                                    :source_entity  {:type "table" :id (mt/id :orders)}}))))
-  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
-    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:query               (orders-query :limit 5)
-                                   :referenced_entities []}))))
-  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
-    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:continuation_token "not-a-real-token"
-                                   :query               (orders-query :limit 5)})))))
+  (testing "`/v2/query` fresh-query branch drops the legacy envelope as well"
+    (is (some? (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                     {:query               (orders-query :limit 5)
+                                      :referenced_entities []}))))
+  (testing "`/v2/query` stays on the continuation branch when a stray `:query` rides along"
+    (is (re-find #"base64-encoded JSON object"
+                 (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                       {:continuation_token "not-a-real-token"
+                                        :query              (orders-query :limit 5)})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
@@ -316,6 +313,32 @@
         (is (re-find #"Native queries are not supported"
                      (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
+
+(deftest execute-query-cannot-write-another-cards-result-metadata-test
+  (testing "/v1/execute runs a whole query decoded out of the request, so its :info must come from the server"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id   collection-id
+                                                            :dataset_query   (orders-count-query)
+                                                            :result_metadata [{:name         "SECRET"
+                                                                               :display_name "Secret"
+                                                                               :base_type    :type/Text}]}]
+        (testing "sanity: the caller cannot even read the Card"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "card/" card-id)))))
+        (testing "a forged :info :card-id does not rewrite that Card's result_metadata"
+          (let [handle (:query (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                     {:query (orders-query :limit 5)}))
+                forged (-> handle
+                           u/decode-base64
+                           json/decode+kw
+                           (assoc :info {:card-id card-id})
+                           json/encode
+                           u/encode-base64)]
+            (is (=? {:status "completed"}
+                    (mt/user-http-request :rasta :post 202 "agent/v1/execute" {:query forged})))
+            (is (= ["SECRET"]
+                   (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -436,14 +459,16 @@
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
-                        {:lib/type "mbql/query"
+                        {:database (mt/id)
+                         :lib/type "mbql/query"
                          :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
-                       ["MBQL 5 native stage nested in a join"
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql"
-                                     :joins    [{:lib/type "mbql/join"
-                                                 :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]
+                       ["native source-query nested in a join"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-table (mt/id :checkins)
+                                    :joins        [{:source-query {:native "select 1"}
+                                                    :alias        "j"
+                                                    :condition    [:= [:field (mt/id :checkins :id) nil]
+                                                                   [:field (mt/id :checkins :id) {:join-alias "j"}]]}]}}]
                        ["legacy nested native source-query"
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
@@ -1184,3 +1209,17 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
+                                                 :type     "query"
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :a            1
+                                                            :a/b          2}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :a)))
+      (is (not (contains? q :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
+          "undeclared properties are stripped from every stage"))))

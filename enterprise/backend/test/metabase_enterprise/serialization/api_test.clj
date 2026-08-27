@@ -105,7 +105,11 @@
                         :model/Card       ~card  {:collection_id (:id ~coll), :name "frobinate", :type :model
                                                   :query_type    :native
                                                   :dataset_query {:type     :native
-                                                                  :database (t2/select-one-pk :model/Database)
+                                                                  ;; must be the test-data DB, not whatever
+                                                                  ;; `select-one-pk` happens to return first -- on
+                                                                  ;; Postgres that can be the audit DB, and a native
+                                                                  ;; query against the audit DB is rejected outright
+                                                                  :database (mt/id)
                                                                   :native   {:query "SELECT 1"}}}]
            ~@body)))))
 

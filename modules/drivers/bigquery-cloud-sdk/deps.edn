@@ -28,8 +28,8 @@
   ;; Netty 4.2.x — latest patched release. grpc-netty-shaded bundles its own
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
-  io.netty/netty-common                  {:mvn/version "4.2.15.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.15.Final"}
+  io.netty/netty-common                  {:mvn/version "4.2.16.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.2.16.Final"}
   ;; pinned: google-cloud-bigquery pulls 2.18.2 which has resource exhaustion vulns (jackson-core)
   ;; and a deserialization vuln (jackson-databind)
   com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}

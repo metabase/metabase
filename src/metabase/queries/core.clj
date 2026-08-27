@@ -28,19 +28,22 @@
   batch-fetch-query-metadata]
  [metabase.queries.models.card
   fully-parameterized?
+  maybe-unverify!
   model-supports-implicit-actions?
   model?
+  parameter-template-tag?
   sole-dashboard-id
   starting-card-schema-version
-  update-card!
-  ;; TODO -- not convinced whether this belongs here or in `permissions`
-  with-can-run-adhoc-query]
+  update-card!]
  [metabase.queries.models.card.metadata
   infer-metadata
   maybe-async-result-metadata
   refresh-metadata
   save-metadata-async!]
- [metabase.queries.models.parameter-card]
+ [metabase.queries.models.parameter-card
+  check-new-parameter-source-card-permissions
+  check-parameter-source-card-permissions
+  values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms
   query->database-and-table-ids

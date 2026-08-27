@@ -109,7 +109,6 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     csp-img-allowed-hosts: ''
@@ -238,6 +237,7 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
@@ -282,6 +282,7 @@ config:
     search-typeahead-enabled: true
     send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
+    serialization-skip-schema-validation: false
     session-cookie-samesite: lax
     session-cookies: null
     session-timeout: null
@@ -323,4 +324,5 @@ config:
     unaggregated-query-row-limit: null
     uploads-settings: null
     user-visibility: all
+    warehouse-allowed-networks: null
 ```

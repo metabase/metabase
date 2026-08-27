@@ -63,6 +63,13 @@
 (driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 (driver/register! :postgres-mbql5, :parent #{:postgres :sql-mbql5})
 
+(defmethod driver/host-carrying-parameters :postgres [_driver] ["host" "PGHOST"])
+
+(defmethod driver/non-host-parameters :postgres
+  [_driver]
+  ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
+   "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
@@ -601,8 +608,23 @@
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
 (mu/defn- quoted? [database-type :- driver-api/schema.common.non-blank-string]
-  (and (str/starts-with? database-type "\"")
+  (and (>= (count database-type) 2)
+       (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(mu/defn- enum-type-components :- [:sequential {:min 1} :string]
+  [database-type :- driver-api/schema.common.non-blank-string]
+  (if (quoted? database-type)
+    (str/split (subs database-type 1 (dec (count database-type))) #"\"\.\"" -1)
+    [database-type]))
+
+(mu/defn- enum-cast
+  "`cast(expr AS \"enum-type\")`. `database-type` is emitted as an identifier, never as raw SQL: it reaches here from
+  the query, and sync records enum types either bare (`bird type`) or schema-qualified (`\"schema\".\"type\"`)."
+  [database-type :- driver-api/schema.common.non-blank-string
+   raw-value]
+  (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
+      (h2x/with-database-type-info database-type)))
 
 (defmethod sql.qp/date [:postgres :day]
   [_ _ expr]
@@ -629,12 +651,11 @@
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver [_ raw-value {base-type :base_type database-type :database_type}]]
   (when (some? raw-value)
+    (sql.qp/check-value-literal driver raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
       :type/IPAddress    (h2x/cast :inet raw-value)
-      :type/PostgresEnum (if (quoted? database-type)
-                           (h2x/cast database-type raw-value)
-                           (h2x/quoted-cast database-type raw-value))
+      :type/PostgresEnum (enum-cast database-type raw-value)
       ((get-method sql.qp/->honeysql [:sql-jdbc :value])
        driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
@@ -707,7 +728,9 @@
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
-    [::regex-match-first identifier pattern]))
+    ;; compile the pattern through ->honeysql so a non-string pattern (e.g. a stored [:raw ...] form spliced in from a
+    ;; source card) is rejected at multimethod dispatch instead of being emitted verbatim as SQL.
+    [::regex-match-first identifier (sql.qp/->honeysql driver pattern)]))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
@@ -788,8 +811,13 @@
   [_fn [parent-identifier field-type names]]
   (let [names-text-array                 (into [::text-array] names)
         [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
-        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
-    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql field-type)]
+        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})
+        ;; same rule as [[h2x/cast]]: a plain type name is spliced as-is, anything else (the field's synced
+        ;; `database-type`, which we can't trust to be a plain type name) is quoted as an identifier
+        [type-sql]                       (if (h2x/raw-type-name? field-type)
+                                           [field-type]
+                                           (sql/format-expr (h2x/identifier :type-name field-type) {:nested true}))]
+    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql type-sql)]
           cat
           [parent-id-args path-args])))
 

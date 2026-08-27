@@ -1891,7 +1891,7 @@
                   "aggregation"  [["max" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]]
                   "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]
       (doseq [label ["Max of ID"   ; exact display label
-                     "max of id"]] ; folded variant, mirroring the Cynthia ref's casing
+                     "max of id"]] ; folded variant, mirroring the ref's casing
         (testing (str "ref written as " (pr-str label))
           (let [q   {"lib/type" "mbql/query"
                      "database" "Sample"

@@ -216,7 +216,7 @@
                     :where [:and
                             [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
-                            [:in :type [:inline ["metric" "model"]]]
+                            [:in :type ["metric" "model"]]
                             [:= :archived false]
                             (when api/*current-user-id*
                               (collection/visible-collection-filter-clause :collection_id))]}]
@@ -226,16 +226,16 @@
       (assoc
        :left-join [[:moderation_review :mr] [:and
                                              [:= :mr.moderated_item_id :report_card.id]
-                                             [:= :mr.moderated_item_type [:inline "card"]]
+                                             [:= :mr.moderated_item_type "card"]
                                              [:= :mr.most_recent true]]]
-       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0]
+       :order-by [[[:case [:= :mr.status "verified"] [:inline 0]
                     :else [:inline 1]]
                    :asc]])
 
       ;; Filter verified items only when that's desired.
       (and (premium-features/has-feature? :content-verification)
            use-verified-content?)
-      (update :where conj [:= :mr.status [:inline "verified"]])
+      (update :where conj [:= :mr.status "verified"])
 
       (integer? limit)
       (assoc :limit limit))))

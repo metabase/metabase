@@ -6,9 +6,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.test :as mt]))
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel format-current-time-test
   (testing "formats time from context with timezone"
@@ -210,7 +214,7 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 1 :name "users"}
+    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -476,3 +480,183 @@
           (is (string? text))
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
+
+(defn- do-with-orders-readable-people-blocked!
+  [thunk]
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+    (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+    (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+    (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/create-queries :no)
+    (mt/with-test-user :rasta
+      (thunk))))
+
+(defn- render-viewing
+  "Run a client-supplied context through the same enrichment the endpoint applies, then render it."
+  [user-is-viewing]
+  (user-context/format-viewing-context
+   (metabot.context/create-context {:user_is_viewing user-is-viewing})))
+
+(deftest adhoc-viewing-context-includes-readable-used-tables-test
+  (testing "control: a readable source table is still named in the used-tables enrichment"
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [out (render-viewing [{:type  "adhoc"
+                                   :query {:database (mt/id)
+                                           :type     "query"
+                                           :query    {:source-table (mt/id :orders)}}}])]
+         (is (str/includes? out "notebook editor"))
+         (is (str/includes? out "ORDERS")))))))
+
+(deftest used-tables-context-is-permission-filtered-test
+  (testing "used-tables enrichment does not name a table the user has no permission on at all"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (let [out (render-viewing [{:type  "adhoc"
+                                    :query {:database (mt/id)
+                                            :type     "query"
+                                            :query    {:source-table (mt/id :people)}}}])]
+          (is (str/includes? out "notebook editor"))
+          (is (not (str/includes? out "PEOPLE"))))))))
+
+(deftest entity-details-403-renders-nothing-test
+  (testing "a read-check failure renders nothing rather than falling back to the simple formatter,
+            which would print the name/schema/description the check just refused"
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [stub (fn [table-id] {:type :table :id table-id :name "leaked-name"
+                                  :database_schema "leaked-schema" :description "leaked-description"})]
+         (testing "blocked table"
+           (let [out (user-context/format-viewing-context {:user_is_viewing [(stub (mt/id :people))]})]
+             (is (not (str/includes? out "leaked-name")))
+             (is (not (str/includes? out "leaked-schema")))
+             (is (not (str/includes? out "leaked-description")))))
+         (testing "readable table (control)"
+           (let [out (user-context/format-viewing-context {:user_is_viewing [(stub (mt/id :orders))]})]
+             (is (str/includes? out "ORDERS")))))))))
+
+(deftest transform-source-query-omits-blocked-tables-test
+  (testing "a client-supplied transform source query is not exported when it names a blocked table"
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [source (fn [field-clause table-id field-id]
+                      [{:type        "transform"
+                        :id          1
+                        :name        "draft"
+                        :source_type "query"
+                        :source      {:type  "query"
+                                      :query {:database (mt/id)
+                                              :type     "query"
+                                              :query    {:source-table table-id
+                                                         :fields       [(field-clause field-id)]}}}}])
+             kw-clause  (fn [field-id] [:field field-id nil])
+             str-clause (fn [field-id] ["field" field-id nil])]
+         (testing "blocked table"
+           (let [out (render-viewing (source kw-clause (mt/id :people) (mt/id :people :email)))]
+             (is (str/includes? out "viewing a Transform"))
+             (is (not (str/includes? out "PEOPLE")))
+             (is (not (str/includes? out "EMAIL")))))
+         (testing "a field clause whose head is the string \"field\", as JSON decoding delivers it,
+                   still resolves to its table and blocks the export"
+           (let [out (render-viewing (source str-clause (mt/id :orders) (mt/id :people :email)))]
+             (is (str/includes? out "viewing a Transform"))
+             (is (not (str/includes? out "PEOPLE")))
+             (is (not (str/includes? out "EMAIL")))))
+         (testing "readable table (control)"
+           (let [out (render-viewing (source kw-clause (mt/id :orders) (mt/id :orders :id)))]
+             (is (str/includes? out "ORDERS")))))))))
+
+(deftest transform-source-query-omits-blocked-source-field-test
+  (testing (str "a field id planted in `:source-field` names a column just as much as one in the clause's "
+                "own slot: the export path renders it as [db schema table field]")
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [item (fn [field-clause]
+                    [{:type        "transform"
+                      :id          1
+                      :name        "draft"
+                      :source_type "query"
+                      :source      {:type  "query"
+                                    :query {:database (mt/id)
+                                            :type     "query"
+                                            :query    {:source-table (mt/id :orders)
+                                                       :fields       [field-clause]}}}}])]
+         (testing "blocked table reached only through :source-field"
+           (let [out (render-viewing (item [:field (mt/id :orders :id)
+                                            {:source-field (mt/id :people :email)}]))]
+             (is (str/includes? out "viewing a Transform"))
+             (is (not (str/includes? out "PEOPLE")))
+             (is (not (str/includes? out "EMAIL")))))
+         (testing "readable table (control)"
+           (let [out (render-viewing (item [:field (mt/id :orders :id)
+                                            {:source-field (mt/id :orders :user_id)}]))]
+             (is (str/includes? out "ORDERS")))))))))
+
+(deftest transform-source-native-query-is-permission-gated-test
+  (testing "a native stage extracts no ids for the set comparison, so it must not pass vacuously"
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [item (fn [sql]
+                    [{:type        "transform"
+                      :id          1
+                      :name        "draft"
+                      :source_type "native"
+                      :source      {:type  "query"
+                                    :query {:database (mt/id)
+                                            :type     "native"
+                                            :native   {:query sql}}}}])]
+         (testing "SQL reading a blocked table"
+           (let [out (render-viewing (item "SELECT EMAIL FROM PEOPLE"))]
+             (is (str/includes? out "viewing a Transform"))
+             (is (not (str/includes? out "PEOPLE")))))
+         (testing "SQL reading a queryable table (control)"
+           (let [out (render-viewing (item "SELECT ID FROM ORDERS"))]
+             (is (str/includes? out "ORDERS")))))))))
+
+(deftest transform-source-card-query-is-permission-gated-test
+  (testing "a `card__N` source is dropped by `pos-int?` before normalization, so the gate must read it
+            off the normalized `:source-card` instead"
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (let [item (fn [card-id]
+                    [{:type        "transform"
+                      :id          1
+                      :name        "draft"
+                      :source_type "query"
+                      :source      {:type  "query"
+                                    :query {:database (mt/id)
+                                            :type     "query"
+                                            :query    {:source-table (str "card__" card-id)}}}}])]
+         (mt/with-temp [:model/Collection coll {}
+                        :model/Card       card {:name          "hidden"
+                                                :collection_id (:id coll)
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :orders))))}]
+           (testing "a card the caller cannot read"
+             (mt/with-non-admin-groups-no-collection-perms coll
+               (let [out (render-viewing (item (:id card)))]
+                 (is (str/includes? out "viewing a Transform"))
+                 (is (not (str/includes? out (:entity_id card)))))))
+           (testing "a card the caller can read (control)"
+             (let [out (render-viewing (item (:id card)))]
+               (is (str/includes? out (:entity_id card)))))))))))
+
+(deftest queryable-normalized-query-rejects-non-integer-database-test
+  (testing (str ":database comes from the client, and a non-integer would reach Toucan's queryable "
+                "position. The gate rejects it without touching the app DB")
+    (do-with-orders-readable-people-blocked!
+     (fn []
+       (doseq [database-id ["1; DROP TABLE metabase_table" {:x 1} [1] "1" nil]]
+         (testing (pr-str database-id)
+           (is (nil? (t2/with-call-count [calls]
+                       (let [result (#'user-context/queryable-normalized-query
+                                     {:database database-id
+                                      :type     "query"
+                                      :query    {:source-table (mt/id :orders)}})]
+                         (is (zero? (calls)))
+                         result))))))
+       (testing "a readable table under an integer database still passes"
+         (is (some? (#'user-context/queryable-normalized-query
+                     {:database (mt/id)
+                      :type     "query"
+                      :query    {:source-table (mt/id :orders)}}))))))))

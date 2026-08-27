@@ -608,8 +608,7 @@
                      :keyword_rank]])
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-     ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
-     :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
+     :join [[[:to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              :query] [:= 1 1]]
      :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
               (if (seq filters)

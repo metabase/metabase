@@ -31,7 +31,7 @@
              :left-join [[(keyword metadata-table-name) :meta]
                          [:= :meta.table_name :t.table_name]]
              :where [:and
-                     [:like :t.table_name [:inline "index_table_%"]]
+                     [:like :t.table_name ^:allow-raw-sql [:inline "index_table_%"]]
                      [:= :meta.table_name nil]]}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
@@ -56,7 +56,7 @@
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
-                               :where [:like :t.table_name [:inline "repair_%"]]}
+                               :where [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))

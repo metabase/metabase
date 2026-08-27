@@ -30,6 +30,10 @@ declare module "@tanstack/react-table" {
     clipboardFormatter?: PlainCellFormatter<TValue>;
     width?: "auto";
     isUtilityColumn?: boolean;
+    // Values that change while a column is resized live here rather than in the
+    // cell/header closures, so component identity stays stable (metabase#78557)
+    isTruncated?: boolean;
+    onExpand?: ExpandColumnHandler;
   }
 }
 
@@ -51,7 +55,7 @@ export type BodyCellBaseProps<TValue> = {
   isSelected?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onExpand?: (id: string, formattedValue: React.ReactNode) => void;
+  onExpand?: ExpandColumnHandler;
 };
 
 /**
@@ -192,7 +196,10 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Default row height in pixels */
   defaultRowHeight?: number;
 
-  /** Configuration for columns */
+  /**
+   * Configuration for columns. Must be memoized: cell and header components are
+   * built from it, so an unstable array remounts every cell on each render
+   * (metabase#78557) */
   columnsOptions: ColumnOptions<TData, TValue>[];
 
   /**
@@ -260,6 +267,11 @@ export type PlainCellFormatter<TValue> = (
   rowIndex: number,
   columnId: string,
 ) => string;
+
+export type ExpandColumnHandler = (
+  columnId: string,
+  formattedValue: React.ReactNode,
+) => void;
 
 export type ExpandedColumnsState = Record<string, boolean>;
 

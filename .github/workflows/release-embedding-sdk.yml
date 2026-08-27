@@ -17,14 +17,11 @@ on:
   workflow_dispatch:
     inputs:
       read_first:
-        description: |
-          ⚠️ To cut a release, use the "SDK Version Bump PR" workflow instead — it bumps the version and opens a PR; merging that PR publishes.
-          This publishes the version already committed in package.template.json. It never bumps. Pick the branch in "Use workflow from" above.
-          Use it only when neither the bump PR nor re-running the failed jobs will do.
+        description: "⚠️ Manual override. Publishes whatever version is already committed in package.template.json; it never bumps. Normally you want the SDK Version Bump PR workflow, where merging the PR publishes."
         type: choice
         required: false
         options:
-          - Publish the committed version from the branch picked in "Use workflow from" above
+          - Publishes the branch picked above
   # Step 2 of the new release process: merging a version-bump PR (opened by
   # sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) triggers a release
   # of whatever branch that PR targeted. See `prepare-release` below.
@@ -59,7 +56,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger'))
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       branch: ${{ steps.resolve.outputs.branch }}
@@ -73,7 +70,7 @@ jobs:
   workflow-summary:
     name: Log inputs
     needs: prepare-release
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary

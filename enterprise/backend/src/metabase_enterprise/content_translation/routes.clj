@@ -65,7 +65,11 @@
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
-  {:multipart true}
+  ;; `:max-file-size` is enforced by the multipart middleware *while the body is being streamed*, so an oversized
+  ;; upload is aborted before it is ever written to disk -- the in-handler `:size` check below runs only after the
+  ;; body has already been parsed to a temp file, and the middleware runs ahead of `check-superuser`.
+  {:multipart {:max-file-size (long max-content-translation-dictionary-size-bytes)
+               :max-file-count 1}}
   [_route_params
    _query-params
    _body
@@ -75,6 +79,7 @@
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
+                                                    [:size     :int]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]

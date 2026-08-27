@@ -91,6 +91,10 @@
     (let [session-id (extended-session-id {:v 1 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
       (is (true? (mcp.session/supports-mcp-ui? session-id)))))
+  (testing "unknown keys in a known-version hint are ignored, not rejected"
+    (let [session-id (extended-session-id {:v 1 :ui true :a 1})]
+      (is (true? (mcp.session/valid-id? session-id)))
+      (is (true? (mcp.session/supports-mcp-ui? session-id)))))
   (testing "unknown payload versions keep the session valid but disable UI capability"
     (let [session-id (extended-session-id {:v 2 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
@@ -111,6 +115,20 @@
           "should be a v8 (custom/vendor-defined) UUID per RFC 9562")
       (is (= 2 (.variant ^java.util.UUID parsed))
           "should carry the RFC 4122 variant (10xx)"))))
+
+(deftest ui-credential-validation-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id)]
+    (testing "a fresh credential resolves to its user and MCP session"
+      (is (=? {:uid user-id :sid session-id}
+              (mcp.session/resolve-ui-credential credential))))
+    (testing "invalid credentials are rejected"
+      (is (nil? (mcp.session/resolve-ui-credential (str credential "x")))))
+    (testing "expired credentials are rejected"
+      (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
+        (is (nil? (mcp.session/resolve-ui-credential
+                   (mcp.session/issue-ui-credential session-id user-id))))))))
 
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"
@@ -182,6 +200,44 @@
       (is (= "second" (mcp.session/read-handle session-id user-id h2)))
       (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))
           "read-handle returns nil for unknown handles"))))
+
+(deftest session-id-sinks-reject-non-session-ids-test
+  (testing "the DB sinks that take a session id refuse anything that is not one, so a map cannot reach a query"
+    (let [user-id (mt/user->id :crowberto)
+          bad     [{:raw "(SELECT 1)"} :key_hashed 1 [:raw "1"] "not-a-uuid"]]
+      (doseq [not-a-session-id bad]
+        (testing (pr-str not-a-session-id)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Invalid MCP session id"
+               (mcp.session/store-handle! not-a-session-id user-id "q")))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Invalid MCP session id"
+               (mcp.session/delete! not-a-session-id user-id)))))
+      (testing "a real session id is still accepted at both sinks"
+        (let [session-id (mcp.session/create! user-id)
+              handle     (mcp.session/store-handle! session-id user-id "q")]
+          (is (some? (parse-uuid handle)) "store-handle! returns a handle for a valid session id")
+          (is (= "q" (mcp.session/read-handle session-id user-id handle)))
+          (mcp.session/delete! session-id user-id)
+          (is (nil? (mcp.session/read-handle session-id user-id handle))
+              "delete! swept the handle"))))))
+
+(deftest handle-lookup-only-accepts-handles-test
+  (testing "a handle that is not one of ours resolves to nil rather than reaching the query"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "the query")]
+      (is (= "the query" (mcp.session/read-handle session-id user-id handle))
+          "sanity: a real handle still resolves")
+      (doseq [[label not-a-handle] [["a HoneySQL expression" {:raw "(SELECT 1)"}]
+                                    ["a nested expression"   {:select [1]}]
+                                    ["a keyword"             :mqh.id]
+                                    ["a number"              1]
+                                    ["a vector"              [:raw "1"]]
+                                    ["a non-UUID string"     "' OR 1=1 --"]]]
+        (testing (str "\n" label)
+          (is (nil? (mcp.session/read-handle session-id user-id not-a-handle)))
+          (is (nil? (mcp.session/resolve-query-handle session-id user-id not-a-handle))))))))
 
 (deftest read-handle-falls-back-across-the-users-sessions-test
   (testing "read-handle resolves a handle stored in one session when called from another session of the same user"
