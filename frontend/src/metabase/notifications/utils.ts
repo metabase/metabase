@@ -37,6 +37,7 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   UserId,
@@ -52,6 +53,15 @@ export const getScheduleDefaultsWithoutHour: GetScheduleDefaults = (
 export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
   ...getScheduleDefaultsWithoutHour("daily"),
+};
+
+export const toScheduleSettings = (value: ScheduleValue): ScheduleSettings => {
+  if (isScheduleCronValue(value) || value.schedule_type === "every_n_minutes") {
+    throw new Error(
+      `A ${value.schedule_type} schedule cannot be stored as a schedule map`,
+    );
+  }
+  return { ...value, schedule_type: value.schedule_type };
 };
 
 const getDefaultChannelConfig = ({
