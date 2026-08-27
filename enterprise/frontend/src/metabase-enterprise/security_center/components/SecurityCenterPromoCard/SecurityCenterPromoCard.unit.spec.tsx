@@ -77,8 +77,8 @@ type EnterpriseApiState = Parameters<
 function selectListSecurityAdvisories({ store }: SetupResult) {
   return securityCenterApi.endpoints.listSecurityAdvisories.select()(
     // The EnterpriseApi selectors are typed against the enterprise tag union,
-    // while the test store is typed with the OSS State; the runtime state
-    // shape is the same.
+    // while the test store is typed with the OSS State.
+    // The runtime state shape is the same.
     store.getState() as unknown as EnterpriseApiState,
   );
 }
