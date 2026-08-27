@@ -1,28 +1,38 @@
 import {
-  CheckboxCard as MantineCheckboxCard,
-  type CheckboxCardProps as MantineCheckboxCardProps,
-  CheckboxIndicator as MantineCheckboxIndicator,
+  RadioCard as MantineRadioCard,
+  type RadioCardProps as MantineRadioCardProps,
+  RadioIndicator as MantineRadioIndicator,
   Stack,
   Text,
   rem,
 } from "@mantine/core";
 import { type ReactNode, forwardRef } from "react";
 
-export type CheckboxCardProps = Omit<MantineCheckboxCardProps, "children"> & {
+export type RadioCardProps = Omit<MantineRadioCardProps, "children"> & {
   label?: ReactNode;
   description?: ReactNode;
+  leftSection?: ReactNode;
+  disabled?: boolean;
   withIndicator?: boolean;
 };
 
-export const CheckboxCard = forwardRef<HTMLButtonElement, CheckboxCardProps>(
-  function CheckboxCard(
-    { label, description, disabled, withIndicator = true, ...props },
+export const RadioCard = forwardRef<HTMLButtonElement, RadioCardProps>(
+  function RadioCard(
+    {
+      label,
+      description,
+      leftSection,
+      disabled,
+      withIndicator = true,
+      ...props
+    },
     ref,
   ) {
     return (
-      <MantineCheckboxCard disabled={disabled} {...props} ref={ref}>
-        {withIndicator && <MantineCheckboxIndicator disabled={disabled} />}
-        <Stack component="span" gap={rem(2)} miw={0}>
+      <MantineRadioCard disabled={disabled} {...props} ref={ref}>
+        {withIndicator && <MantineRadioIndicator disabled={disabled} />}
+        {leftSection}
+        <Stack component="span" gap={rem(4)} miw={0}>
           {label && (
             <Text
               component="span"
@@ -43,7 +53,7 @@ export const CheckboxCard = forwardRef<HTMLButtonElement, CheckboxCardProps>(
             </Text>
           )}
         </Stack>
-      </MantineCheckboxCard>
+      </MantineRadioCard>
     );
   },
 );
