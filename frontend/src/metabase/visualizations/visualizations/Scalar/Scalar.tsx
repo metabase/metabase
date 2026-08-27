@@ -1,13 +1,14 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import {
   ScalarActionButtons,
   ScalarTitle,
   ScalarValue,
   ScalarWrapper,
+  TITLE_TOOLTIP_OFFSET,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
@@ -45,6 +46,11 @@ function ScalarComponent(
   props: VisualizationProps & VisualizationPassThroughProps,
 ) {
   const scalarRef = useRef<HTMLDivElement>(null);
+  const [isInnerTooltipHovered, setIsInnerTooltipHovered] = useState(false);
+  const innerTooltipHoverHandlers = {
+    onMouseEnter: () => setIsInnerTooltipHovered(true),
+    onMouseLeave: () => setIsInnerTooltipHovered(false),
+  };
 
   const {
     series: [
@@ -99,6 +105,7 @@ function ScalarComponent(
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
     availableWidth,
+    tier.valueFontSize,
     formatOptions,
   );
 
@@ -131,66 +138,89 @@ function ScalarComponent(
     }
   };
 
+  const hasValueTooltip =
+    fullScalarValue !== displayValue || tooltipContent != null;
+  // show one tooltip at a time: the title tooltip yields to the value and
+  // segments tooltips while their target is hovered
+  const showsTitleTooltip = showsTitleOnHover && !isInnerTooltipHovered;
+
   return (
-    <ScalarWrapper xPadding={tier.xPadding}>
-      <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
-      <Tooltip label={title} disabled={!showsTitleOnHover} position="bottom">
-        <Stack align="center" gap={tier.valueTitleGap} maw="100%">
-          <ScalarValueContainer
-            className={DashboardS.fullscreenNormalText}
-            tooltip={fullScalarValue}
-            alwaysShowTooltip={fullScalarValue !== displayValue}
-            isClickable={isClickable}
+    <Tooltip
+      label={title}
+      disabled={!showsTitleTooltip}
+      position="top"
+      offset={TITLE_TOOLTIP_OFFSET}
+    >
+      <ScalarWrapper xPadding={tier.xPadding}>
+        <ScalarActionButtons tier={tier} {...innerTooltipHoverHandlers}>
+          {actionButtons}
+        </ScalarActionButtons>
+        <Stack
+          align="center"
+          gap={tier.valueTitleGap}
+          maw="100%"
+          data-testid="scalar-content"
+        >
+          <Box
+            maw="100%"
+            {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
           >
-            <Tooltip
-              label={tooltipContent}
-              position="bottom"
-              px="0.375rem"
-              py="xs"
-              disabled={!tooltipContent}
+            <ScalarValueContainer
+              className={DashboardS.fullscreenNormalText}
+              tooltip={fullScalarValue}
+              alwaysShowTooltip={fullScalarValue !== displayValue}
+              isClickable={isClickable}
             >
-              <Stack
-                onClick={handleClick}
-                ref={scalarRef}
-                align="center"
-                gap={0}
+              <Tooltip
+                label={tooltipContent}
+                position="bottom"
+                px="0.375rem"
+                py="xs"
+                disabled={!tooltipContent}
               >
-                <ScalarValue
-                  color={color}
-                  disableHover={isMetricsViewer}
-                  fontSize={tier.valueFontSize}
-                  // Unjustified type cast. FIXME
-                  value={displayValue as string}
-                />
-                {label && (
-                  <Text
-                    fz="14px"
-                    lh="16px"
-                    c="text-primary"
-                    mt="md"
-                    ta="center"
-                  >
-                    {label}
-                  </Text>
-                )}
-                {sublabel && (
-                  <Text
-                    fz="12px"
-                    lh="16px"
-                    c="text-secondary"
-                    mt="xs"
-                    ta="center"
-                  >
-                    {sublabel}
-                  </Text>
-                )}
-              </Stack>
-            </Tooltip>
-          </ScalarValueContainer>
+                <Stack
+                  onClick={handleClick}
+                  ref={scalarRef}
+                  align="center"
+                  gap={0}
+                >
+                  <ScalarValue
+                    color={color}
+                    disableHover={isMetricsViewer}
+                    fontSize={tier.valueFontSize}
+                    // Unjustified type cast. FIXME
+                    value={displayValue as string}
+                  />
+                  {label && (
+                    <Text
+                      fz="14px"
+                      lh="16px"
+                      c="text-primary"
+                      mt="md"
+                      ta="center"
+                    >
+                      {label}
+                    </Text>
+                  )}
+                  {sublabel && (
+                    <Text
+                      fz="12px"
+                      lh="16px"
+                      c="text-secondary"
+                      mt="xs"
+                      ta="center"
+                    >
+                      {sublabel}
+                    </Text>
+                  )}
+                </Stack>
+              </Tooltip>
+            </ScalarValueContainer>
+          </Box>
           {showsInlineTitle && <ScalarTitle>{title}</ScalarTitle>}
         </Stack>
-      </Tooltip>
-    </ScalarWrapper>
+      </ScalarWrapper>
+    </Tooltip>
   );
 }
 

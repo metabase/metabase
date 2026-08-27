@@ -4,6 +4,7 @@ import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib
 import type { ColumnSettings } from "metabase-types/api";
 
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparison/PreviousValueComparisonTooltip";
+import S from "./TrendComparisonRow.module.css";
 import {
   CHANGE_TYPE_OPTIONS,
   type ComparisonResult,
@@ -68,13 +69,15 @@ export function TrendComparisonRow({
   return (
     <Tooltip
       position="bottom"
+      classNames={{ tooltip: S.comparisonPanel }}
       label={
-        <Stack gap="xs" fz={14}>
+        <Stack gap={0}>
           {comparisons.map((comparison, index) => (
             <PreviousValueComparisonTooltip
               comparison={comparison}
               key={index}
               formatOptions={formatOptions}
+              className={S.comparisonRow}
             />
           ))}
         </Stack>

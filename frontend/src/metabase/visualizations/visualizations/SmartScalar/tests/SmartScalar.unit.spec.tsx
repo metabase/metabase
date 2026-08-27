@@ -223,6 +223,36 @@ describe("SmartScalar", () => {
       expect(within(tooltip).getByText("vs. Oct")).toBeInTheDocument();
     });
 
+    it("should show one tooltip at a time on the smallest cards", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 50],
+        ["2019-11-01T00:00:00", 100],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      // narrow width forces the smallest tier, where the title only shows on hover
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({ rows, insights, name: "Last invoice" })}
+          width={100}
+          showTitle
+        />,
+      );
+
+      // hovering the comparison shows its tooltip, not the title
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      const tooltip = await screen.findByRole("tooltip");
+      expect(
+        within(tooltip).getByText("vs. previous month"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Last invoice")).not.toBeInTheDocument();
+      await userEvent.unhover(screen.getByTestId("scalar-previous-value"));
+
+      // hovering the rest of the card shows the title
+      await userEvent.hover(screen.getByTestId("scalar-content"));
+      expect(await screen.findByText("Last invoice")).toBeInTheDocument();
+    });
+
     it("should display tooltip with full comparison info on hover", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],

@@ -2,7 +2,12 @@
  * Shared components for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 import cx from "classnames";
-import type { PropsWithChildren, ReactNode } from "react";
+import {
+  type HTMLAttributes,
+  type PropsWithChildren,
+  type ReactNode,
+  forwardRef,
+} from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -12,23 +17,34 @@ import { Box, Ellipsified, Flex, useMantineTheme } from "metabase/ui";
 import S from "./ScalarValue.module.css";
 import type { ScalarSizeTier } from "./sizing";
 
-export const ScalarWrapper = ({
-  children,
-  xPadding,
-}: PropsWithChildren<{ xPadding?: number }>) => (
-  <Flex
-    pos="relative"
-    direction="column"
-    justify="center"
-    align="center"
-    flex={1}
-    w="100%"
-    h="100%"
-    px={xPadding}
-    data-testid="scalar-root"
-  >
-    {children}
-  </Flex>
+// the default Tooltip offset keeps an 8px gap between the arrow tip and the
+// target; the card title tooltip should touch the card border instead
+export const TITLE_TOOLTIP_OFFSET = 1;
+
+type ScalarWrapperProps = PropsWithChildren<{ xPadding?: number }> &
+  HTMLAttributes<HTMLDivElement>;
+
+// forwards the ref and extra props so it can be a Tooltip target
+export const ScalarWrapper = forwardRef<HTMLDivElement, ScalarWrapperProps>(
+  function ScalarWrapper({ children, xPadding, ...props }, ref) {
+    return (
+      <Flex
+        ref={ref}
+        pos="relative"
+        direction="column"
+        justify="center"
+        align="center"
+        flex={1}
+        w="100%"
+        h="100%"
+        px={xPadding}
+        data-testid="scalar-root"
+        {...props}
+      >
+        {children}
+      </Flex>
+    );
+  },
 );
 
 interface ScalarValueProps {
@@ -85,7 +101,9 @@ export const ScalarTitle = ({ children }: { children: ReactNode }) => (
 export const ScalarActionButtons = ({
   children,
   tier,
-}: PropsWithChildren<{ tier: ScalarSizeTier }>) => {
+  ...props
+}: PropsWithChildren<{ tier: ScalarSizeTier }> &
+  HTMLAttributes<HTMLDivElement>) => {
   if (!children) {
     return null;
   }
@@ -94,8 +112,9 @@ export const ScalarActionButtons = ({
       pos="absolute"
       top={tier.menuOffset.top}
       right={tier.menuOffset.right}
-      className={CS.hoverChild}
+      className={cx(CS.hoverChild, S.actionButtons)}
       data-testid="scalar-action-buttons"
+      {...props}
     >
       {children}
     </Box>

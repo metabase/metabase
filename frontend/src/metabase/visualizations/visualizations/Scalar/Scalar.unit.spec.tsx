@@ -34,21 +34,7 @@ const settings = {
 };
 
 describe("Scalar", () => {
-  it("shouldn't render compact if normal formatting is <=6 characters", () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={230}
-      />,
-    );
-    expect(screen.getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
-  });
-
-  it("should render compact if normal formatting is >6 characters", () => {
+  it("shouldn't render compact when the value fits the card", () => {
     render(
       <Scalar
         {...mockedProps}
@@ -59,7 +45,45 @@ describe("Scalar", () => {
         width={230}
       />,
     );
+    expect(screen.getByText("12,345.6")).toBeInTheDocument();
+  });
+
+  it("should render compact when the value doesn't fit the card", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(12345.6)}
+        rawSeries={series(12345.6)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={80}
+      />,
+    );
     expect(screen.getByText("12.3k")).toBeInTheDocument();
+  });
+
+  it("should show one tooltip at a time on the smallest cards", async () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        series={series(12345.6)}
+        rawSeries={series(12345.6)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={80}
+      />,
+    );
+
+    // hovering the compacted value shows the full value, not the title
+    await userEvent.hover(screen.getByTestId("scalar-container"));
+    expect(await screen.findByText("12,345.6")).toBeInTheDocument();
+    expect(screen.queryByText("Scalar Title")).not.toBeInTheDocument();
+    await userEvent.unhover(screen.getByTestId("scalar-container"));
+
+    // hovering the rest of the card shows the title
+    await userEvent.hover(screen.getByTestId("scalar-content"));
+    expect(await screen.findByText("Scalar Title")).toBeInTheDocument();
   });
 
   it("should render null", () => {

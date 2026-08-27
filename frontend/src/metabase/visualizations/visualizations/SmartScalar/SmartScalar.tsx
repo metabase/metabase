@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Tooltip } from "metabase/ui";
@@ -7,6 +7,7 @@ import {
   ScalarTitle,
   ScalarValue,
   ScalarWrapper,
+  TITLE_TOOLTIP_OFFSET,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
@@ -37,6 +38,11 @@ function SmartScalarComponent({
   actionButtons,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
+  const [isInnerTooltipHovered, setIsInnerTooltipHovered] = useState(false);
+  const innerTooltipHoverHandlers = {
+    onMouseEnter: () => setIsInnerTooltipHovered(true),
+    onMouseLeave: () => setIsInnerTooltipHovered(false),
+  };
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -81,6 +87,7 @@ function SmartScalarComponent({
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
     availableWidth,
+    tier.valueFontSize,
     formatOptions,
   );
 
@@ -95,17 +102,34 @@ function SmartScalarComponent({
       ? "no_change"
       : null);
 
+  const hasValueTooltip = fullScalarValue !== displayValue;
+  // show one tooltip at a time: the title tooltip yields to the value and
+  // comparison tooltips while their targets are hovered
+  const showsTitleTooltip = showsTitleOnHover && !isInnerTooltipHovered;
+
   return (
-    <ScalarWrapper xPadding={tier.xPadding}>
-      <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
-      <Tooltip label={title} disabled={!showsTitleOnHover} position="bottom">
+    <Tooltip
+      label={title}
+      disabled={!showsTitleTooltip}
+      position="top"
+      offset={TITLE_TOOLTIP_OFFSET}
+    >
+      <ScalarWrapper xPadding={tier.xPadding}>
+        <ScalarActionButtons tier={tier} {...innerTooltipHoverHandlers}>
+          {actionButtons}
+        </ScalarActionButtons>
         <Stack
           pos="relative"
           align="center"
           gap={tier.valueTitleGap}
           maw="100%"
+          data-testid="scalar-content"
         >
-          <Box pos="relative" maw="100%">
+          <Box
+            pos="relative"
+            maw="100%"
+            {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
+          >
             <ScalarValueContainer
               className={DashboardS.fullscreenNormalText}
               tooltip={fullScalarValue}
@@ -144,13 +168,14 @@ function SmartScalarComponent({
               left="50%"
               w={availableWidth}
               style={{ transform: "translateX(-50%)" }}
+              {...innerTooltipHoverHandlers}
             >
               <TrendComparisonRow trend={trend} formatOptions={formatOptions} />
             </Box>
           )}
         </Stack>
-      </Tooltip>
-    </ScalarWrapper>
+      </ScalarWrapper>
+    </Tooltip>
   );
 }
 
