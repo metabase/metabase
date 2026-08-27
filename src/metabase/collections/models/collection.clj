@@ -685,6 +685,11 @@
      (some-> user-id user->personal-collection u/the-id))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
+   ;;
+   ;; TODO (Chris 2026-08-18) -- The claim that Personal Collections cannot be deleted does not hold when a
+   ;; transaction rolls back: the collection disappears while its ID remains cached for the rest of the TTL.
+   ;; Tests evict this cache at the `with-temp` boundary (see [[metabase.test.util]]). Production has no
+   ;; equivalent boundary and would need an after-rollback hook alongside the commit hooks.
    :ttl/threshold (* 60 60 1000)))
 
 (mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
