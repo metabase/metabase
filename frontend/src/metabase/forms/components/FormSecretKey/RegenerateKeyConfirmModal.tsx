@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 type RegenerateKeyConfirmModalProps = {
   onConfirm: () => void;
@@ -11,18 +11,14 @@ export const RegenerateKeyConfirmModal = ({
   onConfirm,
   onClose,
 }: RegenerateKeyConfirmModalProps) => (
-  <Modal opened onClose={onClose} title={t`Delete key and generate a new one?`}>
-    <Stack gap="lg">
-      <Text c="text-secondary">
-        {t`This will cause existing tokens to stop working until the identity provider is updated with a new key.`}
-      </Text>
-
-      <Group justify="flex-end" gap="sm">
-        <Button onClick={onClose}>{t`No, don't delete`}</Button>
-        <Button onClick={onConfirm} variant="filled" color="feedback-negative">
-          {t`Delete key`}
-        </Button>
-      </Group>
-    </Stack>
-  </Modal>
+  <ConfirmModal
+    opened
+    title={t`Delete key and generate a new one?`}
+    message={t`This will cause existing tokens to stop working until the identity provider is updated with a new key.`}
+    confirmButtonText={t`Delete key`}
+    confirmButtonProps={{ color: "feedback-negative" }}
+    closeButtonText={t`No, don't delete`}
+    onConfirm={onConfirm}
+    onClose={onClose}
+  />
 );

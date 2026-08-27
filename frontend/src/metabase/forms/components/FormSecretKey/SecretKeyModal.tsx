@@ -3,19 +3,16 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
+import { getCopyTextFieldProps } from "metabase/common/components/CopyTextField/copy-text-field-props";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  ActionIcon,
   Button,
-  CopyButton,
   Group,
-  Icon,
   Loader,
   Modal,
   Stack,
   Text,
   TextInput,
-  Tooltip,
 } from "metabase/ui";
 
 import S from "./FormSecretKey.module.css";
@@ -56,44 +53,27 @@ export const SecretKeyModal = ({
     void generateToken();
   });
 
+  const copyFieldProps = getCopyTextFieldProps({ value: secretKey });
+
   return (
     <Modal opened onClose={onClose} title={title}>
-      <Stack gap="lg">
-        <Text c="text-secondary">
+      <Stack gap="lg" mt="md">
+        <Text>
           {t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}
         </Text>
 
         <TextInput
           aria-label={t`New secret key`}
           value={secretKey}
-          readOnly
           classNames={{ input: S.secretKeyInput }}
-          rightSectionPointerEvents="all"
+          {...copyFieldProps}
           rightSection={
-            !secretKey ? (
-              <Loader size="xs" />
-            ) : (
-              <CopyButton value={secretKey} timeout={2000}>
-                {({ copied, copy }) => (
-                  <Tooltip label={t`Copied!`} opened={copied}>
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label={t`Copy`}
-                      onClick={copy}
-                    >
-                      <Icon name="copy" />
-                    </ActionIcon>
-                  </Tooltip>
-                )}
-              </CopyButton>
-            )
+            !secretKey ? <Loader size="xs" /> : copyFieldProps.rightSection
           }
         />
 
         <Group justify="flex-end" gap="sm">
-          {withCancelButton && (
-            <Button onClick={onClose} variant="subtle">{t`Cancel`}</Button>
-          )}
+          {withCancelButton && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
             disabled={!secretKey}
             onClick={() => onConfirm(secretKey)}
