@@ -458,8 +458,8 @@
                     (remove #(str/starts-with? (str %) "metabase-enterprise")))]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date. Skip the encryption check: the source may legitimately be unencrypted
-  ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2); rows are copied
-  ;; as-is and [[metabase.cmd.load-from-h2/load-from-h2!]] encrypts the target afterwards.
+  ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2), and it must be
+  ;; copied as-is rather than encrypted in place; the target is encrypted on its next startup.
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
     (mdb.setup/setup-db! source-db-type source-data-source {:check-encryption? false}))
   ;; make sure the dest DB is up-to-date

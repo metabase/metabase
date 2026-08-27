@@ -135,22 +135,14 @@
             (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
-            (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
+            (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-                (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data.*run `enable-encryption`"
-                                      (mdb/setup-db! :create-sample-content? false)))
-                (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
-                (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
-                (is (= 1 (t2/count :model/QueryCache)))
-                (testing "after `enable-encryption` the database is encrypted and starts"
-                  (mdb/encrypt-db driver/*driver* (mdb/data-source) nil)
-                  (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
-                  (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
-                  (testing "Cache is cleared on encryption"
-                    (is (= 0 (t2/count :model/QueryCache))))
-                  (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-                  (is (= :done (mdb/setup-db! :create-sample-content? false))))))))))
+                (mdb/setup-db! :create-sample-content? false)
+                (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+                (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
+                (testing "Cache is cleared on encryption"
+                  (is (= 0 (t2/count :model/QueryCache))))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
@@ -161,11 +153,11 @@
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
             (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
-          (testing "A missing sentinel on a database that already has content is never written back on startup"
+          (testing "A missing sentinel on a database that holds data encrypted with the key refuses to start"
             (let [sentinel (t2/select-one-fn :value "setting" :key "encryption-check")]
               (t2/delete! :setting :key "encryption-check")
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-              (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data"
+              (is (thrown-with-msg? Exception #"encrypted with MB_ENCRYPTION_SECRET_KEY but is not marked as encrypted"
                                     (mdb/setup-db! :create-sample-content? false)))
               (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
               (t2/insert! :setting {:key "encryption-check", :value sentinel})))
@@ -187,7 +179,7 @@
     (t2/insert! :setting {:key "encryption-check", :value value})))
 
 (deftest tampered-sentinel-does-not-launder-plaintext-test
-  (testing "someone with write access to the app DB plants a plaintext row and resets the sentinel; a restart must not encrypt it"
+  (testing "someone with write access to the app DB plants a plaintext row and removes the sentinel; a restart must not encrypt it"
     (encryption-test/with-secret-key "sentinel-tamper-key-1"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
@@ -201,7 +193,7 @@
           (t2/update! :metabase_database {:id db-id} {:details planted})
           (testing "with the sentinel deleted"
             (set-encryption-check-raw! nil)
-            (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
+            (is (thrown-with-msg? Exception #"encrypted with MB_ENCRYPTION_SECRET_KEY but is not marked as encrypted" (restart!)))
             (testing "the planted row is untouched and still rejected by the strict read"
               (is (= planted (raw-detail)))
               (is (thrown? Exception (:details (t2/select-one :model/Database :id db-id)))))

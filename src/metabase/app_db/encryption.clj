@@ -81,31 +81,32 @@
       :else
       :invalid)))
 
-(defn- column-has-values?
-  "Whether `table`.`column` holds any non-null value. A table or column that does not exist yet (this runs before
-  migrations, on a fresh or old database) counts as empty."
-  [table column]
+(defn- column-has-decryptable-value?
+  "Whether any value in `table`.`column` decrypts with the current MB_ENCRYPTION_SECRET_KEY. A table or column that
+  does not exist yet (this runs before migrations, on a fresh or old database) counts as having none."
+  [table column decryptable?]
   (try
-    (boolean (t2/query-one {:select [:id], :from [table], :where [:is-not column nil], :limit 1}))
+    (reduce (fn [_ {:keys [value]}]
+              (when (and (some? value) (decryptable? value))
+                (reduced true)))
+            false
+            (t2/reducible-select [table [column :value]]))
     (catch Exception e
-      (log/debugf "Could not check %s.%s for values, treating as empty: %s" (name table) (name column) (ex-message e))
+      (log/debugf "Could not scan %s.%s, treating as empty: %s" (name table) (name column) (ex-message e))
       false)))
 
-(defn encrypted-content-exists?
-  "Whether any encrypted-at-rest column holds a value at all. With MB_ENCRYPTION_SECRET_KEY set and no
-  `encryption-check` sentinel, the database must be one that has never held such content (a fresh install); anything
-  else -- plaintext waiting for `enable-encryption`, or an encrypted database whose sentinel was removed -- means the
-  instance cannot be marked encrypted on its own. Settings are not counted: they are tolerated as plaintext at rest."
+(defn encrypted-data-exists?
+  "Whether the database holds any value encrypted with the current MB_ENCRYPTION_SECRET_KEY, in an encrypted-at-rest
+  column or in `setting`. Ciphertext is authenticated, so only the key holder can have written such a value: finding
+  one with no `encryption-check` sentinel means the database was encrypted with this key and then modified directly.
+  Stops at the first hit."
   []
-  (boolean (some (fn [[table column]] (column-has-values? table column))
-                 (concat encrypted-string-columns encrypted-bytes-columns))))
-
-(defn write-encryption-check!
-  "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
-  sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
-  []
-  (t2/delete! :setting :key encryption-check-key)
-  (t2/insert! :setting {:key encryption-check-key, :value (encryption/encrypt (str (random-uuid)))}))
+  (boolean
+   (or (some (fn [[table column]] (column-has-decryptable-value? table column encryption/decryptable-string?))
+             encrypted-string-columns)
+       (some (fn [[table column]] (column-has-decryptable-value? table column (comp encryption/decryptable-bytes? maybe-blob->bytes)))
+             encrypted-bytes-columns)
+       (column-has-decryptable-value? :setting :value encryption/decryptable-string?))))
 
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the

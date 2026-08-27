@@ -191,18 +191,19 @@
                         {}))))))
 
 (mu/defn- check-encryption
-  "Verify that MB_ENCRYPTION_SECRET_KEY matches the database. Encryption status is tracked by the `encryption-check`
-  sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted (see
-  [[mdb.encryption/encryption-check-status]]); it is read and written raw, not through `defsetting`.
+  "Verify that MB_ENCRYPTION_SECRET_KEY matches the database, and encrypt the database when the key has just been
+  added. Encryption status is tracked by the `encryption-check` sentinel setting -- a random UUID encrypted under the
+  key, present iff the database is encrypted (see [[mdb.encryption/encryption-check-status]]); it is read and written
+  raw, not through `defsetting`.
 
-  Startup never encrypts existing data. With a key set but no sentinel, the database must not have held any
-  encrypted-at-rest content before this run's migrations (`content-before-migrations?`, see
-  [[mdb.encryption/encrypted-content-exists?]]) -- i.e. it is a fresh install -- and then the sentinel is written.
-  Otherwise the database is unencrypted, or encrypted but missing its sentinel, and the admin has to run
-  `enable-encryption` deliberately. Encrypting here on the strength of the sentinel would let anyone with write access
-  to the app DB launder planted plaintext rows into valid ciphertext by resetting the sentinel and waiting for a
-  restart."
-  [content-before-migrations? :- :boolean]
+  With a key set but no sentinel, the database is encrypted only when nothing in it was already encrypted with this key
+  before this run's migrations (`encrypted-data-before-migrations?`, see [[mdb.encryption/encrypted-data-exists?]]).
+  Such a value can only have been written by the key holder, so its presence without the sentinel means the database
+  was encrypted and then modified directly -- for instance by someone with SQL access who planted plaintext rows and
+  removed the sentinel so that the next restart would encrypt them into values the strict reads accept. Getting past
+  this check requires destroying every encrypted value (all connection details, credentials, settings), which is no
+  better for the attacker than destroying the database."
+  [encrypted-data-before-migrations? :- :boolean]
   (log/debug "Checking encryption configuration")
   (when-let [status (try (mdb.encryption/encryption-check-status)
                          (catch Throwable e
@@ -220,17 +221,27 @@
       (= status :invalid)
       (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {}))
 
-      content-before-migrations?
-      (throw (ex-info (str "MB_ENCRYPTION_SECRET_KEY is set but the database is not marked as encrypted and already contains data. "
-                           "If you have just added the key to an existing instance, stop Metabase and run `enable-encryption` to encrypt the database. "
-                           "If this database was already encrypted, it has been modified directly: "
-                           "do NOT run `enable-encryption`; check the key or restore from a backup.")
+      encrypted-data-before-migrations?
+      (throw (ex-info (str "The database contains data encrypted with MB_ENCRYPTION_SECRET_KEY but is not marked as encrypted: "
+                           "it has been modified directly. Restore it from a backup. "
+                           "If you know the database is intact, `rotate-encryption-key` with the same key marks it as encrypted again.")
                       {}))
 
       :else
       (do
-        (mdb.encryption/write-encryption-check!)
-        (log/info "MB_ENCRYPTION_SECRET_KEY set on a new database. Marked database as encrypted." (u/emoji "✅"))))))
+        (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
+        (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
+        (log/info "Database encrypted..." (u/emoji "✅"))))))
+
+(defn- encrypted-data-before-migrations?
+  "Snapshot for [[check-encryption]], taken before migrations: with a key set and no valid sentinel, does the database
+  already hold data encrypted with the key? Taken beforehand because migrations legitimately write such data themselves
+  (sample content, columns newly encrypted at rest)."
+  []
+  (boolean (and (encryption/default-encryption-enabled?)
+                (not= :valid (try (mdb.encryption/encryption-check-status)
+                                  (catch Throwable _ :absent)))
+                (mdb.encryption/encrypted-data-exists?))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
@@ -274,8 +285,9 @@
   Options:
   - `:auto-migrate?` (default `true`): run pending migrations, otherwise only print them.
   - `:create-sample-content?` (default `false`): create the sample content on a fresh install.
-  - `:check-encryption?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database after migrating (see
-    [[check-encryption]]). Only the commands that manage encryption turn this off."
+  - `:check-encryption?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database after migrating, and
+    encrypt it when the key has just been added (see [[check-encryption]]). Only the commands that manage encryption
+    turn this off."
   ([db-type data-source]
    (setup-db! db-type data-source {}))
 
@@ -294,13 +306,10 @@
                  custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
-         ;; snapshot before migrations, which may create encrypted-at-rest content of their own (sample content)
-         (let [content-before-migrations? (boolean (and check-encryption?
-                                                        (encryption/default-encryption-enabled?)
-                                                        (mdb.encryption/encrypted-content-exists?)))]
+         (let [encrypted-data? (and check-encryption? (encrypted-data-before-migrations?))]
            (run-schema-migrations! data-source auto-migrate?)
            (when check-encryption?
-             (check-encryption content-before-migrations?))))))
+             (check-encryption encrypted-data?))))))
    :done))
 
 (defn release-migration-locks!

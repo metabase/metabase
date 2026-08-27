@@ -136,9 +136,10 @@
   `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
   serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts.
 
-  `check-encryption?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database after migrating; it is
-  `false` only for the commands that manage encryption (`enable-encryption`, `rotate-encryption-key`,
-  `remove-encryption`), which run precisely when that check would fail and verify the key themselves."
+  `check-encryption?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database after migrating (and
+  encrypts a database the key was just added to); it is `false` only for `rotate-encryption-key` and
+  `remove-encryption`, which verify the key themselves and must be able to run against a database this check would
+  refuse."
   [& {:keys [create-sample-content? check-encryption?] :or {check-encryption? true}}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)

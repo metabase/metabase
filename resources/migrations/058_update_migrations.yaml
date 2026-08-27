@@ -1613,10 +1613,10 @@ databaseChangeLog:
       author: ranquild
       comment: >-
         Delete the plaintext "unencrypted" encryption-check marker. The sentinel now exists only as a UUID encrypted
-        under MB_ENCRYPTION_SECRET_KEY (absent means not encrypted), and startup no longer encrypts existing data when it
-        sees the marker: an attacker with SQL write access could otherwise plant plaintext rows, reset the marker, and
-        have the next restart encrypt them into values the strict reads accept. Encryption of an existing instance is
-        now the explicit `enable-encryption` command.
+        under MB_ENCRYPTION_SECRET_KEY (absent means not encrypted), and startup no longer trusts the marker as the
+        trigger to encrypt: an attacker with SQL write access could otherwise plant plaintext rows, reset the marker,
+        and have the next restart encrypt them into values the strict reads accept. Startup now encrypts only a
+        database holding nothing encrypted with the key yet.
       changes:
         - sql:
             sql: delete from setting where "key" = 'encryption-check' and value = 'unencrypted'

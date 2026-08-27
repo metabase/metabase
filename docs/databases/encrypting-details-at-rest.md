@@ -33,20 +33,9 @@ Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically e
 
 ## Encrypting an existing Metabase
 
-If you're adding an encryption key to a Metabase that already has data, you need to encrypt that data once with the `enable-encryption` command. Metabase won't start while `MB_ENCRYPTION_SECRET_KEY` is set but the application database isn't encrypted with it; it never encrypts existing data on its own.
+If you're adding an encryption key to a Metabase that already has data, Metabase encrypts that data the next time it starts with `MB_ENCRYPTION_SECRET_KEY` set. We recommend that you [backup](../installation-and-operation/backing-up-metabase-application-data.md) your data first.
 
-1. We recommend that you [backup](../installation-and-operation/backing-up-metabase-application-data.md) your data before enabling encryption.
-2. Stop running your Metabase app.
-3. Run the CLI command `enable-encryption` with the key set as `MB_ENCRYPTION_SECRET_KEY`.
-4. Start Metabase with the same `MB_ENCRYPTION_SECRET_KEY`.
-
-### Example command for enabling encryption
-
-```
-MB_ENCRYPTION_SECRET_KEY=your-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar enable-encryption
-```
-
-If Metabase reports that the database isn't encrypted but you didn't just add the key, don't run `enable-encryption`: either the key is wrong, or someone has changed the application database directly. Check the key, or restore from a backup.
+Metabase only does this for a database that contains nothing encrypted with the key yet. If it finds data encrypted with the key but the database isn't marked as encrypted, it refuses to start: someone has changed the application database directly, and you should restore it from a backup.
 
 ## Rotating an encryption key
 

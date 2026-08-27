@@ -75,8 +75,8 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
-                  ;; does) so no encrypted column is left plaintext for the strict model reads
+                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as startup does) so no
+                  ;; encrypted column is left plaintext for the strict model reads
                   ;; the update and dump below trigger
                   (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
                   (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})

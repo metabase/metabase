@@ -206,7 +206,11 @@
   "Returns true if it's likely that `b` is an encrypted byte array.  To compute this, we need the number of bytes in
   the input, subtract the bytes used by the cipher type tag (`aes256-tag-length`) and what is left should be divisible
   by the cipher's block size (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or
-  it has been corrupted as it must always have a multiple of the block size or it won't decrypt."
+  it has been corrupted as it must always have a multiple of the block size or it won't decrypt.
+
+  This is a shape check only: it is never false for a genuinely encrypted value, but it is true for any plaintext of the
+  right length too, so it must not decide whether a value gets encrypted, decrypted, or left alone — use
+  [[decryptable-bytes?]] for that."
   [^bytes b]
   (if (nil? b)
     false
@@ -218,7 +222,11 @@
 (defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
   encoded string of the correct length. See docstring for `possibly-encrypted-bytes?` for an explanation of correct
-  length."
+  length.
+
+  Like [[possibly-encrypted-bytes?]] this is a shape check: never false for ciphertext, but also true for plaintext that
+  happens to be base64 of the right length (a 64-character hex digest, for one). Anything that decides whether to
+  encrypt, decrypt, or skip a value must use [[decryptable-string?]] instead."
   [^String s]
   (u/ignore-exceptions
     (when-let [b (and (not (str/blank? s))
@@ -226,13 +234,33 @@
                       (codec/base64-decode s))]
       (possibly-encrypted-bytes? b))))
 
+(defn decryptable-bytes?
+  "Whether `b` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. The ciphertext is
+  authenticated, so a wrong key, corruption, and plaintext that merely looks like ciphertext all fail. Always false when
+  no key is set. Use this, not [[possibly-encrypted-bytes?]], wherever the answer decides whether a value is encrypted,
+  decrypted, or left alone."
+  ([^bytes b] (decryptable-bytes? default-secret-key b))
+  ([secret-key ^bytes b]
+   (boolean (and secret-key
+                 (possibly-encrypted-bytes? b)
+                 (try (decrypt-bytes secret-key b) true (catch Throwable _ false))))))
+
+(defn decryptable-string?
+  "Whether `s` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. See [[decryptable-bytes?]]."
+  ([^String s] (decryptable-string? default-secret-key s))
+  ([secret-key ^String s]
+   (boolean (and secret-key
+                 (possibly-encrypted-string? s)
+                 (try (decrypt secret-key s) true (catch Throwable _ false))))))
+
 (defn maybe-decrypt-accepting-plaintext
   "Plaintext-tolerant decrypt of a String `s`. If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt it;
   a value that is stored as plaintext is returned as-is. A value that *looks* encrypted but cannot be decrypted with
-  the current key (wrong key, tampering, corruption) throws — it must not be silently returned, or a re-encrypting
-  caller would double-encrypt it into something permanently unrecoverable. This differs from the strict
-  [[maybe-decrypt]] only in tolerating genuine plaintext; use it for values that may legitimately be plaintext at rest
-  (rows written before encryption was enabled, key rotation, settings, and migration reads).
+  the current key (wrong key, tampering, corruption — or, rarely, plaintext shaped like ciphertext) throws — it must not
+  be silently returned, or a re-encrypting caller would double-encrypt it into something permanently unrecoverable.
+  This differs from the strict [[maybe-decrypt]] only in tolerating genuine plaintext; use it for values that may
+  legitimately be plaintext at rest (rows written before encryption was enabled, key rotation, settings, and migration
+  reads).
 
   `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
   parallel."
