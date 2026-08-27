@@ -112,7 +112,7 @@ export function useCollectionsWithTenants(
         PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
       ) ?? t`Shared collections`;
 
-    return isTenantUser
+    const tenantCollections = isTenantUser
       ? mergeTenantUserCollections({
           baseCollectionsById,
           sharedCollectionsById,
@@ -126,6 +126,8 @@ export function useCollectionsWithTenants(
           sharedCollectionsName: displayName,
           tenantCollectionNamesById,
         });
+
+    return tenantCollections as unknown as Record<CollectionId, Collection>;
   }, [
     isTenantsActive,
     sharedTenantCollections,
