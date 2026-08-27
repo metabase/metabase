@@ -108,10 +108,10 @@
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
         (is (= "5.6.7.8"
                (req.util/ip-address mock-request))))
-      (testing "multiple IP addresses"
+      (testing "multiple IP addresses -- takes the last (proxy-appended, trusted) entry, not the first"
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
-          (is (= "1.2.3.4"
+          (is (= "5.6.7.8"
                  (req.util/ip-address mock-request)))))
       (testing "different header than default X-Forwarded-For"
         (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]

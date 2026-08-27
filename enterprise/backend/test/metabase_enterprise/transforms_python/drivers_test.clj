@@ -24,7 +24,7 @@
 (defn- execute-e2e-transform!
   "Execute an e2e Python transform test using execute-python-transform!"
   [table-name transform-code source-tables]
-  (let [schema (when (#{:postgres :bigquery-cloud-sdk} driver/*driver*)
+  (let [schema (when (#{:postgres :bigquery-cloud-sdk :snowflake} driver/*driver*)
                  (sql.tx/session-schema driver/*driver*))
         target {:type "table"
                 :schema schema

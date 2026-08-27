@@ -2,16 +2,13 @@ import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import { isWithinIframe } from "metabase/lib/dom";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
-  SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
-
-type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
+import { listenForEajsMessages } from "../utils/post-message";
 
 type UsageAnalytics = {
   usage: EmbeddedAnalyticsJsEventSchema;
@@ -34,32 +31,26 @@ export function useSdkIframeEmbedEventBus({
   );
 
   useEffect(() => {
-    const messageHandler: Handler = (event) => {
-      if (!isWithinIframe() || !event.data) {
-        return;
-      }
-
-      match(event.data)
-        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
-          setEmbedSettings(data);
-          onSettingsChanged?.(data);
-        })
-        .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
-          setUsageAnalytics({
-            usage: data.usageAnalytics,
-            embedHostUrl: data.embedHostUrl,
-          });
-        });
-    };
-
-    window.addEventListener("message", messageHandler);
+    const removeMessageListener = listenForEajsMessages({
+      messageSource: "embed.js",
+      handler: (message) =>
+        match(message)
+          .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
+            setEmbedSettings(data);
+            onSettingsChanged?.(data);
+          })
+          .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
+            setUsageAnalytics({
+              usage: data.usageAnalytics,
+              embedHostUrl: data.embedHostUrl,
+            });
+          }),
+    });
 
     // notify embed.js that the iframe is ready
     sendMessage({ type: "metabase.embed.iframeReady" });
 
-    return () => {
-      window.removeEventListener("message", messageHandler);
-    };
+    return removeMessageListener;
   }, [onSettingsChanged]);
 
   useEffect(() => {

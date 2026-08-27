@@ -216,7 +216,7 @@ describe("scenarios > metrics > question", () => {
     });
   });
 
-  it("should be able to view a model-based metric without collection access to the source model", () => {
+  it("should not be able to view a model-based metric without collection access to the source model", () => {
     cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
@@ -229,15 +229,16 @@ describe("scenarios > metrics > question", () => {
       collection_id: FIRST_COLLECTION_ID,
     }).then(({ body: card }) => {
       cy.signIn("nocollection");
+      cy.intercept("POST", `/api/card/${card.id}/query`).as("metricQuery");
       H.visitMetric(card.id);
     });
-    cy.findByTestId("scalar-container")
-      .findByText("18,760")
+    // Running the metric requires read access to the source model it is built on;
+    // without it the query is refused, so the value never renders.
+    cy.wait("@metricQuery").its("response.statusCode").should("eq", 403);
+    cy.get("main")
+      .findByText(/don.t have permission to see that/i)
       .should("be.visible");
-    H.MetricPage.aboutPage().within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
+    cy.get("main").findByText("18,760").should("not.exist");
   });
 });
 

@@ -2,10 +2,17 @@
 // iff every failure is on ci-conductor's quarantine list.
 
 import type { NormalizedTest } from "./contract.ts";
+import { fetchWithRetry } from "./fetchWithRetry.ts";
 import { log } from "./util.ts";
 
 // The list endpoint can be slow, but the gate must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
+
+// A dropped socket (ECONNRESET) or a 5xx is a blip, not a verdict, so the fetch
+// gets a few tries before the gate gives up. `fetchWithRetry` spaces those tries
+// with jittered exponential backoff, so parallel jobs don't retry in lockstep.
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 500;
 
 /** One quarantined test as served by ci-conductor's `/api/quarantine`. */
 export type QuarantineEntry = {
@@ -104,39 +111,52 @@ export function junitFailuresToFailedTests(
 /**
  * Fetch the quarantine list for `suite` from ci-conductor. The reporter POSTs to
  * `.../webhooks/failed-tests`; the list lives at `.../api/quarantine` on the same
- * host. Returns null (not []) when it can't be retrieved, so the caller can tell
- * "nothing quarantined" from "couldn't check". Never throws. Logs the path and
- * suite only — never the host (public repo) or the secret.
+ * host. Transport errors, timeouts, 429s and 5xx are retried with backoff; a 4xx
+ * is the request's own fault and returns straight away. Returns null (not [])
+ * when it can't be retrieved, so the caller can tell "nothing quarantined" from
+ * "couldn't check". Never throws. Logs the path and suite only — never the host
+ * (public repo) or the secret. The retry policy is fixed rather than injectable:
+ * the tests drive it on fake timers, so there's nothing to shorten for them.
  */
 export async function fetchQuarantineList(opts: {
   baseUrl: string;
   suite: string;
   secret?: string;
 }): Promise<QuarantineEntry[] | null> {
-  const base = opts.baseUrl.replace(/\/+$/, "");
-  const url = `${base}/api/quarantine?suite=${encodeURIComponent(opts.suite)}`;
+  const { baseUrl, suite, secret } = opts;
+  const base = baseUrl.replace(/\/+$/, "");
+  const url = `${base}/api/quarantine?suite=${encodeURIComponent(suite)}`;
+  const headers: Record<string, string> = secret
+    ? { "x-internal-secret": secret }
+    : {};
+
   try {
-    const headers: Record<string, string> = {};
-    if (opts.secret) {
-      headers["x-internal-secret"] = opts.secret;
-    }
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      retries: MAX_ATTEMPTS - 1,
+      baseDelay: RETRY_BASE_DELAY_MS,
+      timeout: REQUEST_TIMEOUT_MS,
+      // Called once per completed response, so it doubles as the one place a
+      // non-ok status gets logged — including on attempts we then retry.
+      shouldRetry: (res) => {
+        if (!res.ok) {
+          log(
+            `🛑 GET /api/quarantine?suite=${suite} → ${res.status} ${res.statusText}`,
+          );
+        }
+        // A 4xx (bad secret, unknown suite) answers the same way every time.
+        return res.status >= 500 || res.status === 429;
+      },
     });
     if (!response.ok) {
-      log(
-        `🛑 GET /api/quarantine?suite=${opts.suite} → ${response.status} ${response.statusText}`,
-      );
+      response.body?.cancel().catch(() => {}); // don't leak the unread stream
       return null;
     }
+    // `json()` is `any`; this names the wire shape we read (and only read).
     const body = (await response.json()) as { tests?: QuarantineEntry[] };
     return body.tests ?? [];
   } catch (error) {
-    console.error(
-      "[ci-conductor] failed to fetch the quarantine list",
-      error,
-    );
+    console.error("[ci-conductor] failed to fetch the quarantine list", error);
     return null;
   }
 }
@@ -155,13 +175,14 @@ function finish(opts: {
   dryRun: boolean;
   // When the gate couldn't reach a real pass/fail decision — e.g. the quarantine
   // list was unreachable — show a distinct "couldn't check" verdict rather than a
-  // red FAIL. It still fails closed (shouldFail stays true), but it isn't a real
-  // gate failure, so it shouldn't read as one in the logs.
+  // red FAIL. It still fails closed (shouldFail stays true): with no list, nothing
+  // excuses the run's failures.
   inconclusive?: boolean;
 }): GateResult {
   const { shouldFail, reason, dryRun, inconclusive = false } = opts;
   if (inconclusive) {
     log(`⚠️  VERDICT: COULD NOT CHECK — ${reason}.`);
+    log("🚦 no quarantine to apply — the run's failures stand on their own.");
   } else if (shouldFail) {
     log(`🔴 VERDICT: FAIL — ${reason}.`);
   } else {

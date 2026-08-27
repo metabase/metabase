@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
@@ -415,7 +416,8 @@
   "Respond to activities in Slack"
   [_route-params
    _query-params
-   body :- [:multi {:dispatch :type}
+   body :- [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+                    :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
@@ -603,10 +605,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params
+   {:keys [payload]} :- [:map
+                         [:payload ms/NonBlankString]]
+   request]
   (assert-valid-slack-req request)
-  (let [payload (-> (get-in request [:params :payload])
-                    (json/decode true))]
+  (let [payload (json/decode payload true)]
     (case (:type payload)
       "block_actions"
       (let [actions    (:actions payload)

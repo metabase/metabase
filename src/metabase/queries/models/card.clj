@@ -17,6 +17,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
@@ -112,6 +113,7 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
+   :public_uuid            mi/transform-encrypted-text
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
@@ -178,7 +180,9 @@
    (fn []
      (let [card-ids       (map u/the-id cards)
            all-dashboards (t2/query {:union-all [;; First get dashboards from direct card connections
+                                                 ^:allow-subquery
                                                  {:nest
+                                                  ^:allow-subquery
                                                   {:select   [[:dc.card_id :card_id]
                                                               :d.name
                                                               :d.collection_id
@@ -190,7 +194,9 @@
                                                    :where    [:in :dc.card_id [:inline card-ids]]
                                                    :order-by [[:d.id :asc]]}}
                                                  ;; Then get dashboards from series
+                                                 ^:allow-subquery
                                                  {:nest
+                                                  ^:allow-subquery
                                                   {:select   [[:dcs.card_id :card_id]
                                                               :d.name
                                                               :d.collection_id
@@ -214,7 +220,7 @@
    {:default []}))
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
-  [query :- [:maybe ::queries.schema/query]]
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
   (some-> query not-empty lib/primary-source-card-id))
 
 (mu/defn- card->integer-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
@@ -372,6 +378,16 @@
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
+(mu/defn parameter-template-tag? :- :boolean
+  "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
+  like snippets, card references, and tables."
+  [{tag-type :type, widget-type :widget-type} :- [:maybe ::lib.schema.template-tag/template-tag]]
+  (boolean
+   (and tag-type
+        (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+            (= tag-type :temporal-unit)
+            (and (= tag-type :dimension) widget-type (not= widget-type :none))))))
+
 ;;; TODO -- does this belong HERE or in the `parameters` module?
 (mu/defn template-tag-parameters :- ::parameters.schema/parameters
   "Transforms native query's `template-tags` into `parameters`.
@@ -379,11 +395,10 @@
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card :- [:maybe ::queries.schema/card]]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card :dataset_query not-empty lib/all-template-tags)
-        :when                         (and tag-type
-                                           (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-                                               (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
+        :when                         (parameter-template-tag? tag)]
     {:id       (:id tag)
      :type     (or widget-type (case tag-type
+                                 :temporal-unit :temporal-unit
                                  :date    :date/single
                                  :text    :string/=
                                  :number  :number/=
@@ -391,7 +406,7 @@
                                  ;; fallback; should be unreachable since :when filters
                                  ;; to raw-value-template-tag-types
                                  :string/=))
-     :target   (if (= tag-type :dimension)
+     :target   (if (contains? #{:dimension :temporal-unit} tag-type)
                  [:dimension [:template-tag (:name tag)]]
                  [:variable  [:template-tag (:name tag)]])
      :name     (:display-name tag)
@@ -444,6 +459,19 @@
       (when (seq (set/difference template-tag-types #{:card :snippet}))
         (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
                         {:status-code 400})))))
+  nil)
+
+(mu/defn- assert-not-native-audit-db-query
+  "Throw if the card has a native query against the audit DB. The audit DB connects on the application database's
+  datasource, so a native query against it reads the app DB directly. This invariant binds even superusers (it is
+  not a data permission), so it lives in the model layer to cover every save path -- create, copy, update, and
+  serdes import. MBQL cards over audit views are the Usage Analytics content and stay allowed."
+  [{query :dataset_query, :as _card} :- [:maybe ::queries.schema/card]]
+  (when (and (seq query)
+             (= (:database query) audit/audit-db-id)
+             (lib/any-native-stage? query))
+    (throw (ex-info (tru "You cannot save a native query that targets the audit database.")
+                    {:status-code 400})))
   nil)
 
 (defn- dashboard-internal-card? [card]
@@ -520,6 +548,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
+      (assert-not-native-audit-db-query card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -528,6 +557,11 @@
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
 
 (defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
@@ -602,6 +636,9 @@
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 card
+    ;; reject an edit that turns this card into a native audit-DB query (same invariant as pre-insert)
+    (when (:dataset_query changes)
+      (assert-not-native-audit-db-query changes))
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
@@ -804,7 +841,8 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields)
+        populate-query-fields
+        public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
@@ -849,11 +887,14 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
         populate-query-fields
         (pre-update changes)
-        maybe-populate-initially-published-at)))
+        maybe-populate-initially-published-at
+        public-sharing/add-public-uuid-prefix-if-changed)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
-  [{:keys [id] :as _card}]
+  [{:keys [id] :as card}]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints card)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
@@ -865,9 +906,10 @@
   ;; return empty by the time the actual DELETE executes.
   (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
                                                       :payload_type :notification/card
-                                                      :payload_id [:in {:select [:id]
-                                                                        :from   [:notification_card]
-                                                                        :where  [:= :card_id id]}]))]
+                                                      :payload_id [:in ^:allow-subquery
+                                                                   {:select [:id]
+                                                                    :from   [:notification_card]
+                                                                    :where  [:= :card_id id]}]))]
     (t2/delete! :model/Notification :id [:in notification-ids])))
 
 (defmethod serdes/hash-fields :model/Card
@@ -1085,6 +1127,20 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
+(defn maybe-unverify!
+  "Drop `card`'s verified badge when `updates` change something important about its query. Every path that can change
+  a Card's query has to call this, not just `PUT /api/card/:id`."
+  [card updates actor]
+  (when (and (card-is-verified? card)
+             (changed? card (select-keys updates card-compare-keys)))
+    ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+    ;; to remove it regardless if enterprise edition is present at the moment.
+    (moderation/create-review! {:moderated_item_id   (:id card)
+                                :moderated_item_type "card"
+                                :moderator_id        (:id actor)
+                                :status              nil
+                                :text                (tru "Unverified due to edit")})))
+
 (mu/defn- mbql-clause->identifier-for-parameter-updates
   "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
   but with an empty options clause."
@@ -1198,15 +1254,7 @@
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                         :result_metadata :collection_preview :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
-      (when (and (card-is-verified? card-before-update)
-                 (changed? card-before-update (select-keys updated-fields card-compare-keys)))
-        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-        ;; to remove it regardless if enterprise edition is present at the moment.
-        (moderation/create-review! {:moderated_item_id   (:id card-before-update)
-                                    :moderated_item_type "card"
-                                    :moderator_id        (:id actor)
-                                    :status              nil
-                                    :text                (tru "Unverified due to edit")}))
+      (maybe-unverify! card-before-update updated-fields actor)
       ;; Invalidate the cache for card
       (cache/invalidate-config! {:questions [(:id card-before-update)]
                                  :with-overrides? true})
@@ -1248,7 +1296,7 @@
 (mu/defn fully-parameterized?
   "Given a Card, returns `true` if its query is fully parameterized."
   [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query [:maybe ::queries.schema/query]]]]
+                                         [:dataset_query [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]]]
   (if (empty? query)
     true
     (lib/fully-parameterized-query? query)))
@@ -1355,7 +1403,9 @@
           ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
-          :legacy_query]
+          :legacy_query
+          ;; always re-derived from public_uuid on import
+          :public_uuid_prefix]
    :transform
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database)
@@ -1459,9 +1509,10 @@
                   :collection-id        true
                   :creator-id           true
                   :dashboard-id         true
-                  :dashboardcard-count  {:select [:%count.*]
-                                         :from   [:report_dashboardcard]
-                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :dashboardcard-count  ^:allow-subquery
+                  {:select [:%count.*]
+                   :from   [:report_dashboardcard]
+                   :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query

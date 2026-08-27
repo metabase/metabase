@@ -19,3 +19,12 @@ export type MetabaseFontFamily =
   | "Montserrat"
   | "Lora"
   | "Custom";
+
+export function getFontFamilyValue(font: string): string {
+  return (font ?? "")
+    .split(",")
+    .map((name) => name.replaceAll(/["']/g, "").trim())
+    .filter(Boolean)
+    .map((name) => JSON.stringify(name))
+    .join(", ");
+}

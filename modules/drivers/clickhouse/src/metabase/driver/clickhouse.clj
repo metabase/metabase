@@ -33,6 +33,14 @@
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
+;; the connection is made through the proxy when one is set, so it is the host actually contacted.
+(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host"])
+
+(defmethod driver/non-host-parameters :clickhouse
+  [_driver]
+  ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
+   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
+
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -239,10 +247,18 @@
   ;; filenames as table/column names. But its an approximation
   206)
 
+(defn- escape-ident
+  ;; Backslash-escape rather than double the backtick: ClickHouse identifiers follow string-literal escaping, where
+  ;; a preceding backslash would defeat quote-doubling.
+  [s]
+  (-> s
+      (str/replace "\\" "\\\\")
+      (str/replace "`" "\\`")))
+
 (defn- quote-name [s]
   (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
         parts (filter identity (str/split (name s) #"\."))]
-    (str/join "." (map #(str "`" % "`") parts))))
+    (str/join "." (map #(str "`" (escape-ident %) "`") parts))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,

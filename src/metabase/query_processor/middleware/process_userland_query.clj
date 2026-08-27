@@ -12,6 +12,7 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -83,6 +84,12 @@
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
 
+(defn flush-execution-metadata!
+  "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
+  anything that reads the `query_execution` table back and cannot tolerate the batching lag."
+  []
+  (grouper/flush! @save-execution-metadata-queue))
+
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit    (boolean (:cached cache-details))
@@ -147,31 +154,34 @@
     destination-database-id        :destination-database/id
     :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
-  (let [json-query (if original-query
-                     (-> original-query
-                         (dissoc :info)
-                         (assoc :was-pivot true))
-                     (cond-> (dissoc query :info)
-                       (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or destination-database-id database-id)
-     :executor_id       executed-by
-     :action_id         action-id
-     :card_id           card-id
-     :dashboard_id      dashboard-id
-     :transform_id      transform-id
-     :lens_id           lens-id
-     :lens_params       lens-params
-     :pulse_id          pulse-id
-     :context           context
-     :hash              query-hash
-     :parameterized     (and (boolean (seq parameters))
-                             (every? #(some? (:value %)) parameters))
-     :native            (= (keyword query-type) :native)
-     :json_query        json-query
-     :started_at        (t/zoned-date-time)
-     :running_time      0
-     :result_rows       0
-     :start_time_millis (System/currentTimeMillis)}))
+  (letfn [(->json-query [q]
+            (cond-> (dissoc q :info)
+              (= (lib/normalized-query-type q) :mbql/query) lib/prepare-for-serialization
+              (seq (:parameters q))                         (assoc :parameters (:parameters q))
+              (empty? (:parameters q))                      (dissoc :parameters)))]
+    (let [json-query (if original-query
+                       (assoc (->json-query original-query) :was-pivot true)
+                       (->json-query query))]
+      {:database_id       (or destination-database-id database-id)
+       :executor_id       executed-by
+       :action_id         action-id
+       :card_id           card-id
+       :dashboard_id      dashboard-id
+       :transform_id      transform-id
+       :lens_id           lens-id
+       :lens_params       lens-params
+       :pulse_id          pulse-id
+       :context           context
+       :hash              query-hash
+       :parameterized     (and (boolean (seq parameters))
+                               (every? #(some? (:value %)) parameters))
+       :native            (or (= (keyword query-type) :native)
+                              (lib/native-only-query? query))
+       :json_query        json-query
+       :started_at        (t/zoned-date-time)
+       :running_time      0
+       :result_rows       0
+       :start_time_millis (System/currentTimeMillis)})))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

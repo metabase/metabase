@@ -42,6 +42,15 @@
                                            :query       x}))))]
     (cons first-stage more)))
 
+(def ^:private qp-owned-stage-keys
+  "The stage keys [[normalize-card-query]] sets on the stages it splices in, and so clears off a Card's stored query
+  first: after this middleware runs they say what the server decided, never what the Card was saved with."
+  [:persisted-info/native
+   :qp/stage-is-from-source-card
+   :qp/stage-had-source-card
+   :source-query/model?
+   :source-query/native-model?])
+
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:dataset-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
@@ -53,7 +62,16 @@
                  card-id
                  (ddl.i/schema-name {:id (:database-id card)} (system/site-uuid))
                  (:table-name persisted-info)))
-    (letfn [(update-stages [stages]
+    (letfn [(clear-qp-owned-keys [query]
+              ;; A Card's stored query is authored by whoever saved the Card, and these are the keys this middleware
+              ;; sets on the stages it splices in. Clear them off every stage and join first, so that what this
+              ;; middleware sets below is the only thing downstream reads: `:persisted-info/native` is raw SQL that
+              ;; `sql-source-query` emits as the stage body, and the source-card markers are what permissions checks
+              ;; key off to decide a stage is covered by a Card's collection perms rather than table perms.
+              (lib.walk/walk query
+                             (fn [_query _path-type _path stage-or-join]
+                               (apply dissoc stage-or-join qp-owned-stage-keys))))
+            (update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
                                     ;; This is for detecting circular refs below, and is later used as part of
@@ -80,6 +98,7 @@
                   ;; a card getting joined twice creates duplicate UUID errors!
                   ;; This safely re-rolls all the `:lib/uuid`s on the card's query so they won't collide.
                   lib.util/fresh-uuids-preserving-aggregation-refs
+                  clear-qp-owned-keys
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 

@@ -48,9 +48,10 @@
   (testing "POST /api/measure"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "measure" {:name       "abc"
-                                                               :table_id   (mt/id :venues)
-                                                               :definition {}}))))))
+             (mt/user-http-request :rasta :post 403 "measure"
+                                   {:name       "abc"
+                                    :table_id   (mt/id :venues)
+                                    :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
 (deftest create-measure-input-validation-test
   (testing "POST /api/measure"
@@ -61,13 +62,14 @@
     (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
                                                                   :table_id "foobar"})))
-    (is (=? {:errors {:definition "Value must be a map."}}
+    (is (=? {:errors {:definition "value must be a valid MBQL query with a source table."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
                                                                   :table_id 123})))
-    (is (=? {:errors {:definition "Value must be a map."}}
-            (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                  :table_id   123
-                                                                  :definition "foobar"})))))
+    (testing "a non-map definition is rejected while decoding, so the body is the message rather than :errors"
+      (is (=? "value must be a valid MBQL query."
+              (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                    :table_id   123
+                                                                    :definition "foobar"}))))))
 
 (deftest create-measure-test
   (testing "POST /api/measure"
@@ -96,7 +98,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
                                      {:name             "abc"
-                                      :definition       {}
+                                      :definition       (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))
                                       :revision_message "something different"})))))))
 
 (deftest update-input-validation-test
@@ -108,7 +110,7 @@
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message ""})))
-    (is (=? {:errors {:definition "nullable map"}}
+    (is (=? "value must be a valid MBQL query."
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
@@ -275,15 +277,13 @@
 (deftest api-accepts-mbql4-on-post-test
   (testing "POST /api/measure accepts MBQL4 definitions and returns MBQL5"
     (mt/with-model-cleanup [:model/Measure]
-      (testing "MBQL4 fragment format"
-        (let [response (mt/user-http-request
-                        :crowberto :post 200 "measure"
-                        {:name       "Fragment Measure"
-                         :table_id   (mt/id :venues)
-                         :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
-          (is (some? (:id response)))
-          (is (mbql5-definition? (:definition response))
-              "Returned definition should be MBQL5")))
+      (testing "an MBQL4 fragment is rejected with the specific normalization error"
+        (is (= "Query must include :lib/type or :type"
+               (mt/user-http-request
+                :crowberto :post 400 "measure"
+                {:name       "Fragment Measure"
+                 :table_id   (mt/id :venues)
+                 :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])}))))
       (testing "MBQL4 full query format"
         (let [response (mt/user-http-request
                         :crowberto :post 200 "measure"
@@ -298,14 +298,12 @@
   (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
     (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
                                                     :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-      (testing "MBQL4 fragment format"
-        (let [response (mt/user-http-request
-                        :crowberto :put 200 (str "measure/" measure-id)
-                        {:revision_message "Update with fragment"
-                         :definition       (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
-          (is (= measure-id (:id response)))
-          (is (mbql5-definition? (:definition response))
-              "Returned definition should be MBQL5")))
+      (testing "an MBQL4 fragment is rejected -- see `api-accepts-mbql4-on-post-test`"
+        (is (= "Query must include :lib/type or :type"
+               (mt/user-http-request
+                :crowberto :put 400 (str "measure/" measure-id)
+                {:revision_message "Update with fragment"
+                 :definition       (mbql4-fragment-definition (mt/id :venues) [[:count]])}))))
       (testing "MBQL4 full query format"
         (let [response (mt/user-http-request
                         :crowberto :put 200 (str "measure/" measure-id)
@@ -322,7 +320,7 @@
                               :crowberto :post 200 "measure"
                               {:name       "Venue Count"
                                :table_id   (mt/id :venues)
-                               :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
+                               :definition (legacy-mbql-measure-definition (mt/id) (mt/id :venues) [[:count]])})
             measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
             direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))

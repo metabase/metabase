@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -229,7 +230,7 @@
                                            [:map
                                             [:card   {:optional true} [:maybe ::queries.schema/card]]
                                             [:series {:optional true} [:maybe [:sequential [:map
-                                                                                            [:dataset_query ::queries.schema/query]]]]]]]]]]]
+                                                                                            [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

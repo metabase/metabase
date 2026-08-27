@@ -36,6 +36,11 @@
     {:template-type template-type
      :channel-type  :channel/email}))
 
+(def EmailDetails
+  "Schema for the connection `:details` of a `:channel/email` channel. Email channels reference the globally
+  configured SMTP integration and carry no details of their own."
+  [:map {:closed true}])
+
 (def ^:private EmailMessage
   [:map
    [:subject                         :string]

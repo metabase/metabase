@@ -40,6 +40,15 @@
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
+(defn- transform-database-permissions?
+  "Whether the current user has transforms permission on both databases `instance` touches: the one its `:source`
+  reads from and the one its `:target` writes to, each derived from the instance rather than its stored columns."
+  [instance]
+  (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
+        target-db-id (transforms-base.i/target-db-id instance)]
+    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+            (distinct (keep identity [source-db-id target-db-id])))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -48,7 +57,7 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+                (transform-database-permissions? instance)))))
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
@@ -79,10 +88,9 @@
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
-           (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
-             (and api/*is-data-analyst?*
-                  (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
+           (and api/*is-data-analyst?*
+                (transforms.u/source-tables-readable? instance)
+                (transform-database-permissions? instance)))))
 
 (defn- orphan-query?
   "True when the query map has its `:database` key explicitly set to nil — the

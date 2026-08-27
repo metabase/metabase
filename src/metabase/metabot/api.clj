@@ -196,10 +196,17 @@
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot.schema/messages]]
+            ;; Every entry the agent loop reads back out of the incoming state has to be declared: request
+            ;; decoding drops what this schema does not name, and [[metabase.metabot.agent.core/init-agent]]
+            ;; hydrates its memory from all six via `memory/load-*-from-state`.
             [:state [:map
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
+                     [:chart-configs {:optional true} [:map-of :string :any]]
+                     [:todos {:optional true} [:sequential ms/Map]]
+                     [:transforms {:optional true} [:map-of [:or :string :keyword] ms/Map]]
+                     ;; `load-link-registry-from-state` re-stringifies keys, so accept either
+                     [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]]]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot.context/log body :llm.log/fe->be)
   (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
@@ -213,7 +220,8 @@
   "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
   [_route-params
    _query-params
-   feedback :- :map]
+   ;; free-form JSON proxied straight to Harbormaster -- a bare `:map` would strip it to `{}`
+   feedback :- ms/Map]
   (metabot.config/check-metabot-enabled!)
   (try
     (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)

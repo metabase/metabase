@@ -683,7 +683,9 @@
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
-              :dataset_query :table_id :query_type :is_upload)))
+              :dataset_query :table_id :query_type :is_upload
+              ;; can_run_adhoc_query is a card-like-only field; never expose it on a dashboard item
+              :can_run_adhoc_query)))
 
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
@@ -1081,14 +1083,15 @@
                                                      [:select :select-distinct])]]
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
-                          (update select-clause-type add-model-ranking model)))
+                          (update select-clause-type add-model-ranking model)
+                          (vary-meta assoc :allow-subquery true)))
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
                      :include-trash-collection? archived?}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
-                     :from     [[{:union-all queries} :dummy_alias]]
+                     :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                     :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                      :order-by sql-order}
         limit       (request/limit)
         offset      (request/offset)
@@ -1603,7 +1606,7 @@
    {:keys [namespace revision groups]} :- [:map
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
-                                           [:groups    :map]]]
+                                           [:groups    ms/Map]]]
   (api/check-superuser)
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
@@ -1637,7 +1640,6 @@
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type             {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
@@ -1651,7 +1653,7 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
@@ -1706,7 +1708,6 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
-  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."

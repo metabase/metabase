@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.sdk :as sdk]
    [metabase.notification.seed :as notification.seed]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -311,6 +312,87 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :post 403 (str "comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
+
+(deftest mention-wrong-entity-id-test
+  (testing "an entityId that isn't a user ID never reaches the query that resolves the recipients"
+    (mt/with-temp [:model/Document {doc-id :id} {:name       "Mentions Doc"
+                                                 :creator_id (mt/user->id :lucky)}]
+      (mt/with-model-cleanup [:model/Comment :model/Notification]
+        (mt/with-fake-inbox
+          (notification.seed/seed-notification!)
+          (let [content (tiptap [:smartLink {:model "user" :entityId {:data "string"}}])]
+            (testing "the comment is still created, and the notification path does not blow up"
+              (is (=? {:content content}
+                      (mt/user-http-request :rasta :post 200 "comment/"
+                                            {:target_type "document"
+                                             :target_id   doc-id
+                                             :content     content}))))
+            (testing "only the document creator is notified"
+              (is (= #{(:email (mt/fetch-user :lucky))}
+                     (set (keys (first (swap-vals! mt/inbox empty)))))))))))))
+
+(deftest mention-notifications-follow-document-access-test
+  (testing "@mention notifications are only delivered to users who can read the target document"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {col-id :id} {}
+                       :model/Document   {doc-id :id} {:name          "Limited Audience"
+                                                       :collection_id col-id
+                                                       :creator_id    (mt/user->id :crowberto)}]
+          (mt/with-model-cleanup [:model/Comment :model/Notification]
+            (mt/with-fake-inbox
+              (notification.seed/seed-notification!)
+              (let [mention! (fn [entity-id & [parent-id]]
+                               (mt/user-http-request :crowberto :post 200 "comment/"
+                                                     (cond-> {:target_type "document"
+                                                              :target_id   doc-id
+                                                              :content     (tiptap [:smartLink {:model    "user"
+                                                                                                :entityId entity-id}])}
+                                                       parent-id (assoc :parent_comment_id parent-id))))]
+                (testing "no email for a mentioned user who cannot read the document"
+                  (let [root (mention! (mt/user->id :rasta))]
+                    (is (not (contains? @mt/inbox (:email (mt/fetch-user :rasta)))))
+                    (testing "the reply path applies the same check"
+                      (mention! (mt/user->id :rasta) (:id root))
+                      (is (not (contains? @mt/inbox (:email (mt/fetch-user :rasta))))))))
+                (testing "mentioning an id that matches no user is a no-op"
+                  (mention! Integer/MAX_VALUE)
+                  (is (empty? @mt/inbox)))
+                (testing "the email is delivered once the mentioned user can read the document"
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) col-id)
+                  (mention! (mt/user->id :rasta))
+                  (is (contains? @mt/inbox (:email (mt/fetch-user :rasta)))))))))))))
+
+(deftest mention-entities-visibility-test
+  (testing "GET /api/comment/mentions applies the same visibility rules as GET /api/user/recipients"
+    (mt/with-premium-features #{:email-restrict-recipients}
+      (testing "user-visibility :none returns only the caller"
+        (mt/with-temporary-setting-values [user-visibility :none]
+          (is (= [(mt/user->id :rasta)]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (map :id))))
+          (testing "admins are unaffected"
+            (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :crowberto :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :group returns only users sharing a group with the caller"
+        (mt/with-temporary-setting-values [user-visibility :group]
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
+                                                                           :group_id group-id}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :lucky)
+                                                                           :group_id group-id}]
+            (is (= ["lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :all returns everyone"
+        (mt/with-temporary-setting-values [user-visibility :all]
+          (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (filter mt/test-user?)
+                      (map :email)))))))))
 
 (deftest mention-entities-test
   (testing "We can get users to mention"

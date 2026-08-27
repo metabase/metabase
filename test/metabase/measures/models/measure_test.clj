@@ -9,6 +9,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -334,3 +335,31 @@
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
                                                   :table_id (mt/id :venues)
                                                   :definition (measure-definition (lib/count))}))))))
+
+(deftest definition-value-payload-stays-inert-test
+  (testing "a non-scalar `:value` clause payload cannot survive read normalization as a live clause"
+    ;; Keywordizing a stored `[{"raw": "..."}]` on the way out of the app DB would turn it into the live Honey SQL
+    ;; form `[{:raw "..."}]`, which could then be spliced verbatim into any query referencing the Measure. The
+    ;; `:value` clause holds its payload to a scalar, so a crafted non-scalar payload fails normalization and the
+    ;; definition reads back as `{}` rather than as a live clause.
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Test Measure"
+                                                    :table_id   (mt/id :venues)
+                                                    :creator_id (mt/user->id :rasta)
+                                                    :definition (measure-definition (lib/count))}]
+      ;; write the crafted definition straight to the column, bypassing the model's insert hooks
+      (t2/query-one {:update :measure
+                     :set    {:definition (json/encode
+                                           {:lib/type :mbql/query
+                                            :database (mt/id)
+                                            :stages   [{:lib/type     :mbql.stage/mbql
+                                                        :source-table (mt/id :venues)
+                                                        :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]
+                                                        :filters      [[:= {:lib/uuid (str (random-uuid))}
+                                                                        [:field {:lib/uuid  (str (random-uuid))
+                                                                                 :base-type :type/Text}
+                                                                         (mt/id :venues :name)]
+                                                                        [:value {:lib/uuid       (str (random-uuid))
+                                                                                 :effective-type :type/Text}
+                                                                         [{:raw "1) UNION SELECT 1 -- "}]]]]}]})}
+                     :where  [:= :id measure-id]})
+      (is (= {} (:definition (t2/select-one :model/Measure :id measure-id)))))))

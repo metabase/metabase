@@ -196,7 +196,7 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment :- [:map [:definition ::segments.schema/segment]]]
+  [segment :- [:map [:definition ::segments.schema/definition]]]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
@@ -405,13 +405,16 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (for [{:keys [id target]} (field/with-targets
-                              (t2/select :model/Field
-                                         :table_id           (u/the-id table)
-                                         :fk_target_field_id [:not= nil]
-                                         :active             true))
-        :when (some-> target mi/can-read?)]
-    (-> target field/table (assoc :link id))))
+  (let [fields (field/with-targets
+                 (t2/select :model/Field
+                            :table_id           (u/the-id table)
+                            :fk_target_field_id [:not= nil]
+                            :active             true))]
+    ;; master batch-primes a table-granular perms cache here; v60 has no such API, so the per-target
+    ;; mi/can-read? checks below just resolve on cache-miss. Correct, only unbatched.
+    (for [{:keys [id target]} fields
+          :when (some-> target mi/can-read?)]
+      (-> target field/table (assoc :link id)))))
 
 (defn- source->db [source]
   (let [db-id (or ((some-fn :db_id :database_id) source)
@@ -766,7 +769,7 @@
   (automagic-dashboard (merge (->root table) opts)))
 
 (mu/defmethod automagic-analysis-method :model/Segment
-  [segment :- [:map [:definition ::segments.schema/segment]]
+  [segment :- [:map [:definition ::segments.schema/definition]]
    opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
@@ -937,7 +940,8 @@
                [[:and
                  [:>= :ts.count 2]
                  [:= :ts.count_non_pks 1]] :list-like?]]
-              {:inner-join [[{:select   [:f.table_id
+              {:inner-join [[^:allow-subquery
+                             {:select   [:f.table_id
                                          [:%count.* "count"]
                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
                                                           [:= :f.semantic_type nil]]
