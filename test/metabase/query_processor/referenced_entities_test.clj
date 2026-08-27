@@ -323,3 +323,53 @@
             goal     (ref-entity response :card goal-id)]
         (is (= "completed" (:status goal)))
         (is (= ["NAME"] (map :name (get-in goal [:data :cols]))))))))
+
+(defn- metric-card
+  "A `:type :metric` card summing Orders.Total, optionally grouped by month.
+  With `breakout?` this is the shape of the shipped \"Revenue\" example metric: an aggregation and a
+  temporal breakout both saved in `:dataset_query`."
+  [breakout?]
+  (let [mp (mt/metadata-provider)]
+    {:name          (if breakout? "Revenue by month" "Revenue")
+     :type          :metric
+     :dataset_query (cond-> (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
+                      breakout? (lib/breakout (lib/with-temporal-bucket
+                                                (lib.metadata/field mp (mt/id :orders :created_at))
+                                                :month)))}))
+
+(defn- reference-card
+  "Run a trivial main query referencing card `id`, and return that card's referenced-entity result."
+  [id columns]
+  (-> (mt/user-http-request :crowberto :post 202 "dataset"
+                            (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                                   :referenced_entities [{:type "card" :id id :columns columns}]))
+      (ref-entity :card id)))
+
+(deftest dataset-endpoint-referenced-metric-without-breakout-test
+  (testing "a metric whose definition is just an aggregation resolves to its single value"
+    (mt/with-temp [:model/Card {metric-id :id} (metric-card false)]
+      (let [result (reference-card metric-id ["sum"])]
+        (is (= "completed" (:status result)))
+        (is (= 1 (count (get-in result [:data :rows]))))))))
+
+(deftest dataset-endpoint-referenced-metric-with-breakout-test
+  (testing "a metric grouped for display still resolves to one value, the aggregation over everything"
+    ;; The shipped "Revenue" example metric saves a quarterly breakout in its :dataset_query, so running it
+    ;; verbatim returned a row per quarter and failed the reference.
+    (mt/with-temp [:model/Card {metric-id :id} (metric-card true)]
+      (let [grouped   (reference-card metric-id ["sum"])
+            ungrouped (mt/with-temp [:model/Card {plain-id :id} (metric-card false)]
+                        (reference-card plain-id ["sum"]))]
+        (is (= "completed" (:status grouped)))
+        (is (= 1 (count (get-in grouped [:data :rows]))))
+        (testing "and it matches what the same metric without the breakout returns"
+          (is (= (get-in ungrouped [:data :rows])
+                 (get-in grouped [:data :rows]))))))))
+
+(deftest dataset-endpoint-referenced-plain-card-with-breakout-test
+  (testing "a plain question with a breakout still fails: only a metric's grouping is presentation"
+    (mt/with-temp [:model/Card {card-id :id} (assoc (metric-card true) :type :question)]
+      (let [result (reference-card card-id ["sum"])]
+        (is (= "failed" (:status result)))
+        (is (re-find #"more rows than the requested maximum" (:error result)))))))
