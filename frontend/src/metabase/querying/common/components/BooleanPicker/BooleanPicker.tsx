@@ -44,7 +44,6 @@ export function BooleanPicker({
               key={option.value}
               value={option.value}
               label={option.label}
-              size="xs"
             />
           ))}
         </Stack>

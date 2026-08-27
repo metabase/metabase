@@ -116,7 +116,7 @@
   (t2/delete! :model/ApiKey id)
   api/generic-204-no-content)
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:aliased-namespace-symbol :unresolved-namespace]}
 (comment
   ;; check the generated docs
   (metabase.api.open-api/open-api-spec (metabase.api.macros/ns-handler) "/api/api-key"))

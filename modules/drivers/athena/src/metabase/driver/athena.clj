@@ -519,7 +519,7 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:aliased-namespace-symbol :discouraged-var :unresolved-namespace]}
 (comment
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
   (with-open [conn (clojure.java.jdbc/get-connection

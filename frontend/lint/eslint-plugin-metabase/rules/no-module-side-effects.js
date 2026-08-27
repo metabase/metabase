@@ -60,7 +60,6 @@ const DEFAULT_PURE_CALLEES = [
       "createEntityAdapter",
     ],
   },
-  { module: "reselect", names: ["createSelector", "createStructuredSelector"] },
   {
     module: "redux-actions",
     names: [

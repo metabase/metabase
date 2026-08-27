@@ -137,7 +137,7 @@
   (depricated-setting-throws #'embed.settings/check-origins-settings! {:mb-embedding-app-origin true :mb-embedding-app-origins-interactive true :mb-embedding-app-origins-sdk false}))
 
 (defn test-enabled-sync! [env expected-behavior]
-  (let [unsyncd-settings {:enable-embedding             #_:clj-kondo/ignore (embed.settings/enable-embedding)
+  (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
                           :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
                           :enable-embedding-static      (embed.settings/enable-embedding-static)}]
@@ -176,7 +176,7 @@
 
 (defn test-origin-sync! [env expected-behavior]
   (testing (str "origin sync with expected-behavior: " expected-behavior)
-    (let [unsyncd-setting {:embedding-app-origin              #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+    (let [unsyncd-setting {:embedding-app-origin              #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/embedding-app-origin)
                            :embedding-app-origins-interactive (embed.settings/embedding-app-origins-interactive)
                            :embedding-app-origins-sdk         (embed.settings/embedding-app-origins-sdk)}]
       ;; called for side effects

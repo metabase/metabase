@@ -806,8 +806,9 @@ describe("ExplorationTreeNode", () => {
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={getTree()}
-              selectedPageId={String(PAGE_ID)}
+              selectedEntity={{ type: "page", id: String(PAGE_ID) }}
               getSelectedPageUrl={() => path}
+              getSelectedSummaryUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
               readPageIds={new Set<string>()}

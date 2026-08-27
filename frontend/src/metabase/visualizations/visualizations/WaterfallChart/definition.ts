@@ -8,6 +8,7 @@ import {
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_GOAL_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
   type VisualizationDefinition,
   getDefaultSize,
@@ -76,6 +77,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

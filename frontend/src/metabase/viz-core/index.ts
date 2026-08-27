@@ -203,6 +203,7 @@ export { isLineXBrushRange } from "./echarts/types";
 export type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesBrushEvent,
+  EChartsSeriesBrushSelectedEvent,
   EChartsSeriesMouseEvent,
 } from "./echarts/types";
 export {
@@ -329,6 +330,10 @@ export {
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
 export { getStackOffset } from "./lib/settings/stacking";
+export {
+  getTimelineEventSettings,
+  TIMELINE_EVENTS_SETTINGS,
+} from "./lib/settings/timelineEvents";
 export {
   extendCardWithDashcardSettings,
   mergeSettings,

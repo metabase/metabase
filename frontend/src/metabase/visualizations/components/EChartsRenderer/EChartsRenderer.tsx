@@ -1,6 +1,6 @@
+import { mergeRefs } from "@mantine/hooks";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
-import mergeRefs from "merge-refs";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
