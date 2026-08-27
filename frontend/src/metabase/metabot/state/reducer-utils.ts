@@ -31,18 +31,15 @@ export type AgentPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
-const isOpenAgentMessage = (
-  message?: MetabotMessage,
-): message is MetabotMessage =>
-  message?.role === "agent" &&
-  (message.status.type === "streaming" ||
-    message.status.type === "in_progress");
-
 export const openAgentMessage = (
   convo: WritableDraft<MetabotConversationState>,
 ): WritableDraft<MetabotMessage> => {
   const message = convo.messages.at(-1);
-  if (!isOpenAgentMessage(message)) {
+  const statusType = message?.status.type;
+  const isOpenAgentMessage =
+    message?.role === "agent" &&
+    (statusType === "streaming" || statusType === "in_progress");
+  if (!isOpenAgentMessage) {
     throw new Error("Metabot conversation has no open agent message");
   }
   return message;
