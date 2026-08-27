@@ -337,7 +337,6 @@ const configs = [
         {
           allowed: [
             "underscore",
-            "lodash.orderby",
             "lodash.debounce",
             "chalk",
             "node-fetch",
