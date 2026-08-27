@@ -2,18 +2,18 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
-import { setup } from "metabase/query_builder/containers/test-utils";
-import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import type {
+  Visualization,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { CustomVizDisplayType } from "metabase-types/api";
+import type { CustomVizDisplayType, DatasetData } from "metabase-types/api";
 import {
   createMockCard,
   createMockCategoryColumn,
-  createMockCustomVizPluginRuntime,
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
@@ -27,7 +27,9 @@ import {
   createOrdersTotalDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 
-import { applyDefaultVisualizationProps } from "./custom-viz-common";
+import { getCard } from "../store/selectors";
+
+import { setup } from "./test-utils";
 
 const DISPLAY: CustomVizDisplayType = "custom:drill-demo-viz";
 
@@ -130,27 +132,26 @@ function DemoVisualization({ onVisualizationClick }: VisualizationProps) {
 
 registerVisualizations();
 
-registerVisualization(
-  applyDefaultVisualizationProps(
-    DemoVisualization,
-    {
-      id: DISPLAY,
-      getName: () => "Drill demo viz",
-      checkRenderable: ([{ data }]) => {
-        if (!data?.cols.some(isDate)) {
-          throw new Error("Needs a date column");
-        }
-      },
-      mount: () => ({ update: () => undefined, unmount: () => undefined }),
-      VisualizationComponent: () => null,
-    },
-    {
-      identifier: DISPLAY,
-      plugin: createMockCustomVizPluginRuntime(),
-      getUiName: () => "Drill demo viz",
-    },
-  ),
-);
+// A stand-in for a plugin-backed visualization. The query builder only needs a
+// registered `custom:` display it can render and check, so the spec builds one
+// here rather than reaching into the enterprise custom viz module.
+const DemoViz = Object.assign(DemoVisualization, {
+  identifier: DISPLAY,
+  getUiName: () => "Drill demo viz",
+  settings: {},
+  checkRenderable: ([{ data }]: { data?: DatasetData }[]) => {
+    if (!data?.cols.some(isDate)) {
+      throw new Error("Needs a date column");
+    }
+  },
+  noHeader: false,
+  canSavePng: false,
+  hidden: false,
+});
+
+// A Visualization is a component carrying static props, and Object.assign types
+// that intersection loosely, so the target is named explicitly.
+registerVisualization(DemoViz as unknown as Visualization);
 
 async function drillFromCustomViz(actionName: RegExp) {
   expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();
