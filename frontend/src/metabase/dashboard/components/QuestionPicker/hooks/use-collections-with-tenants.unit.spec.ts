@@ -3,13 +3,13 @@ import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import { createMockState } from "metabase/redux/store/mocks";
-import type { Collection, Tenant } from "metabase-types/api";
+import getExpandedCollectionsById from "metabase/entities/collections/getExpandedCollectionsById";
+import type { Collection, CollectionId, Tenant } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
@@ -34,7 +34,13 @@ function setupHook({
 
   return renderHookWithProviders(
     () =>
-      useCollectionsWithTenants(getExpandedCollectionsById([], null), false),
+      useCollectionsWithTenants(
+        getExpandedCollectionsById([], null) as Record<
+          CollectionId,
+          Collection
+        >,
+        false,
+      ),
     {
       storeInitialState: createMockState({
         settings: mockSettings({
