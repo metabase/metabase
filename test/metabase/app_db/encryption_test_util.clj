@@ -6,13 +6,9 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.test.initialize.test-users :as init.test-users]
-   [metabase.util.encryption :as encryption])
-  (:import
-   (java.util.concurrent.atomic AtomicLong)))
+   [metabase.util.encryption :as encryption]))
 
 (set! *warn-on-reflection* true)
-
-(defonce ^:private db-counter (AtomicLong.))
 
 (defonce ^{:doc "Holds `{:app-db .. :secret-key ..}` for the isolated, encrypted app DB prepared by the namespace whose
   `:once` [[with-encrypted-app-db-fixture]] is running, so [[with-encrypted-app-db]] can reach it. A global (rather than
@@ -34,7 +30,7 @@
   shared DB. Standard test users are seeded so `:rasta` &c. resolve there (`user->id` memoizes per application DB)."
   [secret-key thunk]
   (let [data-source (mdb.data-source/raw-connection-string->DataSource
-                     (str "jdbc:h2:mem:encryption-test-" (.incrementAndGet db-counter)))]
+                     (str "jdbc:h2:mem:" (gensym "encryption-test-db-")))]
     ;; hold one connection open for the whole fixture so the in-memory DB survives until every test has run
     (with-open [_conn (.getConnection data-source)]
       (let [app-db (mdb.connection/application-db :h2 data-source)]
