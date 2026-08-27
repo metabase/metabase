@@ -1,12 +1,10 @@
-import { registerVisualizations } from "metabase/visualizations/register";
-import { dimensionIsTimeseries } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-registerVisualizations();
+import { dimensionIsTimeseries } from "./timeseries";
 
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {
