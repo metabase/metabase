@@ -125,6 +125,11 @@ const baseMetabaseRestrictedConfig = {
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
     },
+    {
+      name: "reselect",
+      message:
+        "Please import from `@reduxjs/toolkit` instead, which re-exports reselect.",
+    },
   ],
 };
 
