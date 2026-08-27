@@ -93,7 +93,6 @@
                      (c/cyan "mage run-tests "
                              (when-let [p (:port options)] (format "--port %s " p))
                              (str/join " " test-dirs)))
-
       (let [out-data (try (edn/read-string out)
                           (catch Exception _
                             (println (c/red "Problem parsing output, raw output follows:"))

@@ -2171,11 +2171,24 @@
                                {["Dashboard" dash-id] {"Collection" id}}))
         cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:and
                                                                                    [:= :collection_id id]
-                                                                                   (when skip-archived [:not :archived])]})]
+                                                                                   (when skip-archived [:not :archived])
+                                                                                   ;; Cards materialized by an exploration
+                                                                                   ;; Summary ride with that Summary, which is
+                                                                                   ;; excluded just below. Listing them here
+                                                                                   ;; would make them export targets whose
+                                                                                   ;; Document dependency is absent.
+                                                                                   [:or
+                                                                                    [:= :document_id nil]
+                                                                                    [:in :document_id
+                                                                                     ^:allow-subquery {:select [:id]
+                                                                                                       :from   [:document]
+                                                                                                       :where  [:= :exploration_id nil]}]]]})]
                                {["Card" card-id] {"Collection" id}}))
         documents (when config/ee-available?
                     (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                               [:and [:= :collection_id id]
+                                                                               ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
+                                                                               [:= :exploration_id nil]
                                                                                (when skip-archived [:not :archived])]})]
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and

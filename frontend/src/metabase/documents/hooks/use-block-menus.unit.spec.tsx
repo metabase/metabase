@@ -1,11 +1,14 @@
+import { renderHook } from "@testing-library/react";
 import { Schema } from "@tiptap/pm/model";
 import type { Editor, NodeViewProps } from "@tiptap/react";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 
 import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import { setupCommentEndpoints } from "__support__/server-mocks";
-import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import { act, getTestStoreAndWrapper, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
+import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { initialState as documentsInitialState } from "metabase/documents/documents.slice";
 import {
   createMockNodeViewProps,
@@ -36,21 +39,32 @@ describe("useBlockMenus", () => {
       target_id: mockDocument.id,
     });
 
-    const { result } = renderHookWithProviders(
+    const { wrapper: Providers } = getTestStoreAndWrapper({
+      initialRoute: "/",
+      storeInitialState: {
+        documents: {
+          ...documentsInitialState,
+          currentDocument: mockDocument,
+        },
+      },
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Providers>
+          <DocumentEditorHostProvider>{children}</DocumentEditorHostProvider>
+        </Providers>
+      );
+    }
+
+    const { result } = renderHook(
       () =>
         useBlockMenus({
           node: nodeViewProps.node,
           editor: nodeViewProps.editor,
           getPos: nodeViewProps.getPos,
         }),
-      {
-        storeInitialState: {
-          documents: {
-            ...documentsInitialState,
-            currentDocument: mockDocument,
-          },
-        },
-      },
+      { wrapper: Wrapper },
     );
 
     // Attach a reference element so the IntersectionObserver starts observing.
