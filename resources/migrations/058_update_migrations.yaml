@@ -1344,6 +1344,270 @@ databaseChangeLog:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptApiKeys
 
+  - changeSet:
+      id: v58.2026-08-25T00:00:02
+      author: ranquild
+      comment: Widen report_card.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:03
+      author: ranquild
+      comment: Widen report_dashboard.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:04
+      author: ranquild
+      comment: Widen action.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: action
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: action
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:05
+      author: ranquild
+      comment: Widen document.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: document
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: document
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:06
+      author: ranquild
+      comment: >-
+        Add report_card.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:07
+      author: ranquild
+      comment: >-
+        Add report_dashboard.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:08
+      author: ranquild
+      comment: >-
+        Add action.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:09
+      author: ranquild
+      comment: >-
+        Add document.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:10
+      author: ranquild
+      comment: Add index on report_card.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:11
+      author: ranquild
+      comment: Add index on report_dashboard.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_dashboard
+                indexName: idx_report_dashboard_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:12
+      author: ranquild
+      comment: Add index on action.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: action
+                indexName: idx_action_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:13
+      author: ranquild
+      comment: Add index on document.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:14
+      author: ranquild
+      comment: >-
+        Backfill report_card.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE report_card SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE report_card SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:15
+      author: ranquild
+      comment: >-
+        Backfill report_dashboard.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE report_dashboard SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE report_dashboard SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:16
+      author: ranquild
+      comment: >-
+        Backfill action.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE action SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE action SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:17
+      author: ranquild
+      comment: >-
+        Backfill document.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE document SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE document SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:18
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext public_uuid values at rest for cards, dashboards, actions, and documents, so the column
+        can be read strictly once MB_ENCRYPTION_SECRET_KEY is set. Otherwise an attacker with SQL write access could
+        forge a public link by inserting a chosen public_uuid; encrypting it means such a plaintext value is rejected on
+        the strict read. Already-encrypted values are left untouched.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptPublicUuids
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

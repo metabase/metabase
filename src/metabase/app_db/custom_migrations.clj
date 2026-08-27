@@ -2271,3 +2271,29 @@
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]}))))
+
+(define-reversible-migration EncryptPublicUuids
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (not (encryption/possibly-encrypted-string? public_uuid)))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-encrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]}))))
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (encryption/possibly-encrypted-string? public_uuid))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-decrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]})))))
