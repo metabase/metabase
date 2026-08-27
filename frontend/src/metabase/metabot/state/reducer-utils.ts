@@ -280,17 +280,13 @@ export const closeChain = (
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
-  action: { meta: { arg: { conversation_id: string; loadId: number } } },
+  action: { meta: { arg: { conversation_id: string } } },
 ) => {
-  const { conversation_id, loadId } = action.meta.arg;
+  const { conversation_id } = action.meta.arg;
   const convo = state.conversations[conversation_id];
 
   if (!convo) {
     console.warn(`Unable to find metabot conversation ${conversation_id}`);
-    return undefined;
-  }
-
-  if (convo.loadId !== loadId) {
     return undefined;
   }
 
@@ -317,7 +313,6 @@ export const createConversation = (
   messages: [],
   state: {},
   activeToolCalls: [],
-  loadId: 0,
   profileOverride: undefined,
   forkedFromConversationId: undefined,
   ...overrides,

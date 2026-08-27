@@ -456,7 +456,6 @@ export const metabot = createSlice({
         state.conversations[conversationId] ??
         castDraft(createConversation({ conversationId }));
 
-      convo.loadId += 1;
       convo.messages = castDraft(
         messages.map((t) => ({ ...t, parts: [...t.parts] })),
       );

@@ -48,10 +48,8 @@ const createTestStore = (initialState?: Partial<MetabotState>) =>
     },
   });
 
-const requestAction = (
-  arg: Partial<{ conversation_id: string; loadId: number }> = {},
-) => ({
-  meta: { arg: { conversation_id: "matching-id", loadId: 0, ...arg } },
+const requestAction = (arg: Partial<{ conversation_id: string }> = {}) => ({
+  meta: { arg: { conversation_id: "matching-id", ...arg } },
 });
 
 // tool-call and chain-of-thought events only ever arrive inside a message the
@@ -456,7 +454,7 @@ describe("metabot reducer", () => {
       error: { message: "Aborted" },
       meta: {
         aborted: true,
-        arg: { conversation_id: conversationId, loadId: 0 },
+        arg: { conversation_id: conversationId },
       },
     });
 

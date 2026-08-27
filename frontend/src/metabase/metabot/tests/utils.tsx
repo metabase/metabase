@@ -90,7 +90,6 @@ export const startRequestlessAgentTurn = (
     meta: {
       arg: {
         conversation_id: conversationId,
-        loadId: 0,
         assistant_message_id: assistantMessageId,
       },
     },

@@ -137,11 +137,6 @@ export const getConversation = createSelector(
   },
 );
 
-export const getConversationLoadId = createSelector(
-  getConversation,
-  (convo) => convo.loadId,
-);
-
 export const getConversationTitle = createSelector(
   getConversation,
   (convo) => convo.title,

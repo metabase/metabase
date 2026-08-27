@@ -178,7 +178,6 @@ describe("query builder code edits from omnibot", () => {
           conversation_id: convo.conversationId,
           assistant_message_id: "msg_test_code_edit",
           isFullPageMetabot: false,
-          loadId: 0,
           context: {
             user_is_viewing: [
               {
