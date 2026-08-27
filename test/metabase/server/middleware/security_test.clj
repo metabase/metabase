@@ -66,6 +66,29 @@
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
 
+(deftest interactive-embedding-origins-cannot-inject-csp-directives-test
+  ;; `embedding-app-origins-interactive` is admin-writable and, when interactive embedding is
+  ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
+  ;; directive: a `;` in the value must not break out and append further CSP directives. The
+  ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
+  ;; overrides the nonce/hash `script-src` allowlist the app relies on to block XSS.
+  (mt/with-premium-features #{:embedding}
+    (let [csp-directive-names
+          (fn [origins]
+            (mt/with-temporary-setting-values [enable-embedding-interactive      true
+                                               embedding-app-origins-interactive origins]
+              (->> (str/split (get (mw.security/security-headers) "Content-Security-Policy") #";\s*")
+                   (map str/trim)
+                   (remove str/blank?)
+                   (map #(first (str/split % #"\s+")))
+                   set)))
+          injection "https://ok.example; script-src-elem https://evil.example"]
+      (testing "a `;` in the setting cannot change which CSP directives are present"
+        (is (= (csp-directive-names "https://ok.example")
+               (csp-directive-names injection))))
+      (testing "and script-src-elem specifically is never introduced"
+        (is (not (contains? (csp-directive-names injection) "script-src-elem")))))))
+
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
