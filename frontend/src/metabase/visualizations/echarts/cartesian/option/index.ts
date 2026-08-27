@@ -65,8 +65,6 @@ export const getSharedEChartsOptions = (
   brush: {
     toolbox: ["lineX" as const],
     xAxisIndex: 0,
-    throttleType: "debounce" as const,
-    throttleDelay: 200,
     brushStyle: {
       color: getBrushStyle(renderingContext).fill,
       borderWidth: 0,
@@ -390,8 +388,6 @@ export function buildSplitPanelOverrides(
     brush: {
       toolbox: ["lineX" as const],
       xAxisIndex: Array.from({ length: panelCount }, (_, index) => index),
-      throttleType: "debounce" as const,
-      throttleDelay: 200,
       brushStyle: {
         color: "transparent",
         borderColor: "transparent",
