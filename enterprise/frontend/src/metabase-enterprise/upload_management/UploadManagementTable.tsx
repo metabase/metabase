@@ -185,7 +185,6 @@ const UploadTableRow = ({
     <tr>
       <td>
         <Checkbox
-          size="xs"
           checked={isSelected}
           onChange={(e) =>
             e.target.checked ? onSelect(item) : onDeselect(item)

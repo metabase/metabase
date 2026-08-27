@@ -2256,6 +2256,54 @@
           (t2/reducible-query {:select [:id :credentials]
                                :from   [:auth_identity]}))))
 
+(define-reversible-migration EncryptApiKeys
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (not (encryption/possibly-encrypted-string? k)))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-encrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]})))
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (encryption/possibly-encrypted-string? k))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-decrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]}))))
+
+(define-reversible-migration EncryptPublicUuids
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (not (encryption/possibly-encrypted-string? public_uuid)))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-encrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]}))))
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (encryption/possibly-encrypted-string? public_uuid))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-decrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]})))))
+
 ;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, because
 ;; `metabase_field` can hold millions of rows and a migration that long blocks startup. Rollback has to stay here
 ;; though, since a downgraded version needs to find plaintext the moment it starts.

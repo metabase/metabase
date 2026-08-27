@@ -431,14 +431,6 @@ describe("issue 17160", () => {
     });
   }
 
-  function visitPublicSourceDashboard() {
-    cy.get("@sourceDashboardUUID").then((uuid) => {
-      cy.visit(`/public/dashboard/${uuid}`);
-
-      cy.findByTextEnsureVisible("Enormous Wool Car");
-    });
-  }
-
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -478,37 +470,6 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
   });
-
-  it(
-    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
-    { tags: "@skip" },
-    () => {
-      // FIXME: setup public dashboards
-      setup();
-
-      // 1. Check click behavior connected to a public question
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-question-label").eq(0).click();
-
-      cy.url().should("include", "/public/question");
-
-      assertMultipleValuesFilterState();
-
-      // 2. Check click behavior connected to a publicdashboard
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
-
-      cy.url().should("include", "/public/dashboard");
-      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(TARGET_DASHBOARD_NAME);
-
-      assertMultipleValuesFilterState();
-    },
-  );
 });
 
 describe("issue 18454", () => {
