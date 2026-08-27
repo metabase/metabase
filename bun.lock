@@ -103,7 +103,7 @@
         "inflection": "^1.7.1",
         "inquirer-toggle": "^1.0.1",
         "js-cookie": "3.0.7",
-        "js-yaml": "^4.3.0",
+        "js-yaml": "^4.3.1",
         "json5": "^2.2.2",
         "jspdf": "^4.2.1",
         "kbar": "0.1.0-beta.45",
@@ -405,7 +405,7 @@
     "follow-redirects": "^1.16.0",
     "form-data": "4.0.6",
     "js-cookie": "^3.0.7",
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^4.3.1",
     "linkify-it": "^5.0.2",
     "lodash": "^4.18.1",
     "lodash-es": "^4.18.1",
@@ -3708,7 +3708,7 @@
 
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
-    "js-yaml": ["js-yaml@4.3.0", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q=="],
+    "js-yaml": ["js-yaml@4.3.1", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ=="],
 
     "jsbn": ["jsbn@0.1.1", "", {}, "sha512-UVU9dibq2JcFWxQPA6KCqj5O42VOmAY3zQUfEKxU0KpTGXwNoCjkX1e13eHNvw/xPynt6pU0rZ1htjWTNTSXsg=="],
 
