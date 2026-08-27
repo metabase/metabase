@@ -12,6 +12,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1028,12 +1029,15 @@
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
-  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
-   - Otherwise uses the provider's BYOK `auth`."
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Proxy auth is tagged
+    `:proxy? true`: its URL is operator configuration, not admin input, so [[request]] exempts it from
+    `llm/llm-allowed-networks`.
+  - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}
+                      :proxy?  true})]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
@@ -1049,11 +1053,21 @@
   `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
   at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
   override either timeout per request by passing `:connection-timeout` /
-  `:socket-timeout` in `req`."
-  [{:keys [url headers]} req]
+  `:socket-timeout` in `req`.
+
+  The base URL is admin input, so unless the auth is the AI proxy's (see [[resolve-auth]]) it is
+  checked against `llm/llm-allowed-networks` before the request, and the connection resolves DNS
+  through a resolver that enforces the same policy on the addresses it actually opens."
+  [{:keys [url headers proxy?]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
-                     :socket-timeout     (llm/llm-request-timeout-ms)}
-                    (merge req)
-                    (update :url #(str url %))
-                    (update :headers merge headers))))
+  (when-not proxy?
+    (llm/assert-llm-url-allowed! url))
+  (let [resolver (when-not proxy?
+                   (u.http/network-policy-dns-resolver (llm/llm-allowed-networks)))]
+    (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                       :socket-timeout     (llm/llm-request-timeout-ms)}
+                      (merge req)
+                      (update :url #(str url %))
+                      (update :headers merge headers)
+                      ;; nil under :allow-all, which leaves clj-http on its default resolver
+                      (u/assoc-dissoc :dns-resolver resolver)))))

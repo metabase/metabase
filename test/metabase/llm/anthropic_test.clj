@@ -119,11 +119,42 @@
     (let [mock-response {:body {:content [{:type "tool_use" :name "generate_sql" :input {:sql "SELECT 1"}}]
                                 :usage   {:input_tokens 1 :output_tokens 1}}}]
       (with-redefs [config/is-e2e? true]
+        ;; the e2e runner pins the network policy the same way, since the mock LLM server is on localhost
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
+                                             llm-anthropic-api-base-url "http://localhost:6123"]
+            (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
+              (is (=? {:result {:sql "SELECT 1"}}
+                      (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))))))
+
+(deftest chat-completion-network-policy-test
+  (testing "a base URL on a network llm-allowed-networks forbids is refused before making any request"
+    ;; the URL is redefined rather than set, the way one saved before the policy was tightened would be stored
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key      (constantly "sk-ant-test-key")
+                                  llm.settings/llm-anthropic-api-base-url (constantly "http://127.0.0.1:9")
+                                  http/post (fn [& _] (throw (ex-info "http/post should not be called" {})))]
+        (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                (try (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})
+                     (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+  (testing "a permitted base URL goes out with the policy-enforcing DNS resolver on the connection"
+    (let [captured      (atom nil)
+          mock-response {:body {:content [{:type "tool_use" :name "generate_sql" :input {:sql "SELECT 1"}}]
+                                :usage   {:input_tokens 1 :output_tokens 1}}}]
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
         (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
-                                           llm-anthropic-api-base-url "http://localhost:6123"]
-          (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
+                                           llm-anthropic-api-base-url "https://8.8.8.8"]
+          (mt/with-dynamic-fn-redefs [http/post (fn [_url opts] (reset! captured opts) mock-response)]
             (is (=? {:result {:sql "SELECT 1"}}
-                    (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))))))))
+                    (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))))
+      (testing "and under :allow-all on clj-http's default resolver"
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
+                                             llm-anthropic-api-base-url "http://127.0.0.1:9"]
+            (mt/with-dynamic-fn-redefs [http/post (fn [_url opts] (reset! captured opts) mock-response)]
+              (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})
+              (is (not (contains? @captured :dns-resolver))))))))))
 
 (deftest chat-completion-returns-usage-test
   (testing "chat-completion returns result, usage, and duration"

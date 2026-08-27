@@ -155,6 +155,42 @@
             (is (= 100 (:connection-timeout @captured)))
             (is (= 200 (:socket-timeout @captured)))))))))
 
+(deftest request-enforces-llm-allowed-networks-test
+  ;; IP literals throughout: the policy check resolves hostnames through real DNS
+  (let [captured (atom nil)
+        capture  (fn [opts] (reset! captured opts) {:status 200 :body ""})
+        req      {:method :get :url "/v1/models"}]
+    (testing "under :external-only"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (testing "a base URL on an internal network is refused before any request is made"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
+                    (try (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
+                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+        (testing "a public base URL goes out with the policy-enforcing DNS resolver on the connection"
+          (mt/with-dynamic-fn-redefs [http/request capture]
+            (self.core/request {:url "https://8.8.8.8" :headers {}} req)
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
+        (testing "the AI proxy's URL is operator configuration and is exempt"
+          (mt/with-dynamic-fn-redefs [http/request capture]
+            (self.core/request {:url "http://127.0.0.1:9" :headers {} :proxy? true} req)
+            (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+            (is (not (contains? @captured :dns-resolver)))))))
+    (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (mt/with-dynamic-fn-redefs [http/request capture]
+          (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
+          (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+          (is (not (contains? @captured :dns-resolver))))))))
+
+(deftest resolve-auth-tags-proxy-auth-test
+  (mt/with-premium-features #{:metabot-v3}
+    (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
+      (is (=? {:url "http://proxy.internal/anthropic" :proxy? true}
+              (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))
+      (is (= {:url "https://api.anthropic.com"}
+             (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false))))))
+
 (deftest call-llm-prompt-cache-key-test
   (llm.tu/with-default-connections
     (testing "the conversation id (:session-id) is forwarded as the Mistral prompt_cache_key"

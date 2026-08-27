@@ -56,6 +56,7 @@
                      :docs-url    "https://console.anthropic.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -73,6 +74,7 @@
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -90,6 +92,7 @@
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -107,6 +110,7 @@
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -124,6 +128,7 @@
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -140,6 +145,7 @@
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -159,6 +165,7 @@
                      :docs-url    "https://platform.deepseek.com/api_keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -229,6 +236,7 @@
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -249,6 +257,7 @@
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -299,6 +308,7 @@
     :default-model nil
     :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true

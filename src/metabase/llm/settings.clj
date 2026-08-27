@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
    (java.net MalformedURLException URL)
@@ -40,6 +41,62 @@
         (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
                         {:status-code 400
                          :llm-url     url}))))))
+
+(defsetting llm-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+                     "Does not apply to the Metabase AI service, whose proxy URL the operator configures."))
+  :type       :keyword
+  :visibility :admin
+  :export?    false
+  ;; No `:default`, because it depends on where we are running. On Cloud an LLM provider is always reached
+  ;; across the public internet, so an internal address is somebody reaching for our own infrastructure.
+  ;; Self-hosted, a vLLM or Ollama server on the same box or a private network is the ordinary case, and
+  ;; defaulting to anything stricter would break working instances on upgrade.
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :llm-allowed-networks)
+                    (if (premium-features/is-hosted?)
+                      :external-only
+                      :allow-all)))
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru (str "Invalid llm-allowed-networks! Only values of `external-only`, "
+                                    "`allow-private`, and `allow-all` are allowed."))))
+                (setting/set-value-of-type! :keyword :llm-allowed-networks new-value)))
+
+(defn llm-url-problem
+  "Why `url` may not be used as an LLM provider base URL, or nil when it may.
+  It must be an `http` or `https` URL with a host, and every address the host resolves to must be permitted by
+  [[llm-allowed-networks]]. A blank `url` is not a problem here: the not-configured handling covers it.
+  This is the set-time check; [[metabase.util.http/network-policy-dns-resolver]] repeats it on the addresses
+  the connection actually opens, so a host that rebinds between the two is still refused."
+  [url]
+  (when-not (str/blank? url)
+    (let [parsed (try
+                   (URL. ^String url)
+                   (catch MalformedURLException _ nil))
+          host   (some-> parsed .getHost not-empty)]
+      (cond
+        (not (and parsed (#{"http" "https"} (.getProtocol parsed)) host))
+        (tru "Invalid base URL: it must start with http:// or https://.")
+
+        (not (u.http/host-allowed-for-network-policy? (llm-allowed-networks) host))
+        (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url)))))
+
+(defn assert-llm-url-allowed!
+  "Throw a 400 when [[llm-url-problem]] finds one with `url`."
+  [url]
+  (when-let [problem (llm-url-problem url)]
+    (throw (ex-info problem
+                    {:status-code 400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-url     url}))))
 
 ;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
 ;; deleting the connection they key off turns those features off. They should name a connection instead.

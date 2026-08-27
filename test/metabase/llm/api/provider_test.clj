@@ -454,6 +454,22 @@
                                      {:type "evilai" :config {:api-key "whatever"}}))))
       (is (= [] (llm.provider/connections))))))
 
+(deftest create-rejects-a-base-url-on-a-blocked-network-before-calling-the-provider-test
+  (testing (str "verifying credentials fetches the provider's model catalog from the base URL, so a base URL "
+                "on a network the policy forbids is refused before that request is made")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [& _] (is false "should reject before verifying credentials"))]
+          (is (=? {:message (str "The base URL http://127.0.0.1:9 points at a network Metabase "
+                                 "is not allowed to connect to.")
+                   :field   "base-url"}
+                  (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                        {:type   "anthropic"
+                                         :config {:api-key  "sk-ant-valid"
+                                                  :base-url "http://127.0.0.1:9"}})))
+          (is (= [] (llm.provider/connections))))))))
+
 (deftest create-suffixes-a-colliding-key-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-first"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
