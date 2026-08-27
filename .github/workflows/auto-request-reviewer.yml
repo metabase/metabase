@@ -45,13 +45,20 @@ jobs:
               return;
             }
 
-            const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
-            if (fresh.draft) {
-              core.info('PR is back to draft, skipping');
-              return;
-            }
-            if (fresh.requested_reviewers.length > 0) {
-              core.info(`reviewers already requested: ${fresh.requested_reviewers.map((u) => u.login).join(', ')}, skipping`);
+            const alreadyHandled = async () => {
+              const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+              if (fresh.draft) {
+                core.info('PR is back to draft, skipping');
+                return true;
+              }
+              if (fresh.requested_reviewers.length > 0) {
+                core.info(`reviewers already requested: ${fresh.requested_reviewers.map((u) => u.login).join(', ')}, skipping`);
+                return true;
+              }
+              return false;
+            };
+
+            if (await alreadyHandled()) {
               return;
             }
 
@@ -117,6 +124,10 @@ jobs:
             core.info(`load in last ${team.loadWindowDays}d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
             const pick = ranked[0].login;
             core.info(`picked ${pick}${team.githubTeam ? ` + ${owner}/${team.githubTeam}` : ''}`);
+
+            if (await alreadyHandled()) {
+              return;
+            }
 
             const request = (params) =>
               github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, ...params });
