@@ -120,25 +120,31 @@
   [driver database database-types]
   ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
-(def ^:private exact-schema-name-re
-  "Matches an inclusion-filter segment that names one schema outright.
+(def ^:private regex-metacharacters
+  "Characters [[metabase.driver.sync/schema-pattern->re-pattern]] can turn into something other than themselves.
 
-  [[metabase.driver.sync/schema-pattern->re-pattern]] compiles a segment into a regex, expanding an unescaped `*`
-  into `.*` and passing every other character through as regex source. A segment of only `\\w` characters therefore
-  contains no wildcard and no regex syntax, so it matches itself and nothing else -- which is what lets an `in (...)`
-  predicate select the schemas the client-side filter would have kept.
+  It compiles a filter segment into a regex by expanding an unescaped `*` into `.*` and handing every other
+  character to [[re-pattern]] as regex source. A segment containing none of these therefore compiles to a regex that
+  matches itself and nothing else, which is what lets an `in (...)` predicate select the schemas the client-side
+  filter would have kept.
 
-  [[metabase.driver.redshift-test/exactly-named-schemas-agrees-with-filter-test]] pins that agreement."
-  #"\w+")
+  Stray `]` and `}` are literals to Java and could be admitted; they are refused anyway rather than resting on that.
+
+  [[metabase.driver.redshift-test/exactly-named-schemas-agrees-with-filter-test]] pins the agreement, and
+  [[metabase.driver.redshift-test/regex-metacharacters-is-complete-test]] pins this set against every ASCII
+  character."
+  (set "\\.[]{}()*+?^$|"))
 
 (defn- exactly-named-schemas
   "The schema names an inclusion filter names outright, or `nil` when evaluating the filter needs every schema.
 
-  Blank patterns mean \"include everything\", so they fall through to the unfiltered query."
+  Only a segment free of [[regex-metacharacters]] qualifies: one that carries regex syntax asks a different question
+  than `in (...)` does, and answering it needs every schema. Blank patterns mean \"include everything\", so they fall
+  through to the unfiltered query too."
   [inclusion-patterns]
   (when-not (str/blank? inclusion-patterns)
     (let [segments (map str/trim (str/split inclusion-patterns #","))]
-      (when (perf/every? #(re-matches exact-schema-name-re %) segments)
+      (when (perf/every? #(and (seq %) (not-any? regex-metacharacters %)) segments)
         (distinct segments)))))
 
 (defn- get-tables-sql

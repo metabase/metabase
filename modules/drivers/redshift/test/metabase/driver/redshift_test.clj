@@ -734,11 +734,24 @@
                       "prefix_spectrum"
                       "spectrumx"
                       "SPECTRUM"
-                      "other"]]
+                      "other"
+                      "with space"
+                      "withxspace"
+                      "hyphen-schema"
+                      "hyphenxschema"
+                      "unicodé"
+                      "unicode"
+                      "at@sign"
+                      "atxsign"]]
       (doseq [patterns ["spectrum"
                         "spectrum,2026_08_27_18_abc_schema"
                         "  spectrum ,  2026_08_27_18_abc_schema  "
-                        "spectrum,spectrum"]]
+                        "spectrum,spectrum"
+                        ;; legal Redshift schema names that carry no regex syntax
+                        "with space"
+                        "hyphen-schema"
+                        "unicodé"
+                        "at@sign"]]
         (testing (pr-str patterns)
           (let [named (#'redshift/exactly-named-schemas patterns)]
             (is (some? named))
@@ -757,7 +770,33 @@
       "crazy\\*schema"
       "a.c"
       "a|b"
-      "with space")))
+      "a$b"
+      "a+b"
+      "a(b)"
+      "a[b]"
+      "a^b"
+      "a?b"
+      ;; an interior empty segment names nothing, so it cannot stand in for the filter
+      "spectrum,,other"))
+  (testing "a trailing comma leaves no empty segment behind, so it still qualifies"
+    (is (= ["spectrum"] (#'redshift/exactly-named-schemas "spectrum,")))))
+
+(deftest ^:parallel regex-metacharacters-is-complete-test
+  (testing "every character the guard admits really does compile to a regex matching only itself"
+    ;; Pins the metacharacter enumeration itself: a character missing from it would be admitted here and show up as
+    ;; a disagreement, rather than as a silently wrong `in (...)` against a real cluster.
+    (let [chars (concat (map char (range 32 127)) [\é \ü \空])
+          ;; the filter splits on commas, so a comma never reaches a segment
+          chars (remove #{\,} chars)]
+      (doseq [c chars
+              :let [segment (str "a" c "c")
+                    named   (#'redshift/exactly-named-schemas segment)]
+              :when named]
+        (testing (pr-str segment)
+          (doseq [candidate [segment "abc" "axc" "ac" "aXc" "a" "other"]]
+            (is (= (boolean (driver.s/include-schema? segment nil candidate))
+                   (contains? (set named) candidate))
+                (pr-str candidate))))))))
 
 (deftest ^:parallel get-tables-sql-test
   (testing "named schemas are bound once per union branch"
