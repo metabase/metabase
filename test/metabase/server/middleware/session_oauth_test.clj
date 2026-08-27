@@ -135,6 +135,28 @@
             (is (nil? (:metabase-user-id req)))
             (is (nil? (:token-scopes req)))))))))
 
+(deftest resolve-access-token-deactivated-user-test
+  (testing "S1: a still-live token for a user who has since been deactivated does NOT resolve — the shared
+            resolver gates on is_active so the v1 MCP transport (which dispatches straight on :user-id,
+            with no is_active re-check of its own) can't authenticate a deactivated user's bearer token"
+    ;; Uses :rasta (a shared fixture user) but restores `is_active` and deletes the token in a `finally`,
+    ;; so the deactivation can't leak to sibling tests. A rollback-only transaction does NOT isolate the
+    ;; update from tests running on other connections; a `with-temp` user hits an FK on teardown because the
+    ;; token row still references it.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [user-id (mt/user->id :rasta)
+            token   (str (random-uuid))]
+        (try
+          (save-access-token! token user-id [oauth-server/full-access-scope] (in-one-hour))
+          (testing "resolves while the user is active"
+            (is (= user-id (:user-id (oauth-server/resolve-access-token token)))))
+          (t2/update! :model/User user-id {:is_active false})
+          (testing "stops resolving once the user is deactivated"
+            (is (nil? (oauth-server/resolve-access-token token))))
+          (finally
+            (t2/update! :model/User user-id {:is_active true})
+            (t2/delete! :model/OAuthAccessToken :token token)))))))
+
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
     (let [called? (atom false)]

@@ -15,6 +15,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.api :as pulse.api]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -1436,3 +1437,19 @@
                    :model/Pulse      {pulse-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:collection_id (:id coll)})
       (is (true? (:archived (mt/user-http-request :crowberto :put 200 (str "pulse/" pulse-id) {:archived true})))))))
+
+(deftest update-pulse-with-perm-checks!-validates-cards-test
+  (testing "I3: a non-coercible :cards ref is a clean 400, not a 500. `update-pulse-with-perm-checks!` is
+            called directly (e.g. from the agent API), not only through the PUT endpoint whose schema coerces
+            :cards, so a bad ref must be rejected with a :status-code before check-card-read-permissions'
+            (assert (integer? card-id)) / u/the-id can throw a status-less error that surfaces as a 500."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [bad [["not-a-card-ref"] [{:not "a card"}] [42.5]]]
+        (let [ex (try (pulse.api/update-pulse-with-perm-checks! Integer/MAX_VALUE {:cards bad})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e e)
+                      (catch Throwable e e))]
+          (is (instance? clojure.lang.ExceptionInfo ex)
+              (str "expected an ExceptionInfo (status-carrying), got " (some-> ex type) " for " (pr-str bad)))
+          (is (= 400 (:status-code (ex-data ex)))
+              (str "expected a 400 for a bad :cards ref " (pr-str bad))))))))

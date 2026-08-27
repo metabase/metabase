@@ -25,6 +25,7 @@
    [metabase.pulse.send :as pulse.send]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -38,48 +39,6 @@
   "Get email channel from an alert."
   [alert]
   (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
-
-(defn- maybe-filter-pulses-recipients
-  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
-  themselves. Recipients that are plain email addresses are preserved.
-
-  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
-  [pulses]
-  (cond->> pulses
-    (perms/sandboxed-or-impersonated-user?)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:id recipient) api/*current-user-id*)))
-                                   (:recipients channel)))))))
-
-    (not api/*is-superuser?*)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
-                                   (:recipients channel)))))))))
-
-(defn- maybe-filter-pulse-recipients
-  [pulse]
-  (first (maybe-filter-pulses-recipients [pulse])))
-
-(defn- maybe-strip-sensitive-metadata
-  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
-  being the creator or a recipient, we return it with some metadata removed."
-  [pulse]
-  (if (mi/current-user-has-full-permissions? :read pulse)
-    pulse
-    (-> (dissoc pulse :cards)
-        (update :channels
-                (fn [channels]
-                  (map #(dissoc % :recipients) channels))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -114,9 +73,9 @@
                                                                  :dashboard-id dashboard-id
                                                                  :user-id      (when creator-or-recipient api/*current-user-id*)})
                                   (filter (if creator-or-recipient mi/can-read? mi/can-write?))
-                                  maybe-filter-pulses-recipients)
+                                  models.pulse/maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
-                               (map maybe-strip-sensitive-metadata pulses)
+                               (map models.pulse/maybe-strip-sensitive-metadata pulses)
                                pulses)]
     (mapv
      (fn [pulse]
@@ -237,8 +196,8 @@
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
     (-> pulse
-        maybe-filter-pulse-recipients
-        maybe-strip-sensitive-metadata
+        models.pulse/maybe-filter-pulse-recipients
+        models.pulse/maybe-strip-sensitive-metadata
         (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
@@ -266,25 +225,20 @@
     (assert (integer? card-id))
     (api/read-check :model/Card card-id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [cards], :as pulse-updates} :- [:map
-                                          [:name          {:optional true} [:maybe ms/NonBlankString]]
-                                          [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
-                                          [:skip_if_empty {:default false} [:maybe :boolean]]
-                                          [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                          [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
-  ;; do various perms checks
+(defn update-pulse-with-perm-checks!
+  "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
+  runs: the subscription/monitoring application permission, a write check on the Pulse, read checks on
+  any `:cards`, the collection-change check, and the advanced-permissions gate on adding recipients.
+  Returns the updated Pulse."
+  [id {:keys [cards] :as pulse-updates}]
+  ;; Validate `:cards` up front so a bad card ref is a clean 400, not a 500. This fn is called
+  ;; directly (e.g. from the agent API), not only through the PUT endpoint whose schema already
+  ;; coerces `:cards` — without this, `check-card-read-permissions`'s `(assert (integer? card-id))`
+  ;; throws a bare AssertionError (no :status-code) on a string id and surfaces as a 500.
+  (when (some? cards)
+    (when-not (mr/validate [:sequential models.pulse/CoercibleToCardRef] cards)
+      (throw (ex-info (tru "Invalid :cards: each entry must be a card reference.")
+                      {:status-code 400}))))
   (try
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
@@ -320,8 +274,27 @@
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
                                             :archived :parameters])
                 :id id)))))
-  ;; return updated Pulse
   (models.pulse/retrieve-pulse id))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a Pulse with `id`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   pulse-updates :- [:map
+                     [:name          {:optional true} [:maybe ms/NonBlankString]]
+                     [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
+                     [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
+                     [:skip_if_empty {:default false} [:maybe :boolean]]
+                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                     [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+                     [:archived      {:default false} [:maybe :boolean]]
+                     [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
+  (update-pulse-with-perm-checks! id pulse-updates))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

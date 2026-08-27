@@ -9,7 +9,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
-   [oidc-provider.store :as oidc.store]))
+   [oidc-provider.store :as oidc.store]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,7 +91,15 @@
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
    `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
-   expired, or revoked token, or a token with no associated user).
+   expired, or revoked token, a token with no associated user, or a token whose user has since
+   been deactivated).
+
+   The deactivated-user check is enforced here rather than only at each caller: the token store
+   knows only the token's existence, expiry, and user-id, so a token minted for a user who is later
+   deactivated stays otherwise valid. The core session middleware's bearer bridge happens to re-filter
+   on `is_active` via its user-info query, but the v1 MCP transport dispatches straight on the returned
+   `:user-id`, so a deactivated user's still-live token would authenticate there. Gating in this shared
+   resolver closes that for every caller at once.
 
    This is the single token-resolution lookup shared by the MCP transport and the core
    session middleware's bearer-token bridge — keep it the only place an access token is
@@ -103,5 +112,6 @@
           (when (or (nil? expiry)
                     (t/after? (t/instant expiry) (t/instant)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              {:user-id user-id
-               :scopes  (or (some->> (:scope token-data) (into #{})) #{})})))))))
+              (when (t2/exists? :model/User :id user-id :is_active true)
+                {:user-id user-id
+                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
