@@ -17,11 +17,11 @@
       background-color: var(--mb-color-background_surface-primary-pressed);
     }
 
-    [data-navlink-button][data-variant="subtle"]:hover {
+    [data-navlink-button]:hover {
       background-color: var(--mb-color-background_surface-primary-hover);
     }
 
-    [data-navlink-button][data-variant="subtle"]:active {
+    [data-navlink-button]:active {
       background-color: var(--mb-color-background_surface-primary-pressed);
     }
   }
