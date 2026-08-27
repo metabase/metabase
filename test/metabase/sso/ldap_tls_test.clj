@@ -10,6 +10,7 @@
                                 InMemoryDirectoryServerConfig
                                 InMemoryListenerConfig
                                 SelfSignedCertificateGenerator)
+   (com.unboundid.ldap.sdk LDAPConnectionOptions)
    (com.unboundid.util ObjectPair)
    (com.unboundid.util.ssl HostNameSSLSocketVerifier KeyStoreKeyManager SSLUtil TrustAllTrustManager)
    (java.io File)
@@ -70,7 +71,7 @@
 
 (deftest ldaps-verifies-server-hostname-test
   (testing "TLS connections are configured to verify the server certificate matches the connected host"
-    (let [opt (#'ldap/ldap-connection-options)]
+    (let [^LDAPConnectionOptions opt (#'ldap/ldap-connection-options)]
       (is (instance? HostNameSSLSocketVerifier (.getSSLSocketVerifier opt))
           "a hostname verifier must be installed so a certificate issued for another host is rejected"))))
 

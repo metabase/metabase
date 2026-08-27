@@ -68,7 +68,7 @@
                           :security  (sso.settings/ldap-security)}))
 
 (defn- trust-manager
-  [trust-store]
+  ^javax.net.ssl.X509TrustManager [trust-store]
   (if trust-store
     (TrustStoreTrustManager. ^String trust-store)
     (TrustAllTrustManager.)))

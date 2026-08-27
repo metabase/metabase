@@ -15,12 +15,13 @@
    [:map [:attributes [:maybe [:map-of :string :any]]]]])
 
 (defn- syncable-user-attributes
-  "Directory attributes to sync onto the user: `:objectclass` and the configured blacklist are
-  dropped, and an optional allowlist restricts syncing to named attributes. Surviving attributes are
-  normalized by [[metabase-enterprise.sso.integrations.sso-utils/stringify-valid-attributes]]."
+  "Directory attributes to sync onto the user. Only attributes named in the allowlist are kept, so an
+  empty allowlist syncs nothing; `:objectclass` and the configured blacklist are always dropped.
+  Surviving attributes are normalized by
+  [[metabase-enterprise.sso.integrations.sso-utils/stringify-valid-attributes]]."
   [m]
   (when (ee.sso.settings/ldap-sync-user-attributes)
-    (let [allowlist (not-empty (set (map u/lower-case-en (ee.sso.settings/ldap-sync-user-attributes-allowlist))))
+    (let [allowlist (set (map u/lower-case-en (ee.sso.settings/ldap-sync-user-attributes-allowlist)))
           blocked   (into #{:objectclass}
                           (map (comp keyword u/lower-case-en))
                           (ee.sso.settings/ldap-sync-user-attributes-blacklist))]
@@ -28,7 +29,7 @@
            (remove (fn [[k _]]
                      (let [k-lower (u/lower-case-en (name k))]
                        (or (contains? blocked (keyword k-lower))
-                           (and allowlist (not (contains? allowlist k-lower)))))))
+                           (not (contains? allowlist k-lower))))))
            sso-utils/stringify-valid-attributes))))
 
 (defenterprise-schema find-user :- [:maybe EEUserInfo]

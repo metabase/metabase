@@ -350,7 +350,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :audit      :getter)
 
 (defsetting ldap-sync-user-attributes-allowlist
-  (deferred-tru "Comma-separated list of user attributes to sync for LDAP users. When set, only these attributes are synced; leave blank to sync everything except the blacklist.")
+  (deferred-tru "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.")
   :encryption :no
   :default    ""
   :type       :csv
