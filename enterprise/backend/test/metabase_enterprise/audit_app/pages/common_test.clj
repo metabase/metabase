@@ -20,20 +20,20 @@
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
 (deftest transform-results-test
@@ -127,3 +127,15 @@
              :select    [:mp.dashboard_id]
              :from      [[:most_popular :mp]]
              :left-join [[:dash_avg_running_time :rt] [:= :mp.dashboard_id :rt.dashboard_id]]})))))
+
+(deftest ^:parallel CTEs->subselects-preserves-cte-body-metadata-test
+  (testing "a CTE body keeps its own metadata when inlined: a marked body stays marked, an unmarked one is not laundered"
+    (let [out (#'common/CTEs->subselects
+               {:with [[:marked   ^:allow-subquery {:from [[:view_log :vl]]}]
+                       [:unmarked {:from [[:query_execution :qe]]}]]
+                :from [[:marked :m]]
+                :left-join [[:unmarked :u] [:= :m.id :u.id]]})]
+      (is (true? (:allow-subquery (meta (get-in out [:from 0 0]))))
+          "the marked CTE body carries ^:allow-subquery into its inlined derived table")
+      (is (nil? (:allow-subquery (meta (get-in out [:left-join 0 0]))))
+          "the unmarked CTE body is not given a marker on inline"))))

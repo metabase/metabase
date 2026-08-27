@@ -112,17 +112,17 @@
                                                  :created_at]
                                         :from [:document_bookmark]
                                         :where [:= :user_id user-id]}]]
-    {:union-all (conj base-queries
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 :exploration_id
-                                                 [:exploration_id :item_id]
-                                                 [(h2x/literal "exploration") :type]
-                                                 :created_at]
-                                        :from [:exploration_bookmark]
-                                        :where [:= :user_id user-id]})}))
+    ^:allow-subquery {:union-all (conj base-queries
+                                       ^:allow-subquery {:select [[as-null :card_id]
+                                                                  [as-null :dashboard_id]
+                                                                  [as-null :collection_id]
+                                                                  [as-null :document_id]
+                                                                  :exploration_id
+                                                                  [:exploration_id :item_id]
+                                                                  [(h2x/literal "exploration") :type]
+                                                                  :created_at]
+                                                         :from [:exploration_bookmark]
+                                                         :where [:= :user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
