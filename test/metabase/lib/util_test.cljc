@@ -42,9 +42,8 @@
     ;; already a pipeline: nothing to do
     {:database 1
      :lib/type :mbql/query
-     :stages   [{:lib/type    :mbql.stage/native
-                 :lib/options {:lib/uuid "ef87e113-7436-41dd-9f78-3232c6778436"}
-                 :native      "SELECT * FROM VENUES;"}]}
+     :stages   [{:lib/type :mbql.stage/native
+                 :native   "SELECT * FROM VENUES;"}]}
     {:database 1
      :lib/type :mbql/query
      :stages   [{:lib/type :mbql.stage/native
@@ -58,7 +57,6 @@
            :stages   [{:lib/type    :mbql.stage/mbql
                        :fields      [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins       [{:lib/type    :mbql/join
-                                      :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
                                       :conditions  [[:=
                                                      [:field (meta/id :venues :category-id)]
