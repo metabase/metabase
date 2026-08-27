@@ -619,7 +619,7 @@ describe("Remote Sync", () => {
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
 
-      it("reports every blocked collection, re-opens after a dismissal, syncs them all, and stays hidden for unrelated errors", () => {
+      it("reports every blocked collection and allows to sync from dependency modal", () => {
         createDependencyFixture().then(({ source, blocked, alsoBlocked }) => {
           cy.visit("/admin/settings/remote-sync");
 
@@ -645,22 +645,19 @@ describe("Remote Sync", () => {
           });
 
           H.modal().within(() => {
-            // Every remedy here is a collection we can switch on, so the modal asks rather than refuses.
-            cy.findByText("Sync collections with dependencies?").should(
+            cy.findByText("Couldn’t sync selected collection").should(
               "be.visible",
             );
-            // Both failures resolve to the same remedy, so it is offered once.
             cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
-            cy.button("Cancel").click();
+            cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
+              .should("be.enabled")
+              .click({ force: true });
+            cy.button("Close").click();
           });
-          H.modal().should("not.exist");
 
-          cy.log("Saving the same selection again brings it back");
-          saveAndExpectRefusal();
-
-          H.modal().within(() => {
-            cy.button("Sync required collections").click();
-          });
+          cy.findByTestId("remote-sync-submit-button")
+            .should("be.enabled")
+            .click();
 
           cy.wait("@saveSettings").then(({ request, response }) => {
             expect(response?.statusCode).to.eq(200);
@@ -1154,9 +1151,7 @@ const createCollection = (name: string) =>
 
 // Saves, clears the toast  and yields the refusal for inspection.
 const saveAndExpectRefusal = () => {
-  cy.findByRole("button", { name: "Save changes", timeout: 6000 })
-    .should("be.enabled")
-    .click(); // action button text
+  cy.findByTestId("remote-sync-submit-button").should("be.enabled").click();
   return cy.wait("@saveSettings").then((interception) => {
     expect(interception.response?.statusCode).to.eq(400);
     H.undoToast()

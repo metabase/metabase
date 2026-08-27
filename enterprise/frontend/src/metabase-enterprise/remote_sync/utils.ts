@@ -1,12 +1,6 @@
 import { t } from "ttag";
 
-import type { MovableItem } from "metabase/common/hooks/use-set-collection";
 import type { ColorName } from "metabase/ui/colors/types";
-import {
-  collection as collectionUrl,
-  dataStudioSnippet,
-  modelToUrl,
-} from "metabase/urls";
 import type {
   Collection,
   IconName,
@@ -195,152 +189,12 @@ export const getRequiredCollections = (
   return [...byId.values()];
 };
 
-/**
- * Where to send an admin to see this dependency in context. Null when there is nowhere useful: the
- * backend resolved no collection, or it's a snippet, whose folder isn't browsable as a collection.
- */
-export const getDependencyCollectionUrl = ({
-  model,
-  collection,
-}: RemoteSyncIneligibleDependency): string | null =>
-  model === "snippet" || collection === undefined
-    ? null
-    : collectionUrl(collection);
-
-/**
- * The collection an admin could switch on to cover this dependency. Null when there is nothing to
- * switch on: personal collections can't be synced, and the Library carries no id of its own.
- */
-export const getSyncableRemedyCollection = ({
-  remedy,
-}: RemoteSyncIneligibleDependency): RemoteSyncRemedyCollection | null =>
-  remedy.type === "collection" && !remedy.collection.personal
-    ? remedy.collection
-    : null;
-
-/** Every model a dependency can be is movable, and none of them need more than a model and id. */
-export const toMovableItem = ({
-  model,
-  id,
-}: RemoteSyncIneligibleDependency): MovableItem => ({ model, id });
-
 /** Identity for a dependency or one of its referrers — neither is unique on `id` alone. */
 export const getEntityKey = ({
   model,
   id,
 }: Pick<RemoteSyncDependencyEntity, "model" | "id">): string =>
   `${model}:${id}`;
-
-export type UnsyncedContentGroup = {
-  usedBy: RemoteSyncDependencyEntity | null;
-  dependencies: RemoteSyncIneligibleDependency[];
-};
-
-const UNATTRIBUTED_GROUP_KEY = "unattributed";
-
-/** Which group a dependency lands in — its entry point, or a shared bucket if it has none. */
-export const getGroupKey = (
-  usedBy: RemoteSyncDependencyEntity | null,
-): string => (usedBy == null ? UNATTRIBUTED_GROUP_KEY : getEntityKey(usedBy));
-
-type UsedByPair = {
-  usedBy: RemoteSyncDependencyEntity | null;
-  dependency: RemoteSyncIneligibleDependency;
-};
-
-/** Walks up past referrers that are themselves blocked, to the syncable content that needs this. */
-const getEntryPoints = (
-  dependency: RemoteSyncIneligibleDependency,
-  dependenciesByKey: Map<string, RemoteSyncIneligibleDependency>,
-  visited: Set<string> = new Set(),
-): RemoteSyncDependencyEntity[] => {
-  const key = getEntityKey(dependency);
-
-  // Content can't legally depend on itself, but a cycle here would hang the modal rather than fail loudly.
-  if (visited.has(key)) {
-    return [];
-  }
-  visited.add(key);
-
-  return dependency.used_by.flatMap((referrer) => {
-    const blockedReferrer = dependenciesByKey.get(getEntityKey(referrer));
-
-    return blockedReferrer == null
-      ? [referrer]
-      : getEntryPoints(blockedReferrer, dependenciesByKey, visited);
-  });
-};
-
-/**
- * One (entry point, dependency) pair per group a dependency belongs in. Keyed on both because a
- * dependency reaches one entry point by several routes, and arrives once per collection it blocks.
- */
-const getUsedByPairs = (
-  failures: RemoteSyncDependencyFailure[],
-): UsedByPair[] => {
-  const dependencies = failures.flatMap((failure) => failure.dependencies);
-  const dependenciesByKey = new Map<string, RemoteSyncIneligibleDependency>(
-    dependencies.map((dependency) => [getEntityKey(dependency), dependency]),
-  );
-
-  return [
-    ...new Map<string, UsedByPair>(
-      dependencies
-        .flatMap((dependency): UsedByPair[] => {
-          const entryPoints = getEntryPoints(dependency, dependenciesByKey);
-
-          return entryPoints.length > 0
-            ? entryPoints.map((usedBy) => ({ usedBy, dependency }))
-            : [{ usedBy: null, dependency }];
-        })
-        .map((pair) => [
-          `${getGroupKey(pair.usedBy)}|${getEntityKey(pair.dependency)}`,
-          pair,
-        ]),
-    ).values(),
-  ];
-};
-
-/** Collects the pairs into one group per entry point, with the unattributed bucket last. */
-export const getUnsyncedContentGroups = (
-  failures: RemoteSyncDependencyFailure[],
-): UnsyncedContentGroup[] => {
-  const groups = [
-    ...getUsedByPairs(failures)
-      .reduce((byKey, { usedBy, dependency }) => {
-        const group = byKey.get(getGroupKey(usedBy));
-
-        return byKey.set(getGroupKey(usedBy), {
-          usedBy,
-          dependencies: [...(group?.dependencies ?? []), dependency],
-        });
-      }, new Map<string, UnsyncedContentGroup>())
-      .values(),
-  ];
-
-  return [
-    ...groups.filter((group) => group.usedBy != null),
-    ...groups.filter((group) => group.usedBy == null),
-  ];
-};
-
-export const getDependencyUrl = (
-  dependency: RemoteSyncIneligibleDependency,
-): string =>
-  dependency.model === "snippet"
-    ? dataStudioSnippet(dependency.id)
-    : modelToUrl(dependency);
-
-export const getDependencyLocation = (
-  dependency: RemoteSyncIneligibleDependency,
-): string | null => {
-  const { collection } = dependency;
-
-  if (collection === undefined) {
-    return null;
-  }
-  return collection === null ? t`Our analytics` : collection.name;
-};
 
 export const ROOT_COLLECTION_ROW_ID = "root";
 
@@ -391,18 +245,53 @@ export const getRequiredCollectionRows = (
   ...getUnsyncableRows(failures),
 ];
 
-// `every`, not `some`: one dependency we can't toggle makes this a partial fix, which is refused again.
-export const canSyncRequiredCollections = (
+export const isSyncableRow = (
+  row: RequiredCollectionRow,
+): row is RequiredCollectionRow & { id: number } =>
+  row.syncable && typeof row.id === "number";
+
+const getUniqueDependencies = (
   failures: RemoteSyncDependencyFailure[],
-): boolean =>
-  getRequiredCollections(failures).length > 0 &&
-  failures.every((failure) =>
-    failure.dependencies.every(
-      (dependency) =>
-        dependency.remedy.type === "collection" &&
-        !dependency.remedy.collection.personal,
-    ),
-  );
+): RemoteSyncIneligibleDependency[] => [
+  ...new Map(
+    failures
+      .flatMap((failure) => failure.dependencies)
+      .map((dependency) => [getEntityKey(dependency), dependency]),
+  ).values(),
+];
+
+const getDependencyRowId = ({
+  remedy,
+  collection,
+}: RemoteSyncIneligibleDependency): RequiredCollectionRow["id"] | null => {
+  if (remedy.type === "collection") {
+    return remedy.collection.id;
+  }
+  // The Library carries no id of its own, and an unresolved collection gives us nothing to name.
+  if (remedy.type === "library" || collection === undefined) {
+    return null;
+  }
+  return collection === null ? ROOT_COLLECTION_ROW_ID : collection.id;
+};
+
+export const getRowDependencies = (
+  failures: RemoteSyncDependencyFailure[],
+): Map<RequiredCollectionRow["id"], RemoteSyncIneligibleDependency[]> => {
+  const byRow = new Map<
+    RequiredCollectionRow["id"],
+    RemoteSyncIneligibleDependency[]
+  >();
+
+  getUniqueDependencies(failures).forEach((dependency) => {
+    const rowId = getDependencyRowId(dependency);
+
+    if (rowId != null) {
+      byRow.set(rowId, [...(byRow.get(rowId) ?? []), dependency]);
+    }
+  });
+
+  return byRow;
+};
 
 export type BlockedReason =
   | "personal-content"

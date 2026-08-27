@@ -1,7 +1,44 @@
-.collectionRow {
-  border-bottom: 1px solid var(--mb-color-border);
+/*
+ * Every slot override below is prefixed with `.accordion` to out-specify the single-class theme
+ * rules in metabase/ui's Accordion.module.css. The compound selectors are written flat on purpose:
+ * nesting them would make postcss-nesting wrap them in `:is()` and change the specificity math.
+ */
+.accordion .item,
+.accordion .item + .item,
+.accordion .item[data-active] {
+  border: 0;
+  border-radius: 0;
+}
 
-  &:last-child {
-    border-bottom: none;
-  }
+/* Padding lives on the row around it, which the switch shares. */
+.accordion .control {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.accordion .label {
+  color: var(--mb-color-text-primary);
+  font-size: inherit;
+  font-weight: normal;
+  line-height: inherit;
+  padding: 0.5rem 0;
+}
+
+.accordion .chevron {
+  border: 0;
+  color: var(--mb-color-text-secondary);
+  height: auto;
+  margin-left: 0;
+  width: auto;
+}
+
+.accordion .content {
+  border-top: none;
+  padding-top: 1rem;
+  padding-left: 3rem;
+}
+
+.contentRow:not(:last-of-type) {
+  border-bottom: 1px solid var(--mb-color-border);
 }
