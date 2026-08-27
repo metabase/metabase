@@ -174,7 +174,7 @@
                 query (lib/query mp (lib.metadata/card mp 2))]
             (is (=? {:display-name "[RENAMED]"
                      :id           (if with-bad-55-card-metadata?
-                                     (symbol "nil #_\"key is not present.\"") ; ID should be stripped
+                                     (mt/id :orders :id) ; note that this is the wrong ID
                                      (mt/id :products :id))}
                     (returned-col query)))
             ;; the bug only seems to trigger if we preprocess the query first

@@ -260,8 +260,8 @@
       (let [card-id (:qp/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
           (when-some [potential-card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
-                                                       ;; if we have `id` then filter out anything that is definitely not a
-                                                       ;; match
+                                                       ;; if we have `id` then filter out anything that is definitely
+                                                       ;; not a match
                                                        (:id col) (filter #(= (:id %) (:id col)))))]
             ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
             ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
