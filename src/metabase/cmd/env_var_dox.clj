@@ -183,10 +183,15 @@
   "Used to filter out environment variables with high foot-gun indices."
   [env-var]
   (or (false? (:doc env-var))
-      (false? (:can-read-from-env? env-var))
       ;; Ideally, we'd move off of this list completely,
       ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
+
+(defn- ignores-env-var?
+  "Whether a setting ignores its environment variable, so there is no environment variable to document.
+   Such a setting is still settable in the Admin settings and in a configuration file."
+  [env-var]
+  (false? (:can-read-from-env? env-var)))
 
 (defn- setter-none?
   "Used to remove undocumented settings that lack a setter (`:setter :none`).
@@ -215,7 +220,10 @@
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
-  (map format-env-var-entry (remove-env-vars-we-should-not-document settings)))
+  (->> settings
+       remove-env-vars-we-should-not-document
+       (remove ignores-env-var?)
+       (map format-env-var-entry)))
 
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."
