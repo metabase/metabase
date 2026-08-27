@@ -1333,7 +1333,8 @@
            metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
-           metabase.mcp.usage}
+           metabase.mcp.usage
+           metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
@@ -1341,10 +1342,15 @@
            api
            app-db
            config
+           dashboards
            llm
            metabot
+           models
+           notification
            oauth-server
+           permissions
            premium-features
+           pulse
            request
            server
            session
@@ -1375,6 +1381,7 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.metadata-perms
+              metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}

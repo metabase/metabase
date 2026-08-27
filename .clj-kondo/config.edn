@@ -453,7 +453,9 @@
     toucan2.core                              t2}}}
 
  :lint-as
- {cljs.cache/defcache                                                                   clojure.core/deftype
+ {
+  cljs.cache/defcache                                                                   clojure.core/deftype
+  metabase.mcp.v2.registry/deftool                                                     clojure.core/defn
   clojure.core.cache/defcache                                                           clojure.core/deftype
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
