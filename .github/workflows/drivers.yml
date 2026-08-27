@@ -315,8 +315,47 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
-  be-tests-databricks-ee:
+  get-databricks-secrets:
     needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      creds: ${{ steps.get-databricks-secrets.outputs.creds }}
+    env:
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_HOST_2: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST_2 }}
+      MB_DATABRICKS_TEST_HTTP_PATH_2: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH_2 }}
+      MB_DATABRICKS_TEST_TOKEN_2: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN_2 }}
+    steps:
+      - name: Get Databricks secrets
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const totalShards = 2;
+            const shardId = Number(${{ github.run_number }}) % totalShards;
+
+            const shards = [
+              {
+                host: process.env.MB_DATABRICKS_TEST_HOST,
+                httpPath: process.env.MB_DATABRICKS_TEST_HTTP_PATH,
+                token: process.env.MB_DATABRICKS_TEST_TOKEN,
+              },
+              {
+                host: process.env.MB_DATABRICKS_TEST_HOST_2,
+                httpPath: process.env.MB_DATABRICKS_TEST_HTTP_PATH_2,
+                token: process.env.MB_DATABRICKS_TEST_TOKEN_2,
+              },
+            ];
+            console.log(`Selected shard ${shardId} of ${totalShards}:`);
+
+            const selectedShard = shards[shardId];
+            core.setOutput("creds", selectedShard.);
+
+  be-tests-databricks-ee:
+    needs: [determine-driver-skips, get-databricks-secrets]
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
@@ -338,12 +377,17 @@ jobs:
               :fail-fast? true
               :partition/total 2
               :partition/index 1
+          - name: Driver Tests (Multi-Catalog)
+            test-args: >-
+              :only metabase.driver.databricks-test
+              :fail-fast? true
     env:
       CI: 'true'
       DRIVERS: databricks
-      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
-      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
-      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_HOST: ${{ fromJSON(needs.get-databricks-secrets.outputs.creds).host }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ fromJSON(needs.get-databricks-secrets.outputs.creds).httpPath }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ fromJSON(needs.get-databricks-secrets.outputs.creds).token }}
+      # these work for both shards 👇
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
@@ -356,46 +400,6 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-
-  # there's no need for this to be a completely separate job; it should be
-  # just another test or set of tests inside metabase.driver.databricks-test,
-  # but for the time being let's just get rid of the full duplication and just
-  # run the tests that are affected by the multi-catalog behavior.
-  be-tests-databricks-multi-catalog-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only metabase.driver.databricks-test
-              :fail-fast? true
-    env:
-      CI: 'true'
-      DRIVERS: databricks
-      MB_DATABRICKS_TEST_MULTI_LEVEL_SCHEMA: true
-      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
-      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
-      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
-      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
-      MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
-      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
-      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
-    steps:
-    - uses: actions/checkout@v6
-    - name: Test Databricks driver with multi-catalog
-      id: test-driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-databricks-multi-catalog-ee'
         artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
@@ -1300,7 +1304,6 @@ jobs:
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-clickhouse-ee
       - be-tests-databricks-ee
-      - be-tests-databricks-multi-catalog-ee
       - be-tests-druid-jdbc-ee
       - be-tests-h2
       - be-tests-h2-oss
