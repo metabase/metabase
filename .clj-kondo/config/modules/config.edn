@@ -340,10 +340,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field
-                    :model/QueryCache
-                    :model/Secret
-                    :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
 
   appearance
   {:team "UX West"
@@ -1948,8 +1945,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:team "Graphy"
