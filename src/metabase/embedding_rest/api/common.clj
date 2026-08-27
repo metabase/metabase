@@ -326,7 +326,7 @@
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
                                       (t2/select-one-fn :embedding_params :model/Card :id card-id))]
-    (-> (apply api.public/public-card :id card-id, constraints)
+    (-> (apply api.public/public-card card-id constraints)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params resolved-embedding-params)
@@ -447,7 +447,7 @@
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard :id dashboard-id constraints)
+    (-> (apply api.public/public-dashboard dashboard-id constraints)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)

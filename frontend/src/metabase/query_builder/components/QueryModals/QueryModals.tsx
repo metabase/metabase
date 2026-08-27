@@ -16,6 +16,9 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
+import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
+import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
@@ -29,9 +32,6 @@ import {
 } from "../../store/selectors";
 import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "../NewDatasetModal";
-import EditEventModal from "../timelines/containers/EditEventModal";
-import MoveEventModal from "../timelines/containers/MoveEventModal";
-import NewEventModal from "../timelines/containers/NewEventModal";
 import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };

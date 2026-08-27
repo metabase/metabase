@@ -13,7 +13,7 @@
    (clojure.lang ExceptionInfo)
    (java.lang Integer)))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:unresolved-symbol]}
 (set! *warn-on-reflection* true)
 
 (comment change-set.strict/keep-me)
@@ -151,7 +151,7 @@
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
      (throw (validation-error
-             #_:clj-kondo/ignore
+             #_{:clj-kondo/ignore [:unresolved-symbol]}
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
@@ -358,7 +358,7 @@
                   (sequential? x) (mapv fix-vals x)
                   :else x))]
     (fix-vals (yaml/parse-string
-               #_:clj-kondo/ignore (slurp file)))))
+               #_{:clj-kondo/ignore [:unresolved-symbol]} (slurp file)))))
 
 (defn- display-name
   "Returns a human-readable name for a migration file.
@@ -386,13 +386,13 @@
   (try
     (validate-all)
     (println "Ok.")
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
-          #_:clj-kondo/ignore
+          #_{:clj-kondo/ignore [:unresolved-symbol]}
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
@@ -400,7 +400,7 @@
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
       (System/exit 1))
-    (catch #_:clj-kondo/ignore
+    (catch #_{:clj-kondo/ignore [:unresolved-symbol]}
      Throwable e
            (pprint/pprint (Throwable->map e))
            (println (.getMessage e))

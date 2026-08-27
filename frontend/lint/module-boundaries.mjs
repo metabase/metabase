@@ -271,7 +271,7 @@ const elements = [
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
-  createElement({ type: "feature", name: "documents" }),
+  createElement({ type: "shared", name: "documents" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below

@@ -8,7 +8,6 @@ import {
   WritableStream,
 } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
-import "raf/polyfill";
 import "jest-canvas-mock";
 import "__support__/mocks";
 

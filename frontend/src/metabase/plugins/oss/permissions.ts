@@ -4,7 +4,6 @@ import type { ReactElement, ReactNode } from "react";
 import { getUserIsAdmin } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import type { ColorName } from "metabase/ui/colors/types";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DataPermission,
   DatabaseEntityId,
@@ -15,6 +14,7 @@ import type {
   IconName,
   PermissionEntityId,
   PermissionSubject,
+  PermissionsDatabase,
   SpecialGroupType,
   User,
 } from "metabase-types/api";
@@ -142,7 +142,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     entityId: PermissionEntityId,
     permission: DataPermission,
     value: DataPermissionValue,
-    database: Database,
+    database: PermissionsDatabase,
   ) => boolean;
 
   upgradeViewPermissionsIfNeeded:
@@ -151,7 +151,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
         groupId: number,
         entityId: PermissionEntityId,
         value: DataPermissionValue,
-        database: Database,
+        database: PermissionsDatabase,
         permission: DataPermission,
       ) => GroupsPermissions)
     | null;
@@ -168,7 +168,7 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 const getDefaultAdvancedPermissions = () => ({
   addDatabasePermissionOptions: (
     permissions: PermissionOption[],
-    _database: Database,
+    _database: PermissionsDatabase,
   ) => permissions,
   addSchemaPermissionOptions: (
     permissions: PermissionOption[],
