@@ -178,6 +178,7 @@ jobs:
     env:
       MB_RUN_MODE: "e2e"
       MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
+      MB_OUTBOUND_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-backward-compatibility
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`

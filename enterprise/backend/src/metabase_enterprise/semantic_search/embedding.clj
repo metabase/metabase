@@ -473,8 +473,10 @@
   `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
   `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
+  `:network-policy`  — optional; overrides the outbound network policy for this endpoint
   `:type`            — optional; forwarded to the token-tracking row"
-  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?]
+  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
+           network-policy]
     :as opts}
    :- [:map
        [:provider       :string]
@@ -485,7 +487,8 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe :map]]]]
+       [:extra-body     {:optional true} [:maybe :map]]
+       [:network-policy {:optional true} [:maybe :keyword]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
@@ -497,13 +500,14 @@
                                              (throw (ex-info "Premium embedding token not set"
                                                              {:provider provider}))))}
                                         {"Authorization" (str "Bearer " api-key)}))
-          request              (merge embedding-http-timeouts
-                                      {:headers headers
-                                       :body    (json/encode
-                                                 (merge {:model           model-name
-                                                         :input           texts
-                                                         :encoding_format "base64"}
-                                                        extra-body))})
+          request              (cond-> (merge embedding-http-timeouts
+                                              {:headers headers
+                                               :body    (json/encode
+                                                         (merge {:model           model-name
+                                                                 :input           texts
+                                                                 :encoding_format "base64"}
+                                                                extra-body))})
+                                 network-policy (assoc :network-policy network-policy))
           start-ms             (u/start-timer)
           {:keys [usage embeddings]}
           (call-through-embedder-breaker
@@ -557,17 +561,23 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
+  "Returns [endpoint api-key network-policy]. When api key is not set or when service url is not set but
   `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. Throws if neither base URL is configured."
+  is used for authentication. Throws if neither base URL is configured.
+
+  `network-policy` is nil for the customer-configured service, which is a settings-manager-writable URL and so keeps
+  the strict default. The managed AI service gets `:allow-private`: on Cloud it runs inside our own cluster and
+  answers on a private address, and its URL comes only from MB_AI_SERVICE_BASE_URL."
   []
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
         [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
-         (semantic-settings/ee-embedding-service-api-key)]
+         (semantic-settings/ee-embedding-service-api-key)
+         nil]
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
         [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         nil]
+         nil
+         :allow-private]
 
         :else
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
@@ -579,11 +589,12 @@
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+  (let [[endpoint api-key network-policy] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "ai-service"
       :endpoint       endpoint
       :api-key        api-key
+      :network-policy network-policy
       :model-name     model-name
       :vector-dimensions vector-dimensions
       :texts          texts

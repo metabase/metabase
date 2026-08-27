@@ -6,7 +6,8 @@
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.http :as u.http]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]))
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
@@ -457,10 +458,14 @@
   :export?    false
   :doc        false)
 
-;;; ---------------------------------------- outbound HTTP network policy ----------------------------------------
+;;; ------------------------------------------ outbound network policy ------------------------------------------
 
-(defsetting outbound-http-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may open outbound HTTP connections to.\n"
+(def ^:private outbound-network-policies
+  "The values `outbound-allowed-networks` accepts."
+  #{:external-only :allow-private :allow-all})
+
+(defsetting outbound-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may open outbound connections to.\n"
                      "Options:\n"
                      "- external-only (only globally routable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
@@ -470,21 +475,38 @@
   :type       :keyword
   :visibility :internal
   :export?    false
+  ;; Read-only. `:visibility :internal` hides the value from the settings API but leaves the write path open to any
+  ;; superuser, so on its own it would let a Metabase admin widen the policy on a Cloud instance. That leaves the env
+  ;; var and the deployment default as the only inputs, which is the point: the choice belongs to whoever runs the
+  ;; process. It also means a `config.yaml` cannot set this, because that writes through the ordinary setter.
+  :setter     :none
   ;; No `:default`, because it depends on where we are running. On Cloud an internal destination is somebody
   ;; reaching for our own infrastructure. Self-hosted, an internal service is the ordinary case, and defaulting to
   ;; anything stricter would break working instances on upgrade.
   :getter     (fn []
-                (or (setting/get-value-of-type :keyword :outbound-http-allowed-networks)
+                (or (when-let [configured (setting/get-value-of-type :keyword :outbound-allowed-networks)]
+                      ;; With no setter the env var goes unchecked, and a typo must not be able to widen the policy,
+                      ;; so anything unrecognised falls back to the strictest value rather than through.
+                      (if (contains? outbound-network-policies configured)
+                        configured
+                        (do (log/warnf (str "Ignoring invalid MB_OUTBOUND_ALLOWED_NETWORKS %s; using"
+                                            " external-only. Valid values: external-only, allow-private, allow-all.")
+                                       (pr-str configured))
+                            :external-only)))
                     (if (is-hosted?)
                       :external-only
                       :allow-all)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru (str "Invalid outbound-http-allowed-networks! Only values of `external-only`, "
-                                    "`allow-private`, and `allow-all` are allowed."))))
-                (setting/set-value-of-type! :keyword :outbound-http-allowed-networks new-value)))
+  ;; A `:setter :none` setting is left out of the generated env-var docs unless it carries a `:doc` string, and an
+  ;; operator-facing toggle that can only be set from the environment is exactly the kind that needs documenting.
+  :doc        "This covers the HTTP calls Metabase itself makes -- to LLM providers, the GeoJSON and map-tile
+fetchers, Slack, webhooks and similar. Connections to your data warehouses are governed separately, by
+`MB_WAREHOUSE_ALLOWED_NETWORKS`.
+
+The two defaults differ deliberately. On Metabase Cloud an internal address means something is reaching for
+Metabase's own infrastructure, so the default is the strict one. On a self-hosted instance reaching an internal
+service is ordinary, and defaulting to anything stricter would break working instances on upgrade. To harden a
+self-hosted instance, set this to `external-only`.")
 
 ;; `util.http` sits below `premium-features` in the module graph and cannot ask whether we are hosted, so hand it
 ;; the getter. Until this runs its default is `:external-only`, which fails closed.
-(alter-var-root #'u.http/default-network-policy-fn (constantly outbound-http-allowed-networks))
+(alter-var-root #'u.http/default-network-policy-fn (constantly outbound-allowed-networks))
