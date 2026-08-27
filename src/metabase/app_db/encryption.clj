@@ -206,17 +206,17 @@
   [progress]
   (nil? (pending progress)))
 
-(def ^:private progress-key
+(def ^:private backfill-progress-key
   "Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
   module can't depend on the settings module without a cycle."
   "encryption-backfill-progress")
 
-(defn read-progress
+(defn read-backfill-progress
   "Per-column sweep progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it
   survives the round trip unchanged, and read plaintext-tolerantly because key rotation re-encrypts every `setting`
   row, including this one."
   []
-  (when-let [raw (t2/select-one-fn :value :setting :key progress-key)]
+  (when-let [raw (t2/select-one-fn :value :setting :key backfill-progress-key)]
     (try
       (json/decode (encryption/maybe-decrypt-accepting-plaintext raw))
       (catch Throwable e
@@ -224,19 +224,17 @@
         (log/warn e "Could not read encryption backfill progress, starting from the beginning")
         nil))))
 
-(defn save-progress!
-  "Write sweep progress, or clear it when `progress` is nil so the next sweep starts from the beginning."
-  ([progress] (save-progress! nil progress))
-  ([conn progress]
-   (if (nil? progress)
-     (t2/delete! :conn conn :setting :key progress-key)
-     (let [value (encryption/maybe-encrypt (json/encode progress))]
-       (when (zero? (t2/update! :conn conn :setting {:key progress-key} {:value value}))
-         (t2/insert! :conn conn :setting {:key progress-key :value value}))))))
+(defn save-backfill-progress!
+  "Record how far the sweep got."
+  [progress]
+  (let [value (encryption/maybe-encrypt (json/encode progress))]
+    (when (zero? (t2/update! :setting {:key backfill-progress-key} {:value value}))
+      (t2/insert! :setting {:key backfill-progress-key :value value}))))
 
-(def ^:private complete-progress
-  "Progress marking every column swept."
-  (into {} (map (juxt column-key (constantly done))) dwh-derived-columns))
+(defn clear-backfill-progress!
+  "Forget how far the sweep got, so the next one starts from the beginning."
+  ([] (clear-backfill-progress! nil))
+  ([conn] (t2/delete! :conn conn :setting :key backfill-progress-key)))
 
 (defn rewrite-dwh-derived-columns!
   "Convert [[dwh-derived-columns]] with `f`, resuming from `progress` and stopping once `deadline-ms` has passed (nil
@@ -301,8 +299,9 @@
                       {:value (encrypt-str-fn value)})))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
-      ;; a cursor from a previous sweep says nothing about the key we just switched to
-      (save-progress! conn (when (and encrypting? (not defer-dwh-derived?)) complete-progress))
+      ;; both leave the columns in the clear, so a finished sweep would wrongly tell the backfill to skip them
+      (when (or defer-dwh-derived? (not encrypting?))
+        (clear-backfill-progress! conn))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db

@@ -3046,8 +3046,8 @@
             (testing "forward leaves the row alone"
               (is (not= plaintext (stored field-id))))
             (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
-              (mdb.encryption/save-progress! {"metabase_field/fingerprint" "done"})
+              (mdb.encryption/save-backfill-progress! {"metabase_field/fingerprint" "done"})
               (migrate! :down 63)
               (is (= plaintext (stored field-id)))
               (testing "and forgets the sweep, so upgrade -> downgrade -> upgrade re-encrypts"
-                (is (nil? (mdb.encryption/read-progress)))))))))))
+                (is (nil? (mdb.encryption/read-backfill-progress)))))))))))

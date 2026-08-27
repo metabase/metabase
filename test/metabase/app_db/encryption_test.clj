@@ -98,8 +98,8 @@
               ;; stop mid-sweep so there is real progress to persist
               {:keys [progress]} (mdb.encryption/rewrite-dwh-derived-columns!
                                   mdb.encryption/encrypt-value nil (System/currentTimeMillis) 1)
-              round-tripped      (do (mdb.encryption/save-progress! progress)
-                                     (mdb.encryption/read-progress))]
+              round-tripped      (do (mdb.encryption/save-backfill-progress! progress)
+                                     (mdb.encryption/read-backfill-progress))]
           (is (= progress round-tripped)
               "stored progress comes back identical")
           (is (not (mdb.encryption/sweep-complete? round-tripped)))
@@ -139,23 +139,37 @@
     (mt/with-empty-h2-app-db!
       (encryption-test/with-secret-key secret-key
         (let [ids (plaintext-fields! 3)]
-          (mdb.encryption/save-progress! {"metabase_field/fingerprint" "done"})
+          (mdb.encryption/save-backfill-progress! {"metabase_field/fingerprint" "done"})
           (mdb.encryption/encrypt-db :h2 (data-source) nil :defer-dwh-derived? true)
           (doseq [[i id] (map-indexed vector ids)]
             (is (= (fingerprint-json i) (stored-fingerprint id))
                 "fingerprints are still plaintext"))
-          (is (nil? (mdb.encryption/read-progress))
+          (is (nil? (mdb.encryption/read-backfill-progress))
               "and the cursor is cleared, so a stale one can't make the backfill skip them"))))))
 
-(deftest encrypt-db-inline-marks-the-sweep-complete-test
-  (testing "encrypting them inline records that the backfill has nothing left to do"
+(deftest encrypt-db-inline-encrypts-dwh-derived-columns-test
+  (testing "without the flag they are encrypted here, and the cursor is left alone because they are not in the clear"
     (mt/with-empty-h2-app-db!
       (encryption-test/with-secret-key secret-key
-        (let [ids (plaintext-fields! 3)]
+        (let [ids    (plaintext-fields! 3)
+              cursor {"metabase_field/fingerprint" 1}]
+          (mdb.encryption/save-backfill-progress! cursor)
           (mdb.encryption/encrypt-db :h2 (data-source) nil)
           (doseq [[i id] (map-indexed vector ids)]
             (is (= (fingerprint-json i) (encryption/maybe-decrypt (stored-fingerprint id)))))
-          (is (mdb.encryption/sweep-complete? (mdb.encryption/read-progress))))))))
+          (is (= cursor (mdb.encryption/read-backfill-progress))))))))
+
+(deftest rotation-leaves-the-cursor-readable-under-the-new-key-test
+  (testing "the cursor is re-encrypted with the key we rotate to, like every other setting row"
+    (mt/with-empty-h2-app-db!
+      (let [cursor {"metabase_field/fingerprint" 1}]
+        (encryption-test/with-secret-key secret-key
+          (plaintext-fields! 2)
+          (mdb.encryption/encrypt-db :h2 (data-source) nil)
+          (mdb.encryption/save-backfill-progress! cursor)
+          (mdb.encryption/encrypt-db :h2 (data-source) "rotated-to-this-other-key"))
+        (encryption-test/with-secret-key "rotated-to-this-other-key"
+          (is (= cursor (mdb.encryption/read-backfill-progress))))))))
 
 (deftest decrypt-db-clears-the-sweep-cursor-test
   (testing "removing the key resets progress, so setting one again re-encrypts instead of skipping"
@@ -163,10 +177,10 @@
       (let [ids (encryption-test/with-secret-key secret-key
                   (let [ids (plaintext-fields! 3)]
                     (mdb.encryption/encrypt-db :h2 (data-source) nil)
-                    (is (mdb.encryption/sweep-complete? (mdb.encryption/read-progress)))
+                    (mdb.encryption/save-backfill-progress! {"metabase_field/fingerprint" "done"})
                     (mdb.encryption/decrypt-db :h2 (data-source))
                     ids))]
         (doseq [[i id] (map-indexed vector ids)]
           (is (= (fingerprint-json i) (stored-fingerprint id))
               "back to plaintext"))
-        (is (nil? (mdb.encryption/read-progress)))))))
+        (is (nil? (mdb.encryption/read-backfill-progress)))))))

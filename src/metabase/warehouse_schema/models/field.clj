@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.field
   (:require
-   [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -103,13 +102,11 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-;; the metadata provider decrypts this for every field of every table in a query, so it needs a cache. Bounded by
-;; count too: sync touches every field in quick succession, which a TTL alone would never evict.
+;; the metadata provider decrypts this for every field of every table in a query, so it needs a cache. LRU rather
+;; than TTL: sync touches every field in quick succession, and nothing here may grow unbounded.
 (def ^:private cached-encrypted-fingerprints
   (update (mi/transform-encrypted transform-json-fingerprints)
-          :out #(memoize/memoizer % (-> {}
-                                        (cache/lru-cache-factory :threshold 5000)
-                                        (cache/ttl-cache-factory :ttl (* 60 60 1000))))))
+          :out memoize/lru :lru/threshold 1000))
 
 (t2/deftransforms :model/Field
   {:base_type         transform-field-base-type

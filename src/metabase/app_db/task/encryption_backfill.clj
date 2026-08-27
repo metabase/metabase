@@ -37,7 +37,7 @@
 (defn- readiness []
   (cond
     (not (encryption/default-encryption-enabled?))                    :no-key
-    (mdb.encryption/sweep-complete? (mdb.encryption/read-progress))   :already-complete
+    (mdb.encryption/sweep-complete? (mdb.encryption/read-backfill-progress))   :already-complete
     :else                                                             :ready))
 
 (defn- log-skip [reason]
@@ -54,8 +54,8 @@
       {:status :skipped :reason reason}
       (let [deadline (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
             {:keys [progress] :as result} (mdb.encryption/rewrite-dwh-derived-columns!
-                                           mdb.encryption/encrypt-value (mdb.encryption/read-progress) deadline batch-size)]
-        (mdb.encryption/save-progress! progress)
+                                           mdb.encryption/encrypt-value (mdb.encryption/read-backfill-progress) deadline batch-size)]
+        (mdb.encryption/save-backfill-progress! progress)
         (assoc result :status (if (mdb.encryption/sweep-complete? progress) :complete :more))))))
 
 (task/defjob ^{DisallowConcurrentExecution true
