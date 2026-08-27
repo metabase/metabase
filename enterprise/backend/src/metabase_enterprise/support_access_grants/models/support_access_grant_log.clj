@@ -47,18 +47,25 @@
                :user_name (:first_name user-info)
                :user_email (:email user-info))))))
 
+(defn revoke-support-user-access!
+  "Tear down the support user's access as of `ended-at`: drop superuser, expire every AuthIdentity so the
+  time-limited password can't be used again, and delete their sessions. Called both when a grant is explicitly
+  revoked and when one simply runs out."
+  [support-user-id ended-at]
+  (let [auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
+    (try
+      (t2/update! :model/User support-user-id {:is_superuser false})
+      (catch Exception e
+        ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
+        ;; Sessions and auth identities are still cleaned up below, preventing further access.
+        (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
+    (when (seq auth-identity-ids)
+      (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at ended-at}))
+    (t2/delete! :model/Session :user_id support-user-id)))
+
 (t2/define-after-update :model/SupportAccessGrantLog
   [{revoked-at :revoked_at :as grant}]
   (u/prog1 grant
     (when revoked-at
       (when-let [support-user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
-        (let [support-user-id (:id support-user)
-              auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
-          (try
-            (t2/update! :model/User support-user-id {:is_superuser false})
-            (catch Exception e
-              ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
-              ;; Sessions and auth identities are still cleaned up below, preventing further access.
-              (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
-          (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at revoked-at})
-          (t2/delete! :model/Session :user_id support-user-id))))))
+        (revoke-support-user-access! (:id support-user) revoked-at)))))
