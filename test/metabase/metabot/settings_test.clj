@@ -241,6 +241,17 @@
       (with-selected-model "vllm/vllm-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
+(deftest metabot-supports-reasoning-managed-proxy-test
+  (testing "the managed connection answers from the model's own provider segment"
+    (with-connections [(connection "metabase" "metabase")]
+      (doseq [[model-ref expected]
+              {"metabase/anthropic/claude-sonnet-4-6" true
+               "metabase/anthropic/claude-haiku-4-5"  false
+               "metabase/openai/gpt-5.4"              true}]
+        (testing model-ref
+          (with-selected-model model-ref
+            (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
+
 (deftest metabot-configured-with-a-keyless-vllm-connection-test
   (testing "a vLLM server started without --api-key is a complete configuration: the base URL is the credential"
     (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]

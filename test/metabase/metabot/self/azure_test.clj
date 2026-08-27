@@ -4,11 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
-   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -88,24 +86,10 @@
                                              :base-url "https://my-resource.services.ai.azure.com/anthropic"}
                                :model       "anthropic/claude-sonnet-4-5"}))))))
 
-(deftest list-models-falls-back-to-the-configured-azure-model-test
-  (testing "without a candidate model, validation uses the saved Azure model's family"
-    (llm.tu/with-connections [(llm.tu/connection "azure" {:api-key "saved-key" :base-url test-base-url})]
-      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
-        (let [captured (atom nil)]
-          (with-redefs [http/request (fn [req] (reset! captured req) {:status 200 :body {:data []}})]
-            (is (= {:models []}
-                   (azure/list-models {:credentials {:api-key "saved-key" :base-url test-base-url}})))
-            (is (=? {:method :get
-                     :url    (str test-base-url "/v1/models")}
-                    @captured))))))))
-
 (deftest list-models-skips-validation-without-any-model-test
-  (testing "with no candidate model and a non-Azure provider configured, there is no surface to probe"
-    (llm.tu/with-default-connections
-      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-        (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-          (is (= {:models []} (azure/list-models))))))))
+  (testing "without a candidate model there is no surface to probe"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (= {:models []} (azure/list-models))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; API family dispatch and request construction
