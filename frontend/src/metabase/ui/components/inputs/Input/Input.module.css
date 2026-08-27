@@ -4,6 +4,14 @@
   --inset-inline-end: 0;
 
   line-height: 1rem;
+  margin-top: min(
+    var(--input-margin-top, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
+  margin-bottom: min(
+    var(--input-margin-bottom, 0px),
+    calc(var(--mantine-spacing-xxs) / 2)
+  );
 }
 
 .input {

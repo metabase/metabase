@@ -23,6 +23,7 @@ export const dateTimePickerOverrides = {
     classNames: {
       levelsGroup: Styles.levelsGroup,
       timeWrapper: Styles.timeWrapper,
+      timeInput: Styles.timeInput,
       day: CalendarStyles.day,
       weekday: CalendarStyles.weekday,
       month: CalendarStyles.month,

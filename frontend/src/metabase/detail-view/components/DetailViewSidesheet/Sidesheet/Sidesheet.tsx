@@ -34,7 +34,7 @@ export function Sidesheet({
           content: cx(S.content, Animation.slideLeft),
         }}
         data-testid="sidesheet"
-        px="none"
+        px={0}
         transitionProps={{ duration: 0 }}
         w={rem(720)}
       >

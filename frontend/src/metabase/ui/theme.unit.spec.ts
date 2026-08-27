@@ -35,7 +35,6 @@ const DARK_SHADOWS = {
 };
 
 const SPACING_SCALE = {
-  none: rem(0),
   xxxs: rem(2),
   xxs: rem(4),
   xs: rem(6),
@@ -48,7 +47,6 @@ const SPACING_SCALE = {
 };
 
 const RADIUS_SCALE = {
-  none: "0px",
   xxxs: "2px",
   xxs: "4px",
   xs: "6px",

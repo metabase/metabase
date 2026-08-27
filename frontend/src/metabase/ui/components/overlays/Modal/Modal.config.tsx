@@ -32,6 +32,7 @@ export const modalOverrides = {
       size: "lg",
       shadow: "lg_outline",
       radius: "xs",
+      padding: "lg",
       withinPortal: true,
     },
   }),

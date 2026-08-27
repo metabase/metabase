@@ -101,7 +101,6 @@ export type ShadowScaleKey = keyof typeof LIGHT_SHADOWS;
 
 // Spacing tokens from the design system (GDGT-2486).
 const SPACING_SCALE = {
-  none: rem(0),
   xxxs: rem(2),
   xxs: rem(4),
   xs: rem(6),
@@ -117,7 +116,6 @@ export type SpacingScaleKey = keyof typeof SPACING_SCALE;
 
 // Radius tokens from the design system (GDGT-2486).
 const RADIUS_SCALE = {
-  none: "0px",
   xxxs: "2px",
   xxs: "4px",
   xs: "6px",

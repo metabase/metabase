@@ -58,7 +58,7 @@ export function Sidesheet({
       )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
-        px="none"
+        px={0}
         w={sizes[size]}
         bg="background_page-secondary"
         data-testid="sidesheet"
@@ -88,7 +88,7 @@ export function Sidesheet({
             gap="xl"
             px={removeBodyPadding ? 0 : "xxl"}
             pb={removeBodyPadding ? 0 : "xxl"}
-            mt={title ? "none" : "lg"}
+            mt={title ? 0 : "lg"}
             h="100%"
             className={Styles.OverflowAuto}
           >

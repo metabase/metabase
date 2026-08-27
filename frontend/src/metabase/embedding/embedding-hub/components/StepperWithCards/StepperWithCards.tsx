@@ -74,6 +74,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
       active={0}
       orientation="vertical"
       classNames={{
+        root: S.root,
         stepLabel: S.stepLabel,
         verticalSeparator: S.verticalSeparator,
         stepIcon: S.stepIcon,

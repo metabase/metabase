@@ -25,6 +25,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
       options: S.options,
       option: S.option,
       empty: S.empty,
+      groupLabel: S.groupLabel,
     },
   }),
   ComboboxChevron: ComboboxChevron.extend({
