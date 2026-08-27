@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 60
     env:
       COUNT: ${{ inputs.count }}
+      # Matches timeout-minutes above. The script drops the commits that would
+      # not fit rather than letting the job be killed mid-measurement.
+      TIMEOUT_MINUTES: "60"
       MB_JETTY_PORT: "4000"
       RUNS: "8"
       GH_TOKEN: ${{ github.token }}
@@ -45,10 +48,10 @@ jobs:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
-        run: .github/scripts/backfill-load-times.sh
+        run: bun .github/scripts/backfill-load-times.ts
       - name: Keep the logs when something goes wrong
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backfill-logs
           path: artifacts/
