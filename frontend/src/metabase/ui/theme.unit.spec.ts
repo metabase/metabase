@@ -47,13 +47,13 @@ const SPACING_SCALE = {
 };
 
 const RADIUS_SCALE = {
-  xxxs: "2px",
-  xxs: "4px",
-  xs: "6px",
-  sm: "8px",
-  md: "12px",
-  lg: "16px",
-  xl: "24px",
+  xxxs: rem(2),
+  xxs: rem(4),
+  xs: rem(6),
+  sm: rem(8),
+  md: rem(12),
+  lg: rem(16),
+  xl: rem(24),
 };
 
 // Style props whose bare-word values must resolve to a theme scale key.
@@ -113,7 +113,7 @@ describe("theme scales (GDGT-2486)", () => {
     it("defaults to 6px", () => {
       const { defaultRadius, radius } = getThemeOverrides();
       expect(defaultRadius).toBe("xs");
-      expect(radius?.xs).toBe("6px");
+      expect(radius?.xs).toBe(rem(6));
     });
   });
 

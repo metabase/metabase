@@ -73,7 +73,6 @@ import {
 import { getMantineThemeColors } from "./utils/colors";
 
 // Elevation tokens from the design system (GDGT-2486).
-// The light and dark sets refer to the light and dark UI modes.
 /* eslint-disable metabase/no-color-literals */
 const LIGHT_SHADOWS = {
   xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
@@ -117,13 +116,13 @@ export type SpacingScaleKey = keyof typeof SPACING_SCALE;
 
 // Radius tokens from the design system (GDGT-2486).
 const RADIUS_SCALE = {
-  xxxs: "2px",
-  xxs: "4px",
-  xs: "6px",
-  sm: "8px",
-  md: "12px",
-  lg: "16px",
-  xl: "24px",
+  xxxs: rem(2),
+  xxs: rem(4),
+  xs: rem(6),
+  sm: rem(8),
+  md: rem(12),
+  lg: rem(16),
+  xl: rem(24),
 };
 
 export type RadiusScaleKey = keyof typeof RADIUS_SCALE;
