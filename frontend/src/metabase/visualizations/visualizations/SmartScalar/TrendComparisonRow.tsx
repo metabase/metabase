@@ -3,7 +3,7 @@ import { formatValue } from "metabase/value-formatting";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { PreviousValueComparisonTooltip } from "./PreviousValueComparison/PreviousValueComparisonTooltip";
+import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import S from "./TrendComparisonRow.module.css";
 import {
   CHANGE_TYPE_OPTIONS,

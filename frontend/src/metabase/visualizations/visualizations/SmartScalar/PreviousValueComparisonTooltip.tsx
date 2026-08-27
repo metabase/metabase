@@ -3,8 +3,8 @@ import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { TrendSymbol } from "../TrendSymbol";
-import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
+import { TrendSymbol } from "./TrendSymbol";
+import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "./compute";
 
 const SYMBOL_SIZE = 12;
 const PERCENT_MIN_WIDTH = 48;
