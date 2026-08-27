@@ -482,7 +482,7 @@
              :main-opts ["-m" "antq.core" "--skip=github-action"]}
 
   :cljs
-  {:extra-paths ["test"]
+  {:extra-paths ["cljs/src" "test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.warehouse.allowed.networks=allow-all"]
    :extra-deps

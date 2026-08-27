@@ -10,6 +10,7 @@
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]
    [metabase.util.performance :refer [every?]]))
 
 (defn- tuple-clause-of-comparables-schema
@@ -51,6 +52,10 @@
 (mr/def ::number-filter-operator
   "Numeric filter operators supported by the FE."
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(mr/def ::number-filter-value
+  "Numeric filter value returned to the FE. BigInts are represented as JS bigint values."
+  [:or :double [:fn {:typescript "bigint"} u.number/bigint?]])
 
 (mr/def ::coordinate-filter-operator
   "Coordinate filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` for

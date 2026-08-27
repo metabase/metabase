@@ -14,6 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  Aggregable,
   CardMetadata,
   Clause,
   ClauseType,
@@ -38,11 +39,34 @@ export function queryFromTableOrCardMetadata(
   return ML.query(metadataProvider, tableOrCardMetadata);
 }
 
-export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  return ML.legacy_query(query);
+function isLegacyDatasetQuery(value: unknown): value is LegacyDatasetQuery {
+  if (typeof value !== "object" || value == null || !("type" in value)) {
+    return false;
+  }
+  if (value.type === "query") {
+    return "query" in value;
+  }
+  if (value.type === "native") {
+    return "native" in value;
+  }
+  return false;
 }
 
-export function suggestedName(query: Query): string {
+function isOpaqueDatasetQuery(value: unknown): value is OpaqueDatasetQuery {
+  return typeof value === "object" && value != null && "database" in value;
+}
+
+export function toLegacyQuery(query: Query): LegacyDatasetQuery {
+  const legacyQuery = ML.legacy_query(query);
+  if (!isLegacyDatasetQuery(legacyQuery)) {
+    throw new TypeError(
+      "Expected legacy_query to return a legacy dataset query",
+    );
+  }
+  return legacyQuery;
+}
+
+export function suggestedName(query: Query): string | null {
   return ML.suggestedName(query);
 }
 
@@ -91,6 +115,7 @@ export function replaceClause(
   targetClause: Clause | Join,
   newClause:
     | Clause
+    | Aggregable
     | ColumnMetadata
     | MeasureMetadata
     | MetricMetadata
@@ -165,7 +190,13 @@ export function fromJsQueryAndMetadata(
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  return ML.to_js_query(query);
+  const jsQuery = ML.to_js_query(query);
+  if (!isOpaqueDatasetQuery(jsQuery)) {
+    throw new TypeError(
+      "Expected to_js_query to return an opaque dataset query",
+    );
+  }
+  return jsQuery;
 }
 
 export function createTestQuery(

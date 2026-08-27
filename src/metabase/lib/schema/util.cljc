@@ -46,12 +46,14 @@
   [x]
   (empty? (find-duplicate-uuid x)))
 
-;;; Malli schema for to ensure that all `:lib/uuid`s are unique.
+;;; Malli schema to ensure that all `:lib/uuid`s are unique.
+;;; This is a shape-neutral validation constraint used by both query maps and MBQL clause vectors.
 (mr/def ::unique-uuids
   [:fn
    {:error/message "all :lib/uuids must be unique"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
+                     (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))
+    :typescript    "unknown"}
    #'unique-uuids?])
 
 (defn- mbql-clause?

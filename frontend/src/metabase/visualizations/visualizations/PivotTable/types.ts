@@ -1,24 +1,23 @@
 import type { ClickObjectDataRow, ClickObjectDimension } from "metabase-lib";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 
-type PivotTableClickDimension = ClickObjectDimension & {
-  colIdx?: number;
+type PivotTableClickDimension = Omit<ClickObjectDimension, "column"> & {
+  colIdx: number;
 };
 
-type PivotTableClickDataRow = ClickObjectDataRow & {
-  colIdx?: number;
+type PivotTableClickDataRow = Omit<ClickObjectDataRow, "col"> & {
+  colIdx: number;
 };
 
 export type PivotTableClicked = {
-  value: string;
-  colIdx?: number;
-  column?: DatasetColumn;
+  value: RowValue;
+  colIdx: number;
   data?: PivotTableClickDataRow[];
   dimensions?: PivotTableClickDimension[];
 };
 
 export interface HeaderItem {
-  clicked: PivotTableClicked;
+  clicked: PivotTableClicked | null;
 
   isCollapsed?: boolean;
   hasChildren: boolean;
@@ -31,13 +30,30 @@ export interface HeaderItem {
   offset: number;
   span: number; // rows to span
 
-  path: string[];
-  rawValue: string;
+  path: RowValue[] | null;
+  rawValue: RowValue;
   value: string;
 }
 
-export type BodyItem = HeaderItem & {
-  backgroundColor?: string;
+export type BodyItem = {
+  value: string | null;
+  isSubtotal?: boolean;
+  isGrandTotal?: boolean;
+  clicked?: PivotTableClicked | null;
+  backgroundColor?: string | null;
+};
+
+export type PivotTableData = {
+  leftHeaderItems: HeaderItem[];
+  topHeaderItems: HeaderItem[];
+  rowCount: number;
+  columnCount: number;
+  rowIndex: RowValue[][];
+  getRowSection: (columnIndex: number, rowIndex: number) => BodyItem[];
+  rowIndexes: number[];
+  columnIndexes: number[];
+  valueIndexes: number[];
+  columnsWithoutPivotGroup: DatasetColumn[];
 };
 
 export type CustomColumnWidth = Record<number, number>;

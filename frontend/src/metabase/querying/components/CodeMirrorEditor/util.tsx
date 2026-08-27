@@ -242,7 +242,7 @@ export function matchCardIdAtCursor(
 export const getReferencedCardIds = createSelector(
   (query: Lib.Query) => Lib.templateTags(query),
   (tags) =>
-    Object.values(tags)
+    Object.values(tags ?? {})
       .filter((tag) => tag.type === "card")
       .map((tag) => tag["card-id"])
       .filter(isNotNull),

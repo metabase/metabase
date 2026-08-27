@@ -80,7 +80,7 @@ function getReturnedColumns(query: Lib.Query): ColumnInfo[] {
   return Lib.returnedColumns(query, stageIndex).map((column) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     return {
-      key: Lib.columnKey(column),
+      key: Lib.columnKey(column) ?? "",
       name: columnInfo.name,
       isAggregation: columnInfo.isAggregation,
     };

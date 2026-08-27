@@ -18,7 +18,6 @@ import {
 import { getVisibleTableData } from "metabase/visualizations/lib/visible-table-data";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTitleForColumn as getPivotTitleForColumn } from "metabase/visualizations/visualizations/PivotTable/settings";
-import type { HeaderItem } from "metabase/visualizations/visualizations/PivotTable/types";
 import {
   getTopHeaderRowIndex,
   getTopHeaderRowsCount,
@@ -267,7 +266,7 @@ function getPivotGrid(
     return null;
   }
 
-  const getItemText = (item: Pick<HeaderItem, "value">) => item.value ?? "";
+  const getItemText = (item: { value: string | null }) => item.value ?? "";
 
   const {
     topHeaderItems,

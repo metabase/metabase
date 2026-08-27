@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.time.impl :as internal]
    [metabase.util.time.impl-common :as common]))
@@ -44,20 +45,20 @@
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
 
-(defn ^:export timestamp-coercible?
+(mu/defn ^:export timestamp-coercible? :- :boolean
   "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
   [value]
   (or (internal/datetime? value)
       (string? value)
       (number? value)))
 
-(defn ^:export coerce-to-timestamp
+(mu/defn ^:export coerce-to-timestamp :- :any
   "Parses a timestamp value into a date object. This can be a straightforward Unix timestamp or ISO format string.
   But the `:unit` field can be used to alter the parsing to, for example, treat the input number as a day-of-week or
   day-of-month number.
   Returns Moments in JS and OffsetDateTimes in Java for coercible values, otherwise nil."
   ([value] (coerce-to-timestamp value {}))
-  ([value options]
+  ([value options :- :map]
    (when (timestamp-coercible? value)
      (let [options (prep-options options)
            base (cond
@@ -73,7 +74,7 @@
          (internal/localize base)
          base)))))
 
-(defn ^:export coerce-to-time
+(mu/defn ^:export coerce-to-time :- :any
   "Parses a standalone time, or the time portion of a timestamp.
   Accepts a platform time value (eg. Moment, OffsetTime, LocalTime) or a string."
   [value]

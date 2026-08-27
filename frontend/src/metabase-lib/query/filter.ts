@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import { type Dayjs, dayjs } from "metabase/dayjs";
+import { dayjs } from "metabase/dayjs";
 import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
@@ -137,7 +137,25 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
+  const parts = ML.specific_date_filter_parts(query, stageIndex, filterClause);
+  if (!parts || !Array.isArray(parts.values)) {
+    return null;
+  }
+  return {
+    ...parts,
+    values: parts.values.map((value) => {
+      if (dayjs.isDayjs(value)) {
+        return value.toDate();
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      if (typeof value === "string" || typeof value === "number") {
+        return new Date(value);
+      }
+      return new Date(String(value));
+    }),
+  };
 }
 
 export function relativeDateFilterClause({
@@ -201,12 +219,14 @@ export function timeFilterParts(
   filterClause: Filterable,
 ): TimeFilterParts | null {
   const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
-  if (!filterParts) {
+  if (!filterParts || !Array.isArray(filterParts.values)) {
     return null;
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+    values: filterParts.values.map((value) =>
+      dayjs.isDayjs(value) ? value.toDate() : value,
+    ),
   };
 }
 
@@ -258,11 +278,7 @@ export function isSegmentFilter(
 ) {
   const parts = expressionParts(query, stageIndex, filter);
 
-  return (
-    isSegmentMetadata(parts) ||
-    // @ts-expect-error: TODO should we remove this branch?
-    parts?.operator === "segment"
-  );
+  return isSegmentMetadata(parts) || parts?.operator === "segment";
 }
 
 type UpdateLatLonFilterBounds = {

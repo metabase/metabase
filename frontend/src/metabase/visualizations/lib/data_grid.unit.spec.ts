@@ -215,7 +215,8 @@ describe("data_grid", () => {
   });
 
   describe("multiLevelPivot", () => {
-    const getValues = (items: HeaderItem[]) => _.pluck(items, "value");
+    const getValues = (items: Array<{ value: string | null }>) =>
+      _.pluck(items, "value");
     const getPathsAndValues = (items: HeaderItem[]) =>
       items.map((item) => _.pick(item, "path", "value"));
 

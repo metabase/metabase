@@ -70,7 +70,10 @@ function getAllTables(question?: Question) {
   return [
     table,
     ...Lib.joins(query, -1)
-      .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+      .map((join) => {
+        const thing = Lib.joinedThing(query, join);
+        return thing ? Lib.pickerInfo(query, thing) : undefined;
+      })
       .map((pickerInfo) => {
         if (pickerInfo?.tableId != null) {
           return metadata.table(pickerInfo.tableId);

@@ -157,7 +157,7 @@ class TagEditorParamInner extends Component<
       return newConfig;
     }
 
-    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalTag = Lib.templateTags(originalQuery)?.[tag.name];
     const originalParameter = originalQuestion
       .parameters()
       .find(({ id }) => id === parameter.id);

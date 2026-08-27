@@ -24,7 +24,8 @@
 
 (mr/def ::drill-thru.type
   [:fn
-   {:error/message "valid drill-thru :type keyword"}
+   {:error/message "valid drill-thru :type keyword"
+    :typescript    "\"drill-thru/pk\" | \"drill-thru/fk-details\" | \"drill-thru/zoom\" | \"drill-thru/quick-filter\" | \"drill-thru/fk-filter\" | \"drill-thru/distribution\" | \"drill-thru/pivot\" | \"drill-thru/sort\" | \"drill-thru/summarize-column\" | \"drill-thru/summarize-column-by-time\" | \"drill-thru/column-filter\" | \"drill-thru/column-extract\" | \"drill-thru/combine-columns\" | \"drill-thru/underlying-records\" | \"drill-thru/automatic-insights\" | \"drill-thru/zoom-in.timeseries\" | \"drill-thru/zoom-in.geographic\" | \"drill-thru/zoom-in.binning\""}
    (fn [k]
      (and (qualified-keyword? k)
           (= (namespace k) "drill-thru")))])
@@ -32,7 +33,11 @@
 (mr/def ::drill-thru.common
   [:map
    [:type     ::drill-thru.type]
-   [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
+   ;; This internal Malli dispatch marker shares its unqualified name with the public `:type` discriminator. Exclude it
+   ;; from the generated TypeScript union while preserving runtime validation.
+   [:lib/type [:and
+               [:= :metabase.lib.drill-thru/drill-thru]
+               [:any {:typescript "never"}]]]])
 
 ;;; A drill thru that contains a column
 (mr/def ::drill-thru.common.with-column
@@ -214,7 +219,8 @@
    [:ref ::lib.schema.metadata/column]
    [:map
     [:semantic-type [:fn
-                     {:error/message "Latitude semantic type"}
+                     {:error/message "Latitude semantic type"
+                      :typescript    "string"}
                      #(isa? % :type/Latitude)]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.longitude
@@ -222,7 +228,8 @@
    [:ref ::lib.schema.metadata/column]
    [:map
     [:semantic-type [:fn
-                     {:error/message "Longitude semantic type"}
+                     {:error/message "Longitude semantic type"
+                      :typescript    "string"}
                      #(isa? % :type/Longitude)]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.county-state-city
@@ -230,7 +237,8 @@
    [:ref ::lib.schema.metadata/column]
    [:map
     [:semantic-type [:fn
-                     {:error/message "Country/State/City semantic type"}
+                     {:error/message "Country/State/City semantic type"
+                      :typescript    "string"}
                      #(some (fn [semantic-type]
                               (isa? % semantic-type))
                             [:type/Country :type/State :type/City])]]]])

@@ -645,7 +645,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       isNative &&
       isDirty &&
       isResultDirty &&
-      Lib.rawNativeQuery(question.query()).length > 0
+      (Lib.rawNativeQuery(question.query())?.length ?? 0) > 0
     ) {
       return t`You must run the query before you can save this model`;
     }

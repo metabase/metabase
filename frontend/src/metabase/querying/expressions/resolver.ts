@@ -182,8 +182,6 @@ function infoCache(options: Options) {
     if (cached) {
       return cached;
     }
-    // @ts-expect-error: for some reason TS will not allow this to be typed correctly,
-    // even though all the types in the Dimension union match the types for displayInfo
     const res = Lib.displayInfo(options.query, options.stageIndex, dimension);
     cache.set(dimension, res);
     return res;

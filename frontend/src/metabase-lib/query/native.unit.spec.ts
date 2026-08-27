@@ -1,3 +1,4 @@
+import * as ML from "cljs/metabase.lib.js";
 import * as Lib from "metabase-lib";
 
 import { SAMPLE_DATABASE, SAMPLE_METADATA } from "./test-helpers";
@@ -35,7 +36,29 @@ describe("native query template tags", () => {
     const updatedQuery = Lib.withNativeQuery(queryWithTags, queryText);
     const retrievedTags = Lib.templateTags(updatedQuery);
 
-    expect(retrievedTags.state.required).toBe(true);
+    expect(retrievedTags?.state.required).toBe(true);
+  });
+
+  it("should expose template tags as a name-keyed object at the CLJS boundary", () => {
+    const queryText = "SELECT * FROM orders WHERE state = {{publicName}}";
+    const query = Lib.nativeQuery(
+      SAMPLE_DATABASE.id,
+      metadataProvider,
+      queryText,
+    );
+    const queryWithTags = ML.with_template_tags(query, {
+      publicName: {
+        name: "different-internal-name",
+        type: "text",
+      },
+    });
+
+    expect(ML.template_tags(queryWithTags)).toEqual({
+      publicName: {
+        name: "publicName",
+        type: "text",
+      },
+    });
   });
 
   it("should preserve required=false attribute (metabase#38263)", () => {
@@ -61,6 +84,6 @@ describe("native query template tags", () => {
     const queryWithTags = Lib.withTemplateTags(query, templateTags);
     const retrievedTags = Lib.templateTags(queryWithTags);
 
-    expect(retrievedTags.state.required).toBe(false);
+    expect(retrievedTags?.state.required).toBe(false);
   });
 });
