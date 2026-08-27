@@ -26,6 +26,7 @@
   (let [coverage-pairs (atom #{})
         current-test (atom nil)
         original-fns (atom {})]
+
     ;; Store original functions and wrap them (both public and private)
     (doseq [ns-sym code-namespaces]
       (require ns-sym :reload)
@@ -36,8 +37,10 @@
                          (instance? clojure.lang.MultiFn @var-obj)))
             (let [original-fn @var-obj
                   full-name (symbol (str ns-sym) (str var-name))]
+
               ;; Store original function
               (swap! original-fns assoc full-name original-fn)
+
               ;; Replace with tracking wrapper
               (alter-var-root var-obj
                               (constantly
@@ -45,6 +48,7 @@
                                  (when-let [test @current-test]
                                    (swap! coverage-pairs conj [full-name test]))
                                  (apply original-fn args)))))))))
+
     ;; Run tests, tracking which test is running
     (doseq [test-ns test-namespaces]
       (require test-ns :reload)
@@ -55,12 +59,14 @@
           (let [test-name (symbol (str test-ns) (name (.sym test-var)))]
             (reset! current-test test-name)
             (t/test-var test-var)))))
+
     ;; Restore original functions
     (doseq [ns-sym code-namespaces]
       (let [ns-obj (find-ns ns-sym)]
         (doseq [[var-name var-obj] (ns-interns ns-obj)]
           (when-let [original-fn (get @original-fns (symbol (str ns-sym) (str var-name)))]
             (alter-var-root var-obj (constantly original-fn))))))
+
     ;; Return set of [function, test] tuples
     (let [all-fns (set (keys @original-fns))
           coverage @coverage-pairs
@@ -257,12 +263,14 @@
           original-fn @var-obj
           original-meta (meta var-obj)
           results (atom {:killed [] :survived []})]
+
       ;; Test each mutation
       (doseq [[idx mutation] (map-indexed vector (:mutations mutation-data))]
         (try
           ;; Evaluate the mutated function to replace the original
           (binding [*ns* (find-ns ns-sym)]
             (eval (read-string (:mutation mutation))))
+
           ;; Run tests until one fails (early termination)
           (let [result (loop [test-names test-names]
                          (cond
@@ -275,6 +283,7 @@
                            :else
                            (recur (rest test-names))))]
             (swap! results update result conj mutation))
+
           (catch Exception _e
             ;; Mutation caused compilation/runtime error - count as killed
             (swap! results update :killed conj mutation))
@@ -282,6 +291,7 @@
             ;; Restore the original function AND var metadata
             (alter-var-root var-obj (constantly original-fn))
             (alter-meta! var-obj (constantly original-meta)))))
+
       (assoc @results :original-source (:original-source mutation-data)))))
 
 (defn- index-by [f coll]
@@ -330,6 +340,7 @@
           (println "Namespace:" target-ns)
           (println)
           (println "Test namespaces:" (str/join ", " (sort test-ns-s)))
+
           (when (seq uncovered)
             (println)
             (println "## Uncovered Functions")
@@ -342,6 +353,7 @@
               (println "```")
               (println original-source)
               (println "```")))
+
           (when (seq partially-covered)
             (println)
             (println "## Partially Covered Functions")
@@ -363,6 +375,7 @@
                 (println "```")
                 (println mutation)
                 (println "```"))))
+
           (when (seq fully-covered)
             (println)
             (println "## Fully Covered Functions")
