@@ -208,7 +208,7 @@ Google Gemini Enterprise needs either **Service account key file**, or **OAuth a
 
 Supported models:
 
-Microsoft Azure serves the deployments you create, not a fixed catalog, so there's no model list to pick from. Metabase works out the model from **Model provider** and **Deployment name** instead.
+Whichever model your deployment serves. Microsoft Azure serves the deployments you create, not a fixed catalog, so there's no list to pick from — Metabase works out the model from **Model provider** and **Deployment name** instead.
 
 Credentials:
 

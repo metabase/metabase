@@ -173,8 +173,9 @@
       (fixed-models-table models)
 
       (seq model-fields)
-      (str provider-label " serves the deployments you create, not a fixed catalog, so there's no model list to pick "
-           "from. Metabase works out the model from " (field-labels fields model-fields) " instead.")
+      (str "Whichever model your deployment serves. " provider-label
+           " serves the deployments you create, not a fixed catalog, so there's no list to pick from — Metabase "
+           "works out the model from " (field-labels fields model-fields) " instead.")
 
       (contains? dynamic-catalog-types type)
       (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
