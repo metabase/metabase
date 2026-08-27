@@ -11,6 +11,7 @@ import { UsageConditionsInfoIcon } from "./UsageConditionsInfoIcon";
 interface Props {
   isEnabled: boolean;
   termsAccepted: boolean;
+  isSimpleEmbedFeatureAvailable: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ interface Props {
 export const EnableGuestEmbedsSection = ({
   isEnabled,
   termsAccepted,
+  isSimpleEmbedFeatureAvailable,
 }: Props) => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
@@ -33,6 +35,12 @@ export const EnableGuestEmbedsSection = ({
   const [showSection] = useState(!isAccepted);
   const initialDataRef = useRef({ isEnabled, termsAccepted });
 
+  // Matches the "Modular embedding and SDK for React" / "Enable embedding"
+  // labels the admin settings page uses for the same toggle (EmbeddingMethodsCard.tsx).
+  const embeddingLabel = isSimpleEmbedFeatureAvailable
+    ? t`modular embedding`
+    : t`embedding`;
+
   const handleEnable = async () => {
     try {
       await updateSettings({
@@ -40,7 +48,7 @@ export const EnableGuestEmbedsSection = ({
         ...(!termsAccepted && { "show-static-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: t`Failed to enable guest embeds` });
+      sendToast({ message: t`Failed to enable ${embeddingLabel}` });
     }
   };
 
@@ -61,7 +69,7 @@ export const EnableGuestEmbedsSection = ({
   const { title, buttonCaption } =
     match(initialDataRef.current)
       .with({ isEnabled: false, termsAccepted: false }, () => ({
-        title: jt`To continue, enable guest embeds and agree to the ${usageConditionsLink}.`,
+        title: jt`To continue, enable ${embeddingLabel} and agree to the ${usageConditionsLink}.`,
         buttonCaption: t`Agree and enable`,
       }))
       .with({ isEnabled: true, termsAccepted: false }, () => ({
@@ -69,7 +77,7 @@ export const EnableGuestEmbedsSection = ({
         buttonCaption: t`Agree and continue`,
       }))
       .with({ isEnabled: false, termsAccepted: true }, () => ({
-        title: t`Enable guest embeds to get started.`,
+        title: t`Enable ${embeddingLabel} to get started.`,
         buttonCaption: t`Enable and continue`,
       }))
       .otherwise(() => null) ?? {};
