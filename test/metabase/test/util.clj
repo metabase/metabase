@@ -1799,3 +1799,14 @@
   "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
   [adj-map]
   (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
+
+(deftype DeferredStr [deferred]
+  java.lang.Object
+  (toString [_] (str @deferred)))
+
+(defmacro deferred-str
+  "Return an opaque deferred computable object that, when `str` is called on it, realizes itself and produces a string.
+  Useful for wrapping expensive context strings in `testing` macro when the context string is only needed to be
+  computed when the test fails."
+  [& body]
+  `(->DeferredStr (delay ~@body)))
