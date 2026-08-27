@@ -471,7 +471,7 @@
   (when (map? v)
     (try
       (db->norm-click-behavior* v)
-      (catch #?(:clj Throwable :cljs js/Error) e
+      (catch #?(:clj Exception :cljs js/Error) e
         (log/warnf "Ignoring malformed click behavior: %s" (ex-message e))
         nil))))
 
@@ -514,7 +514,7 @@
       (assoc m ::time-style (db->norm-time-style v))
 
       (assoc m (db->norm-column-settings-keys k) v))
-    (catch #?(:clj Throwable :cljs js/Error) e
+    (catch #?(:clj Exception :cljs js/Error) e
       (log/warnf "Ignoring malformed column setting %s: %s" (pr-str k) (ex-message e))
       m)))
 
@@ -538,7 +538,7 @@
                    (let [k' (parse-db-column-ref k)
                          v' (db->norm-column-settings-entries v)]
                      (assoc m k' v'))
-                   (catch #?(:clj Throwable :cljs js/Error) _e
+                   (catch #?(:clj Exception :cljs js/Error) _e
                      m)))
                {}
                settings)))
