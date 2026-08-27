@@ -1,13 +1,8 @@
-import {
-  type SelfDescribingJson,
-  newTracker,
-  trackSelfDescribingEvent,
-} from "@snowplow/browser-tracker";
-
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { getSettings } from "metabase/settings";
-import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
+
+import type * as TrackersModule from "./trackers";
 
 const SIMPLE_EVENT_SCHEMA_URI =
   "iglu:com.metabase/simple_event/jsonschema/1-0-0";
@@ -31,27 +26,99 @@ type EmbeddingSdkEvent =
   | EmbeddingSdkInitializedEvent
   | EmbeddingSdkComponentRenderedEvent;
 
-// The SDK runs inside the customer's app. A direct POST to the Snowplow
-// collector (`sp.metabase.com`) is cross-origin and blocked by a strict
-// `connect-src` CSP. We instead point the tracker at the customer's own
-// Metabase instance, which proxies the payload to the collector server-side.
-// `connect-src` matches host (not path), so the instance origin — already
-// allowlisted for the SDK's data calls — passes with no extra customer config.
+type Trackers = typeof TrackersModule;
+type TrackerCall = (trackers: Trackers) => void;
 
-// Named tracker, isolated from the main-app tracker ("sp").
-const SDK_TRACKER_NAME = "sdk";
+/** How long the browser may stay busy before the trackers load anyway. */
+const IDLE_TIMEOUT_MS = 2000;
+
+/** Fallback delay when requestIdleCallback is unavailable (Safari < 16.4). */
+const FALLBACK_DELAY_MS = 200;
+
+/** Caps the queue, so a page that records events but starts no tracker cannot
+ * grow it without end. */
+const MAX_QUEUED_CALLS = 100;
 
 export type SdkAuthMethod = "guest" | "api_key" | "sso";
 
 // true = tracker initialized for the first time; false = already running (idempotent call)
 type WasJustInitialized = boolean;
 
+let trackers: Trackers | null = null;
+let queue: TrackerCall[] = [];
+let isLoadStarted = false;
+
 let trackerInitialized = false;
 let sdkAuthMethod: SdkAuthMethod;
 let sdkLocaleUsed: boolean = false;
 let sdkMetaplowEnabled: boolean = false;
 
-// Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
+function whenIdle(callback: () => void) {
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(callback, { timeout: IDLE_TIMEOUT_MS });
+  } else {
+    window.setTimeout(callback, FALLBACK_DELAY_MS);
+  }
+}
+
+function loadTrackers() {
+  if (isLoadStarted) {
+    return;
+  }
+  isLoadStarted = true;
+
+  import("./trackers")
+    .then((loaded) => {
+      trackers = loaded;
+      const queued = queue;
+      queue = [];
+      queued.forEach((call) => call(loaded));
+    })
+    .catch((error) => {
+      console.warn("Failed to load the analytics trackers", error);
+      queue = [];
+    });
+}
+
+/**
+ * Queues work for the trackers and waits for the browser to go idle before
+ * loading them, so neither the chunk nor the work to start it competes with the
+ * first render. The queue is FIFO, so a tracker is always created before the
+ * events that need it are sent.
+ */
+function enqueue(call: TrackerCall) {
+  if (trackers) {
+    call(trackers);
+    return;
+  }
+  if (queue.length < MAX_QUEUED_CALLS) {
+    queue.push(call);
+  }
+  if (!isLoadStarted) {
+    whenIdle(loadTrackers);
+  }
+}
+
+/** Arms the metaplow tracker. Separate from the Snowplow tracker, which the
+ * caller starts only once the opt-out gate is known. */
+export function startSdkMetaplow(): void {
+  enqueue((loaded) =>
+    loaded.initMetaplow({
+      // Omits userId — unlike the main-app tracker, SDK component usage is
+      // tracked at instance granularity; the analytics-uuid already identifies
+      // the account.
+      getUserId: () => undefined,
+    }),
+  );
+}
+
+/**
+ * Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode
+ * double-mount.
+ *
+ * The tracker itself is created once the trackers load, but the answer and the
+ * state the callers read are set here, so both stay synchronous.
+ */
 export function initSdkTracker({
   metabaseInstanceUrl,
   authMethod,
@@ -73,26 +140,7 @@ export function initSdkTracker({
   const settingValues = getSettings(store.getState());
   sdkMetaplowEnabled = !!settingValues?.["metaplow-tracking-enabled"];
 
-  newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
-    appId: "metabase",
-    platform: "web",
-    eventMethod: "post",
-    contexts: { webPage: true },
-    // Plain JSON on the wire. The main-app tracker uses the default (encodeBase64:true);
-    // the SDK tracker is new, so there's no legacy format to preserve.
-    encodeBase64: false,
-    // Deliver through the instance proxy, not the collector's tp2 path.
-    postPath: "/api/analytics-proxy",
-    // No cookies / localStorage: the SDK must not touch the host page's storage.
-    // This also makes cookie-domain config (e.g. discoverRootDomain) irrelevant.
-    stateStorageStrategy: "none",
-    // Server-side anonymisation: strip IP + network_userid, send the SP-Anonymous header.
-    anonymousTracking: { withServerAnonymisation: true },
-    // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
-    // credentialed requests, so credentials must be omitted.
-    withCredentials: false,
-    plugins: [createSdkInstanceContextPlugin(store)],
-  });
+  enqueue((loaded) => loaded.createSdkTracker({ metabaseInstanceUrl, store }));
   return true;
 }
 
@@ -104,49 +152,15 @@ export function getSdkLocaleUsed(): boolean {
   return sdkLocaleUsed;
 }
 
-// Attaches the instance context to every SDK event. Omits userId — unlike the
-// main-app tracker, SDK component usage is tracked at instance granularity;
-// the analytics-uuid already identifies the account.
-function createSdkInstanceContextPlugin(store: {
-  getState: () => SdkStoreState;
-}) {
-  return {
-    contexts(): SelfDescribingJson[] {
-      // Settings are guaranteed present: initSdkTracker is only called after
-      // isTrackingEnabled, which requires anon-tracking-enabled to be loaded.
-      const settings = getSettings(store.getState());
-      const version = settings?.["version"] ?? {};
-
-      return [
-        {
-          schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
-          data: {
-            id: settings?.["analytics-uuid"],
-            version: {
-              tag: version.tag,
-            },
-            created_at: settings?.["instance-creation"],
-            token_features: settings?.["token-features"],
-          },
-        },
-      ];
-    },
-  };
-}
-
-// Send a self-describing event through the SDK tracker. Schema-agnostic: the caller
-// supplies the Iglu schema + data, so the transport stays decoupled from the event shape.
-function trackSdkEvent(event: SelfDescribingJson): void {
-  trackSelfDescribingEvent({ event }, [SDK_TRACKER_NAME]);
-}
-
 // Use instead of trackSimpleEvent in the SDK: the main-app "sp" tracker is not
 // initialized in the customer's page, so trackSimpleEvent's Snowplow leg is a no-op.
 export function trackSdkSimpleEvent(event: EmbeddingSdkEvent): void {
-  trackSdkEvent({ schema: SIMPLE_EVENT_SCHEMA_URI, data: event });
+  enqueue((loaded) => {
+    loaded.trackSdkEvent({ schema: SIMPLE_EVENT_SCHEMA_URI, data: event });
 
-  if (sdkMetaplowEnabled) {
-    const { event: name, ...data } = event;
-    trackMetaplowEvent(name, data);
-  }
+    if (sdkMetaplowEnabled) {
+      const { event: name, ...data } = event;
+      loaded.trackMetaplowEvent(name, data);
+    }
+  });
 }
