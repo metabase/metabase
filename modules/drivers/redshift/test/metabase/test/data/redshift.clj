@@ -261,12 +261,21 @@
     (with-open [stmt (.createStatement conn)]
       (drop-orphan-schemas! stmt orphans))))
 
+(defn- gc-hosts
+  "Every cluster tests run against, not just the one a run would pick. `MB_REDSHIFT_TEST_HOSTS` is the fleet
+  `drivers.yml` uses; `MB_REDSHIFT_TEST_HOST` is the cluster the stress-test workflows use, and nothing sets both.
+  Taking either alone -- as [[random-host]] does, correctly, for a single run -- leaves the other to grow into the
+  max-tables limit this sweep exists to prevent."
+  []
+  (or (not-empty (distinct (concat @hosts (some-> (tx/db-test-env-var :redshift :host) vector))))
+      (throw (ex-info "no Redshift hosts configured: set MB_REDSHIFT_TEST_HOSTS or MB_REDSHIFT_TEST_HOST" {}))))
+
 (defn- gc-connection-details
   "Every cluster and database a leaked schema could be in. Built from env vars rather than
   [[db-connection-details]], which pins one random host for the process (fine for tests, but `MB_REDSHIFT_TEST_HOSTS`
   is several clusters) and computes schema filters we don't need via [[unique-session-schema]]."
   []
-  (for [host (or (seq @hosts) [(tx/db-test-env-var-or-throw :redshift :host)])
+  (for [host (gc-hosts)
         db   [(tx/db-test-env-var :redshift :db "testdb")
               (tx/db-test-env-var :redshift :db-routing "dev")]]
     {:host     host
