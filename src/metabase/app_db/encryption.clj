@@ -35,7 +35,11 @@
    [:auth_identity :credentials]
    [:exploration_query_result :chart_stats]
    [:exploration_query_result :metric_description]
-   [:exploration_query_result :chart_description]])
+   [:exploration_query_result :chart_description]
+   [:report_card :public_uuid]
+   [:report_dashboard :public_uuid]
+   [:action :public_uuid]
+   [:document :public_uuid]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike

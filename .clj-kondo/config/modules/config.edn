@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           public-sharing
            queries
            query-processor
            search
@@ -1783,7 +1784,8 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Document}}
