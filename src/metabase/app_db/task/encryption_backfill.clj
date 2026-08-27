@@ -1,12 +1,6 @@
 (ns metabase.app-db.task.encryption-backfill
-  "Encrypts the warehouse-derived columns that already existed when an instance upgraded to v64.
-
-  Nothing else converts them: an instance that already had `MB_ENCRYPTION_SECRET_KEY` set never re-runs `encrypt-db`,
-  and one setting a key for the first time asks `encrypt-db` to defer them here. Otherwise they would stay in the
-  clear until something happened to rewrite them, which for a stable schema may be never.
-
-  It runs here rather than as a migration, or inline in `encrypt-db`, because `metabase_field` can hold millions of
-  rows: that long on the boot path blocks startup, holds the changelog lock, and can trip container startup probes."
+  "Encrypts the warehouse-derived columns that already existed when an instance upgraded to v64. Nothing else
+  converts them, and there can be millions, so it runs in the background rather than on the boot path."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]

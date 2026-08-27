@@ -235,7 +235,7 @@
          (t2/insert! :conn conn :setting {:key progress-key :value value}))))))
 
 (def ^:private complete-progress
-  "Progress marking every column swept, for when something else has already converted them all."
+  "Progress marking every column swept."
   (into {} (map (juxt column-key (constantly done))) dwh-derived-columns))
 
 (defn rewrite-dwh-derived-columns!
@@ -274,10 +274,8 @@
 
   The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it.
 
-  With `defer-dwh-derived?`, [[dwh-derived-columns]] are left alone and the sweep cursor is cleared so
-  `metabase.app-db.task.encryption-backfill` picks them up in the background instead. Only safe when encrypting with
-  the current key, since those columns read plaintext-tolerantly: a rotation or a decryption has to rewrite them here
-  or they become unreadable."
+  `defer-dwh-derived?` leaves [[dwh-derived-columns]] to the backfill task. Only safe when encrypting with the current
+  key: a rotation or a decryption has to rewrite them here or they become unreadable."
   [db-type data-source encrypting? make-encrypt-fn defer-dwh-derived?]
   (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)
@@ -303,8 +301,7 @@
                       {:value (encrypt-str-fn value)})))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
-      ;; a sweep that has already run says nothing about the key we just switched to, so either hand the columns to
-      ;; the backfill task or record that we did its job for it
+      ;; a cursor from a previous sweep says nothing about the key we just switched to
       (save-progress! conn (when (and encrypting? (not defer-dwh-derived?)) complete-progress))
       (t2/delete! :conn conn :model/QueryCache))))
 
@@ -312,8 +309,7 @@
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.
   If passed to-key is nil, it encrypts with the current MB_ENCRYPTION_SECRET_KEY value.
 
-  Pass `:defer-dwh-derived? true` off the boot path: [[dwh-derived-columns]] can run to millions of rows, and this is
-  called synchronously from `metabase.app-db.setup/check-encryption` when a key is first set."
+  Pass `:defer-dwh-derived? true` on the boot path, where blocking on millions of rows would delay startup."
   [db-type data-source to-key & {:keys [defer-dwh-derived?]}]
   (when (and (not (nil? to-key)) (empty? to-key))
     (throw (ex-info "Cannot encrypt database with an empty key" {})))

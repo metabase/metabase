@@ -103,9 +103,8 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-;; the metadata provider reads this for every field of every table in a query, so decrypting it uncached shows up on
-;; the hot path. Bounded by count as well as age: sync walks every field of every table in quick succession, so a
-;; TTL-only cache would hold every fingerprint in the instance at once.
+;; the metadata provider decrypts this for every field of every table in a query, so it needs a cache. Bounded by
+;; count too: sync touches every field in quick succession, which a TTL alone would never evict.
 (def ^:private cached-encrypted-fingerprints
   (update (mi/transform-encrypted transform-json-fingerprints)
           :out #(memoize/memoizer % (-> {}
