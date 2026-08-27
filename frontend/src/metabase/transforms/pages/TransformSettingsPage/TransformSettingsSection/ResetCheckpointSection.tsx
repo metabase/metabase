@@ -2,10 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useId } from "react";
 import { jt, t } from "ttag";
 
-import {
-  skipToken,
-  useGetFieldQuery,
-} from "metabase/api";
+import { skipToken, useGetFieldQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
