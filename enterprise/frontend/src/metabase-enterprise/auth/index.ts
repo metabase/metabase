@@ -3,6 +3,7 @@ import {
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_REDUX_MIDDLEWARES,
+  lazyPluginComponent,
 } from "metabase/plugins";
 import type { AuthProvider } from "metabase/plugins/types";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/redux/auth";
@@ -12,13 +13,11 @@ import type { OidcAuthProvider, User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
-import { AuthSettingsPage } from "./components/AuthSettingsPage";
 import {
   LdapGroupMembershipFilter,
   LdapUserProvisioning,
 } from "./components/Ldap";
 import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
-import { SsoButton } from "./components/SsoButton";
 
 const settingsSAMLForm = () =>
   import(
@@ -43,11 +42,17 @@ const settingsOIDCForm = () =>
 
 const SSO_PROVIDER = {
   name: "sso",
-  Button: SsoButton,
+  Button: lazyPluginComponent(() =>
+    import("./components/SsoButton").then(({ SsoButton }) => SsoButton),
+  ),
 };
 
 // Always set AuthSettingsPage - this doesn't depend on premium features
-PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
+PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = lazyPluginComponent(() =>
+  import("./components/AuthSettingsPage").then(
+    ({ AuthSettingsPage }) => AuthSettingsPage,
+  ),
+);
 
 /**
  * Initialize auth plugin features that depend on hasPremiumFeature.

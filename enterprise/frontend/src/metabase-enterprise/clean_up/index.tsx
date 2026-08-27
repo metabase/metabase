@@ -4,15 +4,21 @@ import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, lazyPluginSlot } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";
 import { canCleanUp } from "./utils";
+
+// `modalRoute` takes a component, so a lazy one is a lazy modal route.
+const CleanupCollectionModal = lazyPluginSlot(() =>
+  import("./CleanupCollectionModal").then(
+    ({ CleanupCollectionModal }) => CleanupCollectionModal,
+  ),
+);
 
 /**
  * Initialize clean_up plugin features that depend on hasPremiumFeature.

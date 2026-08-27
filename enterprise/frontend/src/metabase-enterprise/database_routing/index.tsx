@@ -1,14 +1,34 @@
 import { t } from "ttag";
 
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { PLUGIN_DB_ROUTING, lazyPluginComponent } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
-import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnectionModal";
-import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
-import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
 import { useRedirectDestinationDatabase } from "./hooks";
+
+// The route factory has to exist at boot, because `routes.tsx` builds the
+// tree eagerly. The pages behind it do not.
+const DatabaseRoutingSection = lazyPluginComponent(() =>
+  import("./DatabaseRoutingSection").then(
+    ({ DatabaseRoutingSection }) => DatabaseRoutingSection,
+  ),
+);
+const DestinationDatabasesModal = lazyPluginComponent(() =>
+  import("./DestinationDatabasesModal").then(
+    ({ DestinationDatabasesModal }) => DestinationDatabasesModal,
+  ),
+);
+const DestinationDatabaseConnectionModal = lazyPluginComponent(() =>
+  import("./DestinationDatabaseConnectionModal").then(
+    ({ DestinationDatabaseConnectionModal }) =>
+      DestinationDatabaseConnectionModal,
+  ),
+);
+const RemoveDestinationDatabaseModal = lazyPluginComponent(() =>
+  import("./RemoveDestinationDatabaseModal").then(
+    ({ RemoveDestinationDatabaseModal }) => RemoveDestinationDatabaseModal,
+  ),
+);
 
 /**
  * Initialize database_routing plugin features that depend on hasPremiumFeature.

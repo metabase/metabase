@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
+import { LoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import type { Location, RouteObject } from "metabase/router";
 import { Route, useLocation, useNavigate, useParams } from "metabase/router";
-import { Modal, type ModalProps } from "metabase/ui";
+import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
 
@@ -88,6 +89,58 @@ export function lazyModalRoute(
   };
 }
 
+// Long enough that a modal whose component is already loaded never flashes an
+// empty shell, short enough that a slow connection does not read as a dead
+// click.
+const MODAL_LOADING_DELAY = 300;
+
+/**
+ * What a modal route shows while its component is still loading.
+ *
+ * Nothing at first, so the common case of an already-loaded modal opens
+ * straight onto its content. If the wait runs long, the modal opens on a
+ * spinner rather than leaving the click with no answer at all.
+ */
+function LoadingModal({
+  onClose,
+  modalProps,
+}: {
+  onClose: () => void;
+  modalProps?: Partial<ModalProps>;
+}) {
+  const [hasWaited, setHasWaited] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setHasWaited(true), MODAL_LOADING_DELAY);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (!hasWaited) {
+    return null;
+  }
+
+  return (
+    <Modal
+      opened
+      onClose={onClose}
+      withCloseButton={false}
+      padding={0}
+      size="lg"
+      {...modalProps}
+    >
+      <Flex
+        p="xl"
+        mih="10rem"
+        align="center"
+        justify="center"
+        data-testid="modal-loading"
+      >
+        <LoadingSpinner />
+      </Flex>
+    </Modal>
+  );
+}
+
 export function createModalRouteComponent(
   ComposedModal: ModalComponent,
   { noWrap = false, modalProps, closeTo = ".." }: ModalRouteOptions,
@@ -105,21 +158,32 @@ export function createModalRouteComponent(
       <ComposedModal params={params} location={location} onClose={onClose} />
     );
 
+    // The boundary sits outside the `Modal`, not inside it, so a modal whose
+    // component is in another chunk stays closed until that chunk arrives
+    // rather than opening on an empty box. A modal that is already loaded never
+    // suspends, so this changes nothing for the rest of them.
+    //
+    // A modal that brings its own overlay gets no fallback: there is no way to
+    // stand in for chrome this module cannot see.
     if (noWrap) {
-      return modal;
+      return <Suspense fallback={null}>{modal}</Suspense>;
     }
 
     return (
-      <Modal
-        opened
-        onClose={onClose}
-        withCloseButton={false}
-        padding={0}
-        size="lg"
-        {...modalProps}
+      <Suspense
+        fallback={<LoadingModal onClose={onClose} modalProps={modalProps} />}
       >
-        {modal}
-      </Modal>
+        <Modal
+          opened
+          onClose={onClose}
+          withCloseButton={false}
+          padding={0}
+          size="lg"
+          {...modalProps}
+        >
+          {modal}
+        </Modal>
+      </Suspense>
     );
   }
 

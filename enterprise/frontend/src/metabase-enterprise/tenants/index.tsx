@@ -15,13 +15,18 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/common/collections/utils";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  type ModalComponentProps,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
+  lazyPluginComponent,
+  lazyPluginSlot,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
@@ -31,19 +36,8 @@ import { Box, Text } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { EditUserStrategyModal } from "./EditUserStrategyModal";
-import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
-import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
-import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
-import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
-import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
 import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPermissionsPage";
-import { TenantDisplayName } from "./components/TenantDisplayName";
-import { FormTenantWidget } from "./components/TenantFormWidget";
-import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpecificCollectionPermissionsPage";
-import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
-import { TenantsSummaryOnboardingStep } from "./components/TenantsSummaryOnboardingStep";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -121,6 +115,17 @@ const tenantUsersPersonalCollectionList = () =>
     Component: TenantUsersPersonalCollectionList,
   }));
 
+const loadEditUserStrategyModal = () =>
+  import("./EditUserStrategyModal").then(
+    ({ EditUserStrategyModal }) => EditUserStrategyModal,
+  );
+
+// `modalRoute` puts its boundary outside the `Modal`, so this one must not
+// carry its own or the modal opens empty.
+const EditUserStrategyModal = lazyPluginSlot<ModalComponentProps>(
+  loadEditUserStrategyModal,
+);
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
@@ -162,9 +167,19 @@ export function initializePlugin() {
       </>
     );
 
-    PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
-    PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
-    PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
+    PLUGIN_TENANTS.EditUserStrategyModal = lazyPluginComponent(
+      loadEditUserStrategyModal,
+    );
+    PLUGIN_TENANTS.CreateTenantsOnboardingStep = lazyPluginComponent(() =>
+      import("./components/CreateTenantsOnboardingStep").then(
+        ({ CreateTenantsOnboardingStep }) => CreateTenantsOnboardingStep,
+      ),
+    );
+    PLUGIN_TENANTS.TenantsSummaryOnboardingStep = lazyPluginComponent(() =>
+      import("./components/TenantsSummaryOnboardingStep").then(
+        ({ TenantsSummaryOnboardingStep }) => TenantsSummaryOnboardingStep,
+      ),
+    );
 
     PLUGIN_TENANTS.userStrategyRoute = modalRoute(
       "user-strategy",
@@ -229,21 +244,52 @@ export function initializePlugin() {
       </>
     );
 
-    PLUGIN_TENANTS.EditUserStrategySettingsButton =
-      EditUserStrategySettingsButton;
+    PLUGIN_TENANTS.EditUserStrategySettingsButton = lazyPluginComponent(() =>
+      import("./EditUserStrategySettingsButton").then(
+        ({ EditUserStrategySettingsButton }) => EditUserStrategySettingsButton,
+      ),
+    );
 
-    PLUGIN_TENANTS.FormTenantWidget = FormTenantWidget;
-    PLUGIN_TENANTS.TenantDisplayName = TenantDisplayName;
+    PLUGIN_TENANTS.FormTenantWidget = lazyPluginComponent(() =>
+      import("./components/TenantFormWidget").then(
+        ({ FormTenantWidget }) => FormTenantWidget,
+      ),
+    );
+    PLUGIN_TENANTS.TenantDisplayName = lazyPluginComponent(() =>
+      import("./components/TenantDisplayName").then(
+        ({ TenantDisplayName }) => TenantDisplayName,
+      ),
+    );
     PLUGIN_TENANTS.isExternalUsersGroup = isExternalUsersGroup;
     PLUGIN_TENANTS.isTenantGroup = isTenantGroup;
     PLUGIN_TENANTS.isExternalUser = isExternalUser;
     PLUGIN_TENANTS.isTenantCollection = isTenantCollection;
-    PLUGIN_TENANTS.ReactivateExternalUserButton = ReactivateExternalUserButton;
-    PLUGIN_TENANTS.TenantGroupHintIcon = TenantGroupHintIcon;
-    PLUGIN_TENANTS.MainNavSharedCollections = MainNavSharedCollections;
-    PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
-    PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
-      TenantSpecificCollectionsItemList;
+    PLUGIN_TENANTS.ReactivateExternalUserButton = lazyPluginComponent(() =>
+      import("./components/ReactivateExternalUserButton").then(
+        ({ ReactivateExternalUserButton }) => ReactivateExternalUserButton,
+      ),
+    );
+    PLUGIN_TENANTS.TenantGroupHintIcon = lazyPluginComponent(() =>
+      import("./components/TenantGroupHintIcon").then(
+        ({ TenantGroupHintIcon }) => TenantGroupHintIcon,
+      ),
+    );
+    PLUGIN_TENANTS.MainNavSharedCollections = lazyPluginComponent(() =>
+      import("./components/MainNavSharedCollections").then(
+        ({ MainNavSharedCollections }) => MainNavSharedCollections,
+      ),
+    );
+    PLUGIN_TENANTS.TenantCollectionItemList = lazyPluginComponent(() =>
+      import("./components/TenantCollectionItemList").then(
+        ({ TenantCollectionItemList }) => TenantCollectionItemList,
+      ),
+    );
+    PLUGIN_TENANTS.TenantSpecificCollectionsItemList = lazyPluginComponent(() =>
+      import("./components/TenantSpecificCollectionsItemList").then(
+        ({ TenantSpecificCollectionsItemList }) =>
+          TenantSpecificCollectionsItemList,
+      ),
+    );
     PLUGIN_TENANTS.tenantCollectionList = tenantCollectionList;
     PLUGIN_TENANTS.canAccessTenantSpecificRoute = canAccessTenantSpecificRoute;
     PLUGIN_TENANTS.tenantUsersList = tenantUsersList;

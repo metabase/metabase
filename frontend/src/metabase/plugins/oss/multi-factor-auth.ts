@@ -13,8 +13,8 @@ export type AuthChallengeFormProps = {
 
 const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
-  AccountSecurityPanel: PluginPlaceholder,
-  AdminAuthCard: PluginPlaceholder,
+  AccountSecurityPanel: PluginPlaceholder<object>,
+  AdminAuthCard: PluginPlaceholder<object>,
   enrolledUsersPage: pluginPlaceholderRoute,
   unenrolledUsersPage: pluginPlaceholderRoute,
 });

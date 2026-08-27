@@ -1,14 +1,6 @@
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, lazyPluginComponent } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
-import { DatabaseCachingEditor } from "./components/DatabaseCachingEditor";
-import { InvalidateNowButton } from "./components/InvalidateNowButton";
-import { MetricCachingModal } from "./components/MetricCachingModal";
-import { PreemptiveCachingSwitch } from "./components/PreemptiveCachingSwitch";
-import { SidebarCacheForm } from "./components/SidebarCacheForm";
-import { SidebarCacheSection } from "./components/SidebarCacheSection";
-import { StrategyEditorForQuestionsAndDashboards } from "./components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards";
 import {
   enterpriseOnlyCachingStrategies,
   getEnterprisePerformanceTabMetadata,
@@ -21,12 +13,28 @@ import { hasQuestionCacheSection } from "./utils";
 export function initializePlugin() {
   if (hasPremiumFeature("cache_granular_controls")) {
     PLUGIN_CACHING.isGranularCachingEnabled = () => true;
-    PLUGIN_CACHING.DatabaseCachingEditor = DatabaseCachingEditor;
+    PLUGIN_CACHING.DatabaseCachingEditor = lazyPluginComponent(() =>
+      import("./components/DatabaseCachingEditor").then(
+        ({ DatabaseCachingEditor }) => DatabaseCachingEditor,
+      ),
+    );
     PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
     PLUGIN_CACHING.canOverrideRootStrategy = true;
-    PLUGIN_CACHING.InvalidateNowButton = InvalidateNowButton;
-    PLUGIN_CACHING.SidebarCacheSection = SidebarCacheSection;
-    PLUGIN_CACHING.SidebarCacheForm = SidebarCacheForm;
+    PLUGIN_CACHING.InvalidateNowButton = lazyPluginComponent(() =>
+      import("./components/InvalidateNowButton").then(
+        ({ InvalidateNowButton }) => InvalidateNowButton,
+      ),
+    );
+    PLUGIN_CACHING.SidebarCacheSection = lazyPluginComponent(() =>
+      import("./components/SidebarCacheSection").then(
+        ({ SidebarCacheSection }) => SidebarCacheSection,
+      ),
+    );
+    PLUGIN_CACHING.SidebarCacheForm = lazyPluginComponent(() =>
+      import("./components/SidebarCacheForm").then(
+        ({ SidebarCacheForm }) => SidebarCacheForm,
+      ),
+    );
     PLUGIN_CACHING.strategies = {
       inherit: PLUGIN_CACHING.strategies.inherit,
       duration: enterpriseOnlyCachingStrategies.duration,
@@ -34,15 +42,31 @@ export function initializePlugin() {
       ttl: PLUGIN_CACHING.strategies.ttl,
       nocache: PLUGIN_CACHING.strategies.nocache,
     };
-    PLUGIN_CACHING.DashboardAndQuestionCachingTab =
-      DashboardAndQuestionCachingTab;
+    PLUGIN_CACHING.DashboardAndQuestionCachingTab = lazyPluginComponent(() =>
+      import("./components/DashboardAndQuestionCachingTab").then(
+        ({ DashboardAndQuestionCachingTab }) => DashboardAndQuestionCachingTab,
+      ),
+    );
     PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
-      StrategyEditorForQuestionsAndDashboards;
+      lazyPluginComponent(() =>
+        import("./components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards").then(
+          ({ StrategyEditorForQuestionsAndDashboards }) =>
+            StrategyEditorForQuestionsAndDashboards,
+        ),
+      );
     PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
-    PLUGIN_CACHING.MetricCachingModal = MetricCachingModal;
+    PLUGIN_CACHING.MetricCachingModal = lazyPluginComponent(() =>
+      import("./components/MetricCachingModal").then(
+        ({ MetricCachingModal }) => MetricCachingModal,
+      ),
+    );
   }
 
   if (hasPremiumFeature("cache_preemptive")) {
-    PLUGIN_CACHING.PreemptiveCachingSwitch = PreemptiveCachingSwitch;
+    PLUGIN_CACHING.PreemptiveCachingSwitch = lazyPluginComponent(() =>
+      import("./components/PreemptiveCachingSwitch").then(
+        ({ PreemptiveCachingSwitch }) => PreemptiveCachingSwitch,
+      ),
+    );
   }
 }
