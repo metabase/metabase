@@ -365,7 +365,7 @@ jobs:
         HTTP_PATH_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH_2 }}
       run: | # sh
         shard=$(( GITHUB_RUN_NUMBER % TOTAL_SHARDS ))
-        echo "Using Databricks workspace shard $shard of $TOTAL_SHARDS"
+        echo "Using Databricks workspace shard $(( shard + 1 )) of $TOTAL_SHARDS"
         for name in HOST HTTP_PATH TOKEN; do
           var="${name}_${shard}"
           if [ -z "${!var}" ]; then
