@@ -10,13 +10,12 @@ const MEASURE_MODELS: MiniPickerPickableItem["model"][] = ["measure"];
 
 const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
   "card",
-  "dataset",
   "metric",
 ];
 
 /**
  * Searches measures. When the instance has no measures at all, falls back to
- * questions/models/metrics, with the most recent ones shown for the empty query.
+ * questions/metrics, with the most recent ones shown for the empty query.
  */
 export function useEntityPickerSearch(enabled: boolean) {
   const { data: probe } = useSearchQuery(

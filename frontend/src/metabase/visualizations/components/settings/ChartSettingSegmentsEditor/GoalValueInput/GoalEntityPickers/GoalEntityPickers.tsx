@@ -17,14 +17,12 @@ const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "measure",
   "table",
   "card",
-  "dataset",
 ];
 
-const SELECTABLE_BROWSE_MODELS: Array<OmniPickerItem["model"]> = [
+const SELECTABLE_BROWSE_MODELS: OmniPickerItem["model"][] = [
   "metric",
   "measure",
   "card",
-  "dataset",
 ];
 
 type Props = {
