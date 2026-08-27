@@ -1,0 +1,24 @@
+## Index task_history.ended_at. Restructuring the task-history queries into literal SQL
+## (HugSQL POC) made the plans easy to read, which surfaced that every consumer of ended_at
+## runs unindexed: the cleanup task's cutoff lookup (ORDER BY ended_at DESC LIMIT 1 OFFSET n)
+## and its DELETE (WHERE ended_at <= ?) both scan the full table -- up to 100k+ rows on every
+## cleanup run -- and the Tasks page's ended_at sort does the same. started_at gained its index
+## in v48; ended_at was simply never covered.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-08-27T15:35:28
+      author: escherize
+      comment: Index task_history.ended_at for cleanup ordering/delete and Tasks page sorts
+      changes:
+        - createIndex:
+            indexName: idx_task_history_ended_at
+            tableName: task_history
+            columns:
+              - column:
+                  name: ended_at
+      rollback:
+        - dropIndex:
+            indexName: idx_task_history_ended_at
+            tableName: task_history
