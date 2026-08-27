@@ -383,13 +383,16 @@
   for the connect path to store on the connection: whether the model reasons, and the model it
   exercised, which the connect path adopts as the one to run on. Reserved for the connect and edit
   paths — a tool-call probe on every model listing would stall the admin picker behind a full
-  prefill."
+  prefill. On edit, a `:proposed-model` is re-probed only while the server still advertises it;
+  otherwise the normal candidate selection chooses a replacement."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model probe?]}]
-   (let [auth    (vllm-auth credentials ai-proxy?)
-         entries (list-all-models auth)
-         probed  (when probe?
-                   (preflight! auth entries model))]
+  ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
+   (let [auth     (vllm-auth credentials ai-proxy?)
+         entries  (list-all-models auth)
+         proposed (when (some #(= proposed-model (:id %)) entries)
+                    proposed-model)
+         probed   (when probe?
+                    (preflight! auth entries (or model proposed)))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}

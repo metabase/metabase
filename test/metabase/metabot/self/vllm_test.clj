@@ -866,6 +866,39 @@
         (vllm/list-models {:credentials credentials :probe? true :model "second"})
         (is (= "second" @probed))))))
 
+(deftest preflight-prefers-a-proposed-model-that-is-still-served-test
+  (testing "an edit without an explicit model re-probes the model previously verified for the connection"
+    (let [probed (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "first" :max_model_len 32768}
+                                                                              {:id "previous" :max_model_len 32768}]}}
+                                                   (do (swap! probed conj (:model (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (= "previous"
+               (get-in (vllm/list-models {:credentials    credentials
+                                          :probe?         true
+                                          :proposed-model "previous"})
+                       [:learned-config :probed-model])))
+        (is (= #{"previous"} @probed))))))
+
+(deftest preflight-falls-back-when-the-proposed-model-is-no-longer-served-test
+  (testing "a stale proposal does not become a hard request and the normal candidate selection still applies"
+    (let [probed (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200
+                                                    :body   {:data [{:id "sql-lora" :parent "first" :max_model_len 32768}
+                                                                    {:id "first" :max_model_len 32768}]}}
+                                                   (do (swap! probed conj (:model (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (= "first"
+               (get-in (vllm/list-models {:credentials    credentials
+                                          :probe?         true
+                                          :proposed-model "removed"})
+                       [:learned-config :probed-model])))
+        (is (= #{"first"} @probed))))))
+
 (deftest preflight-rejects-a-model-the-server-does-not-serve-test
   (testing "a requested model absent from the catalog fails and names what is served, rather than probing something else"
     (let [generated? (atom false)]
