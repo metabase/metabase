@@ -104,6 +104,21 @@
         :else
         (recur (conj already-seen alias) (conj acc [col alias]) more)))))
 
+(defn- escape-quoted
+  "Shared implementation of [[escape-sql]] and [[escape-identifier]]. Escapes `quote-char` -- and, for the styles that
+  call for it, the backslash -- so `s` can be spliced between a pair of `quote-char`s without terminating early."
+  ^String [^String s ^Character quote-char escape-style]
+  (let [q       (str quote-char)
+        doubled (str quote-char quote-char)]
+    (case escape-style
+      :ansi             (str/replace s q doubled)
+      :backslashes      (-> s
+                            (str/replace "\\" "\\\\")
+                            (str/replace q (str "\\" q)))
+      :ansi+backslashes (-> s
+                            (str/replace "\\" "\\\\")
+                            (str/replace q doubled)))))
+
 ;;; TODO (Cam 2026-04-27) -- rename this to `escape-single-quotes` to make it clearer what we're escaping
 (defn escape-sql
   "Escape single quotes in a SQL string. `escape-style` is one of
@@ -135,14 +150,7 @@
   {:arglists '([s :ansi] [s :backslashes] [s :ansi+backslashes])}
   ^String [^String s escape-style]
   (when s
-    (case escape-style
-      :ansi             (str/replace s "'" "''")
-      :backslashes      (-> s
-                            (str/replace "\\" "\\\\")
-                            (str/replace "'" "\\'"))
-      :ansi+backslashes (-> s
-                            (str/replace "\\" "\\\\")
-                            (str/replace "'" "''")))))
+    (escape-quoted s \' escape-style)))
 
 (defn quote-literal
   "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style`.
@@ -155,6 +163,40 @@
   (when s
     (case escape-style
       (:ansi :backslashes :ansi+backslashes) (str \' (escape-sql s escape-style) \'))))
+
+(defn escape-identifier
+  "Escape `s` so it can be spliced between a pair of double quotes as a SQL identifier. `escape-style` is the same
+  vocabulary as [[escape-sql]], applied to `\"` rather than `'`:
+
+  * `:ansi` -- double an embedded `\"`. Correct on engines that do *not* treat `\\` as an escape character inside a
+    quoted identifier.
+
+  * `:ansi+backslashes` -- escape the backslash as well, so a trailing `\\` cannot escape our closing quote. Needed on
+    engines that honour backslash escapes inside quoted identifiers, such as ClickHouse.
+
+  `:backslashes` behaves as it does in [[escape-sql]], applied to `\"`; no current caller needs it.
+
+    (escape-identifier \"a\\\"b\" :ansi)                  ; -> \"a\\\"\\\"b\"
+    (escape-identifier \"trailing\\\\\" :ansi+backslashes) ; -> \"trailing\\\\\\\\\"
+
+  Prefer [[quote-name]] when the driver's `sql.qp/quote-style` already escapes correctly -- it goes through HoneySQL
+  and knows about backtick dialects. Reach for this only when hand-building SQL text for an engine whose escaping
+  HoneySQL does not cover.
+
+  For user input, *ALWAYS* prefer a query parameter or the engine's own `quote_ident()` where one exists."
+  {:arglists '([s :ansi] [s :ansi+backslashes])}
+  ^String [^String s escape-style]
+  (when s
+    (escape-quoted s \" escape-style)))
+
+(defn quote-identifier
+  "Wrap `s` in double quotes as a SQL identifier, escaping embedded quotes per `escape-style`. See
+  [[escape-identifier]] for the escape styles and for when to prefer [[quote-name]].
+
+    (quote-identifier \"a\\\"b\" :ansi) ; -> \"\\\"a\\\"\\\"b\\\"\""
+  ^String [^String s escape-style]
+  (when s
+    (str \" (escape-identifier s escape-style) \")))
 
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.

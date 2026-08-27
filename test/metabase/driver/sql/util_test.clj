@@ -112,6 +112,41 @@
   (testing "empty string"
     (is (= "''" (sql.u/quote-literal "" :ansi)))))
 
+(deftest ^:parallel escape-identifier-test
+  (doseq [[escape-strategy s->expected]
+          {:ansi
+           {"role"                "role"
+            "a\"b"                "a\"\"b"
+            "trailing\\"          "trailing\\"
+            "a\\\"b"               "a\\\"\"b"}
+
+           ;; doubles the backslash *and* the quote, so the identifier terminates where we intended whether or not
+           ;; the engine treats `\` as an escape character. This is what ClickHouse needs.
+           :ansi+backslashes
+           {"role"                "role"
+            "a\"b"                "a\"\"b"
+            "trailing\\"          "trailing\\\\"
+            "a\\\"b"               "a\\\\\"\"b"}}
+
+          [s expected] s->expected]
+    (testing escape-strategy
+      (testing (pr-str s)
+        (is (= expected
+               (sql.u/escape-identifier s escape-strategy)))))))
+
+(deftest ^:parallel quote-identifier-test
+  (testing "wraps in double quotes and doubles interior quotes"
+    (is (= "\"role\"" (sql.u/quote-identifier "role" :ansi)))
+    (is (= "\"a\"\"b\"" (sql.u/quote-identifier "a\"b" :ansi))))
+  (testing ":ansi+backslashes also escapes backslashes"
+    (testing "a trailing backslash cannot escape our closing quote"
+      (is (= "\"trailing\\\\\"" (sql.u/quote-identifier "trailing\\" :ansi+backslashes))))
+    (is (= "\"a\\\\\"\"b\"" (sql.u/quote-identifier "a\\\"b" :ansi+backslashes))))
+  (testing "empty string"
+    (is (= "\"\"" (sql.u/quote-identifier "" :ansi))))
+  (testing "nil"
+    (is (nil? (sql.u/quote-identifier nil :ansi)))))
+
 ;;; Ok to hardcode driver names in the tests below because they're for general util functions and not something that
 ;;; needs to be run against all supported drivers
 
