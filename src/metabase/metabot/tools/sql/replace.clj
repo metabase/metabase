@@ -36,6 +36,7 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
+    (metabot.tools.sql.common/check-native-query-access! (:database query))
     (let [dialect (metabot.tools.sql.validation/query->dialect query)
 
           {:keys [valid? transpiled-sql] :as validation-result}

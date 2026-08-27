@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           public-sharing
            queries
            query-processor
            search
@@ -625,6 +626,7 @@
    :uses #{api
            app-db
            collections
+           documents
            eid-translation
            events
            lib-be
@@ -653,6 +655,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
+           metabase.comments.core
            metabase.comments.init}
    :uses #{analytics
            api
@@ -1029,7 +1032,9 @@
            api
            app-db
            collections
+           comments
            contextual-interestingness
+           documents
            events
            interestingness
            lib
@@ -1054,6 +1059,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
+                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse
@@ -1445,6 +1451,7 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
+           app-db
            events
            lib
            lib-be
@@ -1783,7 +1790,8 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Document}}
@@ -1917,6 +1925,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/StoredResult
+                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions
@@ -1958,6 +1968,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.setup
               metabase.query-processor.store

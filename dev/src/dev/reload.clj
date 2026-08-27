@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:missing-docstring]}
 (defonce *reload-timestamps (atom {}))
 
 (defn system-classpath

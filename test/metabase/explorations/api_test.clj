@@ -9,6 +9,7 @@
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -18,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
@@ -1409,6 +1411,8 @@
             new-block    (-> new :blocks first)
             new-queries  (:queries new)]
         (is (= 2 (count threads)) "explore-further adds a thread; restart would keep 1")
+        (is (= 1 (t2/count :model/Document :exploration_id expl-id))
+            "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
@@ -1543,7 +1547,7 @@
                                 (assoc body :explore_filters [])))))))
 
 (deftest exploration-cascade-delete-test
-  (testing "Deleting an exploration cascades to threads, selections, and queries"
+  (testing "Deleting an exploration cascades to threads, selections, queries, and the Summary document"
     (mt/with-temp [:model/User u {:email "cd@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
@@ -1555,12 +1559,363 @@
                                                                       :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
                                                         :dimensions [{:dimension_id (duid "d1")}]}]})
             eid  (:id resp)
-            tid  (-> resp :threads first :id)]
+            tid  (-> resp :threads first :id)
+            doc-id (-> resp :document :id)]
+        (is (some? doc-id) "POST creates a Summary document")
         (t2/delete! :model/Exploration :id eid)
         (is (zero? (t2/count :model/ExplorationThread :exploration_id eid)))
         (is (zero? (t2/count :model/ExplorationBlock :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
-        (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
+        (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))
+        (is (false? (t2/exists? :model/Document :id doc-id))
+            "Summary document is cascade-deleted via exploration_id FK")))))
+
+(deftest exploration-create-auto-creates-summary-document-test
+  (testing "POST / auto-creates a placeholder Summary document owned by the exploration"
+    (mt/with-temp [:model/User u {:email "summary-auto@example.com"}
+                   :model/Collection coll {:name "summary-coll"}]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "x" :collection_id (:id coll)})
+            doc  (:document resp)
+            docs (t2/select :model/Document :exploration_id (:id resp))]
+        (is (= 1 (count docs)))
+        (is (= "Summary" (:name doc)))
+        (is (= (:id u) (:creator_id doc)))
+        (is (= (:id resp) (:exploration_id doc)))
+        (is (= (:id coll) (:collection_id (first docs))))
+        (is (true? (:is_placeholder doc)))
+        (testing "first body save clears is_placeholder"
+          (mt/user-http-request u :put 200 (str "document/" (:id doc))
+                                {:document {:type "doc"
+                                            :content [{:type "paragraph"
+                                                       :content [{:type "text" :text "curated"}]}]}})
+          (is (false? (t2/select-one-fn :is_placeholder :model/Document :id (:id doc)))))))))
+
+(def ^:private append-display+viz
+  "Required display + visualization_settings for summary/append requests."
+  {:display                "bar"
+   :visualization_settings {:graph.dimensions ["x"] :graph.metrics ["y"]}})
+
+(deftest exploration-append-records-stored-result-use-test
+  (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
+    (mt/with-temp [:model/User u {:email "append-use@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-use"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                                         :dimensions [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]})
+            eid    (:id resp)
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                       :exploration_query_id qid)
+              before (t2/select :model/StoredResultUse :stored_result_id sr-id)
+              doc    (mt/user-http-request u :post 200
+                                           (format "exploration/%d/summary/append" eid)
+                                           (assoc append-display+viz :exploration_query_ids [qid]))
+              card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs :id)
+              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
+              attrs   (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs)]
+          (is (empty? before)
+              "no card-use row exists before the append")
+          (is (some? use-row)
+              "appending records a stored_result_use row for the source snapshot")
+          (is (nil? (:exploration_id use-row))
+              "the card-use row has no exploration_id")
+          (is (= sr-id (:stored_result_id attrs)))
+          (is (string? (:chart_href attrs)))
+          (is (string? (:child_target_id attrs)))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (nil? (get-in attrs [:host_data :explore_filters]))
+              "unfiltered charts omit explore_filters from host_data")
+          (is (uuid? (parse-uuid (str (:_id attrs))))
+              "_id is stamped for per-node identity (string after JSON round-trip)")
+          (is (false? (:is_placeholder doc))
+              "first append clears is_placeholder"))))))
+
+(deftest exploration-append-bakes-explore-filters-into-host-data-test
+  (testing "Appending a chart from an explore-further thread snapshots explore_filters onto host_data"
+    (mt/with-temp [:model/User u {:email "append-filters@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [filter-value 2
+            field-ref    ["field" {} (mt/id :venues :price)]
+            created      (create-exploration! u
+                                              {:name       "append-filters"
+                                               :metrics    [{:card_id (:id metric)
+                                                             :dimension_mappings (venues-dimension-mappings)}]
+                                               :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                                                            {:dimension_id (duid "price") :display_name "Price"}]})
+            expl-id      (:id created)
+            page-id      (some :id (filter #(str/includes? (:name %) "Price")
+                                           (-> created :threads first :blocks first :pages)))
+            hydrated     (explore-further-and-hydrate! u expl-id page-id
+                                                       [{:operator      "="
+                                                         :field_ref     field-ref
+                                                         :value         filter-value
+                                                         :display_value "2"}])
+            new-thread   (->> hydrated :threads (sort-by :position) second)
+            qid          (-> new-thread :queries first :id)
+            qp-out       {:status :completed
+                          :data   {:cols [{:name "x" :source :breakout}
+                                          {:name "y" :source :aggregation}]
+                                   :rows [["a" 3] ["b" 1]]}
+                          :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [doc   (mt/user-http-request u :post 200
+                                          (format "exploration/%d/summary/append" expl-id)
+                                          (assoc append-display+viz :exploration_query_ids [qid]))
+              attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                        :content last :content first :attrs)]
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (=? [{:operator       "="
+                    :value          filter-value
+                    :dimension_name "Price"
+                    :display_value  "2"}]
+                  (get-in attrs [:host_data :explore_filters]))))))))
+
+(deftest exploration-append-rolls-back-on-failure-test
+  (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
+    (mt/with-temp [:model/User u {:email "append-rollback@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-rollback"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]})
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (let [doc (t2/select-one :model/Document :id doc-id)]
+          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
+          ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
+          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+            (is (thrown? Throwable
+                         (eqr/create-ephemeral-card-for-exploration-queries!
+                          [qid] doc-id (:collection_id doc) u
+                          {:display "bar" :visualization-settings {}}))))
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the source snapshot remains — no composite StoredResult leaks from the rolled-back append")
+          (is (zero? (t2/count :model/Card :document_id doc-id))
+              "no ephemeral Card leaks from the rolled-back append")
+          (is (zero? (t2/count :model/StoredResultUse :stored_result_id
+                               (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                 :exploration_query_id qid)))
+              "no stored_result_use rows leak from the rolled-back append"))))))
+
+(deftest exploration-append-single-query-reuses-source-snapshot-test
+  (testing "A single-query append reuses the source stored_result instead of duplicating its bytes into a fresh row"
+    (mt/with-temp [:model/User u {:email "append-single@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-single"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]})
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                          :exploration_query_id qid)
+              doc       (t2/select-one :model/Document :id doc-id)
+              ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
+              ;; the real create-card! / stored_result write path.
+              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                          (eqr/create-ephemeral-card-for-exploration-queries!
+                           [qid] doc-id (:collection_id doc) u
+                           {:display "bar" :visualization-settings {}}))
+              use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
+          (is (= src-sr-id (:stored-result-id result))
+              "the embed points back at the source stored_result rather than a fresh copy")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the reused source snapshot exists — no duplicate composite StoredResult is created for a single-query embed")
+          (is (= [src-sr-id] (mapv :stored_result_id use-rows))
+              "exactly one stored_result_use row, pointing at the source snapshot"))))))
+
+(deftest exploration-summary-save-carries-stored-result-pairing-test
+  (testing "PUT /api/document/:id carries (card, stored_result) pairings onto draft-created Cards so Summary embeds stay readable"
+    (mt/with-temp [:model/User u {:email "summary-carry@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "summary-carry"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1")
+                                                                          :table_id (mt/id :venues)
+                                                                          :target ["field" {} (mt/id :venues :price)]}]}]
+                                         :dimensions [{:dimension_id (duid "d1") :display_name "Price"
+                                                       :effective_type "type/Number"}]})
+            eid    (:id resp)
+            qid    (-> resp :threads first :queries first :id)
+            doc-id (-> resp :document :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (mt/user-http-request u :post 200
+                              (format "exploration/%d/summary/append" eid)
+                              (assoc append-display+viz :exploration_query_ids [qid]))
+        (let [attrs   (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                          :content last :content first :attrs)
+              sr-id   (:stored_result_id attrs)
+              old-card-id (:id attrs)
+              draft-id -10
+              ;; Simulate the editor forking the embed into a negative-id draft card on save.
+              updated (mt/user-http-request u :put 200 (format "document/%d" doc-id)
+                                            {:document {:type "doc"
+                                                        :content [{:type "cardEmbed"
+                                                                   :attrs {:id draft-id
+                                                                           :stored_result_id sr-id}}]}
+                                             :cards {draft-id {:name "Edited Summary Chart"
+                                                               :dataset_query (:dataset_query metric)
+                                                               :display "bar"
+                                                               :visualization_settings {:graph.colors ["#509EE3"]}}}})
+              new-card-id (-> updated :document :content first :attrs :id)]
+          (is (pos-int? new-card-id)
+              "draft id is rewritten to a real Card id")
+          (is (not= old-card-id new-card-id)
+              "save creates a brand-new Card rather than updating in place")
+          (is (some? (t2/select-one :model/StoredResultUse
+                                    :stored_result_id sr-id
+                                    :card_id new-card-id))
+              "pairing is carried onto the new Card")
+          (is (=? {:status "completed" :row_count 2 :data {:rows [["a" 3] ["b" 1]]}}
+                  (mt/user-http-request u :post 200 (format "card/%d/query" new-card-id)
+                                        {:stored_result_id sr-id}))
+              "cached read against the new card id succeeds"))))))
+
+(deftest ^:parallel page-url-test
+  (testing "page-url builds a research deep link to a page by id"
+    (is (= "/question/research/7/page/42"
+           (explorations.blocks/page-url 7 42)))))
+
+(deftest exploration-put-cascades-collection-id-to-documents-test
+  (testing "Moving an exploration rewrites :collection_id on its Summary document."
+    (mt/with-temp [:model/Collection src  {}
+                   :model/Collection dest {}
+                   :model/Exploration e   {:name          "cascade"
+                                           :creator_id    (mt/user->id :crowberto)
+                                           :collection_id (:id src)}
+                   :model/Document d {:name "Summary"
+                                      :document {:type "doc" :content []}
+                                      :content_type "application/json+vnd.prose-mirror"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :collection_id (:id src)
+                                      :exploration_id (:id e)}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:collection_id (:id dest)})
+      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d)))))))
+
+(deftest exploration-put-archive-cascades-to-documents-test
+  (testing "Archiving an exploration cascade-archives its Summary, except user-archived ones."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document live {:name "Summary"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_id (:id e)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived true})
+      (testing "live doc is cascade-archived (archived_directly=false marks it as cascade)"
+        (let [d (t2/select-one :model/Document :id (:id live))]
+          (is (true?  (:archived d)))
+          (is (false? (:archived_directly d)))))
+      (testing "user-archived doc is left alone"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
+
+(deftest exploration-get-hydrates-summary-when-trashed-test
+  (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name          "trashed"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document d {:name "Summary"
+                                      :document {:type "doc" :content []}
+                                      :content_type "application/json+vnd.prose-mirror"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :collection_id (:id c)
+                                      :exploration_id (:id e)}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived true})
+      (let [resp (mt/user-http-request :crowberto :get 200 (format "exploration/%d" (:id e)))]
+        (is (= (:id d) (get-in resp [:document :id])))
+        (is (true? (get-in resp [:document :archived])))))))
+
+(deftest exploration-put-unarchive-cascades-to-documents-test
+  (testing "Unarchiving restores cascade-archived docs but leaves user-archived docs archived."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-unarchive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :archived      true
+                                         :archived_directly true}
+                   :model/Document cascade-doc {:name "cascade-doc"
+                                                :document {:type "doc" :content []}
+                                                :content_type "application/json+vnd.prose-mirror"
+                                                :creator_id (mt/user->id :crowberto)
+                                                :collection_id (:id c)
+                                                :exploration_id (:id e)
+                                                :archived true
+                                                :archived_directly false}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived false})
+      (testing "cascade-archived doc is restored"
+        (is (false? (t2/select-one-fn :archived :model/Document :id (:id cascade-doc)))))
+      (testing "user-archived doc stays archived"
+        (let [d (t2/select-one :model/Document :id (:id user-archived))]
+          (is (true? (:archived d)))
+          (is (true? (:archived_directly d))))))))
 
 (deftest exploration-http-delete-returns-204-test
   (testing "DELETE /api/exploration/:id returns 204 and removes the row — guards a malli regression where returning the Ring response map `generic-204-no-content` instead of literal `nil` made the `:- :nil` schema reject the response and yield a 400"
@@ -2033,6 +2388,11 @@
               {:model model :model_id id :user_id user-id :object {}
                :timestamp ts :is_creation false :is_reversion false :most_recent false}))
 
+(defn- mine-names
+  "Names in the order `GET /mine` returns them for `user`."
+  [user & opts]
+  (mapv :name (:data (apply mt/user-http-request user :get 200 "exploration/mine" opts))))
+
 (defn- m-index-by
   "Index a `GET /mine` response's `:data` rows by `:name`."
   [resp]
@@ -2072,6 +2432,30 @@
             (is (= 2 (:total resp))))
           (testing "rows don't leak the internal total_count column"
             (is (not (contains? (get by-name "created-by-me") :total_count)))))))))
+
+(deftest mine-ordering-composes-document-edits-test
+  (testing "GET /mine sorts by the caller's most-recent touch, counting Summary document edits"
+    (mt/with-temp [:model/User       me {:email "mine-order@example.com"}
+                   :model/Collection coll {:name "order-coll"}
+                   ;; created-only: only touch is creation (no revisions)
+                   :model/Exploration _created-only {:name "created-only" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; meta-edited: a later Exploration revision
+                   :model/Exploration meta-edited {:name "meta-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; doc-edited: a still-later Document (Summary) revision, even though its own
+                   ;; Exploration row was never edited after creation
+                   :model/Exploration doc-edited {:name "doc-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   :model/Document doc {:name "Summary"
+                                        :document {:type "doc" :content []}
+                                        :content_type "application/json+vnd.prose-mirror"
+                                        :creator_id (:id me)
+                                        :collection_id (:id coll)
+                                        :exploration_id (:id doc-edited)}]
+      (let [now (t/offset-date-time)]
+        (touch-revision! "Exploration" (:id meta-edited) (:id me) (t/plus now (t/days 1)))
+        (touch-revision! "Document"     (:id doc)         (:id me) (t/plus now (t/days 2))))
+      (testing "doc edit (newest touch) sorts above the metadata edit, which sorts above created-only"
+        (is (= ["doc-edited" "meta-edited" "created-only"]
+               (mine-names me)))))))
 
 (deftest mine-pagination-test
   (testing "GET /mine pages with a stable order and a post-filter total"
@@ -2482,3 +2866,135 @@
             (is (nil? (:completed_at thread)))
             (is (nil? (:canceled_at thread)))
             (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))))
+
+;;; ------------------------ composite (multi-query) Summary embeds ------------------------
+
+(defn- two-ready-queries!
+  "An exploration with (at least) two `done` ExplorationQueries, each backed by a fake snapshot and
+  given the metric Card's real `dataset_query`. Returns `{:exploration-id :document-id :query-ids}`."
+  [u metric]
+  (let [resp   (create-exploration! u
+                                    {:name "composite"
+                                     :metrics [{:card_id (:id metric)
+                                                :dimension_mappings [{:dimension_id (duid "d1")
+                                                                      :table_id (mt/id :venues)
+                                                                      :target ["field" {} (mt/id :venues :price)]}
+                                                                     {:dimension_id (duid "d2")
+                                                                      :table_id (mt/id :venues)
+                                                                      :target ["field" {} (mt/id :venues :name)]}]}]
+                                     :dimensions [{:dimension_id (duid "d1") :display_name "Price"
+                                                   :effective_type "type/Number"}
+                                                  {:dimension_id (duid "d2") :display_name "Name"
+                                                   :effective_type "type/Text"}]})
+        qids   (->> resp :threads first :queries
+                    (filter #(= "default" (:query_type %)))
+                    (map :id) (take 2) vec)
+        qp-out {:status :completed
+                :data   {:cols [{:name "x" :source :breakout}
+                                {:name "y" :source :aggregation}]
+                         :rows [["a" 3] ["b" 1]]}
+                :row_count 2}]
+    (assert (= 2 (count qids)) "fixture needs two exploration queries")
+    (doseq [qid qids]
+      (store-fake-result! qid qp-out)
+      (mark-done! qid)
+      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
+    {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
+
+(defn- combine-with-perms-stubbed!
+  "Run the composite build with the run-permissions check stubbed out. The temp users these tests
+  create hold no data perms, and `create-card!` runs the same check — the existing single-query
+  test stubs it for the same reason. Tests that are *about* the permission check don't use this."
+  [& args]
+  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+    (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
+
+(deftest composite-snapshot-carries-a-data-access-token-test
+  (testing "A multi-query composite snapshot is stamped with its sources' data-access lens — without one the
+            read gate denies the embed to every non-superuser, including the collaborators it was added for"
+    (mt/with-temp [:model/User u {:email "composite-token@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc      (t2/select-one :model/Document :id document-id)
+            result   (combine-with-perms-stubbed!
+                      query-ids document-id (:collection_id doc) u
+                      {:display "bar" :visualization-settings {}})
+            src-token (t2/select-one-fn :data_access_token :model/StoredResult
+                                        :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                              :exploration_query_id (first query-ids)))]
+        (is (not= (:stored-result-id result)
+                  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                    :exploration_query_id (first query-ids)))
+            "a genuine multi-snapshot combine writes its own composite row")
+        (is (= src-token
+               (t2/select-one-fn :data_access_token :model/StoredResult :id (:stored-result-id result)))
+            "the composite carries the same lens its sources were computed under")))))
+
+(deftest composite-refuses-to-blend-different-data-access-lenses-test
+  (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
+            rather than persisted under one of them"
+    (mt/with-temp [:model/User u {:email "composite-mixed@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc    (t2/select-one :model/Document :id document-id)
+            sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                     :exploration_query_id (second query-ids))]
+        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"different data-access contexts"
+             (combine-with-perms-stubbed!
+              query-ids document-id (:collection_id doc) u
+              {:display "bar" :visualization-settings {}})))
+        (testing "and a source with no recorded lens at all is refused too"
+          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"no recorded data-access context"
+               (combine-with-perms-stubbed!
+                query-ids document-id (:collection_id doc) u
+                {:display "bar" :visualization-settings {}}))))))))
+
+(deftest composite-checks-run-permissions-for-every-source-query-test
+  (testing "`combine` copies the rows of every source into the composite, so the permission check has to cover
+            every source query — not just the first, which would let a caller materialize rows from a table
+            they cannot read"
+    (mt/with-temp [:model/User u {:email "composite-perms@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc     (t2/select-one :model/Document :id document-id)
+            ;; Lib rather than the deprecated `mt/mbql-query`; same idiom used elsewhere here.
+            other-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                             (lib/aggregate (lib/count)))))]
+        ;; Give the second source a genuinely different query, so "checked the first one" and
+        ;; "checked them all" are distinguishable.
+        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
+        (let [checked (atom [])]
+          (with-redefs [query-perms/check-run-permissions-for-query
+                        (fn [q] (swap! checked conj q) nil)]
+            (eqr/create-ephemeral-card-for-exploration-queries!
+             query-ids document-id (:collection_id doc) u
+             {:display "bar" :visualization-settings {}}))
+          (is (= 2 (count @checked))
+              "both source queries are permission-checked")
+          (is (= (set (map #(t2/select-one-fn :dataset_query :model/ExplorationQuery :id %) query-ids))
+                 (set @checked))
+              "and they are the two sources' own queries, not the first one twice"))))))
+
+(deftest composite-collapses-duplicate-exploration-query-ids-test
+  (testing "A repeated exploration_query_id is collapsed: it passes the caller's de-duped ownership check, and
+            left alone would duplicate every row into the composite and insert a duplicate pairing row"
+    (mt/with-temp [:model/User u {:email "composite-dupes@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            qid    (first query-ids)
+            doc    (t2/select-one :model/Document :id document-id)
+            src-sr (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                     :exploration_query_id qid)
+            result (combine-with-perms-stubbed!
+                    [qid qid] document-id (:collection_id doc) u
+                    {:display "bar" :visualization-settings {}})]
+        (is (= src-sr (:stored-result-id result))
+            "collapses to the single-query path, reusing the source snapshot rather than combining it with itself")
+        (is (= [src-sr] (mapv :stored_result_id
+                              (t2/select :model/StoredResultUse :card_id (:card-id result))))
+            "exactly one pairing row, not one per repeat")))))
