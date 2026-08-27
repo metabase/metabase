@@ -13,6 +13,7 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp.datetime-test]
@@ -878,32 +879,27 @@
       (let [mp (mt/metadata-provider)
             venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
             categories-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
-        (mt/with-temp [:model/Card venues-model {:type          :model
+        (mt/with-temp [:model/Card venues-model {:name          "Venues Model"
+                                                 :type          :model
                                                  :dataset_query venues-query}
-                       :model/Card categories-model {:type          :model
+                       :model/Card categories-model {:name          "Categories Model"
+                                                     :type          :model
                                                      :dataset_query categories-query}]
           (let [venues-card (lib.metadata/card mp (:id venues-model))
                 categories-card (lib.metadata/card mp (:id categories-model))
-                venues-category (->> (lib/query mp venues-card)
-                                     (lib/returned-columns)
-                                     (m/find-first (comp #{"category_id"} :name)))
-                category-id (->> (lib/query mp categories-card)
-                                 (lib/returned-columns)
-                                 (m/find-first (comp #{"_id"} :name)))
                 query (as-> (lib/query mp venues-card) q
-                        (lib/join q (lib/join-clause categories-card [(lib/= (lib/ref venues-category)
-                                                                             (lib/ref category-id))]))
-                        (lib/breakout q (m/find-first #(and (= (:name %) "name")
-                                                            (= (:lib/source %) :source/joins))
-                                                      (lib/breakoutable-columns q)))
-                        (lib/breakout q (m/find-first #(and (= (:name %) "price")
-                                                            (= (:lib/source %) :source/card))
-                                                      (lib/breakoutable-columns q)))
+                        (lib/join q (lib/join-clause
+                                     categories-card
+                                     [(lib/= (lib.tu.notebook/find-col-with-spec
+                                              q (lib/join-condition-lhs-columns q categories-card nil nil)
+                                              {:is-main-group true} "Category ID")
+                                             (lib.tu.notebook/find-col-with-spec
+                                              q (lib/join-condition-rhs-columns q categories-card nil nil)
+                                              "Categories Model" "ID"))]))
+                        (lib.tu.notebook/add-breakout q "Categories Model" "Name")
+                        (lib.tu.notebook/add-breakout q "Venues Model" "Price")
                         (lib/aggregate q (lib/count))
-                        (lib/order-by q (m/find-first #(and (= (:name %) "name")
-                                                            (= (:lib/source %) :source/joins))
-                                                      (lib/orderable-columns q))
-                                      :asc)
+                        (lib.tu.notebook/add-order-by q "Categories Model" "Name")
                         (lib/limit q 3))]
             (is (= [["American" 2 4]
                     ["American" 3 4]
