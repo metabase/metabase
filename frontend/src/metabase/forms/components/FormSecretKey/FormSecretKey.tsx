@@ -13,7 +13,7 @@ import {
 
 import S from "./FormSecretKey.module.css";
 import { RegenerateKeyConfirmModal } from "./RegenerateKeyConfirmModal";
-import { SecretKeyModal } from "./SecretKeyModal";
+import { SecretKeyModal } from "./SetupKeyModal";
 
 export interface FormSecretKeyProps extends Omit<
   TextInputProps,

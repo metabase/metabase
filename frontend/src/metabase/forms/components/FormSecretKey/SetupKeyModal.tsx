@@ -1,3 +1,6 @@
+// TODO (Kelvin 2026-08-27) rename this file to SecretKeyModal.tsx to match
+// the component name; kept as SetupKeyModal.tsx for now to keep the diff
+// reviewable.
 import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
