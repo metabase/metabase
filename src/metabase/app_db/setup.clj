@@ -223,8 +223,7 @@
 
       encrypted-data-before-migrations?
       (throw (ex-info (str "The database contains data encrypted with MB_ENCRYPTION_SECRET_KEY but is not marked as encrypted: "
-                           "it has been modified directly. Restore it from a backup. "
-                           "If you know the database is intact, `rotate-encryption-key` with the same key marks it as encrypted again.")
+                           "it has been modified directly. Restore it from a backup.")
                       {}))
 
       :else
