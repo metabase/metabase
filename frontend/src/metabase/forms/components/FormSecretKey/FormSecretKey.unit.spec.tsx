@@ -96,7 +96,7 @@ describe("FormSecretKey", () => {
       expect(keyInput).toHaveAttribute("readonly");
     });
 
-    it("offers an icon-only copy button", async () => {
+    it("copies the generated key to the clipboard", async () => {
       setup({ initialValues: { secret: undefined } });
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
@@ -108,6 +108,12 @@ describe("FormSecretKey", () => {
         name: "Copy",
       });
       expect(copyButton).toHaveTextContent("");
+
+      await userEvent.click(copyButton);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        GENERATED_TOKEN,
+      );
     });
 
     it("updates the form value after clicking 'Create'", async () => {
