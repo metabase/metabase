@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -370,9 +371,9 @@
   (testing "send-metering-events! makes a POST request with correct data"
     (let [request-data (atom nil)]
       (mt/with-random-premium-token! [_token]
-        (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
-                                                (reset! request-data {:url url :opts opts})
-                                                {:status 200 :body "{}"})]
+        (mt/with-dynamic-fn-redefs [u.http/post (fn [url opts]
+                                                  (reset! request-data {:url url :opts opts})
+                                                  {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (is (some? @request-data) "POST request should have been made")
           (when @request-data
@@ -402,9 +403,9 @@
                                                                             :domains        1
                                                                             :metabot-usage  fake-usage
                                                                             :metabot-tokens 800})
-                                    http/post                 (fn [_url opts]
-                                                                (reset! request-data opts)
-                                                                {:status 200 :body "{}"})]
+                                    u.http/post                 (fn [_url opts]
+                                                                  (reset! request-data opts)
+                                                                  {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (let [body (json/decode (:body @request-data) keyword)]
             (is (= 10 (:users body))
@@ -426,9 +427,9 @@
   (testing "send-metering-events! does nothing when no token is set"
     (let [request-made (atom false)]
       (mt/with-temporary-setting-values [premium-embedding-token nil]
-        (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
-                                                (reset! request-made true)
-                                                {:status 200 :body "{}"})]
+        (mt/with-dynamic-fn-redefs [u.http/post (fn [_url _opts]
+                                                  (reset! request-made true)
+                                                  {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (is (false? @request-made) "No request should be made without a token"))))))
 
@@ -443,9 +444,9 @@
                                                :features ["test" "fixture"]
                                                :trial    false})]
         (mt/with-temporary-raw-setting-values [premium-embedding-token airgap-token]
-          (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
-                                                  (reset! request-made true)
-                                                  {:status 200 :body "{}"})]
+          (mt/with-dynamic-fn-redefs [u.http/post (fn [_url _opts]
+                                                    (reset! request-made true)
+                                                    {:status 200 :body "{}"})]
             (token-check/send-metering-events!)
             (is (false? @request-made) "No request should be made for airgap tokens")))))))
 

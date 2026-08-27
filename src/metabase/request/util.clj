@@ -1,7 +1,6 @@
 (ns metabase.request.util
   "Utility functions for HTTP (Ring) requests, and for getting device/location info from `User-Agent`/IP Address, etc."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
@@ -9,6 +8,7 @@
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -154,7 +154,7 @@
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try
-          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+          (let [response (-> (u.http/get url {:headers            {"User-Agent" config/mb-app-id-string}
                                             :socket-timeout     gecode-ip-address-timeout-ms
                                             :connection-timeout gecode-ip-address-timeout-ms})
                              :body

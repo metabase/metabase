@@ -15,22 +15,22 @@
         (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                            google-auth-auto-create-accounts-domain "metabase.com,example.com"]
           (testing "Google auth works with an @metabase.com account"
-            (with-redefs [http/post (constantly
-                                     {:status 200
-                                      :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                   "\"email_verified\":\"true\","
-                                                   "\"first_name\":\"Cam\","
-                                                   "\"last_name\":\"Era\","
-                                                   "\"email\":\"camera@metabase.com\"}")})]
+            (with-redefs [http/request (constantly
+                                        {:status 200
+                                         :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                      "\"email_verified\":\"true\","
+                                                      "\"first_name\":\"Cam\","
+                                                      "\"last_name\":\"Era\","
+                                                      "\"email\":\"camera@metabase.com\"}")})]
               (mt/client :post 200 "session/google_auth" {:token "foo"})
               (is (some? (t2/select-one :model/User :email "camera@metabase.com")))))
           (testing "Google auth works with an @example.com account"
-            (with-redefs [http/post (constantly
-                                     {:status 200
-                                      :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                   "\"email_verified\":\"true\","
-                                                   "\"first_name\":\"Cam\","
-                                                   "\"last_name\":\"Era\","
-                                                   "\"email\":\"camera@example.com\"}")})]
+            (with-redefs [http/request (constantly
+                                        {:status 200
+                                         :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                      "\"email_verified\":\"true\","
+                                                      "\"first_name\":\"Cam\","
+                                                      "\"last_name\":\"Era\","
+                                                      "\"email\":\"camera@example.com\"}")})]
               (mt/client :post 200 "session/google_auth" {:token "foo"})
               (is (some? (t2/select-one :model/User :email "camera@example.com"))))))))))

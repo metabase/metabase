@@ -2024,3 +2024,17 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(deftest resolve-auth-proxy-network-policy-test
+  (testing "the managed proxy is reached with :allow-private -- on Cloud it answers on a private address"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://ai-service.internal.example.com/llm"]
+        (let [auth (self.core/resolve-auth "anthropic" :anthropic nil true)]
+          (is (= "https://ai-service.internal.example.com/llm/anthropic" (:url auth)))
+          (is (= :allow-private (:network-policy auth)))))))
+  (testing "a BYOK provider carries no policy, so its admin-settable URL keeps the strict default"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://ai-service.internal.example.com/llm"]
+        (let [auth (self.core/resolve-auth "anthropic" :anthropic {:url "https://api.anthropic.com"} false)]
+          (is (= "https://api.anthropic.com" (:url auth)))
+          (is (nil? (:network-policy auth))))))))

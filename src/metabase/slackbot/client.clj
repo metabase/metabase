@@ -3,7 +3,7 @@
   (:import
    (java.io InputStream))
   (:require
-   [clj-http.client :as http]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -27,31 +27,31 @@
 (defn- slack-get
   "GET from slack."
   [client endpoint params]
-  (let [response (http/get (str "https://slack.com/api" endpoint)
-                           {:headers      {"Authorization" (str "Bearer " (:token client))}
-                            :query-params params})]
+  (let [response (u.http/get (str "https://slack.com/api" endpoint)
+                             {:headers      {"Authorization" (str "Bearer " (:token client))}
+                              :query-params params})]
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 
 (defn- slack-post-json
   "POST to slack."
   [client endpoint payload & {:keys [socket-timeout connection-timeout]}]
-  (let [response (http/post (str "https://slack.com/api" endpoint)
-                            (cond-> {:headers      {"Authorization" (str "Bearer " (:token client))}
-                                     :content-type "application/json; charset=utf-8"
-                                     :body         (json/encode payload)}
-                              connection-timeout (assoc :connection-timeout connection-timeout)
-                              socket-timeout     (assoc :socket-timeout socket-timeout)))]
+  (let [response (u.http/post (str "https://slack.com/api" endpoint)
+                              (cond-> {:headers      {"Authorization" (str "Bearer " (:token client))}
+                                       :content-type "application/json; charset=utf-8"
+                                       :body         (json/encode payload)}
+                                connection-timeout (assoc :connection-timeout connection-timeout)
+                                socket-timeout     (assoc :socket-timeout socket-timeout)))]
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 
 (defn- slack-post-form
   "POST form to slack."
   [client endpoint payload]
-  (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers     {"Authorization" (str "Bearer " (:token client))}
-                  :content-type "application/x-www-form-urlencoded; charset=utf-8"
-                  :form-params  payload})
+  (-> (u.http/post (str "https://slack.com/api" endpoint)
+                   {:headers     {"Authorization" (str "Bearer " (:token client))}
+                    :content-type "application/x-www-form-urlencoded; charset=utf-8"
+                    :form-params  payload})
       :body
       (json/decode true)))
 
@@ -135,9 +135,11 @@
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
     (when ok
-      (http/post upload_url
-                 {:headers {"Content-Type" "image/png"}
-                  :body    image-bytes})
+      ;; upload_url comes from Slack's response, so it does not take the deployment default
+      (u.http/post upload_url
+                   {:network-policy :external-only
+                    :headers        {"Content-Type" "image/png"}
+                    :body           image-bytes})
       (:body (slack-post-json client "/files.completeUploadExternal"
                               (cond-> {:files      [{:id file_id
                                                      :title filename}]
@@ -198,8 +200,10 @@
    Caller is responsible for closing the stream (e.g. via `with-open`)."
   ^InputStream
   [client url]
-  (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                     :as      :stream})
+  ;; url is a Slack-supplied file URL, so it does not take the deployment default
+  (-> (u.http/get url {:network-policy :external-only
+                       :headers        {"Authorization" (str "Bearer " (:token client))}
+                       :as             :stream})
       :body))
 
 ;; -------------------- SLACK STREAMING API --------------------

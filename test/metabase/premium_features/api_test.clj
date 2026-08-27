@@ -1,11 +1,11 @@
 (ns metabase.premium-features.api-test
   (:require
-   [clj-http.client :as http]
    [clj-http.cookies :as cookies]
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,18 +58,18 @@
                                                ai-service-base-url "https://ai-service.example.com/"]
               (let [request* (atom nil)]
                 (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
-                                            http/post                     (fn [url request-options]
-                                                                            (reset! request* [url request-options])
-                                                                            {:status 200})]
+                                            u.http/post                     (fn [url request-options]
+                                                                              (reset! request* [url request-options])
+                                                                              {:status 200})]
                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")
                   (is (= [(str "https://ai-service.example.com/v1/invalidate-token-cache/" token)
-                          {:throw-exceptions false}]
+                          {:network-policy :allow-all, :throw-exceptions false}]
                          @request*))))))))))
   (testing "POST /api/premium-features/token/refresh does not invalidate the AI service cache when it is not configured"
     (mt/with-dynamic-fn-redefs [premium-features/token-status            (constantly fake-token-status)
                                 premium-features/premium-embedding-token (constantly "proxy-token")
-                                http/post                                (fn [& _]
-                                                                           (throw (ex-info "should not be called" {})))]
+                                u.http/post                                (fn [& _]
+                                                                             (throw (ex-info "should not be called" {})))]
       (is (=? (dissoc fake-token-status :trial)
               (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))))
 

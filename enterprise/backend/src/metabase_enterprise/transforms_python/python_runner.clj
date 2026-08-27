@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms-python.python-runner
   (:require
-   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -17,6 +16,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -60,7 +60,14 @@
                       :connection-timeout connection-timeout-ms
                       :socket-timeout     socket-timeout-ms
                       :headers            (authorization-headers)}]
-    (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
+    ;; On Cloud the URL is provisioned by Harbormaster via MB_PYTHON_RUNNER_URL, which the settings getter reads
+    ;; ahead of anything an admin writes; self-hosted it points at an internal service by design. Either way no
+    ;; Metabase user picks it, so this does not take the deployment default.
+    (apply u.http/request (merge base-options
+                                 {:network-policy :allow-all}
+                                 request-options
+                                 {:method method, :url url})
+           extra-args)))
 
 (defn root-type
   "Supported type for roundtrip/insertion"

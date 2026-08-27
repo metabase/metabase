@@ -1,13 +1,17 @@
 (ns metabase.util.http-test
   (:require
+   [clj-http.conn-mgr :as conn-mgr]
    [clojure.test :refer :all]
-   [metabase.util.http :as http])
+   [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
+   [metabase.util.http :as http]
+   [ring.adapter.jetty :as ring-jetty])
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)
    (java.net InetAddress)
    (org.apache.http.conn DnsResolver)
-   (org.apache.http.impl.conn InMemoryDnsResolver)))
+   (org.apache.http.impl.conn InMemoryDnsResolver)
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -203,11 +207,11 @@
     (is (thrown? ExceptionInfo
                  (http/address-allowed-for-network-policy? :allow-everything (InetAddress/getByName "127.0.0.1"))))))
 
-(deftest ^:parallel ssrf-safe-dns-resolver-test
-  (testing "the validating resolver throws when a host resolves to a non-public address"
-    ;; `localhost` resolves to loopback (no network needed) -> must be refused
-    (is (thrown? ExceptionInfo
-                 (.resolve ^DnsResolver @#'http/ssrf-safe-dns-resolver "localhost")))))
+(deftest ^:parallel default-network-policy-fn-test
+  (testing "before injection the default fails closed"
+    (is (= :external-only (@#'http/policy-or-default nil (constantly :external-only)))))
+  (testing "a caller's policy wins over the deployment default"
+    (is (= :allow-all (@#'http/policy-or-default :allow-all (constantly :external-only))))))
 
 (deftest ^:parallel network-policy-dns-resolver-test
   (testing ":allow-all imposes no restriction, so there is no resolver (clj-http uses its default)"
@@ -244,3 +248,184 @@
     (is (= 5 (count (#'http/read-bounded (ByteArrayInputStream. (.getBytes "12345")) 5)))))
   (testing "returns nil when the stream exceeds the cap"
     (is (nil? (#'http/read-bounded (ByteArrayInputStream. (.getBytes "0123456789")) 5)))))
+
+;;; ------------------------------------------------ request ------------------------------------------------
+
+(defn- blocked-address-ex?
+  "Whether `e`, or anything that caused it, is the policy resolver's refusal."
+  [e]
+  (loop [^Throwable t e]
+    (cond
+      (nil? t)                       false
+      (:blocked-address (ex-data t)) true
+      :else                          (recur (.getCause t)))))
+
+(defn- addresses [& ips]
+  (into-array InetAddress (map #(InetAddress/getByName %) ips)))
+
+(defn- do-with-redirect-server
+  "Calls `f` with the port of a local server. `/start` redirects to `/final` on a different hostname,
+  so the two hops resolve separately."
+  [f]
+  (let [port           (promise)
+        handler        (fn [{:keys [uri] :as req}]
+                         (case uri
+                           ;; echo back what the request carried
+                           "/echo" {:status 200
+                                    :body   (str (name (:request-method req))
+                                                 "|" (get-in req [:headers "content-type"])
+                                                 "|" (slurp (:body req)))}
+                           "/start" {:status  302
+                                     :headers {"Location" (str "http://hop.test:" @port "/final")}
+                                     :body    ""}
+                           ;; a Location with no hostname to resolve
+                           "/start-ip" {:status  302
+                                        :headers {"Location" (str "http://127.0.0.2:" @port "/final")}
+                                        :body    ""}
+                           "/final" {:status 200, :body "final"}
+                           {:status 404, :body ""}))
+        ^Server server (ring-jetty/run-jetty handler {:join? false, :port 0})]
+    (try
+      (deliver port (.. server getURI getPort))
+      (f @port)
+      (finally (.stop server)))))
+
+(deftest request-consults-the-deployment-default-test
+  (testing "a caller that names no policy gets whatever the deployment default resolves to"
+    (do-with-redirect-server
+     (fn [port]
+       (let [url (str "http://localhost:" port "/final")]
+         (testing "default external-only -> refused"
+           (with-redefs [http/default-network-policy-fn (constantly :external-only)]
+             (is (blocked-address-ex? (is (thrown? Exception (http/get url {})))))))
+         (testing "default allow-all -> allowed"
+           (with-redefs [http/default-network-policy-fn (constantly :allow-all)]
+             (is (= 200 (:status (http/get url {})))))))))))
+
+(deftest request-honors-an-explicit-policy-test
+  (testing ":allow-all reaches a loopback server"
+    (do-with-redirect-server
+     (fn [port]
+       (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
+                                     {:network-policy :allow-all}))))))))
+
+(deftest request-ignores-a-caller-supplied-resolver-test
+  (testing "a permissive :dns-resolver in opts does not get to override the policy"
+    (do-with-redirect-server
+     (fn [port]
+       (let [permissive (doto (InMemoryDnsResolver.)
+                          (.add "localhost" (addresses "127.0.0.1")))
+             e          (is (thrown? Exception
+                                     (http/get (str "http://localhost:" port "/final")
+                                               {:network-policy :external-only
+                                                :dns-resolver   permissive})))]
+         (is (blocked-address-ex? e)))))))
+
+(deftest request-policy-gates-redirect-hops-test
+  (testing "the policy is applied to the redirect target, not only to the first host"
+    (do-with-redirect-server
+     (fn [port]
+       (let [checked (atom #{})]
+         (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                                (.add "start.test" (addresses "127.0.0.1"))
+                                                (.add "hop.test"   (addresses "127.0.0.2")))]
+           ;; permit the first hop's address and refuse the redirect target's, so only a check on
+           ;; the redirect hop can stop this
+           (with-dynamic-fn-redefs [http/address-allowed-for-network-policy?
+                                    (fn [_policy ^InetAddress addr]
+                                      (let [ip (.getHostAddress addr)]
+                                        (swap! checked conj ip)
+                                        (= "127.0.0.1" ip)))]
+             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start")
+                                                      {:network-policy :external-only})))]
+               (is (blocked-address-ex? e))
+               (is (contains? @checked "127.0.0.2")
+                   "the redirect target was put through the policy check")))))))))
+
+(deftest request-checks-an-ip-literal-host-test
+  (testing "a host written as an IP literal is checked, not waved through for having no name to resolve"
+    (do-with-redirect-server
+     (fn [port]
+       (let [e (is (thrown? Exception (http/get (str "http://127.0.0.1:" port "/final")
+                                                {:network-policy :external-only})))]
+         (is (blocked-address-ex? e)))))))
+
+(deftest request-policy-gates-a-redirect-to-an-ip-literal-test
+  (testing "an IP literal in Location goes through the policy too"
+    (do-with-redirect-server
+     (fn [port]
+       (let [checked (atom #{})]
+         (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                                (.add "start.test" (addresses "127.0.0.1"))
+                                                ;; what the system resolver does with a literal: hands it back
+                                                (.add "127.0.0.2" (addresses "127.0.0.2")))]
+           (with-dynamic-fn-redefs [http/address-allowed-for-network-policy?
+                                    (fn [_policy ^InetAddress addr]
+                                      (let [ip (.getHostAddress addr)]
+                                        (swap! checked conj ip)
+                                        (= "127.0.0.1" ip)))]
+             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start-ip")
+                                                      {:network-policy :external-only})))]
+               (is (blocked-address-ex? e))
+               (is (contains? @checked "127.0.0.2")
+                   "the IP-literal redirect target was put through the policy check")))))))))
+
+(deftest post-payload-travels-in-opts-test
+  (testing "a body in `opts` reaches the server, and clj-http's own middleware still runs on it"
+    (do-with-redirect-server
+     (fn [port]
+       (let [url (str "http://127.0.0.1:" port "/echo")]
+         (testing "an explicit :body with :content-type"
+           (is (= "post|application/json|{\"a\":1}"
+                  (:body (http/post url {:body           "{\"a\":1}"
+                                         :content-type   :json
+                                         :network-policy :allow-all})))))
+         (testing ":form-params, which only clj-http's middleware knows how to encode"
+           (is (= "post|application/x-www-form-urlencoded|a=1&b=2"
+                  (:body (http/post url {:form-params    {:a 1 :b 2}
+                                         :network-policy :allow-all}))))))))))
+
+(deftest request-rejects-a-nil-url-test
+  (testing "an unset URL setting gets a readable error rather than an obscure failure"
+    (is (thrown-with-msg? IllegalArgumentException #"URL cannot be nil"
+                          (http/get nil {:network-policy :allow-all})))))
+
+(deftest policy-connection-manager-enforces-the-policy-test
+  (testing "a pooled manager built for a policy still refuses a disallowed address"
+    ;; clj-http ignores :dns-resolver when a :connection-manager is supplied, so the pool has to carry the
+    ;; resolver itself -- this is the case that would otherwise silently lose the policy
+    (do-with-redirect-server
+     (fn [port]
+       (let [mgr (http/policy-connection-manager :external-only {:threads 2, :default-per-route 2})
+             e   (is (thrown? Exception (http/get (str "http://localhost:" port "/final")
+                                                  {:connection-manager mgr})))]
+         (is (blocked-address-ex? e))))))
+  (testing "a pool built without the policy's resolver loses the policy -- the reason the helper exists"
+    (do-with-redirect-server
+     (fn [port]
+       (let [plain (conn-mgr/make-reusable-conn-manager {:threads 2, :default-per-route 2})]
+         ;; :external-only here has no effect: clj-http never consults :dns-resolver once a manager is supplied
+         (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
+                                       {:network-policy     :external-only
+                                        :connection-manager plain}))))))))
+  (testing "and an :allow-all pool reaches loopback"
+    (do-with-redirect-server
+     (fn [port]
+       (let [mgr (http/policy-connection-manager :allow-all {:threads 2, :default-per-route 2})]
+         (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
+                                       {:network-policy     :allow-all
+                                        :connection-manager mgr})))))))))
+
+(deftest request-async-arity-applies-the-policy-test
+  (testing "clj-http's async arity is supported and still refuses a disallowed address"
+    ;; transforms_python's /cancel call passes :async? true with respond/raise, so the 3-arity has to exist
+    (do-with-redirect-server
+     (fn [port]
+       (let [raised (promise)
+             url    (str "http://localhost:" port "/final")]
+         (http/request {:url url, :method :get, :async? true, :network-policy :external-only}
+                       (fn [_] (deliver raised ::unexpectedly-succeeded))
+                       (fn [e] (deliver raised e)))
+         (let [outcome (deref raised 10000 ::timed-out)]
+           (is (instance? Throwable outcome))
+           (is (blocked-address-ex? outcome))))))))

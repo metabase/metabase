@@ -1,6 +1,8 @@
 (ns metabase.util.http
+  (:refer-clojure :exclude [get])
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn-mgr]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.util.json :as json])
@@ -30,17 +32,14 @@
     (:body response)))
 
 ;; --------------------------------------------------------------------------------------------
-;; SSRF-hardened fetch of an untrusted (user-provided) URL.
+;; Fetching a URL that came from configuration or from a user.
 ;;
-;; Fetching a user-provided URL server-side is the classic SSRF risk. Defenses:
-;;  - HTTPS only; reject IP-literal hosts and localhost/metadata/internal hostnames.
-;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
-;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
-;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
-;;    any-local, multicast, IPv6 ULA (fc00::/7), and IPv4 CGNAT (100.64/10).
-;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
-;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
-;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
+;;  - The policy resolver checks every address the connection resolves to, from inside the
+;;    connection the client opens, so a host that changes what it resolves to between the check
+;;    and the connect is caught. It runs on redirect hops too.
+;;  - [[fetch-bytes]] additionally requires HTTPS and a real hostname, caps the body, and can
+;;    restrict the content-type.
+;;  - No cookies or credentials: a fresh clj-http request carries no Metabase session.
 ;; --------------------------------------------------------------------------------------------
 
 (def ^:private fetch-default-timeout-ms 8000)
@@ -174,12 +173,92 @@
           (if (every? #(address-allowed-for-network-policy? policy %) addrs)
             addrs
             (throw (ex-info "Refusing to connect to a non-permitted network address"
-                            {:ssrf true :policy policy :host host}))))))))
+                            {:blocked-address true :policy policy :host host}))))))))
 
-(def ^DnsResolver ^:private ssrf-safe-dns-resolver
-  "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].
-  See [[network-policy-dns-resolver]]."
-  (network-policy-dns-resolver :external-only))
+(def default-network-policy-fn
+  "Returns the policy [[request]] applies when a caller names none: the `outbound-allowed-networks` setting.
+  Dependency-injected by `metabase.premium-features.settings`, because `util` sits below `premium-features` in the
+  module graph and cannot ask whether we are hosted. Until that injection runs the answer is `:external-only`, which
+  fails closed."
+  (constantly :external-only))
+
+(def ^:private policy->dns-resolver
+  "[[network-policy-dns-resolver]], cached per policy."
+  (memoize network-policy-dns-resolver))
+
+(defn- policy-or-default
+  "`policy` if the caller named one, otherwise whatever `default-fn` resolves to."
+  [policy default-fn]
+  (or policy (default-fn)))
+
+(def ^:private policy-async-connection-manager
+  "An async connection manager whose resolver enforces `policy`. Needed because clj-http's own
+  `make-regular-async-conn-manager` ignores `:dns-resolver`, so an async request would otherwise escape the policy.
+  Cached per policy: each one starts an IO reactor."
+  (memoize
+   (fn [policy]
+     (conn-mgr/make-reusable-async-conn-manager {:dns-resolver (network-policy-dns-resolver policy)}))))
+
+(defn- policied-opts
+  "`opts` with the policy's resolver attached, and with anything the caller passed that would defeat it removed."
+  [{:keys [network-policy url connection-manager] :as opts}]
+  ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
+  (when (nil? url)
+    (throw (IllegalArgumentException. "Host URL cannot be nil")))
+  (let [policy   (policy-or-default network-policy default-network-policy-fn)
+        resolver (policy->dns-resolver policy)]
+    (cond-> (-> opts
+                (dissoc :network-policy :dns-resolver)
+                (m/assoc-some :dns-resolver resolver))
+      ;; clj-http builds the async manager without the resolver, so supply one that carries the policy
+      (and resolver
+           (not connection-manager)
+           (or (:async? opts) (:async opts)))
+      (assoc :connection-manager (policy-async-connection-manager policy)))))
+
+(defn request
+  "Make an outbound HTTP request. `opts` is a clj-http option map, plus:
+
+    :network-policy   which addresses we may connect to. Defaults to `:external-only`; see
+                      [[address-allowed-for-network-policy?]] for what each policy permits.
+
+  The policy is enforced on every address the connection resolves to, including redirect hops and
+  hosts written as IP literals. A `:dns-resolver` in `opts` is dropped -- the policy picks the
+  resolver. Everything else, timeouts and redirect handling included, is left to the caller.
+
+  One exception to watch: clj-http only consults `:dns-resolver` when it builds the connection manager itself, so a
+  `:connection-manager` in `opts` keeps whatever resolver it was constructed with and the policy here does nothing.
+  Build pooled managers with [[policy-connection-manager]]."
+  ([opts]
+   (http/request (policied-opts opts)))
+  ;; clj-http's own async arity: `:async? true` needs the two callbacks, and the policy applies just the same
+  ([opts respond raise]
+   (http/request (policied-opts opts) respond raise)))
+
+(def ^:private make-policy-connection-manager
+  (memoize
+   (fn [policy opts]
+     (conn-mgr/make-reusable-conn-manager
+      (assoc opts :dns-resolver (network-policy-dns-resolver policy))))))
+
+(defn policy-connection-manager
+  "A reusable clj-http connection manager whose DNS resolver enforces `policy`, for a caller that needs to pool
+  connections. Pass it to [[request]] as `:connection-manager` alongside the same `:network-policy`.
+
+  `opts` are [[clj-http.conn-mgr/make-reusable-conn-manager]]'s. Cached per policy and `opts`, since a manager's
+  resolver is fixed when it is built."
+  [policy opts]
+  (make-policy-connection-manager policy opts))
+
+(defn get
+  "GET `url`. See [[request]] for `opts`."
+  [url opts]
+  (request (assoc opts :method :get, :url url)))
+
+(defn post
+  "POST `url`. See [[request]] for `opts`."
+  [url opts]
+  (request (assoc opts :method :post, :url url)))
 
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS
@@ -234,13 +313,14 @@
                 user-agent fetch-default-user-agent}}]
    (when (safe-url? url)
      (try
-       (let [resp              (http/get url {:as                 :stream
-                                              :redirect-strategy  :none
-                                              :socket-timeout     timeout-ms
-                                              :connection-timeout timeout-ms
-                                              :throw-exceptions   false
-                                              :headers            {"User-Agent" user-agent}
-                                              :dns-resolver       ssrf-safe-dns-resolver})
+       (let [resp              (get url {:as                 :stream
+                                         ;; the URL is untrusted, so this does not take the deployment default
+                                         :network-policy     :external-only
+                                         :redirect-strategy  :none
+                                         :socket-timeout     timeout-ms
+                                         :connection-timeout timeout-ms
+                                         :throw-exceptions   false
+                                         :headers            {"User-Agent" user-agent}})
              ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try

@@ -1,11 +1,11 @@
 (ns metabase.llm.anthropic-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.llm.anthropic :as anthropic]
    [metabase.llm.settings :as llm.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,7 +110,7 @@
     (with-redefs [config/is-e2e? true]
       (mt/with-temporary-setting-values [llm-anthropic-api-key       "sk-ant-test-key"
                                          llm-anthropic-api-base-url  "https://api.anthropic.com"]
-        (mt/with-dynamic-fn-redefs [http/post (fn [& _] (throw (ex-info "http/post should not be called" {})))]
+        (mt/with-dynamic-fn-redefs [u.http/post (fn [& _] (throw (ex-info "u.http/post should not be called" {})))]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"non-localhost"
@@ -121,7 +121,7 @@
       (with-redefs [config/is-e2e? true]
         (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
                                            llm-anthropic-api-base-url "http://localhost:6123"]
-          (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
+          (mt/with-dynamic-fn-redefs [u.http/post (constantly mock-response)]
             (is (=? {:result {:sql "SELECT 1"}}
                     (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))))))))
 
@@ -138,7 +138,7 @@
                                           :output_tokens 250}}}]
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
                                          llm-anthropic-model "claude-sonnet-4-5-20250929"]
-        (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
+        (mt/with-dynamic-fn-redefs [u.http/post (constantly mock-response)]
           (let [result (anthropic/chat-completion {:system   "You are a SQL expert"
                                                    :messages [{:role "user" :content "get all users"}]})]
             (is (=? {:result      {:sql         "SELECT * FROM users"

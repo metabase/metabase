@@ -1,7 +1,6 @@
 (ns metabase.version.task.upgrade-checks
   "Contains a Metabase task which periodically checks for the availability of new Metabase versions."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -10,6 +9,7 @@
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.version.settings :as version.settings]))
@@ -19,13 +19,15 @@
 (defn- get-version-info []
   (let [version-info-url-key  (if config/ee-available? :mb-version-info-ee-url :mb-version-info-url)
         version-info-url      (config/config-str version-info-url-key)
-        {:keys [status body]} (http/get version-info-url (merge
-                                                          {:content-type "application/json"}
-                                                          (when config/is-prod?
-                                                            {:query-params (m/remove-vals
-                                                                            str/blank?
-                                                                            {"instance" (version.settings/site-uuid-for-version-info-fetching)
-                                                                             "current-version" (:tag config/mb-version-info)})})))]
+        ;; URL comes from the environment, not the API
+        {:keys [status body]} (u.http/get version-info-url (merge
+                                                            {:network-policy :allow-all
+                                                             :content-type   "application/json"}
+                                                            (when config/is-prod?
+                                                              {:query-params (m/remove-vals
+                                                                              str/blank?
+                                                                              {"instance" (version.settings/site-uuid-for-version-info-fetching)
+                                                                               "current-version" (:tag config/mb-version-info)})})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/decode+kw body)))

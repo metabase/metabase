@@ -1,6 +1,5 @@
 (ns metabase.request.util-test
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
@@ -9,6 +8,7 @@
    [metabase.request.user-agent :as request.user-agent]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
 
@@ -145,7 +145,7 @@
 
 (deftest geocode-ip-addresses-test
   ;; Not ^:parallel because with-redefs mutates global state
-  (with-redefs [http/get mock-geojs-http-get]
+  (with-redefs [u.http/get mock-geojs-http-get]
     (are [ip-addresses expected] (malli= expected
                                          (req.util/geocode-ip-addresses ip-addresses))
       ;; Google DNS
@@ -194,11 +194,11 @@
 (deftest geocode-ip-addresses-metrics-test
   (testing "increments :metabase-geocoding/requests on successful geocoding"
     (mt/with-prometheus-system! [_ system]
-      (with-redefs [http/get mock-geojs-http-get]
+      (with-redefs [u.http/get mock-geojs-http-get]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
   (testing "increments :metabase-geocoding/errors on failed geocoding"
     (mt/with-prometheus-system! [_ system]
-      (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+      (mt/with-dynamic-fn-redefs [u.http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))

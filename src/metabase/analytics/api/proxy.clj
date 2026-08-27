@@ -9,14 +9,24 @@
   re-encode it — not a byte-exact relay. Safe for `tp2` because it has no checksum, all field values are JSON strings
   (base64 blobs survive a parse→encode round-trip), and v1 pins `eventMethod: \"post\"` with a JSON content-type."
   (:require
-   [clj-http.client :as http]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.macros :as api.macros]
+   [metabase.settings.core :as setting]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private forward-timeout-ms 5000)
+
+(defn- collector-network-policy
+  "A collector chosen by the operator (env var) or by us (the built-in default) is trusted. One written through the
+  settings API is not -- this route is anonymous and relays the response back -- so it may not point inside the
+  network."
+  []
+  (if (= :database (setting/get-raw-value-source :snowplow-url))
+    :external-only
+    :allow-all))
 
 (def ^:private Tp2Payload
   "Schema for the Snowplow `tp2` request envelope, mirroring the collector's own `payload_data` JSON schema: the iglu
@@ -38,12 +48,13 @@
    body :- Tp2Payload]
   (let [collector-url (str (analytics.settings/snowplow-url) "/com.snowplowanalytics.snowplow/tp2")]
     (try
-      (let [response (http/post collector-url
-                                {:body               (json/encode body)
-                                 :content-type       :json
-                                 :connection-timeout forward-timeout-ms
-                                 :socket-timeout     forward-timeout-ms
-                                 :throw-exceptions   false})]
+      (let [response (u.http/post collector-url
+                                  {:network-policy     (collector-network-policy)
+                                   :body               (json/encode body)
+                                   :content-type       :json
+                                   :connection-timeout forward-timeout-ms
+                                   :socket-timeout     forward-timeout-ms
+                                   :throw-exceptions   false})]
         ;; Relay status + body unchanged: 2xx clears the tracker's event, non-2xx schedules a retry.
         {:status (:status response)
          :body   (:body response)})

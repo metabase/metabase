@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.embedding-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as embedding]
@@ -20,6 +19,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -282,10 +282,10 @@
         (t2/delete! :model/SemanticSearchTokenTracking)
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
-                                    http/post (fn post-mock [_url & _options]
-                                                {:status  200
-                                                 :headers {"Content-Type" "application/json"}
-                                                 :body    (json/encode mock-response)})]
+                                    u.http/post (fn post-mock [_url & _options]
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
           (testing provider
             (reset! analytics-calls [])
             (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
@@ -332,11 +332,11 @@
                                   llm.settings/ai-service-base-url                    (constantly "http://mock-ai-service")
                                   premium-features/premium-embedding-token         (constantly "mock-token")]
         (let [captured (atom nil)]
-          (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
-                                                  (reset! captured {:url url :headers (:headers opts)})
-                                                  {:status  200
-                                                   :headers {"Content-Type" "application/json"}
-                                                   :body    (json/encode mock-response)})]
+          (mt/with-dynamic-fn-redefs [u.http/post (fn [url opts]
+                                                    (reset! captured {:url url :headers (:headers opts)})
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
             (testing "get-embedding uses ai-service URL with instance-token auth"
               (is (= mock-embedding
                      (vec (embedding/get-embedding {:provider          "ai-service"
@@ -363,11 +363,11 @@
                                          ee-embedding-service-api-key  "embedding-api-key"]
         (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "http://mock-ai-service")]
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
-                                                    (reset! captured {:url url :headers (:headers opts)})
-                                                    {:status  200
-                                                     :headers {"Content-Type" "application/json"}
-                                                     :body    (json/encode mock-response)})]
+            (mt/with-dynamic-fn-redefs [u.http/post (fn [url opts]
+                                                      (reset! captured {:url url :headers (:headers opts)})
+                                                      {:status  200
+                                                       :headers {"Content-Type" "application/json"}
+                                                       :body    (json/encode mock-response)})]
               (is (= mock-embedding
                      (vec (embedding/get-embedding {:provider          "ai-service"
                                                     :model-name        "test-model"
@@ -389,10 +389,10 @@
                            :usage {:prompt_tokens 5
                                    :total_tokens  5}}]
         (snowplow-test/with-fake-snowplow-collector
-          (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
-                                                  {:status  200
-                                                   :headers {"Content-Type" "application/json"}
-                                                   :body    (json/encode mock-response)})]
+          (mt/with-dynamic-fn-redefs [u.http/post (fn [_url & _opts]
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
             (embedding/get-embeddings-batch {:provider         "ai-service"
                                              :model-name       "test-model"
                                              :vector-dimensions 3}
@@ -421,10 +421,10 @@
                            :usage {:prompt_tokens 5
                                    :total_tokens  5}}]
         (snowplow-test/with-fake-snowplow-collector
-          (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
-                                                  {:status  200
-                                                   :headers {"Content-Type" "application/json"}
-                                                   :body    (json/encode mock-response)})]
+          (mt/with-dynamic-fn-redefs [u.http/post (fn [_url & _opts]
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
             (embedding/get-embedding {:provider          "ai-service"
                                       :model-name        "test-model"
                                       :vector-dimensions 3}
@@ -440,26 +440,28 @@
       (doseq [provider ["openai" "ai-service"]]
         (semantic.tu/with-test-db! {:mode :blank}
           (let [encoded-embedding (encode-floats-to-base64 (repeat 1024 1.0))]
+            ;; root swap on purpose: indexing runs on pool threads that do not inherit dynamic bindings
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
                           semantic.settings/openai-api-key                  (constantly "xyz")
                           semantic.settings/openai-api-base-url             (constantly "xyz")
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
-                          http/post (fn post-mock [_url {:keys [body]}]
-                                      (let [inputs (:input (json/decode body true))]
-                                        {:status 200
-                                         :headers {"Content-Type" "application/json"}
-                                         :body (json/encode
-                                                {:data (map-indexed
-                                                        (fn [index _]
-                                                          {:object    "embedding"
-                                                           :embedding encoded-embedding
-                                                           :index     index})
-                                                        inputs)
-                                                 :model "some-model"
-                                                 :usage {:prompt_tokens 1
-                                                         :total_tokens 13}})}))]
+                          u.http/post (fn post-mock [_url {:keys [body]}]
+                                        (let [inputs (:input (json/decode body true))]
+                                          {:status 200
+                                           :headers {"Content-Type" "application/json"}
+                                           :body (json/encode
+                                                  {:data (map-indexed
+                                                          (fn [index _]
+                                                            {:object    "embedding"
+                                                             :embedding encoded-embedding
+                                                             :index     index})
+                                                          inputs)
+                                                   :model "some-model"
+                                                   :usage {:prompt_tokens 1
+                                                           :total_tokens 13}})}))]
               (let [pgvector (semantic.env/get-pgvector-datasource!)
                     index-metadata (semantic.env/get-index-metadata)
                     embedding-model (semantic.env/get-configured-embedding-model)
@@ -518,3 +520,34 @@
     (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
     (testing "transport credentials are not part of vector-space identity"
       (is (= resolved (embedding/resolve-model (assoc requested :api-key "do-not-persist")))))))
+
+(deftest ai-service-network-policy-test
+  (let [embedding-vec [1.0 2.0 3.0 4.0]
+        response      {:usage {:total_tokens 1 :prompt_tokens 1}
+                       :data  [{:index 0 :embedding (encode-floats-to-base64 embedding-vec)}]}
+        capture-post  (fn [captured]
+                        (fn [_url opts]
+                          (reset! captured opts)
+                          {:status  200
+                           :headers {"Content-Type" "application/json"}
+                           :body    (json/encode response)}))
+        embed!        #(embedding/get-embedding {:provider          "ai-service"
+                                                :model-name        "test-model"
+                                                :vector-dimensions 4}
+                                               "test text"
+                                               {:record-tokens? false})]
+    (testing "the managed AI service is reached with :allow-private -- on Cloud it answers on a private address"
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  llm.settings/ai-service-base-url                (constantly "http://mock-ai-service")
+                                  premium-features/premium-embedding-token        (constantly "mock-token")]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [u.http/post (capture-post captured)]
+            (is (= embedding-vec (vec (embed!))))
+            (is (= :allow-private (:network-policy @captured)))))))
+    (testing "a customer-configured embedding service carries no override, so its admin-settable URL stays strict"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [u.http/post (capture-post captured)]
+            (is (= embedding-vec (vec (embed!))))
+            (is (nil? (:network-policy @captured)))))))))

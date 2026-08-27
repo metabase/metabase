@@ -1,6 +1,5 @@
 (ns metabase.metabot.self.core
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -12,6 +11,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1033,7 +1033,13 @@
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}
+                      ;; On Cloud the proxy is our own service inside the cluster, so it answers on a private
+                      ;; address and the default `:external-only` policy would refuse it. The URL comes only from
+                      ;; MB_LLM_PROXY_BASE_URL, so no admin can aim this at an address of their choosing. It rides
+                      ;; on the auth map rather than being set in `request`, so it can never reach a BYOK provider
+                      ;; URL, which is admin-settable and has to stay strict.
+                      :network-policy :allow-private})]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
@@ -1050,10 +1056,11 @@
   at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`."
-  [{:keys [url headers]} req]
+  [{:keys [url headers network-policy]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
-                     :socket-timeout     (llm/llm-request-timeout-ms)}
-                    (merge req)
-                    (update :url #(str url %))
-                    (update :headers merge headers))))
+  (u.http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                       :socket-timeout     (llm/llm-request-timeout-ms)}
+                      (merge req)
+                      (update :url #(str url %))
+                      (update :headers merge headers)
+                      (cond-> network-policy (assoc :network-policy network-policy)))))

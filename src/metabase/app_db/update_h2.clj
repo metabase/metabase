@@ -1,12 +1,12 @@
 (ns metabase.app-db.update-h2
   "Functions for updating an H2 v1.x database to v2.x"
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [metabase.util.files :as u.files]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log])
   (:import
    (java.nio.file Files)))
@@ -71,7 +71,7 @@
   [jdbc-url]
   (when-not (.exists (io/file jar-path))
     (log/info "Downloading" v1-jar-url)
-    (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path)))
+    (io/copy (:body (u.http/get v1-jar-url {:as :stream})) (io/file jar-path)))
   (log/info "Creating v1 database backup at" migration-sql-path)
   (let [result (sh/sh "java" "-cp" jar-path "org.h2.tools.Script" "-url" jdbc-url "-script" migration-sql-path)]
     (when-not (= 0 (:exit result))

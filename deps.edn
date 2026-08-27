@@ -299,6 +299,7 @@
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Dmb.warehouse.allowed.networks=allow-all"
+                 "-Dmb.outbound.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=dev"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
@@ -341,6 +342,7 @@
   :dev-start {:main-opts ["-m" "user"]
               :jvm-opts ["-Dmb.run.mode=dev"
                          "-Dmb.warehouse.allowed.networks=allow-all"
+                         "-Dmb.outbound.allowed.networks=allow-all"
                          "-Dmacaw.run.mode=dev"
                          "-Djava.awt.headless=true"]}
 
@@ -358,6 +360,7 @@
                  ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
                  ;; that creates one breaks.
                  "-Dmb.warehouse.allowed.networks=allow-all"
+                 "-Dmb.outbound.allowed.networks=allow-all"
                  ;; Port 0 tells the OS to assign a random free port, allowing parallel test runs.
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}
@@ -370,6 +373,7 @@
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Dmb.warehouse.allowed.networks=allow-all"
+               "-Dmb.outbound.allowed.networks=allow-all"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
@@ -382,6 +386,7 @@
   :e2e
   {:jvm-opts  ["-Dmb.run.mode=e2e"
                "-Dmb.warehouse.allowed.networks=allow-all"
+               "-Dmb.outbound.allowed.networks=allow-all"
                "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
                ;; prevent Java icon from randomly popping up in macOS dock
                "-Djava.awt.headless=true"
@@ -427,6 +432,7 @@
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
                "-Dmb.warehouse.allowed.networks=allow-all"
+               "-Dmb.outbound.allowed.networks=allow-all"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
@@ -484,7 +490,8 @@
   :cljs
   {:extra-paths ["test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
-                 "-Dmb.warehouse.allowed.networks=allow-all"]
+                 "-Dmb.warehouse.allowed.networks=allow-all"
+                 "-Dmb.outbound.allowed.networks=allow-all"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}

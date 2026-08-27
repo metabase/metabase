@@ -2036,6 +2036,29 @@ Determines what happens when a user logs in via OIDC and doesn't have a Metabase
 
 When set to `true`, users who log in via OIDC will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via OIDC.
 
+### `MB_OUTBOUND_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may open outbound connections to.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+A feature whose destination is not ours to trust may pin a stricter policy of its own.
+
+This covers the HTTP calls Metabase itself makes -- to LLM providers, the GeoJSON and map-tile
+fetchers, Slack, webhooks and similar. Connections to your data warehouses are governed separately, by
+`MB_WAREHOUSE_ALLOWED_NETWORKS`.
+
+The two defaults differ deliberately. On Metabase Cloud an internal address means something is reaching for
+Metabase's own infrastructure, so the default is the strict one. On a self-hosted instance reaching an internal
+service is ordinary, and defaulting to anything stricter would break working instances on upgrade. To harden a
+self-hosted instance, set this to `external-only`.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string
