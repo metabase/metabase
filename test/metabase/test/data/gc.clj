@@ -44,6 +44,14 @@
             :append true))
     failures))
 
+(defn- collect!
+  "One driver's sweep, best effort. A driver that cannot even enumerate -- bad credentials, an account that is down --
+  yields its exception as a result rather than aborting the drivers after it."
+  [driver options]
+  (try
+    (tx/gc-orphans! driver options)
+    (catch Exception e [e])))
+
 (defn gc-orphans!
   "Sweep orphaned test data from each driver's shared cloud account.
 
@@ -65,7 +73,7 @@
     ;; we want the extensions, not their before-run hooks: Redshift's creates a session schema, which this job would
     ;; then leak nightly
     (binding [tx/*skip-before-run?* true]
-      (let [failures (into [] (mapcat #(report! % (tx/gc-orphans! % options))) (parse-drivers drivers))]
+      (let [failures (into [] (mapcat #(report! % (collect! % options))) (parse-drivers drivers))]
         ;; fail loudly rather than going green having deleted nothing
         (when (seq failures)
           (throw (ex-info (format "%d object(s) could not be deleted" (count failures))

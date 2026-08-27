@@ -280,13 +280,17 @@
   ;; Redshift schema names carry their own creation time, so we scan for age via the name
   (into []
         (mapcat (fn [details]
-                  (sql-jdbc.execute/do-with-connection-with-options
-                   driver
-                   (sql-jdbc.conn/connection-details->spec driver details)
-                   {:write? true}
-                   (fn [^java.sql.Connection conn]
-                     (with-open [stmt (.createStatement conn)]
-                       (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))))
+                  ;; a cluster that is down, or a database that does not exist on it, must not cost us the sweep of
+                  ;; the others
+                  (try
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     driver
+                     (sql-jdbc.conn/connection-details->spec driver details)
+                     {:write? true}
+                     (fn [^java.sql.Connection conn]
+                       (with-open [stmt (.createStatement conn)]
+                         (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
+                    (catch Exception e [e]))))
         (gc-connection-details)))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
