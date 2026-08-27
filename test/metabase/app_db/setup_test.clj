@@ -99,15 +99,16 @@
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:auto-migrate? false})))))
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
-      ;; when we re-run `setup-db!`
+      ;; when we re-run `setup-db!`. That changelog never creates the `setting` table, so skip the encryption check,
+      ;; which treats an unreadable sentinel as invalid.
       (with-redefs [liquibase/changelog-file "error-migration.yaml"]
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (is (= :done
-                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))))
+                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:check-encryption? false})))
           (is (thrown-with-msg?
                Exception
                #"Database requires manual upgrade."
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:auto-migrate? false}))))))))
+               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:auto-migrate? false, :check-encryption? false}))))))))
 
 (defn- update-to-changelog-id
   [change-log-id conn]

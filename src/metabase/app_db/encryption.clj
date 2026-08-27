@@ -62,19 +62,29 @@
 
 (defn encryption-check-status
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
-  `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
+  `encryption-check` sentinel setting -- a random UUID encrypted under the key, or the plaintext marker
+  `\"unencrypted\"` written when the database is not encrypted:
 
-    :valid   - the sentinel decrypts to a UUID, so the key is correct
-    :invalid - the sentinel exists but does not decrypt, so the key is wrong (or unset) for this database
-    :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
+    :valid       - the sentinel decrypts to a UUID, so the key is correct
+    :unencrypted - the sentinel is exactly the \"unencrypted\" marker
+    :invalid     - anything else: a sentinel that does not decrypt (wrong or unset key, tampering), no sentinel row at
+                   all, or a database that cannot be read (no `setting` table). Only the marker and a decrypting
+                   sentinel are normal states.
+
+  The marker carries no proof -- anyone with SQL access can write it -- so nothing may treat it as more than the
+  absence of encryption."
   []
-  (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
+  (let [raw (try
+              (t2/select-one-fn :value :setting :key encryption-check-key)
+              (catch Exception e
+                (log/debugf "Could not read the encryption-check setting: %s" (ex-message e))
+                ::unreadable))]
     (cond
-      (nil? raw)
-      :absent
+      (= raw "unencrypted")
+      :unencrypted
 
-      (and (encryption/possibly-encrypted-string? raw)
-           (try (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))
+      (and (string? raw)
+           (try (string/valid-uuid? (encryption/maybe-decrypt raw))
                 (catch Throwable _ false)))
       :valid
 
@@ -98,8 +108,8 @@
 (defn encrypted-data-exists?
   "Whether the database holds any value encrypted with the current MB_ENCRYPTION_SECRET_KEY, in an encrypted-at-rest
   column or in `setting`. Ciphertext is authenticated, so only the key holder can have written such a value: finding
-  one with no `encryption-check` sentinel means the database was encrypted with this key and then modified directly.
-  Stops at the first hit."
+  one while the `encryption-check` sentinel says the database is unencrypted means it was encrypted with this key and
+  then modified directly. Stops at the first hit."
   []
   (boolean
    (or (some (fn [[table column]] (column-has-decryptable-value? table column encryption/decryptable-string?))
@@ -175,8 +185,8 @@
                       {:key key}
                       {:value (encrypt-str-fn value)})))
       (t2/delete! :conn conn :setting :key encryption-check-key)
-      (when encrypting?
-        (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encrypt-str-fn (str (random-uuid)))}))
+      (t2/insert! :conn conn :setting {:key   encryption-check-key
+                                       :value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))

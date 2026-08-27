@@ -29,13 +29,11 @@ Metabase stores connection information for the various databases you add in the 
    MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
    ```
 
-Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. If you set the key on a new Metabase, that's all you need to do. To encrypt an existing Metabase, see the next section.
+Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. To encrypt existing connections, see the next section.
 
-## Encrypting an existing Metabase
+## Encrypting an existing connection
 
-If you're adding an encryption key to a Metabase that already has data, Metabase encrypts that data the next time it starts with `MB_ENCRYPTION_SECRET_KEY` set. We recommend that you [backup](../installation-and-operation/backing-up-metabase-application-data.md) your data first.
-
-Metabase only does this for a database that contains nothing encrypted with the key yet. If it finds data encrypted with the key but the database isn't marked as encrypted, it refuses to start: someone has changed the application database directly, and you should restore it from a backup.
+If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you can encrypt the connection details by going to each one of those databases in **Admin** > **Databases** and clicking on the **Save** button. Existing databases with unencrypted details will continue to work normally.
 
 ## Rotating an encryption key
 

@@ -216,7 +216,7 @@
             (mdb/decrypt-db :h2 (mdb/data-source))
             (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
             (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
-            (is (nil? (t2/select-one-fn :value :setting :key "encryption-check")))))))
+            (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check")))))))
     (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
       (mt/with-empty-h2-app-db!
         (let [user-id (encryption-test/with-secret-key k1
@@ -229,15 +229,17 @@
                  #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
                  (mdb/decrypt-db :h2 (mdb/data-source)))))
           (is (= raw-settings (t2/select-one-fn :settings :core_user :id user-id))))))
-    (testing "without an encryption-check sentinel, an undecryptable value still aborts even in a clearable column"
+    (testing "without an encryption-check sentinel row, decryption aborts before touching any rows"
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
           (t2/delete! :setting :key "encryption-check")
-          (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
-               (mdb/decrypt-db :h2 (mdb/data-source)))))))
+          (let [user-id      (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
+                raw-settings (t2/select-one-fn :settings :core_user :id user-id)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
+                 (mdb/decrypt-db :h2 (mdb/data-source))))
+            (is (= raw-settings (t2/select-one-fn :settings :core_user :id user-id)))))))
     (testing "an undecryptable value in a non-clearable column aborts even when the key is verified"
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1

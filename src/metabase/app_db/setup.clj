@@ -192,26 +192,22 @@
 
 (mu/defn- check-encryption
   "Verify that MB_ENCRYPTION_SECRET_KEY matches the database, and encrypt the database when the key has just been
-  added. Encryption status is tracked by the `encryption-check` sentinel setting -- a random UUID encrypted under the
-  key, present iff the database is encrypted (see [[mdb.encryption/encryption-check-status]]); it is read and written
-  raw, not through `defsetting`.
+  added. Encryption status is tracked by the `encryption-check` sentinel setting (see
+  [[mdb.encryption/encryption-check-status]]); it is read and written raw, not through `defsetting`.
 
-  With a key set but no sentinel, the database is encrypted only when nothing in it was already encrypted with this key
-  before this run's migrations (`encrypted-data-before-migrations?`, see [[mdb.encryption/encrypted-data-exists?]]).
-  Such a value can only have been written by the key holder, so its presence without the sentinel means the database
-  was encrypted and then modified directly -- for instance by someone with SQL access who planted plaintext rows and
-  removed the sentinel so that the next restart would encrypt them into values the strict reads accept. Getting past
-  this check requires destroying every encrypted value (all connection details, credentials, settings), which is no
-  better for the attacker than destroying the database."
+  With a key set and the sentinel saying the database is unencrypted, the database is encrypted only when nothing in it
+  was already encrypted with this key before this run's migrations (`encrypted-data-before-migrations?`, see
+  [[mdb.encryption/encrypted-data-exists?]]). Such a value can only have been written by the key holder, so its
+  presence means the database was encrypted and then modified directly -- for instance by someone with SQL access who
+  planted plaintext rows and reset the sentinel so that the next restart would encrypt them into values the strict
+  reads accept. Getting past this check requires destroying every encrypted value (all connection details,
+  credentials, settings), which is no better for the attacker than destroying the database."
   [encrypted-data-before-migrations? :- :boolean]
   (log/debug "Checking encryption configuration")
-  (when-let [status (try (mdb.encryption/encryption-check-status)
-                         (catch Throwable e
-                           (log/warnf "Error checking encryption status, skipping the check: %s" (ex-message e))
-                           nil))]
+  (let [status (mdb.encryption/encryption-check-status)]
     (cond
       (not (encryption/default-encryption-enabled?))
-      (if (= status :absent)
+      (if (= status :unencrypted)
         (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")
         (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
 
@@ -238,8 +234,7 @@
   (sample content, columns newly encrypted at rest)."
   []
   (boolean (and (encryption/default-encryption-enabled?)
-                (not= :valid (try (mdb.encryption/encryption-check-status)
-                                  (catch Throwable _ :absent)))
+                (not= :valid (mdb.encryption/encryption-check-status))
                 (mdb.encryption/encrypted-data-exists?))))
 
 (mu/defn- error-if-downgrade-required!
