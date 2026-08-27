@@ -21,7 +21,6 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -174,13 +173,6 @@
       (when-not (= 400 (:status (ex-data e)))
         (throw e)))))
 
-(defn- configured-azure-model
-  "The saved `{family}/{deployment}` model string when the connection Metabot is pointed at is an Azure one."
-  []
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
-    (when (= type "azure")
-      model)))
-
 (defn list-models
   "Validate Azure credentials with a model-free round trip and return an empty model list.
 
@@ -191,11 +183,11 @@
   chat time with `DeploymentNotFound`.
 
   Opts: `:credentials` (`{:api-key ... :base-url ...}`), `:model` (the `{family}/{deployment}`
-  string selecting which surface family to validate; defaults to the saved Azure model), and
+  string selecting which surface family to validate; without it validation is skipped), and
   `:ai-proxy?`, which is not supported for Azure and throws when true."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
-   (when-let [model (or (not-empty model) (configured-azure-model))]
+   (when-let [model (not-empty model)]
      (try
        (case (model->family model)
          :anthropic (validate-anthropic-surface! credentials ai-proxy?)
