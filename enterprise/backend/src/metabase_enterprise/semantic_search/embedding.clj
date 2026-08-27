@@ -15,6 +15,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -469,8 +470,11 @@
   `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
   `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
-  `:type`            — optional; forwarded to the token-tracking row"
-  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?]
+  `:type`            — optional; forwarded to the token-tracking row
+  `:operator-endpoint?` — optional; true when the endpoint is operator configuration (the AI service) rather
+                       than admin input, which exempts it from `llm.settings/llm-allowed-networks`"
+  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
+           operator-endpoint?]
     :as opts}
    :- [:map
        [:provider       :string]
@@ -481,11 +485,17 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe :map]]]]
+       [:extra-body     {:optional true} [:maybe :map]]
+       [:operator-endpoint? {:optional true} [:maybe :boolean]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-    (let [headers              (merge {"Content-Type" "application/json"}
+    ;; Outside the breaker: a URL the network policy refuses is not a service outage.
+    (when-not operator-endpoint?
+      (llm.settings/assert-llm-url-allowed! endpoint))
+    (let [resolver             (when-not operator-endpoint?
+                                 (u.http/network-policy-dns-resolver (llm.settings/llm-allowed-networks)))
+          headers              (merge {"Content-Type" "application/json"}
                                       (if (and (empty? api-key) (= "ai-service" provider))
                                         {"x-metabase-instance-token"
                                          (u/prog1 (premium-features/premium-embedding-token)
@@ -493,13 +503,15 @@
                                              (throw (ex-info "Premium embedding token not set"
                                                              {:provider provider}))))}
                                         {"Authorization" (str "Bearer " api-key)}))
-          request              (merge embedding-http-timeouts
-                                      {:headers headers
-                                       :body    (json/encode
-                                                 (merge {:model           model-name
-                                                         :input           texts
-                                                         :encoding_format "base64"}
-                                                        extra-body))})
+          request              (-> (merge embedding-http-timeouts
+                                          {:headers headers
+                                           :body    (json/encode
+                                                     (merge {:model           model-name
+                                                             :input           texts
+                                                             :encoding_format "base64"}
+                                                            extra-body))})
+                                   ;; nil under :allow-all, which leaves clj-http on its default resolver
+                                   (u/assoc-dissoc :dns-resolver resolver))
           start-ms             (u/start-timer)
           {:keys [usage embeddings]}
           (call-through-embedder-breaker
@@ -553,17 +565,20 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
+  "Returns [endpoint api-key operator-endpoint?]. When api key is not set or when service url is not set but
   `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. Throws if neither base URL is configured."
+  is used for authentication, and the endpoint is operator configuration rather than admin input.
+  Throws if neither base URL is configured."
   []
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
         [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
-         (semantic-settings/ee-embedding-service-api-key)]
+         (semantic-settings/ee-embedding-service-api-key)
+         false]
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
         [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         nil]
+         nil
+         true]
 
         :else
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
@@ -575,17 +590,18 @@
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+  (let [[endpoint api-key operator-endpoint?] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     {:provider       "ai-service"
-      :endpoint       endpoint
-      :api-key        api-key
-      :model-name     model-name
-      :vector-dimensions vector-dimensions
-      :texts          texts
-      :snowplow?      snowplow?
-      :record-tokens? record-tokens?
-      :type           type})))
+     {:provider           "ai-service"
+      :endpoint           endpoint
+      :api-key            api-key
+      :model-name         model-name
+      :vector-dimensions  vector-dimensions
+      :texts              texts
+      :snowplow?          snowplow?
+      :record-tokens?     record-tokens?
+      :type               type
+      :operator-endpoint? operator-endpoint?})))
 
 ;;;; OpenAI provider
 

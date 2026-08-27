@@ -74,6 +74,10 @@
   :visibility :settings-manager
   :default    nil
   :export?    false
+  :setter     (fn [new-value]
+                (when-let [problem (llm-settings/llm-url-problem new-value)]
+                  (throw (ex-info problem {:status-code 400})))
+                (setting/set-value-of-type! :string :ee-embedding-service-base-url new-value))
   :doc        false)
 
 (defsetting ee-embedding-service-api-key
