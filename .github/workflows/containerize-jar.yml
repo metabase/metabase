@@ -1,5 +1,5 @@
 name: Containerize Uberjar
-run-name: Containerize ${{ inputs.tag }} Uberjar
+run-name: Containerize ${{ inputs.edition }} ${{ inputs.tag }} Uberjar
 
 on:
   workflow_call:
@@ -8,6 +8,14 @@ on:
         description: Metabase edition (ee or oss)
         type: string
         required: true
+      repo:
+        description: >-
+          Docker owner and repo like "metabase/metabase". Optional — when omitted it is
+          derived from the branch and edition by ./.github/actions/get-docker-info.
+        type: string
+      tag:
+        description: Docker tag, e.g. v1.87.2. Optional — derived by get-docker-info when omitted.
+        type: string
       commit:
         type: string
       release:
@@ -15,6 +23,16 @@ on:
         default: false
       build-args:
         type: string
+    outputs:
+      repo:
+        description: Docker repository name
+        value: ${{ jobs.containerize.outputs.repo }}
+      tag:
+        description: Docker tag
+        value: ${{ jobs.containerize.outputs.tag }}
+      full_image:
+        description: Full Docker image name (repo:tag)
+        value: ${{ jobs.containerize.outputs.full_image }}
   workflow_dispatch:
     inputs:
       edition:
@@ -24,6 +42,12 @@ on:
           - ee
           - oss
         required: true
+      repo:
+        description: docker owner and repo like "metabase/metabase" (blank = derive from branch)
+        type: string
+      tag:
+        description: usually a version like v1.87.2 (blank = derive from branch)
+        type: string
       commit:
         description: the full commit hash
         type: string
@@ -32,23 +56,15 @@ on:
         type: boolean
         default: false
 
-outputs:
-  repo:
-    description: Docker repository name
-    value: ${{ steps.docker-info.outputs.repo }}
-  tag:
-    description: Docker tag
-    value: ${{ steps.docker-info.outputs.tag }}
-  full_image:
-    description: Full Docker image name (repo:tag)
-    value: ${{ steps.docker-info.outputs.full_image }}
-
 jobs:
   containerize:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     outputs:
       platforms: ${{ steps.platforms.outputs.result }}
+      repo: ${{ steps.image.outputs.repo }}
+      tag: ${{ steps.image.outputs.tag }}
+      full_image: ${{ steps.image.outputs.full_image }}
     steps:
     - uses: actions/checkout@v6
       with:
@@ -65,6 +81,28 @@ jobs:
         release: ${{ inputs.release }}
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
+    # Release callers pass repo/tag explicitly; everyone else gets the branch-derived pair.
+    - name: Get Docker Info
+      id: docker-info
+      if: ${{ !inputs.repo || !inputs.tag }}
+      uses: ./.github/actions/get-docker-info
+      with:
+        edition: ${{ inputs.edition }}
+    - name: Resolve image name
+      id: image
+      env:
+        REPO: ${{ inputs.repo || steps.docker-info.outputs.repo }}
+        TAG: ${{ inputs.tag || steps.docker-info.outputs.tag }}
+      run: | # bash
+        if [ -z "$REPO" ] || [ -z "$TAG" ]; then
+          echo "Could not resolve a docker repo/tag (repo='$REPO' tag='$TAG')"
+          exit 1
+        fi
+        {
+          echo "repo=$REPO"
+          echo "tag=$TAG"
+          echo "full_image=$REPO:$TAG"
+        } >> "$GITHUB_OUTPUT"
     - name: Get platforms
       id: platforms
       uses: actions/github-script@v9
@@ -72,7 +110,7 @@ jobs:
         result-encoding: string
         script: | # js
           const { getBuildRequirements, isValidVersionString} = require('${{ github.workspace }}/release/dist/index.cjs');
-          const version = "${{ inputs.tag }}".split('-')[0];
+          const version = "${{ steps.image.outputs.tag }}".split('-')[0];
 
           if (!isValidVersionString(version)) {
             return "linux/amd64,linux/arm64";
@@ -80,11 +118,6 @@ jobs:
           // versions before 53 need to be handled differently
           const buildInfo = getBuildRequirements(version);
           return buildInfo.platforms;
-    - name: Get Docker Info
-      id: docker-info
-      uses: ./.github/actions/get-docker-info
-      with:
-        edition: ${{ inputs.edition }}
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
     - name: Login to Docker Hub
@@ -105,7 +138,7 @@ jobs:
         context: bin/docker/.
         platforms: ${{ steps.platforms.outputs.result }}
         network: host
-        tags: ${{ inputs.repo }}:${{ inputs.tag }}
+        tags: ${{ steps.image.outputs.full_image }}
         no-cache: true
         push: true
         build-args: ${{ inputs.build-args }}
@@ -113,9 +146,18 @@ jobs:
     # we need to do this to get the nice fallback behavior of the legacy manifest file
     - name: Build container (x86 only)
       if: contains(steps.platforms.outputs.result, 'arm') == false
+      env:
+        BUILD_ARGS: ${{ inputs.build-args }}
+        FULL_IMAGE: ${{ steps.image.outputs.full_image }}
       run: | # bash
+        args=()
+        while IFS= read -r line; do
+          [ -n "$line" ] && args+=(--build-arg "$line")
+        done <<< "$BUILD_ARGS"
+
         docker build \
-          -t ${{ inputs.repo }}:${{ inputs.tag }} \
+          -t "$FULL_IMAGE" \
+          "${args[@]}" \
           --network=host \
           --push \
           bin/docker/.
@@ -131,9 +173,9 @@ jobs:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
-      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -151,10 +193,42 @@ jobs:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
-      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 5
+
+  post-docker-info-comment:
+    # Lives here rather than in the caller so every containerize path gets the comment, and so
+    # it can read the resolved image directly instead of re-deriving it upstream.
+    needs: [containerize, verify-docker-pull, verify-docker-pull-arm]
+    if: |
+      !cancelled() &&
+      github.event_name == 'pull_request' && !inputs.release &&
+      needs.containerize.result == 'success' &&
+      needs.verify-docker-pull.result == 'success' &&
+      (needs.verify-docker-pull-arm.result == 'success' || needs.verify-docker-pull-arm.result == 'skipped')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    name: Post PR comment
+    steps:
+    - name: Post PR comment
+      uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      with:
+        header: docker-build-status
+        message: |
+          ✅ Docker build completed for commit ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+
+          The uberjar has been built and containerized successfully.
+
+          **Branch:** `${{ github.head_ref || github.ref_name }}`
+          **Docker Image:** `${{ needs.containerize.outputs.full_image }}`
+          **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ needs.containerize.outputs.repo }}/tags?name=${{ needs.containerize.outputs.tag }})
+          **Triggered by:** @${{ github.actor }}
+
+          Pull the image:
+          ```bash
+          docker pull ${{ needs.containerize.outputs.full_image }}
+          ```

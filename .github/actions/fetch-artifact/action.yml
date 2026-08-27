@@ -24,10 +24,15 @@ inputs:
     description: Default is true, if set to false the action will not fail if no artifact is found.
     required: false
     default: "true"
+  download:
+    description: Default is true. Set to false to only look the artifact up and report `fetch-hit`.
+    required: false
+    default: "true"
 
 outputs:
   fetch-hit:
     description: Boolean indicating if an artifact was successfully found and downloaded.
+    value: ${{ steps.find_release_artifact.outputs.fetch-hit }}
 
 runs:
   using: "composite"
@@ -36,11 +41,12 @@ runs:
       id: find_release_artifact
       uses: actions/github-script@v9
       with:
-        result-encoding: string
         script: | # js
           const fs = require('fs');
 
           const isRelease = "${{ inputs.release }}" === "true";
+          const failOnMiss = "${{ inputs.fail-on-fetch-miss }}" !== "false";
+          const shouldDownload = "${{ inputs.download }}" !== "false";
           const prefix = isRelease ? "metabase-release" : "metabase";
           const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
           console.log(`Looking for artifact: ${artifactName}`);
@@ -52,12 +58,23 @@ runs:
             per_page: 1,
           });
 
-          if (!artifacts.data?.artifacts?.[0]?.id) {
-            core.setFailed(`No artifacts found for ${artifactName}`);
+          const artifact_id = artifacts.data?.artifacts?.[0]?.id;
+
+          if (!artifact_id) {
+            core.setOutput('fetch-hit', 'false');
+            if (failOnMiss) {
+              core.setFailed(`No artifacts found for ${artifactName}`);
+            } else {
+              core.info(`No artifacts found for ${artifactName}`);
+            }
             return;
           }
 
-          const artifact_id = artifacts.data.artifacts[0].id;
+          if (!shouldDownload) {
+            console.log(`Found ${artifactName}, skipping download (download: false)`);
+            core.setOutput('fetch-hit', 'true');
+            return;
+          }
 
           let download;
           const maxAttempts = 3;
@@ -80,8 +97,10 @@ runs:
           }
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
+          core.setOutput('fetch-hit', 'true');
 
     - name: Extract and rename JAR
+      if: ${{ steps.find_release_artifact.outputs.fetch-hit == 'true' && inputs.download != 'false' }}
       shell: bash
       run: | # bash
         OUTPUT_NAME="${{ inputs.output-name }}"
@@ -127,12 +146,14 @@ runs:
         fi
 
     - name: Verify that this is a valid JAR file
+      if: ${{ steps.find_release_artifact.outputs.fetch-hit == 'true' && inputs.download != 'false' }}
       shell: bash
       run: |
         echo "Verifying JAR at: $JAR_PATH"
         file --mime-type "$JAR_PATH"
 
     - name: Reveal its version.properties
+      if: ${{ steps.find_release_artifact.outputs.fetch-hit == 'true' && inputs.download != 'false' }}
       shell: bash
       run: |
         echo "Extracting version.properties from: $JAR_PATH"

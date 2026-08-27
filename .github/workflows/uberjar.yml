@@ -12,7 +12,7 @@ on:
       commit:
         description: "Optional full-length commit SHA-1 hash"
         type: string
-        default: '' 
+        default: ''
         required: false
       containerize:
         description: "Set if the uberjar should be containerized and pushed to Dockerhub."
@@ -36,10 +36,12 @@ jobs:
   setup:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
-    ouputs:
-      edition_matrix: ${{ steps.matrix.outputs.matrix }}
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    outputs:
+      build_matrix: ${{ steps.matrix.outputs.build_matrix }}
+      healthcheck_matrix: ${{ steps.matrix.outputs.healthcheck_matrix }}
+      container_matrix: ${{ steps.matrix.outputs.container_matrix }}
+      java_version: ${{ steps.dependencies.outputs.java_version }}
+      node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
       - uses: actions/checkout@v6
 
@@ -49,22 +51,62 @@ jobs:
         with:
           commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ee
-          output-name: metabase-ee.jar
           fail-on-fetch-miss: false
+          download: false
 
-      - name: Check for existing OSS artifact
+      - name: Check for existing OSS uberjar
         id: check-oss
         uses: ./.github/actions/fetch-artifact
         with:
           commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: oss
-          output-name: metabase-oss.jar
           fail-on-fetch-miss: false
-      
-      - name: Create build matrix
+          download: false
+
+      - name: Create build matrices
         id: matrix
-        run: |
-          # TODO: create a matrix for with edition: oss, edition: ee if no artifact found
+        uses: actions/github-script@v9
+        # A branch name is attacker-controlled, so it reaches the script via env, not inline.
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        with:
+          script: | # js
+            const refName = ${{ toJson(github.ref_name) }};
+            const branch = process.env.BRANCH;
+            const containerize = "${{ inputs.containerize }}" === "true";
+            const isTrunk = refName === 'master' || refName.startsWith('release-');
+
+            const hit = {
+              ee: "${{ steps.check-ee.outputs.fetch-hit }}" === "true",
+              oss: "${{ steps.check-oss.outputs.fetch-hit }}" === "true",
+            };
+
+            // We build by commit hash, so an artifact that already exists for this hash is
+            // exactly what we would have produced — reuse it and build only what is missing.
+            const buildEditions = ['ee', 'oss'].filter((edition) => !hit[edition]);
+
+            // Only the editions this branch actually pushes images for. Mirrors the rule in
+            // ./.github/actions/get-docker-info, which containerize-jar.yml uses to pick the
+            // repo: master publishes both editions, every other branch only ee. Keep the two
+            // in step -- an edition here with no repo there would clobber ee's tag.
+            const containerEditions = containerize
+              ? (branch === 'master' ? ['ee', 'oss'] : ['ee'])
+              : [];
+
+            // Health-check whatever we are about to push. Off the containerize path, keep the
+            // old trunk-only coverage: master and release branches check both editions.
+            const healthcheckEditions = containerize
+              ? containerEditions
+              : (isTrunk ? ['ee', 'oss'] : []);
+
+            const toMatrix = (editions) =>
+              JSON.stringify({ include: editions.map((edition) => ({ edition })) });
+
+            core.setOutput('build_matrix', toMatrix(buildEditions));
+            core.setOutput('healthcheck_matrix', toMatrix(healthcheckEditions));
+            core.setOutput('container_matrix', toMatrix(containerEditions));
+
+            core.info(`build: ${buildEditions} healthcheck: ${healthcheckEditions} containerize: ${containerEditions}`);
 
       - uses: ./.github/actions/prepare-release-scripts
         if: ${{ contains(github.ref, 'release-x') }}
@@ -80,20 +122,18 @@ jobs:
             const version = getVersionFromReleaseBranch('${{ github.ref }}');
             const requirements = getBuildRequirements(version);
 
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
+            core.setOutput('java_version', requirements.java);
+            core.setOutput('node_version', requirements.node);
 
   build:
     needs: [setup]
-    name: Build MB ${{ needs.setup.outputs.edition_matrix.edition }}
+    name: Build MB ${{ matrix.edition }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
-      matrix: ${{ needs.setup.outputs.edition_matrix }}
+      matrix: ${{ fromJson(needs.setup.outputs.build_matrix) }}
     env:
-      MB_EDITION: ${{ needs.setup.outputs.edition_matrix.edition }}
+      MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
@@ -132,7 +172,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           # Same key the artifact lookups use, so a build for an explicitly dispatched commit
-          # uploads where `check-existing-artifacts` and `check-jar-health` go looking for it.
+          # uploads where `setup` and `jar-healthcheck` go looking for it.
           name: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
           path: |
             ./target/uberjar/metabase.jar
@@ -141,12 +181,16 @@ jobs:
 
   jar-healthcheck:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Is ${{ needs.setup.outputs.edition_matrix.edition }} healthy?
-    needs: [build]
-    if: ${{ inputs.containerize }} 
+    name: Is ${{ matrix.edition }} healthy?
+    needs: [setup, build]
+    # `build` is skipped when every artifact already exists, which must not skip this job.
+    if: |
+      !cancelled() &&
+      needs.setup.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
     timeout-minutes: 10
     strategy:
-      matrix: ${{ needs.setup.outputs.edition_matrix }}
+      matrix: ${{ fromJson(needs.setup.outputs.healthcheck_matrix) }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -154,7 +198,7 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           java-package: jre
-          java-version: ${{ needs.setup.outputs.java_version }}
+          java-version: ${{ needs.setup.outputs.java_version || 25 }}
           distribution: "temurin"
       - run: java -version
       - name: Retrieve uberjar artifact
@@ -175,10 +219,17 @@ jobs:
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    if: ${{ inputs.containerize }}
-    needs: [jar-healthcheck]
+    needs: [setup, build, jar-healthcheck]
+    # Both upstream jobs legitimately skip (nothing to build; nothing to health-check off
+    # trunk), so gate on "not failed" rather than on `success()`.
+    if: |
+      !cancelled() &&
+      inputs.containerize &&
+      needs.setup.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (needs.jar-healthcheck.result == 'success' || needs.jar-healthcheck.result == 'skipped')
     strategy:
-      matrix: ${{ needs.setup.outputs.edition_matrix }} 
+      matrix: ${{ fromJson(needs.setup.outputs.container_matrix) }}
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
@@ -187,29 +238,3 @@ jobs:
       release: false
       build-args: |
         GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-
-  post-docker-info-comment:
-    if: ${{ inputs.containerize && github.event_name == 'pull_request' }}
-    needs: [containerize]
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Post PR comment
-    steps:
-      - name: Post PR comment
-        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
-        with:
-          header: docker-build-status
-          message: |
-            ✅ Docker build completed for commit ${{ github.event.pull_request.head.sha || github.sha }}
-
-            The uberjar has been built and containerized successfully.
-
-            **Branch:** `${{ github.head_ref || github.ref_name }}`
-            **Docker Image:** `${{ needs.containerize.outputs.full_image }}`
-            **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ needs.containerize.outputs.repo }}/tags?name=${{ needs.containerize.outputs.tag }})
-            **Triggered by:** @${{ github.actor }}
-
-            Pull the image:
-            ```bash
-            docker pull ${{ needs.containerize.outputs.full_image }}
-            ```
-
