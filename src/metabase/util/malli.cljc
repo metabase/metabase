@@ -150,3 +150,18 @@
             (mc/children schema))
       :and (some map-schema-keys (mc/children schema))
       nil)))
+
+(core/defn refuse
+  "A schema that refuses whatever reaches it, for use as the last branch of an `[:or ...]`.
+
+  Request decoding drops the `:map-of` entries it can't validate instead of failing on them, so a body with one bad
+  entry is applied minus that entry. Where that is the wrong trade -- an entry whose absence means weaker permissions,
+  say -- put this last in the `[:or ...]`. It never validates, so `:or` only reaches its decoder once every branch
+  before it has failed to make sense of the value, and a decoder that throws is a 400.
+
+  A `:fn` predicate that throws wouldn't do the same job: malli catches the exception and reads it as a plain `false`,
+  which prunes the entry just as a failure would. `message-fn` is called at throw time so the message is localized
+  for whoever gets the 400."
+  [message-fn]
+  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
+   (constantly false)])

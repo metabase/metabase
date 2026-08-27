@@ -1290,6 +1290,45 @@
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
 
+(deftest persistence-disabled-when-sandboxed-via-implicit-join-test
+  (testing "a persisted model that reaches the sandboxed table through an implicit FK join must not use the cache"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (met/with-gtaps! {:gtaps {:products
+                                  {:remappings {:category
+                                                ["dimension"
+                                                 [:field (mt/id :products :category) nil]]}}}}
+          (mt/with-persistence-enabled! [persist-models!]
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (mt/with-temp [:model/Card model
+                           {:type :model
+                            ;; products is reached only through `:source-field`, so it is not a `:source-table` any
+                            ;; sandbox can be matched against until `add-implicit-joins` has run
+                            :dataset_query (mt/mbql-query orders
+                                             {:aggregation [[:count]]
+                                              :breakout    [[:field (mt/id :products :category)
+                                                             {:source-field (mt/id :orders :product_id)}]]})}]
+              (mt/with-test-user :crowberto
+                (persist-models!))
+              (let [persisted-info (t2/select-one :model/PersistedInfo
+                                                  :database_id (mt/id)
+                                                  :card_id (:id model))
+                    query          (mt/mbql-query nil {:source-table (str "card__" (:id model))})
+                    result         (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                                     (mt/with-test-user :rasta
+                                       (qp/process-query query)))]
+                (is (= "persisted" (:state persisted-info))
+                    "Model failed to persist")
+                (testing "does not use the cache table"
+                  (is (not (str/includes? (-> result :data :native_form :query)
+                                          (:table_name persisted-info)))
+                      "Erroneously used the persisted model cache for a sandboxed query"))
+                (testing "and so sees no category outside its sandbox"
+                  ;; orders whose product the sandbox hides still come back, with a null category, so it is the
+                  ;; non-null ones that say whether anything leaked
+                  (is (= #{"Gizmo"}
+                         (into #{} (comp (map first) (filter some?)) (mt/rows result)))))))))))))
+
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
@@ -2052,3 +2091,17 @@
                   :let [source-col (col-by-name (:remapped_from col))]]
             (is (= (:name col)
                    (:remapped_to source-col)))))))))
+
+;;; the source-Card counterpart of the test below lives in [[metabase-enterprise.sandbox.api.card-test]], which is
+;;; where sandboxing tests that need a saved Card go
+
+(deftest ^:synchronized caller-supplied-sandbox-marker-is-ignored-test
+  (testing "a query carrying the middleware's own ::sandboxing/sandbox? marker is still sandboxed"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" 50}}
+      (is (= [[10]]
+             (mt/format-rows-by
+              [int]
+              (mt/rows
+               (qp/process-query
+                (assoc-in (mt/mbql-query venues {:aggregation [[:count]]})
+                          [:query ::sandboxing/sandbox?] true)))))))))

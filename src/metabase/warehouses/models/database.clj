@@ -378,26 +378,31 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (loop []
-    (let [deleted (t2/query-one
-                   {:delete-from (t2/table-name :model/Field)
-                    :where
-                    [:and
-                     [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                     :select [:id]
-                                     :where  [:= :db_id database-id]}]
-                     ;; Double-wrapped subquery to work around MySQL limitation
-                     [:not-in :id {:select [:parent_id]
-                                   :from   [[{:select [:parent_id]
-                                              :from   [(t2/table-name :model/Field)]
-                                              :where  [:and
-                                                       [:not= :parent_id nil]
-                                                       [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                                                       :select [:id]
-                                                                       :where  [:= :db_id database-id]}]]}
-                                             :parent_fields]]}]]})]
-      (when (pos? deleted)
-        (recur)))))
+  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
+                                          :select [:id]
+                                          :where  [:= :db_id database-id]}]
+    ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
+    ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
+    ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
+    (when (t2/exists? :model/Field :table_id [:in table-ids-query])
+      (loop []
+        (let [deleted (t2/query-one
+                       {:delete-from (t2/table-name :model/Field)
+                        :where
+                        [:and
+                         [:in :table_id table-ids-query]
+                         ;; Double-wrapped subquery to work around MySQL limitation
+                         [:not-in :id ^:allow-subquery
+                          {:select [:parent_id]
+                           :from   [[^:allow-subquery
+                                     {:select [:parent_id]
+                                      :from   [(t2/table-name :model/Field)]
+                                      :where  [:and
+                                               [:not= :parent_id nil]
+                                               [:in :table_id table-ids-query]]}
+                                     :parent_fields]]}]]})]
+          (when (pos? deleted)
+            (recur)))))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -439,8 +444,57 @@
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
   db)
 
+(def ^:private details-keys
+  "Every place a Database stores a set of connection details."
+  [:details :write_data_details :admin_details])
+
+(defn- exempt-audit-db?
+  "Whether `database` is the Audit DB as the analytics installer writes it: a clone of the *application* database
+  rather than a warehouse anybody pointed somewhere, carrying no details of its own and reached over the app-db
+  connection. There is no user-supplied host in it to police, and checking it anyway refuses the instance's own app
+  db -- empty details read as `localhost`, since every `:sql-jdbc` client substitutes that. The refusal lands during
+  init, so the instance fails to boot rather than failing a request.
+
+  Narrowed to a database with no details at all, which is the only shape the installer produces
+  ([[metabase-enterprise.audit-app.audit/install-database!]] writes none and nothing else adds any). `:is_audit`
+  alone would be too much to hang this on: it is not writable through the API, but it is in the Database serdes
+  `:copy` set, and serialization import is one of the routes this check exists to cover."
+  [database]
+  (and (:is_audit database)
+       (every? #(empty? (get database %)) details-keys)))
+
+(defn- validate-connection-hosts!
+  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
+  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+  import, config-file provisioning, and destination databases.
+
+  `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
+  [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
+  overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
+
+  The Audit DB is exempt -- see [[exempt-audit-db?]]."
+  [engine database keys-to-check]
+  (when-not (exempt-audit-db? database)
+    (when-let [engine (some-> engine keyword)]
+      (doseq [k     keys-to-check
+              :let  [details (get database k)]
+              :when (map? details)]
+        (driver.u/validate-connection-hosts! engine (cond->> details
+                                                      (not= k :details) (merge (:details database))))))))
+
 (t2/define-before-update :model/Database
   [database]
+  (let [changes  (t2/changes database)
+        original (t2/original database)]
+    ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
+    ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
+    ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
+    ;; it accompanies rather than on its own.
+    (validate-connection-hosts! (or (:engine changes) (:engine original))
+                                (merge original changes)
+                                (if (contains? changes :engine)
+                                  details-keys
+                                  (filterv #(contains? changes %) details-keys))))
   (let [changes                       (t2/changes database)
         {new-engine        :engine
          new-settings      :settings} changes
@@ -501,7 +555,8 @@
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
-  [{:keys [details initial_sync_status], :as database}]
+  [{:keys [details initial_sync_status engine], :as database}]
+  (validate-connection-hosts! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
@@ -611,39 +666,30 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
-  [_model-name {:keys [include-database-secrets]}]
-  {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
-   :skip      [;; deprecated field
-               :cache_ttl]
-   :transform {:created_at          (serdes/date)
-               ;; details should be imported if available regardless of options
-               :details             {:export-with-context
-                                     (fn [current _ details]
-                                       (if (and include-database-secrets
-                                                (not (:is_attached_dwh current)))
-                                         details
-                                         ::serdes/skip))
-                                     :import identity}
-               :write_data_details {:export-with-context
-                                    (fn [current _ details]
-                                      (if (and include-database-secrets
-                                               (not (:is_attached_dwh current)))
-                                        details
-                                        ::serdes/skip))
-                                    :import identity}
-               :creator_id          (serdes/fk :model/User)
-               :router_database_id (serdes/fk :model/Database)
-               :initial_sync_status {:export identity :import (constantly "complete")}}
-   :defaults {:auto_run_queries true
-              :is_attached_dwh  false
-              :is_audit         false
-              :is_full_sync     true
-              :is_on_demand     false
-              :is_sample        false
-              :uploads_enabled  false}})
+  [_model-name _opts]
+  ;; Connection `details` are never exported: they hold warehouse credentials in plaintext, and serialized
+  ;; archives are not a safe place for secrets. Import is unconditional so existing archives still load.
+  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
+                           :import              identity}]
+    {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :uploads_schema_name :uploads_table_prefix]
+     :skip      [;; deprecated field
+                 :cache_ttl]
+     :transform {:created_at          (serdes/date)
+                 :details             details-transform
+                 :write_data_details  details-transform
+                 :creator_id          (serdes/fk :model/User)
+                 :router_database_id  (serdes/fk :model/Database)
+                 :initial_sync_status {:export identity :import (constantly "complete")}}
+     :defaults  {:auto_run_queries true
+                 :is_attached_dwh  false
+                 :is_audit         false
+                 :is_full_sync     true
+                 :is_on_demand     false
+                 :is_sample        false
+                 :uploads_enabled  false}}))
 
 (def ^:dynamic *include-h2-in-extract?*
   "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time

@@ -11,6 +11,8 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -150,24 +152,76 @@
              :when table-col]
        (check-column-types-match col table-col)))))
 
+(defn- sandboxing-card-ids
+  "Every Card a sandbox is built out of: the Cards sandboxes name directly, plus every Card those read at any depth.
+
+  A sandbox replaces a Table with its Card's query, so whoever controls that query decides what the sandboxed group
+  sees -- and a source card, metric or `{{#123}}` tag one level down decides it just as surely as the Card itself."
+  []
+  (let [cards (t2/select :model/Card
+                         {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
+                          :from   [[(t2/table-name :model/Card) :c]]
+                          :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                                             :from   [[(t2/table-name :model/Sandbox) :s]]
+                                                             :where  [:= :s.card_id :c.id]}]})]
+    (into (into #{} (map :id) cards)
+          (mapcat (fn [{:keys [dataset_query database_id]}]
+                    (when (seq dataset_query)
+                      (lib/all-source-card-ids-recursive
+                       (lib/query (lib-be/application-database-metadata-provider database_id) dataset_query)))))
+          cards)))
+
+(defn- check-non-admin-cannot-affect-sandboxing!
+  "Throws a 403 if `card-id` is a Card a sandbox is built out of and the current user is not an admin.
+
+  Rewriting such a Card's query, or taking it away, rewrites what every group sandboxed through it is allowed to see.
+  Curate permission on the collection it happens to sit in is not the right to do that; it is held to the same
+  admin-only bar as editing the sandbox itself.
+
+  These run off the Card model's own hooks, so they see the server's writes as well as a user's -- sync, serdes and the
+  like run with no user bound, and internal work that needs to act as one binds a superuser through
+  `request/as-admin`. Neither is someone to hold to a permission check."
+  [card-id]
+  (when (and card-id api/*current-user-id* (not api/*is-superuser?*))
+    (when (contains? (sandboxing-card-ids) card-id)
+      (throw (ex-info (tru "You do not have permissions to modify a question that is used for row and column level security.")
+                      {:status-code 403, :card-id card-id})))))
+
+(defn- check-result-metadata-still-matches-sandboxed-tables!
+  "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
+  Card cannot add fields or change types vs. the original Table."
+  [card-id new-result-metadata]
+  (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox :id :table_id] :card_id card-id))]
+    (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+      (when-not (= original-result-metadata new-result-metadata)
+        (doseq [{table-id :table_id} gtaps-using-this-card]
+          (try
+            (check-columns-match-table table-id new-result-metadata)
+            (catch clojure.lang.ExceptionInfo e
+              (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
+                                   " "
+                                   (.getMessage e))
+                              (ex-data e)
+                              e)))))))))
+
 (defenterprise pre-update-check-sandbox-constraints
-  "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
-  on sandboxes (the Card cannot add fields or change types vs. the original Table)."
+  "Checks that an update to a Card does not break the sandboxes built out of it.
+
+  A change to the query itself, or archiving the Card, decides what those sandboxes return rather than merely
+  constraining it, so those are admin-only. A change to `:result_metadata` is not -- the query processor rewrites it
+  for whoever ran the Card -- so it is held to the columns of the Table being sandboxed instead."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
+  (when (some #(contains? changes %) [:dataset_query :archived])
+    (check-non-admin-cannot-affect-sandboxing! card-id))
   (when (contains? changes :result_metadata)
-    (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-        (when-not (= original-result-metadata new-result-metadata)
-          (doseq [{table-id :table_id} gtaps-using-this-card]
-            (try
-              (check-columns-match-table table-id new-result-metadata)
-              (catch clojure.lang.ExceptionInfo e
-                (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
-                                     " "
-                                     (.getMessage e))
-                                (ex-data e)
-                                e))))))))))
+    (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
+
+(defenterprise pre-delete-check-sandbox-constraints
+  "If a Card a sandbox is built out of is deleted, that sandbox stops filtering anything, so only an admin may do it."
+  :feature :sandboxes
+  [{card-id :id}]
+  (check-non-admin-cannot-affect-sandboxing! card-id))
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be

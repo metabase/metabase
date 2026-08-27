@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
@@ -199,6 +200,20 @@
         (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
                  (error)))))))
 
+(deftest login-username-throttle-key-is-case-normalized-test
+  (testing "case-variants of the same username share one throttle budget, not one each"
+    (with-redefs [api.session/login-throttlers (cleaned-throttlers #'api.session/login-throttlers
+                                                                   [:username :ip-address])]
+      (let [email        (:username (mt/user->credentials :rasta))
+            wrong-login! (fn [username]
+                           (mt/client :post 401 "session" {:username username, :password "not-the-password"}))]
+        ;; exhaust the per-username budget (10) by alternating case-variants of the same address
+        (dotimes [_ 5] (wrong-login! (u/lower-case-en email)))
+        (dotimes [_ 5] (wrong-login! (u/upper-case-en email)))
+        (testing "budget is shared across case-variants, so the 11th attempt against any variant is throttled"
+          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                   (:username (:errors (wrong-login! email))))))))))
+
 (deftest logout-test
   (testing "DELETE /api/session"
     (testing "Test that logout 404s if there is no session key supplied"
@@ -236,10 +251,9 @@
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
-                  (let [{:keys [reset_token reset_triggered]} (t2/select-one [:model/User :reset_token :reset_triggered]
-                                                                             :id (mt/user->id :rasta))]
-                    (boolean (and reset_token reset_triggered))))]
-          (t2/update! :model/User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
+                  (boolean (t2/select-one :model/AuthIdentity :user_id (mt/user->id :rasta)
+                                          :provider "emailed-secret-password-reset")))]
+          (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "emailed-secret-password-reset")
           (assert (not (reset-fields-set?)))
           (is (= nil
                  (mt/user-http-request :rasta :post 204 "session/forgot_password"
@@ -247,7 +261,7 @@
               "Request should return no content")
           (is (true?
                (reset-fields-set?))
-              "User `:reset_token` and `:reset_triggered` should be updated")
+              "the password-reset AuthIdentity should be created")
           (is (mt/received-email-subject? :rasta #"Password Reset")))))))
 
 (deftest forgot-password-uses-site-url-test
@@ -367,7 +381,7 @@
             (is (=? {:topic    :password-reset-initiated
                      :model_id rasta-id
                      :model    "User"
-                     :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                     :details  {:token (auth-identity/reset-token-hash rasta-id)}}
                     (mt/latest-audit-log-entry :password-reset-initiated rasta-id)))))))))
 
 (deftest forgot-password-throttling-test
@@ -388,14 +402,19 @@
           (is (= "Too many attempts! You must wait 15 seconds before trying again."
                  (error))))))))
 
+(deftest forgot-password-email-throttle-window-is-hour-scale-test
+  (testing "forgot-password email throttle window is an hour, not 1000ms"
+    (is (= (* 1000 60 60)
+           (:attempt-ttl-ms (@#'api.session/forgot-password-throttlers :email))))))
+
 (deftest reset-password-with-token-test
   (testing "POST /api/session/reset_password - reset password from token and verify token removed"
     (mt/with-fake-inbox
       (let [password {:old "password"
                       :new "whateverUP12!!"}]
-        (mt/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-          (let [token (u/prog1 (str id "_" (random-uuid))
-                        (t2/update! :model/User id {:reset_token <>}))
+        (mt/with-temp [:model/User {:keys [email id]} {}]
+          (auth-identity/set-password! id (:old password))
+          (let [token (auth-identity/create-password-reset! id)
                 creds {:old {:password (:old password)
                              :username email}
                        :new {:password (:new password)
@@ -409,9 +428,9 @@
                    (mt/client :post 401 "session" (:old creds))))
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" (:new creds))))
-            (is (= {:reset_token     nil
-                    :reset_triggered nil}
-                   (mt/derecordize (t2/select-one [:model/User :reset_token :reset_triggered], :id id))))))))))
+            (is (nil? (t2/select-one :model/AuthIdentity
+                                     :user_id id :provider "emailed-secret-password-reset"))
+                "the reset token is removed once the password has been set")))))))
 
 (deftest reset-password-throttling-test
   (testing "POST /api/session/reset_password - endpoint is throttled"
@@ -438,10 +457,10 @@
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
-            (mt/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-              (let [token       (u/prog1 (str id "_" (random-uuid))
-                                  (t2/update! :model/User id {:reset_token <> :last_login :%now}))
-                    reset-token (t2/select-one-fn :reset_token :model/User :id id)]
+            (mt/with-temp [:model/User {:keys [id]} {}]
+              (t2/update! :model/User id {:last_login :%now})
+              (let [token       (auth-identity/create-password-reset! id)
+                    reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
                                                                :password (:new password)})
                 (is (= {:topic    :password-reset-successful
@@ -467,25 +486,148 @@
               (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                              :password "whateverUP12!!"}))))
     (testing "Test that an expired token doesn't work"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
 
+(deftest reset-password-cannot-forge-session-via-injected-user-id-test
+  (testing "POST /api/session/reset_password - an extra body key is dropped before the handler, not honoured"
+    (testing "injected user-id naming an admin"
+      (mt/with-temp [:model/User {admin-id :id} {:is_active true, :is_superuser true}]
+        (is (=? {:errors {:password "Invalid reset token"}}
+                (mt/client :post 400 "session/reset_password"
+                           {:token    "garbage"
+                            :password "whateverUP12!!"
+                            :user-id  admin-id})))
+        (is (zero? (t2/count :model/Session :user_id admin-id))
+            "no session row may be created for the injected admin")))
+    (testing "injected user-id naming a valid, active, non-admin user"
+      (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+        (is (=? {:errors {:password "Invalid reset token"}}
+                (mt/client :post 400 "session/reset_password"
+                           {:token    "garbage"
+                            :password "whateverUP12!!"
+                            :user-id  user-id})))
+        (is (zero? (t2/count :model/Session :user_id user-id))
+            "no session row may be created for the injected user")))
+    (testing "a well-formed token for the victim that fails verification is equally inert"
+      (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+        (is (=? {:errors {:password "Invalid reset token"}}
+                (mt/client :post 400 "session/reset_password"
+                           {:token    (str user-id "_" (random-uuid))
+                            :password "whateverUP12!!"
+                            :user-id  user-id})))
+        (is (zero? (t2/count :model/Session :user_id user-id)))))
+    (testing "the two declared keys are still accepted, so the rejection is about the extra key only"
+      (is (=? {:errors {:password "Invalid reset token"}}
+              (mt/client :post 400 "session/reset_password"
+                         {:token "garbage" :password "whateverUP12!!"}))))))
+(deftest reset-password-injected-user-id-cannot-inject-sql-test
+  ;; A `{"raw": "..."}` JSON object decodes to `{:raw "..."}`, which Honey SQL reads as query structure.
+  (testing "POST /api/session/reset_password - no body value reaches the User lookup as a non-scalar"
+    (mt/with-temp [:model/User {admin-id :id} {:is_active true, :is_superuser true}]
+      (let [forged-id "00000000-0000-0000-0000-000000000000"
+            ;; the injected SQL would forge a session row directly for the admin, keyed by an id the
+            ;; attacker chooses (a UUID, so it satisfies the session-key validity check on later requests)
+            evil      {:raw (format (str "1); INSERT INTO core_session (id, user_id, created_at, key_hashed) "
+                                         "VALUES ('%s', %d, now(), 'x') --")
+                                    forged-id admin-id)}
+            ;; This payload compiles to `WHERE "id" = (1); INSERT INTO core_session (...) -- )`, and
+            ;; both Postgres and H2 execute the trailing INSERT, so the row assertions below bite on
+            ;; either app-db. The sink spy is still the stronger assertion: it fails whether or not the
+            ;; app-db honours stacked statements, and whether or not toucan2 parameterizes the value.
+            orig-select-one t2/select-one
+            sink-args (atom [])]
+        (with-redefs [t2/select-one (fn [& args]
+                                      (swap! sink-args conj args)
+                                      (apply orig-select-one args))]
+          ;; status may be 400 (token invalid) either way; the point is the side effect must not happen
+          (mt/client :post 400 "session/reset_password"
+                     {:token "garbage" :password "whateverUP12!!" :user-id evil}))
+        (is (not-any? (fn [args] (some #(and (map? %) (contains? % :raw)) args))
+                      @sink-args)
+            "no request-body value may reach a Toucan query as a non-scalar")
+        ;; Scope the row assertions to what this attack would have written (the attacker-chosen id and
+        ;; the targeted admin) rather than a global session count — a global snapshot can flake under
+        ;; concurrent session creation and would not prove *this* INSERT ran.
+        (is (nil? (t2/select-one :model/Session :id forged-id))
+            "no forged session row with the attacker-chosen id may exist")
+        (is (zero? (t2/count :model/Session :user_id admin-id))
+            "and no session may exist for the targeted admin")))))
+
+(deftest reset-password-injection-cannot-forge-a-usable-session-test
+  ;; The end of the exploit, not its precondition: the injected INSERT plants a row whose id is a UUID the
+  ;; attacker chose, and `session.id` is an accepted credential. Asserting no row exists says nothing about
+  ;; whether the key works.
+  (testing "POST /api/session/reset_password - the attacker-chosen session id authenticates nobody"
+    (mt/with-temp [:model/User {admin-id :id} {:is_active true, :is_superuser true}]
+      (let [forged-key "00000000-0000-0000-0000-000000000000"
+            evil       {:raw (format (str "1); INSERT INTO core_session (id, user_id, created_at, key_hashed) "
+                                          "VALUES ('%s', %d, now(), 'x') --")
+                                     forged-key admin-id)}]
+        (mt/client :post 400 "session/reset_password"
+                   {:token "garbage" :password "whateverUP12!!" :user-id evil})
+        (testing "positive control: a genuine session key presented the same way DOES authenticate"
+          ;; Without this, the 401 below is indistinguishable from the key never reaching the auth
+          ;; middleware, and the negative assertion would prove nothing.
+          (let [real-key (:id (mt/client :post 200 "session" (mt/user->credentials :rasta)))]
+            (is (= (mt/user->id :rasta)
+                   (:id (mt/client real-key :get 200 "user/current")))
+                "the session-key mechanism this test relies on is live")))
+        (testing "presenting the attacker-chosen id as a session key authenticates nobody"
+          (is (= "Unauthenticated" (mt/client forged-key :get 401 "user/current"))
+              "the forged session id must not authenticate, least of all as the targeted superuser"))))))
+
+(deftest reset-password-genuine-token-still-issues-session-test
+  (testing "POST /api/session/reset_password - regression guard: a real reset token still resets and issues a session"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/User {:keys [email id]} {}]
+        (auth-identity/set-password! id "password")
+        (let [token (auth-identity/create-password-reset! id)]
+          (is (=? {:session_id string/valid-uuid?
+                   :success    true}
+                  (mt/client :post 200 "session/reset_password" {:token    token
+                                                                 :password "whateverUP12!!"})))
+          (is (= 1 (t2/count :model/Session :user_id id))
+              "a genuine reset must still write exactly one session row")
+          (is (malli= SessionResponse
+                      (mt/client :post 200 "session" {:username email :password "whateverUP12!!"}))))))))
+(deftest reset-password-from-token-invalidates-sessions-test
+  (testing "POST /api/session/reset_password deletes the user's existing sessions"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "reset-test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)
+            token   (auth-identity/create-password-reset! (:id user))]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the reset")
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the pre-existing session should be deleted after resetting the password via token")))))
+
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
+      (let [token (auth-identity/create-password-reset! (mt/user->id :rasta))]
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
     (testing "Check that an expired but valid token returns false"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
@@ -657,8 +799,8 @@
   (testing "LDAP login - fallback to local for broken LDAP settings"
     (ldap.test/with-ldap-server!
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                      :password "1234"}]
+        (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
+          (auth-identity/set-password! user-id "1234")
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                       :password "1234"}))))))))
@@ -669,8 +811,8 @@
       (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
         (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
                                                                                       (Thread/sleep 500))]
-          (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                        :password "1234"}]
+          (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
+            (auth-identity/set-password! user-id "1234")
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                         :password "1234"})))))))))

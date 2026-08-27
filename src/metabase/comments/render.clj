@@ -73,10 +73,13 @@
         display-text (or label
                          (when (= model "user") (str "@" entityId))
                          (str model " " entityId))
-        url-fn       (model->url-fn model)]
+        ;; `entityId` is stored as the client sent it, so only link it when it really is an entity ID: the `document`
+        ;; URL builder throws on anything else, and the others would render a nonsense href
+        url-fn       (when (pos-int? entityId)
+                       (model->url-fn model))]
     (if url-fn
       [:a {:href (url-fn entityId)} display-text]
-      ;; Unknown model or user mention — render as escaped plain text
+      ;; Unknown model, user mention, or an entityId that isn't an ID — render as escaped plain text
       (hiccup.util/raw-string (hiccup.util/escape-html display-text)))))
 
 (defn node->hiccup
@@ -99,7 +102,7 @@
       "blockquote"     (into [:blockquote] (children->hiccup content))
       "horizontalRule" [:hr]
       "hardBreak"      [:br]
-      "text"           (wrap-marks text (sanitize-marks marks))
+      "text"           (wrap-marks (str text) (sanitize-marks marks))
       "smartLink"      (smart-link->hiccup node))))
 
 (defn content->html

@@ -43,6 +43,75 @@
       (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
              (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
 
+(deftest relative-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "When a `:relative-datetime` filter value is compared against a `datetimeoffset` column, the value "
+                "must be tagged with the report timezone. Otherwise SQL Server implicitly treats the naive "
+                "`datetime2` result as offset +00:00 during the comparison, shifting the filter window by the "
+                "report tz offset (#78612).")
+    (driver/with-driver :sqlserver
+      (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+        (let [today    [:relative-datetime 0 :day]
+              tomorrow [:relative-datetime 1 :day]]
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(DATEADD(day, 1, GETDATE())),"
+                           " MONTH(DATEADD(day, 1, GETDATE())),"
+                           " DAY(DATEADD(day, 1, GETDATE()))) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver tomorrow))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))))
+      (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+        (qp.test-util/with-report-timezone-id! nil
+          (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                            :effective-type :type/DateTimeWithZoneOffset}]
+            (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                   (sql.qp/format-honeysql
+                    :sqlserver
+                    (sql.qp/->honeysql :sqlserver
+                                       [:relative-datetime 0 :day]))))))))))
+
+(deftest absolute-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "`:absolute-datetime` filter values compared against a `datetimeoffset` column suffer the same "
+                "class of bug as `:relative-datetime` (#78612): a naive `datetime2` RHS is silently treated as "
+                "offset +00:00 during the comparison. Attach the report timezone to the naive literal.")
+    (driver/with-driver :sqlserver
+      (let [today [:absolute-datetime (t/local-date 2026 8 2) :day]]
+        (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))
+        (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+          (qp.test-util/with-report-timezone-id! nil
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))))))
+
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
     (let [original {:joins [{:alias        "C3"
@@ -956,3 +1025,43 @@
             :sqlserver (mt/id) nil
             (fn [conn]
               (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))
+
+(deftest ^:parallel connection-parameter-hosts-test
+  (testing "`serverName` in additional-options overrides the host in the URL, so it counts as a connection host"
+    (let [details {:host "real.example.com" :port 1433 :db "db"}
+          hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
+      (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
+      (is (not (contains? (hosts details) "10.0.0.1"))))))
+
+(deftest create-schema-if-needed!-escapes-schema-name-test
+  (testing "the transform target :schema is escaped in the EXEC literal"
+    (let [captured (atom nil)]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec sql] (reset! captured sql))]
+        (driver/create-schema-if-needed! :sqlserver {} "x'); DROP TABLE secrets; --"))
+      (is (= "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'x''); DROP TABLE secrets; --') EXEC('CREATE SCHEMA \"x''); DROP TABLE secrets; --\";');"
+             (ffirst @captured))))))
+
+(deftest ^:parallel add-interval-honeysql-form-rejects-hostile-unit-test
+  (testing "the SQL Server DATEADD sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 hostile))))
+    (testing "and still compiles a legitimate unit to the expected DATEPART token"
+      (is (= ["DATEADD(day, 1, some_col)"]
+             (sql/format-expr (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 :day)
+                              {:nested true}))))))
+
+(deftest ^:parallel escape-like-pattern-test
+  (testing "escape-like-pattern neutralizes every SQL Server LIKE metacharacter, so a filter value matches literally"
+    (are [pattern expected] (= expected (sql.qp/escape-like-pattern :sqlserver pattern))
+      "abc"           "abc"
+      "a%b"           "a[%]b"
+      "a_b"           "a[_]b"
+      ;; `[` opens a character class in SQL Server LIKE, so it must be escaped too (it was not, letting a public /
+      ;; embedded dashboard filter value run as a pattern rather than a literal)
+      "a[bc]"         "a[[]bc]"
+      "50% off [x]"   "50[%] off [[]x]"
+      ;; `[` is escaped first, so the brackets the other replacements introduce are not re-escaped
+      "x[%]y"         "x[[][%]]y")))

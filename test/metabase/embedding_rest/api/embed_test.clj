@@ -25,6 +25,7 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -148,7 +149,9 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:lib/type "mbql/query"
-                            :stages   [{:lib/type "mbql.stage/mbql"}]}
+                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                        :source-table int?
+                                        :aggregation  [["count" {:lib/uuid string?}]]}]}
    :parameters             []
    :param_fields           {}})
 
@@ -167,6 +170,18 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (=? successful-card-info
               (client/client :get 200 (card-url card)))))))
+
+(deftest embed-card-strips-dataset-query-test
+  (testing "GET /api/embed/card/:token replaces the Card's query with a blank native query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-card [card {:enable_embedding true
+                             :dataset_query    (mt/native-query {:query "SELECT id FROM venues"})}]
+        (let [{:keys [dataset_query]} (client/client :get 200 (card-url card))]
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 dataset_query)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -568,6 +583,18 @@
               (client/client :get 200 (dashboard-url dash))))
       (is (=? successful-dashboard-info
               (client/client :get 200 (dashboard-url (:entity_id dash) dash)))))))
+
+(deftest embed-dashboard-strips-dataset-query-test
+  (testing "GET /api/embed/dashboard/:token replaces each Card's query with a blank query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
@@ -1166,6 +1193,28 @@
         (testing (str "\n" url)
           (is (= "You can't specify a value for :price if it's already set in the JWT."
                  (client/client :get 400 url))))))))
+
+(deftest chain-filter-parameters-blob-test
+  (testing "the `?parameters=` JSON blob is held to the parameter value schema"
+    (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
+      (t2/update! :model/Dashboard (:id dashboard)
+                  {:embedding_params {"category_id" "enabled", "price" "enabled"}})
+      (letfn [(values [status parameters]
+                (client/client :get status (values-url) :parameters (json/encode parameters)))]
+        (testing "a scalar value constrains the returned values"
+          (is (= {:values [[40 "Japanese"] [67 "Steakhouse"]] :has_more_values false}
+                 (values 200 {:_PRICE_ 4}))))
+        (testing "a list of scalars is accepted"
+          (is (= {:values [[40 "Japanese"] [67 "Steakhouse"]] :has_more_values false}
+                 (values 200 {:_PRICE_ [4]}))))
+        (testing "values that are not scalars or lists of scalars are rejected"
+          (doseq [value [{:a 1}
+                         [["field" 1 nil]]
+                         [{:a 1}]
+                         [[["concat" "a" "b"]]]]]
+            (testing (pr-str value)
+              (is (= "Invalid parameter values"
+                     (values 400 {:_PRICE_ value}))))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1847,6 +1896,26 @@
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
+(deftest tile-embedding-params-test
+  (testing "the map tile endpoints run their parameters through the embedding_params rules, like the query endpoints"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true
+                                                              :embedding_params {:venue_name "locked"}
+                                                              :parameters       [{:id   "_VENUE_NAME_"
+                                                                                  :name "Venue name"
+                                                                                  :slug "venue_name"
+                                                                                  :type "string/="}]}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (testing "a tile still renders when the JWT supplies the locked parameter"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200
+                     (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                             (dash-token dashboard-id {:params {:venue_name "Tempest"}}) dashcard-id card-id)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
 (deftest dashcard-tile-query-test
   (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
     (with-embedding-enabled-and-new-secret-key!
@@ -1863,6 +1932,35 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest card-tile-query-implicit-join-ref-test
+  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (tiles.api-test/implicit-join-query)
+                                                :enable_embedding true}]
+        (let [token (card-token card-id)]
+          (is (= "Fields referenced via implicit joins are not supported."
+                 (mt/user-http-request
+                  :crowberto :get 400 (format "embed/tiles/card/%s/1/1/1" token)
+                  :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                  :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
+
+(deftest dashcard-tile-query-implicit-join-ref-test
+  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (tiles.api-test/implicit-join-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
+        (let [token (dash-token dashboard-id)]
+          (is (= "Fields referenced via implicit joins are not supported."
+                 (mt/user-http-request
+                  :crowberto :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                              token
+                                              dashcard-id
+                                              card-id)
+                  :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                  :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
 (deftest embedded-string-parameter-case-sensitivity-regression-test
   "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.

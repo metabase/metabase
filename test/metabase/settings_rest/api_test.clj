@@ -193,6 +193,21 @@
              (test-admin-write-authed-read-visibility))
           "Value should be unchanged after non-admin write attempt")
       (test-admin-write-authed-read-visibility! nil))
+    (testing "Check that non-admin setting managers cannot update :internal or :admin-write-authed-read Settings"
+      (models.setting-test/test-setting-3! "internal-value")
+      (test-admin-write-authed-read-visibility! "ADMIN_SET")
+      (with-mocked-settings-manager-access!
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting/test-setting-3" {:value "SM_SET"})))
+        (is (= "internal-value" (models.setting-test/test-setting-3)))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting/test-admin-write-authed-read-visibility" {:value "SM_SET"})))
+        (is (= "ADMIN_SET" (test-admin-write-authed-read-visibility)))
+        (testing "and cannot read them via GET /api/setting/:key either"
+          (is (= "You don't have permissions to do that."
+                 (fetch-setting :rasta :test-admin-write-authed-read-visibility 403)))))
+      (test-admin-write-authed-read-visibility! nil)
+      (models.setting-test/test-setting-3! nil))
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
@@ -259,6 +274,18 @@
                (test-settings-manager-visibility)))
         (is (= "ABC"
                (models.setting-test/test-setting-1)))))
+    (testing "non-admin setting managers cannot update :internal or :admin-write-authed-read settings in bulk"
+      (models.setting-test/test-setting-3! "internal-value")
+      (test-admin-write-authed-read-visibility! "ADMIN_SET")
+      (with-mocked-settings-manager-access!
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting" {:test-setting-3 "SM_SET"})))
+        (is (= "internal-value" (models.setting-test/test-setting-3)))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting" {:test-admin-write-authed-read-visibility "SM_SET"})))
+        (is (= "ADMIN_SET" (test-admin-write-authed-read-visibility))))
+      (test-admin-write-authed-read-visibility! nil)
+      (models.setting-test/test-setting-3! nil))
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "GHI", :test-setting-2 "JKL"})))

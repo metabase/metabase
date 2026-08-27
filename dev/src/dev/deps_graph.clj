@@ -18,6 +18,38 @@
 
 (set! *warn-on-reflection* true)
 
+;; Many functions in this namespace re-parse the same files over and over again during testing, so introduce a
+;; mechanism for bounded caching of those parsed files.
+(def ^:dynamic *parsed-file-cache* nil)
+
+(defn- parse-file-all
+  "Calls `rewrite-.clj.parser/parse-file-all`, but first checks in `*parsed-file-cache*` if it is bound."
+  [file]
+  (if *parsed-file-cache*
+    (or (@*parsed-file-cache* file)
+        (get (swap! *parsed-file-cache* assoc file (r.parser/parse-file-all file)) file))
+    (r.parser/parse-file-all file)))
+
+(defn- skip-node? [node]
+  (let [tag (n/tag node)]
+    (or (#{:uneval :comment :newline :whitespace} tag)
+        (and (= tag :list)
+             (when-let [fst (first (n/children node))]
+               (and (= (n/tag fst) :token)
+                    (= (:value fst) 'comment)))))))
+
+(defn- walk-parsed-ignore-comments!
+  "Simple fast recursive walker over `tree` which should be a file parsed with rewrite-clj. The passed consumer function
+  `f` should use side-effects to accumulate the results."
+  [f tree]
+  (letfn [(walk [node]
+            (when-not (skip-node? node)
+              ;; Don't descend into comments
+              (f node)
+              (when-let [children (:children node)]
+                (run! walk children))))]
+    (walk tree)))
+
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
   (.. (java.nio.file.Paths/get (.toURI (io/resource "dev/deps_graph.clj")))
@@ -70,81 +102,36 @@
      requiring-resolve
      clojure.core/requiring-resolve})
 
-(mr/def ::node
-  [:and
-   :map
-   [:fn
-    {:error/message "valid rewrite-clj node"}
-    #(not= (n/tag %) :unknown)]])
-
-(mr/def ::zloc
-  [:tuple
-   ::node
-   :map])
-
-(mu/defn- require-loc?
-  "Whether this zipper location points to a `(require ...)` node or a something similar (`classloader/require` or
-  `requiring-resolve`)."
-  [zloc :- ::zloc]
-  (when (= (z/tag zloc) :list)
-    (let [first-child (z/down zloc)]
-      (when (= (z/tag first-child) :token)
-        ;; Check all child symbols on the line since `require` might be called in a threading macro
-        ;; like (-> 'ns require)
-        (some require-symbols (z/child-sexprs zloc))))))
-
-(mu/defn- find-required-namespace :- [:maybe simple-symbol?]
-  "Given a `zloc` pointing to one of the children of something like `(require ...)` find a required namespace symbol."
-  [zloc :- ::zloc]
-  (when-let [symbol-loc (z/find-depth-first zloc #(and (= (z/tag %) :token)
-                                                       (symbol? (z/sexpr %))
-                                                       (not= (z/sexpr %) 'quote)))]
-    (let [symb (z/sexpr symbol-loc)]
-      (if (qualified-symbol? symb)
-        (symbol (namespace symb))
-        symb))))
-
-(mu/defn- find-required-namespaces :- [:set simple-symbol?]
-  "Given a zipper location pointing to a `(require ...)` node, find all the symbols it loads."
-  [require-loc :- ::zloc]
-  (loop [acc #{}, zloc (-> require-loc
-                           z/down    ; require
-                           z/right)] ; second child
-    (if-not zloc
-      acc
-      (recur (let [required-symbol (find-required-namespace zloc)]
-               (cond-> acc
-                 required-symbol (conj required-symbol)))
-             (z/right zloc)))))
-
-(mu/defn- comment-loc?
-  [zloc :- ::zloc]
-  (or (and (= (z/tag zloc) :list)
-           (let [child-loc (z/down zloc)]
-             (and (= (z/tag child-loc) :token)
-                  (= (z/sexpr child-loc) 'comment))))
-      (= (z/tag zloc) :uneval)))
-
-(mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
-  "Find all the zipper locations for `(require ...)` nodes."
-  [zloc :- ::zloc]
-  (concat
-   (when-not (comment-loc? zloc)
-     (if (require-loc? zloc)
-       [zloc]
-       (when-let [down (z/down zloc)]
-         (find-requires down))))
-   (when-let [right (z/right zloc)]
-     (find-requires right))))
+(defn- find-required-namespaces
+  "Find all `(require ...)` forms in a file and return symbols it they load."
+  [file]
+  (let [acc (atom #{})]
+    (walk-parsed-ignore-comments!
+     (fn [node]
+       (when (= (n/tag node) :list)
+         (when-let [[first-child & other :as children] (remove skip-node? (n/children node))]
+           (when (and first-child
+                      (= (n/tag first-child) :token)
+                      ;; Check all child symbols on the line since `require` might be called in a threading macro
+                      ;; like (-> 'ns require)
+                      (some #(and (= (n/tag %) :token)
+                                  (require-symbols (n/sexpr %)))
+                            children))
+             (run! #(when (and (= (n/tag %) :quote))
+                      (when-let [in (some-> (n/children %) first n/sexpr)]
+                        (when (symbol? in)
+                          (swap! acc conj (if (qualified-symbol? in)
+                                            (symbol (namespace in))
+                                            in)))))
+                   other)))))
+     (parse-file-all file))
+    @acc))
 
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
   [file]
   (try
-    (let [node     (r.parser/parse-file-all file)
-          zloc     (z/of-node node)
-          requires (find-requires zloc)]
-      (into #{} (mapcat find-required-namespaces) requires))
+    (find-required-namespaces file)
     (catch Throwable e
       (throw (ex-info (format "Error in file %s: %s" (str file) (ex-message e))
                       {:file file}
@@ -176,7 +163,7 @@
                                    (some->> x z/of-node z/down z/right z/right z/right z/sexpr))]
            (swap! defentz conj target-ns))
          x)
-       (z/of-node (r.parser/parse-file-all file)))
+       (z/of-node (parse-file-all file)))
       @defentz)))
 
 (mu/defn find-defenterprise-schemas
@@ -194,7 +181,7 @@
                                    (some->> x z/of-node z/down z/right z/right z/right z/right z/right z/sexpr))]
            (swap! defentz conj target-ns))
          x)
-       (z/of-node (r.parser/parse-file-all file)))
+       (z/of-node (parse-file-all file)))
       @defentz)))
 
 (comment
@@ -285,7 +272,7 @@
   "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
   the files."
   []
-  (pmap file-dependencies (find-source-files)))
+  (map file-dependencies (find-source-files)))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
@@ -752,23 +739,15 @@
   [file]
   (try
     (let [models (atom #{})]
-      (loop [stack [(z/of-node (r.parser/parse-file-all file))]]
-        (when-let [zloc (peek stack)]
-          (let [stack' (pop stack)
-                stack' (if-let [right (z/right zloc)]
-                         (conj stack' right)
-                         stack')]
-            (if (comment-loc? zloc)
-              (recur stack')
-              (do
-                (when (and (= (z/tag zloc) :token)
-                           (keyword? (z/sexpr zloc))
-                           (= "model" (namespace (z/sexpr zloc)))
-                           (Character/isUpperCase ^char (first (name (z/sexpr zloc)))))
-                  (swap! models conj (z/sexpr zloc)))
-                (recur (if-let [child (z/down zloc)]
-                         (conj stack' child)
-                         stack')))))))
+      (walk-parsed-ignore-comments!
+       (fn [node]
+         (when (= (n/tag node) :token)
+           (let [sexpr (n/sexpr node)]
+             (when (and (keyword? sexpr)
+                        (= "model" (namespace sexpr))
+                        (Character/isUpperCase ^char (first (name sexpr))))
+               (swap! models conj sexpr)))))
+       (parse-file-all file))
       @models)
     (catch Throwable e
       (throw (ex-info (format "Error scanning model keywords in %s: %s" (str file) (ex-message e))
@@ -779,31 +758,22 @@
   "Find all models with their `t2/table-name` defined in this file."
   [file]
   (let [models (atom #{})]
-    (loop [stack [(z/of-node (r.parser/parse-file-all file))]]
-      (when-let [zloc (peek stack)]
-        (let [stack' (pop stack)
-              stack' (if-let [right (z/right zloc)]
-                       (conj stack' right)
-                       stack')]
-          (if (comment-loc? zloc)
-            (recur stack')
-            (do
-              (when (= (z/tag zloc) :list)
-                (let [first-child (z/down zloc)]
-                  (when (and first-child
-                             (= (z/tag first-child) :token)
-                             (some-> (:string-value (z/node first-child)) (str/ends-with? "/defmethod")))
-                    (let [second-zloc (z/right first-child)
-                          third-zloc  (some-> second-zloc z/right)]
-                      (when (and second-zloc
-                                 (= (z/sexpr second-zloc) 't2/table-name)
-                                 third-zloc
-                                 (keyword? (z/sexpr third-zloc))
-                                 (= "model" (namespace (z/sexpr third-zloc))))
-                        (swap! models conj (z/sexpr third-zloc)))))))
-              (recur (if-let [child (z/down zloc)]
-                       (conj stack' child)
-                       stack')))))))
+    (walk-parsed-ignore-comments!
+     (fn [node]
+       (when (= (n/tag node) :list)
+         (let [[fst snd trd :as children] (remove skip-node? (n/children node))]
+           (when (and fst (= (n/tag fst) :token)
+                      (some-> (n/string fst) (str/ends-with? "/defmethod")))
+             (when (and fst snd trd
+                        (= (n/tag fst) :token)
+                        (= (n/tag snd) :token)
+                        (= (n/tag trd) :token)
+                        (some-> (n/string fst) (str/ends-with? "/defmethod"))
+                        (= (n/sexpr snd) 't2/table-name)
+                        (keyword? (n/sexpr trd))
+                        (= "model" (namespace (n/sexpr trd))))
+               (swap! models conj (n/sexpr trd)))))))
+     (parse-file-all file))
     @models))
 
 (defn model-ownership
@@ -885,37 +855,38 @@
   ([]
    (model-boundary-violations (kondo-config)))
   ([kondo-config]
-   (let [ownership (model-ownership)]
-     (into []
-           (comp
-            (mapcat
-             (fn [file]
-               (try
-                 (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                   ns.parse/name-from-ns-decl)
-                       mod     (module ns-symb)]
-                   (when (and mod
-                              (not (contains? model-boundary-exempt-namespaces ns-symb)))
-                     (let [model-imports (get-in kondo-config [mod :model-imports] #{})
-                           models       (find-model-keywords file)
-                           rel-path     (file->path-relative-to-project-root file)]
-                       (for [model          models
-                             :let           [defining-mod  (get ownership model)]
-                             :when          (not= defining-mod mod)
-                             :let           [model-exports (when defining-mod
-                                                             (get-in kondo-config [defining-mod :model-exports] #{}))]
-                             violation-type (model-reference-violations
-                                             model defining-mod model-exports model-imports)]
-                         {:file            rel-path
-                          :module          mod
-                          :model           model
-                          :defining-module defining-mod
-                          :violation-type  violation-type}))))
-                 (catch Throwable e
-                   (throw (ex-info (format "Error checking model boundaries in %s" (str file))
-                                   {:file file}
-                                   e)))))))
-           (find-source-files)))))
+   (model-boundary-violations kondo-config (model-ownership)))
+  ([kondo-config ownership]
+   (into []
+         (comp
+          (mapcat
+           (fn [file]
+             (try
+               (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                 ns.parse/name-from-ns-decl)
+                     mod     (module ns-symb)]
+                 (when (and mod
+                            (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                   (let [model-imports (get-in kondo-config [mod :model-imports] #{})
+                         models       (find-model-keywords file)
+                         rel-path     (file->path-relative-to-project-root file)]
+                     (for [model          models
+                           :let           [defining-mod  (get ownership model)]
+                           :when          (not= defining-mod mod)
+                           :let           [model-exports (when defining-mod
+                                                           (get-in kondo-config [defining-mod :model-exports] #{}))]
+                           violation-type (model-reference-violations
+                                           model defining-mod model-exports model-imports)]
+                       {:file            rel-path
+                        :module          mod
+                        :model           model
+                        :defining-module defining-mod
+                        :violation-type  violation-type}))))
+               (catch Throwable e
+                 (throw (ex-info (format "Error checking model boundaries in %s" (str file))
+                                 {:file file}
+                                 e)))))))
+         (find-source-files))))
 
 (comment
   (model-ownership)

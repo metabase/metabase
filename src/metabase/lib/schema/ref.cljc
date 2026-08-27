@@ -88,6 +88,9 @@
      [:binning                                    {:optional true} [:ref ::binning/binning]]
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
      [:lib/original-effective-type {:optional true} [:ref ::common/base-type]]
+     ;; marks a `:base-type` that lib added itself, so converting this ref back to legacy knows to drop it again --
+     ;; see `metabase.lib.field/lib-metadata-key->ref-option-key`
+     [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
      ;;
      ;; For implicitly joinable columns, the ID of the FK field used to perform the implicit join.
      ;; E.g. if the query is against `ORDERS` and the field ref is for `PRODUCTS.CATEGORY`, then `:source-field`
@@ -196,7 +199,7 @@
    [:tuple
     [:= {:decode/normalize common/normalize-keyword} :field]
     [:ref ::field.options]
-    [:or ::id/field :string]]
+    [:or :string ::id/field]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
                              ;; schema above failed, so we need to check that this is actually a tuple here again.

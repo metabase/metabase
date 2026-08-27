@@ -82,6 +82,26 @@
                           {:type "url_verification"
                            :challenge "test"})))))))
 
+(deftest realistic-event-callback-test
+  (testing "POST /api/metabot/slack/events handles a realistic Slack payload: envelope keys survive decode and
+           unknown fields are dropped without breaking the event"
+    (tu/with-slackbot-setup
+      (let [body     (-> tu/base-dm-event
+                         (assoc :event_id "Ev12345678"
+                                :team_id "T12345678"
+                                :api_app_id "A0000001"
+                                :authorizations [{:enterprise_id nil :team_id "T12345678" :user_id "U000001"}]
+                                :is_ext_shared_channel false
+                                :event_context "4-eyJldCI6Im1lc3NhZ2UifQ")
+                         (assoc-in [:event :channel] "D123")
+                         (assoc-in [:event :text] "Hello from a realistic payload")
+                         (assoc-in [:event :client_msg_id] "b7d00b5d-0000-4000-8000-000000000000")
+                         (assoc-in [:event :blocks] [{:type "rich_text" :block_id "abc"}]))
+            response (mt/client :post 200 "metabot/slack/events"
+                                (tu/slack-request-options body)
+                                body)]
+        (is (= "ok" response))))))
+
 (deftest feature-flag-test
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
@@ -958,6 +978,7 @@
       (is (nil? result) "handler returns nil and does not schedule async work")
       (is (zero? (t2/count :model/MetabotFeedback :user_id rasta-id
                            {:where [:in :message_id
+                                    ^:allow-subquery
                                     {:select [:id] :from [:metabot_message]
                                      :where [:= :external_id "nothing-to-match"]}]}))
           "no feedback row written for unresolvable submissions"))))

@@ -195,6 +195,12 @@
    [:message :string]
    [:metadata {:optional true} ::trigger-metadata]])
 
+(mr/def ::lens-params
+  "Params passed to a drill lens (e.g. `{:join_step 2}`), emitted on drill-lens triggers and echoed back by the FE
+   to the lens endpoints. Scalar values only: they end up in `query_execution.lens_params`, and scalars keep
+   map/collection shapes out of the value position."
+  [:map-of :keyword [:maybe [:or :string :int :boolean :double]]])
+
 (mr/def ::drill-lens-trigger
   "Definition for conditional drill lens availability.
    FE evaluates condition and shows drill lens option if triggered.
@@ -202,7 +208,7 @@
   [:map
    [:lens_id :string]
    [:condition ::trigger-condition]
-   [:params {:optional true} [:map-of :keyword :any]]
+   [:params {:optional true} ::lens-params]
    [:reason {:optional true} :string]
    [:metadata {:optional true} ::trigger-metadata]])
 

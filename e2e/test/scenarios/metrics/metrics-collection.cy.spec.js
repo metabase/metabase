@@ -210,7 +210,7 @@ describe("scenarios > metrics > collection", () => {
       .should("be.visible");
   });
 
-  it("should be able to view a model-based metric without collection access to the source model", () => {
+  it("should not be able to view a model-based metric without collection access to the source model", () => {
     cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
@@ -225,10 +225,12 @@ describe("scenarios > metrics > collection", () => {
       cy.signIn("nocollection");
       H.visitCollection(FIRST_COLLECTION_ID);
     });
+    // The pinned metric renders a preview that runs its query, which requires read
+    // access to the source model; without it the query is refused, so the pinned
+    // card shows the generic visualization error instead of the value.
     H.getPinnedSection()
-      .findByTestId("scalar-value")
-      .should("not.be.empty")
-      .and("be.visible");
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
   });
 });
 

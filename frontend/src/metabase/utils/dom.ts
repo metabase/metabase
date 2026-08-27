@@ -9,8 +9,6 @@ import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 import { isObject } from "metabase-types/guards";
 
-import { checkNotNull } from "./types";
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
@@ -64,9 +62,20 @@ export function isObscured(
   return !element.contains(elem);
 }
 
+// site-url is null on instances where it was never set, and GlobalStyles calls this above any error
+// boundary, so throwing here white-screens the whole app. The sub-path is cosmetic; fall back to the root.
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 function isMetabaseUrl(url: string): boolean {

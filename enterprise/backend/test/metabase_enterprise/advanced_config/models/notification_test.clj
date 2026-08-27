@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.email.messages :as messages]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -43,3 +45,35 @@
                        (thunk))))
                 (testing "should succeed"
                   (is (thunk)))))))))))
+
+(defn- api:unsubscribe-undo
+  [expected-status handler-id email]
+  (mt/client :post expected-status "notification/unsubscribe/undo"
+             {:notification-handler-id handler-id
+              :email                   email
+              :hash                    (messages/generate-notification-unsubscribe-hash handler-id email)}))
+
+(deftest notification-recipient-validate-email-domains-test
+  (testing "every write path of a raw-value NotificationRecipient enforces subscription-allowed-domains"
+    (mt/with-premium-features #{:email-allow-list}
+      (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
+        (notification.tu/with-card-notification
+          [notification {:handlers [{:channel_type :channel/email
+                                     :recipients   []}]}]
+          (let [handler-id (-> notification :handlers first :id)]
+            (testing "direct insert of a disallowed email fails"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"The following email addresses are not allowed: .*"
+                   (t2/insert! :model/NotificationRecipient
+                               {:type                    :notification-recipient/raw-value
+                                :details                 {:value "cam@disallowed-domain.com"}
+                                :notification_handler_id handler-id}))))
+            (testing "POST /api/notification/unsubscribe/undo with a disallowed email fails"
+              (is (= "The following email addresses are not allowed: cam@disallowed-domain.com"
+                     (api:unsubscribe-undo 403 handler-id "cam@disallowed-domain.com")))
+              (is (not (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id))))
+            (testing "POST /api/notification/unsubscribe/undo with an allowed email succeeds"
+              (is (=? {:status "success"}
+                      (api:unsubscribe-undo 200 handler-id "cam@metabase.com")))
+              (is (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))))))))
