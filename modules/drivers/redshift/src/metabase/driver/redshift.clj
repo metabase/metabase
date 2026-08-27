@@ -120,47 +120,81 @@
   [driver database database-types]
   ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
-(def ^:private get-tables-sql
+(def ^:private exact-schema-name-re
+  "Matches an inclusion-filter segment that names one schema outright.
+
+  [[metabase.driver.sync/schema-pattern->re-pattern]] compiles a segment into a regex, expanding an unescaped `*`
+  into `.*` and passing every other character through as regex source. A segment of only `\\w` characters therefore
+  contains no wildcard and no regex syntax, so it matches itself and nothing else -- which is what lets an `in (...)`
+  predicate select the schemas the client-side filter would have kept.
+
+  [[metabase.driver.redshift-test/exactly-named-schemas-agrees-with-filter-test]] pins that agreement."
+  #"\w+")
+
+(defn- exactly-named-schemas
+  "The schema names an inclusion filter names outright, or `nil` when evaluating the filter needs every schema.
+
+  Blank patterns mean \"include everything\", so they fall through to the unfiltered query."
+  [inclusion-patterns]
+  (when-not (str/blank? inclusion-patterns)
+    (let [segments (map str/trim (str/split inclusion-patterns #","))]
+      (when (perf/every? #(re-matches exact-schema-name-re %) segments)
+        (distinct segments)))))
+
+(defn- get-tables-sql
+  "Query listing every syncable relation, restricted to `schema-names` when the filter named them outright.
+
+  Without that restriction this scans the whole catalog and the caller drops what the filter rejects. On a shared
+  cluster that is most of the rows -- CI runs measured ~1100 relations fetched to keep ~10."
+  [schema-names]
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
   ;; It does not return tables from datashares, which is a relatively new feature of redshift.
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
-  ;; This is a vector so adding parameters doesn't require a change to describe-database-tables in the future.
-  [(str/join
-    "\n"
-    ["select"
-     "  c.relname as name,"
-     "  n.nspname as schema,"
-     "  case c.relkind"
-     "    when 'r' then 'table'"
-     "    when 'p' then 'partitioned table'"
-     "    when 'v' then 'view'"
-     "    when 'f' then 'foreign table'"
-     "    when 'm' then 'materialized view'"
-     "    end as type,"
-     "  d.description"
-     "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
-     "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
-     "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
-     "  left join pg_catalog.pg_namespace dn on dn.oid=dc.relnamespace and dn.nspname='pg_catalog'"
-     "  where c.relnamespace = n.oid"
-     "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
-     "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
-     "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
-     "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
-     "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
-     "union all"
-     "select"
-     "  tablename as name,"
-     "  schemaname as schema,"
-     "  'EXTERNAL TABLE' as type,"
-     ;; external tables don't have descriptions
-     "  null as description"
-     "from svv_external_tables t"
-     "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
-     ;; for external tables, USAGE privileges on a schema is sufficient to select
-     "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"])])
+  (let [placeholders (when (seq schema-names)
+                       (str "(" (str/join ", " (repeat (count schema-names) "?")) ")"))]
+    (into
+     [(str/join
+       "\n"
+       (remove
+        nil?
+        ["select"
+         "  c.relname as name,"
+         "  n.nspname as schema,"
+         "  case c.relkind"
+         "    when 'r' then 'table'"
+         "    when 'p' then 'partitioned table'"
+         "    when 'v' then 'view'"
+         "    when 'f' then 'foreign table'"
+         "    when 'm' then 'materialized view'"
+         "    end as type,"
+         "  d.description"
+         "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
+         "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
+         "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
+         "  left join pg_catalog.pg_namespace dn on dn.oid=dc.relnamespace and dn.nspname='pg_catalog'"
+         "  where c.relnamespace = n.oid"
+         "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+         "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
+         (when placeholders (str "    and n.nspname in " placeholders))
+         "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
+         "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
+         "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
+         "union all"
+         "select"
+         "  tablename as name,"
+         "  schemaname as schema,"
+         "  'EXTERNAL TABLE' as type,"
+         ;; external tables don't have descriptions
+         "  null as description"
+         "from svv_external_tables t"
+         "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+         (when placeholders (str "  and t.schemaname in " placeholders))
+         ;; for external tables, USAGE privileges on a schema is sufficient to select
+         "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"]))]
+     ;; once per union branch
+     (concat schema-names schema-names))))
 
 (defn- describe-database-tables
   [database]
@@ -169,9 +203,11 @@
         syncable? (fn [schema]
                     (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
     (eduction
+     ;; kept over the narrowed query too: `syncable?` stays the definition of what syncs, and an exclusion filter
+     ;; still arrives here with every schema.
      (comp (filter (comp syncable? :schema))
            (map #(dissoc % :type)))
-     (sql-jdbc.execute/reducible-query database get-tables-sql))))
+     (sql-jdbc.execute/reducible-query database (get-tables-sql (exactly-named-schemas inclusion-patterns))))))
 
 (defmethod driver/describe-database* :redshift
   [driver database]

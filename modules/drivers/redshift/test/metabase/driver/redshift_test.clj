@@ -5,12 +5,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -723,3 +725,47 @@
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+(deftest ^:parallel exactly-named-schemas-agrees-with-filter-test
+  (testing "when the inclusion filter names its schemas outright, membership decides exactly what the filter keeps"
+    (let [candidates ["spectrum"
+                      "2026_08_27_18_abc_schema"
+                      "2026_08_27_18_abc_schema_extra"
+                      "prefix_spectrum"
+                      "spectrumx"
+                      "SPECTRUM"
+                      "other"]]
+      (doseq [patterns ["spectrum"
+                        "spectrum,2026_08_27_18_abc_schema"
+                        "  spectrum ,  2026_08_27_18_abc_schema  "
+                        "spectrum,spectrum"]]
+        (testing (pr-str patterns)
+          (let [named (#'redshift/exactly-named-schemas patterns)]
+            (is (some? named))
+            (doseq [candidate candidates]
+              (is (= (driver.s/include-schema? patterns nil candidate)
+                     (contains? (set named) candidate))
+                  (pr-str candidate))))))))
+  (testing "a filter that needs every schema to evaluate falls through to the unrestricted query"
+    (are [patterns] (nil? (#'redshift/exactly-named-schemas patterns))
+      nil
+      ""
+      "   "
+      "test*"
+      "*_schema"
+      "spectrum,test*"
+      "crazy\\*schema"
+      "a.c"
+      "a|b"
+      "with space")))
+
+(deftest ^:parallel get-tables-sql-test
+  (testing "named schemas are bound once per union branch"
+    (let [[sql & params] (#'redshift/get-tables-sql ["spectrum" "sess"])]
+      (is (= ["spectrum" "sess" "spectrum" "sess"] params))
+      (is (= 2 (count (re-seq #"in \(\?, \?\)" sql))))))
+  (testing "no named schemas leaves the query and its params untouched"
+    (let [[sql & params] (#'redshift/get-tables-sql nil)]
+      (is (empty? params))
+      (is (not (str/includes? sql "nspname in")))
+      (is (not (str/includes? sql "schemaname in"))))))
