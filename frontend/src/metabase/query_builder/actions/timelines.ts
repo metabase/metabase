@@ -1,28 +1,54 @@
 import { createAction } from "redux-actions";
 
-import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
-import type { CollectionId } from "metabase-types/api";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import {
+  hideTimelineEvents as hideEventsInVisibility,
+  hideTimelines as hideTimelinesInVisibility,
+  showTimelineEvents as showEventsInVisibility,
+  showTimelines as showTimelinesInVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
-  SHOW_TIMELINE_EVENTS,
 } from "../store/actions";
+import { getTimelineEventsVisibility } from "../store/selectors";
+
+import { onUpdateVisualizationSettings } from "./visualization-settings";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
-export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
-export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
-export const showTimelinesForCollection =
-  (collectionId?: CollectionId | null) =>
+const updateTimelineEventsVisibility =
+  (update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const collectionTimelines = getCollectionTimelines(
-      getFetchedTimelines(getState()),
-      collectionId,
+    const state = getState();
+    const visibility = update(
+      getTimelineEventsVisibility(state),
+      getTransformedTimelines(state),
     );
-    dispatch(showTimelineEvents(collectionTimelines.flatMap((t) => t.events)));
+    dispatch(onUpdateVisualizationSettings(visibility));
   };
+
+export const showTimelineEvents = (events: TimelineEvent[]) =>
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    showEventsInVisibility(visibility, events, timelines),
+  );
+
+export const hideTimelineEvents = (events: TimelineEvent[]) =>
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    hideEventsInVisibility(visibility, events, timelines),
+  );
+
+export const showTimeline = (timeline: Timeline) =>
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    showTimelinesInVisibility(visibility, [timeline.id], timelines),
+  );
+
+export const hideTimeline = (timeline: Timeline) =>
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    hideTimelinesInVisibility(visibility, [timeline.id], timelines),
+  );

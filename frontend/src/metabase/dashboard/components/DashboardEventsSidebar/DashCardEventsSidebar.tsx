@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { getDashCardById, getDashcardData } from "metabase/dashboard/selectors";
+import { getDashCardById } from "metabase/dashboard/selectors";
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardTimeseriesXAxis,
@@ -30,9 +30,6 @@ export function DashCardEventsSidebar({
   const dispatch = useDispatch();
   const { selectedTabId, closeSidebar } = useDashboardContext();
   const dashcard = useSelector((state) => getDashCardById(state, dashcardId));
-  const dashcardData = useSelector((state) =>
-    getDashcardData(state, dashcardId),
-  );
   const timelines = useSelector(getTransformedTimelines);
   const visibleEvents = useSelector((state) =>
     getDashCardVisibleTimelineEvents(state, dashcardId),
@@ -51,10 +48,8 @@ export function DashCardEventsSidebar({
     }
   }, [isOnAnotherTab, closeSidebar]);
 
-  const xAxis = useMemo(
-    () =>
-      dashcard ? getDashCardTimeseriesXAxis(dashcard, dashcardData) : null,
-    [dashcard, dashcardData],
+  const xAxis = useSelector((state) =>
+    getDashCardTimeseriesXAxis(state, dashcardId),
   );
   const displayedTimelines = useMemo(
     () =>

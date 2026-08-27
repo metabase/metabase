@@ -38,7 +38,6 @@ export type DashboardActionButton = {
         | "isFullscreen"
         | "onFullscreenChange"
         | "withSubscriptions"
-        | "withTimelineEvents"
         | "refreshPeriod"
       >,
   ) => boolean;
