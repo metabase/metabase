@@ -121,9 +121,13 @@
             (testing (pr-str params)
               (is (= (keep-ours (old-all nil nil params))
                      (keep-ours (task-history/all nil nil params))))))))
+      ;; NOTE: offset-without-limit ([nil <n>]) is intentionally NOT compared. The old HoneySQL
+      ;; impl omitted LIMIT entirely, producing `OFFSET ?` with no LIMIT -- a syntax error on
+      ;; MySQL/MariaDB. The HugSQL query always emits a LIMIT (defaulting Long/MAX_VALUE), which is
+      ;; the correct, portable behavior; there is no old result to be equal to.
       (testing "paging (scoped to task-a, whose rows are deterministic and isolated)"
         (let [params {:task task-a, :sort_column :started_at, :sort_direction :desc}]
-          (doseq [[limit offset] [[2 0] [1 1] [1000 0] [3 nil] [nil nil] [nil 1]]]
+          (doseq [[limit offset] [[2 0] [1 1] [1000 0] [3 nil] [nil nil]]]
             (testing (pr-str [limit offset])
               (is (= (mapv :id (old-all limit offset params))
                      (mapv :id (task-history/all limit offset params))))))))

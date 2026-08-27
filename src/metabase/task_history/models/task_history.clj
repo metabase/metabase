@@ -93,11 +93,11 @@
    [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
 
-(defn- filter-params
-  "The `:task`/`:status` filter values, passed as-is; the query executor applies the model's `:in`
-  transforms (so a `:status` keyword becomes its wire string)."
-  [{:keys [status task]}]
-  {:task task, :status status})
+;; Only :task/:status reach the filter queries -- never the whole request map. Keys are always
+;; present (hugsql requires it); nil means "no filter" (the query COALESCEs it away). The executor
+;; applies the model's :in transforms.
+(defn- filter-params [params]
+  (merge {:task nil, :status nil} (select-keys params [:task :status])))
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."

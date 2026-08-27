@@ -2,11 +2,17 @@
 -- in metabase.task-history.models.task-history-queries; see metabase.app-db.hugsql for the model.
 --
 -- Literal SQL only; user input flows through :value:x / :value*:xs params exclusively (raw
--- splices are banned and disarmed -- see mage/resources/raw-splice-allowlist.edn for the policy).
--- Everything here must run unchanged on H2, MySQL, and Postgres.
+-- splices are banned and disarmed; see metabase.app-db.hugsql). Everything here must run
+-- unchanged on H2, MySQL, and Postgres.
 --
 -- Param naming: params that mirror a column use the column name (snake_case), so row maps flow
 -- straight in; synthetic inputs are kebab-case (:sort-col, :run-id, :keep).
+--
+-- Optional filters use `col = COALESCE(:value:x, col)`: when the param is nil the term is
+-- `col = col` (filter off), else `col = value`. This keeps one param per filter AND gives
+-- Postgres a type for `?` (from the column inside COALESCE) -- unlike the `:value:x IS NULL OR`
+-- null-guard, where a bare `?` in `IS NULL` has no inferable type on Postgres. Correct here
+-- because both filtered columns (task, status) are NOT NULL; `col = col` would drop a NULL row.
 
 -- :name- cleanup-cutoff :? :1
 -- Find the ended_at cutoff for cleanup: skip the :keep newest rows
@@ -30,8 +36,8 @@ WHERE ended_at <= :value:cutoff
 SELECT task_history.*
 FROM task_history
 LEFT JOIN metabase_database ON task_history.db_id = metabase_database.id
-WHERE (:value:task IS NULL OR task_history.task = :value:task)
-  AND (:value:status IS NULL OR task_history.status = :value:status)
+WHERE task_history.task   = COALESCE(:value:task, task_history.task)
+  AND task_history.status = COALESCE(:value:status, task_history.status)
 ORDER BY
   CASE WHEN :value:sort-col = 'started_at' AND :value:sort-dir = 'asc'  THEN task_history.started_at END ASC,
   CASE WHEN :value:sort-col = 'started_at' AND :value:sort-dir = 'desc' THEN task_history.started_at END DESC,
@@ -53,8 +59,8 @@ LIMIT :value:limit OFFSET :value:offset
 -- :name- count-tasks :? :1
 SELECT COUNT(*) AS cnt
 FROM task_history
-WHERE (:value:task IS NULL OR task_history.task = :value:task)
-  AND (:value:status IS NULL OR task_history.status = :value:status)
+WHERE task_history.task   = COALESCE(:value:task, task_history.task)
+  AND task_history.status = COALESCE(:value:status, task_history.status)
 
 -- :name- unique-tasks :? :*
 SELECT task
@@ -91,9 +97,9 @@ ORDER BY started_at ASC
 
 -- :name- mark-orphaned-tasks :! :n
 -- 'started' / 'unknown' are the wire values of the :status keyword transform, written literally
--- since they are fixed. :now is bound from Clojure (mi/now) to keep full timestamp precision --
--- bare CURRENT_TIMESTAMP is second-resolution on MySQL. :run-ids must be non-empty (empty ->
--- "IN ()" is a syntax error); the executor guards it.
+-- since they are fixed. :now is bound from Clojure (a real instant) to keep full timestamp
+-- precision -- bare CURRENT_TIMESTAMP is second-resolution on MySQL. :run-ids must be non-empty
+-- (empty -> "IN ()" is a syntax error); the executor guards it.
 UPDATE task_history
 SET status = 'unknown', ended_at = :value:now
 WHERE status = 'started' AND run_id IN (:value*:run-ids)
