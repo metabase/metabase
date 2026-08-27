@@ -59,7 +59,11 @@
   threads that serve `mt/client`; the opt-in test must therefore be marked `^:synchronized`. Use for a test that
   activates an encryption key, so its strict decrypting reads meet only the settings in this already-encrypted DB."
   [& body]
-  `(let [{app-db# :app-db secret-key# :secret-key} @prepared-encrypted-db]
+  `(let [prepared# (or @prepared-encrypted-db
+                       (throw (ex-info (str "with-encrypted-app-db requires a `with-encrypted-app-db-fixture` :once "
+                                            "fixture on this namespace")
+                                       {})))
+         {app-db# :app-db secret-key# :secret-key} prepared#]
      (with-redefs [mdb.connection/*application-db* app-db#
                    encryption/default-secret-key   secret-key#]
        ~@body)))
