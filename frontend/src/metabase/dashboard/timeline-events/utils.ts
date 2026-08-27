@@ -21,10 +21,10 @@ const getDashCardDisplay = (
     ? dashcard.visualization_settings.visualization.display
     : dashcard.card?.display;
 
-export const isTimelineEventsDashCard = (dashcard: DashboardCard) =>
+export const canDashCardDisplayTimelineEvents = (dashcard: DashboardCard) =>
   canDisplayTimelineEvents(getDashCardDisplay(dashcard));
 
-export const getDashCardTimeseriesXAxis = (
+export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,
   dashcardData: DashCardDataMap[number] | undefined,
 ): TimeseriesXAxis | null => {

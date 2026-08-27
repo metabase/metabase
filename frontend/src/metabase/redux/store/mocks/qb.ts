@@ -78,7 +78,6 @@ export const createMockQueryBuilderState = (
   selectedTimelineEventIds: [],
 
   metadataDiff: {},
-  visibleTimelineEventIds: [],
 
   currentState: null,
 
