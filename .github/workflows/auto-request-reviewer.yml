@@ -1,0 +1,134 @@
+name: Auto request reviewer
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - ready_for_review
+
+jobs:
+  request_reviewer:
+    if: >-
+      !github.event.pull_request.draft &&
+      contains(github.event.pull_request.labels.*.name, 'Reviewer-I-Choose-You') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'Reviewer-I-Choose-You') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/reviewer-rotation.json
+          sparse-checkout-cone-mode: false
+
+      - name: Pick the least loaded reviewer from .github/reviewer-rotation.json
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: | #js
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const registry = JSON.parse(fs.readFileSync('.github/reviewer-rotation.json', 'utf-8'));
+            const team = registry.teams.find((t) => t.members.includes(author));
+
+            if (!team) {
+              core.info(`${author} is not in .github/reviewer-rotation.json, skipping`);
+              return;
+            }
+
+            const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+            if (fresh.draft) {
+              core.info('PR is back to draft, skipping');
+              return;
+            }
+            if (fresh.requested_reviewers.length > 0) {
+              core.info(`reviewers already requested: ${fresh.requested_reviewers.map((u) => u.login).join(', ')}, skipping`);
+              return;
+            }
+
+            const { data: reviews } = await github.rest.pulls.listReviews({ owner, repo, pull_number: pr.number });
+            if (reviews.some((r) => r.user?.login !== author)) {
+              core.info('PR already has reviews, skipping');
+              return;
+            }
+
+            const pool = team.members.filter((login) => login !== author);
+            if (pool.length === 0) {
+              core.info(`empty reviewer pool for ${team.name}, skipping`);
+              return;
+            }
+
+            const windowStart = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+            const search = async (q) => {
+              const res = await github.graphql(
+                `query ($q: String!) {
+                  search(query: $q, type: ISSUE, first: 100) {
+                    nodes {
+                      ... on PullRequest {
+                        number
+                        createdAt
+                        reviewRequests(first: 30) {
+                          nodes {
+                            requestedReviewer {
+                              __typename
+                              ... on User { login }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`,
+                { q },
+              );
+              return res.search.nodes;
+            };
+
+            const stats = async (login) => {
+              const base = `repo:${owner}/${repo} is:pr -author:${login} -author:github-automation-metabase sort:created-desc`;
+              const requested = (await search(`${base} review-requested:${login}`)).filter((p) =>
+                p.reviewRequests.nodes.some(
+                  (r) => r.requestedReviewer?.__typename === 'User' && r.requestedReviewer.login === login,
+                ),
+              );
+              const reviewed = await search(`${base} reviewed-by:${login}`);
+              const prs = [...new Map([...requested, ...reviewed].map((p) => [p.number, p])).values()];
+              const load = prs.filter((p) => Date.parse(p.createdAt) >= windowStart).length;
+              const last = Math.max(0, ...prs.map((p) => Date.parse(p.createdAt)));
+              return { login, load, last };
+            };
+
+            const ranked = [];
+            for (const login of pool) {
+              ranked.push(await stats(login));
+            }
+            ranked.sort((a, b) => a.load - b.load || a.last - b.last || a.login.localeCompare(b.login));
+
+            core.info(`load in last 14d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
+            const pick = ranked[0].login;
+            core.info(`picked ${pick}${team.githubTeam ? ` + ${owner}/${team.githubTeam}` : ''}`);
+
+            const request = (params) =>
+              github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, ...params });
+
+            if (!team.githubTeam) {
+              await request({ reviewers: [pick] });
+              return;
+            }
+
+            try {
+              await request({ reviewers: [pick], team_reviewers: [team.githubTeam] });
+            } catch (e) {
+              core.warning(`could not request team ${team.githubTeam}: ${e.message}`);
+              await request({ reviewers: [pick] });
+            }
