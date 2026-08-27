@@ -896,10 +896,10 @@
                                              (lib.tu.notebook/find-col-with-spec
                                               q (lib/join-condition-rhs-columns q categories-card nil nil)
                                               "Categories Model" "ID"))]))
-                        (lib.tu.notebook/add-breakout q "Categories Model" "Name")
+                        (lib.tu.notebook/add-breakout q "Categories Model" "Categories Model - Category → Name")
                         (lib.tu.notebook/add-breakout q "Venues Model" "Price")
                         (lib/aggregate q (lib/count))
-                        (lib.tu.notebook/add-order-by q "Categories Model" "Name")
+                        (lib.tu.notebook/add-order-by q "Categories Model" "Categories Model - Category → Name")
                         (lib/limit q 3))]
             (is (= [["American" 2 4]
                     ["American" 3 4]
