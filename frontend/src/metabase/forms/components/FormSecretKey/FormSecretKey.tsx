@@ -39,19 +39,21 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
     closeModal();
   };
 
+  const hasSecretKey = Boolean(value);
+
   const generateSecretButtonProps = readOnly
     ? null
     : {
         rightSection: (
           <Button
             className={S.generateButton}
-            miw={value ? undefined : "10rem"}
+            miw={hasSecretKey ? undefined : "10rem"}
             onClick={() =>
-              setOpenModal(value ? "confirm-regenerate" : "create-key")
+              setOpenModal(hasSecretKey ? "confirm-regenerate" : "create-key")
             }
-            variant={value ? "default" : "filled"}
+            variant={hasSecretKey ? "default" : "filled"}
           >
-            {value ? t`Regenerate key` : t`Set up key`}
+            {hasSecretKey ? t`Regenerate key` : t`Set up key`}
           </Button>
         ),
         rightSectionProps: { className: S.rightSection },
@@ -69,7 +71,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           classNames={{
             wrapper: S.inputWrapper,
             input: cx(S.input, {
-              [S.unset]: !value, // Just show the 'Set up key' button when no key is set yet
+              [S.unset]: !hasSecretKey, // Just show the 'Set up key' button when no key is set yet
             }),
           }}
           {...generateSecretButtonProps}
