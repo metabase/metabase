@@ -27,6 +27,35 @@
     "(string | null)[]"
     [:any {:ts/array-of [:maybe :string]}]))
 
+(deftest ^:parallel unsupported-predicate-test
+  (doseq [schema-form ['bytes? 'uri?]]
+    (let [{:keys [type diagnostics]} (schema/schema->result schema-form)]
+      (is (= "unknown" (type/render type)))
+      (is (seq diagnostics)))))
+
+(deftest ^:parallel literal-test
+  (are [expected schema-form] (= expected (schema/schema->ts schema-form))
+    "\"text\"" [:= "text"]
+    "\"qualified/value\"" [:= :qualified/value]
+    "\"x\"" [:= \x]
+    "true" [:= true]
+    "false" [:= false]
+    "42" [:= 42]
+    "4.5" [:= 4.5])
+  (doseq [value ['plain
+                 'qualified/name
+                 1/2
+                 Double/POSITIVE_INFINITY
+                 Double/NEGATIVE_INFINITY
+                 Double/NaN]]
+    (let [{:keys [type diagnostics]} (schema/schema->result [:= value])]
+      (is (= "unknown" (type/render type)))
+      (is (= :unsupported-literal (:type (first diagnostics))))))
+  (testing "an unsupported enum member safely widens the whole enum"
+    (let [{:keys [type diagnostics]} (schema/schema->result [:enum :valid 1/2])]
+      (is (= "unknown" (type/render type)))
+      (is (some #(= :unsupported-literal (:type %)) diagnostics)))))
+
 (deftest ^:parallel unsupported-map-key-test
   (doseq [key-schema [[:enum true false]
                       [:enum nil]
@@ -94,7 +123,12 @@
 
 (deftest ^:parallel function-seqex-test
   (is (= "(arg0: string, arg1?: number, ...arg2: boolean[]) => string"
-         (schema/schema->ts [:=> [:cat :string [:? :int] [:* :boolean]] :string]))))
+         (schema/schema->ts [:=> [:cat :string [:? :int] [:* :boolean]] :string])))
+  (is (= "(max_rows: number, predicate_QMARK_: boolean) => string"
+         (schema/schema->ts [:=> [:catn [:max-rows :int] [:predicate? :boolean]] :string])))
+  (is (= "(arg0: string, arg1: number, a_b: boolean, arg3: string) => string"
+         (schema/schema->ts
+          [:=> [:catn [:1st :string] [:a.b :int] [:a-b :boolean] [:a_b :string]] :string]))))
 
 (deftest ^:parallel predicate-sanitizer-test
   (testing "explicit TypeScript overrides never evaluate predicates"
@@ -135,6 +169,31 @@
                     [:display-name {:optional true} :string]
                     [:display_name {:optional true} :int]]
                    :ts/key-transform :camelCase}]))))
+  (testing "string keys use the same camelCase transform as runtime object conversion"
+    (is (= "{\n\tdisplayName: string;\n\tunderScore: number;\n\tspaceSeparated: boolean;\n\tisEnabled: string;\n\turlValue: number;\n\talreadyUrlValue: string;\n}"
+           (schema/schema->ts
+            [:any {:ts/object-of
+                   [:map {:closed true}
+                    ["display-name" :string]
+                    ["under_score" :int]
+                    ["space separated" :boolean]
+                    ["enabled?" :string]
+                    ["URL-value" :int]
+                    ["alreadyURLValue" :string]]
+                   :ts/key-transform :camelCase}]))))
+  (testing "keyword and string keys that transform alike are merged"
+    (let [{:keys [type diagnostics]}
+          (schema/schema->result
+           [:any {:ts/object-of
+                  [:map {:closed true}
+                   [:display-name :string]
+                   ["display_name" :int]]
+                  :ts/key-transform :camelCase}])]
+      (is (= "{\n\tdisplayName: string | number;\n}" (type/render type)))
+      (is (= [{:type :map-key-collision
+               :final-key "displayName"
+               :source-keys [:display-name "display_name"]}]
+             diagnostics))))
   (testing "non-colliding keys retain source order"
     (is (= "{\n\tfirst: string;\n\tsecond: number;\n}"
            (schema/schema->ts

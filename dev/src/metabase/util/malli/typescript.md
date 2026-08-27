@@ -82,26 +82,26 @@ Entry files use explicit value declarations. They don't wildcard-re-export depen
 
 Common Malli forms map directly to TypeScript:
 
-| Malli                                                    | TypeScript                                      |
-| -------------------------------------------------------- | ----------------------------------------------- |
-| `:string`, `:keyword`, `:symbol`, `:uuid`, `:uri`, `:re` | `string`                                        |
-| time schemas such as `:time/local-date`                  | `string`                                        |
-| `:int`, `:double`, numeric predicates                    | `number`                                        |
-| `:boolean`, `boolean?`                                   | `boolean`                                       |
-| `:nil`                                                   | `null`                                          |
-| `:any` or an unsupported predicate                       | `unknown`                                       |
-| `[:maybe T]`                                             | `T \| null`; arguments also include `undefined` |
-| `[:vector T]`, `[:sequential T]`                         | `T[]`                                           |
-| `[:sequential {:min 1} T]`                               | `[T, ...T[]]`                                   |
-| `[:set T]`                                               | `Set<T>`                                        |
-| `[:tuple A B]`                                           | `[A, B]`                                        |
-| `[:enum :a :b]`                                          | `"a" \| "b"`                                    |
-| `[:or A B]`                                              | `A \| B`                                        |
-| `[:and A B]`, `[:merge A B]`                             | `A & B`                                         |
-| `[:map [:key T]]`                                        | `{ key: T; ... }`                               |
-| `[:map-of K V]`                                          | `Record<K, V>` with safe key normalization      |
-| `[:map-of [:enum ...] V]`                                | `Partial<Record<literal union, V>>`             |
-| `[:=> args result]`                                      | a function type                                 |
+| Malli                                            | TypeScript                                      |
+| ------------------------------------------------ | ----------------------------------------------- |
+| `:string`, `:keyword`, `:symbol`, `:uuid`, `:re` | `string`                                        |
+| time schemas such as `:time/local-date`          | `string`                                        |
+| `:int`, `:double`, numeric predicates            | `number`                                        |
+| `:boolean`, `boolean?`                           | `boolean`                                       |
+| `:nil`                                           | `null`                                          |
+| `:any` or an unsupported predicate               | `unknown`                                       |
+| `[:maybe T]`                                     | `T \| null`; arguments also include `undefined` |
+| `[:vector T]`, `[:sequential T]`                 | `T[]`                                           |
+| `[:sequential {:min 1} T]`                       | `[T, ...T[]]`                                   |
+| `[:set T]`                                       | `Set<T>`                                        |
+| `[:tuple A B]`                                   | `[A, B]`                                        |
+| `[:enum :a :b]`                                  | `"a" \| "b"`                                    |
+| `[:or A B]`                                      | `A \| B`                                        |
+| `[:and A B]`, `[:merge A B]`                     | `A & B`                                         |
+| `[:map [:key T]]`                                | `{ key: T; ... }`                               |
+| `[:map-of K V]`                                  | `Record<K, V>` with safe key normalization      |
+| `[:map-of [:enum ...] V]`                        | `Partial<Record<literal union, V>>`             |
+| `[:=> args result]`                              | a function type                                 |
 
 The renderer tracks precedence. An array of a union renders as `(A | B)[]`, not `A | B[]`.
 
@@ -186,6 +186,7 @@ The supported properties are:
 - `:ts/ref`
 - `:ts/promise-of`
 - `:ts/key-transform`
+- `:ts/instance-of`
 - `:ts/same-as`
 - `:ts/generic-bound`
 
@@ -213,6 +214,12 @@ A function returning `#js {}` isn't returning a ClojureScript map. Use `:ts/obje
 ```
 
 Use `:ts/key-transform :camelCase` only when the implementation really converts keys to JavaScript-style names. The transform applies recursively. A nested `:ts/object-of` can reset it with `:ts/key-transform :none`.
+
+### Normalize JavaScript instance checks
+
+The declaration resolver converts `[:is-a js/Array]` and `[:is-a js/Object]` to the internal `:ts/instance-of` compatibility property. `"Array"` renders as `unknown[]`, `"Object"` renders as `Record<string, unknown>`, and other class names remain `unknown`.
+
+Prefer `:ts/array-of` or `:ts/object-of` when the boundary has a more precise element or object schema. Authors generally shouldn't add `:ts/instance-of` directly.
 
 ### Name an otherwise opaque type
 
@@ -274,9 +281,9 @@ Use the boundary annotations above only when the implementation performs the mat
 
 The generator runs on the JVM. Avoid CLJS-only predicates in schemas used for generation. A schema stored only in a `.cljs` var may also be unavailable to JVM-side resolution; inline it or move the schema to `.cljc` when appropriate.
 
-## Run strict declaration checks after a clean build
+JVM registry resolution is the source of truth during generation, while CLJS schemas validate runtime values. Reader-conditional schemas can therefore expose different predicates in each environment. Don't infer a JavaScript representation from a JVM-only predicate such as `bytes?` or `uri?`; keep the declaration `unknown` unless the actual exported boundary converts it to a documented JavaScript shape.
 
-Run:
+## Run strict declaration checks after a clean build
 
 For compiler changes, validate both existing build modes:
 
@@ -293,7 +300,7 @@ bun run check-generated-cljs-exports:release
 
 `check-generated-cljs-exports` verifies that every module listed by the build hook has a declaration file, then compares its value declarations with its runtime export keys. A declaration that exists only as a type doesn't count as a runtime value.
 
-When a branch also updates the Malli boundary schemas or frontend consumers, run the full frontend check after the three compiler checks:
+When a branch also updates the Malli boundary schemas or frontend consumers, run the full frontend check after the generated declaration checks:
 
 ```bash
 bun run type-check-pure
