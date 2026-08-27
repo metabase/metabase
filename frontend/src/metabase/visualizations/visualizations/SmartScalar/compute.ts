@@ -13,7 +13,10 @@ import {
   findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/lib/trend-helpers";
-import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import {
+  COMPARISON_TYPES,
+  VIZ_SETTINGS_DEFAULTS,
+} from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -47,6 +50,7 @@ export type ComparisonResult = {
     percentChange: string;
     comparisonValue: SmartScalarDisplayValue;
   };
+  isComparisonValueVisible: boolean;
   percentChange: number | undefined;
 };
 
@@ -189,6 +193,10 @@ function buildComparisonObject({
       )
     : undefined;
 
+  const showComparisonValue =
+    settings["scalar.show_comparison_value"] ??
+    VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"];
+
   return {
     changeArrowIconName,
     changeColor,
@@ -204,6 +212,10 @@ function buildComparisonObject({
       percentChange: percentChangeStr,
       comparisonValue: comparisonValueStr,
     },
+    // Status text such as "(No data)" stays visible; only an actual comparison number can be hidden.
+    isComparisonValueVisible:
+      showComparisonValue ||
+      changeType !== CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     percentChange,
   };
 }

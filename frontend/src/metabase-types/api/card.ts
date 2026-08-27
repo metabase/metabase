@@ -451,6 +451,9 @@ export type VisualizationSettings = {
   /** Use compact formatting for the primary scalar number. */
   "scalar.compact_primary_number"?: boolean;
 
+  /** Show the absolute comparison value next to the percent change in trend cards. */
+  "scalar.show_comparison_value"?: boolean;
+
   /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];
 

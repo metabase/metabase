@@ -9,6 +9,23 @@ import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "./compute";
 const SYMBOL_SIZE = 12;
 const PERCENT_MIN_WIDTH = 48;
 
+function getValueFormatted(
+  comparison: ComparisonResult,
+  formatOptions: ColumnSettings,
+) {
+  const { comparisonValue, display, isComparisonValueVisible } = comparison;
+
+  if (!isComparisonValueVisible) {
+    return null;
+  }
+
+  if (!isEmpty(comparisonValue)) {
+    return formatValue(comparisonValue, { ...formatOptions, compact: true });
+  }
+
+  return display.comparisonValue;
+}
+
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
   formatOptions: ColumnSettings;
@@ -25,7 +42,6 @@ export function PreviousValueComparisonTooltip({
     changeColorName,
     changeType,
     comparisonDescStr,
-    comparisonValue,
     display,
   } = comparison;
 
@@ -35,9 +51,7 @@ export function PreviousValueComparisonTooltip({
     changeColorName != null
       ? (`${changeColorName}-strong` as const)
       : "text-primary";
-  const valueFormatted = !isEmpty(comparisonValue)
-    ? formatValue(comparisonValue, { ...formatOptions, compact: true })
-    : display.comparisonValue;
+  const valueFormatted = getValueFormatted(comparison, formatOptions);
 
   return (
     <Flex

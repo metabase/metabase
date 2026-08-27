@@ -4,6 +4,7 @@ import type {
   RowValues,
   Series,
   SmartScalarComparison,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
@@ -24,6 +25,13 @@ export const getPeriodsAgoComparison = (value: number) => ({
   value,
 });
 
+export const STATIC_NUMBER_COMPARISON = {
+  id: "2",
+  type: COMPARISON_TYPES.STATIC_NUMBER,
+  value: 80,
+  label: "Goal",
+};
+
 interface MockSeriesOptions {
   rows: RowValues[];
   insights?: Partial<Insight>[];
@@ -31,6 +39,7 @@ interface MockSeriesOptions {
   comparisonType?: SmartScalarComparison;
   comparisonTypes?: SmartScalarComparison[];
   name?: string;
+  settings?: VisualizationSettings;
 }
 
 export const mockSeries = ({
@@ -40,6 +49,7 @@ export const mockSeries = ({
   comparisonType = PREVIOUS_PERIOD_COMPARISON,
   comparisonTypes,
   name,
+  settings,
 }: MockSeriesOptions) => {
   const cols = [
     DateTimeColumn({ name: "Month", source: "breakout" }),
@@ -56,6 +66,7 @@ export const mockSeries = ({
         visualization_settings: {
           "scalar.field": field,
           "scalar.comparisons": comparisonTypes ?? [comparisonType],
+          ...settings,
         },
         dataset_query: createMockStructuredDatasetQuery(),
       },

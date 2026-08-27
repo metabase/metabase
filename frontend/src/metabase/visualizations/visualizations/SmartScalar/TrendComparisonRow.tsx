@@ -19,6 +19,28 @@ const getChangeSign = (percentChange: number | undefined) => {
   return percentChange < 0 ? "-" : "+";
 };
 
+function getComparisonValueDisplay(
+  comparison: ComparisonResult,
+  formatOptions: ColumnSettings,
+) {
+  const { changeType, comparisonValue, display, isComparisonValueVisible } =
+    comparison;
+
+  if (!isComparisonValueVisible) {
+    return null;
+  }
+
+  if (changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE) {
+    return formatValue(comparisonValue, { ...formatOptions, compact: true });
+  }
+
+  if (changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE) {
+    return display.comparisonValue;
+  }
+
+  return null;
+}
+
 interface TrendComparisonRowProps {
   trend: Trend;
   formatOptions: ColumnSettings;
@@ -40,12 +62,10 @@ export function TrendComparisonRow({
     changeType,
     comparisonDescStr,
     comparisonDescShortStr,
-    comparisonValue,
     percentChange,
   } = comparison;
 
   const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
-  const isMissing = changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
   const changeColor =
     changeColorName != null
       ? (`${changeColorName}-strong` as const)
@@ -59,11 +79,10 @@ export function TrendComparisonRow({
   ]
     .filter(Boolean)
     .join(" ");
-  const comparisonValueDisplay = isChanged
-    ? formatValue(comparisonValue, { ...formatOptions, compact: true })
-    : isMissing
-      ? comparison.display.comparisonValue
-      : null;
+  const comparisonValueDisplay = getComparisonValueDisplay(
+    comparison,
+    formatOptions,
+  );
   const extraComparisonsCount = comparisons.length - 1;
 
   return (
