@@ -162,21 +162,24 @@
     (is (= "\u00ad_\u00ad" (slack "\\_")))
     (is (= "\u00ad`\u00ad" (slack "\\`")))))
 
-(deftest ^:parallel process-markdown-slack-test-17
+(deftest process-markdown-slack-test-17
   (testing "Images in Markdown are converted to links, with alt text preserved"
-    (is (= "<image.png|[Image]>"           (slack "![](image.png)")))
-    (is (= "<image.png|[Image: alt-text]>" (slack "![alt-text](image.png)")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/image.png|[Image]>"           (slack "![](image.png)")))
+      (is (= "<https://example.com/image.png|[Image: alt-text]>" (slack "![alt-text](image.png)"))))))
 
-(deftest ^:parallel process-markdown-slack-test-18
+(deftest process-markdown-slack-test-18
   (testing "Image references are treated the same as normal images"
-    (is (=  "<image.png|[Image]>"           (slack "![][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image: alt-text]>" (slack "![alt-text][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (=  "<https://example.com/image.png|[Image]>"           (slack "![][ref]\n\n[ref]: image.png")))
+      (is (=  "<https://example.com/image.png|[Image: alt-text]>" (slack "![alt-text][ref]\n\n[ref]: image.png")))
+      (is (=  "<https://example.com/image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png"))))))
 
-(deftest ^:parallel process-markdown-slack-test-19
+(deftest process-markdown-slack-test-19
   (testing "Linked images include link target in parentheses"
-    (is (= "<image.png|[Image]>\n(https://metabase.com)"  (slack "[![](image.png)](https://metabase.com)")))
-    (is (=  "<image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png")))))
+    (tu/with-temporary-setting-values [site-url "https://example.com"]
+      (is (= "<https://example.com/image.png|[Image]>\n(https://metabase.com)"  (slack "[![](image.png)](https://metabase.com)")))
+      (is (=  "<https://example.com/image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png"))))))
 
 (deftest ^:parallel process-markdown-slack-test-20
   (testing "Raw HTML in Markdown is passed through unmodified, aside from angle brackets being
