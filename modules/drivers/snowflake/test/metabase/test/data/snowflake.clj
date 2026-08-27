@@ -295,6 +295,19 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
+(defonce ^:private set-up-tracking-db?
+  (atom false))
+
+(defn- setup-tracking-db-if-needed!
+  "Call [[setup-tracking-db!]], only if we haven't done so already.
+
+  Both of its statements are server round trips, and nothing drops `metabase_test_tracking` while a run is in
+  progress, so once they have succeeded they only need repeating in the next process."
+  [conn driver]
+  (when-not @set-up-tracking-db?
+    (setup-tracking-db! conn driver)
+    (reset! set-up-tracking-db? true)))
+
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -322,7 +335,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
+     (setup-tracking-db-if-needed! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn
