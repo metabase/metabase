@@ -60,15 +60,16 @@
 (deftest ^:parallel inline-value-string-test
   (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"
     (let [expected (fn [^String s]
-                     (format "CONVERT(UNHEX('%s') USING utf8mb4)"
-                             (codecs/bytes->hex (.getBytes s "UTF-8"))))]
+                     (format "_utf8mb4 X'%s'" (codecs/bytes->hex (.getBytes s "UTF-8"))))]
       (are [s] (= (expected s) (sql.qp/inline-value :mysql s))
         "Tito's Tacos"
         "back\\slash"
-        "a\\' OR 1 = 1 --")))
+        "a\\' OR 1 = 1 --"
+        ""
+        "\u00e9\ud83c\udf63")))
   (testing "compiling a query with inline parameters"
     (binding [driver/*compile-with-inline-parameters* true]
-      (is (= ["SELECT * FROM `venues` WHERE `venues`.`name` = CONVERT(UNHEX('615c27204f522031203d2031202d2d') USING utf8mb4)"]
+      (is (= ["SELECT * FROM `venues` WHERE `venues`.`name` = _utf8mb4 X'615c27204f522031203d2031202d2d'"]
              (sql.qp/format-honeysql :mysql {:select [:*]
                                              :from   [[:venues]]
                                              :where  [:= :venues/name "a\\' OR 1 = 1 --"]}))))))
