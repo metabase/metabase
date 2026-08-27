@@ -5,10 +5,11 @@
 
 (defn remove-encryption!
   "Removes the encryption from the current configured db.
-   The current encryption key must be set in the `MB_ENCRYPTION_SECRET_KEY` env var."
+   The current encryption key must be set in the `MB_ENCRYPTION_SECRET_KEY` env var. Skips the startup encryption
+   check: the key is verified against the `encryption-check` sentinel by [[mdb/decrypt-db]] itself."
   []
   (when-not (mdb/db-is-set-up?)
     (log/info "Checking database configuration prior to decryption")
-    (mdb/setup-db! :create-sample-content? true))
+    (mdb/setup-db! :create-sample-content? true :check-encryption? false))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (mdb/decrypt-db (mdb/db-type) (mdb/data-source)))

@@ -2755,6 +2755,29 @@
             (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
             (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
+(deftest delete-legacy-encryption-check-marker-test
+  (testing "v58.2026-08-27T12:00:00 : the plaintext \"unencrypted\" marker is deleted, an encrypted sentinel is kept"
+    (encryption-test/with-secret-key "legacy-marker-test-key-1234"
+      (let [raw-sentinel #(t2/select-one-fn :value :setting :key "encryption-check")
+            set-sentinel! (fn [value]
+                            (t2/delete! :setting :key "encryption-check")
+                            (t2/insert! :setting {:key "encryption-check", :value value}))]
+        (impl/test-migrations ["v58.2026-08-27T12:00:00"] [migrate!]
+          (set-sentinel! "unencrypted")
+          (migrate!)
+          (is (nil? (raw-sentinel)))
+          (testing "rollback restores the marker when there is no sentinel"
+            (migrate! :down 57)
+            (is (= "unencrypted" (raw-sentinel)))))
+        (impl/test-migrations ["v58.2026-08-27T12:00:00"] [migrate!]
+          (let [sentinel (encryption/encrypt (str (random-uuid)))]
+            (set-sentinel! sentinel)
+            (migrate!)
+            (is (= sentinel (raw-sentinel)))
+            (testing "rollback leaves an encrypted sentinel alone"
+              (migrate! :down 57)
+              (is (= sentinel (raw-sentinel))))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]

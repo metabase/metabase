@@ -58,7 +58,8 @@
   clob->str]
  [mdb.encryption
   decrypt-db
-  encrypt-db]
+  encrypt-db
+  encryption-check-status]
  [metabase.app-db.format
   format-sql]
  [mdb.setup
@@ -133,8 +134,12 @@
   database migrations. If DB is already set up, this function will no-op. Thread-safe.
   Callers must explicitly decide whether or not to create sample content during migrations with the
   `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
-  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts."
-  [& {:keys [create-sample-content?]}]
+  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts.
+
+  `check-encryption?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database after migrating; it is
+  `false` only for the commands that manage encryption (`enable-encryption`, `rotate-encryption-key`,
+  `remove-encryption`), which run precisely when that check would fail and verify the key themselves."
+  [& {:keys [create-sample-content? check-encryption?] :or {check-encryption? true}}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
     ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
@@ -146,7 +151,7 @@
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
+          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content? check-encryption?))
         (finish-db-setup!))))
   :done)
 

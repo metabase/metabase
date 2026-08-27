@@ -25,9 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as string]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
@@ -193,30 +191,46 @@
                         {}))))))
 
 (mu/defn- check-encryption
-  "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
-  Encryption status is tracked by an 'encryption-check' value in the settings table.
-  NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
-  []
-  (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
-                 (catch Throwable e (log/warnf "Error checking encryption status, assuming unencrypted: %s" (ex-message e))))
-        looks-encrypted (not= raw "unencrypted")]
-    (log/debug "Checking encryption configuration")
-    (when-not (nil? raw)
-      (if looks-encrypted
-        (do
-          (when-not (encryption/default-encryption-enabled?)
-            (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
-          (when-not (and (encryption/possibly-encrypted-string? raw)
-                         (u/ignore-exceptions
-                           (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))))
-            (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
-          (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
-        (if (encryption/default-encryption-enabled?)
-          (do
-            (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
-            (log/info "Database encrypted..." (u/emoji "✅")))
-          (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
+  "Verify that MB_ENCRYPTION_SECRET_KEY matches the database. Encryption status is tracked by the `encryption-check`
+  sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted (see
+  [[mdb.encryption/encryption-check-status]]); it is read and written raw, not through `defsetting`.
+
+  Startup never encrypts existing data. With a key set but no sentinel, the database must not have held any
+  encrypted-at-rest content before this run's migrations (`content-before-migrations?`, see
+  [[mdb.encryption/encrypted-content-exists?]]) -- i.e. it is a fresh install -- and then the sentinel is written.
+  Otherwise the database is unencrypted, or encrypted but missing its sentinel, and the admin has to run
+  `enable-encryption` deliberately. Encrypting here on the strength of the sentinel would let anyone with write access
+  to the app DB launder planted plaintext rows into valid ciphertext by resetting the sentinel and waiting for a
+  restart."
+  [content-before-migrations? :- :boolean]
+  (log/debug "Checking encryption configuration")
+  (when-let [status (try (mdb.encryption/encryption-check-status)
+                         (catch Throwable e
+                           (log/warnf "Error checking encryption status, skipping the check: %s" (ex-message e))
+                           nil))]
+    (cond
+      (not (encryption/default-encryption-enabled?))
+      (if (= status :absent)
+        (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")
+        (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
+
+      (= status :valid)
+      (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
+
+      (= status :invalid)
+      (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {}))
+
+      content-before-migrations?
+      (throw (ex-info (str "MB_ENCRYPTION_SECRET_KEY is set but the database is not marked as encrypted and already contains data. "
+                           "If you have just added the key to an existing instance, stop Metabase and run `enable-encryption` to encrypt the database. "
+                           "If this database was already encrypted, it has been modified directly: "
+                           "do NOT run `enable-encryption`; check the key or restore from a backup.")
+                      {}))
+
+      :else
+      (do
+        (mdb.encryption/write-encryption-check!)
+        (log/info "MB_ENCRYPTION_SECRET_KEY set on a new database. Marked database as encrypted." (u/emoji "✅"))))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
@@ -256,20 +270,29 @@
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type                :- :keyword
-   data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate?          :- :boolean
-   create-sample-content? :- :boolean]
-  (u/profile (trs "Database setup")
-    (u/with-us-locale
-      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*            true
-                custom-migrations/*create-sample-content* create-sample-content?]
-        (verify-db-connection db-type data-source)
-        (error-if-downgrade-required! data-source)
-        (run-schema-migrations! data-source auto-migrate?)
-        (check-encryption))))
-  :done)
+  ([db-type data-source auto-migrate? create-sample-content?]
+   (setup-db! db-type data-source auto-migrate? create-sample-content? true))
+
+  ([db-type                :- :keyword
+    data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
+    auto-migrate?          :- :boolean
+    create-sample-content? :- :boolean
+    check-encryption?      :- :boolean]
+   (u/profile (trs "Database setup")
+     (u/with-us-locale
+       (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                 config/*disable-setting-cache*            true
+                 custom-migrations/*create-sample-content* create-sample-content?]
+         (verify-db-connection db-type data-source)
+         (error-if-downgrade-required! data-source)
+         ;; snapshot before migrations, which may create encrypted-at-rest content of their own (sample content)
+         (let [content-before-migrations? (boolean (and check-encryption?
+                                                        (encryption/default-encryption-enabled?)
+                                                        (mdb.encryption/encrypted-content-exists?)))]
+           (run-schema-migrations! data-source auto-migrate?)
+           (when check-encryption?
+             (check-encryption content-before-migrations?))))))
+   :done))
 
 (defn release-migration-locks!
   "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
