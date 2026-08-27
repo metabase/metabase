@@ -408,6 +408,18 @@ describe("Schedule", () => {
         "0 0 15 ? * 2 *",
       ],
       [
+        "switch daily to by the minute defaults to 10 minutes",
+        "0 0 8 * * ? *",
+        { frequency: "by the minute" },
+        "0 0/10 * * * ? *",
+      ],
+      [
+        "changing the time keeps the hidden minute",
+        "0 30 15 * * ? *",
+        { time: "10:00" },
+        "0 30 22 * * ? *",
+      ],
+      [
         "switch monthly to daily clears frame and weekday",
         "0 0 8 ? * 2#1 *",
         { frequency: "daily" },
