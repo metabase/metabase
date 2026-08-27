@@ -213,6 +213,22 @@
       (is (not (re-find #"You cannot build custom queries" rendered)))
       (is (not (re-find #"You cannot create inline visualizations" rendered))))))
 
+(deftest ^:parallel slackbot-prompt-teaches-standard-markdown-test
+  ;; The channel answer goes in a `markdown` block, which renders standard markdown rather than
+  ;; Slack's `mrkdwn`. Measured against the API: `*one*` comes back italic and `~one~` is not
+  ;; parsed at all, so the old dialect would silently lose every bold and strikethrough.
+  (testing "the prompt teaches the dialect the answer block actually renders (BOT-2010)"
+    (let [rendered (render-slackbot-template all-yes-perms)]
+      (testing "standard markdown is prescribed"
+        (is (re-find #"`\*\*text\*\*` for bold text" rendered))
+        (is (re-find #"`~~text~~` for strikethrough text" rendered)))
+      (testing "and the Slack-only dialect is not"
+        (is (not (re-find #"`\*text\*` for bold text" rendered)))
+        (is (not (re-find #"`~text~` for strikethrough text" rendered))))
+      (testing "Slack's link syntax is kept -- it does render inside a markdown block (measured)"
+        (is (re-find #"<https://example\.com\|Link Text>" rendered))
+        (is (re-find #"metabase://dashboard/123\|Dashboard Name" rendered))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Custom system prompt injection
 ;;; ──────────────────────────────────────────────────────────────────

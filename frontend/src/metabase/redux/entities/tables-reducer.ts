@@ -101,6 +101,11 @@ export function tablesReducer(
   ) {
     let nextState = state;
     for (const updated of Object.values<any>(payload.entities.fields)) {
+      // A null entry is a delete, so there is nothing to sync into
+      // `original_fields`.
+      if (updated == null) {
+        continue;
+      }
       const tableId = updated.table_id;
       const table = nextState[tableId];
       if (!table?.original_fields) {

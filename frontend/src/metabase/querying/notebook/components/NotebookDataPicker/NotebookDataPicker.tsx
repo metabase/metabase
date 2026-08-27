@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { selectTableQueryMetadata } from "metabase/api";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
@@ -87,9 +88,15 @@ export function NotebookDataPicker({
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
-    const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const state = store.getState();
+    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
+      state,
+    );
+    const databaseId = checkNotNull(tableMetadata).db_id;
+    const metadataProvider = Lib.metadataProvider(
+      databaseId,
+      getMetadata(state),
+    );
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);
