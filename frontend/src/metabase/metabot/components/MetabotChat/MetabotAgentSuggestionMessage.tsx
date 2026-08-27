@@ -5,7 +5,6 @@ import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useLazyGetTransformQuery } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
 import {
@@ -15,6 +14,7 @@ import {
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
 import { getMetadata } from "metabase/metadata-store";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import {
@@ -54,7 +54,7 @@ const useGetOldTransform = ({
   editorTransform: MetabotTransformInfo | undefined;
   suggestedTransform: MetabotSuggestedTransform;
 }) => {
-  const [trigger, result] = useLazyGetTransformQuery();
+  const [trigger, result] = PLUGIN_TRANSFORMS.useLazyGetTransformQuery();
   useMount(() => {
     if (!editorTransform && suggestedTransform.id) {
       trigger(suggestedTransform.id);
