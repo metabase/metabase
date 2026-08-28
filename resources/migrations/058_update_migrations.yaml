@@ -1620,42 +1620,6 @@ databaseChangeLog:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptNotificationAndPulseChannelDetails
 
-  - changeSet:
-      id: v58.2026-08-27T12:00:00
-      author: ranquild
-      comment: >-
-        Delete the plaintext "unencrypted" encryption-check marker. The sentinel now exists only as a UUID encrypted
-        under MB_ENCRYPTION_SECRET_KEY (absent means not encrypted), and startup no longer encrypts existing data when it
-        sees the marker: the strict reads rely on existing rows only ever being encrypted by an explicit admin action,
-        never automatically on the strength of the marker. Encryption of an existing instance is now the explicit
-        `enable-encryption` command.
-      changes:
-        - sql:
-            sql: delete from setting where "key" = 'encryption-check' and value = 'unencrypted'
-            dbms: postgresql
-        - sql:
-            sql: delete from setting where `key` = 'encryption-check' and value = 'unencrypted'
-            dbms: mysql,mariadb
-        - sql:
-            sql: delete from setting where "KEY" = 'encryption-check' and "VALUE" = 'unencrypted'
-            dbms: h2
-      rollback:
-        - sql:
-            sql: >-
-              insert into setting ("key", value) select 'encryption-check', 'unencrypted'
-              where not exists (select 1 from setting where "key" = 'encryption-check')
-            dbms: postgresql
-        - sql:
-            sql: >-
-              insert into setting (`key`, value) select 'encryption-check', 'unencrypted' from dual
-              where not exists (select 1 from setting where `key` = 'encryption-check')
-            dbms: mysql,mariadb
-        - sql:
-            sql: >-
-              insert into setting ("KEY", "VALUE") select 'encryption-check', 'unencrypted' from dual
-              where not exists (select 1 from setting where "KEY" = 'encryption-check')
-            dbms: h2
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

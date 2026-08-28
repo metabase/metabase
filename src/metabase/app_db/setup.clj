@@ -192,7 +192,7 @@
 
 (mu/defn- check-encryption :- [:maybe [:enum :fresh-database :pre-sentinel-database]]
   "Verify that MB_ENCRYPTION_SECRET_KEY matches the database. Encryption status is tracked by the `encryption-check`
-  sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted (see
+  sentinel setting -- a random UUID encrypted under the key, present if and only if the database is encrypted (see
   [[mdb.encryption/encryption-check-status]]); it is read and written raw, not through `defsetting`.
 
   This runs before migrations, which encrypt whatever they write or backfill with the current key: a sentinel that

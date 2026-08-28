@@ -66,13 +66,13 @@
 
 (mu/defn encryption-check-status :- [:enum :valid :invalid :absent]
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
-  `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
+  `encryption-check` sentinel setting -- a random UUID encrypted under the key, present if and only if the database is encrypted:
 
     :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
-    :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering)
+    :invalid - the sentinel exists but does not decrypt (wrong or unset key, corruption)
     :absent  - no sentinel: a `setting` table that does not exist yet (before migrations on a fresh database), no
-               row, or the legacy plaintext \"unencrypted\" marker the v53 migration inserted -- new code never
-               writes that value, so it reads as the missing row it stands for"
+               row, or the plaintext \"unencrypted\" marker (inserted by the v53 migration, and written back when
+               the database is decrypted) -- an explicit statement of the same thing a missing row means"
   []
   (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting :key encryption-check-key))]
     (cond
@@ -140,12 +140,14 @@
       :else                  :not-decryptable)))
 
 (defn- replace-encryption-check!
-  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with nothing when
-  `encrypt-fn` is nil (the database is being decrypted)."
+  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with the
+  plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted)."
   [conn encrypt-fn]
   (t2/delete! :conn conn :setting :key encryption-check-key)
-  (when encrypt-fn
-    (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encrypt-fn (str (random-uuid)))})))
+  (t2/insert! :conn conn :setting {:key   encryption-check-key
+                                   :value (if encrypt-fn
+                                            (encrypt-fn (str (random-uuid)))
+                                            "unencrypted")}))
 
 (defn write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
