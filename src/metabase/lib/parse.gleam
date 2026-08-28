@@ -1,8 +1,7 @@
-//// Source of truth for the sibling parse_impl.clj, which is compiled from
-//// this file by gleam-clj (github.com/escherize/gleam-clj). Nothing in the
-//// Metabase build reads this file; it is here so the Gleam source and its
-//// compiled Clojure can be reviewed side by side.
-////
+// Source of truth for the sibling parse_impl.clj, which is compiled from
+// this file by gleam-clj (github.com/escherize/gleam-clj). Nothing in the
+// Metabase build reads this file; it is here so the Gleam source and its
+// compiled Clojure can be reviewed side by side.
 
 //// A typed reimplementation of metabase.lib.parse: parsing `{{param}}` and
 //// `[[optional]]` clauses in native query strings, with best-effort skipping
