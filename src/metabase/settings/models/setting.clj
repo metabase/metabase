@@ -790,10 +790,12 @@
 
 (defn obfuscated-value?
   "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
-  value rather than entering a new one."
+  value rather than entering a new one.
+
+  `(?s)` so the trailing `.` can also match newlines, e.g. JSON file contents that end with a newline."
   [v]
   (when (seq v)
-    (boolean (re-matches #"^\*{10}.{2}$" v))))
+    (boolean (re-matches #"(?s)^\*{10}.{2}$" v))))
 
 (defn obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
@@ -1739,7 +1741,7 @@
                                                           [:in :key (map setting-name settings)]
                                                           ;; these are *definitely* decrypted already, let's not bother looking
                                                           [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt v)]
+                :let [decrypted-v (encryption/maybe-decrypt-accepting-plaintext v)]
                 :when (not= decrypted-v v)]
           (t2/update! :setting :key k {:value decrypted-v}))))))
 
@@ -1766,9 +1768,19 @@
   [setting]
   (maybe-encrypt setting))
 
+(defn- decrypt-setting-value-on-read
+  "Decrypt a Setting `value` on read, tolerating an undecryptable value by returning it unchanged so a stale row (e.g.
+  left by a botched key change) degrades gracefully at the reader instead of throwing on every read. The strict throw
+  from [[encryption/maybe-decrypt-accepting-plaintext]] still applies where it matters — the key-rotation path, which
+  does not swallow it."
+  [value]
+  (try
+    (encryption/maybe-decrypt-accepting-plaintext value)
+    (catch Throwable _ value)))
+
 (t2/define-after-select :model/Setting
   [setting]
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting))
     setting
-    (update setting :value encryption/maybe-decrypt)))
+    (update setting :value decrypt-setting-value-on-read)))

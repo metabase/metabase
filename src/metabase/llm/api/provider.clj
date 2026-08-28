@@ -140,37 +140,65 @@
         status (or status status-code)]
     (and api-error (number? status) (<= 400 status 499))))
 
+(defn- selected-model
+  "The model `llm-metabot-provider` names for `conn-key`, or nil when the selection points elsewhere.
+
+  What a connection is verified against when the client names no model: for a type that checks more than its
+  credentials, the model the connection is actually serving is a better probe target than whichever one the
+  provider happens to list first."
+  [conn-key]
+  (let [model-ref (metabot.settings/llm-metabot-provider)]
+    (when (= conn-key (llm.provider/model-ref->connection-key model-ref))
+      (llm.provider/model-ref->model model-ref))))
+
 (defn- list-connection-models*
   "List `conn`'s models. `config-override` stands in for the stored credentials when validating a connection that has
-  not been saved yet. Returns `{:models [...]}` or `{:models [] :error msg}` for a credential-level failure.
+  not been saved yet. Returns `{:models [...]}` or `{:models [...] :error msg}` for a client-level failure.
 
   The managed provider is answered from the registry — it serves one model through the proxy, there is nothing to
   fetch, and calling out would fail on instances that cannot reach it.
 
   A type whose catalog is fixed but whose credentials are its own (Google, whose listing endpoint reports models
   that are not really available) still makes the call, because it is what verifies those credentials; the catalog
-  comes from the registry and the call is made against its first model.
+  comes from the registry, and the call is made against the model this connection is known to serve.
+
+  `:model` is a request the type must honour or fail. `:proposed-model` is only our guess at what this connection
+  serves — the `:probed-model` an earlier probe recorded, or the catalog's first entry — which a type is free to
+  ignore.
 
   A type that names its model in `:config` (Azure, whose deployments its listing endpoint does not return) makes
   the call for the same reason, but the model it serves comes from the connection rather than from the empty list
-  that comes back."
-  [{:keys [type config]} config-override model]
+  that comes back.
+
+  `probe?` asks a type that can check more than its credentials to do so — vLLM exercises the tool calling and
+  structured output the agent loop depends on against the model it will run on. Only [[verify-credentials!]] sets
+  it: a probe generates, so it is far too slow for a plain listing. A probe reports whatever it determined about the
+  connection as `:learned-config`, passed through here for [[verify-credentials!]]'s callers to store on it."
+  [{conn-key :key :keys [type config]} config-override model probe?]
   (let [fixed (llm.provider/fixed-models type)]
     (if (llm.provider/managed-type? type)
       {:models (vec fixed)}
       (let [config           (llm.provider/with-field-defaults type (or config-override config))
             configured-model (llm.provider/connection-model type config)
-            model            (or model configured-model (:id (first fixed)))]
+            ;; Our best guess at the model to try if caller did not specify a model.
+            proposed-model   (or (:probed-model config) (:id (first fixed)))
+            model            (or model configured-model (selected-model conn-key))
+            config-models    (cond
+                               configured-model [{:id           configured-model
+                                                  :display_name (last (str/split configured-model #"/"))}]
+                               fixed            (vec fixed))]
         (try
-          (let [listed (:models (metabot.self/list-models type (cond-> {:credentials config}
-                                                                 model (assoc :model model))))]
-            {:models (cond
-                       configured-model [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
-                       fixed            (vec fixed)
-                       :else            (vec listed))})
+          (let [listed (metabot.self/list-models type (cond-> {:credentials config}
+                                                        model          (assoc :model model)
+                                                        proposed-model (assoc :proposed-model proposed-model)
+                                                        probe?         (assoc :probe? true)))]
+            (merge (select-keys listed [:learned-config])
+                   {:models (or config-models (vec (:models listed)))}))
           (catch clojure.lang.ExceptionInfo e
             (if (provider-client-error? e)
-              {:models [] :error (.getMessage e)}
+              ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model not
+              ;; served in given region" errors.
+              {:models (or config-models []) :error (.getMessage e)}
               (throw e))))))))
 
 (def ^:private models-cache-ttl-ms
@@ -184,16 +212,20 @@
 (defn- models-cache-key
   "What a cached model list is filed under. The config is reduced to a hash rather than held as-is: it carries the
   connection's API key, and a cache entry outlives the connection that produced it. Hashing it also retires the
-  entry the moment a credential is rotated, instead of serving the old list until the TTL runs out."
+  entry the moment a credential is rotated, instead of serving the old list until the TTL runs out.
+
+  The selected model is part of the key because it is what a listing is verified against when the client names no
+  model. Repointing Metabot at a model the connection cannot serve has to retire a cached success, and picking a
+  model that works again has to retire the cached error, rather than either standing until the TTL runs out."
   [{conn-key :key :keys [type config]}]
-  [conn-key type (hash config)])
+  [conn-key type (hash config) (selected-model conn-key)])
 
 (defn- connection-models-response
   [{conn-key :key conn-name :name :keys [type] :as conn}]
   (merge {:key conn-key :name conn-name :type type}
          (try
            (cache.wrapped/lookup-or-miss models-cache (models-cache-key conn)
-                                         (fn [_] (list-connection-models* conn nil nil)))
+                                         (fn [_] (list-connection-models* conn nil nil false)))
            (catch Exception e
              (log/warn e "Failed to list models for LLM provider connection" {:connection conn-key})
              {:models [] :error (.getMessage e)}))))
@@ -224,18 +256,25 @@
   (into {} (remove (fn [[_ v]] (str/blank? v))) config))
 
 (defn- verify-credentials!
-  "Confirm `config` can actually reach `conn`'s provider before anything is persisted, by listing its models.
-  Throws a 400 carrying the provider's own message when the credentials are rejected.
+  "Confirm `config` can actually reach `conn`'s provider before anything is persisted, by listing its models — and,
+  for a type that probes more than its credentials, by exercising the model it will run on. Throws a 400 carrying
+  the provider's own message when the credentials are rejected.
 
-  The listing that verified the credentials is seeded into [[models-cache]] under the connection as it will be
-  stored, so the model refetch the client fires right after saving is answered from it instead of round-tripping
-  to the provider a second time."
+  Returns the model listing and `:learned-config`: whatever the probe determined about the connection, for the
+  caller to store on it. A probe records the model it exercised as `:probed-model`."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
-    (let [{:keys [error] :as listed} (list-connection-models* conn config model)]
+    (let [{:keys [error] :as listed} (list-connection-models* conn config model true)]
       (when error
         (throw (ex-info error {:status-code 400 :api-error true})))
-      (swap! models-cache cache/miss (models-cache-key (assoc conn :config config)) listed))))
+      listed)))
+
+(defn- seed-models-cache!
+  "Cache the listing that verified `conn` under its post-save config and selected model. Call this only after any
+  save-triggered repointing, so the model refetch the client fires right after saving uses the same cache key."
+  [conn listed]
+  (when listed
+    (swap! models-cache cache/miss (models-cache-key conn) (select-keys listed [:models]))))
 
 (defn- connection-model-ref
   "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
@@ -383,12 +422,16 @@
                     :name   (or (not-empty name) (str (:label provider-type)))
                     :config config}]
       (llm.provider/validate-config! type config)
-      (verify-credentials! conn config model)
-      (let [had-usable-model? (metabot-has-a-usable-model?)]
+      (let [{:keys [learned-config] :as listed} (verify-credentials! conn config model)
+            conn              (update conn :config merge learned-config)
+            had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
-          (select-model-for-new-connection! conn model)))
-      (connection-response (assoc conn :source :db)))))
+          ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
+          ;; the probe exercised, so connecting one leaves the instance working rather than model-less
+          (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
+        (seed-models-cache! conn listed)
+        (connection-response (assoc conn :source :db))))))
 
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
@@ -420,10 +463,14 @@
         ;; what the connection will actually run on: the stored config with the environment layered back over it
         effective  (merge (:config merged) env-config)]
     (llm.provider/validate-config! (:type merged) effective)
-    (verify-credentials! merged effective model)
-    (llm.provider/set-connections! (assoc stored idx merged))
-    (follow-edited-connection-model! (assoc merged :config effective) model)
-    (connection-response (assoc (merge live merged) :config effective))))
+    (let [{:keys [learned-config] :as listed}
+          (verify-credentials! merged effective (or model (selected-model conn-key)))
+          merged                   (update merged :config merge learned-config)
+          effective                (merge effective learned-config)]
+      (llm.provider/set-connections! (assoc stored idx merged))
+      (follow-edited-connection-model! (assoc merged :config effective) model)
+      (seed-models-cache! (assoc merged :config effective) listed)
+      (connection-response (assoc (merge live merged) :config effective)))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
   "Delete a provider connection."

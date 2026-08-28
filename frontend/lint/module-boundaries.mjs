@@ -253,19 +253,25 @@ const elements = [
   // feature
   // The theme editor previews the live embed through the app-tier EAJS
   // runtime, so the whole editor is an app-tier module. It still lives under
-  // the admin folder, and the admin routes mount it via the whitelisted allow
-  // rule below; the pattern must come before feature/admin (first match wins).
-  // TODO(embedding-modules): move the folder out of admin and mount the route
-  // from the app tier, then drop the whitelist entry.
+  // the admin folder; the pattern must come before feature/admin (first match
+  // wins).
+  // TODO(embedding-modules): move the folder out of admin so module == folder.
   createElement({
     type: "app",
     name: "theme-editor",
     pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
   }),
+  // Route composition for the admin app. Must precede feature/admin.
+  ...[
+    "frontend/src/metabase/admin/routes.tsx",
+    "frontend/src/metabase/admin/routes.unit.spec.tsx",
+  ].map((pattern) =>
+    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
+  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
-  createElement({ type: "feature", name: "documents" }),
+  createElement({ type: "shared", name: "documents" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below
@@ -324,11 +330,22 @@ const elements = [
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
-  createElement({ type: "feature", name: "query_builder" }),
+  createElement({
+    type: "feature",
+    name: "query_builder",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "reference" }),
   createElement({ type: "feature", name: "search" }),
 
   // app
+  // Composition/barrel file for reducers shared among the embedding sdk and the core app
+  createElement({
+    type: "app",
+    name: "reducers-common",
+    pattern: "frontend/src/metabase/reducers-common.ts",
+    mode: "full",
+  }),
   ...[
     "frontend/src/metabase/app.tsx",
     "frontend/src/metabase/app-embed-sdk.tsx",
@@ -342,7 +359,6 @@ const elements = [
     "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
-    "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes.unit.spec.tsx",
@@ -449,14 +465,6 @@ const baseRules = [
   {
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
-  // Whitelisted cross-tier edges. Keep this list short; every entry should
-  // eventually be removed.
-  // The admin routes lazy-mount the app-tier theme editor. Remove once the
-  // route is registered from the app tier instead.
-  {
-    from: ["feature/admin"],
-    allow: ["app/theme-editor"],
   },
 ];
 

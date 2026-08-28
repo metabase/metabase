@@ -450,6 +450,9 @@
                with-measures?       false
                with-segments?       false}
         :as   options}]
+   (when-not (int? id)
+     (throw (ex-info "Invalid table id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot.tools.u/get-table id :db_id :description :name :schema))]
@@ -578,6 +581,9 @@
   "Get details for a card."
   ([id] (card-details id nil))
   ([id options]
+   (when-not (int? id)
+     (throw (ex-info "Invalid card id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [card (metabot.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
@@ -644,10 +650,20 @@
           ;; Returns `nil` (so `m/assoc-some` drops the key) for cards whose
           ;; `dataset_query` can't be exported, e.g. unusual / partially-broken legacy
           ;; queries; the rest of the payload is still useful.
-          :query_json (when dataset-query
+          ;; Keep `lib/query` inside the guard. A stored `dataset_query` with no stages fails the query output
+          ;; schema; one such Card must not break an entire response containing multiple Cards.
+          :query_json (when-let [query (when dataset-query
+                                         (try
+                                           (lib/query metadata-provider (lib-be/normalize-query dataset-query))
+                                           (catch Exception e
+                                             ;; A Card whose query fails to build for another reason is
+                                             ;; otherwise indistinguishable from one that has no query.
+                                             (log/warnf "Could not build the stored query for Card %s; omitting it from the LLM payload: %s"
+                                                        id (ex-message e))
+                                             nil)))]
                         (repr.resolve/try-export-query
                          metadata-provider
-                         (lib/query metadata-provider (lib-be/normalize-query dataset-query))
+                         query
                          shared.content-store/default-store))
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)

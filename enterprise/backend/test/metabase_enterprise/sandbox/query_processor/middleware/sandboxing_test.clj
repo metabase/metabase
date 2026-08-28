@@ -29,6 +29,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.test :as qp]

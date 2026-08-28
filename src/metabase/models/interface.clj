@@ -15,7 +15,9 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.models.dispatch :as models.dispatch]
@@ -212,6 +214,7 @@
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
+   ;; inside the deprecated transform itself; legacy refs from the app DB need the legacy normalizer
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
@@ -306,26 +309,34 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn encrypted-json-out
-  "Deserialize encrypted json."
+  "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
+  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/decode+kw decrypted)
+      (some-> decrypted json/decode+kw)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
           (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))
         v))))
 
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (def transform-encrypted-json
-  "Transform for encrypted json."
+  "Encrypted-json transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
+
+(def transform-encrypted-text
+  "Whole-column encrypted text transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected
+  on read (see [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a
+  properly encrypted one."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -479,9 +490,9 @@
     v))
 
 (def transform-secret-value
-  "Transform for secret value."
+  "Transform for secret value. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+   :out (comp encryption/maybe-decrypt-bytes maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."
@@ -660,6 +671,7 @@
   ([model pk]
    (can-read? model pk)))
 
+;; only reached through the :can_write hydration key, never called by name
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write

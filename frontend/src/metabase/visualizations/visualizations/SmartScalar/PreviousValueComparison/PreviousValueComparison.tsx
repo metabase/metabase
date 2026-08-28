@@ -1,4 +1,4 @@
-import innerText from "react-innertext";
+import { isValidElement } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
@@ -21,6 +21,25 @@ import { DetailCandidate } from "./DetailCandidate";
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import { VariationDetails } from "./VariationDetails";
 import { VariationPercent } from "./VariationPercent";
+
+export function innerText(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") {
+    return "";
+  }
+  if (typeof node === "string") {
+    return node;
+  }
+  if (typeof node === "number") {
+    return node.toString();
+  }
+  if (Array.isArray(node)) {
+    return node.map(innerText).join("");
+  }
+  if (isValidElement<{ children?: React.ReactNode }>(node)) {
+    return innerText(node.props.children);
+  }
+  return "";
+}
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;

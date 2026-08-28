@@ -281,6 +281,8 @@
                      {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
+   (prometheus/counter :metabase-bug-report/legacy-reporter
+                       {:description "Number of Slack bug reports whose reporter was sent as a name/email object instead of a boolean."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
@@ -732,6 +734,15 @@
    (prometheus/counter :metabase-slackbot/file-uploads
                        {:description "Number of file uploads via the Slack bot."
                         :labels [:result]})
+   (prometheus/counter :metabase-slackbot/responses-truncated
+                       {:description (str "Number of Slack bot responses truncated because they exceeded "
+                                          "Slack's message limits.")})
+   (prometheus/counter :metabase-slackbot/viz-links-dropped
+                       {:description (str "Number of visualization query links dropped from Slack bot messages "
+                                          "because the linked title exceeded Slack's block limits.")})
+   (prometheus/counter :metabase-slackbot/responses-undeliverable
+                       {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
+                                          "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"

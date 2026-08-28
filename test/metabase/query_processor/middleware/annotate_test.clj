@@ -12,6 +12,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -349,7 +350,7 @@
                    [[""]])
                   :cols))))))
 
-(deftest ^:sequential expected-cols-no-infinite-loop-test
+(deftest ^:synchronized expected-cols-no-infinite-loop-test
   (testing "In case of a lib vs. driver column count mismatch, don't loop infinitely (#66955)"
     (let [query       (lib/query meta/metadata-provider
                                  (meta/table-metadata :orders))

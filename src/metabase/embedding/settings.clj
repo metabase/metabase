@@ -265,6 +265,7 @@
   "Is any kind of embedding setup?"
   []
   (or
+   ;; the deprecated umbrella setting must still count as embedding-enabled while instances have it set
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
    (enable-embedding-static)
    (enable-embedding-interactive)

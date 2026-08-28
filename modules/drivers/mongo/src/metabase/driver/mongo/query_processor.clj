@@ -609,6 +609,7 @@ function(bin) {
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
+            ;; mongo-let vars are referenced via :$$parts.* keywords, which kondo can't see
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month
@@ -1223,12 +1224,22 @@ function(bin) {
            (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
+(defn- literal-value?
+  "Whether the `value` argument of a comparison filter clause is a literal — a `:value` clause or a bare scalar."
+  [value]
+  (or (driver-api/is-clause? :value value)
+      (not (lib/clause? value))))
+
 (defn- filter-expr [query stage-number operator field value]
-  (let [field-rvalue (->rvalue query stage-number field)
-        value-rvalue (->rvalue query stage-number value)]
+  (let [field-rvalue          (->rvalue query stage-number field)
+        value-rvalue          (->rvalue query stage-number value)
+        literal-value-rvalue? (and (literal-value? value)
+                                   (string? value-rvalue)
+                                   (str/starts-with? value-rvalue "$"))]
     (if (and (rvalue-is-field? field-rvalue)
-             (not (rvalue-is-field? value-rvalue))
-             (rvalue-can-be-compared-directly? value-rvalue))
+             (or literal-value-rvalue?
+                 (and (not (rvalue-is-field? value-rvalue))
+                      (rvalue-can-be-compared-directly? value-rvalue))))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$lte 100}}
@@ -1240,7 +1251,8 @@ function(bin) {
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
       ;;    {$expr {$lte [{$add [$field 1]} 100]}}
-      {$expr {operator [field-rvalue value-rvalue]}})))
+      {$expr {operator [field-rvalue (cond->> value-rvalue
+                                       literal-value-rvalue? (array-map $literal))]}})))
 
 (defmethod compile-filter :=
   [query stage-number [_ _opts field value]]

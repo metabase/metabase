@@ -343,7 +343,7 @@
               (is (=? {:dependencies deps, :index {:status :missing}}
                       (entity-retrieval.core/retrieval-status false))))))))))
 
-(deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
+(deftest ^:synchronized entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
@@ -377,7 +377,7 @@
                                           (index-table/vectors-table) ", "
                                           (index-table/meta-table))]))))))))))
 
-(deftest ^:sequential ranks-by-similarity-test
+(deftest ^:synchronized ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
@@ -419,7 +419,7 @@
   (mt/user-http-request :crowberto :put 200 (format "osi/ai-context/%s/%d" entity-type entity-local-id)
                         {:ai_context ai-context}))
 
-(deftest ^:sequential crud-api-to-tool-end-to-end-test
+(deftest ^:synchronized crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
     ;; dev pgvector running it exercises the whole pipeline. Uses the mock embedding model (4-dim,
@@ -475,7 +475,7 @@
                                               (index-table/vectors-table) ", "
                                               (index-table/meta-table))]))))))))))))
 
-(deftest ^:sequential doc-type-boost-breaks-ties-test
+(deftest ^:synchronized doc-type-boost-breaks-ties-test
   (testing "on a distance tie, a name match outranks a synonym match (blended ORDER BY, not raw NN)"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
@@ -511,7 +511,7 @@
                                               (index-table/vectors-table) ", "
                                               (index-table/meta-table))]))))))))))))
 
-(deftest ^:sequential search-degrades-on-dimension-mismatch-test
+(deftest ^:synchronized search-degrades-on-dimension-mismatch-test
   ;; A post-upgrade embedding-dimension change leaves the query vector incompatible with the index column
   ;; until the next reconcile rebuilds it; search must degrade to [] rather than throw in that window.
   (testing "an index/query vector dimension mismatch degrades search to [] instead of throwing"

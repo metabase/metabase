@@ -816,12 +816,15 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query)
+     (let [query       (-> query
+                           qp.middleware.normalize/normalize-preprocessing-middleware
+                           lib/prepare-after-deserialization)
            db          (query-database query)
            nativable?  (native-path-applicable? db query)
            use-native? (and nativable? (qp.settings/use-native-pivot-tables))
            primary     (if use-native? run-native-pivot-query run-pivot-query-multi)
            secondary   (if use-native? run-pivot-query-multi run-native-pivot-query)]
-       (if (and nativable? (pivot-parity-enabled?))
-         (run-with-parity-check primary secondary query rff use-native?)
-         (primary query rff))))))
+       (binding [qp.pipeline/*pivot?* true]
+         (if (and nativable? (pivot-parity-enabled?))
+           (run-with-parity-check primary secondary query rff use-native?)
+           (primary query rff)))))))
