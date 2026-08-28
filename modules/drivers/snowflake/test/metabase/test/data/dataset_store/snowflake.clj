@@ -105,12 +105,15 @@
                     expired-claim)]
     (pos? (first (jdbc/execute! spec [sql dataset-id (- lease-seconds) claim-owner])))))
 
-(defn- mark-ready! [spec tracking-db dataset-id]
-  (jdbc/execute! spec [(format (str "UPDATE %s SET state = 'ready', claim_owner = NULL,"
-                                    " claimed_at = NULL, last_used_at = CURRENT_TIMESTAMP()"
-                                    " WHERE id = ? AND claim_owner = ?")
-                               (table-name tracking-db))
-                       dataset-id claim-owner]))
+(defn- mark-ready!
+  "Publish `dataset-id`. Returns false if this process no longer holds the claim, which means its
+  lease was stolen and whatever it wrote has been superseded."
+  [spec tracking-db dataset-id]
+  (pos? (first (jdbc/execute! spec [(format (str "UPDATE %s SET state = 'ready', claim_owner = NULL,"
+                                                 " claimed_at = NULL, last_used_at = CURRENT_TIMESTAMP()"
+                                                 " WHERE id = ? AND claim_owner = ?")
+                                            (table-name tracking-db))
+                                    dataset-id claim-owner]))))
 
 (defn- release-claim! [spec tracking-db dataset-id]
   (jdbc/execute! spec [(format "DELETE FROM %s WHERE id = ? AND claim_owner = ?" (table-name tracking-db))
@@ -153,8 +156,13 @@
           ;; opens with DROP DATABASE IF EXISTS.
           (snowflake.tx/set-current-user-timezone! "UTC")
           (load-data/create-db! :snowflake (assoc dbdef :database-name dataset-id))
-          (mark-ready! spec tracking-db dataset-id)
-          :created
+          (if (mark-ready! spec tracking-db dataset-id)
+            :created
+            ;; Lease stolen mid-load: another caller owns this dataset now, so do not claim credit
+            ;; for it.
+            (if (= "ready" (:state (select-row spec tracking-db dataset-id)))
+              :exists
+              :in-progress))
           (catch Throwable e
             ;; Give the claim up rather than making the next caller wait out the lease. The database
             ;; goes too: nothing may observe a partially written dataset.
