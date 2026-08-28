@@ -1030,15 +1030,15 @@
   "Pick the right auth map for an LLM request.
 
   - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Its deployment-controlled URL
-    carries a `:network-policy-override` of `:allow-private`, so private cluster addresses remain reachable while
-    loopback and link-local addresses stay blocked.
+    carries a `:network-policy-floor` of `:allow-private`, so private cluster addresses remain reachable under
+    the default policy; see [[metabase.llm.settings/network-policy]].
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      {:url                     (str (str/replace base #"/+$" "") "/" provider-slug)
                       :headers                 {"x-metabase-instance-token"
                                                 (premium-features/premium-embedding-token)}
-                      :network-policy-override :allow-private})]
+                      :network-policy-floor    :allow-private})]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
@@ -1061,10 +1061,10 @@
   [[metabase.llm.settings/llm-allowed-networks]] before the request, and the
   connection resolves DNS through a resolver that enforces the same policy on
   the addresses it actually opens. Auth returned by [[resolve-auth]] may supply
-  `:network-policy-override` for a deployment-controlled service."
-  [{:keys [url headers network-policy-override]} req]
+  `:network-policy-floor` for a deployment-controlled service."
+  [{:keys [url headers network-policy-floor]} req]
   (llm/assert-llm-host-allowed! url)
-  (let [network-policy (or network-policy-override (llm/llm-allowed-networks))
+  (let [network-policy (llm/network-policy network-policy-floor)
         resolver       (u.http/network-policy-dns-resolver network-policy)]
     (llm/assert-llm-url-allowed! network-policy url)
     (try

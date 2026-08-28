@@ -178,20 +178,20 @@
             (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
                     (try (self.core/request {:url "https://8.8.8.8" :headers {}} req)
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
-        (testing "the managed AI proxy overrides the policy to allow private addresses"
+        (testing "the managed AI proxy's floor allows private addresses under the default policy"
           (mt/with-dynamic-fn-redefs [http/request capture]
             (self.core/request {:url                     "http://10.0.0.1:9"
                                 :headers                 {}
-                                :network-policy-override :allow-private}
+                                :network-policy-floor    :allow-private}
                                req)
             (is (= "http://10.0.0.1:9/v1/models" (:url @captured)))
             (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
-        (testing "the managed AI proxy override still refuses loopback"
+        (testing "the managed AI proxy's floor still refuses loopback"
           (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
             (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
                     (try (self.core/request {:url                     "http://127.0.0.1:9"
                                              :headers                 {}
-                                             :network-policy-override :allow-private}
+                                             :network-policy-floor    :allow-private}
                                             req)
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
     (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
@@ -199,13 +199,18 @@
         (mt/with-dynamic-fn-redefs [http/request capture]
           (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
           (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
-          (is (not (contains? @captured :dns-resolver))))))))
+          (is (not (contains? @captured :dns-resolver))))
+        (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
+          (mt/with-dynamic-fn-redefs [http/request capture]
+            (self.core/request {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+            (is (not (contains? @captured :dns-resolver)))))))))
 
 (deftest resolve-auth-tags-proxy-auth-test
   (mt/with-premium-features #{:metabot-v3}
     (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
       (is (=? {:url                     "http://proxy.internal/anthropic"
-               :network-policy-override :allow-private}
+               :network-policy-floor    :allow-private}
               (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))
       (is (= {:url "https://api.anthropic.com"}
              (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false))))))

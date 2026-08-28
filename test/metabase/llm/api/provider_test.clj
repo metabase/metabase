@@ -461,13 +461,23 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                     (fn [& _] (is false "should reject before verifying credentials"))]
-          (is (=? {:message (str "The base URL http://127.0.0.1:9 points at a network Metabase "
-                                 "is not allowed to connect to.")
-                   :field   "base-url"}
-                  (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                        {:type   "anthropic"
-                                         :config {:api-key  "sk-ant-valid"
-                                                  :base-url "http://127.0.0.1:9"}})))
+          (let [create #(mt/user-http-request :crowberto :post 400 "llm/providers"
+                                              {:type   "anthropic"
+                                               :config {:api-key  "sk-ant-valid"
+                                                        :base-url "http://127.0.0.1:9"}})]
+            (testing "self-hosted, the message names the setting to change"
+              (mt/with-premium-features #{}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a network Metabase is not allowed to "
+                                       "connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on "
+                                       "your private network, or allow-all for one on this machine.")
+                         :field   "base-url"}
+                        (create)))))
+            (testing "on Cloud there is no setting to change, and the message says so"
+              (mt/with-premium-features #{:hosting}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a private network. "
+                                       "Metabase Cloud can only connect to LLM providers on the public internet.")
+                         :field   "base-url"}
+                        (create))))))
           (is (= [] (llm.provider/connections))))))))
 
 (deftest create-suffixes-a-colliding-key-test

@@ -7,7 +7,8 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.i18n :refer [deferred-tru tru]])
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log])
   (:import
    (java.net MalformedURLException URL)
    (software.amazon.awssdk.regions Region)))
@@ -42,33 +43,64 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
+(def ^:private network-policies
+  "The `llm-allowed-networks` policies, loosest last."
+  [:external-only :allow-private :allow-all])
+
+(def ^:private network-policy-rank
+  (zipmap network-policies (range)))
+
+(defonce ^:private warned-network-policy-values
+  (atom #{}))
+
 (defsetting llm-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs.\n"
+  (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
+                     "Self-hosted only: Metabase Cloud always uses external-only.\n"
                      "Options:\n"
-                     "- external-only (only globally reachable public addresses)\n"
+                     "- external-only (default; only globally reachable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
                      "- allow-all (no restrictions).\n"
-                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
-                     "Deployment-controlled Metabase AI services use allow-private so they remain reachable on "
-                     "private networks without allowing loopback or link-local addresses."))
+                     "The Metabase AI service and LLM proxy are deployment configuration and may always use "
+                     "private addresses."))
   :type       :keyword
-  :visibility :admin
+  ;; Environment only. A settings manager is who this policy defends against, and on Cloud a customer admin
+  ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API.
+  :visibility :internal
+  :setter     :none
+  :default    :external-only
   :export?    false
-  ;; No `:default`, because it depends on where we are running. On Cloud an LLM provider is always reached
-  ;; across the public internet, so an internal address is somebody reaching for our own infrastructure.
-  ;; Self-hosted, a vLLM or Ollama server on the same box or a private network is the ordinary case, and
-  ;; defaulting to anything stricter would break working instances on upgrade.
   :getter     (fn []
-                (or (setting/get-value-of-type :keyword :llm-allowed-networks)
-                    (if (premium-features/is-hosted?)
-                      :external-only
-                      :allow-all)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru (str "Invalid llm-allowed-networks! Only values of `external-only`, "
-                                    "`allow-private`, and `allow-all` are allowed."))))
-                (setting/set-value-of-type! :keyword :llm-allowed-networks new-value)))
+                (let [value (setting/get-value-of-type :keyword :llm-allowed-networks)]
+                  (cond
+                    (nil? value)                          :external-only
+                    (contains? network-policy-rank value) value
+                    ;; fail closed on a typo, and say so once rather than on every request
+                    :else
+                    (do (when-not (contains? @warned-network-policy-values value)
+                          (swap! warned-network-policy-values conj value)
+                          (log/warnf "Ignoring MB_LLM_ALLOWED_NETWORKS=%s: expected one of %s; using external-only"
+                                     (name value) (str/join ", " (map name network-policies))))
+                        :external-only)))))
+
+(defn network-policy
+  "The network policy for an LLM request.
+  `floor`, for a deployment-controlled endpoint such as the AI service, can only loosen [[llm-allowed-networks]]:
+  the looser of the two applies."
+  ([]
+   (llm-allowed-networks))
+  ([floor]
+   (let [configured (llm-allowed-networks)]
+     (if (and floor (> (network-policy-rank floor) (network-policy-rank configured)))
+       floor
+       configured))))
+
+(defn- host-not-allowed-message
+  "Why a base URL on `host` is refused, and what to do about it.
+  On Cloud there is nothing to do: private networks are out of reach, and the policy is not the customer's to change."
+  [host]
+  (if (premium-features/is-hosted?)
+    (tru "The base URL host {0} is on a private network. Metabase Cloud can only connect to LLM providers on the public internet." host)
+    (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, or allow-all for one on this machine." host)))
 
 (defn llm-url-problem
   "Why `url` may not be used as an LLM provider base URL, or nil when it may.
@@ -90,7 +122,7 @@
          (tru "Invalid base URL: it must start with http:// or https://.")
 
          (not (u.http/host-allowed-for-network-policy? network-policy host))
-         (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url))))))
+         (host-not-allowed-message host))))))
 
 (defn assert-llm-url-allowed!
   "Throw a 400 when [[llm-url-problem]] finds one with `url`. The one-argument form uses
@@ -117,7 +149,7 @@
   [[assert-llm-url-allowed!]]. Returns nil when `e` is unrelated."
   [e url]
   (when (llm-network-policy-error? e)
-    (throw (ex-info (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url)
+    (throw (ex-info (host-not-allowed-message (u.http/->hostname url))
                     {:status-code 400
                      :api-error   true
                      :error-code  :llm-host-not-allowed

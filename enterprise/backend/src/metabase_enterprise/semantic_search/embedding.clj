@@ -13,6 +13,7 @@
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
@@ -472,10 +473,10 @@
   `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
   `:type`            — optional; forwarded to the token-tracking row
-  `:network-policy-override` — optional; replaces [[metabase.llm.settings/llm-allowed-networks]] for a
-                               deployment-controlled endpoint"
+  `:network-policy-floor` — optional; the least [[metabase.llm.settings/llm-allowed-networks]] a
+                            deployment-controlled endpoint gets, see [[metabase.llm.settings/network-policy]]"
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
-           network-policy-override]
+           network-policy-floor]
     :as opts}
    :- [:map
        [:provider       :string]
@@ -487,12 +488,12 @@
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]
-       [:network-policy-override {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
+       [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     ;; Outside the breaker: a URL the network policy refuses is not a service outage.
-    (let [network-policy       (or network-policy-override (llm.settings/llm-allowed-networks))
+    (let [network-policy       (llm.settings/network-policy network-policy-floor)
           resolver             (do
                                  (llm.settings/assert-llm-url-allowed! network-policy endpoint)
                                  (u.http/network-policy-dns-resolver network-policy))
@@ -570,17 +571,21 @@
 (defn- embedding-service-resolve-config!
   "Returns an endpoint config map. When api key is not set or when service url is not set but
   `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication, and its deployment-controlled endpoint overrides the network policy with
-  `:allow-private` so private addresses work while loopback and link-local stay blocked.
-  Throws if neither base URL is configured."
+  is used for authentication. A deployment-controlled endpoint -- the AI service, or an embedding service the
+  environment names -- gets a `:network-policy-floor` of `:allow-private`, so a private address works under the
+  default policy while loopback and link-local stay blocked. Throws if neither base URL is configured."
   []
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
-         :api-key  (semantic-settings/ee-embedding-service-api-key)}
+        (cond-> {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
+                                "/v1/embeddings")
+                 :api-key  (semantic-settings/ee-embedding-service-api-key)}
+          ;; the setter can't vet a value the environment supplies, so it is trusted like the AI service's
+          (setting/env-var-value :ee-embedding-service-base-url)
+          (assoc :network-policy-floor :allow-private))
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
-        {:endpoint                (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         :network-policy-override :allow-private}
+        {:endpoint             (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+         :network-policy-floor :allow-private}
 
         :else
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
@@ -592,18 +597,18 @@
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [{:keys [endpoint api-key network-policy-override]} (embedding-service-resolve-config!)]
+  (let [{:keys [endpoint api-key network-policy-floor]} (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     {:provider           "ai-service"
-      :endpoint           endpoint
-      :api-key            api-key
-      :model-name         model-name
-      :vector-dimensions  vector-dimensions
-      :texts              texts
-      :snowplow?          snowplow?
-      :record-tokens?     record-tokens?
-      :type               type
-      :network-policy-override network-policy-override})))
+     {:provider             "ai-service"
+      :endpoint             endpoint
+      :api-key              api-key
+      :model-name           model-name
+      :vector-dimensions    vector-dimensions
+      :texts                texts
+      :snowplow?            snowplow?
+      :record-tokens?       record-tokens?
+      :type                 type
+      :network-policy-floor network-policy-floor})))
 
 ;;;; OpenAI provider
 

@@ -312,8 +312,10 @@
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
-                     :placeholder "http://vllm.internal:8000/v1"
-                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                     :placeholder "https://vllm.example.com/v1"
+                     :help        (deferred-tru (str "Your server''s OpenAI-compatible API. It should end in /v1. "
+                                                     "Metabase must be able to reach it: self-hosted, a server on your "
+                                                     "private network or on this machine needs MB_LLM_ALLOWED_NETWORKS."))}
                     {:key      :api-key
                      :label    (deferred-tru "API key")
                      :type     :password

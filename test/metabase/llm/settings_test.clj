@@ -202,23 +202,30 @@
   ;; the raw binding clears any stored value, so the default is what is under test
   (mt/with-temporary-raw-setting-values [llm-allowed-networks nil]
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
-      (testing "self-hosted, with nothing configured, all networks are allowed"
-        ;; a vLLM or Ollama server on the same box or a private network is the normal case, not an attack
+      (testing "with nothing configured only public addresses are allowed, hosted or not"
         (mt/with-premium-features #{}
-          (is (= :allow-all (llm.settings/llm-allowed-networks)))))
-      (testing "hosted, with nothing configured, only public addresses are allowed"
+          (is (= :external-only (llm.settings/llm-allowed-networks))))
         (mt/with-premium-features #{:hosting}
           (is (= :external-only (llm.settings/llm-allowed-networks))))))
-    (testing "an explicit setting is honored on Cloud too, in either direction"
-      (mt/with-premium-features #{:hosting}
-        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-          (is (= :allow-all (llm.settings/llm-allowed-networks))))
-        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
-          (is (= :allow-private (llm.settings/llm-allowed-networks))))))
-    (testing "the setter rejects anything but the three policies"
-      (is (thrown-with-msg?
-           AssertionError #"Invalid llm-allowed-networks"
-           (llm.settings/llm-allowed-networks! :allow-everything))))))
+    (testing "the environment can loosen it"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (is (= :allow-all (llm.settings/llm-allowed-networks))))
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+        (is (= :allow-private (llm.settings/llm-allowed-networks)))))
+    (testing "a value that is not one of the policies fails closed"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
+        (is (= :external-only (llm.settings/llm-allowed-networks)))))
+    (testing "it is not settable: nobody loosens it through the API"
+      (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all))))))
+
+(deftest network-policy-floor-test
+  (testing "a deployment-controlled endpoint's floor can only loosen the configured policy"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (= :external-only (llm.settings/network-policy)))
+      (is (= :external-only (llm.settings/network-policy nil)))
+      (is (= :allow-private (llm.settings/network-policy :allow-private))))
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (= :allow-all (llm.settings/network-policy :allow-private))))))
 
 (deftest llm-url-problem-test
   ;; IP literals throughout: `host-allowed-for-network-policy?` resolves hostnames through real DNS
@@ -229,14 +236,25 @@
                    "http://169.254.169.254/latest/meta-data/"
                    "http://10.0.0.1/v1"
                    "http://192.168.1.1/v1"]]
-        (is (re-find #"not allowed to connect" (llm.settings/llm-url-problem url)) url))
+        (is (some? (llm.settings/llm-url-problem url)) url))
       (is (nil? (llm.settings/llm-url-problem "https://8.8.8.8/v1")))))
+  (testing "the message tells a self-hosted operator which setting to change, and a Cloud admin that there is none"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-premium-features #{}
+        (is (= (str "The base URL host 10.0.0.1 is on a network Metabase is not allowed to connect to. "
+                    "Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, "
+                    "or allow-all for one on this machine.")
+               (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))
+      (mt/with-premium-features #{:hosting}
+        (is (= (str "The base URL host 10.0.0.1 is on a private network. "
+                    "Metabase Cloud can only connect to LLM providers on the public internet.")
+               (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))))
   (testing "under :allow-private, private networks pass but loopback and link-local still do not"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
       (is (nil? (llm.settings/llm-url-problem "http://10.0.0.1/v1")))
       (is (some? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
       (is (some? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
-  (testing "an explicit policy can override the configured policy for a deployment-controlled service"
+  (testing "the two-argument form takes the policy to enforce"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (is (nil? (llm.settings/llm-url-problem :allow-private "http://10.0.0.1/v1")))
       (is (some? (llm.settings/llm-url-problem :allow-private "http://127.0.0.1/v1")))))
