@@ -52,9 +52,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     act(() => {
       app.ontoolresult({
@@ -92,9 +90,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     act(() => {
       app.ontoolresult({
@@ -121,9 +117,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     act(() => {
       app.ontoolresult({
@@ -161,9 +155,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     act(() => {
       app.ontoolresult({
@@ -174,7 +166,7 @@ describe("useMcpApp", () => {
 
     await waitFor(() => {
       expect(app.callServerTool).toHaveBeenCalledWith({
-        name: "refresh_visualize_query_ui_credential",
+        name: "refresh_ui_credential",
         arguments: {},
       });
       expect(result.current.query).toBe("encoded-query");
@@ -207,7 +199,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    renderHook(() => useMcpApp("refresh_visualize_query_ui_credential"));
+    renderHook(() => useMcpApp("refresh_ui_credential"));
 
     await act(async () => {
       app.ontoolresult({
@@ -247,9 +239,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     await act(async () => {
       app.ontoolresult({
@@ -312,9 +302,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() =>
-      useMcpApp("refresh_visualize_query_ui_credential"),
-    );
+    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
 
     await act(async () => {
       app.ontoolresult({
@@ -372,7 +360,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    renderHook(() => useMcpApp("refresh_visualize_query_ui_credential"));
+    renderHook(() => useMcpApp("refresh_ui_credential"));
 
     await act(async () => {
       app.ontoolresult({

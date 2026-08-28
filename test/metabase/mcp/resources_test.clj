@@ -115,6 +115,8 @@
                            :contents first :text)]
         (is (string? viz-html))
         (is (string? drill-html))
+        (is (str/includes? viz-html "refresh_ui_credential"))
+        (is (str/includes? drill-html "refresh_ui_credential"))
         (is (not= viz-html drill-html)
             "visualize-query and render-drill-through HTML must differ byte-wise")))))
 
@@ -124,10 +126,10 @@
       (doseq [[uri scope refresh-tool]
               [["ui://metabase/visualize-query.html"
                 "agent:viz:mcp-ui:query"
-                "refresh_visualize_query_ui_credential"]
+                "refresh_ui_credential"]
                ["ui://metabase/render-drill-through.html"
                 "agent:viz:mcp-ui:drill-through"
-                "refresh_render_drill_through_ui_credential"]]]
+                "refresh_ui_credential"]]]
         (let [resource (mcp.resources/read-resource uri #{scope} {})]
           (is (= :ok (:status resource)))
           (is (= uri (-> resource :contents first :uri)))
