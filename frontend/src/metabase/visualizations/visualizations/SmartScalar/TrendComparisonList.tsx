@@ -22,14 +22,22 @@ const getChangeText = (
   const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
   const isMissing = changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
 
-  const sign = isChanged ? getChangeSign(percentChange) : "";
-  const valueDisplay = isMissing
-    ? comparison.display.comparisonValue
-    : formatValue(comparisonValue, { ...formatOptions, compact: true });
+  if (isChanged) {
+    const valueDisplay = formatValue(comparisonValue, {
+      ...formatOptions,
+      compact: true,
+    });
+    const sign = getChangeSign(percentChange);
+    return valueDisplay != null && valueDisplay !== ""
+      ? `${sign}${display.percentChange} (${valueDisplay})`
+      : `${sign}${display.percentChange}`;
+  }
 
-  return valueDisplay != null && valueDisplay !== ""
-    ? `${sign}${display.percentChange} (${valueDisplay})`
-    : `${sign}${display.percentChange}`;
+  if (isMissing) {
+    return `${display.percentChange} ${display.comparisonValue}`;
+  }
+
+  return display.percentChange;
 };
 
 interface TrendComparisonListProps {

@@ -282,6 +282,26 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("+1")).not.toBeInTheDocument();
     });
 
+    it("should show a missing comparison in the full list", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", null],
+        ["2019-11-01T00:00:00", 100],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({ rows, insights })}
+          width={800}
+          isQueryBuilder
+        />,
+      );
+
+      const list = screen.getByTestId("scalar-comparison-list");
+      expect(within(list).getByText("vs. previous month")).toBeInTheDocument();
+      expect(within(list).getByText("N/A (No data)")).toBeInTheDocument();
+    });
+
     it("should show one tooltip at a time on the smallest cards", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],

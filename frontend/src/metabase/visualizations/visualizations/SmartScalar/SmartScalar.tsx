@@ -148,7 +148,13 @@ function SmartScalarComponent({
         <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
           {valueElement}
           {display.date != null && display.date !== "" && (
-            <Text fz="lg" lh="lg" c="text-secondary" ta="center">
+            <Text
+              fz="lg"
+              lh="lg"
+              c="text-secondary"
+              ta="center"
+              data-testid="scalar-period"
+            >
               {display.date}
             </Text>
           )}
