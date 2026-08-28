@@ -1,3 +1,4 @@
+import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { ToastArgs } from "metabase/common/hooks";
@@ -8,7 +9,6 @@ import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
-  WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
