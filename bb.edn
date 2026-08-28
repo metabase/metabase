@@ -303,12 +303,33 @@
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
 
+  merge-kondo-ratchets
+  {:doc "Three-way merge conflicting .clj-kondo/ratchets.edn files."
+   :examples [["./bin/mage merge-kondo-ratchets BASE OURS THEIRS OUTPUT"
+               "Merge three ratchet-file stages into OUTPUT"]]
+   :arg-schema [:tuple
+                [:string {:name "base" :description "Merge base's ratchets file"}]
+                [:string {:name "ours" :description "Current branch's ratchets file"}]
+                [:string {:name "theirs" :description "Incoming branch's ratchets file"}]
+                [:string {:name "output" :description "Path to write the merged ratchets file"}]]
+   :requires [[clojure.edn :as edn]
+              [dev.kondo-ratchet]]
+   :task (task!
+          (let [[base-path ours-path theirs-path output-path] (:arguments parsed)
+                read-ratchets (fn [path] (edn/read-string (slurp path)))
+                base          (read-ratchets base-path)
+                ours          (read-ratchets ours-path)
+                merged        (dev.kondo-ratchet/merge-ratchets base ours (read-ratchets theirs-path))]
+            (spit output-path (if (true? (:disabled merged))
+                                (slurp ours-path)
+                                (dev.kondo-ratchet/render-merged-ratchets merged)))
+            (println (str "merged ratchets into " output-path))))}
+
   check-kondo-ratchets
   {:doc "Fail when suppressions exceed a bounded budget or the ratchets file isn't normalized (babashka only, no JVM)."
    :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
-
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]

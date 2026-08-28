@@ -571,6 +571,139 @@
                 "}"))
          "}\n")))
 
+(defn- merge-counts
+  "Three-way merge a budget map. One-sided changes win; concurrent value changes take the stricter
+  value. A delete/modify conflict needs a human because silently choosing the value would resurrect a
+  deleted budget, while choosing the deletion might leave merged source over budget."
+  [field base ours theirs]
+  (let [absent  (Object.)
+        linters (into (set (keys base)) (concat (keys ours) (keys theirs)))]
+    (sorted-by-str
+     (keep (fn [linter]
+             (let [base-value   (get base linter absent)
+                   ours-value   (get ours linter absent)
+                   theirs-value (get theirs linter absent)
+                   merged       (cond
+                                  (= ours-value theirs-value) ours-value
+                                  (= ours-value base-value)   theirs-value
+                                  (= theirs-value base-value) ours-value
+
+                                  (or (identical? absent ours-value)
+                                      (identical? absent theirs-value))
+                                  (throw (ex-info (format "delete/modify conflict for %s in %s" linter field)
+                                                  {:field field, :linter linter}))
+
+                                  :else
+                                  (min ours-value theirs-value))]
+               (when-not (identical? absent merged)
+                 [linter merged])))
+           linters))))
+
+(defn- merge-set
+  "Three-way merge set membership, preserving additions and removals made on either side."
+  [base ours theirs]
+  (into #{}
+        (filter (fn [entry]
+                  (let [base?   (contains? base entry)
+                        ours?   (contains? ours entry)
+                        theirs? (contains? theirs entry)]
+                    (cond
+                      (= ours? theirs?) ours?
+                      (= ours? base?)   theirs?
+                      :else             ours?))))
+        (into (set base) (concat ours theirs))))
+
+(defn merge-ratchets
+  "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
+  Supports both the current `:ignore-counts` shape and the later `:limits`/`:unlimited` policy shape.
+  When the target explicitly disables ratchets it stays disabled; an incoming disabled form is ignored."
+  [base ours theirs]
+  (cond
+    (true? (:disabled ours))
+    {:disabled true}
+
+    (true? (:disabled theirs))
+    ours
+
+    :else
+    (let [maps          [base ours theirs]
+          schemas       (into #{}
+                              (keep (fn [ratchets]
+                                      (let [old? (contains? ratchets :ignore-counts)
+                                            new? (or (contains? ratchets :limits)
+                                                     (contains? ratchets :unlimited))]
+                                        (cond
+                                          (and old? new?) :mixed
+                                          old?            :ignore-counts
+                                          new?            :limits))))
+                              maps)
+          _             (when (or (contains? schemas :mixed) (< 1 (count schemas)))
+                          (throw (ex-info (str "cannot automatically merge mixed ratchet schemas: "
+                                               (pr-str schemas))
+                                          {:schemas schemas})))
+          present?      (fn [field] (some #(contains? % field) maps))
+          count-fields  (filter present? [:ignore-counts :limits :config-counts])
+          merged-counts (into {}
+                              (for [field count-fields]
+                                [field (merge-counts field
+                                                     (get base field {})
+                                                     (get ours field {})
+                                                     (get theirs field {}))]))
+          merged        (cond-> merged-counts
+                          (present? :unlimited)
+                          (assoc :unlimited (merge-set (:unlimited base #{})
+                                                       (:unlimited ours #{})
+                                                       (:unlimited theirs #{})))
+
+                          (present? :comment-exempt)
+                          (assoc :comment-exempt (merge-set (:comment-exempt base #{})
+                                                            (:comment-exempt ours #{})
+                                                            (:comment-exempt theirs #{}))))
+          overlap       (into (sorted-set-by #(compare (str %1) (str %2)))
+                              (filter (set (keys (:limits merged))))
+                              (:unlimited merged))]
+      (when (seq overlap)
+        (throw (ex-info (str "merged linters cannot appear in both :limits and :unlimited: "
+                             (pr-str overlap))
+                        {:overlap overlap})))
+      merged)))
+
+(def ^:private policy-header
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:limits),\n"
+       ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
+       ";; entries). CI rejects bounded inline counts above :limits; local tests require an exact match.\n"
+       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
+       ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
+       ";; widening the exemptions is a hand edit to defend in your PR.\n"
+       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
+       ";; :unlimited lists low-severity linters whose ignore count is intentionally unbounded.\n"))
+
+(defn render-merged-ratchets
+  "Render a merged map in the canonical format for either supported ratchet schema."
+  [{:keys [limits unlimited config-counts comment-exempt] :as ratchets}]
+  (if-not (contains? ratchets :limits)
+    (render ratchets)
+    (let [limits-indent (apply str (repeat (count "{:limits {") \space))
+          config-indent (apply str (repeat (count " :config-counts  {") \space))
+          exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))
+          unlimited     (sort-by str (or unlimited #{}))]
+      (str policy-header
+           "{:limits " (render-counts limits limits-indent)
+           "\n :unlimited #"
+           (if (empty? unlimited)
+             "{}"
+             (str "{\n            " (str/join "\n            " (map str unlimited)) "\n           }"))
+           "\n :config-counts  " (render-counts config-counts config-indent)
+           "\n :comment-exempt "
+           (if (empty? comment-exempt)
+             "#{}\n"
+             (str "#{"
+                  (str/join (str "\n" exempt-indent)
+                            (sort-by str comment-exempt))
+                  "}"))
+           "}\n"))))
+
 (defn lowered-counts
   "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
   An `:unlimited` policy is kept as written, even at zero: it records a decision about the linter, not a count.

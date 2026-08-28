@@ -645,6 +645,74 @@
          (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
                                      {:same 5, :new 1, :up 3}))))
 
+(deftest ^:parallel merge-ratchets-test
+  (testing "one-sided changes win, concurrent changes use the stricter value, and deletions stay deleted"
+    (is (= {:ignore-counts  {:both 4, :ours-add 2, :ours-changes 3, :theirs-add 3}
+            :config-counts  {:cfg-add 1}
+            :comment-exempt #{:kept :ours-add :theirs-add}}
+           (kondo-ratchet/merge-ratchets
+            {:ignore-counts  {:removed 4, :both 9, :ours-changes 5}
+             :config-counts  {:cfg-removed 2}
+             :comment-exempt #{:removed :kept}}
+            {:ignore-counts  {:both 6, :ours-changes 3, :ours-add 2}
+             :config-counts  {}
+             :comment-exempt #{:kept :ours-add}}
+            {:ignore-counts  {:removed 4, :both 4, :ours-changes 5, :theirs-add 3}
+             :config-counts  {:cfg-removed 2, :cfg-add 1}
+             :comment-exempt #{:removed :kept :theirs-add}}))))
+  (testing "delete/modify budget conflicts require a human decision"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"delete/modify conflict for :a in :limits"
+                          (kondo-ratchet/merge-ratchets
+                           {:limits {:a 5}}
+                           {:limits {}}
+                           {:limits {:a 4}}))))
+  (testing "the later bounded/unlimited policy shape is merged too"
+    (let [merged (kondo-ratchet/merge-ratchets
+                  {:limits {:a 5}, :unlimited #{:old}, :config-counts {}, :comment-exempt #{}}
+                  {:limits {:a 4}, :unlimited #{}, :config-counts {}, :comment-exempt #{}}
+                  {:limits {:a 3, :new 2}, :unlimited #{:old :new-unlimited}, :config-counts {}, :comment-exempt #{}})
+          text   (kondo-ratchet/render-merged-ratchets merged)]
+      (is (= {:limits         {:a 3, :new 2}
+              :unlimited      #{:new-unlimited}
+              :config-counts  {}
+              :comment-exempt #{}}
+             merged))
+      (is (= merged (edn/read-string text))
+          "serializing the later policy shape preserves bounded and unlimited linters")))
+  (testing "a linter cannot become both bounded and unlimited"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"both :limits and :unlimited"
+                          (kondo-ratchet/merge-ratchets
+                           {}
+                           {:limits {:a 1}}
+                           {:unlimited #{:a}}))))
+  (testing "mixed schemas require a human decision instead of dropping a budget"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"mixed ratchet schemas"
+                          (kondo-ratchet/merge-ratchets
+                           {:ignore-counts {:existing 1}}
+                           {:ignore-counts {:existing 1, :old-side-add 2}}
+                           {:limits {:existing 1}}))))
+  (testing "an explicitly disabled target branch stays disabled"
+    (is (= {:disabled true}
+           (kondo-ratchet/merge-ratchets
+            {:ignore-counts {:a 1}}
+            {:disabled true}
+            {:ignore-counts {:a 1}}))))
+  (testing "an incoming disabled form does not disable the target branch"
+    (is (= {:ignore-counts  {:a 1}
+            :config-counts  {}
+            :comment-exempt #{}}
+           (kondo-ratchet/merge-ratchets
+            {:ignore-counts  {:a 1}
+             :config-counts  {}
+             :comment-exempt #{}}
+            {:ignore-counts  {:a 1}
+             :config-counts  {}
+             :comment-exempt #{}}
+            {:disabled true})))))
+
 (deftest ^:parallel change-report-test
   (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4, :free 2}
                                   i          (range n)]
