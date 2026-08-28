@@ -14,6 +14,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
@@ -96,14 +97,8 @@
         :when (some #{config-path} (list-dir dir))]
     (try
       (if-let [content (read-file config-path)]
-        (let [{:keys [slug display_name path allowed_hosts resource_collection_entity_id permission_group_entity_id]}
-              (data-app.config/parse-app-config (->bytes content) dir)]
-          {:slug                          slug
-           :display_name                  display_name
-           :bundle                        (str dir "/" path)
-           :allowed_hosts                 allowed_hosts
-           :resource_collection_entity_id resource_collection_entity_id
-           :permission_group_entity_id    permission_group_entity_id})
+        (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+          {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
         {:slug (data-app.config/dir-slug dir), :config-error (tru "Could not read {0}." config-path)})
       (catch Throwable e
         {:slug (data-app.config/dir-slug dir), :config-error (ex-message e)}))))
@@ -144,12 +139,12 @@
      true)))
 
 (defn- sync-app!
-  "Materialize one app and reconcile its manifest resources in one transaction.
-
-   A failure keeps the last-good bundle and resource links. The row records the
-   error so that the app remains visible."
-  [existing {:keys [slug display_name bundle sha read-file allowed_hosts
-                    resource_collection_entity_id permission_group_entity_id]}]
+  "Materialize one app. On bundle failure, the row's metadata is still upserted
+   with `sync_error` set so the app appears in the list with its failure; the
+   previously cached bundle (if any) is kept. `existing` is the app's pre-sync row
+   (or nil); returns true when this sync actually changed the app's content (a new
+   app, differing bundle/metadata, or a new failure) so callers can count changes."
+  [existing {:keys [slug display_name bundle sha read-file allowed_hosts]}]
   (try
     (let [content (read-file bundle)
           _       (when-not content
@@ -160,27 +155,17 @@
         (throw (ex-info (tru "Bundle for \"{0}\" must be less than {1} MiB."
                              slug (quot max-bundle-bytes (* 1024 1024)))
                         {:status-code 413})))
-      (let [fields      {:display_name  display_name
-                         :allowed_hosts allowed_hosts
-                         :bundle_path   bundle
-                         :bundle_hash   (bytes-hash bytes)}
-            _           (when-not existing
-                          (upsert-by-name! slug fields))
-            app         (t2/select-one :model/DataApp :name slug)
-            app-changes (assoc fields
-                               :bundle          bytes
-                               :last_synced_sha sha
-                               :last_synced_at  :%now
-                               :sync_error      nil
-                               :draft           false)
-            resource    (data-app.resources/reconcile-resources!
-                         app
-                         {:resource_collection_entity_id resource_collection_entity_id
-                          :permission_group_entity_id    permission_group_entity_id}
-                         app-changes)]
-        (or (app-content-changed? existing fields)
-            (:changed? resource)
-            (:draft app))))
+      (let [fields {:display_name  display_name
+                    :allowed_hosts allowed_hosts
+                    :bundle_path   bundle
+                    :bundle_hash   (bytes-hash bytes)}]
+        (upsert-by-name! slug (assoc fields
+                                     :bundle          bytes
+                                     :last_synced_sha sha
+                                     :last_synced_at  :%now
+                                     :sync_error      nil
+                                     :draft            false))
+        (app-content-changed? existing fields)))
     (catch Throwable e
       (upsert-by-name! slug {:display_name  display_name
                              :allowed_hosts allowed_hosts
@@ -189,6 +174,22 @@
       (log/warnf "[data-app] failed to sync app %s: %s" slug (ex-message e))
       ;; a failing app counts as a change unless it was already failing identically
       (or (nil? existing) (not= (:sync_error existing) (ex-message e))))))
+
+(defn- ensure-app-resources!
+  "Ensure one app's permission resources after its import transaction commits.
+   Returns whether the recorded sync state changed."
+  [slug]
+  (try
+    (-> (data-app/select-one-non-blob :name slug)
+        data-app.resources/ensure-resources!)
+    false
+    (catch Throwable e
+      (let [message (ex-message e)]
+        (log/warnf "[data-app] failed to ensure resources for app %s: %s" slug message)
+        (boolean
+         (when (not= (t2/select-one-fn :sync_error :model/DataApp :name slug) message)
+           (t2/update! :model/DataApp :name slug {:sync_error message})
+           true))))))
 
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
@@ -221,20 +222,35 @@
         existing      (into {} (map (juxt :name identity))
                             (t2/select [:model/DataApp :name :display_name :allowed_hosts
                                         :bundle_path :bundle_hash :sync_error]))
-        changed       (reduce (fn [n {:keys [slug config-error] :as cfg}]
-                                (cond-> n
-                                  (if config-error
-                                    (mark-config-error! (get existing slug) slug config-error)
-                                    (sync-app! (get existing slug)
-                                               (assoc cfg :sha sha :read-file read-file)))
-                                  inc))
-                              0 results)
-        removed       (t2/with-transaction [_conn]
-                        (if (seq present-slugs)
+        {:keys [changed-slugs removed]}
+        (t2/with-transaction [_conn]
+          (when (seq present-slugs)
+            (t2/update! :model/DataApp :name [:in present-slugs] :draft true {:draft false}))
+          (let [changed-slugs (reduce (fn [slugs {:keys [slug config-error] :as cfg}]
+                                        (cond-> slugs
+                                          ;; A parse failure on an app that still exists marks
+                                          ;; that row failed rather than syncing it; everything
+                                          ;; else is materialized normally.
+                                          (if config-error
+                                            (mark-config-error! (get existing slug) slug config-error)
+                                            (sync-app! (get existing slug)
+                                                       (assoc cfg :sha sha :read-file read-file)))
+                                          (conj slug)))
+                                      #{} results)
+                ;; `enabled` is deliberately not consulted — see the README's
+                ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
+                removed (if (seq present-slugs)
                           (t2/delete! :model/DataApp
                                       :name [:not-in present-slugs]
                                       :draft false)
-                          (t2/delete! :model/DataApp :draft false)))]
+                          (t2/delete! :model/DataApp :draft false))]
+            {:changed-slugs changed-slugs, :removed removed}))
+        resource-changed-slugs (into #{}
+                                     (keep (fn [{:keys [slug]}]
+                                             (when (ensure-app-resources! slug)
+                                               slug)))
+                                     good)
+        changed (count (into changed-slugs resource-changed-slugs))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
                sha (count good) changed removed (count errors))
     {:synced (count good), :changed changed, :removed removed, :sha sha, :config-errors errors}))

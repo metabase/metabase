@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 
 import { syncResources } from "../sync";
@@ -76,11 +75,5 @@ describe("query synchronization", () => {
         body: JSON.stringify({ table_ids: [] }),
       },
     ]);
-    expect(
-      fs.readFileSync(path.join(appRoot, "data_app.yaml"), "utf8"),
-    ).toContain("resource_collection_entity_id: resourcecollectionid1");
-    expect(
-      fs.readFileSync(path.join(appRoot, "data_app.yaml"), "utf8"),
-    ).toContain("permission_group_entity_id: permissiongroupid0001");
   });
 });

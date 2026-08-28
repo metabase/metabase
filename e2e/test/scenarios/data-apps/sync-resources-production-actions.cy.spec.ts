@@ -22,7 +22,7 @@ const ACTION_FILE = () => `${APP_ROOT()}/actions/orders.action.ts`;
 const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 
-/** The manifest as source control holds it, before a sync writes entity IDs into it. */
+/** The manifest as source control holds it. */
 const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
 
 /** The declaration as source control holds it, with no generated ID yet. */
@@ -45,8 +45,7 @@ describe(
   "scenarios > data apps > sync-resources in production (actions)",
   { tags: ["@external", "@actions"] },
   () => {
-    // Sync writes entity IDs into the manifest and a lockfile beside it. `H.restore()`
-    // drops what those IDs name, so leftovers fail the next run's sync.
+    // Restore the source files and remove the lockfile before each synchronization.
     const restoreAuthoredFixture = () => {
       cy.writeFile(ACTION_FILE(), declaration(1));
       cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);

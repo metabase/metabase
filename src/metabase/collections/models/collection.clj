@@ -540,13 +540,6 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) \%)]))
 
-(mu/defn collection-empty? :- :boolean
-  "Return whether a Collection has neither descendants nor content."
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (and (empty? (descendant-ids collection))
-       (not-any? #(t2/exists? % :collection_id (u/the-id collection))
-                 (collectable-models))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
