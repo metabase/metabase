@@ -1,4 +1,3 @@
-import type { WidgetMount } from "custom-viz";
 import type { CSSProperties, ComponentType } from "react";
 
 import type {
@@ -13,6 +12,7 @@ import type {
   SingleSeries,
   TransformedSeries,
   VisualizationSettings,
+  WidgetMount,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 

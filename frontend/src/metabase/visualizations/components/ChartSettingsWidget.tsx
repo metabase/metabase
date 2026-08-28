@@ -1,12 +1,11 @@
 import cx from "classnames";
-import type { WidgetMount } from "custom-viz";
 import type { CSSProperties, ComponentType } from "react";
 import _ from "underscore";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
 
