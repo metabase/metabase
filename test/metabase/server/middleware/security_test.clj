@@ -208,6 +208,15 @@
   (testing "Should handle invalid origins"
     (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
+(deftest approved-origin-does-not-log-on-malformed-origin-test
+  (testing "an unparsable client Origin is handled silently, not logged at ERROR"
+    ;; the CORS check runs on every request's raw Origin header, so a malformed value must not reach
+    ;; the logging parse-url variant and fill the operator's error log
+    (mt/with-log-messages-for-level [messages [metabase.server.middleware.security :error]]
+      (doseq [bad ["https://foo_bar.com" "not a url" "" "https://has/a/path"]]
+        (mw.security/approved-origin? bad "http://example.com"))
+      (is (empty? (messages))))))
+
 (deftest test-disable-cors-on-localhost-approved-origin
   (testing "Should approve loopback origins when disable-cors-on-localhost is false"
     (mt/with-temporary-setting-values [disable-cors-on-localhost false]
