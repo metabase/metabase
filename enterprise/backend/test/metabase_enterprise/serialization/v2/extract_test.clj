@@ -109,6 +109,7 @@
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
+;; dozens of extraction cases share one hand-built dashboard/card graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db!
@@ -1291,6 +1292,7 @@
           (is (= [{:id "def" :type :category :name "CATEGORY" :position 0}]
                  (:parameters (first (get by-model "Dashboard"))))))))))
 
+;; the selective-serialization cases all walk one shared entity graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db!

@@ -128,6 +128,8 @@
                   {:type        :http
                    :status-code 400})))
 
+;; the real implementation, kept intact while execute-http-action! above refuses; nothing calls it
+;; until HTTP actions are switched back on
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var :unused-private-var]}
 (defn- execute-http-action-impl!
   [action params->value]
