@@ -405,7 +405,8 @@
     (into #{} cat (vals (transduce identity field-id-into-context-rf param-dashcard-infos)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :param_fields]
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Dashboard."
+  "Add a `:param_fields` map (parameter or template-tag ID -> vector of Fields) for all of the Fields referenced by
+  the parameters of a Dashboard."
   [_model k dashboards]
   (mapv (fn [dashboard]
           (let [param-fields (-> dashboard
@@ -430,7 +431,8 @@
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."
+  "Add a `:param_fields` map (template-tag ID -> vector of Fields) for all of the Fields referenced by the parameters
+  of a Card."
   [_model k card]
   (let [param-fields (or (some-> card card->template-tag-id->field-ids param-field-ids->fields)
                          {})]
