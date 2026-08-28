@@ -1,4 +1,4 @@
-(ns ^:mb/project-tests metabase.core.modules-test
+(ns metabase.core.modules-test
   "Tests that the modules config file is configured correctly."
   (:require
    [clojure.edn :as edn]

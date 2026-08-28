@@ -1,4 +1,4 @@
-(ns ^:mb/project-tests metabase.core.kondo-ratchet-test
+(ns metabase.core.kondo-ratchet-test
   "Ratchet on inline kondo ignore forms: budgets live in `.clj-kondo/ratchets.edn` and only move down.
   The ignore forms in this file are string fixtures — the scanner masks string literals, so they don't
   count as suppressions."
