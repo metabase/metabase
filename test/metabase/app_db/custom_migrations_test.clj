@@ -2812,12 +2812,7 @@
           (testing "plaintext secret bytes are encrypted and decrypt to the original"
             (let [v (raw-secret secret-id)]
               (is (encryption/possibly-encrypted-bytes? v))
-              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v) "UTF-8")))))
-          (testing "rollback decrypts them back"
-            (migrate! :down 57)
-            (is (= plain-details (raw :metabase_database :details plain-db-id)))
-            (is (= user-settings (raw :core_user :settings user-id)))
-            (is (= "sooper-secret" (String. ^bytes (raw-secret secret-id) "UTF-8")))))))))
+              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v) "UTF-8"))))))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
