@@ -1,7 +1,12 @@
 import { checkNotNull } from "metabase/utils/types";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -151,6 +156,46 @@ describe("column settings", () => {
 
       onChange(options[1].value);
       expect(onChangeSpy).toHaveBeenCalledWith(false);
+    });
+
+    describe("widget visibility for currency columns", () => {
+      function getWidgetHiddenById(storedSettings: VisualizationSettings = {}) {
+        const series = seriesWithColumn();
+        const column = series[0].data.cols[0];
+        const computedSettings = getComputedSettings(
+          NUMBER_COLUMN_SETTINGS,
+          column,
+          storedSettings,
+          { series },
+        );
+        const widgets = getSettingsWidgets(
+          NUMBER_COLUMN_SETTINGS,
+          storedSettings,
+          computedSettings,
+          column,
+          jest.fn(),
+          { series },
+        );
+        return Object.fromEntries(
+          widgets.map((widget) => [widget.id, widget.hidden]),
+        );
+      }
+
+      it("should not hide the number_style widget for a currency column", () => {
+        const hiddenById = getWidgetHiddenById();
+        expect(hiddenById.number_style).toBe(false);
+        expect(hiddenById.currency).toBe(false);
+        expect(hiddenById.currency_style).toBe(false);
+        expect(hiddenById.currency_in_header).toBe(false);
+      });
+
+      it("should hide the currency widgets when the percent style is selected", () => {
+        const hiddenById = getWidgetHiddenById({ number_style: "percent" });
+        expect(hiddenById.number_style).toBe(false);
+        expect(hiddenById.currency).toBe(true);
+        expect(hiddenById.currency_style).toBe(true);
+        expect(hiddenById.currency_in_header).toBe(true);
+      });
     });
   });
 
