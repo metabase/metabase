@@ -38,48 +38,54 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel budgets-match-actual-counts-test
-  (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
-                "Budget too low: remove an ignore, or seed the budget with\n"
-                "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
-                "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
-                "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a local\n"
-                "run means `fix!` itself is broken, since the test fixture just ran it.")
-    (is (= {}
-           (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
-                                (tree-scan))))))
+  (when-not (kondo-ratchet/disabled?)
+    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
+                  "Budget too low: remove an ignore, or seed the budget with\n"
+                  "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
+                  "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
+                  "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a local\n"
+                  "run means `fix!` itself is broken, since the test fixture just ran it.")
+      (is (= {}
+             (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
+                                  (tree-scan)))))))
 
 (deftest ^:parallel ignores-are-justified-test
-  (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
-                "(or trailing on the same line) saying why the suppression is warranted.\n"
-                "Linters in :comment-exempt in " kondo-ratchet/ratchets-file " are grandfathered;\n"
-                "widening that set is a hand edit to defend in the PR.")
-    (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
-      (is (= []
-             (map #(dissoc % :justified?)
-                  (kondo-ratchet/unjustified exempt (tree-scan))))))))
+  (when-not (kondo-ratchet/disabled?)
+    (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
+                  "(or trailing on the same line) saying why the suppression is warranted.\n"
+                  "Linters in :comment-exempt in " kondo-ratchet/ratchets-file " are grandfathered;\n"
+                  "widening that set is a hand edit to defend in the PR.")
+      (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
+        (is (= []
+               (map #(dissoc % :justified?)
+                    (kondo-ratchet/unjustified exempt (tree-scan)))))))))
 
 (deftest ^:parallel no-stale-exemptions-test
-  (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
-                "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`, or label\n"
-                "the PR kondo-ratchets-self-healing.")
-    (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
-      (is (= #{}
-             (kondo-ratchet/stale-exemptions comment-exempt (tree-scan)))))))
+  (when-not (kondo-ratchet/disabled?)
+    (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
+                  "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`, or label\n"
+                  "the PR kondo-ratchets-self-healing.")
+      (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
+        (is (= #{}
+               (kondo-ratchet/stale-exemptions comment-exempt (tree-scan))))))))
 
 (deftest ^:parallel config-budgets-match-actual-test
-  (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/ratchets-file " must match\n"
-                ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
-                "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
-                "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
-    (is (= {}
-           (kondo-ratchet/config-drift (:config-counts (kondo-ratchet/read-ratchets))
-                                       (kondo-ratchet/config-suppressions))))))
+  (when-not (kondo-ratchet/disabled?)
+    (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/ratchets-file " must match\n"
+                  ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
+                  "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
+                  "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
+      (is (= {}
+             (kondo-ratchet/config-drift (:config-counts (kondo-ratchet/read-ratchets))
+                                         (kondo-ratchet/config-suppressions)))))))
 
 (deftest ^:parallel ratchets-file-normalized-test
-  (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
-                " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the formatting.")
-    (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
-           (slurp kondo-ratchet/ratchets-file)))))
+  (when-not (kondo-ratchet/disabled?)
+    (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
+                  " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the"
+                  " formatting.")
+      (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
+             (slurp kondo-ratchet/ratchets-file))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
@@ -271,6 +277,24 @@
     (let [occurrences (for [line (range 1 10)]
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
+
+;; This test temporarily redefines a global var, so it cannot run in parallel.
+(deftest fix-when-disabled-test
+  (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
+    (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
+                            "kondo-ratchet-test"
+                            (make-array java.nio.file.attribute.FileAttribute 0)))
+          budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
+      (with-redefs [kondo-ratchet/ratchets-file (.getPath budgets)]
+        (is (kondo-ratchet/disabled?))
+        (is (= (str (.getPath budgets) " is disabled -- kondo ratchets are master-only, nothing to do\n")
+               (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
+        (is (= "{:disabled true}\n" (slurp budgets)))))))
+
+(deftest missing-ratchets-are-not-disabled-test
+  (with-redefs [kondo-ratchet/ratchets-file "target/does-not-exist/ratchets.edn"]
+    (is (not (kondo-ratchet/disabled?))
+        "Only an explicit value in ratchets.edn disables enforcement")))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Justification bookkeeping unit tests

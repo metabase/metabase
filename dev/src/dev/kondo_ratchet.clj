@@ -18,6 +18,17 @@
   "The budgets file, relative to the repo root."
   ".clj-kondo/ratchets.edn")
 
+(def ^:private disabled-key
+  "The key that release branches set to `true` in [[ratchets-file]] to disable the ratchets."
+  :disabled)
+
+(defn disabled?
+  "Whether [[ratchets-file]] explicitly disables the ratchets."
+  []
+  (let [file (io/file ratchets-file)]
+    (and (.exists file)
+         (true? (get (edn/read-string (slurp file)) disabled-key)))))
+
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
 
@@ -419,22 +430,25 @@
 (defn fix!
   "Rewrite [[ratchets-file]]: lower budgets, drop stale comment exemptions, normalize formatting.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
-  Prints the [[change-report]], or `unchanged` on a no-op."
+  Prints the [[change-report]], or `unchanged` on a no-op.
+  Does nothing, including seeding, when [[ratchets-file]] sets [[disabled-key]] to `true`."
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
-         occurrences   (scan)
-         seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
-         actual        (actual-counts occurrences)
-         config-actual (config-suppressions)
-         text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
-                                :config-counts  (lowered-counts config-counts config-actual [])
-                                :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
-         file          (io/file ratchets-file)
-         old           (when (.exists file) (slurp file))]
-     (run! println (change-report ratchets occurrences config-actual seeded))
-     (if (= old text)
-       (println "unchanged")
-       (do (spit file text)
-           (println (str "wrote " ratchets-file)))))))
+   (if (disabled?)
+     (println (str ratchets-file " is disabled -- kondo ratchets are master-only, nothing to do"))
+     (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
+           occurrences   (scan)
+           seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+           actual        (actual-counts occurrences)
+           config-actual (config-suppressions)
+           text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                                  :config-counts  (lowered-counts config-counts config-actual [])
+                                  :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
+           file          (io/file ratchets-file)
+           old           (when (.exists file) (slurp file))]
+       (run! println (change-report ratchets occurrences config-actual seeded))
+       (if (= old text)
+         (println "unchanged")
+         (do (spit file text)
+             (println (str "wrote " ratchets-file))))))))

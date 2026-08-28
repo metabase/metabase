@@ -30,11 +30,44 @@ runs:
 
         BACKPORT_BRANCH="backport-$TARGET_VERSION-$COMMIT"
 
+        # Kondo ignore ratchets apply only to master. Release branches keep an explicit opt-out in
+        # .clj-kondo/ratchets.edn, which can conflict with backported budget changes. Resolve that
+        # conflict by preserving the release branch's opt-out. Older release branches do not have
+        # the file, so remove it there instead. If no other files conflict, finish the cherry-pick
+        # automatically (BEGUILD-30).
+        #
+        # During a cherry-pick, HEAD ("ours") is the release branch. This is also true when the
+        # function is copied into backport.sh for manual conflict resolution.
+        resolve_ratchets() {
+          local f=.clj-kondo/ratchets.edn
+          [ -n "$(git ls-files -u -- "$f")" ] || return 0
+          if git cat-file -e "HEAD:$f" 2>/dev/null; then
+            echo "$f: keeping the release branch's copy"
+            git checkout HEAD -- "$f"
+          else
+            echo "$f: dropped, kondo ratchets are master-only"
+            git rm -q "$f"
+          fi
+          if [ -z "$(git ls-files -u)" ]; then
+            echo "$f was the only conflict, finishing the cherry-pick"
+            if git diff --cached --quiet HEAD; then
+              # If the commit changed only the ratchets file, resolving the conflict leaves nothing
+              # staged. --continue refuses an empty commit, so create one explicitly to preserve the
+              # backport commit and allow the PR to be opened.
+              echo "nothing left to apply, committing the backport empty"
+              git commit --allow-empty --no-edit
+            else
+              git -c core.editor=true cherry-pick --continue
+            fi
+          fi
+        }
+
         # Checkout the target branch and create a new backport branch
         git checkout ${TARGET_BRANCH}
         git fetch --all
         git checkout -b ${BACKPORT_BRANCH}
         git cherry-pick ${COMMIT} || true
+        resolve_ratchets
 
         CONFLICT_LIST=$(git ls-files -u)
 
@@ -46,10 +79,15 @@ runs:
           echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
-          echo "git reset HEAD~1" > ./backport.sh
-          echo "rm ./backport.sh" >> ./backport.sh
-          echo "git cherry-pick ${COMMIT}" >> ./backport.sh
-          echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'" >> ./backport.sh
+          {
+            echo "#!/usr/bin/env bash"
+            echo "git reset HEAD~1"
+            echo "rm ./backport.sh"
+            echo "git cherry-pick ${COMMIT}"
+            declare -f resolve_ratchets
+            echo "resolve_ratchets"
+            echo "echo -e 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'"
+          } > ./backport.sh
           chmod +x ./backport.sh
           git add ./backport.sh
           git commit -m "Add backport resolution script"
