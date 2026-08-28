@@ -21,7 +21,16 @@ Our themed wrapper around [Mantine Popover](https://v6.mantine.dev/core/popover/
 
 - [Mantine Popover Docs](https://v6.mantine.dev/core/popover/)
 
+## Padding
+
+The dropdown has no padding of its own — content pads itself. The design
+system's default is `--mantine-spacing-md` (12px), e.g. `<Box p="md">`; pickers
+and lists with their own layout (headers, edge-to-edge rows) manage their own
+spacing. `Menu` is the one exception: its dropdown pads itself.
+
 ## Examples
+
+<Canvas of={PopoverStories.Overview} />
 
 <Canvas of={PopoverStories.Default} />
 
