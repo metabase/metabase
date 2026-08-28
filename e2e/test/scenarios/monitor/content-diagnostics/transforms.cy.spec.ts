@@ -21,6 +21,7 @@ const STALE_TRANSFORM_NAME = "E2E transforming stale transform";
 const SCHEDULED_TRANSFORM_NAME = "E2E transforming scheduled transform";
 const UNSCHEDULED_TRANSFORM_NAME = "E2E transforming unscheduled transform";
 const DUPLICATED_TRANSFORM_NAME = "E2E transforming duplicated transform";
+const DELETED_TRANSFORM_NAME = "E2E transforming deleted transform";
 
 const TARGET_SCHEMA = "public";
 
@@ -60,6 +61,10 @@ function createTransformInArchivedFolder() {
       H.archiveCollection(collection.id);
     },
   );
+}
+
+function findingRow(name: string) {
+  return cy.findByTestId("stale-content-list").contains('[role="row"]', name);
 }
 
 function createTransformNamed(name: string, targetTable: string) {
@@ -191,6 +196,58 @@ describe(
           "contain.text",
           DUPLICATED_TRANSFORM_NAME,
         );
+      });
+    });
+
+    // A transform has no archived state, so bulk removal deletes it outright, and the bar
+    // says so instead of offering the trash.
+    it("permanently deletes a selected transform instead of trashing it", () => {
+      let transformId = 0;
+
+      H.createAndRunSqlTransform({
+        name: DELETED_TRANSFORM_NAME,
+        sourceQuery: "SELECT 1 AS id",
+        targetTable: "e2e_transforming_deleted",
+        targetSchema: TARGET_SCHEMA,
+      }).then((transform) => {
+        transformId = transform.transformId;
+        markStale("transform", transformId, lastRunOn());
+      });
+      runContentDiagnosticsScan();
+
+      visitContentDiagnosticsTab("stale");
+      searchFindings(SEARCH_TERM);
+
+      findingRow(DELETED_TRANSFORM_NAME).findByRole("checkbox").click();
+
+      cy.findByTestId("toast-card").within(() => {
+        cy.findByText("1 item selected").should("be.visible");
+        cy.findByRole("button", { name: "Delete" }).click();
+      });
+
+      cy.log("the confirmation drops the trash wording for a permanent delete");
+      H.modal().within(() => {
+        cy.findByText("Delete 1 transform?").should("be.visible");
+        cy.findByText(
+          "1 transform will be permanently deleted and cannot be restored.",
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Delete" }).click();
+      });
+
+      H.undoToast().findByText("Removed 1 item").should("be.visible");
+
+      cy.log("the finding is invalidated and the transform itself is gone");
+      cy.findByTestId("stale-content-list").should(
+        "not.contain.text",
+        DELETED_TRANSFORM_NAME,
+      );
+      cy.then(() => {
+        cy.request({
+          url: `/api/transform/${transformId}`,
+          failOnStatusCode: false,
+        })
+          .its("status")
+          .should("eq", 404);
       });
     });
 

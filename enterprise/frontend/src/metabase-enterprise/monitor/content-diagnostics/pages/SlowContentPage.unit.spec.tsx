@@ -129,10 +129,6 @@ async function waitForListToLoad() {
   expect(await screen.findByRole("treegrid")).toBeInTheDocument();
 }
 
-function queryFilterIndicator() {
-  return document.querySelector('[class*="Indicator-indicator"]');
-}
-
 describe("SlowContentPage", () => {
   it("renders slow findings with humanized durations in the table", async () => {
     setup({ findings: FINDINGS });
@@ -330,7 +326,9 @@ describe("SlowContentPage", () => {
     setup({ findings: FINDINGS });
     await waitForListToLoad();
 
-    expect(queryFilterIndicator()).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("content-diagnostics-filter-indicator"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByTestId("content-diagnostics-filter-button"),
@@ -341,7 +339,9 @@ describe("SlowContentPage", () => {
     );
 
     await waitFor(() => {
-      expect(queryFilterIndicator()).toBeInTheDocument();
+      expect(
+        screen.getByTestId("content-diagnostics-filter-indicator"),
+      ).toBeInTheDocument();
     });
   });
 
