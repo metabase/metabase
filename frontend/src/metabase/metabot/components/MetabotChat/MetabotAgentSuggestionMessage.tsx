@@ -14,9 +14,9 @@ import {
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/metadata/store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
