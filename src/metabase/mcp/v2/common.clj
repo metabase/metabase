@@ -51,6 +51,25 @@
    (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
+(defn truncation-line
+  "The steering sentence appended to a truncated list response: names the narrowing `param` when
+   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
+   (or `total` is unknown). `:total-floor?` marks `total` as a lower bound rather than an exact
+   count — e.g. a search total capped at the ranking limit — so the sentence reads \"at least N\"."
+  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
+  ;; reads a truncated page as the whole set.
+  [{:keys [param offset limit total total-floor?]}]
+  (let [offset (or offset 0)]
+    (when (and total limit (< (+ offset limit) total))
+      (let [returned  (min limit (- total offset))
+            total-str (str (when total-floor? "at least ") total)
+            next      (+ offset limit)]
+        (if param
+          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
+                  returned total-str (name param) next)
+          (format "Returned %d of %s — continue with `offset: %d`."
+                  returned total-str next))))))
+
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
 (defn throw-teaching-error
