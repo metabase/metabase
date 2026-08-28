@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import type Question from "metabase-lib/v1/Question";
+
 import {
   getIsRunning,
   getLastRunQuestion,
   getQuestion,
   getRawSeries,
-} from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/redux";
-import type Question from "metabase-lib/v1/Question";
+} from "../../../store/selectors";
 
 // The current question can be ahead of the retained result while a forced rerun is
 // pending or was cancelled, so whether the result is pivoted has to come from the card

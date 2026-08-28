@@ -21,8 +21,6 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
-   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -381,8 +379,11 @@
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
           (doseq [export-format [:csv :json :xlsx]]
             (testing (str "format: " export-format)
-              (let [response (client/client-full-response
-                              (test.users/username->token :crowberto)
+              ;; through `user-http-request-full-response`, not a raw cached token: that skips the retry in
+              ;; `client-fn`, so a session that was rolled back with the scope that made it comes back here
+              ;; as a bare 401
+              (let [response (mt/user-http-request-full-response
+                              :crowberto
                               :post 200
                               (format "card/%d/query/%s" (:id card) (name export-format))
                               {})]

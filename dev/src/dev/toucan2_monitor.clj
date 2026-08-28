@@ -150,5 +150,5 @@
   (summary)
   (to-csv!)
   (doseq [q (querles)]
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println q)))

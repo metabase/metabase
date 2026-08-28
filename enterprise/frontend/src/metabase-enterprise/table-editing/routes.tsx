@@ -11,9 +11,11 @@ import { Route } from "metabase/router";
  * hover of links that do not lead here.
  */
 const editTableDataPage = () =>
-  import("./table-edit/EditTableDataContainer").then(
-    ({ EditTableDataContainer }) => ({ Component: EditTableDataContainer }),
-  );
+  import(
+    /* webpackChunkName: "table-editing" */ "./table-edit/EditTableDataContainer"
+  ).then(({ EditTableDataContainer }) => ({
+    Component: EditTableDataContainer,
+  }));
 
 export function getRoutes() {
   return (

@@ -334,13 +334,14 @@ const config = {
       cacheGroups: {
         vendors: {
           test: CORE_VENDOR,
-          // The data-app iframe is isolated from main-app CSS/JS by design;
-          // sharing the vendor chunk would re-link them. Keep its
-          // node_modules in its own chunks.
+          // The data-app and MCP iframes are isolated from main-app CSS/JS by
+          // design; sharing the vendor chunk would re-link them. Keep their
+          // node_modules in their own chunks.
           chunks: (chunk) =>
             chunk.canBeInitial() &&
             chunk.name !== "data-app-vendors" &&
-            chunk.name !== "app-data-app",
+            chunk.name !== "app-data-app" &&
+            chunk.name !== "app-embed-mcp",
           name: "vendor",
           priority: -10,
         },
@@ -430,7 +431,9 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed-mcp"],
+      // No "vendor": the cache group above leaves this entry out of it, so a
+      // tag for it would fetch a chunk the page does not use.
+      chunks: ["styles", "app-embed-mcp"],
       template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
 
       // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
