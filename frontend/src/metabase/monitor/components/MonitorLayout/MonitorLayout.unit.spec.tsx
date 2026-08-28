@@ -304,9 +304,9 @@ describe("MonitorLayout", () => {
       screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
     ).not.toBeInTheDocument();
 
-    expect(
-      screen.getByRole("link", { name: "Dependency diagnostics" }),
-    ).toBeInTheDocument();
+    ["Dependency diagnostics", "Content diagnostics"].forEach((name) => {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    });
     [
       "Background tasks",
       "Scheduled jobs",
@@ -319,7 +319,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Alerts management from a monitoring-only user", async () => {
+  it("hides Alerts management and Dependency diagnostics from a monitoring-only user", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -333,7 +333,6 @@ describe("MonitorLayout", () => {
     });
 
     [
-      "Dependency diagnostics",
       "Content diagnostics",
       "Background tasks",
       "Scheduled jobs",
@@ -342,9 +341,9 @@ describe("MonitorLayout", () => {
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });
-    expect(
-      screen.queryByRole("link", { name: "Alerts management" }),
-    ).not.toBeInTheDocument();
+    ["Alerts management", "Dependency diagnostics"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
   });
 
   it("hides Alerts management for an analyst even with the monitoring permission", async () => {

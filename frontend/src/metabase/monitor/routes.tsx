@@ -2,7 +2,7 @@ import { createElement } from "react";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
+import { canAccessDependencyDiagnostics } from "metabase/common/monitor/selectors";
 import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
 import { ModelPersistenceLogJobModal } from "metabase/monitor/tools/components/ModelPersistenceLogJobs";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
@@ -23,8 +23,9 @@ import * as Urls from "metabase/urls";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessContentDiagnostics,
+  CanAccessDependencyDiagnostics,
   CanAccessMonitor,
-  CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
 } from "./route-guards";
 
@@ -92,7 +93,7 @@ export function getMonitorRoutes() {
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
-        <Route element={<CanAccessMonitorDiagnostics />}>
+        <Route element={<CanAccessDependencyDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
@@ -106,6 +107,9 @@ export function getMonitorRoutes() {
               <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
             </Route>
           )}
+        </Route>
+
+        <Route element={<CanAccessContentDiagnostics />}>
           {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
             <Route
               path="content-diagnostics"
@@ -158,12 +162,13 @@ export function getMonitorRoutes() {
   );
 }
 
-// Diagnostics for anyone who may see them; the Tools pages are the fallback for
-// the rest.
+// Dependency diagnostics is first route in Monitor area, but it has tighter permission requirements,
+// so for users who can't access it we fallback to Content diagnostics (which can be accessed by anyone
+// who can access Monitor area)
 function getMonitorIndexPath(state: State) {
-  return canAccessMonitorDiagnostics(state)
+  return canAccessDependencyDiagnostics(state)
     ? Urls.dependencyDiagnostics()
-    : Urls.monitorTasks();
+    : Urls.contentDiagnostics();
 }
 
 /**
