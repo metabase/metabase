@@ -441,10 +441,18 @@
                                     http/post                                       refuse]
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
                   (rejected "ai-service")))))
+      (testing "an embedding service URL the environment names is deployment configuration: private is fine"
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "http://10.0.0.1:9"]
+          (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly "key")
+                                      http/post                                      capture]
+            (embed "ai-service")
+            (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))))
       (testing "the embedding service URL is checked on write as well"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"not allowed to connect"
-             (semantic.settings/ee-embedding-service-base-url! "http://127.0.0.1:9")))))
+        (mt/with-premium-features #{}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"not allowed to connect"
+               (semantic.settings/ee-embedding-service-base-url! "http://127.0.0.1:9"))))))
     (testing "under :allow-all an internal OpenAI base URL goes out on clj-http's default resolver"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
         (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
