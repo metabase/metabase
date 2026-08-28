@@ -33,9 +33,8 @@
 
 (defn- save-access-token!
   "Persist an OAuth access token into the live provider's token store (the one [[oauth-server/resolve-access-token]]
-   reads from) for the given user, client, scopes, and expiry (epoch millis). `client-id` must name a live
-   `oauth_client` row (see [[oauth-server.tu/with-oauth-client]]) — `resolve-access-token` fails closed when a
-   token's client is gone (SEC-863)."
+   reads from) for the given user, client, scopes, and expiry (epoch millis). `client-id` should come from
+   [[oauth-server.tu/with-oauth-client]]."
   [token user-id client-id scopes expiry]
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
                                 token (str user-id) client-id (vec scopes) expiry nil))

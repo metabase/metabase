@@ -75,10 +75,8 @@
                                body))
 
 (defn- save-access-token!
-  "Persist an OAuth access token into the provider backing the MCP endpoint.
-
-   `client-id` must name a live `oauth_client` row (see [[oauth-server.tu/with-oauth-client]]) —
-   token resolution fails closed when the issuing client is gone (SEC-863)."
+  "Persist an OAuth access token into the provider backing the MCP endpoint. `client-id` should come
+   from [[oauth-server.tu/with-oauth-client]]."
   [token user-id client-id scopes]
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
                                 token (str user-id) client-id (vec scopes)
@@ -1520,8 +1518,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
-        ;; register the token's client so the 401 can only come from the expiry, not the
-        ;; missing-client fail-closed path
+        ;; register a live client so the expiry is the only thing rejecting the token
         (oauth-server.tu/with-oauth-client [client-id]
           (let [user-id  (mt/user->id :crowberto)
                 token    (insert-expired-oauth-token! user-id client-id)

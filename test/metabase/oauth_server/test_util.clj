@@ -5,9 +5,8 @@
 
 (defmacro with-oauth-client
   "Execute `body` with a freshly registered `oauth_client` row, binding `client-id-binding` to its
-   `client_id`. Tokens must reference a live client — token resolution fails closed when the issuing
-   client is gone (SEC-863) — so save test tokens against this client id. The row is deleted when
-   `body` exits."
+   `client_id`, and delete the row when `body` exits. Save test tokens against this client id —
+   see [[metabase.oauth-server.core/resolve-access-token]] for why a token needs a live client."
   [[client-id-binding] & body]
   `(mt/with-temp [:model/OAuthClient {~client-id-binding :client_id}
                   {:client_id         (str (random-uuid))
