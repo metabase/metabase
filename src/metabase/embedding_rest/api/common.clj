@@ -220,7 +220,7 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
-(defn- classify-params-as-keep
+(defn- enabled-params-slugs
   "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
   those explicitly whitelisted as \"enabled\" in `embedding-params`. Anything else — absent from the whitelist, or
   listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
@@ -235,7 +235,7 @@
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [params-to-keep (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)]
+  (let [params-to-keep (enabled-params-slugs (:parameters dashboard-or-card) embedding-params)]
     (update dashboard-or-card :parameters (partial filter #(contains? params-to-keep (keyword (:slug %)))))))
 
 (defn- remove-token-parameters
@@ -389,7 +389,7 @@
 (defn- remove-locked-parameters
   [dashboard embedding-params]
   (let [params                  (:parameters dashboard)
-        params-to-keep          (classify-params-as-keep params embedding-params)
+        params-to-keep          (enabled-params-slugs params embedding-params)
         param-ids-to-keep       (set (keep (fn [{:keys [slug id]}]
                                              (when (contains? params-to-keep (keyword slug)) id))
                                            params))
