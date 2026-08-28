@@ -5,7 +5,7 @@
    [metabase.llm.settings :as llm-settings]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
@@ -74,7 +74,17 @@
   :visibility :settings-manager
   :default    nil
   :export?    false
-  :doc        false)
+  :doc        false
+  ;; A proxy here is usually meant to sit on a private network, but that is true of an OpenAI-compatible
+  ;; proxy configured under any provider connection too, so this gets the same `llm-allowed-networks` gate
+  ;; the connection `:base-url` fields get in [[metabase.llm.provider/validate-config!]] -- there is one
+  ;; policy, not a carve-out for whichever setting a proxy happens to be configured under.
+  :setter     (fn [new-value]
+                (let [url (some-> new-value str str/trim not-empty (str/replace #"/+$" "") not-empty)]
+                  (when (and url (not (llm-settings/llm-url-allowed? url)))
+                    (throw (ex-info (tru "Invalid embedding service base URL. It must be an http:// or https:// URL on a host allowed by the ''llm-allowed-networks'' setting.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :string :ee-embedding-service-base-url url))))
 
 (defsetting ee-embedding-service-api-key
   (deferred-tru (str "API key for authenticating with the embedding service. Leave empty for proxying thorugh"

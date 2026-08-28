@@ -406,6 +406,16 @@
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
+    ;; `:base-url` is the one field on any connection type that becomes a request target, and requests built
+    ;; on it carry that connection's credential. It is checked here rather than as a per-type `:validate`
+    ;; hook so that every provider type gets the identical rule -- an OpenAI-compatible proxy on a private
+    ;; network is reached through whichever type it happens to be configured under, so exempting one would
+    ;; just move the sink. Operators who need a private endpoint widen `llm-allowed-networks`, which is
+    ;; `:allow-all` by default.
+    (when (and value (= key :base-url) (not (llm.settings/llm-url-allowed? value)))
+      (throw (ex-info (tru "Invalid {0} for {1}. It must be an http:// or https:// URL on a host allowed by the ''llm-allowed-networks'' setting."
+                           (str label) type-name)
+                      {:status-code 400 :field key})))
     (when-let [problem (and value validate (validate value))]
       (throw (ex-info (str problem) {:status-code 400 :field key})))))
 

@@ -73,6 +73,47 @@
       (is (=? (dissoc fake-token-status :trial)
               (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))))
 
+(deftest token-refresh-llm-proxy-cache-respects-network-policy-test
+  (testing "the AI service cache-invalidation POST is held inside `llm-allowed-networks` -- the instance token
+           travels in the URL path, so an internal base URL would hand it to whatever answers"
+    (doseq [base-url ["http://169.254.169.254"          ; cloud instance metadata, no DNS needed
+                      "http://metadata.google.internal" ; refused by name, however it resolves
+                      "http://localhost:9999"]]
+      (testing base-url
+        (mt/with-premium-features #{:metabase-ai-managed}
+          (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+            (mt/with-temporary-raw-setting-values [premium-embedding-token "SOME_RANDOM_TOKEN"]
+              (mt/with-temporary-setting-values [llm-allowed-networks :external-only
+                                                 ai-service-base-url  base-url]
+                (let [called* (atom nil)]
+                  (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+                                              http/post                     (fn [url & _]
+                                                                              (reset! called* url)
+                                                                              {:status 200})]
+                    (testing "the refresh still succeeds -- invalidation is best-effort"
+                      (is (=? (dissoc fake-token-status :trial)
+                              (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))
+                    (is (nil? @called*)
+                        "no request may leave for a host the policy refuses"))))))))))
+  (testing "an allowed base URL still gets the request, now carrying the connect-time guard"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+        (mt/with-temporary-raw-setting-values [premium-embedding-token "SOME_RANDOM_TOKEN"]
+          (mt/with-temporary-setting-values [llm-allowed-networks :external-only
+                                             ai-service-base-url  "https://ai-service.example.com/"]
+            (let [request* (atom nil)]
+              (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+                                          http/post                     (fn [url request-options]
+                                                                          (reset! request* [url request-options])
+                                                                          {:status 200})]
+                (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")
+                (let [[url opts] @request*]
+                  (is (= "https://ai-service.example.com/v1/invalidate-token-cache/SOME_RANDOM_TOKEN" url))
+                  (is (= :none (:redirect-strategy opts))
+                      "a 3xx would carry the token in the path to the new host")
+                  (is (some? (:dns-resolver opts))
+                      "the address is re-checked at connect time, closing the rebinding gap"))))))))))
+
 (deftest token-refresh-sets-premium-features-cookie-test
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
     ;; user-real-request hits a real Jetty server; handler thread doesn't inherit *local-redefs*.

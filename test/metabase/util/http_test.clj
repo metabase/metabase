@@ -203,11 +203,55 @@
     (is (thrown? ExceptionInfo
                  (http/address-allowed-for-network-policy? :allow-everything (InetAddress/getByName "127.0.0.1"))))))
 
-(deftest ^:parallel ssrf-safe-dns-resolver-test
-  (testing "the validating resolver throws when a host resolves to a non-public address"
-    ;; `localhost` resolves to loopback (no network needed) -> must be refused
-    (is (thrown? ExceptionInfo
-                 (.resolve ^DnsResolver @#'http/ssrf-safe-dns-resolver "localhost")))))
+(deftest ^:parallel http-url-allowed-for-network-policy?-test
+  (testing ":external-only admits only absolute http(s) URLs on externally-routable hosts"
+    (are [url expected] (= expected (http/http-url-allowed-for-network-policy? :external-only url))
+      "https://collector.example.com/api/send" true
+      "http://8.8.8.8/api/send"                true
+      ;; a host we cannot resolve is allowed -- see `host-allowed-for-network-policy?`
+      "http://fake-collector/api/send"         true
+      "http://localhost:3000/api/send"         false
+      "http://127.0.0.1/api/send"              false
+      "http://169.254.169.254/api/send"        false
+      "http://10.0.0.1/api/send"               false
+      "http://[::1]/api/send"                  false
+      "http://0.0.0.0/api/send"                false
+      "http://100.64.0.1/api/send"             false
+      ;; internal-only names are refused by name: they typically do not resolve from wherever this runs
+      "http://metadata.google.internal/x"      false
+      "http://metadata/x"                      false
+      "http://svc.internal/x"                  false
+      "http://box.lan/x"                       false
+      ;; not an absolute http(s) URL at all
+      "ftp://collector.example.com"            false
+      "file:///etc/passwd"                     false
+      "collector.example.com"                  false
+      "not a url"                              false
+      ""                                       false
+      nil                                      false))
+  (testing ":allow-private re-admits private networks but still refuses loopback and link-local"
+    (are [url expected] (= expected (http/http-url-allowed-for-network-policy? :allow-private url))
+      "http://10.0.0.1/api/send"        true
+      "http://192.168.1.1/api/send"     true
+      "http://svc.internal/x"           true
+      "http://127.0.0.1/api/send"       false
+      "http://169.254.169.254/api/send" false
+      "not a url"                       false))
+  (testing ":allow-all short-circuits before any parsing"
+    (are [url] (true? (http/http-url-allowed-for-network-policy? :allow-all url))
+      "http://127.0.0.1/api/send"
+      "not a url"
+      nil)))
+
+(deftest ^:parallel network-policy-request-opts-test
+  (testing "a restrictive policy yields both halves of the guard: resolve through the check, never follow a 3xx"
+    (let [opts (http/network-policy-request-opts :external-only)]
+      (is (= :none (:redirect-strategy opts)))
+      ;; `localhost` resolves to loopback (no network needed) -> must be refused
+      (is (thrown-with-msg? ExceptionInfo #"non-permitted"
+                            (.resolve ^DnsResolver (:dns-resolver opts) "localhost")))))
+  (testing ":allow-all restricts nothing, so there are no opts to merge -- not even a redirect ban"
+    (is (nil? (http/network-policy-request-opts :allow-all)))))
 
 (deftest ^:parallel network-policy-dns-resolver-test
   (testing ":allow-all imposes no restriction, so there is no resolver (clj-http uses its default)"
@@ -226,7 +270,23 @@
       (is (thrown-with-msg? ExceptionInfo #"non-permitted"
                             (.resolve ^DnsResolver (http/network-policy-dns-resolver :external-only) "rebind.example")))
       (is (= 1 (alength ^"[Ljava.net.InetAddress;"
-                (.resolve ^DnsResolver (http/network-policy-dns-resolver :allow-private) "rebind.example")))))))
+                (.resolve ^DnsResolver (http/network-policy-dns-resolver :allow-private) "rebind.example"))))))
+  (testing "the refusal carries :ssrf, so a caller can tell a blocked address from a connection failure"
+    (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                           (.add "rebound.example.com"
+                                                 (into-array [(InetAddress/getByName "127.0.0.1")])))]
+      (is (= {:ssrf true :policy :external-only :host "rebound.example.com"}
+             (try (.resolve ^DnsResolver (http/network-policy-dns-resolver :external-only) "rebound.example.com")
+                  nil
+                  (catch ExceptionInfo e (ex-data e)))))))
+  (testing "one disallowed address among allowed ones still refuses -- *every* resolved address must pass,
+           or a host answering with both a public and an internal address would slip through"
+    (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                           (.add "mixed.example.com"
+                                                 (into-array [(InetAddress/getByName "93.184.216.34")
+                                                              (InetAddress/getByName "127.0.0.1")])))]
+      (is (thrown-with-msg? ExceptionInfo #"non-permitted"
+                            (.resolve ^DnsResolver (http/network-policy-dns-resolver :external-only) "mixed.example.com"))))))
 
 (deftest ^:parallel fetch-bytes-blocks-without-network-test
   (testing "blocked URLs return nil at the validation gate, never reaching the network"

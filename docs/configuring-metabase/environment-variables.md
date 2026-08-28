@@ -1290,6 +1290,18 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+
+Controls which networks Metabase may connect to when calling an LLM provider.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to allow-all.
+
 ### `MB_LLM_ANTHROPIC_API_BASE_URL`
 
 - Type: string

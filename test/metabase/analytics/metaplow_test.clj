@@ -1,5 +1,6 @@
 (ns metabase.analytics.metaplow-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.analytics.metaplow :as metaplow]
    [metabase.analytics.settings :as analytics.settings]
@@ -7,7 +8,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.version.core :as version])
   (:import
-   (java.util.concurrent CountDownLatch TimeUnit)))
+   (java.util.concurrent CountDownLatch TimeUnit)
+   (org.apache.http.conn DnsResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -64,6 +66,33 @@
                                           true)]
           (is (false? (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created})))
           (is (empty? @collector)))))))
+
+(deftest send-event!-refuses-internal-collector-test
+  (testing "a collector URL that never went through the validating setter -- set by env var, or stored
+           before that setter existed -- is still refused at send time, without an HTTP request (SEC-764)"
+    (mt/with-temp-env-var-value! [mb-metaplow-url "http://169.254.169.254/api/send"]
+      (let [posts (atom [])]
+        (mt/with-dynamic-fn-redefs [http/post (fn [& args] (swap! posts conj args) {:status 200})]
+          (is (= 400 (:status (#'metaplow/send-event! {:type "event"})))
+              "the refusal must use a status `retryable-response?` gives up on")
+          (is (false? (#'metaplow/retryable-response? {:status 400})))
+          (is (empty? @posts)))))))
+
+(deftest redirect-is-not-retried-test
+  (testing "redirects are not followed, so a 3xx is a permanent misconfiguration of the collector URL
+           rather than a transient failure -- retrying one would repeat the backoff on every event"
+    (doseq [status [301 302 303 307 308]]
+      (is (false? (#'metaplow/retryable-response? {:status status})) (str status))))
+  (testing "genuinely transient failures are still retried"
+    (doseq [status [-1 429 500 502 503]]
+      (is (true? (#'metaplow/retryable-response? {:status status})) (str status)))))
+
+(deftest connection-manager-resolves-through-ssrf-guard-test
+  (testing "the pooled connection manager resolves through the :external-only guard, so a collector host
+           that passes the up-front check but rebinds to an internal address is refused at connect time"
+    (let [resolver (:dns-resolver @#'metaplow/connection-manager-opts)]
+      (is (some? resolver))
+      (is (thrown? clojure.lang.ExceptionInfo (.resolve ^DnsResolver resolver "localhost"))))))
 
 (deftest pipeline-integration-test
   (mt/with-temporary-setting-values [metaplow-url "http://fake-metaplow/api/send"

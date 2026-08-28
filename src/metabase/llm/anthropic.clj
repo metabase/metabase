@@ -99,14 +99,17 @@
     ;; Outside the try so the e2e guard fails loudly instead of being routed
     ;; through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
     (llm.settings/assert-llm-host-allowed! url)
+    ;; Same gate as `metabase.metabot.self.core/request` — this ns bypasses that chokepoint.
+    (llm.settings/assert-llm-url-allowed! url)
     (try
       (let [response (http/post url
-                                {:headers            (build-request-headers (get-api-key-or-throw))
-                                 :body               (json/encode (build-request-body request))
-                                 :as                 :json
-                                 :content-type       :json
-                                 :socket-timeout     (llm.settings/llm-request-timeout-ms)
-                                 :connection-timeout (llm.settings/llm-connection-timeout-ms)})
+                                (merge (llm.settings/llm-request-opts)
+                                       {:headers            (build-request-headers (get-api-key-or-throw))
+                                        :body               (json/encode (build-request-body request))
+                                        :as                 :json
+                                        :content-type       :json
+                                        :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                        :connection-timeout (llm.settings/llm-connection-timeout-ms)}))
             duration-ms (u/since-ms start-time)
             body        (:body response)
             usage       (:usage body)]

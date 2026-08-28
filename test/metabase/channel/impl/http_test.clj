@@ -357,28 +357,32 @@
                                :details {:url (str "http://" host ":80/") :auth-method "none"}}
                               {}))))))))
 
-(deftest send!-attaches-dns-resolver-test
-  (testing "a connection-time SSRF :dns-resolver is attached for restrictive policies, but not for :allow-all"
+(deftest send!-attaches-network-policy-opts-test
+  (testing "the connection-time SSRF guard is attached for restrictive policies, but not for :allow-all"
     ;; 8.8.8.8 is a public IP literal, so the up-front check needs no DNS lookup
-    (doseq [[strategy resolver?] [[:allow-all false]
-                                  [:allow-private true]
-                                  [:external-only true]]]
+    (doseq [[strategy guarded?] [[:allow-all false]
+                                 [:allow-private true]
+                                 [:external-only true]]]
       (with-captured-http-requests [requests]
         (mt/with-temporary-setting-values [http-channel-host-strategy strategy]
           (channel/send! {:type :channel/http
                           :details {:url         "https://8.8.8.8"
                                     :auth-method "none"
                                     :method      "get"}}
-                         {:url          "http://127.0.0.1/"
-                          :dns-resolver ::caller-supplied}))
+                         {:url               "http://127.0.0.1/"
+                          :dns-resolver      ::caller-supplied
+                          :redirect-strategy ::caller-supplied}))
         ;; unrelated background http/request calls can land in the atom too (Clojure conveys the
         ;; `binding` into async tasks), so pick out our request by URL rather than assuming it is first
         (let [req (first (filter #(= "https://8.8.8.8" (:url %)) @requests))]
           (is (some? req) "the rendered request cannot override the configured webhook URL")
-          (is (= resolver? (some? (:dns-resolver req)))
+          (is (= guarded? (some? (:dns-resolver req)))
               (str strategy " controls whether the policy DNS resolver is present"))
-          (is (not= ::caller-supplied (:dns-resolver req))
-              "the rendered request cannot override the policy DNS resolver"))))))
+          (is (= (when guarded? :none) (:redirect-strategy req))
+              (str strategy " controls whether a 3xx may be followed to a new host"))
+          (testing "a rendered request cannot supply either half of the guard itself"
+            (is (not= ::caller-supplied (:dns-resolver req)))
+            (is (not= ::caller-supplied (:redirect-strategy req)))))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]

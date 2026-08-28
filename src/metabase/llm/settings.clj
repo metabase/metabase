@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
    (java.net MalformedURLException URL)
@@ -56,6 +57,58 @@
   [setting-kw]
   (fn [new-value]
     ((requiring-resolve 'metabase.llm.provider/set-single-provider-setting!) setting-kw new-value)))
+
+;;; Which hosts an LLM provider base URL may point at. Requests built on one carry the provider
+;;; credential, so an internal address there is not just an SSRF -- it hands the credential to whoever
+;;; answers. One policy covers every provider; see [[metabase.llm.provider/validate-config!]], which
+;;; applies it to the `:base-url` field of every connection type alike.
+
+(defsetting llm-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to when calling an LLM provider.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to allow-all."))
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  ;; `:allow-all` everywhere. Pointing an LLM provider at something on a private network -- an
+  ;; OpenAI-compatible proxy (LiteLLM, vLLM, LM Studio), a local model server, a mock in e2e -- is an
+  ;; ordinary configuration, not an anomaly, and it is ordinary under *every* provider type rather than a
+  ;; few. Anything stricter out of the box would break those instances on upgrade. Restricting the networks
+  ;; is therefore an operator decision, made once here and applied to every provider alike.
+  :default    :allow-all
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))))
+                (setting/set-value-of-type! :keyword :llm-allowed-networks new-value)))
+
+(defn llm-url-allowed?
+  "Whether `url` is an `http(s)` endpoint on a host [[llm-allowed-networks]] permits. The predicate form,
+  for validating an admin-entered base URL before it is stored."
+  [url]
+  (u.http/http-url-allowed-for-network-policy? (llm-allowed-networks) url))
+
+(defn assert-llm-url-allowed!
+  "Refuse `url` unless [[llm-url-allowed?]] passes.
+
+  Every outbound LLM request is checked, whichever provider it is for: a base URL may have arrived by
+  environment variable (which shadows the stored connection field without revalidating it), or have been
+  stored before the check existed. Requests carry the provider credential, so a URL aimed at an internal
+  host is not only an SSRF -- it hands the credential to whatever answers."
+  [url]
+  (when-not (llm-url-allowed? url)
+    (throw (ex-info (tru "Refusing to send an LLM request: the configured base URL is not on a host allowed by the ''llm-allowed-networks'' setting.")
+                    {:status-code 400
+                     :llm-url     url}))))
+
+(defn llm-request-opts
+  "clj-http options that hold an outbound LLM request inside [[llm-allowed-networks]]. Empty under
+  `:allow-all`. Pair with [[assert-llm-url-allowed!]], which catches what DNS resolution cannot (a non-http
+  scheme, or a name that only resolves to something internal from the server)."
+  []
+  (u.http/network-policy-request-opts (llm-allowed-networks)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
