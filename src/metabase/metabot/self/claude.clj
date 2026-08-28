@@ -392,9 +392,10 @@
                          {:id id :display_name (or display_name (get-in supported-models [id :display-name]))})))}))
 
 (defn- strip-vendor-prefix
-  "`model` without an optional vendor prefix (e.g. Bedrock's `anthropic.`)."
+  "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `anthropic.`).
+  Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
   [model]
-  (str/replace-first (str model) #"^anthropic\." ""))
+  (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
 (defn- model-max-tokens
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."

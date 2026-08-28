@@ -191,7 +191,8 @@
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
                        (connection "bedrock" "bedrock")
-                       (connection "google" "google")]
+                       (connection "google" "google")
+                       (connection "azure" "azure")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -202,6 +203,12 @@
                ;; requests reasoning (encrypted replay), but the mantle never
                ;; streams summaries, so nothing renders — see bedrock/reasoning-model?
                "bedrock/openai.gpt-5.5"                     false
+               "azure/anthropic/claude-opus-5"              true
+               "azure/anthropic/claude-haiku-4-5"           false
+               "azure/openai/gpt-5.4"                       true
+               "azure/openai/my-deployment"                 false
+               ;; a family with no deployment segment names no model
+               "azure/anthropic"                            false
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
@@ -254,10 +261,11 @@
 (deftest metabot-supports-reasoning-managed-proxy-test
   (testing "the managed connection answers from the model's own provider segment"
     (with-connections [(connection "metabase" "metabase")]
+      ;; only anthropic models are servable over the proxy (openai-raw rejects
+      ;; :ai-proxy?), so only anthropic refs are exercised here
       (doseq [[model-ref expected]
               {"metabase/anthropic/claude-sonnet-4-6" true
-               "metabase/anthropic/claude-haiku-4-5"  false
-               "metabase/openai/gpt-5.4"              true}]
+               "metabase/anthropic/claude-haiku-4-5"  false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))

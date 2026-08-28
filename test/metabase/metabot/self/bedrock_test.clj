@@ -247,7 +247,8 @@
     (is (not (contains? (captured-body! {:model  "anthropic.claude-opus-4-8"
                                          :schema {:type "object"}})
                         :thinking)))
-    (is (=? {:reasoning {:summary "auto"}}
+    (is (=? {:reasoning {:summary "auto"}
+             :include   ["reasoning.encrypted_content"]}
             (captured-body! {:model "openai.gpt-5.5" :schema {:type "object"}})))))
 
 (deftest reasoning-replay-test
