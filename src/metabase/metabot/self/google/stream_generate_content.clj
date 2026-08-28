@@ -198,17 +198,21 @@
    "TOO_MANY_TOOL_CALLS"       "error"          ; Gemini API only
    "UNEXPECTED_TOOL_CALL"      "error"})
 
-(def ^:private finish-reasons-without-error
-  "The `finishReason` values that emit no :error chunk.
+(def ^:private early-stops-without-error
+  "The `finishReason` values that end the turn early but emit no :error chunk.
   The client already renders a message of its own for the AI SDK finish reason they translate to: \"length\" offers to
-  continue the truncated answer, and \"content-filter\" says the response was filtered and suggests rephrasing. STOP
-  is the one reason that is not a failure at all. Every other reason still needs an :error chunk, because nothing
-  downstream would otherwise say what went wrong."
-  (into #{finish-reason-completed}
+  continue the truncated answer, and \"content-filter\" says the response was filtered and suggests rephrasing. Every
+  other early stop still needs an :error chunk, because nothing downstream would otherwise say what went wrong."
+  (into #{}
         (keep (fn [[reason finish-reason]]
                 (when (#{"length" "content-filter"} finish-reason)
                   reason)))
         stop-reasons))
+
+(def ^:private finish-reasons-without-error
+  "The `finishReason` values that emit no :error chunk: the early stops that speak for themselves, plus STOP, the one
+  reason that is not a failure at all."
+  (conj early-stops-without-error finish-reason-completed))
 
 (defn- finish-reason-error
   "Returns the error text for a `finishReason` that needs one, or nil for the reasons that do not."
@@ -308,9 +312,7 @@
          ;; reasons that do emit an :error chunk already say what went wrong, so they get no synthetic usage.
          (let [reason @stop-reason
                usage  (or @usage-acc
-                          (when (and reason
-                                     (not= reason finish-reason-completed)
-                                     (finish-reasons-without-error reason))
+                          (when (early-stops-without-error reason)
                             (usage->aisdk-usage nil)))]
            (-> result
                (close-text!)
