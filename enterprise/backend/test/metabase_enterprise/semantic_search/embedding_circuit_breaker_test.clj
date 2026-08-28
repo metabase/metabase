@@ -62,13 +62,16 @@
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
 
 (deftest ^:synchronized request-failure-does-not-change-service-failure-history-test
-  (testing "request- and model-specific failures neither trip the circuit nor reset service-failure history"
+  (testing "request-, model-, and policy-specific failures neither trip the circuit nor reset service-failure history"
     (let [breaker (dh.cb/circuit-breaker {:failure-threshold 2 :success-threshold 1 :delay-ms 60000})]
       (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})]
         (is (thrown? Exception (call-through boom)))
         (doseq [request-error [(ex-info "bad request" {:status 400})
                                (ex-info "model not found" {:status 404})
-                               (ex-info "wrong dimensions" {:cause :embedder/unexpected-dimensions})]]
+                               (ex-info "wrong dimensions" {:cause :embedder/unexpected-dimensions})
+                               (ex-info "network policy rejected the address" {:ssrf true})
+                               (ex-info "HTTP client wrapper" {}
+                                        (ex-info "network policy rejected the address" {:ssrf true}))]]
           (is (thrown? Exception (call-through #(throw request-error)))))
         (is (= :closed (circuit-state)))
         (is (thrown? Exception (call-through boom)))

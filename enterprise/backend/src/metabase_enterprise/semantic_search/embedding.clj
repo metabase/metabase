@@ -336,12 +336,13 @@
 
 (defn- service-failure?
   [e]
-  (let [data   (ex-data e)
-        cause  (some-> e ex-cause ex-data)
-        status (or (:status data) (:status cause))
-        reason (or (:cause data) (:cause cause))]
+  (let [data-chain (keep ex-data (take-while some? (iterate ex-cause e)))
+        status     (some :status data-chain)
+        reason     (some :cause data-chain)]
     (and (not (contains? request-specific-statuses status))
-         (not= :embedder/unexpected-dimensions reason))))
+         (not= :embedder/unexpected-dimensions reason)
+         ;; A connection-time network-policy rejection is about the configured endpoint, not the service's health.
+         (not-any? :ssrf data-chain))))
 
 (defn- circuit-open-ex
   [endpoint]
