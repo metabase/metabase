@@ -22,6 +22,11 @@ import type { DatasetColumn, TableId } from "metabase-types/api";
 /**
  * A minimal field-like shape shared by both Field and DatasetColumn,
  * used by functions that only need type-checking properties.
+ *
+ * Note: these keys are snake_cased API field properties. They intentionally do
+ * not delegate to the generated CLJS predicates (`cljs/metabase.lib.types.isa`),
+ * which read kebab-cased `ColumnMetadata` objects; that module backs
+ * `metabase-lib/query/column_types.ts` instead.
  */
 export interface FieldTypeInfo {
   base_type?: string | null;
@@ -45,7 +50,7 @@ export interface ColumnClassificationInfo extends FieldTypeInfo {
  * @example
  * isa(field.semantic_type, TYPE.Currency);
  */
-export const isa = (x: string | null | undefined, y: string): boolean => {
+export const isa = (x: string | null | undefined, y: string): x is string => {
   if (x == null) {
     return false;
   }
@@ -56,15 +61,17 @@ export const isa = (x: string | null | undefined, y: string): boolean => {
 // this will also make it easier to tweak how these checks work in the future,
 // e.g. when we add an `is_pk` column and eliminate the PK semantic type we can just look for places that use isPK
 
-export function isTypePK(type: string | null | undefined): boolean {
+export function isTypePK(type: string | null | undefined): type is string {
   return isa(type, TYPE.PK);
 }
 
-export function isTypeFK(type: string | null | undefined): boolean {
+export function isTypeFK(type: string | null | undefined): type is string {
   return isa(type, TYPE.FK);
 }
 
-export function isTypeCurrency(type: string | null | undefined): boolean {
+export function isTypeCurrency(
+  type: string | null | undefined,
+): type is string {
   return isa(type, TYPE.Currency);
 }
 

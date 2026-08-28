@@ -35,6 +35,7 @@
                             (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
+            :ts/dispatch-key :strategy
             :error/fn (fn [{:keys [value]} _]
                         (str "Invalid binning strategy" (pr-str value)))}
     [:default   [:map

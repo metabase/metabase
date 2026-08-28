@@ -197,7 +197,8 @@
                         (when-some [tag (common/normalize-map tag)]
                           (cond-> tag
                             (:type tag) (update :type common/normalize-keyword))))}
-   [:multi {:dispatch #(keyword (:type %))}
+   [:multi {:dispatch #(keyword (:type %))
+            :ts/dispatch-key :type}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]
