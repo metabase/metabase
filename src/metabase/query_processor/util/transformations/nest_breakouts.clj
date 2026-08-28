@@ -37,10 +37,11 @@
           [#{:field :expression} & _] &match)))
 
 (mu/defn- new-first-stage :- ::lib.schema/stage
-  "Remove breakouts, aggregations, order bys, and limit. Add `:fields` to return the things needed by the second stage."
+  "Remove breakouts, aggregations, order bys, limit, and pivot. Add `:fields` to return the things needed by the
+  second stage."
   [stage :- ::lib.schema/stage]
   (-> stage
-      (dissoc :breakout :aggregation :order-by :limit :lib/stage-metadata)
+      (dissoc :breakout :aggregation :order-by :limit :lib/stage-metadata :pivot)
       (assoc :fields (mapv
                       lib/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))

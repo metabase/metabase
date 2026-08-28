@@ -1,19 +1,39 @@
 (ns metabase.driver.sql.pivot
   "HoneySQL formatters and SQL compilation hooks for the MBQL 5 native pivot path. Used by any driver that derives from
   `:sql` and opts into `:native-pivot-tables`."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.options :as lib.options]
    [metabase.lib.pivot :as lib.pivot]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    ;; :as-alias only, for ::add-remaps keywords; no runtime dependency on QP internals
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.performance :refer [mapv some]]))
+
+(defn- stage-has-window-fn-aggregation?
+  "True iff any aggregation on the compiled `stage` is a window-function aggregation, or transitively contains one."
+  [stage]
+  (some? (some lib.schema.aggregation/window-aggregation-expression?
+               (:aggregation stage))))
+
+(defn- use-grouping-sets?
+  "True iff `database`'s driver supports `:native-pivot-tables` and the compiled `stage` has no window aggregation.
+  Short-circuits when [[qp.pivot/*force-compilation-shape*]] is bound to `:grouping-sets` or `:union-all`."
+  [database stage]
+  (case qp.pivot/*force-compilation-shape*
+    :grouping-sets true
+    :union-all     false
+    (and (driver.u/supports? (driver.u/database->driver database) :native-pivot-tables database)
+         (not (stage-has-window-fn-aggregation? stage)))))
 
 (defn- format-exprs
   "Format each expression in `exprs` via [[honey.sql/format-expr]] and return `[[sql-strings] [args]]`."
@@ -139,8 +159,10 @@
         (conj pivot-grouping-select)
         (into rest-cols))))
 
-(defmethod sql.qp/apply-top-level-clause [:sql :pivot]
-  [driver _ honeysql-form {:keys [breakout pivot]}]
+(defn- compile-grouping-sets-pivot
+  "Compile the `:pivot` clause into a single-query `GROUP BY GROUPING SETS ((...), (...), ...)` shape.
+  Assumes `driver` supports the `GROUPING SETS` extension via `:native-pivot-tables`."
+  [driver honeysql-form {:keys [breakout pivot]}]
   (let [breakout-hsql     (mapv #(sql.qp/->honeysql driver %) breakout)
         non-remap-poss    (non-remap-positions breakout)
         non-remap-bos     (mapv breakout non-remap-poss)
@@ -168,3 +190,66 @@
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
         (assoc :group-by [grouping-sets]
                :order-by (into prefix-order-by (:order-by honeysql-form))))))
+
+(defn- select-entry-alias
+  "Return the alias of a HoneySQL `:select` `entry` — either the second element of a `[expr alias]` pair, or the
+  entry itself when it's a bare identifier (HoneySQL treats it as its own alias)."
+  [entry]
+  (if (vector? entry) (second entry) entry))
+
+(defn- compile-union-all-pivot
+  "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
+  `SELECT * FROM (...) AS __mb_pivot_result`. Used for drivers that lack `:native-pivot-tables` and for queries whose
+  window aggregations GROUPING SETS can't compose meaningfully."
+  [driver honeysql-form {:keys [breakout pivot]}]
+  (let [breakout-hsql  (mapv #(sql.qp/->honeysql driver %) breakout)
+        non-remap-poss (non-remap-positions breakout)
+        non-remap-bos  (mapv breakout non-remap-poss)
+        orig->new      (remap-original->new-field-positions breakout)
+        nr-idx-by-uuid (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
+        rows-idx       (mapv nr-idx-by-uuid (:rows pivot))
+        cols-idx       (mapv nr-idx-by-uuid (:columns pivot))
+        combos         (qp.pivot/breakout-combinations (count non-remap-bos)
+                                                       rows-idx
+                                                       cols-idx
+                                                       (get pivot :show-row-totals    true)
+                                                       (get pivot :show-column-totals true))
+        n-breakouts    (count breakout)
+        typed-null     (fn [i]
+                         (h2x/with-type-info nil (h2x/type-info (nth breakout-hsql i))))
+        branches       (mapv (fn [combo]
+                               (let [kept?         (set (expand-grouping-combo combo non-remap-poss orig->new))
+                                     bitmask       (qp.pivot/group-bitmask (count non-remap-bos) combo)
+                                     breakout-sel  (into []
+                                                         (map-indexed (fn [i entry]
+                                                                        (if (kept? i)
+                                                                          entry
+                                                                          [(typed-null i) (select-entry-alias entry)])))
+                                                         (subvec (:select honeysql-form) 0 n-breakouts))
+                                     branch-select (into breakout-sel
+                                                         cat
+                                                         [[[[:inline bitmask] lib.pivot/pivot-grouping-column-name]]
+                                                          (subvec (:select honeysql-form) n-breakouts)])
+                                     branch-group  (into []
+                                                         (keep-indexed (fn [i entry] (when (kept? i) entry)))
+                                                         (:group-by honeysql-form))]
+                                 (cond-> (-> honeysql-form
+                                             (dissoc :order-by :limit :group-by)
+                                             (assoc :select branch-select))
+                                   (seq branch-group) (assoc :group-by branch-group))))
+                             combos)
+        outer-order-by (when (> (count combos) 1)
+                         (into [[:pivot-grouping :asc]]
+                               (comp (take n-breakouts) ; the first selected values are the breakouts
+                                     (map (fn [entry] [(select-entry-alias entry) :asc])))
+                               (:select honeysql-form)))]
+    (cond-> {:select [:*]
+             :from   [[{:union-all branches} :__mb_pivot_result]]}
+      outer-order-by (assoc :order-by outer-order-by))))
+
+(defmethod sql.qp/apply-top-level-clause [:sql :pivot]
+  [driver _ honeysql-form stage]
+  (let [database (driver-api/database (driver-api/metadata-provider))]
+    (if (use-grouping-sets? database stage)
+      (compile-grouping-sets-pivot driver honeysql-form stage)
+      (compile-union-all-pivot     driver honeysql-form stage))))
