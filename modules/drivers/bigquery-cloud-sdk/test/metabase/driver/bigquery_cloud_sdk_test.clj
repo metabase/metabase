@@ -89,13 +89,11 @@
         (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     filters-type
                                                       :dataset-filters-patterns "orders"})))))))
 
-(deftest sanity-check-test
+(deftest ^:parallel sanity-check-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
       test-data
-      ;; TODO(rileythomp): Remove this, it's to test re-running failures with 2 jvms per runner
-      (is (= 1 2))
       (is (seq (mt/rows
                 (mt/run-mbql-query orders {:limit 1})))))))
 
@@ -1313,27 +1311,26 @@
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
 
-;; TODO(rileythomp): Re-enable this test after debugging
-#_(deftest later-page-fetch-returns-nil-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "BigQuery query whose later page fetch returns nil is caught, not silently truncated"
-        ;; The query path pages via `query-results-page` (`.getQueryResults`), so simulate BigQuery returning nil
-        ;; for a later page even though the page token reported there was more.
-        (let [page-counter (atom 3)
-              orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
-          (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
-                                                                    (if (zero? @page-counter)
-                                                                      nil
-                                                                      (orig-fetch job options)))]
-            (binding [bigquery/*page-size*     10 ; small pages so there are several
-                      bigquery/*page-callback* (fn []
-                                                 (let [pages (swap! page-counter #(max (dec %) 0))]
-                                                   (log/debugf "*page-callback counting down: %d to go" pages)))]
-              (mt/dataset test-data
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Cannot get next page from BigQuery"
-                     (mt/process-query (mt/query orders)))))))))))
+(deftest later-page-fetch-returns-nil-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery query whose later page fetch returns nil is caught, not silently truncated"
+      ;; The query path pages via `query-results-page` (`.getQueryResults`), so simulate BigQuery returning nil
+      ;; for a later page even though the page token reported there was more.
+      (let [page-counter (atom 3)
+            orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
+        (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
+                                                                  (if (zero? @page-counter)
+                                                                    nil
+                                                                    (orig-fetch job options)))]
+          (binding [bigquery/*page-size*     10 ; small pages so there are several
+                    bigquery/*page-callback* (fn []
+                                               (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                 (log/debugf "*page-callback counting down: %d to go" pages)))]
+            (mt/dataset test-data
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
