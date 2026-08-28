@@ -487,7 +487,7 @@
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]
-       [:network-policy-override {:optional true} [:maybe :keyword]]]]
+       [:network-policy-override {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
