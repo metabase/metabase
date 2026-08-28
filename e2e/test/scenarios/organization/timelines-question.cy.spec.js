@@ -366,20 +366,13 @@ describe("scenarios > organization > timelines > question", () => {
 
         // its timeline, visible but having one hidden event
         // should display its checkbox in an indeterminate state
-        cy.findByTestId("sidebar-content")
-          .findByText("Releases")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => {
-            cy.findByRole("checkbox").should(
-              "have.prop",
-              "indeterminate",
-              true,
-            );
+        timelineCardHeader("Releases").within(() => {
+          cy.findByRole("checkbox").should("have.prop", "indeterminate", true);
 
-            // Hide the timeline then show it again
-            cy.findByRole("checkbox").click();
-            cy.findByRole("checkbox").click();
-          });
+          // Hide the timeline then show it again
+          cy.findByRole("checkbox").click();
+          cy.findByRole("checkbox").click();
+        });
 
         // once timeline is visible, all its events should be visible
         H.timelineEventChip("RC2").should("be.visible");
@@ -400,10 +393,9 @@ describe("scenarios > organization > timelines > question", () => {
 
         // making a hidden timeline visible
         // should make its events automatically visible
-        cy.findByTestId("sidebar-content")
-          .findByText("Timeline for collection")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => cy.findByRole("checkbox").click());
+        timelineCardHeader("Timeline for collection").within(() =>
+          cy.findByRole("checkbox").click(),
+        );
 
         H.timelineEventChip("TC1").should("be.visible");
 
@@ -793,6 +785,64 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("Last year").should("exist");
       });
     });
+
+    it("should keep the events a question was saved with", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
+          { name: "RC2", timestamp: "2028-10-20T00:00:00Z", icon: "star" },
+        ],
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.timelineEventChip("RC1").should("be.visible");
+
+      cy.log("hiding an event is a change the question can be saved with");
+      cy.icon("calendar").click();
+      toggleEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("not.exist");
+
+      H.saveSavedQuestion();
+      cy.reload();
+
+      cy.log("the saved selection survives a reload");
+      H.timelineEventChip("RC2").should("be.visible");
+      H.timelineEventChip("RC1").should("not.exist");
+    });
+
+    it("should keep a timeline from another collection after saving", () => {
+      cy.request("POST", "/api/collection", {
+        name: "Ops",
+        parent_id: null,
+      }).then(({ body: { id: collectionId } }) => {
+        H.createTimelineWithEvents({
+          timeline: { name: "Incidents", collection_id: collectionId },
+          events: [
+            {
+              name: "Outage",
+              timestamp: "2027-10-20T00:00:00Z",
+              icon: "warning",
+            },
+          ],
+        });
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      cy.findByTestId("view-footer")
+        .findByText("Visualization")
+        .should("be.visible");
+
+      cy.log("a timeline from another collection is off until it is turned on");
+      cy.icon("calendar").click();
+      timelineCardHeader("Incidents").findByRole("checkbox").click();
+      H.timelineEventChip("Outage").should("be.visible");
+
+      H.saveSavedQuestion();
+      cy.reload();
+
+      H.timelineEventChip("Outage").should("be.visible");
+    });
   });
 
   describe("as readonly user", () => {
@@ -833,6 +883,13 @@ describe("scenarios > organization > timelines > question", () => {
 
 function timelineEventCard(eventName) {
   return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
+}
+
+function timelineCardHeader(timelineName) {
+  return cy
+    .findByTestId("sidebar-content")
+    .findByText(timelineName)
+    .closest("[aria-label='Timeline card header']");
 }
 
 function toggleEventVisibility(eventName) {

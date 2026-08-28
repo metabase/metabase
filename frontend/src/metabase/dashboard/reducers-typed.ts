@@ -1,6 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn, dissocIn } from "icepick";
 import _ from "underscore";
 
 import {
@@ -67,6 +66,11 @@ import {
 } from "./actions/timeline-events";
 import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
+
+// Every reducer below mutates its immer draft rather than rebuilding state with
+// icepick: icepick freezes what it returns outside production, and immer skips
+// finalizing a frozen result, leaving the untouched entries as revoked drafts
+// that throw on the next read.
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
@@ -364,13 +368,15 @@ export const dashboards = createReducer(
       })
       .addMatcher(
         createDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+        (state, { payload }) => {
+          state[payload.id].public_uuid = payload.uuid;
+        },
       )
       .addMatcher(
         deleteDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], null),
+        (state, { payload }) => {
+          state[payload.id].public_uuid = null;
+        },
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
@@ -461,12 +467,13 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          state[dashcard_id] ??= {};
+          state[dashcard_id][card_id] = result;
         }
       })
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;
-        return dissocIn(state, [dashcardId, cardId]);
+        delete state[dashcardId]?.[cardId];
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
         CARD_UPDATED,

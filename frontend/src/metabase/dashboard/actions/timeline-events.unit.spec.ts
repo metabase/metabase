@@ -1,6 +1,7 @@
 import { getMainStore } from "__support__/entities-store";
 import { getDashCardById } from "metabase/dashboard/selectors";
 import { getDashCardVisibleTimelineEvents } from "metabase/dashboard/timeline-events/selectors";
+import { initialize } from "metabase/redux/dashboard";
 import {
   createMockApiState,
   createMockDashboardState,
@@ -108,6 +109,28 @@ describe("dashboard timeline events visibility", () => {
     expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
     expect(getDashCard(store).card.visualization_settings).toEqual({});
     expect(getDashCard(store).isDirty).toBeFalsy();
+  });
+
+  it("forgets the viewer's toggles when the dashboard is loaded again", () => {
+    const store = setup({
+      savedVisibility: {
+        "timeline.selected_timeline_ids": [timeline.id],
+        "timeline.excluded_timeline_event_ids": [],
+      },
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          hideTimelineEvents(visibility, [eventA], timelines),
+      ),
+    );
+    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+
+    store.dispatch(initialize());
+
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
   });
 
   it("lets a viewer hide a saved event for their session", () => {

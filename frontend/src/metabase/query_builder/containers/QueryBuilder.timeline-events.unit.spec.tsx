@@ -1,14 +1,26 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupTimelinesEndpoints } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { TimelineEventsVisibility } from "metabase-types/api";
+import type {
+  Card,
+  Timeline,
+  TimelineEventsVisibility,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
+  createMockDataset,
+  createMockDatetimeColumn,
+  createMockNumericColumn,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
 import { hideTimeline, showTimeline } from "../actions/timelines";
@@ -20,7 +32,11 @@ import {
   getVisibleTimelineEventIds,
 } from "../store/selectors";
 
-import { TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD, setup } from "./test-utils";
+import {
+  TEST_COLLECTION,
+  TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  setup,
+} from "./test-utils";
 
 registerVisualizations();
 
@@ -41,11 +57,56 @@ const RC2 = createMockTimelineEvent({
   name: "RC2",
   timestamp: "2025-06-02T00:00:00Z",
 });
+const ARCHIVED_EVENT = createMockTimelineEvent({
+  id: 97,
+  timeline_id: 1,
+  name: "Cancelled launch",
+  timestamp: "2025-06-03T00:00:00Z",
+  archived: true,
+});
 
 const TIMELINE = createMockTimeline({
   id: 1,
   collection_id: CARD.collection_id,
   events: [RC1, RC2],
+});
+
+const WRITABLE_TIMELINE = createMockTimeline({
+  ...TIMELINE,
+  collection: createMockCollection({ id: "root", can_write: true }),
+});
+
+const GA = createMockTimelineEvent({
+  id: 96,
+  timeline_id: TIMELINE.id,
+  name: "GA",
+  timestamp: "2025-06-05T00:00:00Z",
+});
+
+const INCIDENT = createMockTimelineEvent({
+  id: 42,
+  timeline_id: 2,
+  name: "Outage",
+  timestamp: "2025-06-04T00:00:00Z",
+});
+
+const OTHER_COLLECTION_TIMELINE = createMockTimeline({
+  id: 2,
+  collection_id: TEST_COLLECTION.id,
+  events: [INCIDENT],
+});
+
+const TIME_SERIES_DATASET = createMockDataset({
+  data: {
+    cols: [
+      createMockDatetimeColumn({ name: "CREATED_AT", unit: "day" }),
+      createMockNumericColumn({ name: "count" }),
+    ],
+    rows: [
+      ["2025-06-01T00:00:00Z", 1],
+      ["2025-06-02T00:00:00Z", 2],
+    ],
+  },
 });
 
 type Store = Awaited<ReturnType<typeof setup>>["store"];
@@ -60,16 +121,23 @@ const getEventCard = (eventName: string) =>
       .find((card) => within(card).queryByText(eventName) != null),
   );
 
-const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
-  const { store } = await setup({
-    card: createMockCard({
-      ...CARD,
-      visualization_settings: { ...CARD.visualization_settings, ...visibility },
-    }),
-    timelines: [TIMELINE],
-  });
+const setupWithTimelines = async ({
+  visibility,
+  timelines = [TIMELINE],
+  card = createMockCard({
+    ...CARD,
+    visualization_settings: { ...CARD.visualization_settings, ...visibility },
+  }),
+}: {
+  visibility?: TimelineEventsVisibility;
+  timelines?: Timeline[];
+  card?: Card | UnsavedCard;
+} = {}) => {
+  const { store } = await setup({ card, timelines });
   await waitFor(() => {
-    expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+    expect(getFetchedTimelines(store.getState())).toHaveLength(
+      timelines.length,
+    );
   });
   return store;
 };
@@ -103,10 +171,60 @@ describe("QueryBuilder > timeline events", () => {
     );
   });
 
+  it("shows only the timelines of the question's collection", async () => {
+    const store = await setupWithTimelines({
+      timelines: [TIMELINE, OTHER_COLLECTION_TIMELINE],
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("falls back to the root collection's timelines for an ad-hoc question", async () => {
+    const store = await setupWithTimelines({
+      card: createMockUnsavedCard({
+        dataset_query: CARD.dataset_query,
+        display: "line",
+      }),
+      timelines: [TIMELINE, OTHER_COLLECTION_TIMELINE],
+    });
+
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    });
+  });
+
+  it("offers the events button on a time series question", async () => {
+    await setup({ card: CARD, dataset: TIME_SERIES_DATASET });
+
+    expect(await screen.findByLabelText("calendar icon")).toBeInTheDocument();
+  });
+
+  it("does not offer the events button on a question that is not a time series", async () => {
+    await setup({
+      card: createMockCard({ ...CARD, display: "table" }),
+      dataset: TIME_SERIES_DATASET,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("test-container")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("calendar icon")).not.toBeInTheDocument();
+  });
+
+  it("never shows archived events", async () => {
+    const store = await setupWithTimelines({
+      timelines: [{ ...TIMELINE, events: [RC1, RC2, ARCHIVED_EVENT] }],
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
   it("shows only the events a saved question recorded", async () => {
     const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [TIMELINE.id],
-      "timeline.excluded_timeline_event_ids": [RC1.id],
+      visibility: {
+        "timeline.selected_timeline_ids": [TIMELINE.id],
+        "timeline.excluded_timeline_event_ids": [RC1.id],
+      },
     });
 
     expect(getVisibleEventIds(store)).toEqual([RC2.id]);
@@ -114,8 +232,10 @@ describe("QueryBuilder > timeline events", () => {
 
   it("shows nothing for a question saved with events turned off", async () => {
     const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
+      visibility: {
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      },
     });
 
     expect(getVisibleEventIds(store)).toEqual([]);
@@ -199,10 +319,42 @@ describe("QueryBuilder > timeline events", () => {
     );
   });
 
+  it("shows just the event created from the sidebar", async () => {
+    const store = await setupWithTimelines({
+      visibility: {
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      },
+      timelines: [WRITABLE_TIMELINE],
+    });
+    expect(getVisibleEventIds(store)).toEqual([]);
+
+    fetchMock.post("path:/api/timeline-event", GA);
+    setupTimelinesEndpoints([{ ...WRITABLE_TIMELINE, events: [RC1, RC2, GA] }]);
+
+    await act(async () => {
+      store.dispatch(onOpenTimelines());
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create event" }),
+    );
+    await userEvent.type(await screen.findByLabelText("Event name"), GA.name);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
+
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([GA.id]);
+    });
+    expect(getIsDirty(store.getState())).toBe(true);
+  });
+
   it("re-showing a timeline keeps events outside the chart's range", async () => {
     const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
+      visibility: {
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      },
     });
 
     await act(async () => {

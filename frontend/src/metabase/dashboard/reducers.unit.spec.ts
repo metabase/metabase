@@ -417,6 +417,29 @@ describe("dashboard reducers", () => {
       });
     });
 
+    it("should keep the data of earlier dashcards readable once another one loads", () => {
+      const loadCard = (
+        state: ReturnType<typeof reducer>,
+        dashcardId: number,
+      ) =>
+        reducer(state, {
+          type: fetchCardDataAction.fulfilled.type,
+          payload: {
+            dashcard_id: dashcardId,
+            card_id: dashcardId,
+            result: { data: { rows: [[dashcardId]] } },
+            currentTime: 100,
+          },
+        });
+
+      const state = loadCard(loadCard(initState, 1), 2);
+
+      expect(state.dashcardData).toEqual({
+        1: { 1: { data: { rows: [[1]] } } },
+        2: { 2: { data: { rows: [[2]] } } },
+      });
+    });
+
     it("should store non-null results in dashcardData normally", () => {
       const result = reducer(initState, {
         type: fetchCardDataAction.fulfilled.type,
