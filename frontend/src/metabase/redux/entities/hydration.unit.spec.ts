@@ -162,6 +162,48 @@ describe("metadataHydrationMiddleware", () => {
     expect(await runMiddleware({ type: "metabase/some/thing" })).toEqual([]);
   });
 
+  it("reports a failed write instead of rejecting", async () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    // The write is deferred, so a throw here would otherwise surface as an
+    // unhandled rejection, detached from the endpoint that caused it.
+    const store = {
+      dispatch: () => {
+        throw new Error("reducer blew up");
+      },
+      getState: () => ({}),
+    } as unknown as MiddlewareAPI<Dispatch, unknown>;
+
+    metadataHydrationMiddleware(store)((nextAction) => nextAction)(
+      fulfilled("getTable", { id: 7, name: "Orders" }, { id: 7 }),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("getTable"),
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
+  });
+
+  it("ignores a fulfilled thunk that is not an Api query", async () => {
+    // `isFulfilled` matches every async thunk in the app, so a thunk of another
+    // slice carrying an `endpointName` must not reach the mirror.
+    const foreignThunk = {
+      type: "some-other-slice/executeQuery/fulfilled",
+      payload: { id: 7, name: "Orders" },
+      meta: {
+        requestId: "test-request",
+        requestStatus: "fulfilled" as const,
+        arg: { endpointName: "getTable", originalArgs: { id: 7 } },
+      },
+    };
+
+    expect(await runMiddleware(foreignThunk)).toEqual([]);
+  });
+
   it("ignores a redirect, which resolves the request with a string body", async () => {
     expect(
       await runMiddleware(fulfilled("getTable", "<html>", { id: 7 })),

@@ -170,13 +170,20 @@ const RULES_BY_ENDPOINT = new Map(
   HYDRATION_RULES.map((rule) => [rule.endpointName, rule]),
 );
 
-type FulfilledQueryArg = {
+type FulfilledQuery = {
   endpointName: string;
   originalArgs: unknown;
+  payload: unknown;
 };
 
-function getFulfilledQueryArg(action: unknown): FulfilledQueryArg | undefined {
-  if (!isFulfilled(action)) {
+// `isFulfilled` matches every async thunk in the app, so the type prefix pins
+// this to the shared Api's own actions. Read off an injected slice rather than
+// the base Api: every slice is the same enhanced object, so `reducerPath` is
+// identical on all of them, and a rename cannot silently break the guard.
+const API_ACTION_PREFIX = `${databaseApi.reducerPath}/`;
+
+function getFulfilledQuery(action: unknown): FulfilledQuery | undefined {
+  if (!isFulfilled(action) || !action.type.startsWith(API_ACTION_PREFIX)) {
     return undefined;
   }
   const { arg } = action.meta;
@@ -189,6 +196,7 @@ function getFulfilledQueryArg(action: unknown): FulfilledQueryArg | undefined {
     return {
       endpointName: arg.endpointName,
       originalArgs: "originalArgs" in arg ? arg.originalArgs : undefined,
+      payload: action.payload,
     };
   }
   return undefined;
@@ -208,13 +216,13 @@ export const metadataHydrationMiddleware: Middleware =
   (action) => {
     const result = next(action);
 
-    const arg = getFulfilledQueryArg(action);
-    const rule = arg && RULES_BY_ENDPOINT.get(arg.endpointName);
-    if (!arg || !rule || !isFulfilled(action)) {
+    const query = getFulfilledQuery(action);
+    const rule = query && RULES_BY_ENDPOINT.get(query.endpointName);
+    if (!query || !rule) {
       return result;
     }
 
-    const { payload } = action;
+    const { payload } = query;
     if (payload == null) {
       return result;
     }
@@ -223,7 +231,7 @@ export const metadataHydrationMiddleware: Middleware =
     // reach here that are not one: a redirect resolves the request with a
     // string body, and a list response that omits its rows selects `undefined`.
     // Skipped explicitly, so that a genuine fault still throws.
-    const entities = rule.toEntities(payload, arg.originalArgs);
+    const entities = rule.toEntities(payload, query.originalArgs);
     if (entities == null || typeof entities !== "object") {
       return result;
     }
@@ -236,9 +244,18 @@ export const metadataHydrationMiddleware: Middleware =
     // A promise and not `queueMicrotask`: Jest's fake timers replace
     // `queueMicrotask`, so a spec that drives polling by hand would never
     // flush the write.
-    Promise.resolve().then(() =>
-      dispatch(updateMetadata(entities, rule.schema)),
-    );
+    // Caught so a failed write cannot surface as an unhandled rejection, which
+    // would be detached from the endpoint that caused it. Logged and not
+    // swallowed: the write is a mirror of a response the cache already holds,
+    // so losing one leaves stale metadata rather than a broken request.
+    Promise.resolve()
+      .then(() => dispatch(updateMetadata(entities, rule.schema)))
+      .catch((error) => {
+        console.error(
+          `Failed to mirror the ${query.endpointName} response into state.entities`,
+          error,
+        );
+      });
 
     return result;
   };
