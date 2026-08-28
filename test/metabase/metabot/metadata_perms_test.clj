@@ -13,6 +13,11 @@
         (mt/with-dynamic-fn-redefs [perms/data-access-token (fn [_] (throw (ex-info "boom" {})))]
           (is (= #{(:id table)} (metabot.perms/row-restricted-table-ids #{(:id table)}))))))))
 
+(deftest row-restricted-table-ids-fails-closed-on-unresolvable-table-test
+  (testing "a table ID that can't be resolved to a Table row is treated as row-restricted"
+    (mt/with-test-user :rasta
+      (is (= #{Integer/MAX_VALUE} (metabot.perms/row-restricted-table-ids #{Integer/MAX_VALUE}))))))
+
 (deftest row-restricted-table-ids-batches-per-database-test
   (testing "impersonation/routing dimensions (database-wide) restrict every table in that database"
     (mt/with-temp [:model/Database db {}

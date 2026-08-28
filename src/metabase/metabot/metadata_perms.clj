@@ -107,7 +107,7 @@
                    (let [tables (into [] (keep (table-rows ids)) ids)]
                      (into {} (mapcat (fn [[db-id db-tables]] (row-restricted-by-db db-id db-tables)))
                            (group-by :db_id tables))))
-                 false)
+                 true)
        (into #{} (keep (fn [[id restricted?]] (when restricted? id))))))
 
 (defn sandbox-restricted-fields
