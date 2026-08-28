@@ -6,6 +6,7 @@
    the execute tools (query PR) add the minting call sites."
   (:require
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
@@ -147,3 +148,17 @@
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
     {:query query :prompt prompt}))
+
+;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
+
+(defn check-execute-sql-enabled!
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
+   opens the refusal sentence, naming what the instance refused. Every v2 path that runs or stores
+   raw SQL consults this one gate — a switch an admin turned off must not be reachable by a
+   second route."
+  [subject]
+  (when-not (agent-api.settings/mcp-execute-sql-enabled)
+    (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
+                                 "with the mcp-execute-sql-enabled setting.")
+                            subject)
+                    {:status-code 403}))))

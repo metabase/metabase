@@ -161,6 +161,7 @@
    :api     #{metabase.agent-api.api
               metabase.agent-api.init
               metabase.agent-api.query-guards
+              metabase.agent-api.settings
               metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
@@ -1370,7 +1371,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Document}}
+                    :model/Document
+                    :model/Field}}
 
   measures
   {:team "Graphy"
