@@ -31,9 +31,10 @@ runs:
         BACKPORT_BRANCH="backport-$TARGET_VERSION-$COMMIT"
 
         # Kondo ignore ratchets apply only to our trunk development.
-        # Release branches keep an explicit opt-out in the file, which can conflict with backported budget changes.
-        # Resolve that conflict by preserving the release branch's opt-out.
-        # Older release branches do not have the file, so remove it there instead.
+        # Release branches created by the current cut workflow keep an explicit opt-out in the file,
+        # which can conflict with backported budget changes. Preserve the release branch's copy only
+        # when it contains that opt-out; otherwise leave the conflict for manual resolution. Older
+        # release branches do not have the file, so remove it there instead.
         # If no other files conflict, finish the cherry-pick automatically.
         #
         # During a cherry-pick, HEAD ("ours") is the release branch.
@@ -42,8 +43,13 @@ runs:
           local f=.clj-kondo/ratchets.edn
           [ -n "$(git ls-files -u -- "$f")" ] || return 0
           if git cat-file -e "HEAD:$f" 2>/dev/null; then
-            echo "$f: keeping the release branch's copy"
-            git checkout HEAD -- "$f"
+            if git show "HEAD:$f" | grep -Eq '^[[:space:]]*\{[[:space:]]*:disabled[[:space:]]+true[[:space:]]*\}[[:space:]]*$'; then
+              echo "$f: keeping the release branch's explicit opt-out"
+              git checkout HEAD -- "$f"
+            else
+              echo "$f: release branch has live budgets, leaving the conflict for manual resolution"
+              return 0
+            fi
           else
             echo "$f: dropped, kondo ratchets are master-only"
             git rm -q "$f"

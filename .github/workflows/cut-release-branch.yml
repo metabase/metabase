@@ -62,7 +62,7 @@ jobs:
       #
       # Kondo ignore ratchets apply only to master. The cut commit replaces the
       # budgets with an explicit opt-out so future budget changes are not applied
-      # to the release branch (BEGUILD-30). Keeping the opt-out in the canonical
+      # to the release branch. Keeping the opt-out in the canonical
       # file avoids introducing a separate marker that could drift out of sync.
       - name: Cut the branch
         id: cut

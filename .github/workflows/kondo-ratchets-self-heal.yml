@@ -29,7 +29,8 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     # Fork PRs do not receive the automation token and therefore cannot be updated.
-    # Release branches explicitly opt out in ratchets.edn, which this workflow must preserve.
+    # The explicit opt-out in a release branch's ratchets.edn already makes this job a no-op;
+    # skipping release branches here simply saves a runner.
     if: >-
       contains(github.event.pull_request.labels.*.name, 'kondo-ratchets-self-healing')
       && github.event.pull_request.head.repo.full_name == github.repository

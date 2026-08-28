@@ -22,6 +22,12 @@
     @scan
     (kondo-ratchet/scan)))
 
+(defn- ratchets-enabled? []
+  (if (kondo-ratchet/disabled?)
+    (do (is true "Skipped: ratchets.edn explicitly disables enforcement")
+        false)
+    true))
+
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The self-heal workflow does the same for labelled PRs.
 (use-fixtures :once (fn [thunk]
@@ -38,7 +44,7 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel budgets-match-actual-counts-test
-  (when-not (kondo-ratchet/disabled?)
+  (when (ratchets-enabled?)
     (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
                   "Budget too low: remove an ignore, or seed the budget with\n"
                   "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
@@ -50,7 +56,7 @@
                                   (tree-scan)))))))
 
 (deftest ^:parallel ignores-are-justified-test
-  (when-not (kondo-ratchet/disabled?)
+  (when (ratchets-enabled?)
     (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
                   "(or trailing on the same line) saying why the suppression is warranted.\n"
                   "Linters in :comment-exempt in " kondo-ratchet/ratchets-file " are grandfathered;\n"
@@ -61,7 +67,7 @@
                     (kondo-ratchet/unjustified exempt (tree-scan)))))))))
 
 (deftest ^:parallel no-stale-exemptions-test
-  (when-not (kondo-ratchet/disabled?)
+  (when (ratchets-enabled?)
     (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
                   "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`, or label\n"
                   "the PR kondo-ratchets-self-healing.")
@@ -70,7 +76,7 @@
                (kondo-ratchet/stale-exemptions comment-exempt (tree-scan))))))))
 
 (deftest ^:parallel config-budgets-match-actual-test
-  (when-not (kondo-ratchet/disabled?)
+  (when (ratchets-enabled?)
     (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/ratchets-file " must match\n"
                   ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
                   "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
@@ -80,7 +86,7 @@
                                          (kondo-ratchet/config-suppressions)))))))
 
 (deftest ^:parallel ratchets-file-normalized-test
-  (when-not (kondo-ratchet/disabled?)
+  (when (ratchets-enabled?)
     (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
                   " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the"
                   " formatting.")
@@ -286,14 +292,18 @@
           budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
       (with-redefs [kondo-ratchet/ratchets-file (.getPath budgets)]
         (is (kondo-ratchet/disabled?))
-        (is (= (str (.getPath budgets) " is disabled -- kondo ratchets are master-only, nothing to do\n")
+        (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
                (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
-(deftest ^:synchronized missing-ratchets-are-not-disabled-test
+(deftest ^:synchronized missing-ratchets-file-fails-test
   (with-redefs [kondo-ratchet/ratchets-file "target/does-not-exist/ratchets.edn"]
-    (is (not (kondo-ratchet/disabled?))
-        "Only an explicit value in ratchets.edn disables enforcement")))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"ratchets.edn is missing"
+                          (kondo-ratchet/read-ratchets)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"ratchets.edn is missing"
+                          (kondo-ratchet/disabled?)))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Justification bookkeeping unit tests

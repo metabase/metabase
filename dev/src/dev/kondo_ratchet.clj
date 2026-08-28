@@ -22,12 +22,21 @@
   "The key that release branches set to `true` in [[ratchets-file]] to disable the ratchets."
   :disabled)
 
+(defn read-ratchets
+  "Parsed contents of [[ratchets-file]], with empty defaults for omitted keys.
+  Throws when the file is missing; only an explicit `{:disabled true}` opts out of enforcement."
+  []
+  (let [file (io/file ratchets-file)]
+    (when-not (.exists file)
+      (throw (ex-info (str ratchets-file " is missing -- only {:disabled true} opts out of enforcement")
+                      {:file ratchets-file})))
+    (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+           (edn/read-string (slurp file)))))
+
 (defn disabled?
   "Whether [[ratchets-file]] explicitly disables the ratchets."
   []
-  (let [file (io/file ratchets-file)]
-    (and (.exists file)
-         (true? (get (edn/read-string (slurp file)) disabled-key)))))
+  (true? (get (read-ratchets) disabled-key)))
 
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
@@ -331,13 +340,6 @@
          :when  (not= budget n)]
      [linter {:recorded budget, :actual n}])))
 
-(defn read-ratchets
-  "Parsed contents of [[ratchets-file]], with empty defaults when the file doesn't exist."
-  []
-  (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
-         (when (.exists (io/file ratchets-file))
-           (edn/read-string (slurp ratchets-file)))))
-
 (def ^:private header
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
@@ -436,7 +438,7 @@
    (fix! nil))
   ([{:keys [seed]}]
    (if (disabled?)
-     (println (str ratchets-file " is disabled -- kondo ratchets are master-only, nothing to do"))
+     (println (str ratchets-file " is disabled -- nothing to do"))
      (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
            occurrences   (scan)
            seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
