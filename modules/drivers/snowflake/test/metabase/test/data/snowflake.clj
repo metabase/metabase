@@ -6,6 +6,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-store :as dataset-store]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -49,7 +50,8 @@
 (defn- already-qualified? [database-name]
   (and (string? database-name)
        (or (str/starts-with? database-name "isolate_")
-           (str/starts-with? database-name "sha_"))))
+           (str/starts-with? database-name "sha_")
+           (str/starts-with? database-name dataset-store/id-prefix))))
 
 (defn qualified-db-name
   "Isolate db name so we don't stomp on any other jobs running at the same time."
@@ -193,7 +195,9 @@
   (when (compare-and-set! deleted-old-test-data? false true)
     (delete-old-test-data!)))
 
-(defn- set-current-user-timezone!
+(defn set-current-user-timezone!
+  "Snowflake defaults to America/Los_Angeles; tests expect UTC. Must be set before loading data, or
+  timestamps land in the wrong zone."
   [timezone]
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
