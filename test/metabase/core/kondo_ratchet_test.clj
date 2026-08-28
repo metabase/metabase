@@ -278,8 +278,7 @@
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
-;; This test temporarily redefines a global var, so it cannot run in parallel.
-(deftest fix-when-disabled-test
+(deftest ^:synchronized fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
     (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                             "kondo-ratchet-test"
@@ -291,7 +290,7 @@
                (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
-(deftest missing-ratchets-are-not-disabled-test
+(deftest ^:synchronized missing-ratchets-are-not-disabled-test
   (with-redefs [kondo-ratchet/ratchets-file "target/does-not-exist/ratchets.edn"]
     (is (not (kondo-ratchet/disabled?))
         "Only an explicit value in ratchets.edn disables enforcement")))
