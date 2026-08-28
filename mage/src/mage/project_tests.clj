@@ -13,7 +13,8 @@
 
 (def ^:private ratchet-check-namespaces
   "Ratchet check namespaces run by [[run!]]."
-  '[metabase.core.kondo-ratchet-test])
+  '[metabase.core.kondo-ratchet-test
+    metabase.core.kondo-ratchet-check-test])
 
 (def ^:private backend-check-namespaces
   "Backend check namespaces run by [[run!]]."

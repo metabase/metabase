@@ -7,8 +7,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.kondo-ratchet :as kondo-ratchet]
-   [metabase.config.core :as config]))
+   [dev.kondo-ratchet :as kondo-ratchet]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,6 +24,12 @@
 
 (defn- ratchets-enabled? []
   (not (kondo-ratchet/disabled?)))
+
+(defn- budget-drift
+  [ci? limits unlimited occurrences]
+  (if ci?
+    (kondo-ratchet/over-budget limits unlimited occurrences)
+    (apply dissoc (kondo-ratchet/drift limits occurrences) unlimited)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The master shrinker performs this bookkeeping asynchronously after merge.
@@ -51,10 +56,7 @@
                   "`fix!` itself is broken, since the test fixture just ran it.")
       (let [{:keys [limits unlimited]} (kondo-ratchet/read-ratchets)]
         (is (= {}
-               ((if config/is-test?
-                  #(kondo-ratchet/over-budget limits unlimited %)
-                  #(kondo-ratchet/drift limits %))
-                (tree-scan))))))))
+               (budget-drift (System/getenv "CI") limits unlimited (tree-scan))))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (when (ratchets-enabled?)
@@ -255,6 +257,14 @@
     (is (str/ends-with? (kondo-ratchet/render {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}})
                         "{:limits {}\n :unlimited #{}\n :config-counts  {}\n :comment-exempt #{}\n}\n"))))
 
+(deftest read-ratchets-rejects-overlap-test
+  (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+               (spit "{:limits {:a 1}, :unlimited #{:a}}\n"))]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"both :limits and :unlimited"
+                            (kondo-ratchet/read-ratchets))))))
+
 (deftest ^:parallel lowered-counts-test
   (is (= {:lower 3, :over-budget 5}
          (kondo-ratchet/lowered-counts {:lower 5, :over-budget 5, :gone 5}
@@ -288,7 +298,18 @@
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
-(deftest ^:parallel fix-when-disabled-test
+(deftest ^:parallel budget-drift-test
+  (let [limits      {:bounded 2}
+        unlimited   #{:free}
+        occurrences [{:file "f.clj", :line 1, :linters [:bounded :free]}]]
+    (is (= {:bounded {:recorded 2, :actual 1}}
+           (budget-drift nil limits unlimited occurrences))
+        "local checks require bounded counts to match exactly, but ignore unlimited linters")
+    (is (= {}
+           (budget-drift "true" limits unlimited occurrences))
+        "CI allows bounded improvements and ignores unlimited linters")))
+
+(deftest ^:synchronized fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
     (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                             "kondo-ratchet-test"
