@@ -12,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -156,6 +157,32 @@
           result (#'search/reciprocal-rank-fusion lists)]
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
+
+(deftest multi-query-total-is-deduped-not-summed-test
+  (testing "under multi-query fusion, :total is the size of the deduped fused set, not the sum of
+            per-query counts — the real reciprocal-rank-fusion feeds search-results, so an item
+            appearing in both queries is counted once"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    ;; default engine only, so both queries run through the same ranked-fn* branch
+                    search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/disjunction (fn [_ terms] terms)
+                    ;; two queries, overlapping on item 1 (in both) — union is {1 2 3}, sum is 4
+                    search-core/ranked-results (fn [context]
+                                                 (if (= (:search-string context) "a")
+                                                   [{:id 1 :model "card" :name "Shared"}
+                                                    {:id 2 :model "card" :name "OnlyA"}]
+                                                   [{:id 1 :model "card" :name "Shared"}
+                                                    {:id 3 :model "card" :name "OnlyB"}]))
+                    ;; the real search-results is app-db-bound; stand in with a faithful passthrough
+                    ;; that reports total over the (already fused + deduped) ranking it is handed.
+                    search-core/search-results (fn [_ctx _model-set ranked]
+                                                 {:data (vec ranked) :total (count ranked)})]
+        (let [results (search/search {:term-queries ["a" "b"] :entity-types ["question"] :limit 10})]
+          ;; three distinct items survive fusion; total counts them once, not 2+2=4
+          (is (= 3 (:total (meta results))))
+          (is (= #{1 2 3} (set (map :id results)))))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
@@ -370,16 +397,16 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (true? (:search-native-query context)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (true? (:search-native-query context)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (not (contains? context :search-native-query)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (not (contains? context :search-native-query)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
@@ -395,9 +422,9 @@
                     api/*current-user-id* 1]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
             (is (= #{"table" "dataset" "metric" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
@@ -405,30 +432,30 @@
             (is (not (contains? @captured "database")))))
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["plan"]
                                        :entity_types    ["document" "dashboard"]}))
             (is (= #{"document" "dashboard"} @captured))))))))
@@ -441,16 +468,20 @@
                     api/*current-user-id* 1]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            ;; limit/offset moved out of the per-query ranked-results context into the single
+            ;; paginate step, so the limit assertion now reads the search-results context.
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data [] :total 0})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data [] :total 0})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
         (testing "limit above 50 is rejected by schema validation"

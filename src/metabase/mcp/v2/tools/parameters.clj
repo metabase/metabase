@@ -217,7 +217,7 @@
 
     :else
     (or (common/truncation-line {:param :query :offset offset :limit limit
-                                 :total total :total-floor? more?})
+                                 :total total :total-floor? more? :returned returned})
         (when more?
           (format "Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."
                   returned)))))

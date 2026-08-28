@@ -1,0 +1,557 @@
+(ns metabase.mcp.v2.tools.search
+  "The v2 MCP `search` tool: one entry point for discovery, backed by the v1 metabot search
+   pipeline (each query runs separately, results merged by rank). Three explicit modes —
+   ranked queries, filters-only listing, and recents — plus a server-side snippet union
+   (snippets aren't in the search index). An explicitly named type that doesn't support a filter
+   is a teaching error; an omitted type is narrowed to the types that do, disclosed in the
+   response — the engine's silent, undisclosed narrowing is never relied on."
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.activity-feed.core :as activity-feed]
+   [metabase.api.common :as api]
+   [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.tools.search :as metabot.search]
+   [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Type tables ---------------------------------------------------
+
+(def ^:private all-types
+  ["question" "model" "metric" "measure" "segment" "dashboard" "document" "collection"
+   "table" "database" "snippet" "transform" "action"])
+
+(def ^:private created-by-types
+  "Types whose search model indexes a creator (`in_place/filter.clj`'s created-by methods);
+   `created_by` with any other type is a teaching error rather than the engine's silent narrowing."
+  #{"question" "model" "metric" "dashboard" "document" "measure" "action"})
+
+(def ^:private collectionless-types
+  "Types the collection filter can never serve — they don't live in collections."
+  #{"measure" "segment" "database"})
+
+(def ^:private non-archivable-types
+  "Types whose search model has no archived state (`:archived false` in their spec). `archived: true`
+   with any of them can only ever return nothing, so the engine silently drops the type — a teaching
+   error instead. Note transforms *do* live in collections, so this is distinct from
+   `collectionless-types`."
+  #{"table" "database" "transform"})
+
+(def ^:private type->rv-model
+  "v2 type → the recent-views model keyword; the domain of this map is exactly the set of
+   types recents tracks."
+  {"question"   :card
+   "model"      :dataset
+   "metric"     :metric
+   "dashboard"  :dashboard
+   "table"      :table
+   "collection" :collection
+   "document"   :document})
+
+(def ^:private rv-model->type
+  (set/map-invert type->rv-model))
+
+;;; ------------------------------------------------ Projections ---------------------------------------------------
+
+(def ^:private concise-row-keys
+  #{:type :id :name :collection_path :description})
+
+(projections/register-projection!
+ :search-result
+ {:concise  (fn [row]
+              (m/remove-vals nil? (select-keys row concise-row-keys)))
+  ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
+  ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
+  :detailed (fn [row]
+              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk)
+                (and (:portable_entity_id row) (nil? (:entity_id row)))
+                (assoc :entity_id (:portable_entity_id row))))
+  :sample   {:id                     1
+             :type                   "question"
+             :name                   "x"
+             :description            "x"
+             :created_at             "x"
+             :updated_at             "x"
+             :collection             {:id 1 :name "x" :authority_level "official" :description "x"}
+             :collection_path        "x"
+             :location               "x"
+             :database_id            1
+             :database_engine        "x"
+             :database_name          "x"
+             :database_schema        "x"
+             :display_name           "x"
+             :verified               true
+             :official               true
+             :curated                true
+             :data_authority         "x"
+             :data_layer             "x"
+             :model_id               1
+             :table_id               1
+             :table_name             "x"
+             :table_schema           "x"
+             :entity_id              "x"
+             :base_table_id          1
+             :base_table_name        "x"
+             :base_table_schema      "x"}})
+
+;;; --------------------------------------------- Collection paths -------------------------------------------------
+
+(defn- location->ids
+  [location]
+  (when location
+    (mapv parse-long (re-seq #"\d+" location))))
+
+(defn- readable-id->name
+  "Map of collection id -> name for the given ids, omitting collections the current user cannot
+   read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
+  [ids]
+  (when (seq ids)
+    (into {}
+          (comp (filter mi/can-read?)
+                (map (juxt :id :name)))
+          (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))))
+
+(defn- add-collection-paths
+  "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
+   containing collection's own name — to every row that has a `:collection`. Collection rows
+   use their own `:location` (path of their ancestors). Two batched lookups total; rows with
+   no collection context (root items, snippets, tables, databases) get no path.
+
+   Ancestors the current user cannot read are omitted from the path, matching the breadcrumb
+   semantics of [[metabase.collections.models.collection/effective-ancestors]]: for A > B > C
+   where B is unreadable, the path reads \"A/C\"."
+  [rows]
+  (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
+        parents        (when (seq parent-ids)
+                         (t2/select-fn->fn :id (juxt :name :location)
+                                           [:model/Collection :id :name :location]
+                                           :id [:in parent-ids]))
+        ancestor-ids   (into #{}
+                             (comp (mapcat location->ids)
+                                   (remove parent-ids))
+                             (concat (map second (vals parents))
+                                     (keep :location rows)))
+        id->name       (merge (readable-id->name ancestor-ids)
+                              (update-vals parents first))
+        location-path  (fn [location]
+                         (when-let [segments (seq (keep id->name (location->ids location)))]
+                           (str/join "/" segments)))]
+    (mapv (fn [row]
+            (let [parent-id     (get-in row [:collection :id])
+                  [pname ploc]  (get parents parent-id)
+                  path          (cond
+                                  pname           (str/join "/" (concat (keep id->name (location->ids ploc))
+                                                                        [pname]))
+                                  (:location row) (location-path (:location row)))]
+              (m/assoc-some row :collection_path path)))
+          rows)))
+
+;;; ------------------------------------------------ Validation ----------------------------------------------------
+
+(defn- collection-scoping?
+  "True when `collection_id` scopes the search to a specific collection: present and not the inert
+   \"root\" sentinel (nil is stripped before the handler, so a present value is non-nil). A missing
+   or \"root\" filter does nothing, so it must not trip the collection checks. \"trash\" counts as
+   scoping and surfaces its teaching error when [[resolve-collection-filter]] resolves it."
+  [{:keys [collection_id] :as args}]
+  (and (contains? args :collection_id)
+       (not= "root" collection_id)))
+
+(def ^:private data-source-types
+  "Types the data-hierarchy browser (browse_data) serves; every other type lives in a collection
+   and is browsed with browse_collection."
+  #{"table" "database"})
+
+(defn- browse-redirect!
+  "Throw a teaching error for a filters-only call — filters but no query. search only ranks
+   queries, so a query-less listing belongs in a browse_* tool, whose order is stable and whose
+   count isn't ranking-capped. Route to the closest match by the filters given."
+  [{:keys [type collection_id created_by archived] :as args}]
+  (let [types  (set type)
+        target (cond
+                 (contains? types "snippet")
+                 "browse_collection(namespace: \"snippets\")"
+
+                 (contains? types "transform")
+                 "browse_collection(namespace: \"transforms\")"
+
+                 (collection-scoping? args)
+                 (format "browse_collection(id: %s, mode: \"items\"%s%s)"
+                         (pr-str collection_id)
+                         (if (seq types) (str ", type: " (pr-str (vec (sort types)))) "")
+                         (if created_by ", created_by: \"me\"" ""))
+
+                 created_by
+                 (str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") — "
+                      "browse lists your content within a collection, not instance-wide")
+
+                 (true? archived)
+                 "browse_collection(id: \"trash\", mode: \"items\")"
+
+                 (and (seq types) (every? data-source-types types))
+                 "browse_data (list_databases, then list_tables)"
+
+                 :else
+                 "browse_collection(id: <collection>, mode: \"items\") for a specific collection")]
+    (common/throw-teaching-error
+     (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
+          "To browse without a query, use " target "."))))
+
+(def ^:private max-queries-per-list
+  "Cap on term_queries/semantic_queries entries. Each entry fans out into its own subsearch (a full
+   ranked-pool fetch, plus an embedding call for a semantic query), and the MCP throttler counts
+   requests, not the queries inside one — so an uncapped list turns one call into many concurrent
+   searches."
+  10)
+
+(def ^:private max-query-length
+  "Cap on each query string, in characters — a long query wastes embedding tokens and slows the
+   full-text scan without adding signal."
+  500)
+
+(defn- validate-modes!
+  [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
+  (when (some str/blank? (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
+          "be non-empty. Drop the blank entry.")))
+  (when (or (> (count term_queries) max-queries-per-list)
+            (> (count semantic_queries) max-queries-per-list))
+    (common/throw-teaching-error
+     (format (str "Too many queries — pass at most %d entries each in term_queries and "
+                  "semantic_queries. Combine related queries or drop some.")
+             max-queries-per-list)))
+  (when (some #(> (count %) max-query-length) (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (format "A query is too long — each term_queries/semantic_queries entry must be at most %d characters."
+             max-query-length)))
+  (when (and (true? recent) queries?)
+    (common/throw-teaching-error
+     (str "recent: true returns your recently viewed items and cannot be combined with "
+          "term_queries or semantic_queries — drop the queries or drop recent.")))
+  (when-not (or queries? filters? (true? recent))
+    (common/throw-teaching-error
+     (str "Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed "
+          "by type, collection_id, created_by, archived), or recent: true for your recently viewed "
+          "items. To list without a query, browse with browse_collection or browse_data.")))
+  (when (and filters? (not queries?) (not (true? recent)))
+    (browse-redirect! args))
+  args)
+
+(def ^:private engine-searchable-types
+  "Every type search can run against the engine — `all-types` minus snippet, which is served by its
+   own listing. This is the type set an omitted `type` expands to, and the set `created_by`/
+   `collection_id`/`archived` compatibility is checked against when the caller didn't name types
+   explicitly — otherwise the engine's own silent per-type narrowing would apply unannounced."
+  (into (sorted-set) (remove #{"snippet"}) all-types))
+
+(defn- validate-filters!
+  "Validate `created_by`/`collection_id`/`archived` against `type`, throwing a teaching error for
+   a genuinely invalid combination. Returns `{:types :disclosures}`: when the caller named `type`
+   explicitly, `:types` is nil (unchanged) and `:disclosures` empty. When `type` was omitted and a
+   filter is supported by only some of the engine's types, the search is narrowed to the
+   supporting types instead of thrown — the caller never asked for the unsupported types
+   specifically, and rejecting the whole call would break the common unscoped case (`created_by:
+   \"me\"` with no `type`) — and `:disclosures` names every such narrowing for the response."
+  [{:keys [type created_by archived semantic_queries recent] :as args}]
+  (let [types           (set type)
+        ;; The set a compatibility check runs against: the caller's explicit types, or — when
+        ;; omitted from an engine search — every type the engine would otherwise search, so a
+        ;; filter that only some types support is caught instead of silently narrowing an unscoped
+        ;; search. recent: true never reaches the engine and has its own, more specific
+        ;; incompatibility check below, so it must not be widened into this one.
+        type-omitted?   (and (empty? types) (not (true? recent)))
+        effective-types (if type-omitted? engine-searchable-types types)
+        narrowed        (atom [])] ; [{:excluded #{...} :disclosure "..."}], one entry per narrowing filter
+    (when (and (contains? types "snippet") (next types))
+      (common/throw-teaching-error
+       (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
+                    "search index and are paged separately. List them in their own call, and search %s in another.")
+               (str/join ", " (sort (disj types "snippet"))))))
+    (when (and (contains? types "snippet") (seq semantic_queries))
+      (common/throw-teaching-error
+       (str "semantic_queries cannot search snippets — snippets aren't in the search index and are "
+            "matched by substring against their name, not semantic similarity. Use term_queries instead, "
+            "or drop semantic_queries.")))
+    (when created_by
+      (when-let [bad (seq (sort (remove created-by-types effective-types)))]
+        (if type-omitted?
+          (swap! narrowed conj
+                 {:excluded   (set bad)
+                  :disclosure (format "created_by narrowed the search to %s — %s don't index a creator."
+                                      (str/join ", " (sort (set/difference effective-types (set bad))))
+                                      (str/join ", " bad))})
+          (common/throw-teaching-error
+           (format (str "created_by only applies to types that index a creator: %s. "
+                        "Remove %s from type or drop created_by.")
+                   (str/join ", " (sort created-by-types))
+                   (str/join ", " bad))))))
+    (when (collection-scoping? args)
+      (when-let [bad (seq (sort (filter collectionless-types effective-types)))]
+        (if type-omitted?
+          (swap! narrowed conj
+                 {:excluded   (set bad)
+                  :disclosure (format "collection_id narrowed the search to %s — %s don't live in collections."
+                                      (str/join ", " (sort (set/difference effective-types (set bad))))
+                                      (str/join ", " bad))})
+          (common/throw-teaching-error
+           (format (str "collection_id cannot filter %s — these types don't live in collections. "
+                        "Remove them from type or drop collection_id.")
+                   (str/join ", " bad)))))
+      (when (contains? types "snippet")
+        (common/throw-teaching-error
+         "collection_id cannot filter snippets — list them with type: [\"snippet\"] and no collection_id."))
+      (when (contains? types "transform")
+        (common/throw-teaching-error
+         "collection_id cannot filter transforms — the search index doesn't record their collection. Remove transform from type or drop collection_id."))
+      (when (and (contains? types "table")
+                 (not (premium-features/has-feature? :library)))
+        (common/throw-teaching-error
+         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id.")))
+    (when (true? archived)
+      (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
+        (if type-omitted?
+          (swap! narrowed conj
+                 {:excluded   (set bad)
+                  :disclosure (format "archived: true narrowed the search to %s — %s have no archived state."
+                                      (str/join ", " (sort (set/difference effective-types (set bad))))
+                                      (str/join ", " bad))})
+          (common/throw-teaching-error
+           (format (str "archived: true cannot filter %s — these types have no archived state. "
+                        "Remove them from type or drop archived.")
+                   (str/join ", " bad))))))
+    (when (true? (:recent args))
+      (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]
+        (common/throw-teaching-error
+         (format "Recents only track %s — remove %s from type or drop recent: true."
+                 (str/join ", " (sort (keys type->rv-model)))
+                 (str/join ", " bad))))
+      (when (or created_by (collection-scoping? args) (true? archived))
+        (common/throw-teaching-error
+         "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
+    (if (seq @narrowed)
+      {:types       (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
+       :disclosures (mapv :disclosure @narrowed)}
+      {:types nil :disclosures []})))
+
+(defn- resolve-collection-filter
+  "Resolve the `collection_id` argument to a numeric collection id behind the collection's read
+   check, or nil when it means the root (no scoping). Sentinel handling is delegated to
+   [[v2.resolve/resolve-collection-id]] — nil/\"root\" resolve to nil, \"trash\" is a teaching error —
+   and a real id still gets the read check the REST endpoint runs. The search context takes numeric
+   ids only, so entity_ids are translated here."
+  [collection-id]
+  (when-let [id (v2.resolve/resolve-collection-id collection-id)]
+    (:id (v2.resolve/resolve-and-read :model/Collection id))))
+
+;;; ------------------------------------------------ Recents mode --------------------------------------------------
+
+(defn- recent-item->row
+  [fmt {:keys [model parent_collection] :as item}]
+  (case fmt
+    :concise  (-> {:type (rv-model->type model)
+                   :id   (:id item)
+                   :name (:name item)}
+                  (m/assoc-some :collection_path (:name parent_collection)
+                                :description     (:description item)))
+    :detailed (assoc item :type (rv-model->type model))))
+
+(defn- recents-page
+  [{:keys [type]} fmt limit offset]
+  (let [models            (into [] (comp (map type->rv-model) (distinct)) type)
+        {:keys [recents]} (activity-feed/get-recents api/*current-user-id*
+                                                     [:views :selections]
+                                                     {:models models})
+        page              (into [] (comp (drop offset) (take limit)) recents)]
+    {:rows  (mapv #(recent-item->row fmt %) page)
+     :total (count recents)}))
+
+(defn- recents-floor-line
+  "The floor line for a full recents page: `total` is never an exact count for recents (the
+   per-model retention cap, dropped unreadable/inconsistent rows), so [[common/truncation-line]]'s
+   arithmetic (which only fires when the page is truncated) silently omits any line when a page
+   happens to reach `total` exactly — reading as \"this is everything\" when it's actually the cap.
+   Recents can't be paged past that cap (there is nothing stored beyond it), so this steers to
+   narrowing with `type` rather than an offset, unlike the ordinary truncation line."
+  [{:keys [returned total offset limit]}]
+  (when (and (pos? total) (pos? returned) (>= (+ offset limit) total))
+    (format "Returned %d of at least %d — this is a capped view; narrow with `type` to reach specific items."
+            returned total)))
+
+;;; ---------------------------------------------- Snippet union ---------------------------------------------------
+
+;; TODO(GHY-4171): snippets are a bolt-on — not in the search engine, so they can't be scored,
+;; ranked, or fused, and must be listed and paged on their own track (the reason the
+;; snippet-exclusivity teaching error exists). Moving them into the engine lets this function, that
+;; error, and the namespace redirect all be deleted.
+(defn- snippet-rows
+  "Snippet rows for the server-side union: all (non-)archived snippets the caller can read —
+   filtered per row through `mi/can-read?`, so EE snippet-folder permissions and the
+   sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
+   case-insensitive substring."
+  [queries archived]
+  (let [readable (filter mi/can-read?
+                         ;; Select only what we return (id/name/description) plus :collection_id,
+                         ;; which can-read? consults — never :content, which holds the SQL body.
+                         (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
+                                    :archived (boolean archived)
+                                    {:order-by [[:%lower.name :asc]]}))
+        matches  (if (seq queries)
+                   (let [needles (mapv u/lower-case-en queries)]
+                     (filter (fn [{:keys [name]}]
+                               (let [haystack (u/lower-case-en name)]
+                                 (some #(str/includes? haystack %) needles)))
+                             readable))
+                   readable)]
+    (mapv (fn [{:keys [id name description]}]
+            (cond-> {:type "snippet" :id id :name name}
+              description (assoc :description description)))
+          matches)))
+
+;;; ------------------------------------------------ Search mode ---------------------------------------------------
+
+(defn- engine-results
+  "Run the shared metabot search pipeline and return `{:rows [...] :total <int>}`. Rows are the
+   postprocessed+enriched results with `:collection_path` attached; `total` is the engine's match
+   count for the (fused) result set."
+  [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
+  ;; The tool redirects query-less listings to browse_*, so engine-results only ever runs with a
+  ;; query present — no :filters-only? branch to trip.
+  (let [results (metabot.search/search
+                 (cond-> {:term-queries     (vec term_queries)
+                          :semantic-queries (vec semantic_queries)
+                          :entity-types     (vec entity-types)
+                          :archived         (true? archived)
+                          :limit            limit
+                          :offset           offset}
+                   created_by    (assoc :created-by #{api/*current-user-id*})
+                   collection-id (assoc :collection-id collection-id)))]
+    {:rows  (add-collection-paths (vec results))
+     :total (:total (meta results))}))
+
+;;; -------------------------------------------------- The tool ----------------------------------------------------
+
+(def ^:private type-desc
+  (str "Restrict results to these entity types. \"snippet\" is served by a separate listing "
+       "(snippets aren't in the search index), requires the " metabot.scope/agent-content-read
+       " scope, and must be requested on its own — combining it with other types is an error. "
+       "Omit to search every type this tool supports except snippets."))
+
+(def ^:private search-args-schema
+  [:map {:closed true}
+   [:term_queries {:optional true}
+    [:maybe [:sequential [:string {:min 1 :description "A keyword query matched against names and descriptions via full-text search. Each query runs separately; results are merged by rank."}]]]]
+   [:semantic_queries {:optional true}
+    [:maybe [:sequential [:string {:min 1 :description "A natural-language query matched by semantic similarity when a semantic engine is active (keyword-ranked otherwise). Each query runs separately; results are merged by rank."}]]]]
+   [:recent {:optional true}
+    [:maybe [:boolean {:description "true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters."}]]]
+   [:type {:optional true}
+    [:maybe [:sequential (into [:enum {:description type-desc}] all-types)]]]
+   [:collection_id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric collection id."}]
+             [:string {:description "A 21-character entity_id, or \"root\" for no scoping."}]]]]
+   [:created_by {:optional true}
+    [:maybe [:enum {:description "\"me\" restricts results to items you created. Only question, model, metric, dashboard, document, measure, and action index a creator."} "me"]]]
+   [:archived {:optional true}
+    [:maybe [:boolean {:description "true searches the trash instead of active content."}]]]
+   [:limit {:optional true}
+    [:maybe [:int {:min 1 :max 50 :description "Maximum results to return (default 20, max 50)."}]]]
+   [:offset {:optional true}
+    [:maybe [:int {:min 0 :description "Number of results to skip, for paging (default 0)."}]]]
+   [:response_format {:optional true}
+    [:maybe [:enum {:description "concise (default) returns {type, id, name, collection_path, description} rows; detailed returns the full search-result rows."} "concise" "detailed"]]]
+   [:fields {:optional true}
+    [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from the detailed row shape, item-relative (e.g. \"collection.name\"). Mutually exclusive with response_format."}]]]]])
+
+(defn- project-rows
+  [args rows]
+  (if-let [fields (:fields args)]
+    (common/select-fields :search-result
+                          (mapv #(projections/project :search-result :detailed %) rows)
+                          fields
+                          {:response-format (:response_format args)})
+    (let [fmt (common/response-format args)]
+      (mapv #(projections/project :search-result fmt %) rows))))
+
+(defn- append-lines
+  "Append extra lines (a disclosure, a floor line) to the text block of an already-built MCP
+   response, after whatever steering line `common/list-content` appended."
+  [content lines]
+  (if (seq lines)
+    (update-in content [:content 0 :text] str "\n" (str/join "\n" lines))
+    content))
+
+(registry/deftool search-tool
+  "Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords)
+  and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection
+  subtree), created_by: \"me\", archived: true; (2) recent: true — your recently viewed items. A query is required
+  for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a
+  collection), use browse_collection or browse_data instead — this tool redirects query-less listings there.
+  type: [\"snippet\"] searches SQL snippets you can read by name and must be requested on its own, not alongside
+  other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
+  \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
+  limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
+                                                                             :scope        metabot.scope/agent-content-read
+                                                                             :annotations  {:readOnlyHint true :idempotentHint true}
+                                                                             :args         search-args-schema}
+  [{:keys [term_queries semantic_queries recent type collection_id archived] :as args} _]
+  (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
+        filters?  (boolean (or (seq type)
+                               (collection-scoping? args)
+                               (:created_by args)
+                               (true? archived)))
+        limit     (or (:limit args) 20)
+        offset    (or (:offset args) 0)]
+    (validate-modes! args queries? filters?)
+    (let [{:keys [types disclosures]} (validate-filters! args)]
+      (if (true? recent)
+        (let [fmt (if (:fields args)
+                    (common/throw-teaching-error
+                     "`fields` is not supported with recent: true — use response_format instead.")
+                    (common/response-format args))
+              {:keys [rows total]} (recents-page args fmt limit offset)
+              ;; RecentViews retains at most 20 rows per user per model per context and drops
+              ;; unreadable/inconsistent rows, so `total` (the size of that already-capped,
+              ;; already-filtered set) is a floor on how much the user has actually viewed, never
+              ;; an exact count.
+              floor-line (recents-floor-line {:returned (count rows) :total total :offset offset :limit limit})]
+          (append-lines
+           (common/list-content rows total {:param :type :offset offset :limit limit :total-floor? true})
+           (cond-> [] floor-line (conj floor-line))))
+        ;; `validate-filters!` has already rejected snippet alongside any other type, so these
+        ;; two listings are mutually exclusive and each pages on its own terms.
+        (let [caller-types       (into [] (distinct) type)
+              {:keys [rows total total-floor?]}
+              (if (contains? (set caller-types) "snippet")
+                (let [snippets (snippet-rows (concat term_queries semantic_queries) archived)]
+                  {:rows         (into [] (comp (drop offset) (take limit)) snippets)
+                   :total        (count snippets)
+                   :total-floor? false})
+                ;; `types` is validate-filters!'s narrowed type set — non-nil only when `type` was
+                ;; omitted and a filter (created_by/collection_id/archived) supports only some of
+                ;; the engine's types, in which case it replaces the full engine surface below.
+                (let [engine-types  (into [] (remove #{"snippet"})
+                                          (cond
+                                            types              types
+                                            (seq caller-types) caller-types
+                                            :else              all-types))
+                      collection-id (when (contains? args :collection_id)
+                                      (resolve-collection-filter collection_id))
+                      engine        (engine-results args engine-types collection-id limit offset)]
+                  ;; The engine total is the size of the ranked pool, capped at the search ranking
+                  ;; limit — so it is a floor, not an exact count, when the cap is hit.
+                  {:rows (vec (:rows engine)) :total (:total engine) :total-floor? true}))]
+          (append-lines
+           (common/list-content (project-rows args rows) total
+                                {:param :type :offset offset :limit limit :total-floor? total-floor?})
+           disclosures))))))
