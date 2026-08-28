@@ -7,7 +7,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.kondo-ratchet :as kondo-ratchet]))
+   [dev.kondo-ratchet :as kondo-ratchet]
+   [metabase.config.core :as config]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
   (not (kondo-ratchet/disabled?)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
-;; The self-heal workflow does the same for labelled PRs.
+;; The master shrinker performs this bookkeeping asynchronously after merge.
 (use-fixtures :once (fn [thunk]
                       (when-not (System/getenv "CI")
                         (kondo-ratchet/fix!))
@@ -42,15 +43,18 @@
 
 (deftest ^:parallel budgets-match-actual-counts-test
   (when (ratchets-enabled?)
-    (testing (str "\nBudgets in " kondo-ratchet/*ratchets-file* " must match the actual inline ignore counts.\n"
+    (testing (str "\nBudgets in " kondo-ratchet/*ratchets-file* " must match the actual inline ignore counts in development.\n"
                   "Budget too low: remove an ignore, or seed the budget with\n"
                   "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
-                  "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
-                  "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a local\n"
-                  "run means `fix!` itself is broken, since the test fixture just ran it.")
-      (is (= {}
-             (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
-                                  (tree-scan)))))))
+                  "Budget too high: run `./bin/mage fix-kondo-ratchets`; the master shrinker\n"
+                  "records improvements asynchronously after merge. Too high in a local run means\n"
+                  "`fix!` itself is broken, since the test fixture just ran it.")
+      (let [{:keys [limits unlimited]} (kondo-ratchet/read-ratchets)]
+        (is (= {}
+               ((if config/is-test?
+                  #(kondo-ratchet/over-budget limits unlimited %)
+                  #(kondo-ratchet/drift limits %))
+                (tree-scan))))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (when (ratchets-enabled?)
@@ -66,8 +70,7 @@
 (deftest ^:parallel no-stale-exemptions-test
   (when (ratchets-enabled?)
     (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
-                  "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`, or label\n"
-                  "the PR kondo-ratchets-self-healing.")
+                  "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`.")
       (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
         (is (= #{}
                (kondo-ratchet/stale-exemptions comment-exempt (tree-scan))))))))
@@ -231,13 +234,17 @@
 
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
-    (let [ratchets {:ignore-counts  {:discouraged-var 3, :all 1, :metabase/modules 2}
+    (let [ratchets {:limits         {:discouraged-var 3, :all 1, :metabase/modules 2}
+                    :unlimited      #{:unused-alias}
                     :config-counts  {:unresolved-symbol 18, :inline-def 1}
                     :comment-exempt #{:metabase/modules :discouraged-var}}
           text     (kondo-ratchet/render ratchets)]
-      (is (str/ends-with? text (str "{:ignore-counts  {:all              1\n"
-                                    "                  :discouraged-var  3\n"
-                                    "                  :metabase/modules 2}\n"
+      (is (str/ends-with? text (str "{:limits {:all              1\n"
+                                    "          :discouraged-var  3\n"
+                                    "          :metabase/modules 2}\n"
+                                    " :unlimited #{\n"
+                                    "            :unused-alias\n"
+                                    "           }\n"
                                     " :config-counts  {:inline-def        1\n"
                                     "                  :unresolved-symbol 18}\n"
                                     " :comment-exempt #{:discouraged-var\n"
@@ -245,8 +252,8 @@
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
-                        "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
+    (is (str/ends-with? (kondo-ratchet/render {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}})
+                        "{:limits {}\n :unlimited #{}\n :config-counts  {}\n :comment-exempt #{}\n}\n"))))
 
 (deftest ^:parallel lowered-counts-test
   (is (= {:lower 3, :over-budget 5}
@@ -375,7 +382,8 @@
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "unexempted :polite (all its ignores are justified now)"]
-           (kondo-ratchet/change-report {:ignore-counts  {:lower 5, :over 5, :gone 5, :same 4, :polite 1}
+           (kondo-ratchet/change-report {:limits         {:lower 5, :over 5, :gone 5, :same 4, :polite 1}
+                                         :unlimited      #{}
                                          :config-counts  {:cfg-lower 4, :cfg-over 1, :cfg-gone 2, :cfg-same 6}
                                          :comment-exempt #{:lower :polite}}
                                         occurrences

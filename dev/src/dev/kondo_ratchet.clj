@@ -26,7 +26,7 @@
     (when-not (.exists file)
       (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
                       {:file *ratchets-file*})))
-    (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+    (merge {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}}
            (edn/read-string (slurp file)))))
 
 (defn disabled?
@@ -264,6 +264,16 @@
                                        (take 5)
                                        vec)))]))))
 
+(defn over-budget
+  "Linters whose actual count exceeds their limit. Unlimited linters are ignored."
+  [limits unlimited occurrences]
+  (let [unlimited (set unlimited)]
+    (sorted-by-str
+     (for [[linter {:keys [recorded actual] :as entry}] (drift limits occurrences)
+           :when (and (> actual recorded)
+                      (not (contains? unlimited linter)))]
+       [linter entry]))))
+
 (defn unjustified
   "Occurrences that need a justification comment but lack one, and suppress at least one linter outside
   the `exempt` set."
@@ -339,14 +349,15 @@
      [linter {:recorded budget, :actual n}])))
 
 (def ^:private header
-  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:limits),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
        ";; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an\n"
        ";; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
        ";; widening the exemptions is a hand edit to defend in your PR.\n"
-       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
+       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
+       ";; :unlimited lists low-severity linters whose ignore count is intentionally unbounded.\n"))
 
 (defn- render-counts
   [counts indent]
@@ -361,13 +372,18 @@
            "}"))))
 
 (defn render
-  "Text of the ratchets file for the `{:ignore-counts _, :config-counts _, :comment-exempt _}` map.
+  "Text of the ratchets file for the `{:limits _, :unlimited _, :config-counts _, :comment-exempt _}` map.
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
-  [{:keys [ignore-counts config-counts comment-exempt]}]
-  (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
+  [{:keys [limits unlimited config-counts comment-exempt]}]
+  (let [counts-indent (apply str (repeat (count "{:limits {") \space))
+        unlimited     (sort-by str (or unlimited #{}))
         exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
-         "{:ignore-counts  " (render-counts ignore-counts counts-indent)
+         "{:limits " (render-counts limits counts-indent)
+         "\n :unlimited #"
+         (if (empty? unlimited)
+           "{}"
+           (str "{\n            " (str/join "\n            " (map str unlimited)) "\n           }"))
          "\n :config-counts  " (render-counts config-counts counts-indent)
          "\n :comment-exempt "
          (if (empty? comment-exempt)
@@ -399,7 +415,7 @@
 (defn change-report
   "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
   anything over budget."
-  [{:keys [ignore-counts config-counts comment-exempt]} occurrences config-actual seeded]
+  [{:keys [limits unlimited config-counts comment-exempt]} occurrences config-actual seeded]
   (let [actual (actual-counts occurrences)]
     (concat
      (for [linter seeded
@@ -407,7 +423,7 @@
        (if (pos? n)
          (format "seeded %s at %d" linter n)
          (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
-     (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
+     (for [[linter budget] (sort-by (comp str first) (apply dissoc limits seeded))
            :let            [n (get actual linter 0)]
            :when           (not= n budget)]
        (cond
@@ -415,7 +431,7 @@
          (< n budget) (format "lowered %s %d -> %d" linter budget n)
          :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
                               linter budget n linter)))
-     (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
+     (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys limits) unlimited)))]
        (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
                linter n linter))
      (for [[linter {:keys [recorded actual]}] (config-drift config-counts config-actual)]
@@ -425,7 +441,11 @@
          :else                (format "WARNING: config suppressions for %s are over budget (%d recorded, %d actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
                                       linter recorded actual)))
      (for [linter (stale-exemptions comment-exempt occurrences)]
-       (format "unexempted %s (all its ignores are justified now)" linter)))))
+       (format "unexempted %s (all its ignores are justified now)" linter))
+     (for [linter (sort-by str unlimited)
+           :when  (zero? (get actual linter 0))]
+       (format "WARNING: %s is unlimited but has no inline ignores -- remove it from :unlimited unless intentional"
+               linter)))))
 
 (defn fix!
   "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
@@ -435,14 +455,15 @@
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
+   (let [{:keys [limits unlimited config-counts comment-exempt] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
        (let [occurrences   (scan)
              seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
              actual        (actual-counts occurrences)
              config-actual (config-suppressions)
-             text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+             text          (render {:limits         (lowered-counts limits actual seeded)
+                                    :unlimited      unlimited
                                     :config-counts  (lowered-counts config-counts config-actual [])
                                     :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
              old           (slurp *ratchets-file*)]
@@ -451,3 +472,37 @@
            (println "unchanged")
            (do (spit *ratchets-file* text)
                (println (str "wrote " *ratchets-file*)))))))))
+
+(defn check-report
+  "The lines [[check]] prints when `text` has over-limit inline ignores or is not normalized.
+  Lower counts are allowed because the master shrinker records improvements asynchronously."
+  [{:keys [limits unlimited] :as ratchets} occurrences text]
+  (let [over        (over-budget limits unlimited occurrences)
+        linter-line (fn [[linter {:keys [recorded actual]}]]
+                      (format "  %s: %d recorded, %d actual" linter recorded actual))]
+    (concat
+     (when (seq over)
+       (cons (str "over budget -- remove an ignore, or seed the budget with"
+                  " `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:")
+             (mapcat (fn [[_ {:keys [examples]} :as entry]]
+                       (cons (linter-line entry) (map #(str "    " %) examples)))
+                     over)))
+     (when (not= text (render ratchets))
+       [(str *ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
+             " to fix the formatting")]))))
+
+(defn check
+  "Fail the babashka task when inline ignores exceed their limits or the ratchets file is not normalized.
+  Only an explicit `{:disabled true}` opts out of enforcement."
+  []
+  (let [ratchets (read-ratchets)]
+    (if (disabled? ratchets)
+      (println (str *ratchets-file* " is disabled -- nothing to check"))
+      (let [occurrences (scan)
+            lines       (check-report ratchets occurrences (slurp *ratchets-file*))]
+        (if (empty? lines)
+          (println (format "ok -- %d ignore forms within %d limits"
+                           (count occurrences) (count (:limits ratchets))))
+          (do (run! println lines)
+              (throw (ex-info (str *ratchets-file* " drifted from the source tree")
+                              {:babashka/exit 1, :mage/quiet true}))))))))
