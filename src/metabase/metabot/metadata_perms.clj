@@ -4,6 +4,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -76,7 +77,8 @@
       (let [token (perms/data-access-token {:database-id db-id :table-ids ids})
             db-wide-restricted? (boolean (or (:impersonation token) (:routing token)))]
         (into {} (map (fn [id] [id (or db-wide-restricted? (contains? (:sandbox token) id))])) ids))
-      (catch Exception _
+      (catch Exception e
+        (log/debugf e "Restriction probe failed for database %d, falling back per table" db-id)
         ;; Impersonation and routing are the realistic throw sources (a missing user attribute),
         ;; and both are database-wide -- a single cheap probe with `:table-ids #{}` (which skips
         ;; the per-table sandbox lookup entirely) tells us whether that's the case, without turning
@@ -92,9 +94,12 @@
                     (map (fn [id]
                            [id (try
                                  (boolean (seq (perms/data-access-token {:database-id db-id :table-ids #{id}})))
-                                 (catch Exception _ true))]))
+                                 (catch Exception e
+                                   (log/debugf e "Restriction probe failed for table %d, defaulting to restricted" id)
+                                   true))]))
                     ids)))
-          (catch Exception _
+          (catch Exception e
+            (log/debugf e "Restriction probe failed for database %d, defaulting to restricted" db-id)
             restrict-all))))))
 
 (defn row-restricted-table-ids
