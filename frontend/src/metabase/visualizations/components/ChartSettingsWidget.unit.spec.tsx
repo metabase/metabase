@@ -6,7 +6,37 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
+type WidgetProps = Record<string, unknown>;
+
+type Props = ComponentProps<typeof ChartSettingsWidget> & {
+  question: object;
+  onChangeSeriesColor: () => void;
+  onShowWidget: () => void;
+};
+
+interface SetupOpts {
+  props: Props;
+}
+
 const { isWidgetMount, CustomVizSettingWidget } = PLUGIN_CUSTOM_VIZ;
+
+const setup = ({ props }: SetupOpts) => {
+  let mountedProps: WidgetProps | undefined;
+
+  function RecordingWidget({ widgetProps }: { widgetProps: WidgetProps }) {
+    mountedProps = widgetProps;
+    return null;
+  }
+
+  PLUGIN_CUSTOM_VIZ.isWidgetMount = (value): value is WidgetMount =>
+    typeof value === "function";
+
+  PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget = RecordingWidget;
+
+  renderWithProviders(<ChartSettingsWidget {...props} />);
+
+  return { mountedProps };
+};
 
 describe("ChartSettingsWidget", () => {
   afterEach(() => {
@@ -15,49 +45,33 @@ describe("ChartSettingsWidget", () => {
   });
 
   it("hands a custom viz widget only its documented props", () => {
-    let mountedProps: Record<string, unknown> | undefined;
-    function RecordingWidget({
-      widgetProps,
-    }: {
-      widgetProps: Record<string, unknown>;
-    }) {
-      mountedProps = widgetProps;
-      return null;
-    }
-    PLUGIN_CUSTOM_VIZ.isWidgetMount = (value): value is WidgetMount =>
-      typeof value === "function";
-    PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget = RecordingWidget;
     const mount: WidgetMount = () => ({
       update: () => undefined,
       unmount: () => undefined,
     });
     const onChange = jest.fn();
     const onChangeSettings = jest.fn();
-    const props: ComponentProps<typeof ChartSettingsWidget> & {
-      question: object;
-      onShowWidget: () => void;
-      onChangeSeriesColor: () => void;
-    } = {
-      id: "threshold",
-      title: "Threshold",
-      value: 1,
-      widget: mount,
-      props: { placeholder: "Set threshold" },
-      onChange,
-      onChangeSettings,
-      question: {},
-      onShowWidget: jest.fn(),
-      onChangeSeriesColor: jest.fn(),
-    };
-
-    renderWithProviders(<ChartSettingsWidget {...props} />);
+    const { mountedProps } = setup({
+      props: {
+        id: "threshold",
+        question: {},
+        props: { placeholder: "Set threshold" },
+        title: "Threshold",
+        value: 1,
+        widget: mount,
+        onChange,
+        onChangeSettings,
+        onChangeSeriesColor: jest.fn(),
+        onShowWidget: jest.fn(),
+      },
+    });
 
     expect(mountedProps).toEqual({
       id: "threshold",
+      placeholder: "Set threshold",
       value: 1,
       onChange,
       onChangeSettings,
-      placeholder: "Set threshold",
     });
   });
 });
