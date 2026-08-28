@@ -235,8 +235,8 @@
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [params-to-keep (enabled-params-slugs (:parameters dashboard-or-card) embedding-params)]
-    (update dashboard-or-card :parameters (partial filter #(contains? params-to-keep (keyword (:slug %)))))))
+  (let [params-slugs-to-keep (enabled-params-slugs (:parameters dashboard-or-card) embedding-params)]
+    (update dashboard-or-card :parameters (partial filter #(contains? params-slugs-to-keep (keyword (:slug %)))))))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
@@ -389,9 +389,9 @@
 (defn- remove-locked-parameters
   [dashboard embedding-params]
   (let [params                  (:parameters dashboard)
-        params-to-keep          (enabled-params-slugs params embedding-params)
+        params-slugs-to-keep    (enabled-params-slugs params embedding-params)
         param-ids-to-keep       (set (keep (fn [{:keys [slug id]}]
-                                             (when (contains? params-to-keep (keyword slug)) id))
+                                             (when (contains? params-slugs-to-keep (keyword slug)) id))
                                            params))
         keep-parameter-mappings (fn [dashcard]
                                   (update dashcard :parameter_mappings
