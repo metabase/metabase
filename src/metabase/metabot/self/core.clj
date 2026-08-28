@@ -1064,10 +1064,14 @@
     (llm/assert-llm-url-allowed! url))
   (let [resolver (when-not proxy?
                    (u.http/network-policy-dns-resolver (llm/llm-allowed-networks)))]
-    (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
-                       :socket-timeout     (llm/llm-request-timeout-ms)}
-                      (merge req)
-                      (update :url #(str url %))
-                      (update :headers merge headers)
-                      ;; nil under :allow-all, which leaves clj-http on its default resolver
-                      (u/assoc-dissoc :dns-resolver resolver)))))
+    (try
+      (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                         :socket-timeout     (llm/llm-request-timeout-ms)}
+                        (merge req)
+                        (update :url #(str url %))
+                        (update :headers merge headers)
+                        ;; nil under :allow-all, which leaves clj-http on its default resolver
+                        (u/assoc-dissoc :dns-resolver resolver)))
+      (catch Exception e
+        (llm/rethrow-if-llm-network-policy-error! e url)
+        (throw e)))))

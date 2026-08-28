@@ -171,6 +171,13 @@
           (mt/with-dynamic-fn-redefs [http/request capture]
             (self.core/request {:url "https://8.8.8.8" :headers {}} req)
             (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
+        (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                                     (throw (ex-info "HTTP wrapper" {}
+                                                                     (ex-info "blocked address" {:ssrf true}))))]
+            (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
+                    (try (self.core/request {:url "https://8.8.8.8" :headers {}} req)
+                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
         (testing "the AI proxy's URL is operator configuration and is exempt"
           (mt/with-dynamic-fn-redefs [http/request capture]
             (self.core/request {:url "http://127.0.0.1:9" :headers {} :proxy? true} req)

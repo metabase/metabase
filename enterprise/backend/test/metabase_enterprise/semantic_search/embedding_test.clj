@@ -418,6 +418,14 @@
           (embed "openai")
           (is (= "https://8.8.8.8/v1/embeddings" (:url @captured)))
           (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
+      (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
+                                    llm.settings/llm-openai-api-base-url (constantly "https://8.8.8.8")
+                                    http/post                            (fn [& _]
+                                                                           (throw (ex-info "blocked"
+                                                                                           {:ssrf true})))]
+          (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
+                  (rejected "openai")))))
       (testing "the AI service URL is operator configuration and is exempt"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                     llm.settings/ai-service-base-url                loopback

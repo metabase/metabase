@@ -122,4 +122,5 @@
                        :prompt     (:input_tokens usage)
                        :completion (:output_tokens usage)}})
       (catch Exception e
+        (llm.settings/rethrow-if-llm-network-policy-error! e url)
         (handle-api-error e)))))

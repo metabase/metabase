@@ -258,6 +258,23 @@
               (try (llm.settings/assert-llm-url-allowed! "http://127.0.0.1:8000/v1")
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
+(deftest connection-time-network-policy-error-test
+  (testing "direct and wrapped DNS policy rejections are recognized and translated to the URL-validation shape"
+    (doseq [cause [(ex-info "blocked address" {:ssrf true})
+                   (ex-info "HTTP client wrapper" {} (ex-info "blocked address" {:ssrf true}))]]
+      (is (true? (llm.settings/llm-network-policy-error? cause)))
+      (is (=? {:status-code 400
+               :api-error   true
+               :error-code  :llm-host-not-allowed
+               :llm-url     "https://rebound.example/v1"}
+              (try (llm.settings/rethrow-if-llm-network-policy-error!
+                    cause "https://rebound.example/v1")
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+  (testing "unrelated failures pass through the recognizer"
+    (let [e (ex-info "provider down" {:status 503})]
+      (is (false? (llm.settings/llm-network-policy-error? e)))
+      (is (nil? (llm.settings/rethrow-if-llm-network-policy-error! e "https://example.com"))))))
+
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
 (deftest llm-max-tokens-test

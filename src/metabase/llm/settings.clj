@@ -98,6 +98,25 @@
                      :error-code  :llm-host-not-allowed
                      :llm-url     url}))))
 
+(defn llm-network-policy-error?
+  "Whether `e` or one of its causes is a connection-time rejection from the policy DNS resolver."
+  [e]
+  (boolean
+   (some #(-> % ex-data :ssrf)
+         (take-while some? (iterate ex-cause e)))))
+
+(defn rethrow-if-llm-network-policy-error!
+  "Translate a connection-time policy rejection in `e` to the same stable 400 shape as
+  [[assert-llm-url-allowed!]]. Returns nil when `e` is unrelated."
+  [e url]
+  (when (llm-network-policy-error? e)
+    (throw (ex-info (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url)
+                    {:status-code 400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-url     url}
+                    e))))
+
 ;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
 ;; deleting the connection they key off turns those features off. They should name a connection instead.
 (defn- connection-field-getter
