@@ -1612,13 +1612,13 @@
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:viz:mcp-ui:query"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:viz:mcp-ui:query"}))))
   (testing "returns :ok with wildcard scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:*"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
   (testing "returns :scope-denied for a known URI with non-matching scope"
-    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:search"}))))
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:search"}))))
   (testing "returns :scope-denied for a known URI with empty scopes"
-    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{}))))
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{}))))
   (testing "returns :not-found for an unknown URI"
     (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
 
@@ -1692,10 +1692,10 @@
   (testing "UI resources contain stable configuration without a short-lived credential"
     (let [[session-id _] (initialize!)
           read1 (mcp-request (jsonrpc-request "resources/read"
-                                              {:uri "ui://metabase/visualize-query-v2.html"} 1)
+                                              {:uri "ui://metabase/visualize-query.html"} 1)
                              {"mcp-session-id" session-id})
           read2 (mcp-request (jsonrpc-request "resources/read"
-                                              {:uri "ui://metabase/visualize-query-v2.html"} 2)
+                                              {:uri "ui://metabase/visualize-query.html"} 2)
                              {"mcp-session-id" session-id})]
       (is (= 200 (:status read1)))
       (is (= 200 (:status read2)))
@@ -1738,7 +1738,7 @@
           session-id    (get-in response [:headers "Mcp-Session-Id"])
           batch-response (mcp-request [(jsonrpc-notification "notifications/initialized")
                                        (jsonrpc-request "resources/read"
-                                                        {:uri "ui://metabase/visualize-query-v2.html"} 1)]
+                                                        {:uri "ui://metabase/visualize-query.html"} 1)]
                                       {"mcp-session-id" session-id})]
       (is (=? {:status 200
                :body   [{:id     1
