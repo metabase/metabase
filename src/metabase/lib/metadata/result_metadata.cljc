@@ -317,7 +317,8 @@
                               ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
                               (= (:lib/deduplicated-name col) (:lib/original-name col))
                               (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
-                     (string? id-or-name))
+                     (string? id-or-name)
+                     (not= (:lib/source col) :source/expressions))
                 [tag (dissoc opts :base-type) (:id col)]
 
                 (pos-int? id-or-name)
