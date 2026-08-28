@@ -426,8 +426,7 @@
 
   bug-reporting
   {:team "UX West"
-   :api  #{metabase.bug-reporting.api
-           metabase.bug-reporting.init}
+   :api  #{metabase.bug-reporting.api metabase.bug-reporting.init metabase.bug-reporting.settings}
    :uses #{analytics
            api
            app-db
@@ -480,6 +479,7 @@
            api
            app-db
            appearance
+           bug-reporting
            collections
            config
            dashboards
