@@ -1,6 +1,7 @@
 (ns metabase.lib.convert.metadata-to-legacy
   (:require
    [medley.core :as m]
+   ;; side-effect require: registers the legacy-column-metadata schema this ns's output is checked against
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.util :as u]

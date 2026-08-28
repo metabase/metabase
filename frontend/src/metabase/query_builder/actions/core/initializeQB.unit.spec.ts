@@ -45,6 +45,7 @@ import {
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
+import * as qbActions from "../../store/actions";
 import * as querying from "../querying";
 
 import * as cardActions from "./card";
@@ -257,7 +258,7 @@ describe("QB Actions > initializeQB", () => {
 
       describe(questionType, () => {
         it("resets QB state before doing anything", async () => {
-          const resetQBSpy = jest.spyOn(sharedQB, "resetQB");
+          const resetQBSpy = jest.spyOn(qbActions, "resetQB");
           await setup({ card });
           expect(resetQBSpy).toHaveBeenCalledTimes(1);
         });
