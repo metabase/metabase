@@ -50,11 +50,9 @@
           sandboxes-with-group-ids (t2/hydrate
                                     (t2/select :model/Sandbox
                                                {:select [[:pgm.group_id :group_id]
-                                                         [:da.permission_group_id :data_app_group_id]
                                                          [:s.*]]
                                                 :from [[:permissions_group_membership :pgm]]
-                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
-                                                            [:data_app :da] [:= :da.permission_group_id :pgm.group_id]]
+                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
                                                 :where [:and
                                                         [:= :pgm.user_id user-id]]})
                                     :table)
@@ -62,9 +60,10 @@
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (t2/select :model/ConnectionImpersonation
                                                      :group_id [:in user-group-ids]))
-          ;; Data app groups grant unrestricted table access for app queries.
-          ;; Make sure a sandbox from another group always takes precedence over data app groups.
-          data-app-group-ids (into #{} (keep :data_app_group_id) sandboxes-with-group-ids)
+          ;; Data app groups grant unrestricted table access for app queries, so a sandbox from
+          ;; another group must always take precedence — exclude data-app groups from the check
+          ;; of whether another group lifts the sandbox.
+          data-app-group-ids (perms/data-app-group-ids)
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

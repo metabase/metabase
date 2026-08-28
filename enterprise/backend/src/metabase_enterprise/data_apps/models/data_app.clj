@@ -83,9 +83,9 @@
   [data-app json-generator]
   (next-method (dissoc data-app :bundle) json-generator))
 
-(defenterprise server-managed-group-ids
-  "The data-app permission groups. SSO group sync must never touch these — membership is granted by an
-   admin, not by an IdP claim."
+(defenterprise data-app-group-ids
+  "The data-app permission groups (the `permission_group_id` of every data app). SSO group sync must
+   never touch their membership, and newly-synced tables default to `:blocked` for them."
   :feature :none
   []
   (into #{} (t2/select-fn-set :permission_group_id :model/DataApp :permission_group_id [:not= nil])))

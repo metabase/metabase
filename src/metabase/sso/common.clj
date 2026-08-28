@@ -4,24 +4,15 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-(defenterprise server-managed-group-ids
-  "Ids of permission groups Metabase owns and manages itself (currently data-app groups). SSO group
-   sync must never add users to or remove them from these — their membership is set by an admin, not
-   by an IdP `groups` claim. OSS has none."
-  metabase-enterprise.data-apps.models.data-app
-  []
-  #{})
 
 (defn- excluded-group-ids
   []
   (into #{(u/the-id (perms/all-users-group))
           (u/the-id (perms/all-external-users-group))}
-        (server-managed-group-ids)))
+        (perms/data-app-group-ids)))
 
 (defn- sync-group-memberships*!
   [user-or-id to-remove to-add]

@@ -208,8 +208,10 @@
                                                     :group_id [:in group-ids])
           sandbox-group-ids   (t2/select-fn-set :group_id :model/Sandbox
                                                 :group_id [:in group-ids])
+          ;; Data-app groups only ever see what their app declared, so a newly-added database must
+          ;; default to `:blocked` for them.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids))]
+                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-view-data-permission-levels
@@ -234,6 +236,9 @@
                                              :where  [:and
                                                       [:in :s.group_id group-ids]
                                                       [:= :t.db_id db-id]]}))
-          blocked-groups    (into (or blocked-group-ids #{})
-                                  sandbox-group-ids)]
+          ;; Data-app groups only ever see tables their app declared, so a newly-synced table must
+          ;; default to `:blocked` for them even when every existing table is `:unrestricted`.
+          blocked-groups    (-> (or blocked-group-ids #{})
+                                (into sandbox-group-ids)
+                                (into (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
