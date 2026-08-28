@@ -72,6 +72,9 @@ const isMaildevListening = async (webPort: string | number) => {
  */
 const startContainers = async () => {
   if (!isPortInUse(MAILDEV_WEB_PORT) && !isPortInUse(MAILDEV_SMTP_PORT)) {
+    console.log(
+      `ℹ️ Starting maildev on ports ${MAILDEV_WEB_PORT} (web) / ${MAILDEV_SMTP_PORT} (SMTP)`,
+    );
     shell(`${DOCKER_COMPOSE_COMMAND} up -d`);
     return;
   }
