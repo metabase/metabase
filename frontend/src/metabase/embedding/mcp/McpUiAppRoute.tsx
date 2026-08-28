@@ -37,7 +37,6 @@ interface McpUiAppRouteContentProps {
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  refreshTool: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -48,7 +47,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { instanceUrl = "", refreshTool = "" } =
+  const { instanceUrl = "" } =
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
@@ -57,10 +56,10 @@ export function McpUiAppRoute() {
     hostError,
     hostContext,
     mcpSessionId,
+    uiCredential,
     prompt,
     query,
-    uiCredential,
-  } = useMcpApp(refreshTool);
+  } = useMcpApp();
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";

@@ -1707,8 +1707,8 @@
         (is (not (str/includes? html2 "uiCredential")))
         (is (not (str/includes? html1 "mcpSessionId")))
         (is (not (str/includes? html2 "mcpSessionId")))
-        (is (str/includes? html1 "refresh_ui_credential"))
-        (is (str/includes? html2 "refresh_ui_credential"))))))
+        (is (not (str/includes? html1 "refreshTool")))
+        (is (not (str/includes? html2 "refreshTool")))))))
 
 (deftest mcp-ui-credential-validation-test
   (testing "an app-only refresh tool provides the scoped UI request surface, but not general API access"
