@@ -17,6 +17,7 @@ import {
   provideParameterValuesTags,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import { encodeNativeStagesBase64 } from "./utils/encode-native-stages";
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -61,7 +62,7 @@ export const datasetApi = Api.injectEndpoints({
       query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
-        body,
+        body: encodeNativeStagesBase64(body),
         noEvent: ignore_error,
       }),
       providesTags: () => provideAdhocDatasetTags(),

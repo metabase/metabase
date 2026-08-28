@@ -2,7 +2,6 @@ import chroma from "chroma-js";
 import type { HTMLAttributes } from "react";
 import { useCallback } from "react";
 
-import { colors } from "metabase/lib/colors/colors";
 
 import { ColorSelectorPanel } from "../ColorSelectorPanel";
 
@@ -36,7 +35,7 @@ export const ColorRangeSelectorPanel = ({
 
   return (
     <ColorSelectorPanel
-      initalColor={initialValue?.[2] ?? colors.white}
+      initalColor={initialValue?.[2] ?? "#2E353B"}
       onChange={handleColorChange}
       onClose={onClose}
       style={{ border: "none" }}

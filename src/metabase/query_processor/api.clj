@@ -53,12 +53,12 @@
       (String. StandardCharsets/UTF_8)))
 
 (defn decode-native-stage [stage]
-  (if (= (:lib/type stage) "mbql.stage/native")
+  (if (= (:lib/type stage) :mbql.stage/native)
     (update stage :native base64-decode)
     stage))
 
 (defn decode-native-stages [query]
-  (if (not= (:lib/type query) "mbql/query")
+  (if (not= (:lib/type query) :mbql/query)
     query
     (update query :stages
       (fn [stages]

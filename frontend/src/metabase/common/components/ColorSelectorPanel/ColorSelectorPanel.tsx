@@ -3,7 +3,6 @@ import Chrome, { ChromeInputType } from "@uiw/react-color-chrome";
 import type { HTMLAttributes } from "react";
 import { useCallback, useState } from "react";
 
-import { colors } from "metabase/lib/colors/palette";
 import { Box, Button } from "metabase/ui";
 
 import S from "./ColorSelectorPanel.module.css";
@@ -24,7 +23,7 @@ export const ColorSelectorPanel = ({
   style,
 }: ColorSelectorPopoverInnerProps) => {
   const [hsva, setHsva] = useState(
-    hexToHsva(initalColor ?? colors["bg-black"]),
+    hexToHsva(initalColor ?? "#2E353B"),
   );
   const handleSelect = useCallback(() => {
     onChange?.(hsvaToHex(hsva));
