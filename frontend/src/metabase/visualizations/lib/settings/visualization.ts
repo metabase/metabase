@@ -70,7 +70,7 @@ export function getSettingDefinitionsForSeries(
   const visualization = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
-    ...(visualization?.settings || {}),
+    ...visualization?.settings,
   };
   for (const id in definitions) {
     definitions[id].id = id;
