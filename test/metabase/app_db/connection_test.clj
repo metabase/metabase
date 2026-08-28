@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
@@ -358,22 +359,39 @@
                               (throw (ex-info "Original error" {})))))
                (is (= {:outer "kept"} @mdb.connection/*transaction-state*)))))))))
 
+(defn- savepoint-losing-connection
+  "A connection whose savepoint rollback always fails, as it does once something inside the transaction has committed
+  it -- DDL does that implicitly on H2 and MySQL. Records the calls made on it in `calls`."
+  ^Connection [calls]
+  (reify Connection
+    (rollback [_ _savepoint]
+      (throw (ex-info "Savepoint rollback error" {})))
+    (rollback [_] (swap! calls conj :rollback))
+    (commit [_] (swap! calls conj :commit))
+    (setAutoCommit [_ _])
+    (getAutoCommit [_] true)
+    (setSavepoint [_])))
+
+(deftest failed-rollback-only-rollback-throws-in-tests-test
+  (testing "an outermost rollback-only that cannot roll back fails the test that caused it"
+    ;; Its writes are durable by now, so they would otherwise show up in every later test.
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (savepoint-losing-connection calls)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Could not roll back a rollback-only transaction.*leak into every later test"
+             (t2/with-transaction [_ nil {:rollback-only true}] :result))))
+      (is (= [:rollback] @calls)
+          "the connection is rolled back outright, never committed"))))
+
 (deftest failed-rollback-only-rollback-discards-the-transaction-test
-  (testing "an outermost rollback-only whose savepoint is gone discards what is pending instead of failing"
-    ;; The savepoint normally disappears because the body committed; DDL does this implicitly on H2 and MySQL.
+  (testing "outside tests the same failure warns and discards what is still pending"
     ;; Those writes are already durable, so only any remaining pending work can be rolled back.
-    (let [calls     (atom [])
-          mock-conn (reify Connection
-                      (rollback [_ _savepoint]
-                        (throw (ex-info "Savepoint rollback error" {})))
-                      (rollback [_] (swap! calls conj :rollback))
-                      (commit [_] (swap! calls conj :commit))
-                      (setAutoCommit [_ _])
-                      (getAutoCommit [_] true)
-                      (setSavepoint [_]))]
-      (binding [t2.connection/*current-connectable* mock-conn]
-        (is (= :result (t2/with-transaction [_ nil {:rollback-only true}] :result))
-            "the body's result is still returned"))
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (savepoint-losing-connection calls)]
+        (with-redefs [config/is-test? false]
+          (is (= :result (t2/with-transaction [_ nil {:rollback-only true}] :result))
+              "the body's result is still returned")))
       (is (= [:rollback] @calls)
           "the connection is rolled back outright, never committed"))))
 

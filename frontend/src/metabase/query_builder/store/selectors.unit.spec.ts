@@ -1,15 +1,6 @@
 import { assoc } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
-import {
-  getIsResultDirty,
-  getIsVisualized,
-  getNativeEditorCursorOffset,
-  getNativeEditorSelectedText,
-  getQuestion,
-  getQuestionDetailsTimelineDrawerState,
-  getShouldShowUnsavedChangesWarning,
-} from "metabase/query_builder/selectors";
 import type {
   QueryBuilderState,
   QueryBuilderUIControls,
@@ -47,6 +38,16 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import {
+  getIsResultDirty,
+  getIsVisualized,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
+  getQuestion,
+  getQuestionDetailsTimelineDrawerState,
+  getShouldShowUnsavedChangesWarning,
+} from "./selectors";
 
 registerVisualizations();
 

@@ -228,6 +228,7 @@
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    ;; test-harness cleanup output goes to the CI console, not the app log
     #_{:clj-kondo/ignore [:discouraged-var]}
     (println "[Snowflake] destroy database " database-name (:database-name dbdef))
     (jdbc/query (no-db-connection-spec)

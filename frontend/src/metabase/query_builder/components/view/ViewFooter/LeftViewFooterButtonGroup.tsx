@@ -4,16 +4,17 @@ import { t } from "ttag";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { QueryBuilderUIControls } from "metabase/redux/store";
+import { Button, Group } from "metabase/ui";
+
 import {
   onCloseChartSettings,
   onCloseChartType,
   onOpenChartSettings,
   onOpenChartType,
-} from "metabase/redux/query-builder";
-import type { QueryBuilderUIControls } from "metabase/redux/store";
-import { Button, Group } from "metabase/ui";
+} from "../../../store/actions";
+import { getQuestion, getUiControls } from "../../../store/selectors";
 
 import S from "./LeftViewFooterButtonGroup.module.css";
 

@@ -62,6 +62,7 @@
 
 #?(:clj
    (deftest ^:parallel domain?-test
+     ;; expected in the are table is literal true/false; the expansion inlines it into (=)
      #_{:clj-kondo/ignore [:equals-true]}
      (are [s expected] (= expected (u/domain? s))
        "metabase.com"         true
@@ -388,6 +389,7 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
+;; defspec-generated test var; the runner finds it via metadata, clojure-lsp sees no reference
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
@@ -603,6 +605,7 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
+       ;; deliberately exercises the broken case-on-enums behavior that case-enum exists to fix
        #_{:clj-kondo/ignore [:case-symbol-test]}
        (is (= 3 (case Month/MAY
                   Month/APRIL 1
