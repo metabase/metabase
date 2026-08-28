@@ -2,10 +2,10 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import { ColorRangeSelectorPanel } from "metabase/common/components/ColorRangeSelectorPanel";
 import { Stack, type StackProps } from "metabase/ui";
 
 // import ColorRangeToggle from "./ColorRangeToggle";
-import { ColorRangeSelectorPanel } from "../ColorRangeSelectorPanel/ColorRangeSelectorPanel";
 
 export interface ColorRangeContentProps extends Omit<StackProps, "onChange"> {
   initialValue: string[];
