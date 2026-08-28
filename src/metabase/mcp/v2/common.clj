@@ -10,6 +10,7 @@
    existing token. Add new leaf scopes for net-new capability; never rename."
   (:require
    [clojure.string :as str]
+   [metabase.channel.urls :as channel.urls]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -133,3 +134,17 @@
 
     :else
     (str errors)))
+
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))

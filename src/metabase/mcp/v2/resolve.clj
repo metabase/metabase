@@ -1,10 +1,11 @@
 (ns metabase.mcp.v2.resolve
   "Id resolution for v2 MCP tools: numeric-or-entity_id translation and the read-check pairing
    that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error.
-   Landed with its first consumer (`bookmark_content`); later tool PRs extend it (collection
-   resolution arrives with `collection_write`)."
+   Landed with its first consumers: the entity-id machinery with `bookmark_content`, collection
+   resolution with `collection_write`."
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.v2.common :as common]
    [toucan2.core :as t2]))
@@ -70,3 +71,48 @@
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
                          (fn [id] (api/read-check (t2/select-one model :id id)))))
+
+(defn resolve-collection-id
+  "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
+   collection and resolve to nil without a DB translation; `\"trash\"` resolves to
+   `:trash-collection-id` when the caller allows it (the tool passes the id from the
+   collections module) and is a teaching error otherwise.
+
+   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
+   passes numbers straight through, so without this an id for no collection at all travelled on
+   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
+   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
+  ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
+  ([id-or-sentinel {:keys [trash-collection-id]}]
+   (cond
+     (or (nil? id-or-sentinel) (= "root" id-or-sentinel))
+     nil
+
+     (= "trash" id-or-sentinel)
+     (or trash-collection-id
+         (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
+
+     :else
+     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
+       (when-not (t2/exists? :model/Collection :id id)
+         (common/throw-not-found :model/Collection id-or-sentinel))
+       id))))
+
+(defn resolve-collection-id-or-personal
+  "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
+   instead of the root collection. Explicit `\"root\"` still resolves to the root collection, so
+   callers keep a way to ask for it. Arguments arrive with top-level nils stripped at the
+   registry boundary, so a nil here is always an omitted argument rather than an explicit null.
+
+   For create paths only. On update an absent collection argument must leave content where it is,
+   so update paths guard [[resolve-collection-id]] with `contains?` instead.
+
+   API-key users have no personal collection; that nil is a teaching error here rather than a
+   silent write into the root collection."
+  [id-or-sentinel]
+  (if (some? id-or-sentinel)
+    (resolve-collection-id id-or-sentinel)
+    (or (:id (collection/user->personal-collection api/*current-user-id*))
+        (common/throw-teaching-error
+         (str "The current user has no personal collection. Pass an explicit collection_id "
+              "(or \"root\" for the root collection) instead.")))))
