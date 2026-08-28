@@ -301,6 +301,8 @@
              :instanceUrlRaw site-url
              :refreshTool    (json/encode refresh-tool)})))))
 
+;; MCP hosts cache app resources by URI. The version suffix prevents existing clients from reusing
+;; the released HTML, which contains an expiring UI credential.
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query-v2.html"
