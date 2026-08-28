@@ -46,7 +46,7 @@ printBold(`Running Cypress with options:
   - JAR_PATH             : ${options.JAR_PATH}
 `);
 
-const DOCKER_COMPOSE =
+const DOCKER_COMPOSE_COMMAND =
   "docker compose -f ./e2e/test/scenarios/docker-compose.yml";
 
 const isPortInUse = (port: string | number) =>
@@ -72,7 +72,7 @@ const isMaildevListening = async (webPort: string | number) => {
  */
 const startContainers = async () => {
   if (!isPortInUse(MAILDEV_WEB_PORT) && !isPortInUse(MAILDEV_SMTP_PORT)) {
-    shell(`${DOCKER_COMPOSE} up -d`);
+    shell(`${DOCKER_COMPOSE_COMMAND} up -d`);
     return;
   }
 
@@ -92,12 +92,14 @@ const startContainers = async () => {
     `ℹ️ maildev is already running on ports ${MAILDEV_WEB_PORT}/${MAILDEV_SMTP_PORT}. Reusing it instead of starting the \`maildev\` container.`,
   );
 
-  const services = shell(`${DOCKER_COMPOSE} config --services`, { quiet: true })
+  const services = String(
+    shell(`${DOCKER_COMPOSE_COMMAND} config --services`, { quiet: true }) ?? "",
+  )
     .split("\n")
     .map((service) => service.trim())
     .filter((service) => service && service !== "maildev");
 
-  shell(`${DOCKER_COMPOSE} up -d ${services.join(" ")}`);
+  shell(`${DOCKER_COMPOSE_COMMAND} up -d ${services.join(" ")}`);
 };
 
 const init = async () => {
