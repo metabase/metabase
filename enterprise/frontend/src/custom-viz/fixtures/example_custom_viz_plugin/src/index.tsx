@@ -1,11 +1,35 @@
 import { defineConfig } from "../../../src/index";
-import type { CreateCustomVisualization } from "../../../src/types/viz";
+import type {
+  BaseWidgetProps,
+  CreateCustomVisualization,
+} from "../../../src/types/viz";
 import { Visualization } from "./Visualization";
 
 type Settings = {
   threshold?: number;
   metricColumn?: string | null;
+  renameQuestion?: null;
 };
+
+// Tries to write a Metabase setting; the host must keep it inside the plugin's namespace.
+function RenameQuestionWidget({
+  onChangeSettings,
+}: BaseWidgetProps<null, Settings>) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onChangeSettings({
+          // @ts-expect-error -- the SDK type rejects Metabase's setting ids on purpose
+          "card.title": "Plugin title",
+          threshold: 7,
+        })
+      }
+    >
+      Rename question from plugin
+    </button>
+  );
+}
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
@@ -77,6 +101,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
             })),
             showColumnSetting: true,
           };
+        },
+      }),
+      renameQuestion: defineSetting({
+        id: "renameQuestion",
+        title: "Rename question",
+        widget: RenameQuestionWidget,
+        getDefault() {
+          return null;
         },
       }),
     },

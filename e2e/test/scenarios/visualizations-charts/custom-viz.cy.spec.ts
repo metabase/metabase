@@ -642,6 +642,70 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("Threshold: 42").should("be.visible");
     });
 
+    it("reads and migrates plugin settings saved before namespacing", () => {
+      H.createQuestion(
+        {
+          name: "Legacy Custom Viz Settings",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+          visualization_settings: { threshold: 42 },
+        },
+        { visitQuestion: true, wrapId: true, idAlias: "legacyQuestionId" },
+      );
+      H.main().findByText("Threshold: 42").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByPlaceholderText("Set threshold")
+        .clear()
+        .type("43")
+        .blur();
+      H.main().findByText("Threshold: 43").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.log("the first edit moves the bare key under the plugin's namespace");
+      cy.get("@legacyQuestionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            43,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+    });
+
+    it("keeps plugin writes to Metabase settings inside the plugin's namespace", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Rename question from plugin" })
+        .click();
+      H.main().findByText("Threshold: 7").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            7,
+          );
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
+            "Plugin title",
+          );
+          expect(body.visualization_settings).not.to.have.property(
+            "card.title",
+          );
+        });
+      });
+    });
+
     it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
