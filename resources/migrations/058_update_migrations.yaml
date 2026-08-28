@@ -1336,10 +1336,10 @@ databaseChangeLog:
       author: ranquild
       comment: >-
         Encrypt any plaintext api_key.key bcrypt hashes at rest, so the column can be read strictly once
-        MB_ENCRYPTION_SECRET_KEY is set. Otherwise an attacker with SQL write access could inject the bcrypt hash of a
-        key they know (bcrypt is keyless) and authenticate as any user; encrypting the hash means such a plaintext value
-        is rejected on the strict read. Already-encrypted values are left untouched. On rollback the values are
-        decrypted back to the plaintext hash, so a downgrade to code that reads the column directly can still verify keys.
+        MB_ENCRYPTION_SECRET_KEY is set: authentication must only accept hashes written through the application, and
+        the strict read enforces that by rejecting a plaintext value written directly to the app DB.
+        Already-encrypted values are left untouched. On rollback the values are decrypted back to the plaintext hash,
+        so a downgrade to code that reads the column directly can still verify keys.
       changes:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptApiKeys
@@ -1601,9 +1601,9 @@ databaseChangeLog:
       author: ranquild
       comment: >-
         Encrypt any plaintext public_uuid values at rest for cards, dashboards, actions, and documents, so the column
-        can be read strictly once MB_ENCRYPTION_SECRET_KEY is set. Otherwise an attacker with SQL write access could
-        forge a public link by inserting a chosen public_uuid; encrypting it means such a plaintext value is rejected on
-        the strict read. Already-encrypted values are left untouched.
+        can be read strictly once MB_ENCRYPTION_SECRET_KEY is set: public links must only resolve to values issued by
+        the application, and the strict read enforces that by rejecting a plaintext value written directly to the app
+        DB. Already-encrypted values are left untouched.
       changes:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptPublicUuids
@@ -1626,9 +1626,9 @@ databaseChangeLog:
       comment: >-
         Delete the plaintext "unencrypted" encryption-check marker. The sentinel now exists only as a UUID encrypted
         under MB_ENCRYPTION_SECRET_KEY (absent means not encrypted), and startup no longer encrypts existing data when it
-        sees the marker: an attacker with SQL write access could otherwise plant plaintext rows, reset the marker, and
-        have the next restart encrypt them into values the strict reads accept. Encryption of an existing instance is
-        now the explicit `enable-encryption` command.
+        sees the marker: the strict reads rely on existing rows only ever being encrypted by an explicit admin action,
+        never automatically on the strength of the marker. Encryption of an existing instance is now the explicit
+        `enable-encryption` command.
       changes:
         - sql:
             sql: delete from setting where "key" = 'encryption-check' and value = 'unencrypted'

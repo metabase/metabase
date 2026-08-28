@@ -189,7 +189,7 @@
     (t2/insert! :setting {:key "encryption-check", :value value})))
 
 (deftest tampered-sentinel-does-not-launder-plaintext-test
-  (testing "an app-db writer plants a plaintext row and resets the sentinel; a restart must not encrypt it"
+  (testing "a restart must never encrypt a pre-existing plaintext row, whatever state the sentinel is in"
     (encryption-test/with-secret-key "sentinel-tamper-key-1"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)

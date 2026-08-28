@@ -199,9 +199,8 @@
   encrypted-at-rest content before this run's migrations (`content-before-migrations?`, see
   [[mdb.encryption/encrypted-content-exists?]]) -- i.e. it is a fresh install -- and then the sentinel is written.
   Otherwise the database is unencrypted, or encrypted but missing its sentinel, and the admin has to run
-  `enable-encryption` deliberately. Encrypting here on the strength of the sentinel would let anyone with write access
-  to the app DB launder planted plaintext rows into valid ciphertext by resetting the sentinel and waiting for a
-  restart."
+  `enable-encryption` deliberately. The sentinel only records encryption state and must never trigger encryption: the
+  strict reads rely on existing rows only ever being encrypted by that deliberate command."
   [content-before-migrations? :- :boolean]
   (log/debug "Checking encryption configuration")
   (let [status (mdb.encryption/encryption-check-status)]
