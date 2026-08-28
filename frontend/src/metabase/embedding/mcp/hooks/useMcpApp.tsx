@@ -118,10 +118,11 @@ export function useMcpApp(): McpAppState {
       return;
     }
 
+    // Every modern MCP App client should support server tools, but some older clients may not.
     if (!app.getHostCapabilities()?.serverTools) {
       const hostName = app.getHostVersion()?.name.trim() || "Your MCP client";
 
-      setHostError(`${hostName} does not support this visualization.`);
+      setHostError(`${hostName} does not support query visualization.`);
       return;
     }
 
@@ -132,7 +133,7 @@ export function useMcpApp(): McpAppState {
     let refreshTimeout: number | undefined;
 
     function scheduleRefresh(delay: number) {
-      refreshTimeout = window.setTimeout(() => void refreshMcpAuth(), delay);
+      refreshTimeout = window.setTimeout(() => refreshMcpAuth(), delay);
     }
 
     async function refreshMcpAuth() {
