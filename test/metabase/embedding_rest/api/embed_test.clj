@@ -1157,10 +1157,9 @@
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
 
 (deftest remove-embedding-params
-  (testing (str "parameters that are not in the `embedding-params` map at all should get removed by "
-                "`remove-locked-and-disabled-params`")
+  (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
     (is (= {:parameters []}
-           (#'api.embed.common/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {})))))
+           (#'api.embed.common/enabled-params {:parameters {:slug "foo"}} {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
