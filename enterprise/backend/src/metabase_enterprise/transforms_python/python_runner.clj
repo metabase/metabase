@@ -365,6 +365,7 @@
      :source-tables - Sequential of source-table entries [{:alias ... :table_id ...} ...]
      :row-limit     - Max rows to return (also limits input rows)
      :timeout-secs  - Optional timeout override
+     :request-id    - Optional run id, so the caller can cancel the run it started
 
    Returns:
      {:status  :succeeded/:failed
@@ -373,7 +374,7 @@
       :logs    [{:message ...} ...]   ; events from Python execution
       :message \"error message\"}     ; on failure
 "
-  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  [{:keys [code source-tables per-input-limit row-limit timeout-secs request-id]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
     (let [server-url (transforms-python.settings/python-runner-url)
           _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
@@ -383,7 +384,7 @@
           (execute-python-code-http-call!
            {:server-url     server-url
             :code           code
-            :request-id     (u/generate-nano-id)
+            :request-id     (or request-id (u/generate-nano-id))
             :source-tables  source-tables
             :timeout-secs   timeout-secs
             :shared-storage @shared-storage-ref})

@@ -3,13 +3,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.api :as transforms-python.api]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -132,6 +135,20 @@
             (is (=? {:status 200
                      :body   {:logs "boom", :error {:message "Python execution failure"}}}
                     (request)))))))))
+
+(deftest test-run-concurrency-cap-test
+  (testing "test-run is rejected rather than queued once every slot is taken"
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
+      (let [^Semaphore sem @#'transforms-python.api/test-run-semaphore
+            taken          (.drainPermits sem)]
+        (try
+          (is (=? {:status 429}
+                  (mt/user-http-request-full-response
+                   :crowberto :post "ee/transforms-python/test-run"
+                   {:source_tables [(transforms.tu/default-source-table-entry)]
+                    :code          "def transform():\n  pass"})))
+          (finally
+            (.release sem taken)))))))
 
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
