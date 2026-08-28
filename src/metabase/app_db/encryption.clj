@@ -1,5 +1,6 @@
 (ns metabase.app-db.encryption
   (:require
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -64,7 +65,7 @@
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
   `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
 
-    :valid   - the sentinel decrypts to a UUID, so the key is correct
+    :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
     :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering), or the database cannot be
                read at all (no `setting` table) -- not a normal state either way
     :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
@@ -72,22 +73,42 @@
   (try
     (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
       (cond
-        (nil? raw)                                          :absent
-        (string/valid-uuid? (encryption/maybe-decrypt raw)) :valid
-        :else                                               :invalid))
+        (nil? raw)
+        :absent
+
+        (and (encryption/default-encryption-enabled?)
+             (string/valid-uuid? (encryption/maybe-decrypt raw)))
+        :valid
+
+        :else
+        :invalid))
     (catch Throwable e
-      (log/debugf "Could not determine encryption status, treating as invalid: %s" (ex-message e))
+      (log/warnf "Could not determine encryption status, treating as invalid: %s" (ex-message e))
       :invalid)))
+
+(defn- column-exists?
+  "Whether `table`.`column` exists, per JDBC metadata. Identifiers are matched as stored and upper-cased, since H2
+  upper-cases unquoted names."
+  [table column]
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [metadata (.getMetaData conn)]
+      (boolean (some (fn [[t c]]
+                       (with-open [rs (.getColumns metadata nil nil t c)]
+                         (.next rs)))
+                     [[(name table) (name column)]
+                      [(u/upper-case-en (name table)) (u/upper-case-en (name column))]])))))
 
 (defn- column-has-values?
   "Whether `table`.`column` holds any non-null value. A table or column that does not exist yet (this runs before
-  migrations, on a fresh or old database) counts as empty."
+  migrations, on a fresh or old database) counts as empty; any other failure to read it propagates, since answering
+  \"empty\" wrongly would mark an unencrypted database as encrypted."
   [table column]
   (try
     (boolean (t2/query-one {:select [:id], :from [table], :where [:is-not column nil], :limit 1}))
     (catch Exception e
-      (log/debugf "Could not check %s.%s for values, treating as empty: %s" (name table) (name column) (ex-message e))
-      false)))
+      (if (column-exists? table column)
+        (throw e)
+        false))))
 
 (defn encrypted-content-exists?
   "Whether any encrypted-at-rest column holds a value at all. With MB_ENCRYPTION_SECRET_KEY set and no
@@ -190,6 +211,8 @@
   [db-type data-source to-key]
   (when (and (not (nil? to-key)) (empty? to-key))
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
+  (when (and (nil? to-key) (not (encryption/default-encryption-enabled?)))
+    (throw (ex-info "Cannot encrypt database: MB_ENCRYPTION_SECRET_KEY is not set" {})))
   (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
                                             (if
                                              (nil? to-key) maybe-encrypt-fn

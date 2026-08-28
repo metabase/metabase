@@ -46,7 +46,7 @@ If you're adding an encryption key to a Metabase that already has data, you need
 MB_ENCRYPTION_SECRET_KEY=your-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar enable-encryption
 ```
 
-If Metabase reports that the database isn't encrypted but you didn't just add the key, don't run `enable-encryption`: either the key is wrong, or someone has changed the application database directly. Check the key, or restore from a backup.
+If Metabase reports that the database isn't encrypted but you didn't just add the key, don't run `enable-encryption`: someone has changed the application database directly. Restore it from a backup. (A wrong key is reported separately, as a key mismatch.)
 
 ## Rotating an encryption key
 

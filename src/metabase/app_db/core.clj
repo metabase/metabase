@@ -116,8 +116,8 @@
 
   Skips:
   - Liquibase migrations.
-  - [[metabase.app-db.setup/check-encryption]], whose auto-encrypt branch can silently rewrite
-    every encrypted `setting` row when an encryption key is configured."
+  - [[metabase.app-db.setup/check-encryption]], which may write the `encryption-check` sentinel or
+    refuse to start when an encryption key is configured."
   []
   (when-not (db-is-set-up?)
     (verify-application-db-connection!)

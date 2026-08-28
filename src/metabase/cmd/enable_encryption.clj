@@ -3,6 +3,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn enable-encryption!
   "Encrypts the current configured db with the key in the `MB_ENCRYPTION_SECRET_KEY` env var. This is the only path
   that turns existing plaintext rows into ciphertext: startup refuses to run while the key is set but the database is
@@ -12,7 +14,7 @@
     (log/info "Checking database configuration prior to encryption")
     (mdb/setup-db! :create-sample-content? true :check-encryption? false))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
-  (case (mdb/encryption-check-status)
-    :valid   (log/info "Database is already encrypted with MB_ENCRYPTION_SECRET_KEY; nothing to do.")
-    :invalid (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {}))
-    :absent  (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)))
+  (if (= :valid (mdb/encryption-check-status))
+    (log/info "Database is already encrypted with MB_ENCRYPTION_SECRET_KEY; nothing to do.")
+    ;; an :invalid sentinel makes encrypt-db abort before touching any row
+    (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)))

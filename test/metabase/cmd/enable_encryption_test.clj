@@ -23,8 +23,8 @@
   (mdb/setup-db! :create-sample-content? false))
 
 (deftest cmd-enable-encryption-errors-when-failed-test
-  (with-redefs [enable-encryption! #(throw (Exception. "err"))
-                cmd/system-exit!   identity]
+  (mt/with-dynamic-fn-redefs [enable-encryption! #(throw (Exception. "err"))
+                              cmd/system-exit!   identity]
     (is (= 1 (cmd/enable-encryption)))))
 
 (deftest enable-encryption!-test

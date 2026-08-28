@@ -215,11 +215,14 @@
       (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
 
       (= status :invalid)
-      (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {}))
+      (throw (ex-info (str "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY "
+                           "environment contains")
+                      {}))
 
       content-before-migrations?
-      (throw (ex-info (str "MB_ENCRYPTION_SECRET_KEY is set but the database is not marked as encrypted and already contains data. "
-                           "If you have just added the key to an existing instance, stop Metabase and run `enable-encryption` to encrypt the database. "
+      (throw (ex-info (str "MB_ENCRYPTION_SECRET_KEY is set but the database is not marked as encrypted and already "
+                           "contains data. If you have just added the key to an existing instance, stop Metabase and "
+                           "run `enable-encryption` to encrypt the database. "
                            "If this database was already encrypted, it has been modified directly: "
                            "do NOT run `enable-encryption`; check the key or restore from a backup.")
                       {}))
@@ -272,7 +275,8 @@
   - `:auto-migrate?` (default `true`): run pending migrations, otherwise only print them.
   - `:create-sample-content?` (default `false`): create the sample content on a fresh install.
   - `:check-encryption?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database after migrating (see
-    [[check-encryption]]). Only the commands that manage encryption turn this off."
+    [[check-encryption]]). Turned off by callers that handle the encryption state themselves: the commands that
+    manage encryption and [[metabase.cmd.copy/copy!]]."
   ([db-type data-source]
    (setup-db! db-type data-source {}))
 

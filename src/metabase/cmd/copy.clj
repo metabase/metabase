@@ -464,9 +464,11 @@
     (mdb.setup/setup-db! source-db-type source-data-source {:check-encryption? false}))
   ;; make sure the dest DB is up-to-date
   ;;
-  ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
+  ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately.
+  ;; Skip the encryption check too: whatever it would write is truncated below along with the other migration-created
+  ;; rows, and the caller decides the target's encryption state from the copied sentinel afterwards.
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (mdb.setup/setup-db! target-db-type target-data-source))
+    (mdb.setup/setup-db! target-db-type target-data-source {:check-encryption? false}))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-has-no-users target-data-source))

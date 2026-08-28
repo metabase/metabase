@@ -2762,14 +2762,14 @@
             set-sentinel! (fn [value]
                             (t2/delete! :setting :key "encryption-check")
                             (t2/insert! :setting {:key "encryption-check", :value value}))]
-        (impl/test-migrations ["v58.2026-08-27T12:00:00"] [migrate!]
+        (impl/test-migrations "v58.2026-08-27T12:00:00" [migrate!]
           (set-sentinel! "unencrypted")
           (migrate!)
           (is (nil? (raw-sentinel)))
           (testing "rollback restores the marker when there is no sentinel"
             (migrate! :down 57)
             (is (= "unencrypted" (raw-sentinel)))))
-        (impl/test-migrations ["v58.2026-08-27T12:00:00"] [migrate!]
+        (impl/test-migrations "v58.2026-08-27T12:00:00" [migrate!]
           (let [sentinel (encryption/encrypt (str (random-uuid)))]
             (set-sentinel! sentinel)
             (migrate!)

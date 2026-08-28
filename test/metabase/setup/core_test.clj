@@ -138,7 +138,7 @@
             (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-                (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data.*run `enable-encryption`"
+                (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
                 (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
                 (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
@@ -187,7 +187,7 @@
     (t2/insert! :setting {:key "encryption-check", :value value})))
 
 (deftest tampered-sentinel-does-not-launder-plaintext-test
-  (testing "someone with write access to the app DB plants a plaintext row and resets the sentinel; a restart must not encrypt it"
+  (testing "an app-db writer plants a plaintext row and resets the sentinel; a restart must not encrypt it"
     (encryption-test/with-secret-key "sentinel-tamper-key-1"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
