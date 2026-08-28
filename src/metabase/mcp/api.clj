@@ -95,7 +95,7 @@
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
 
-(defn- handle-resources-read [id params _session-id token-scopes]
+(defn- handle-resources-read [id params token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
@@ -131,7 +131,7 @@
       "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
-      "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "resources/read"            (handle-resources-read id params token-scopes)
       "ping"                      (handle-ping id params)
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))
