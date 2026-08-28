@@ -84,9 +84,8 @@
                             {:chart-id       "chart-abc"
                              :new-chart-type :line
                              :charts-state   charts-state})]
-      (is (contains? result :query-id))
-      (is (= "query-xyz" (:query-id result)))
-      (is (= query (:query result))))))
+      (is (= {:query-id "query-xyz" :query query}
+             (select-keys result [:query-id :query]))))))
 
 (deftest ^:parallel edit-chart-falls-back-to-caller-resolved-query-test
   (testing "uses the :query param when the chart's own :queries is empty"
