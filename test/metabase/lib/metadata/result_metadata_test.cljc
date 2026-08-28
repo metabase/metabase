@@ -1188,3 +1188,16 @@
                                    (lib/with-join-fields [(meta/field-metadata :products :category)]))))
           cols   (lib/visible-columns outer)]
       (is (= 2 (count (filter #(= (:id %) (meta/id :products :category)) cols)))))))
+
+(deftest ^:parallel super-broken-legacy-field-ref-do-not-generate-expression-refs-with-field-ids-test
+  (testing "Do not generate [:expression <field-id>] legacy refs even if expression metadata includes Field ID"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "my_expression" (lib/ref (meta/field-metadata :venues :name)))
+                    (as-> $query (lib/with-fields $query [(lib/expression-ref $query "my_expression")])))
+          col   (-> (first (lib/returned-columns query))
+                    (assoc :qp/implicit-field? true))]
+      (is (=? {:id (meta/id :venues :name)}
+              col)
+          "column metadata should include original Field ID (#70233)")
+      (is (= [:expression "my_expression"]
+             (#'result-metadata/super-broken-legacy-field-ref query col))))))
