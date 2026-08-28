@@ -1,9 +1,9 @@
-import { getMcpUiAuth } from "./mcpUiCredential";
+import { getMcpUiAuthFromToolMetadata } from "./uiCredential";
 
 describe("getMcpUiAuth", () => {
   it("reads the credential and session from private tool-result metadata", () => {
     expect(
-      getMcpUiAuth({
+      getMcpUiAuthFromToolMetadata({
         "com.metabase/mcp-apps": {
           credential: "fresh-credential",
           sessionId: "mcp-session-id",
@@ -16,10 +16,12 @@ describe("getMcpUiAuth", () => {
   });
 
   it("rejects missing and malformed auth metadata", () => {
-    expect(getMcpUiAuth(undefined)).toBeNull();
-    expect(getMcpUiAuth({ "com.metabase/mcp-apps": {} })).toBeNull();
+    expect(getMcpUiAuthFromToolMetadata(undefined)).toBeNull();
     expect(
-      getMcpUiAuth({
+      getMcpUiAuthFromToolMetadata({ "com.metabase/mcp-apps": {} }),
+    ).toBeNull();
+    expect(
+      getMcpUiAuthFromToolMetadata({
         "com.metabase/mcp-apps": {
           credential: 123,
           sessionId: "mcp-session-id",

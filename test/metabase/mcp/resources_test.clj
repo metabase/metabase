@@ -115,25 +115,20 @@
                            :contents first :text)]
         (is (string? viz-html))
         (is (string? drill-html))
-        (is (str/includes? viz-html "refresh_ui_credential"))
-        (is (str/includes? drill-html "refresh_ui_credential"))
         (is (not= viz-html drill-html)
             "visualize-query and render-drill-through HTML must differ byte-wise")))))
 
 (deftest legacy-ui-resource-aliases-test
   (testing "original UI resource URIs serve the current cache-safe resources"
     (mcp.resources/with-fallback-template
-      (doseq [[uri scope refresh-tool]
+      (doseq [[uri scope]
               [["ui://metabase/visualize-query.html"
-                "agent:viz:mcp-ui:query"
-                "refresh_ui_credential"]
+                "agent:viz:mcp-ui:query"]
                ["ui://metabase/render-drill-through.html"
-                "agent:viz:mcp-ui:drill-through"
-                "refresh_ui_credential"]]]
+                "agent:viz:mcp-ui:drill-through"]]]
         (let [resource (mcp.resources/read-resource uri #{scope} {})]
           (is (= :ok (:status resource)))
-          (is (= uri (-> resource :contents first :uri)))
-          (is (str/includes? (-> resource :contents first :text) refresh-tool)))))))
+          (is (= uri (-> resource :contents first :uri))))))))
 
 (deftest builtin-visualize-query-ui-resource-metadata-test
   (testing "the visualize_query UI resource publishes bare origins; :domain is gated on the ChatGPT client"

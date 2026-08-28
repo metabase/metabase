@@ -7,10 +7,13 @@ export interface McpUiAuth {
   sessionId: string;
 }
 
-export function getMcpUiAuth(
-  meta: Record<string, unknown> | undefined,
+/**
+ * Extract the UI credentials and session ID from tool result metadata.
+ */
+export function getMcpUiAuthFromToolMetadata(
+  metadata: Record<string, unknown> | undefined,
 ): McpUiAuth | null {
-  const value = meta?.[MCP_UI_CREDENTIAL_META_KEY];
+  const value = metadata?.[MCP_UI_CREDENTIAL_META_KEY];
 
   if (typeof value !== "object" || value === null) {
     return null;

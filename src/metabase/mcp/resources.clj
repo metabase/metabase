@@ -37,8 +37,7 @@
 (def ^:private test-fallback-template
   (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
-       "instanceUrl: {{{instanceUrl}}},"
-       "refreshTool: {{{refreshTool}}}"
+       "instanceUrl: {{{instanceUrl}}}"
        "};</script></body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
@@ -64,7 +63,7 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl and :refreshTool (JSON-encoded), and :instanceUrlRaw."
+   Expected keys: :instanceUrl (JSON-encoded) and :instanceUrlRaw."
   [vars]
   (cond
     @fallback-template
@@ -300,14 +299,13 @@
    `tag` is a per-URI marker embedded in the rendered HTML so the bytes hash
    differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
-  [tag refresh-tool]
+  [tag]
   (fn [_opts]
     (let [site-url (system/site-url)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
-             :instanceUrlRaw site-url
-             :refreshTool    (json/encode refresh-tool)})))))
+             :instanceUrlRaw site-url})))))
 
 ;; MCP hosts cache app resources by URI. The version suffix prevents existing clients from reusing
 ;; the released HTML, which contains an expiring UI credential.
@@ -318,8 +316,7 @@
  {:name          "Visualize Query"
   :description   "Lightweight MCP Apps visualization for a query"
   :prefersBorder true
-  :render-fn     (visualize-query-render-fn "visualize-query"
-                                            "refresh_ui_credential")})
+  :render-fn     (visualize-query-render-fn "visualize-query")})
 
 (register-ui-resource!
  :render-drill-through
@@ -328,8 +325,7 @@
  {:name          "Render Drill Through"
   :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
-  :render-fn     (visualize-query-render-fn "render-drill-through"
-                                            "refresh_ui_credential")})
+  :render-fn     (visualize-query-render-fn "render-drill-through")})
 
 (defn- with-ui-credential
   [result session-id]

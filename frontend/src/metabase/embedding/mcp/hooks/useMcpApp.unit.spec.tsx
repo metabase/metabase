@@ -52,7 +52,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     act(() => {
       app.ontoolresult({
@@ -90,7 +90,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     act(() => {
       app.ontoolresult({
@@ -117,7 +117,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     act(() => {
       app.ontoolresult({
@@ -155,7 +155,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     act(() => {
       app.ontoolresult({
@@ -199,7 +199,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    renderHook(() => useMcpApp("refresh_ui_credential"));
+    renderHook(() => useMcpApp());
 
     await act(async () => {
       app.ontoolresult({
@@ -239,7 +239,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     await act(async () => {
       app.ontoolresult({
@@ -302,7 +302,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp("refresh_ui_credential"));
+    const { result } = renderHook(() => useMcpApp());
 
     await act(async () => {
       app.ontoolresult({
@@ -360,7 +360,7 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    renderHook(() => useMcpApp("refresh_ui_credential"));
+    renderHook(() => useMcpApp());
 
     await act(async () => {
       app.ontoolresult({

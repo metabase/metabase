@@ -12,12 +12,13 @@ import {
   UI_CREDENTIAL_REFRESH_INTERVAL_MS,
   UI_CREDENTIAL_REFRESH_MAX_FAILURES,
   UI_CREDENTIAL_REFRESH_RETRY_MS,
+  UI_CREDENTIAL_REFRESH_TOOL,
 } from "../constants";
 import {
   type McpUiAuth,
-  getMcpUiAuth,
+  getMcpUiAuthFromToolMetadata,
   installMcpUiCredential,
-} from "../utils/mcpUiCredential";
+} from "../utils/uiCredential";
 
 export interface McpAppState {
   query: string | null;
@@ -55,7 +56,7 @@ function applyHostContext(ctx: McpUiHostContext) {
   }
 }
 
-export function useMcpApp(resourceRefreshTool = ""): McpAppState {
+export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [toolResultVersion, setToolResultVersion] = useState(0);
   const [prompt, setPrompt] = useState<string | null>(null);
@@ -94,7 +95,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
   });
 
   useEffect(() => {
-    if (!app || !query || !resourceRefreshTool) {
+    if (!app || !query) {
       return;
     }
 
@@ -121,11 +122,11 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
     const refreshAuth = async () => {
       try {
         const result = await app.callServerTool({
-          name: resourceRefreshTool,
+          name: UI_CREDENTIAL_REFRESH_TOOL,
           arguments: {},
         });
 
-        const refreshedAuth = getMcpUiAuth(result._meta);
+        const refreshedAuth = getMcpUiAuthFromToolMetadata(result._meta);
 
         if (!refreshedAuth || result.isError) {
           throw new Error("MCP UI credential refresh failed");
@@ -173,7 +174,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
       cancelled = true;
       window.clearTimeout(refreshTimeout);
     };
-  }, [app, query, resourceRefreshTool, toolResultVersion]);
+  }, [app, query, toolResultVersion]);
 
   // Read host context once connected and apply styles immediately
   useEffect(() => {
