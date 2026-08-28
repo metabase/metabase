@@ -239,7 +239,7 @@
   re-querying. Caller owns the Statement."
   [^java.sql.Statement stmt orphans]
   (mapv (fn [[fmt-str schema]]
-          (log/infof fmt-str schema)
+          (tx/print-progress! :redshift fmt-str schema)
           (try
             (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))
             {:name schema, :status :deleted}
