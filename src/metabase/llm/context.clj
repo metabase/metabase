@@ -419,15 +419,19 @@
     (str/trimr (str sw))))
 
 (defn- fetch-accessible-tables-with-columns
-  "Shared prelude for [[build-schema-context]] and [[get-tables-with-columns]]: authorize `database-id`,
-   fetch the tables in `table-ids` the current user can access, and build each one's sandbox-filtered
+  "Shared prelude for [[build-schema-context]] and [[get-tables-with-columns]]: fetch the tables in
+   `table-ids` the current user can access in `database-id`, and build each one's sandbox-filtered
    column list (via the metadata provider, so numbers/joins resolve the same way for both callers).
+
+   Does not itself require read access to `database-id` -- a caller that needs a hard 403 for that
+   (like [[build-schema-context]]) must check it before calling this. [[get-tables-with-columns]]
+   deliberately doesn't: it shares this prelude only for its `:tables` behavior, and a caller that
+   only wants its `:card_ids` behavior shouldn't be denied over unrelated table access.
 
    Returns nil when the user can't reach any of the requested tables in `database-id`; otherwise a
    vector of `{:id :name :schema :display_name :description :columns}` maps -- possibly empty, if
    every accessible table's columns were entirely sandboxed away."
   [database-id table-ids]
-  (api/read-check :model/Database database-id)
   (let [accessible-tables (fetch-accessible-tables database-id table-ids)]
     (when (seq accessible-tables)
       (lib-be/with-metadata-provider-cache
@@ -530,6 +534,7 @@
    Or nil if no accessible tables found."
   [database-id table-ids]
   (when (and database-id (seq table-ids))
+    (api/read-check :model/Database database-id)
     (metabot.perms/with-cache
       (when-let [tables-with-columns (fetch-accessible-tables-with-columns database-id table-ids)]
         (let [restricted-table-ids (metabot.perms/row-restricted-table-ids (into #{} (map :id) tables-with-columns))

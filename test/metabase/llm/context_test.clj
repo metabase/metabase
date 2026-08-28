@@ -395,7 +395,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
                                 (context/build-schema-context (:id db) #{(:id table)}))))))))
 
-(deftest get-tables-with-columns-requires-database-read-access-test
+(deftest get-tables-with-columns-does-not-require-database-read-access-test
   (mt/with-temp [:model/Database db {}
                  :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
                  :model/Field    _f {:table_id      (:id table)
@@ -404,11 +404,11 @@
                                      :base_type     :type/Integer}]
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
-        (testing "a user with no access to the database is denied, rather than silently returning nil -- this
+        (testing "a user with no access to the database gets an empty result, rather than a hard 403 -- this
                   endpoint (POST /api/llm/extract-sources) shares fetch-accessible-tables-with-columns with
-                  build-schema-context, so it must fail the same way"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
-                                (context/get-tables-with-columns (:id db) #{(:id table)}))))))))
+                  build-schema-context, but must not deny its :card_ids behavior over unrelated table access
+                  (that 403 belongs to generate-sql, see build-schema-context-requires-database-read-access-test)"
+          (is (nil? (context/get-tables-with-columns (:id db) #{(:id table)}))))))))
 
 (deftest fetch-field-values-caps-restricted-columns-test
   (testing "columns of a row-restricted table are capped at max-restricted-field-values-fetches per request;
