@@ -94,7 +94,7 @@ const getSavedVisibility = (store: Store) =>
 
 describe("updateDashCardsTimelineEventsVisibility", () => {
   it("hides an event without touching the dashcard settings when viewing", () => {
-    const store = setup();
+    const store = setup({ savedVisibility: { shown_timeline_ids: [10] } });
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
@@ -105,41 +105,12 @@ describe("updateDashCardsTimelineEventsVisibility", () => {
     );
 
     expect(getVisibleEventIds(store)).toEqual([eventB.id]);
-    expect(getSavedVisibility(store)).toBeUndefined();
+    expect(getSavedVisibility(store)).toEqual({ shown_timeline_ids: [10] });
     expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBeFalsy();
   });
 
-  it("saves the hidden event into the dashcard settings when editing", () => {
+  it("saves the shown event into the dashcard settings when editing", () => {
     const store = setup({ isEditing: true });
-
-    store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, context) =>
-          hideTimelineEvents(visibility, [eventA], context),
-      ),
-    );
-
-    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
-    expect(getSavedVisibility(store)).toEqual({
-      hidden_event_ids: [eventA.id],
-    });
-    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
-  });
-
-  it("applies the visibility saved in the dashcard settings", () => {
-    const store = setup({
-      savedVisibility: { hidden_timeline_ids: [10] },
-    });
-
-    expect(getVisibleEventIds(store)).toEqual([]);
-  });
-
-  it("clears the saved setting when events return to the default when editing", () => {
-    const store = setup({
-      isEditing: true,
-      savedVisibility: { hidden_event_ids: [eventA.id] },
-    });
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
@@ -149,7 +120,40 @@ describe("updateDashCardsTimelineEventsVisibility", () => {
       ),
     );
 
-    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
+    expect(getVisibleEventIds(store)).toEqual([eventA.id]);
+    expect(getSavedVisibility(store)).toEqual({
+      shown_timeline_ids: [timeline.id],
+      hidden_event_ids: [eventB.id],
+    });
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
+  });
+
+  it("applies the visibility saved in the dashcard settings", () => {
+    const store = setup({
+      savedVisibility: {
+        shown_timeline_ids: [timeline.id],
+        hidden_event_ids: [eventA.id],
+      },
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+  });
+
+  it("clears the saved setting when events return to the default when editing", () => {
+    const store = setup({
+      isEditing: true,
+      savedVisibility: { shown_timeline_ids: [timeline.id] },
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, context) =>
+          hideTimelineEvents(visibility, [eventA, eventB], context),
+      ),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([]);
     expect(getSavedVisibility(store)).toBeUndefined();
   });
 });
