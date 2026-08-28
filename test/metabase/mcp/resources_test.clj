@@ -74,10 +74,10 @@
     (is (=? {:status :not-found}
             (mcp.resources/read-resource "test://nope" #{::scope/unrestricted} {})))))
 
-(deftest without-ui-credential-test
+(deftest redact-ui-credential-test
   (testing "UI credentials are removed recursively without removing other metadata"
     (is (= {:result {:_meta {:ui {:resourceUri "ui://metabase/example.html"}}}}
-           (mcp.resources/without-ui-credential
+           (mcp.resources/redact-ui-credential
             {:result {:_meta {:ui                   {:resourceUri "ui://metabase/example.html"}
                               :com.metabase/mcp-apps {:credential "secret"}}}})))))
 

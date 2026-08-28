@@ -573,7 +573,7 @@
                     (when error? (some-> result :content first :text)))
            ;; `::error-code` is an internal classification marker — never expose it to the client.
            (let [result (dissoc result ::error-code)]
-             (ait/record! {:ai/tool-output (mcp.resources/without-ui-credential result)})
+             (ait/record! {:ai/tool-output (mcp.resources/redact-ui-credential result)})
              result))
          (catch Throwable e
            ;; A handler that throws instead of returning error content (notably a UI tool
