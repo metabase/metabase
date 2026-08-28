@@ -37,6 +37,7 @@ permissions:
 jobs:
   gc:
     name: Sweep orphaned test data
+    if: ${{ github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
