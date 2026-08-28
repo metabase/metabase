@@ -158,7 +158,10 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init
+              metabase.agent-api.query-guards
+              metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -1347,6 +1350,8 @@
            config
            dashboards
            eid-translation
+           lib
+           lib-be
            llm
            metabot
            models
@@ -1355,6 +1360,7 @@
            permissions
            premium-features
            pulse
+           queries
            request
            server
            session
@@ -1392,6 +1398,7 @@
               metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
+              metabase.metabot.tools.construct
               metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
