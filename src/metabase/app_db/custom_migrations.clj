@@ -2352,7 +2352,6 @@
     (doseq [[table column] encrypt-remaining-columns-v58]
       (run! (fn [{:keys [id value]}]
               (when (and (string? value)
-                         (not (str/blank? value))
                          (not (encryption/possibly-encrypted-string? value)))
                 (t2/query {:update table
                            :set    {column (encryption/maybe-encrypt value)}
