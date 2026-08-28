@@ -628,11 +628,11 @@ function createCustomVizWrapper(
       series: toPluginSeries(series),
       settings: toPluginSettings(settings, prefix),
       renderingContext,
-      // The plugin API mirrors host click objects with looser public types.
+      // The plugin API mirrors internal Metabase click objects with looser types.
       onClick: handleClick as unknown as (
         clickObject: CustomVizClickObject | null,
       ) => void,
-      // Unjustified type cast. FIXME
+      // The plugin API mirrors internal Metabase hover objects with looser types.
       onHover: onHoverChange as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,
