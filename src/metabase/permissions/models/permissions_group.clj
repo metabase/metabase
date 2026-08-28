@@ -8,6 +8,7 @@
 
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
+   [clojure.set :as set]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -197,10 +198,8 @@
   [group-ids]
   (if (or (setting/get :use-tenants) (empty? group-ids))
     #{}
-    (set (t2/select-pks-vec :model/PermissionsGroup
-                            {:where [:and
-                                     [:in :id (set (map u/the-id group-ids))]
-                                     [:= :is_tenant_group true]]}))))
+    (set/intersection (set (map u/the-id group-ids))
+                      (t2/select-pks-set :model/PermissionsGroup :is_tenant_group true))))
 
 (defn check-tenant-groups-visible!
   "Throws a 400 if any of `group-ids` is a tenant group while the Tenants feature is disabled.

@@ -651,6 +651,10 @@
           (testing "tenant group is visible when use-tenants is on"
             (is (contains? (:groups (mt/user-http-request :crowberto :get 200 "permissions/graph"))
                            (:id tenant-group))))
+          (testing "GET /graph/group/:tenant-id succeeds when use-tenants is on"
+            (is (contains? (:groups (mt/user-http-request :crowberto :get 200
+                                                          (format "permissions/graph/group/%d" (:id tenant-group))))
+                           (:id tenant-group))))
           (mt/with-temporary-setting-values [use-tenants false]
             (testing "tenant group is hidden when use-tenants is off"
               (is (not (contains? (:groups (mt/user-http-request :crowberto :get 200 "permissions/graph"))
@@ -672,6 +676,29 @@
           (testing "404 when off"
             (is (= "Not found."
                    (mt/user-http-request :crowberto :get 404 (format "permissions/group/%d" (:id tenant-group)))))))))))
+
+(deftest update-and-delete-hide-tenant-group-test
+  (testing "PUT and DELETE /api/permissions/group/:group-id return 404 for tenant groups when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/PermissionsGroup tenant-group {:name "Acme Tenant" :is_tenant_group true}]
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "PUT returns 404 and does not rename the group"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :put 404 (format "permissions/group/%d" (:id tenant-group))
+                                         {:name "Renamed"})))
+            (is (= "Acme Tenant" (t2/select-one-fn :name :model/PermissionsGroup :id (:id tenant-group)))))
+          (testing "DELETE returns 404 and does not delete the group"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :delete 404 (format "permissions/group/%d" (:id tenant-group)))))
+            (is (t2/exists? :model/PermissionsGroup :id (:id tenant-group)))))
+        (mt/with-temporary-setting-values [use-tenants true]
+          (testing "PUT succeeds when use-tenants is on"
+            (is (=? {:name "Renamed Tenant"}
+                    (mt/user-http-request :crowberto :put 200 (format "permissions/group/%d" (:id tenant-group))
+                                          {:name "Renamed Tenant"}))))
+          (testing "DELETE succeeds when use-tenants is on"
+            (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" (:id tenant-group)))
+            (is (not (t2/exists? :model/PermissionsGroup :id (:id tenant-group))))))))))
 
 (deftest update-perms-graph-rejects-tenant-groups-test
   (testing "PUT /api/permissions/graph rejects bodies referencing tenant groups when use-tenants is off"

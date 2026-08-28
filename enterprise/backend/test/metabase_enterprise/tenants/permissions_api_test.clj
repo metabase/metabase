@@ -41,19 +41,6 @@
                                                {:name "Tenant Group Disabled" :is_tenant_group true})]
             (is (re-find #"Tenant groups cannot be created" (pr-str response)))))))))
 
-(deftest create-tenant-group-requires-use-tenants-test
-  (testing "POST /api/permissions/group with is_tenant_group=true requires use-tenants on"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-model-cleanup [:model/PermissionsGroup]
-        (mt/with-temporary-setting-values [use-tenants false]
-          (let [response (mt/user-http-request :crowberto :post 400 "permissions/group"
-                                               {:name "Should Fail" :is_tenant_group true})]
-            (is (re-find #"Tenant groups cannot be created" (pr-str response)))))
-        (mt/with-temporary-setting-values [use-tenants true]
-          (mt/user-http-request :crowberto :post 200 "permissions/group"
-                                {:name "Acme Tenant" :is_tenant_group true})
-          (is (t2/exists? :model/PermissionsGroup :name "Acme Tenant" :is_tenant_group true)))))))
-
 (deftest membership-list-hides-tenant-groups-test
   (testing "GET /api/permissions/membership filters memberships of tenant groups when use-tenants is off"
     (mt/with-premium-features #{:tenants}

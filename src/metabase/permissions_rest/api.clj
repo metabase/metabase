@@ -262,6 +262,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (api/check-404 group)
     (t2/update! :model/PermissionsGroup group-id
@@ -282,6 +283,7 @@
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (t2/delete! :model/PermissionsGroup :id group-id)
     (events/publish-event! :event/group-delete {:object group
