@@ -20,32 +20,34 @@ function getPluginCard(single: PluginSeries[number]) {
 const PREFIX = "custom-viz:demo-viz:";
 
 describe("toPluginSeries", () => {
-  it("hands the plugin a copy of each card", () => {
+  it("hands the plugin a copy of each series entry", () => {
     const series = [
       createMockSingleSeries({ visualization_settings: { threshold: 1 } }),
     ];
-    const { card } = series[0];
 
     const pluginSeries = toPluginSeries(series);
 
-    expect(getPluginCard(pluginSeries[0])).toEqual(card);
-    expect(getPluginCard(pluginSeries[0])).not.toBe(card);
-    expect(pluginSeries[0].data).toBe(series[0].data);
+    expect(pluginSeries[0]).toEqual(series[0]);
+    expect(getPluginCard(pluginSeries[0])).not.toBe(series[0].card);
+    expect(pluginSeries[0].data).not.toBe(series[0].data);
   });
 
-  it("keeps plugin mutations away from the host card", () => {
+  it("keeps plugin mutations away from the host series", () => {
     const series = [createMockSingleSeries({ visualization_settings: {} })];
-    const { card } = series[0];
+    const { card, data } = series[0];
 
+    const pluginSeries = toPluginSeries(series);
     const pluginSettings = getPluginCard(
-      toPluginSeries(series)[0],
+      pluginSeries[0],
     ).visualization_settings;
     if (!isObject(pluginSettings)) {
       throw new Error("Expected the plugin card to carry settings");
     }
     pluginSettings["graph.goal_value"] = 1;
+    pluginSeries[0].data.rows.push([1]);
 
     expect(card.visualization_settings).toEqual({});
+    expect(data.rows).toEqual([]);
   });
 
   it("reuses the copy for the same series", () => {

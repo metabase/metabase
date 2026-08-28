@@ -14,18 +14,16 @@ const pluginSettingsCache = new WeakMap<
   { prefix: string; pluginSettings: PluginSettings }
 >();
 
-// Sandbox proxies are writable and `card` is redux state, so the plugin gets a copy.
+// Sandbox proxies write through to redux state, so the plugin gets a copy.
 export function toPluginSeries(series: Series): PluginSeries {
   const cached = pluginSeriesCache.get(series);
   if (cached) {
     return cached;
   }
-  const copies = series.map((single) => ({
-    ...single,
-    card: clone(single.card),
-  }));
   // The plugin API mirrors the host's series shape with looser public types.
-  const pluginSeries = copies as unknown as PluginSeries;
+  const pluginSeries = series.map((single) =>
+    clone(single),
+  ) as unknown as PluginSeries;
   pluginSeriesCache.set(series, pluginSeries);
   return pluginSeries;
 }
