@@ -472,7 +472,7 @@
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
   `:type`            — optional; forwarded to the token-tracking row
   `:operator-endpoint?` — optional; true when the endpoint is operator configuration (the AI service) rather
-                       than admin input, which exempts it from `llm.settings/llm-allowed-networks`"
+                       than admin input, which exempts it from [[metabase.llm.settings/llm-allowed-networks]]"
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            operator-endpoint?]
     :as opts}
