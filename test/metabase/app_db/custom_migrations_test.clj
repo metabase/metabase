@@ -2775,6 +2775,50 @@
             (is (true? (encryption/possibly-encrypted-string? (raw-pc))))
             (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
 
+(deftest encrypt-remaining-columns-test
+  (testing "v58.2026-08-28T14:00:00 : plaintext rows in the historically mixable columns are encrypted, encrypted rows untouched"
+    (encryption-test/with-secret-key "encrypt-remaining-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-28T14:00:00"] [migrate!]
+        (let [plain-details (json/encode {:db "/plain.db"})
+              enc-details   (encryption/maybe-encrypt (json/encode {:db "/enc.db"}))
+              plain-db-id   (:id (new-instance-with-default :metabase_database {:details plain-details}))
+              enc-db-id     (:id (new-instance-with-default :metabase_database {:details enc-details}))
+              user-settings (json/encode {:locale "en"})
+              user-id       (:id (new-instance-with-default :core_user {:settings user-settings}))
+              secret-bytes  (.getBytes "sooper-secret" "UTF-8")
+              secret-id     (t2/insert-returning-pk! :secret {:name       "s"
+                                                              :kind       "password"
+                                                              :value      secret-bytes
+                                                              :version    1
+                                                              :creator_id user-id
+                                                              :created_at :%now
+                                                              :updated_at :%now})
+              raw           (fn [table column id]
+                              (:value (t2/query-one {:select [[column :value]] :from [table] :where [:= :id id]})))
+              ;; convert the blob inside the reduction, while its connection is still open
+              raw-secret    (fn [id]
+                              (first (into []
+                                           (map (fn [{:keys [value]}] (#'custom-migrations/secret-value->bytes value)))
+                                           (t2/reducible-query {:select [:value] :from [:secret] :where [:= :id id]}))))]
+          (is (not (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id))))
+          (migrate!)
+          (testing "plaintext string values are encrypted and decrypt to the original"
+            (is (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id)))
+            (is (= plain-details (encryption/maybe-decrypt (raw :metabase_database :details plain-db-id))))
+            (is (encryption/possibly-encrypted-string? (raw :core_user :settings user-id)))
+            (is (= user-settings (encryption/maybe-decrypt (raw :core_user :settings user-id)))))
+          (testing "already-encrypted values are untouched"
+            (is (= enc-details (raw :metabase_database :details enc-db-id))))
+          (testing "plaintext secret bytes are encrypted and decrypt to the original"
+            (let [v (raw-secret secret-id)]
+              (is (encryption/possibly-encrypted-bytes? v))
+              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v) "UTF-8")))))
+          (testing "rollback decrypts them back"
+            (migrate! :down 57)
+            (is (= plain-details (raw :metabase_database :details plain-db-id)))
+            (is (= user-settings (raw :core_user :settings user-id)))
+            (is (= "sooper-secret" (String. ^bytes (raw-secret secret-id) "UTF-8")))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
