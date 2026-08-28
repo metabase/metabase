@@ -13,9 +13,9 @@ redirect_from:
 
 You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a focused version of [Metabot](../ai/metabot.md): it builds a question in the query builder and charts the answer.
 
-To build that question, embedded chat first searches your Metabase for the best thing to build on: a [metric](../data-modeling/metrics.md), a [model](../data-modeling/models.md), a saved question, or a table. Then it writes a query against whatever it picked. So embedded chat does look through your saved content, but as raw material for a new question, not as results to hand back. What people get back is always a new question they can drill into, and save if you [turn saving on](#let-people-save-questions-metabot-creates).
+To build that question, embedded chat first searches your Metabase for the best thing to build on: a [metric](../data-modeling/metrics.md), a [model](../data-modeling/models.md), a saved question, or a table (tables drop out once you [scope the chat to a collection](#set-up-ai-chat-in-metabase)). Then it writes a query against whatever it picked. So embedded chat does look through your saved content, but as raw material for a new question, not as results to hand back. What people get back is always a new question they can drill into, and save if you [turn saving on](#let-people-save-questions-metabot-creates).
 
-Embedded chat won't write SQL, build or edit dashboards, or work as a search box for finding existing content. For those, it'll point people to Metabase.
+Embedded chat won't write SQL, build or edit dashboards, or create metrics and models — it builds on the ones you already have. It also won't work as a search box for finding existing content. For those, chat will suggest doing the work in Metabase itself.
 
 AI chat requires the embed to use SSO authentication that signs people into your Metabase.
 
@@ -31,7 +31,7 @@ An admin sets up embedded Metabot in your Metabase:
 2. Select **Admin**.
 3. Click the **AI** tab.
 4. In the left sidebar, click **AI Settings**.
-5. Under **AI providers**, check that a provider is connected. If not, [connect one](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key).
+5. The first card on the page is your AI provider connection. If the card says **Connect to an AI provider**, [set one up](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key). If the card says **AI providers**, you're already connected.
 6. In the **Metabot settings** card, click the **Embedded** tab.
 7. Turn on **Enable Embedded Metabot**.
 8. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the metrics, models, and saved questions embedded Metabot should build on.

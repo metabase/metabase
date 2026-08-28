@@ -5,6 +5,8 @@ summary: "Replace the modular embedding SDK's default loading screen, error scre
 
 # Customize loading, error, and empty states
 
+![A custom error component rendering its own image and message in place of a chart](../images/custom-error.png)
+
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 While an embedded component is loading, when it fails, or when a query comes back with no rows, the [modular embedding SDK](./introduction.md) renders a screen of its own. You can swap in your own React components and images instead, so all three states match the rest of your app.
@@ -39,7 +41,7 @@ Unlike `loaderComponent` and `errorComponent`, these are [plugins](./plugins.md)
 {% include_file "{{ dirname }}/snippets/plugins/custom-images.tsx" snippet="example" %}
 ```
 
-`getNoDataIllustration` covers a query that came back with no rows. `getNoObjectIllustration` covers an empty list of things, like a collection with no dashboards in it. Both can only be set [globally](./plugins.md#plugin-scope), on the provider.
+`getNoDataIllustration` covers a query that came back with no rows. `getNoObjectIllustration` covers a search that turned up nothing, like a search page or an entity picker with no matches. Both can only be set [globally](./plugins.md#plugin-scope), on the provider.
 
 ## Further reading
 
