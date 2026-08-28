@@ -121,7 +121,7 @@ export function useMcpApp(): McpAppState {
       return;
     }
 
-    const refreshAuth = async () => {
+    const refreshMcpAuth = async () => {
       try {
         const result = await app.callServerTool({
           name: UI_CREDENTIAL_REFRESH_TOOL,
@@ -140,7 +140,7 @@ export function useMcpApp(): McpAppState {
 
         if (!cancelled) {
           refreshTimeout = window.setTimeout(
-            refreshAuth,
+            refreshMcpAuth,
             UI_CREDENTIAL_REFRESH_INTERVAL_MS,
           );
         }
@@ -163,14 +163,14 @@ export function useMcpApp(): McpAppState {
 
         if (!cancelled) {
           refreshTimeout = window.setTimeout(
-            refreshAuth,
+            refreshMcpAuth,
             UI_CREDENTIAL_REFRESH_RETRY_MS,
           );
         }
       }
     };
 
-    refreshAuth();
+    refreshMcpAuth();
 
     return () => {
       cancelled = true;

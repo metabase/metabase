@@ -12,3 +12,6 @@ export const UI_CREDENTIAL_REFRESH_MAX_FAILURES = 2;
 
 /** Server tool that issues a fresh scoped credential for any Metabase MCP App. */
 export const UI_CREDENTIAL_REFRESH_TOOL = "refresh_ui_credential";
+
+/** Metadata key that stores UI credential for MCP Apps. */
+export const MCP_APPS_METADATA_KEY = "com.metabase/mcp-apps";

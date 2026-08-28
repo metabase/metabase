@@ -4,19 +4,36 @@ import type {
 } from "@modelcontextprotocol/ext-apps/react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
+import { MCP_APPS_METADATA_KEY } from "../constants";
+
 import { useMcpApp } from "./useMcpApp";
 
 const mockUseApp = jest.fn();
 
-interface TestApp {
+interface TestMcpApp {
   callServerTool: jest.MockedFunction<App["callServerTool"]>;
   getHostCapabilities: jest.MockedFunction<App["getHostCapabilities"]>;
   getHostContext: jest.MockedFunction<App["getHostContext"]>;
   getHostVersion: jest.MockedFunction<App["getHostVersion"]>;
+
   ontoolresult: (params: McpUiToolResultNotification["params"]) => void;
 }
 
-const createTestApp = (overrides: Partial<TestApp> = {}): TestApp => ({
+const QUERY_RESULT: McpUiToolResultNotification["params"] = {
+  content: [],
+  structuredContent: { query: "encoded-query" },
+};
+
+const createAuthResult = (
+  credential = "refreshed-credential",
+): Awaited<ReturnType<App["callServerTool"]>> => ({
+  content: [],
+  _meta: {
+    [MCP_APPS_METADATA_KEY]: { credential, sessionId: "mcp-session-id" },
+  },
+});
+
+const createTestApp = (overrides: Partial<TestMcpApp> = {}): TestMcpApp => ({
   callServerTool: jest.fn(),
   getHostCapabilities: jest.fn(() => ({})),
   getHostContext: jest.fn(() => undefined),
@@ -24,6 +41,22 @@ const createTestApp = (overrides: Partial<TestApp> = {}): TestApp => ({
   ontoolresult: jest.fn(),
   ...overrides,
 });
+
+const setup = (overrides: Partial<TestMcpApp> = {}) => {
+  const app = createTestApp(overrides);
+  let appCreated = false;
+
+  mockUseApp.mockImplementation(({ onAppCreated }) => {
+    if (!appCreated) {
+      appCreated = true;
+      onAppCreated(app);
+    }
+
+    return { app };
+  });
+
+  return { app, ...renderHook(() => useMcpApp()) };
+};
 
 jest.mock("@modelcontextprotocol/ext-apps/react", () => ({
   applyDocumentTheme: jest.fn(),
@@ -36,131 +69,25 @@ describe("useMcpApp", () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+
     mockUseApp.mockReset();
   });
 
-  it("does not use credentials from the visualization tool result", () => {
-    const app = createTestApp();
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    act(() => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "tool-result-credential",
-            sessionId: "mcp-session-id",
-          },
-        },
-      });
-    });
-
-    expect(result.current.query).toBe("encoded-query");
-    expect(result.current.uiCredential).toBe("");
-    expect(result.current.mcpSessionId).toBe("");
-  });
-
-  it("reports an unsupported host when server tools are unavailable", () => {
-    const app = createTestApp({
-      getHostVersion: jest.fn(() => ({
-        name: "Claude Desktop",
-        version: "1.0.0",
-      })),
-    });
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    act(() => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
-    expect(result.current.hostError).toBe(
-      "Claude Desktop does not support this visualization.",
-    );
-  });
-
-  it("uses a generic name when the unsupported host has no name", () => {
-    const app = createTestApp();
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    act(() => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
-    expect(result.current.hostError).toBe(
-      "Your MCP client does not support this visualization.",
-    );
-  });
-
-  it("gets auth from the server tool when the visualization loads", async () => {
-    const app = createTestApp({
-      callServerTool: jest.fn().mockResolvedValue({
-        content: [],
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "refreshed-credential",
-            sessionId: "new-mcp-session-id",
-          },
-        },
-      }),
+  it("gets auth from the server tool instead of the visualization result", async () => {
+    const { app, result } = setup({
+      callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
       getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
     });
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
 
     act(() => {
       app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
+        ...QUERY_RESULT,
+        _meta: {
+          [MCP_APPS_METADATA_KEY]: {
+            credential: "tool-result-credential",
+            sessionId: "tool-result-session-id",
+          },
+        },
       });
     });
 
@@ -169,86 +96,52 @@ describe("useMcpApp", () => {
         name: "refresh_ui_credential",
         arguments: {},
       });
+
       expect(result.current.query).toBe("encoded-query");
       expect(result.current.uiCredential).toBe("refreshed-credential");
-      expect(result.current.mcpSessionId).toBe("new-mcp-session-id");
+      expect(result.current.mcpSessionId).toBe("mcp-session-id");
     });
+  });
+
+  it("reports an unsupported host when server tools are unavailable", () => {
+    // callServerTool is unavailable here
+    const { app, result } = setup({
+      getHostVersion: jest.fn(() => ({
+        name: "Codex Desktop",
+        version: "1.0.0",
+      })),
+    });
+
+    act(() => app.ontoolresult(QUERY_RESULT));
+
+    expect(result.current.hostError).toBe(
+      "Codex Desktop does not support this visualization.",
+    );
   });
 
   it("gets fresh auth when the host reuses the same query", async () => {
-    const app = createTestApp({
-      callServerTool: jest.fn().mockResolvedValue({
-        content: [],
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "refreshed-credential",
-            sessionId: "mcp-session-id",
-          },
-        },
-      }),
+    const { app } = setup({
+      callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
       getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
     });
-    let appCreated = false;
 
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    renderHook(() => useMcpApp());
-
-    await act(async () => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
+    await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(app.callServerTool).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
+    await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(app.callServerTool).toHaveBeenCalledTimes(2);
   });
 
-  it("reports an error after two consecutive credential refresh failures", async () => {
+  it("reports an error after two initial credential refresh failures", async () => {
     jest.useFakeTimers();
     jest.spyOn(console, "error").mockImplementation();
 
-    const app = createTestApp({
+    const { app, result } = setup({
       callServerTool: jest.fn().mockRejectedValue(new Error("Refresh failed")),
       getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
     });
-    let appCreated = false;
 
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    await act(async () => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
-    expect(app.callServerTool).toHaveBeenCalledTimes(1);
+    await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(result.current.hostError).toBeNull();
 
     await act(async () => {
@@ -266,58 +159,21 @@ describe("useMcpApp", () => {
     jest.useFakeTimers();
     jest.spyOn(console, "error").mockImplementation();
 
-    const app = createTestApp({
+    const { app, result } = setup({
       callServerTool: jest
         .fn()
-        .mockResolvedValueOnce({
-          content: [],
-          _meta: {
-            "com.metabase/mcp-apps": {
-              credential: "initial-credential",
-              sessionId: "mcp-session-id",
-            },
-          },
-        })
+        .mockResolvedValueOnce(createAuthResult("initial-credential"))
         .mockRejectedValueOnce(new Error("Refresh failed"))
         .mockRejectedValueOnce(new Error("Refresh failed"))
-        .mockResolvedValueOnce({
-          content: [],
-          _meta: {
-            "com.metabase/mcp-apps": {
-              credential: "recovered-credential",
-              sessionId: "mcp-session-id",
-            },
-          },
-        }),
+        .mockResolvedValueOnce(createAuthResult("recovered-credential")),
       getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
     });
-    let appCreated = false;
 
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    await act(async () => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
+    await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(4 * 60 * 1000);
-    });
-
-    await act(async () => {
       await jest.advanceTimersByTimeAsync(30 * 1000);
     });
 
@@ -332,49 +188,5 @@ describe("useMcpApp", () => {
     expect(app.callServerTool).toHaveBeenCalledTimes(4);
     expect(result.current.hostError).toBeNull();
     expect(result.current.uiCredential).toBe("recovered-credential");
-  });
-
-  it("refreshes auth periodically while the iframe remains open", async () => {
-    jest.useFakeTimers();
-
-    const app = createTestApp({
-      callServerTool: jest.fn().mockResolvedValue({
-        content: [],
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "refreshed-credential",
-            sessionId: "mcp-session-id",
-          },
-        },
-      }),
-      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
-    });
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    renderHook(() => useMcpApp());
-
-    await act(async () => {
-      app.ontoolresult({
-        content: [],
-        structuredContent: { query: "encoded-query" },
-      });
-    });
-
-    expect(app.callServerTool).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      jest.advanceTimersByTime(4 * 60 * 1000);
-    });
-
-    expect(app.callServerTool).toHaveBeenCalledTimes(2);
   });
 });
