@@ -1,4 +1,5 @@
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
+import { MAILDEV_SMTP_PORT, MAILDEV_WEB_PORT } from "./constants/maildev-ports";
 import runCypress from "./cypress-node-js-runner";
 import CypressBackend from "./cypress-runner-backend";
 import {
@@ -70,20 +71,17 @@ const isMaildevListening = async (webPort: string | number) => {
  * failing on a port conflict.
  */
 const startContainers = async () => {
-  const webPort = process.env.MAILDEV_WEB_PORT || 1080;
-  const smtpPort = process.env.MAILDEV_SMTP_PORT || 1025;
-
-  if (!isPortInUse(webPort) && !isPortInUse(smtpPort)) {
+  if (!isPortInUse(MAILDEV_WEB_PORT) && !isPortInUse(MAILDEV_SMTP_PORT)) {
     shell(`${DOCKER_COMPOSE} up -d`);
     return;
   }
 
-  if (!(await isMaildevListening(webPort))) {
+  if (!(await isMaildevListening(MAILDEV_WEB_PORT))) {
     printBold(
-      `⚠️ Port ${webPort} or ${smtpPort} is in use, but not by maildev`,
+      `⚠️ Port ${MAILDEV_WEB_PORT} or ${MAILDEV_SMTP_PORT} is in use, but not by maildev`,
     );
     console.log(`The maildev container can't start on these ports.
-        - Free the ports (\`lsof -i:${webPort} -i:${smtpPort}\` shows what holds them) and run the script again
+        - Free the ports (\`lsof -i:${MAILDEV_WEB_PORT} -i:${MAILDEV_SMTP_PORT}\` shows what holds them) and run the script again
         - Alternatively, set MAILDEV_WEB_PORT / MAILDEV_SMTP_PORT in this shell and try again
         `);
 
@@ -91,7 +89,7 @@ const startContainers = async () => {
   }
 
   console.log(
-    `ℹ️ maildev is already running on ports ${webPort}/${smtpPort}. Reusing it instead of starting the \`maildev\` container.`,
+    `ℹ️ maildev is already running on ports ${MAILDEV_WEB_PORT}/${MAILDEV_SMTP_PORT}. Reusing it instead of starting the \`maildev\` container.`,
   );
 
   const services = shell(`${DOCKER_COMPOSE} config --services`, { quiet: true })

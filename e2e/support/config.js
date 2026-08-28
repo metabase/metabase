@@ -7,6 +7,10 @@ import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
+import {
+  MAILDEV_SMTP_PORT,
+  MAILDEV_WEB_PORT,
+} from "../runner/constants/maildev-ports";
 
 import {
   extractFailedTests,
@@ -189,8 +193,8 @@ const defaultConfig = {
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
     // Ports of the local maildev instance used by e2e-email-helpers.js
-    MAILDEV_WEB_PORT: Number(process.env["MAILDEV_WEB_PORT"]) || 1080,
-    MAILDEV_SMTP_PORT: Number(process.env["MAILDEV_SMTP_PORT"]) || 1025,
+    MAILDEV_WEB_PORT,
+    MAILDEV_SMTP_PORT,
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
