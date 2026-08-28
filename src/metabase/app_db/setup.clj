@@ -233,7 +233,7 @@
   - `:create-sample-content?` (default `false`): create the sample content on a fresh install.
   - `:manage-encryption-state?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database before
     migrations run (see [[mdb.encryption/encryption-state]] and [[mdb.encryption/check-encryption]]) and record the
-    state afterwards (see [[mdb.encryption/mark-database-encrypted!]]). Turned off by the `enable-encryption` command
+    state afterwards (see [[mdb.encryption/record-encryption-state!]]). Turned off by the `enable-encryption` command
     and by [[metabase.cmd.copy/copy!]],
     which handle the encryption state themselves."
   ([db-type data-source]
@@ -258,7 +258,8 @@
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
            (run-schema-migrations! data-source auto-migrate?)
-           (mdb.encryption/mark-database-encrypted! db-state manage-encryption-state?)))))
+           (when manage-encryption-state?
+             (mdb.encryption/record-encryption-state! db-state))))))
    :done))
 
 (defn release-migration-locks!

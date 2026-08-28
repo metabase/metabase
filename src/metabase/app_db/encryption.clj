@@ -223,15 +223,14 @@
                          "`enable-encryption`; check the key or restore from a backup.")
                     {}))))
 
-(mu/defn mark-database-encrypted!
+(mu/defn record-encryption-state!
   "Record post-migrations the state [[encryption-state]] found pre-migrations: for a `:fresh` or `:pre-sentinel`
   database (both provably encrypted under the current key, or holding nothing at all), replace the `encryption-check`
-  sentinel with a fresh UUID encrypted under MB_ENCRYPTION_SECRET_KEY. Runs after migrations because on a fresh
-  database the `setting` table does not exist before them. Only ever writes the sentinel, never another row, and
-  nothing at all when `manage-encryption-state?` is off (the caller manages the encryption state itself)."
-  [db-state :- EncryptionState
-   manage-encryption-state? :- :boolean]
-  (when (and manage-encryption-state? (#{:fresh :pre-sentinel} db-state))
+  sentinel with a fresh UUID encrypted under MB_ENCRYPTION_SECRET_KEY; every other state is already recorded
+  correctly. Runs after migrations because on a fresh database the `setting` table does not exist before them. Only
+  ever writes the sentinel, never another row."
+  [db-state :- EncryptionState]
+  (when (#{:fresh :pre-sentinel} db-state)
     (write-encryption-check!)
     (log/info (case db-state
                 :fresh        "MB_ENCRYPTION_SECRET_KEY set on a new database. Marked database as encrypted."
