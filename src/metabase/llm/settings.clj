@@ -77,10 +77,10 @@
   the connection actually opens, so a host that rebinds between the two is still refused."
   [url]
   (when-not (str/blank? url)
-    (let [parsed (try
-                   (URL. ^String url)
-                   (catch MalformedURLException _ nil))
-          host   (some-> parsed .getHost not-empty)]
+    (let [^URL parsed (try
+                        (URL. ^String url)
+                        (catch MalformedURLException _ nil))
+          host        (some-> parsed .getHost not-empty)]
       (cond
         (not (and parsed (#{"http" "https"} (.getProtocol parsed)) host))
         (tru "Invalid base URL: it must start with http:// or https://.")
