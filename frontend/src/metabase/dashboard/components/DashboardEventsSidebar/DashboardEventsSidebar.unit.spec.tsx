@@ -6,7 +6,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getSidebar } from "metabase/dashboard/selectors";
 import { getDashCardVisibleTimelineEvents } from "metabase/dashboard/timeline-events";
-import type { State } from "metabase/redux/store";
+import type { State, StoreDashcard } from "metabase/redux/store";
 import {
   createMockApiState,
   createMockDashboardState,
@@ -18,7 +18,6 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   DashCardId,
-  DashboardCard,
   DashboardTabId,
   TimelineEventId,
   TimelineEventsVisibility,
@@ -143,7 +142,7 @@ const DASHCARD_DATASETS = {
 interface SetupOpts {
   dashcardId?: DashCardId;
   focusedEventIds?: TimelineEventId[];
-  dashcards?: DashboardCard[];
+  dashcards?: StoreDashcard[];
   selectedTabId?: DashboardTabId | null;
 }
 

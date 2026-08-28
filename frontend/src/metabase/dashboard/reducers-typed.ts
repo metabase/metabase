@@ -30,6 +30,7 @@ import type {
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
+  CardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
@@ -67,10 +68,9 @@ import {
 import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
 
-// Every reducer below mutates its immer draft rather than rebuilding state with
-// icepick: icepick freezes what it returns outside production, and immer skips
-// finalizing a frozen result, leaving the untouched entries as revoked drafts
-// that throw on the next read.
+// Never hand icepick an immer draft: it freezes what it returns outside
+// production, immer skips finalizing a frozen result, and the entries it copied
+// over stay revoked drafts that throw on the next read. Mutate the draft.
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
@@ -467,8 +467,11 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          state[dashcard_id] ??= {};
-          state[dashcard_id][card_id] = result;
+          // Typed loosely on purpose: a card the user cannot read is stored as
+          // an error without a result, and `Draft<Dataset>` is too deep for the
+          // type checker to instantiate.
+          const cards: Record<CardId, unknown> = (state[dashcard_id] ??= {});
+          cards[card_id] = result;
         }
       })
       .addCase(clearCardData, (state, action) => {

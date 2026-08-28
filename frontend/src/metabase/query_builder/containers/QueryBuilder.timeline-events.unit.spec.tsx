@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupTimelinesEndpoints } from "__support__/server-mocks";
+import { TIMELINE_LIST_ROUTE } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
@@ -330,7 +330,9 @@ describe("QueryBuilder > timeline events", () => {
     expect(getVisibleEventIds(store)).toEqual([]);
 
     fetchMock.post("path:/api/timeline-event", GA);
-    setupTimelinesEndpoints([{ ...WRITABLE_TIMELINE, events: [RC1, RC2, GA] }]);
+    fetchMock.modifyRoute(TIMELINE_LIST_ROUTE, {
+      response: [{ ...WRITABLE_TIMELINE, events: [RC1, RC2, GA] }],
+    });
 
     await act(async () => {
       store.dispatch(onOpenTimelines());
