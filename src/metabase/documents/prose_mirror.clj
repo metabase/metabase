@@ -24,6 +24,22 @@
   "Type of a smart-link node"
   "smartLink")
 
+(def smart-link-model->db-model
+  "The row each smartLink `model` denotes. One source for both halves of the smart-link round
+  trip: [[metabase.documents.markdown]] reads the keys, which are the `{% entity %}` grammar's
+  whole vocabulary, and whoever resolves a link's label/href reads the values. Kept here rather
+  than in either caller because a model present in one half and not the other parses into a link
+  whose label silently never resolves."
+  {"card"       :model/Card
+   "dataset"    :model/Card
+   "metric"     :model/Card
+   "dashboard"  :model/Dashboard
+   "collection" :model/Collection
+   "table"      :model/Table
+   "database"   :model/Database
+   "document"   :model/Document
+   "user"       :model/User})
+
 (def prose-mirror-content-type
   "The vendored 'mime-type' for documents saved using the prose-mirror ast."
   "application/json+vnd.prose-mirror")
