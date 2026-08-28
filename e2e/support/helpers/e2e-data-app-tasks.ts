@@ -118,8 +118,6 @@ export async function scaffoldDataApp({
     path.join(inRepo(sdkFrom), "node_modules"),
     path.join(root, "node_modules"),
   );
-  // Synchronization writes the app's resource entity IDs back into its manifest,
-  // so an app without one is refused before it reaches the reconcilers.
   fs.writeFileSync(
     path.join(root, "data_app.yaml"),
     `name: ${appName}\npath: ./dist/index.js\n`,

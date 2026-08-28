@@ -7,7 +7,6 @@
   mixed (serdes + data apps), and serdes-only."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
@@ -33,14 +32,8 @@
 (defn- app-tree!
   "Repo files for one data app: its `data_app.yaml` + a bundle at `dist/index.js`."
   [slug bundle]
-  (let [{:keys [resource_collection_entity_id permission_group_entity_id]}
-        (data-app.test-util/ensure-manifest-resources! slug)]
-    {(str "data_apps/" slug "/data_app.yaml")
-     (format (str "name: %s\npath: dist/index.js\n"
-                  "resource_collection_entity_id: %s\n"
-                  "permission_group_entity_id: %s\n")
-             slug resource_collection_entity_id permission_group_entity_id)
-     (str "data_apps/" slug "/dist/index.js") bundle}))
+  {(str "data_apps/" slug "/data_app.yaml")  (str "name: " slug "\npath: dist/index.js\n")
+   (str "data_apps/" slug "/dist/index.js") bundle})
 
 ;; One self-contained serdes entity (a bare collection — no DB deps), used as the
 ;; "data" change. Reuses the path/content shape the mock harness imports cleanly.

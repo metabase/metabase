@@ -25,19 +25,6 @@ data_apps/
 plus two optional fields: a one-line `description` shown beside the name in the admin UI, and the
 origins the sandboxed bundle may `fetch`/XHR. See `config.clj` for the format and its validation.
 
-It must also declare the 21-character entity IDs of the app-owned collection and permissions group
-(see the permissions section below for what these own):
-
-```yaml
-name: Sales
-path: dist/index.js
-resource_collection_entity_id: resourcecollectionid1
-permission_group_entity_id: permissiongroupid0001
-```
-
-Remote sync resolves these portable IDs to local AppDB records. The `data_app` row retains the
-local numeric foreign keys, so the same manifest works across instances.
-
 **The directory name is the slug.** Nothing in the config declares it. This is what makes slug
 collisions structurally impossible — a repo can't hold two `data_apps/sales` directories, and
 discovery takes at most one config per directory.
@@ -121,7 +108,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `POST /api/apps/:slug/draft` — create or reuse a draft row with its resources before the app's
-  first import, returning the entity IDs to put in `data_app.yaml` (superuser).
+  first import (superuser).
 - `POST /api/apps/:slug/query` — resolve an authored query definition into a serializable
   Metabase query plus the table IDs it touches (superuser).
 - `PUT /api/apps/:slug/resources/permissions` — reconcile the app group's table view-data grants
@@ -140,8 +127,8 @@ middleware's lookup doesn't pull in route code.
 
 Each app owns two server-managed resources (`resources.clj`), created on draft or first import and
 reconciled on every sync: a **collection** holding the copies the app is served from (saved
-questions, action models, table-sourced metrics) and a **permissions group** its users belong to. The manifest's entity
-IDs bind both across instances. `PUT /api/apps/:slug/resources/permissions` makes the tables the
+questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
+`PUT /api/apps/:slug/resources/permissions` makes the tables the
 app's queries and actions touch `:unrestricted` view-data for the group and everything else
 `:blocked`; the group's `create-queries` is pinned to `:no` on every database, and every group but
 admins is revoked from the collection before the app group gets read access. Deleting an app
@@ -168,7 +155,7 @@ permission reconciliation, and repo status.
 | `sync.clj` | Discovery, materialization, pruning, drafts. The entry point remote-sync calls. |
 | `config.clj` | `data_app.yaml` parsing and validation; the `data_apps/` layout constants. |
 | `api.clj` | The `/api/apps` endpoints, bundle serving, ETag handling. |
-| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, manifest reconciliation, view-data grants, deletion. |
+| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, view-data grants, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion. |
 | `csp.clj` | `allowed_hosts` lookup for the core CSP middleware. |
 | `init.clj` | Loads the above so endpoints, models, and hooks register. |

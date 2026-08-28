@@ -84,3 +84,8 @@
   "Delete every non-draft DataApp, returning the number deleted."
   []
   (t2/delete! :model/DataApp :draft false))
+
+(defn publish-data-app-drafts!
+  "Mark drafts named by `slugs` as published."
+  [slugs]
+  (t2/update! :model/DataApp :name [:in slugs] :draft true {:draft false}))

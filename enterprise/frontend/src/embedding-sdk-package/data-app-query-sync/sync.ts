@@ -7,7 +7,6 @@ import {
   readResourceLockfile,
   writeResourceLockfile,
 } from "./lockfile";
-import { addResourceEntityIdsToManifest } from "./manifest";
 import { MetabaseClient, orNullOn404 } from "./metabase-client";
 import { reconcileQueries } from "./reconcile";
 import { reconcileModels } from "./reconcile-models";
@@ -110,10 +109,9 @@ export async function checkResourcesSynced(appRoot: string) {
 }
 
 /**
- * A manifest repoint claims an empty collection, leaving the copies in the old
- * one, and they have to follow: read access to the app's current collection is
- * what lets its viewers run them. Only a copy still sitting where synchronization
- * put it is the app's to move; anything else was displaced by hand.
+ * Move synchronized copies when the app gets a new collection. Collection read
+ * access lets app viewers run the copies. Move only copies that remain in the
+ * previous synchronized collection.
  */
 async function moveCopiesToAppCollection(
   appRoot: string,
@@ -165,15 +163,9 @@ export async function syncResources({
   const client = new MetabaseClient(metabaseUrl, apiKey);
   const slug = path.basename(appRoot);
   const app = await client.ensureDraft(slug);
-
   if (!isPositiveInteger(app.resource_collection_id)) {
     throw new Error(`Data app ${slug} does not have a resource collection.`);
   }
-
-  addResourceEntityIdsToManifest(appRoot, {
-    resourceCollectionEntityId: app.resource_collection_entity_id,
-    permissionGroupEntityId: app.permission_group_entity_id,
-  });
 
   await moveCopiesToAppCollection(
     appRoot,

@@ -3233,9 +3233,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
-                    :model/Permissions
                     :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
                     :model/Table}}
 
   enterprise/data-complexity-score

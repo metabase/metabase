@@ -1,5 +1,4 @@
 import { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import type { TemporalUnit } from "metabase-types/api";
 
 import type { SchemaColumn } from "../data-schema";
 
@@ -88,11 +87,9 @@ export function breakout<TDimension extends object>(
   dimension: TDimension,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
-  const unit = getTemporalUnit(options);
-
   return {
     ...dimension,
-    ...(unit !== undefined ? { unit } : undefined),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...getBinningOptions(options),
   };
 }
@@ -137,42 +134,13 @@ export function orderBy<TDimension>(
   const { displayName: _displayName, ...orderableDimension } = dimension as {
     displayName?: unknown;
   } & object;
-  const unit = getTemporalUnit(options);
 
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    ...(unit !== undefined ? { unit } : undefined),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...getBinningOptions(options),
   };
-}
-
-const TEMPORAL_UNITS: ReadonlySet<string> = new Set([
-  "minute",
-  "hour",
-  "day",
-  "week",
-  "quarter",
-  "month",
-  "year",
-  "minute-of-hour",
-  "hour-of-day",
-  "day-of-week",
-  "day-of-month",
-  "day-of-year",
-  "week-of-year",
-  "month-of-year",
-  "quarter-of-year",
-] satisfies TemporalUnit[]);
-
-function getTemporalUnit(options: unknown): TemporalUnit | undefined {
-  if (options != null && typeof options === "object" && "unit" in options) {
-    return isTemporalUnit(options.unit) ? options.unit : undefined;
-  }
-}
-
-function isTemporalUnit(value: unknown): value is TemporalUnit {
-  return typeof value === "string" && TEMPORAL_UNITS.has(value);
 }
 
 function getAggregationResultColumn(value: unknown): SchemaColumn | undefined {

@@ -1,7 +1,6 @@
 import type {
   DataAppMetadata,
   DataAppMetric,
-  DraftDataAppMetadata,
   MetabaseAction,
   MetabaseCard,
 } from "./types";
@@ -71,7 +70,7 @@ export class MetabaseClient {
   }
 
   ensureDraft(slug: string) {
-    return this.request<DraftDataAppMetadata>(
+    return this.request<DataAppMetadata>(
       `apps/${encodeURIComponent(slug)}/draft`,
       { method: "POST" },
     );

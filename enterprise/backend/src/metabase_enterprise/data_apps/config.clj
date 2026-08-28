@@ -7,9 +7,7 @@
      path: dist/index.js        # bundle path, relative to this app's directory
      allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
        - https://api.example.com
-       - https://*.internal.acme.com
-     resource_collection_entity_id: abc123def456ghi789jkl
-     permission_group_entity_id: abc123def456ghi789mno"
+       - https://*.internal.acme.com"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -114,16 +112,6 @@
            distinct
            vec))))
 
-(defn- parse-entity-id
-  "Validate one required portable entity ID from a data app manifest."
-  [parsed key ^String dir]
-  (let [value (some-> (get parsed key) str str/trim not-empty)]
-    (when-not (and value (re-matches #"[-_0-9A-Za-z]{21}" value))
-      (throw (ex-info (tru "{0}/{1}: \"{2}\" must be a 21-character entity ID."
-                           dir config-file-name (name key))
-                      {:status-code 400})))
-    value))
-
 (defn- path-traversal? [path]
   (some #(= ".." %) (str/split path #"/")))
 
@@ -152,23 +140,20 @@
 
 (defn parse-app-config
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
-   `data_apps/sales`) into app metadata. The slug is the directory's name; `path`
-   is relative to the directory; `:description` is an optional one-liner (nil
-   when absent or blank, capped at [[max-description-chars]]); `:allowed_hosts`
-   is a (possibly empty) vector of origins the sandboxed bundle may reach; the
-   required resource entity IDs identify the collection and permissions group
-   owned by the app. Throws an `ex-info` with `:status-code` 400 on malformed or
-   incomplete content — including a directory whose name isn't a usable slug,
-   since that app has no URL to be served at."
+   `data_apps/sales`) into `{:slug ..., :display_name ..., :description ...,
+   :path ..., :allowed_hosts [...]}`. The slug is the directory's name; `path` is
+   relative to the directory; `:description` is an optional one-liner (nil when
+   absent or blank, capped at [[max-description-chars]]); `:allowed_hosts` is a
+   (possibly empty) vector of origins the sandboxed bundle may reach. Throws an
+   `ex-info` with `:status-code` 400 on malformed or incomplete content — including
+   a directory whose name isn't a usable slug, since that app has no URL to be served at."
   [^bytes bytes ^String dir]
   (let [parsed        (parse-yaml bytes dir)
         slug          (dir-slug dir)
         name          (some-> (:name parsed) str str/trim not-empty)
         description   (parse-description (:description parsed) dir)
         path          (some-> (:path parsed) normalize-path not-empty)
-        allowed-hosts (parse-allowed-hosts parsed dir)
-        resource-collection-entity-id (parse-entity-id parsed :resource_collection_entity_id dir)
-        permission-group-entity-id    (parse-entity-id parsed :permission_group_entity_id dir)]
+        allowed-hosts (parse-allowed-hosts parsed dir)]
     (when-not (re-matches slug-pattern slug)
       (throw (ex-info (tru "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes." dir)
                       {:status-code 400})))
@@ -184,10 +169,4 @@
     (when (path-traversal? path)
       (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
                       {:status-code 400})))
-    {:slug                          slug
-     :display_name                  name
-     :description                   description
-     :path                          path
-     :allowed_hosts                 allowed-hosts
-     :resource_collection_entity_id resource-collection-entity-id
-     :permission_group_entity_id    permission-group-entity-id}))
+    {:slug slug, :display_name name, :description description, :path path, :allowed_hosts allowed-hosts}))

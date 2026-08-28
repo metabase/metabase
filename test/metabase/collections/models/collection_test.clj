@@ -674,19 +674,6 @@
       (is (= #{(u/the-id b) (u/the-id c)}
              (#'collection/descendant-ids a))))))
 
-(deftest collection-empty?-test
-  (testing "a collection with no descendants or content"
-    (mt/with-temp [:model/Collection collection {}]
-      (is (true? (collection/collection-empty? collection)))))
-  (testing "a collection with a nested collection"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Collection _ {:location (collection/children-location collection)}]
-      (is (false? (collection/collection-empty? collection)))))
-  (testing "a collection with content"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card _ {:collection_id (:id collection)}]
-      (is (false? (collection/collection-empty? collection))))))
-
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
 
 (deftest effective-children-test
