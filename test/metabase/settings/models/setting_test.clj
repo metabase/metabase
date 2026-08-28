@@ -734,6 +734,27 @@
     (is (= "123456"
            (test-sensitive-setting)))))
 
+(defsetting test-sensitive-multi-line-setting
+  (deferred-tru "This is a sample sensitive multi-line Setting.")
+  :sensitive? true)
+
+(deftest sensitive-settings-multi-line-test
+  (testing "`user-facing-value` should obfuscate multi-line sensitive settings"
+    (test-sensitive-multi-line-setting! "ABC1\n3")
+    (is (=  "**********\n3"
+            (setting/user-facing-value "test-sensitive-multi-line-setting"))))
+  (testing "Attempting to set a sensitive setting to a multi-line obfuscated value should be ignored"
+    (test-sensitive-multi-line-setting! "1234\n6")
+    (test-sensitive-multi-line-setting! "**********\n6")
+    (is (= "1234\n6"
+           (test-sensitive-multi-line-setting)))))
+
+(deftest obfuscated-value-spanning-a-line-break-test
+  (testing "obfuscated-value? works for values ending in a newline"
+    (let [key-file "{\n  \"type\": \"service_account\"\n}\n"]
+      (is (= "**********}\n" (setting/obfuscate-value key-file)))
+      (is (setting/obfuscated-value? (setting/obfuscate-value key-file))))))
+
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
 (deftest cache-sync-test
