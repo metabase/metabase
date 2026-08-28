@@ -190,43 +190,52 @@
                                             "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
                         {}))))))
 
-(mu/defn- check-encryption :- [:maybe [:enum :fresh-database :pre-sentinel-database]]
-  "Verify that MB_ENCRYPTION_SECRET_KEY matches the database. Encryption status is tracked by the `encryption-check`
-  sentinel setting -- a random UUID encrypted under the key, present if and only if the database is encrypted (see
-  [[mdb.encryption/encryption-check-status]]); it is read and written raw, not through `defsetting`.
+(mu/defn- check-encryption :- [:enum :encrypted :unencrypted :unverified :fresh :pre-sentinel]
+  "Verify that MB_ENCRYPTION_SECRET_KEY matches the database and return its state:
+
+    :encrypted    - the key is set and the sentinel decrypts with it
+    :unencrypted  - no key and no sentinel
+    :unverified   - `manage-encryption-state?` is off: the caller manages the encryption state itself
+    :fresh        - the key is set, no sentinel, and the database has never held encrypted-at-rest content
+    :pre-sentinel - the key is set, no sentinel, and every sampled value already decrypts with the key -- a state
+                    only a database encrypted under exactly this key can produce, e.g. one from before the sentinel
+                    existed
+
+  Encryption status is tracked by the `encryption-check` sentinel setting -- a random UUID encrypted under the key,
+  present if and only if the database is encrypted (see [[mdb.encryption/encryption-check-status]]); it is read and
+  written raw, not through `defsetting`.
 
   This runs before migrations, which encrypt whatever they write or backfill with the current key: a sentinel that
   does not decrypt means the key is wrong, and letting migrations run would re-encrypt existing ciphertext under it,
   irreversibly.
 
-  Startup never encrypts existing data. With a key set but no sentinel, either the database has never held any
-  encrypted-at-rest content (a fresh install), or every value [[mdb.encryption/encrypted-content-status]] samples
-  already decrypts with the key -- a state only a database encrypted under exactly this key can produce, e.g. one
-  from before the sentinel existed. Both may simply be marked as encrypted, which [[setup-db!]] does once migrations
-  have run (on a fresh database the `setting` table does not exist yet); this fn returns which case applies, nil when
-  there is nothing to write. Content the key does not decrypt means the database is unencrypted, mixed, or encrypted
-  under another key: startup refuses to run, and the admin has to run `enable-encryption` deliberately (or fix the
-  key). The sentinel only records encryption state and must never trigger encryption: the strict reads rely on
-  existing rows only ever being encrypted by that deliberate command."
+  Startup never encrypts existing data. The `:fresh` and `:pre-sentinel` databases may simply be marked as encrypted,
+  which [[setup-db!]] does once migrations have run (on a fresh database the `setting` table does not exist yet).
+  Content the key does not decrypt means the database is unencrypted, mixed, or encrypted under another key: startup
+  refuses to run, and the admin has to run `enable-encryption` deliberately (or fix the key). The sentinel only
+  records encryption state and must never trigger encryption: the strict reads rely on existing rows only ever being
+  encrypted by that deliberate command."
   [manage-encryption-state? :- :boolean]
   (log/debug "Checking encryption configuration")
   (let [status (mdb.encryption/encryption-check-status)]
     (if-not (encryption/default-encryption-enabled?)
-      (when manage-encryption-state?
+      (if-not manage-encryption-state?
+        :unverified
         (if (= status :absent)
-          (log/info "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")
-          (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
-        nil)
+          (do (log/info "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set.")
+              :unencrypted)
+          (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {}))))
       (case status
         :valid   (do (log/info "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured")
-                     nil)
+                     :encrypted)
         :invalid (throw (ex-info (str "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY "
                                       "environment contains")
                                  {}))
-        :absent  (when manage-encryption-state?
+        :absent  (if-not manage-encryption-state?
+                   :unverified
                    (case (mdb.encryption/encrypted-content-status)
-                     :none            :fresh-database
-                     :decryptable     :pre-sentinel-database
+                     :none            :fresh
+                     :decryptable     :pre-sentinel
                      :not-decryptable
                      (throw (ex-info (str "MB_ENCRYPTION_SECRET_KEY is set but the database is not marked as "
                                           "encrypted and already contains data the key does not decrypt. If you have "
@@ -239,12 +248,12 @@
 (mu/defn- mark-database-encrypted!
   "Record post-migrations what [[check-encryption]] decided pre-migrations: replace the `encryption-check` sentinel
   with a fresh UUID encrypted under MB_ENCRYPTION_SECRET_KEY. Only ever writes the sentinel, never another row."
-  [db-state :- [:enum :fresh-database :pre-sentinel-database]]
+  [db-state :- [:enum :fresh :pre-sentinel]]
   (mdb.encryption/write-encryption-check!)
   (log/info (case db-state
-              :fresh-database        "MB_ENCRYPTION_SECRET_KEY set on a new database. Marked database as encrypted."
-              :pre-sentinel-database (str "MB_ENCRYPTION_SECRET_KEY decrypts the existing data but the database "
-                                          "predates the encryption sentinel. Marked database as encrypted."))
+              :fresh        "MB_ENCRYPTION_SECRET_KEY set on a new database. Marked database as encrypted."
+              :pre-sentinel (str "MB_ENCRYPTION_SECRET_KEY decrypts the existing data but the database "
+                                 "predates the encryption sentinel. Marked database as encrypted."))
             (u/emoji "✅")))
 
 (mu/defn- error-if-downgrade-required!
@@ -313,7 +322,7 @@
          (error-if-downgrade-required! data-source)
          (let [db-state (check-encryption manage-encryption-state?)]
            (run-schema-migrations! data-source auto-migrate?)
-           (when db-state
+           (when (#{:fresh :pre-sentinel} db-state)
              (mark-database-encrypted! db-state))))))
    :done))
 
