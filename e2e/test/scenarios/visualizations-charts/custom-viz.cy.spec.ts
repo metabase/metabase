@@ -1802,6 +1802,18 @@ describe("sandbox", () => {
       ),
     },
     {
+      // The `on*` IDL setters reach the same global event types as
+      // addEventListener, so they are gated on the property path too.
+      name: "document.onkeydown setter",
+      payload: "document.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onkeydown/),
+    },
+    {
+      name: "document.onpaste setter",
+      payload: "document.onpaste = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onpaste/),
+    },
+    {
       name: 'setAttribute("onclick", ...)',
       payload: 'document.body.setAttribute("onclick", "alert(1)");',
       errorPattern: blockedPattern(

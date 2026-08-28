@@ -15,7 +15,7 @@ interface JsxToken {
  */
 export function tokenizeJsx(code: string): JsxToken[] {
   const pattern =
-    /("[^"]*"|'[^']*'|\{[^}]*\})|([<>/=])|([A-Za-z_][\w-]*)|(\s+)|([^\s])/g;
+    /("[^"]*"|'[^']*'|\{[^}]*\})|([<>/=])|([A-Za-z_][\w.-]*)|(\s+)|([^\s])/g;
   const tokens: JsxToken[] = [];
   // Whether we're between `<` and `>` (inside a tag) vs. in element content,
   // and whether the next identifier is the tag name (right after `<` or `</`).
@@ -66,7 +66,7 @@ interface StoryJsxProps {
 /** Monospace JSX with light syntax highlighting (tags, props, values). */
 export function StoryJsx({ children }: StoryJsxProps) {
   return (
-    <Text ff="monospace" size="sm" fw={500}>
+    <Text ff="monospace" size="sm" fw={500} style={{ whiteSpace: "pre-wrap" }}>
       {tokenizeJsx(children).map((token, index) => (
         <span
           key={`${index}-${token.value}`}

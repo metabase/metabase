@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { isNotFalsy } from "metabase/utils/types";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Group } from "metabase-types/api";
+import type { Group, PermissionsDatabase } from "metabase-types/api";
 
 import type {
   DataRouteParams,
@@ -15,7 +13,7 @@ import {
   getDatabaseEntityId,
   getSchemaEntityId,
 } from "../../utils/data-entity-id";
-import { getDatabase } from "../../utils/metadata";
+import { getDatabaseSchema, getDatabaseSchemas } from "../../utils/metadata";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -23,7 +21,7 @@ import {
 
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,
-  metadata: Metadata,
+  database: PermissionsDatabase | undefined,
   group: Group,
 ): PermissionEditorBreadcrumb[] | null => {
   const { groupId, databaseId, schemaName } = params;
@@ -38,16 +36,14 @@ export const getDatabasesEditorBreadcrumbs = (
     url: getGroupFocusPermissionsUrl(group.id),
   };
 
-  if (databaseId == null) {
+  if (databaseId == null || database == null) {
     return [groupItem];
   }
-
-  const database = getDatabase(metadata, databaseId);
 
   const databaseItem = {
     id: database.id,
     text: database.name,
-    subtext: database.hasDatabaseRoutingEnabled()
+    subtext: hasDbRoutingEnabled(database)
       ? t`(Database routing enabled)`
       : undefined,
     url: getGroupFocusPermissionsUrl(group.id, getDatabaseEntityId(database)),
@@ -57,8 +53,12 @@ export const getDatabasesEditorBreadcrumbs = (
     return [groupItem, databaseItem];
   }
 
-  // Unjustified type cast. FIXME
-  const schema = database.schema(schemaName) as Schema;
+  const schema = getDatabaseSchema(database, schemaName);
+
+  if (schema == null) {
+    return [groupItem, databaseItem];
+  }
+
   const schemaItem = {
     id: schema.name,
     text: schema.name,
@@ -68,48 +68,48 @@ export const getDatabasesEditorBreadcrumbs = (
 
 export const getGroupsDataEditorBreadcrumbs = (
   params: DataRouteParams,
-  metadata: Metadata,
+  database: PermissionsDatabase | undefined,
 ): PermissionEditorBreadcrumb[] | null => {
   const { databaseId, schemaName, tableId } = params;
 
-  if (databaseId == null) {
+  if (databaseId == null || database == null) {
     return null;
   }
 
-  const database = getDatabase(metadata, databaseId);
-
   const databaseItem = {
     text: database.name,
-    subtext: database.hasDatabaseRoutingEnabled()
+    subtext: hasDbRoutingEnabled(database)
       ? t`(Database routing enabled)`
       : undefined,
     id: databaseId,
     url: getDatabaseFocusPermissionsUrl(getDatabaseEntityId(database)),
   };
 
-  if (
-    (schemaName == null && tableId == null) ||
-    database.schema(schemaName) == null
-  ) {
+  const schema = getDatabaseSchema(database, schemaName);
+
+  if ((schemaName == null && tableId == null) || schema == null) {
     return [databaseItem];
   }
 
-  // Unjustified type cast. FIXME
-  const schema = database.schema(schemaName) as Schema;
   const schemaItem = {
     id: schema.id,
     text: schema.name,
     url: getDatabaseFocusPermissionsUrl(getSchemaEntityId(schema)),
   };
 
-  const hasMultipleSchemas = database.schemasCount() > 1;
+  const hasMultipleSchemas = getDatabaseSchemas(database).length > 1;
 
   if (tableId == null) {
     return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotFalsy);
   }
 
-  // Unjustified type cast. FIXME
-  const table = metadata.table(tableId) as Table;
+  const table = database.tables?.find(
+    ({ id }) => String(id) === String(tableId),
+  );
+
+  if (table == null) {
+    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotFalsy);
+  }
 
   const tableItem = {
     id: table.id,

@@ -281,6 +281,8 @@
                      {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
+   (prometheus/counter :metabase-bug-report/legacy-reporter
+                       {:description "Number of Slack bug reports whose reporter was sent as a name/email object instead of a boolean."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors

@@ -7,6 +7,7 @@
 
 (mu/defn- make-test-handler :- ::api.macros/handler
   []
+  ;; late-bound: a static require here would drag the whole API route tree into the server module
   (let [api-routes    #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.api-routes.core/routes)
         server-routes (server/make-routes api-routes)
         handler       (server/make-handler server-routes)]

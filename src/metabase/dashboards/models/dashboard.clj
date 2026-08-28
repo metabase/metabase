@@ -69,6 +69,7 @@
 
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
+   :public_uuid      mi/transform-encrypted-text
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -81,7 +82,7 @@
   [dashboard]
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
-    (u/prog1 dashboard
+    (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -97,7 +98,9 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-    (u/prog1 (maybe-populate-initially-published-at dashboard)
+    (u/prog1 (-> dashboard
+                 maybe-populate-initially-published-at
+                 public-sharing/add-public-uuid-prefix-if-changed)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
@@ -303,6 +306,7 @@
 (defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
+  ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
@@ -450,7 +454,9 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               ;; always re-derived from public_uuid on import
+               :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

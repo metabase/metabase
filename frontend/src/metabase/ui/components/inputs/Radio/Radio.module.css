@@ -1,60 +1,123 @@
 .root {
-  &:has(.radio:disabled) {
-    .label {
-      color: var(--mb-color-text-disabled);
-    }
-
-    .description {
-      color: var(--mb-color-text-disabled);
-    }
-
-    .icon {
-      color: var(--mb-color-text-primary-inverse);
-    }
+  .description {
+    color: var(--mb-color-text-secondary);
+    font-size: var(--mantine-font-size-sm);
+    line-height: var(--mantine-line-height-sm);
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
   }
 
-  /* Need the additional specificity to override global focus outline rule */
-  .radio:focus {
-    outline: none;
+  .error {
+    color: var(--mb-color-feedback-negative-strong);
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  &:has(.radio:disabled) {
+    .label,
+    .description,
+    .icon {
+      color: var(--mb-color-text-disabled);
+    }
+  }
+}
+
+.body {
+  --label-offset-start: 0;
+  --label-offset-end: 0;
+
+  align-items: start;
+  column-gap: var(--mantine-spacing-sm);
+
+  &:has(.label) .inner {
+    display: flex;
+    align-items: center;
+    height: rem(20px);
   }
 }
 
 .radio {
-  border-color: var(--mb-color-text-disabled);
+  border: 1px solid var(--mb-color-border-neutral-strong);
+  background-color: var(--mb-color-background_surface-secondary);
 
   &:not(:disabled) {
     cursor: pointer;
   }
 
   &:checked {
-    border-color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-core-brand);
+    border-color: var(--mb-color-border-neutral-strong);
+    background-color: var(--mb-color-background_surface-brand-strong);
   }
 
   &:disabled {
-    opacity: 0.3;
-  }
-
-  &:disabled:not(:checked) {
-    border-color: var(--mb-color-text-disabled);
-    background-color: var(--mb-color-background_page-tertiary);
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
   }
 }
 
 .label {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-md);
+  line-height: rem(20px);
 }
 
 .labelWrapper {
-  justify-content: center;
-  width: 100%;
+  gap: rem(2px);
+  align-self: center;
 }
 
-.description {
-  color: var(--mb-color-text-primary);
-  font-size: var(--mantine-font-size-sm);
-  line-height: var(--mantine-line-height-md);
-  margin-top: var(--mantine-spacing-xs);
+.card {
+  --card-ring: 0 0 0 0 transparent;
+
+  display: flex;
+  align-items: flex-start;
+  gap: rem(12px);
+  padding: var(--mantine-spacing-md);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: rem(12px);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs), var(--card-ring);
+  text-align: left;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &[data-checked]:not(:disabled) {
+    --card-ring: inset 0 0 0 0.5px var(--mb-color-border-highlight);
+
+    border-color: var(--mb-color-border-highlight);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
+  }
+}
+
+.cardIndicator {
+  --radio-icon-color: var(--mb-color-text-primary-inverse);
+
+  flex-shrink: 0;
+  margin-top: rem(1px);
+  border: 1px solid var(--mb-color-border-neutral-strong);
+  background-color: var(--mb-color-background_surface-secondary);
+
+  &[data-checked] {
+    border-color: var(--mb-color-border-neutral-strong);
+    background-color: var(--mb-color-background_surface-brand-strong);
+  }
+
+  &[data-disabled] {
+    --radio-icon-color: var(--mb-color-text-disabled);
+
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
+
+    [data-mantine-color-scheme] &[data-checked] > .icon {
+      color: var(--mb-color-text-disabled);
+    }
+  }
 }

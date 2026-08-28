@@ -6,6 +6,8 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -14,6 +16,12 @@
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel scalar-uris-arg-test
+  (testing "a scalar `uris` is rejected with guidance on how to repair the call"
+    (is (= "Invalid tool arguments: `uris` must be an array of URI strings; received a string."
+           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                          {:uris "metabase://table/1"})))))
 
 (deftest parse-uri-test
   (testing "parses single-segment URIs (top-level lists)"
@@ -1280,3 +1288,18 @@
               (is (some? a-root-idx))
               (is (some? a-child-idx))
               (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
+
+(deftest list-collection-items-excludes-exploration-summary-documents-test
+  (testing "metabase://collection/{id}/items hides exploration Summary documents"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection  {coll-id :id} {:name "Mixed Coll" :location "/"}
+                     :model/Document    _             {:name "VISIBLE-DOC" :collection_id coll-id}
+                     :model/Exploration {expl-id :id} {:name "An exploration"}
+                     :model/Document    _             {:name           "SUMMARY-DOC"
+                                                       :collection_id  coll-id
+                                                       :exploration_id expl-id}]
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://collection/" coll-id "/items")]})]
+          (is (str/includes? output "VISIBLE-DOC"))
+          (is (not (str/includes? output "SUMMARY-DOC"))
+              "a Summary document is reachable only through its exploration, so it must not be listed"))))))

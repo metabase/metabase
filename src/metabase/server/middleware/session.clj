@@ -34,6 +34,8 @@
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -132,6 +134,8 @@
                                   [:= :user.is_active true]
                                   [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
+                                  [:or [:= :session.expires_at nil]
+                                   [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
                                                                  :full-app-embed ^:allow-raw-sql [:raw "?"])]]
@@ -234,11 +238,16 @@
   []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
-(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
-  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
-  ;; a useless hash, *then* return `false`.
-  (if api-key
-    (u.password/verify-password passed-api-key "" api-key)
+(defn- matching-api-key?
+  "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
+  path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
+  a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
+  rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
+  by timing."
+  [{:keys [api-key] :as _user-data} passed-api-key]
+  (if-let [stored-hash (when api-key
+                         (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
+    (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
