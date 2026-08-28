@@ -23,8 +23,6 @@
    [gleam.string :as string])
   (:import (gleam.prelude Ok)))
 
-(declare OptionalBegin? OptionalEnd? ParamBegin? ParamEnd? SingleQuote? BlockCommentBegin? BlockCommentEnd? LineCommentBegin? Newline? Token? Token-schema Str? Tok? Piece? Piece-schema Literal? Param? Optional? Fragment? Fragment-schema Unterminated? InvalidParamName? EmptyParam? OptionalWithoutParam? ParseError? ParseError-schema Lit? ParamBeginPattern? Pattern? Pattern-schema NoComment? LineMode? BlockMode? Mode? Mode-schema State? State-schema)
-
 ;; type Token
 (defprotocol IToken)
 (defrecord OptionalBegin [] IToken)
