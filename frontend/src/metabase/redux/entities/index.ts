@@ -13,8 +13,8 @@ type SliceReducer = Reducer<SliceState>;
  * Slices held under `state.entities.<name>`. These used to be wired up by the
  * (now-removed) entity framework via `createEntity`; the slices themselves
  * still exist because `getMetadata` in `metabase/selectors/metadata.ts` reads
- * directly from them. RTK Query endpoints populate the slices by dispatching
- * `metabase/entities/UPDATE` (see `hydrateMetadataStore`).
+ * directly from them. `metadataHydrationMiddleware` in `./hydration` is the
+ * only writer, and populates them by dispatching `metabase/entities/UPDATE`.
  */
 const ENTITY_SLICE_NAMES = [
   "databases",

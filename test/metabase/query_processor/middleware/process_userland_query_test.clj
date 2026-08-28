@@ -13,6 +13,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -26,6 +27,7 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks

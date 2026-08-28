@@ -6,10 +6,10 @@ import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { onCloseQuestionSettings } from "metabase/redux/query-builder";
 import { Stack, useModalsStack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { onCloseQuestionSettings } from "../../../../store/actions";
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
 
 const getTitle = (question: Question) => {

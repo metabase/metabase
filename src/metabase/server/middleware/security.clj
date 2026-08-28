@@ -436,7 +436,7 @@
   "Returns true if the origin is a loopback address (localhost, 127.0.0.1, or ::1) on any port"
   [raw-origin]
   (when raw-origin
-    (let [origin (parse-url raw-origin)]
+    (let [origin (try-parse-url raw-origin)]
       (and origin
            (contains? loopback-hosts (u/lower-case-en (:domain origin)))))))
 
@@ -452,7 +452,7 @@
     ;; Check against approved origins list
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
-            origin        (parse-url raw-origin)]
+            origin        (try-parse-url raw-origin)]
         (when origin
           (some (fn [approved-origin]
                   (and
@@ -540,14 +540,48 @@
            :port     (let [p (.getPort uri)] (when-not (neg? p) (str p)))}))
       (catch Exception _ nil))))
 
+(def ^:private default-ports
+  "Default port per scheme, so `https://h` and `https://h:443` compare equal — the browser's
+   CSP matcher treats them as one origin, and this filter must too or the entry leaks through."
+  {"http" "80" "https" "443"})
+
+(defn- scheme-covers-instance?
+  "Does the entry's scheme cover the instance's, like the browser's CSP matcher:
+   case-insensitive, a scheme-less entry covers http/https, and `http` also covers `https`."
+  [self-scheme entry-scheme]
+  (let [self  (some-> self-scheme u/lower-case-en)
+        entry (some-> entry-scheme u/lower-case-en)]
+    (cond
+      (nil? entry)                            (contains? #{"http" "https"} self)
+      (= entry self)                          true
+      (and (= entry "http") (= self "https")) true
+      :else                                   false)))
+
+(defn- port-covers-instance?
+  "Does the entry's port cover the instance's, like the browser's CSP matcher: `*` covers
+   any; an explicit port must equal the instance's port (or its scheme's default); a
+   port-less entry covers only a default-port instance. The default follows the instance's
+   scheme, not the entry's, so a port-less `http://h` still covers `https://h` on 443."
+  [self entry]
+  (let [self-default (default-ports (some-> (:protocol self) u/lower-case-en))
+        self-port    (or (:port self) self-default)
+        entry-port   (:port entry)]
+    (cond
+      (= entry-port "*") true
+      (some? entry-port) (= entry-port self-port)
+      :else              (= self-port self-default))))
+
 (defn- covers-instance-origin?
-  "True if `allowed_hosts` entry `host` (possibly a `*.company.com` wildcard) matches the
-   instance's own origin `self`, using the same host-source matching as [[approved-origin?]]."
+  "True if `allowed_hosts` entry `host` (maybe a `*.company.com` wildcard) matches the
+   instance origin `self`. Must match at least what the browser's CSP matcher does —
+   case-insensitive host, http→https upgrade, default-port equivalence — or an unrecognized
+   spelling of the instance survives into `form-action` and re-opens a native submit to it."
   [self host]
-  (when-let [pattern (parse-url host)]
-    (and (approved-domain?   (:domain self)   (:domain pattern))
-         (approved-protocol? (:protocol self) (:protocol pattern))
-         (approved-port?     (:port self)     (:port pattern)))))
+  (when-let [entry (parse-url host)]
+    (and (approved-domain? (u/lower-case-en (:domain self))
+                           (u/lower-case-en (:domain entry)))
+         (scheme-covers-instance? (:protocol self) (:protocol entry))
+         (port-covers-instance? self entry))))
 
 (defn- drop-instance-origin
   "Removes any `allowed_hosts` entry that would match this instance's own origin (exact or
