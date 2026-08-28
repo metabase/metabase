@@ -124,7 +124,8 @@
     :not-decryptable - some sampled value does not decrypt: plaintext waiting for `enable-encryption`, ciphertext
                        under some other key, or a mix
 
-  Settings are not counted: they are tolerated as plaintext at rest."
+  The `setting` table is not sampled: whether a given setting is encrypted at rest is decided per setting, so a
+  single sampled value proves nothing about the database."
   []
   (let [sample  (fn [decryptable? [table column]]
                   (when-some [value (column-sample-value table column)]
