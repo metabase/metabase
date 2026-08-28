@@ -259,6 +259,8 @@ Put compiler metadata in the Malli schema's property map. The outer Malli schema
 | `:ts/key-transform :camelCase` | Render object keys after a real camel-case conversion                                               |
 | `:ts/key-transform :none`      | Reset an inherited key transform for a nested object                                                |
 | `:ts/instance-of "Array"`      | Internal compatibility for `[:is-a js/Array]` or `js/Object`; prefer precise array/object metadata  |
+| `:ts/predicate-of S`           | Declare a type predicate (`x is S`) for a boolean-returning boundary function                       |
+| `:ts/dispatch-key :type`       | Name the map key a function-dispatched `:multi` reads, enabling discriminated unions                |
 | `:ts/same-as N`                | Tie the return type to zero-based argument `N`                                                      |
 | `:ts/generic-bound S`          | Set the accepted generic domain for `:ts/same-as` when it is broader than the nominal return schema |
 
@@ -326,6 +328,26 @@ Describe a JavaScript promise result with:
 ```clojure
 [:any {:ts/promise-of :string}]
 ```
+
+A boolean-returning function that narrows its argument declares what `true` guarantees with `:ts/predicate-of`:
+
+```clojure
+(mu/defn ^:export is-date? :- [:boolean {:ts/predicate-of ::schema/type-info}]
+  [column]
+  ...)
+```
+
+The declaration renders as `(column: unknown) => column is Shared.TypeInfo`, so JavaScript branches narrow for free. `{:param 1, :schema S}` narrows a later argument. Keep the target a sound over-approximation, and never annotate a function that returns `true` unconditionally.
+
+When a `:multi` dispatches via a function that reads one map key, name it with `:ts/dispatch-key`:
+
+```clojure
+[:multi {:dispatch #(keyword (:type %))
+         :ts/dispatch-key :type}
+ ...]
+```
+
+The compiler then synthesizes literal discriminants into branches and emits per-branch `Extract<>` aliases. Keyword `:dispatch` values are detected automatically; leave computed dispatches unannotated.
 
 Use `:ts/ref` when runtime validation must stay permissive but the declaration has a registered type:
 

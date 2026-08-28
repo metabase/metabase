@@ -81,14 +81,27 @@
 (defn function-type
   "Return a function type node.
 
-  Parameters have `:name`, `:type`, and optional `:optional?` or `:rest?` keys."
+  Parameters have `:name`, `:type`, and optional `:optional?` or `:rest?` keys.
+  An optional `:predicate` (set via [[function-predicate]]) narrows a parameter
+  instead of declaring a plain return type."
   [parameters return]
   {:kind :function, :parameters (vec parameters), :return return})
+
+(defn function-predicate
+  "Return `function-node` as a type predicate that narrows the parameter at
+  `parameter-index` to `type-node`, rendering as `(p: A) => p is B`."
+  [function-node parameter-index type-node]
+  (assoc function-node :predicate {:parameter parameter-index, :type type-node}))
 
 (defn ref-type
   "Return a registry reference type node."
   [schema-keyword]
   {:kind :ref, :schema-keyword schema-keyword})
+
+(defn key-transform-type
+  "Return a node applying the named key-transform helper (e.g. `Camel`) to `inner`."
+  [helper-name inner]
+  {:kind :key-transform, :name helper-name, :inner inner})
 
 (def ^:private precedence
   {:function     10
@@ -102,6 +115,7 @@
    :tuple        100
    :object       100
    :generic      100
+   :key-transform 100
    :ref          100})
 
 (declare render*)
@@ -185,16 +199,27 @@
             (str/join " & "))
 
        :array
-       (str (render-child (:element node) (precedence :array) options) "[]")
+       (let [element (:element node)
+             element-text (render-child element (precedence :array) options)
+             ;; A readonly array/tuple in element position must be parenthesized:
+             ;; `readonly (readonly A[])[]`, not a double modifier.
+             element-text (if (and (:readonly? element)
+                                   (contains? #{:array :tuple} (:kind element)))
+                            (str "(" element-text ")")
+                            element-text)]
+         (str (when (:readonly? node) "readonly ")
+              element-text "[]"))
 
        :generic
-       (str (:name node)
-            "<"
-            (str/join ", " (map #(render-child % 0 options) (:arguments node)))
-            ">")
+       (let [arguments (str/join ", " (map #(render-child % 0 options) (:arguments node)))]
+         (cond
+           (and (:readonly? node) (= "Set" (:name node))) (str "ReadonlySet<" arguments ">")
+           (:readonly? node)                    (str "Readonly<" (:name node) "<" arguments ">>")
+           :else                                (str (:name node) "<" arguments ">")))
 
        :tuple
-       (str "["
+       (str (when (:readonly? node) "readonly ")
+            "["
             (str/join
              ", "
              (cond-> (mapv #(render-tuple-item % options) (:items node))
@@ -207,16 +232,27 @@
                        (conj (str "[key: "
                                   (render-child (:key (:index-signature node)) 0 options)
                                   "]: "
-                                  (render-child (:value (:index-signature node)) 0 options))))]
-         (if (seq entries)
-           (str "{\n\t" (str/join ";\n\t" entries) ";\n}")
-           "{}"))
+                                  (render-child (:value (:index-signature node)) 0 options))))
+             body (if (seq entries)
+                    (str "{\n\t" (str/join ";\n\t" entries) ";\n}")
+                    "{}")]
+         (if (:readonly? node)
+           (str "Readonly<" body ">")
+           body))
 
        :function
-       (str "("
-            (str/join ", " (map #(render-parameter % options) (:parameters node)))
-            ") => "
-            (render-child (:return node) (precedence :function) options))
+       (let [predicate (:predicate node)]
+         (str "("
+              (str/join ", " (map #(render-parameter % options) (:parameters node)))
+              ") => "
+              (if-let [{:keys [parameter type]} predicate]
+                (if-let [parameter-name (:name (get (:parameters node) parameter))]
+                  (str parameter-name " is " (render-child type (precedence :function) options))
+                  (render-child (:return node) (precedence :function) options))
+                (render-child (:return node) (precedence :function) options))))
+
+       :key-transform
+       (str (:name node) "<" (render-child (:inner node) 0 options) ">")
 
        :ref
        (if ref-name

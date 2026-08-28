@@ -10,6 +10,8 @@
 
 (mr/def ::memo-context-ref :string)
 
+(mr/def ::auto-generic-ref :string)
+
 (mr/def ::key-transform-ref
   [:map
    [:display-name :string]
@@ -128,7 +130,8 @@
 
 (deftest registry-keyword-schema-loading-test
   (testing "function schemas load their registry namespace before inspection"
-    (is (re-find #"export function registry_value\(value: Metabase_Util_Malli_Typescript_RegistryFixture_Value\): Metabase_Util_Malli_Typescript_RegistryFixture_Value;"
+    ;; Identical registry-typed argument and return auto-render as a generic.
+    (is (re-find #"export function registry_value<T extends Metabase_Util_Malli_Typescript_RegistryFixture_Value>\(value: T\): T;"
                  (ts/fn->ts {:name 'example/registry-value
                              :ns 'example
                              :arglists '([value])
@@ -558,6 +561,35 @@
            (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :string]])))
     (is (= "number[]"
            (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :int]])))))
+
+(deftest type-predicate-declaration-test
+  (testing "predicate returns narrow the first argument"
+    (is (= "export function is_date(x: unknown): x is string;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name     'is-date
+                                :arglists '([x])
+                                :schema   [:=> [:cat :any] [:boolean {:ts/predicate-of :string}]]}))))))
+  (testing "predicate returns can target a later argument"
+    (is (= "export function field_type(category: unknown, column: unknown): column is string;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name     'field-type
+                                :arglists '([category column])
+                                :schema   [:=> [:cat :any :any]
+                                           [:boolean {:ts/predicate-of {:param 1, :schema :string}}]]})))))))
+
+(deftest auto-generic-declaration-test
+  (testing "identical registry-typed argument and return become a generic"
+    (is (= "export function identity_like<T extends Metabase_Util_Malli_Typescript_DeclarationTest_AutoGenericRef>(value: T): T;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name     'identity-like
+                                :arglists '([value])
+                                :schema   [:=> [:cat ::auto-generic-ref] ::auto-generic-ref]}))))))
+  (testing "non-matching return forms stay plain"
+    (is (= "export function plain(value: Metabase_Util_Malli_Typescript_DeclarationTest_AutoGenericRef): number;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name     'plain
+                                :arglists '([value])
+                                :schema   [:=> [:cat ::auto-generic-ref] :int]})))))))
 
 (deftest repeat-schema-test
   (testing ":+ honors min count"

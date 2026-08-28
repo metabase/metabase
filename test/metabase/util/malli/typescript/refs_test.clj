@@ -1,5 +1,6 @@
 (ns metabase.util.malli.typescript.refs-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.util.malli.typescript.refs :as refs]
    [metabase.util.malli.typescript.schema :as schema]))
@@ -33,6 +34,57 @@
     (is (= #{::a ::b ::shared} refs-used))
     (is (= 3 (count declarations)))
     (is (= 3 (count (distinct declarations))))))
+
+(deftest ^:parallel multi-extract-aliases-test
+  (let [multi-schemas
+        {::tagged [:multi {:dispatch :type}
+                   [:field [:map {:closed true} [:x :string]]]
+                   [:expression [:map {:closed true} [:y :int]]]]
+         ::other :string}
+        {declarations :declarations}
+        (refs/type-aliases
+         #{::tagged}
+         {:resolve-schema multi-schemas
+          :compile-options {:registry multi-schemas}
+          :type-name test-type-name
+          :ref-name test-type-name})]
+    (is (some #(re-find #"^export type T_tagged = \{\n\ttype: \"field\";\n\tx: string;\n\} \| \{\n\ttype: \"expression\";\n\ty: number;\n};$" %)
+              declarations))
+    (is (some #(= "export type T_tagged_Field = Extract<T_tagged, { \"type\": \"field\" }>;" %)
+              declarations))
+    (is (some #(= "export type T_tagged_Expression = Extract<T_tagged, { \"type\": \"expression\" }>;" %)
+              declarations))))
+
+(deftest ^:parallel phantom-discriminant-test
+  (testing "structurally identical object aliases get optional phantom tags"
+    (let [colliding-schemas
+          {::one [:map {:closed true} [:x :string]]
+           ::two [:map {:closed true} [:x :string]]
+           ::three :string
+           ::four :string}
+          declarations (:declarations
+                        (refs/type-aliases
+                         #{::one ::two ::three ::four}
+                         {:resolve-schema colliding-schemas
+                          :compile-options {:registry colliding-schemas}
+                          :type-name test-type-name
+                          :ref-name test-type-name}))]
+      (is (some #(= "export type T_one = {\n\tx: string;\n} & {\n\t__kind?: \"T_one\";\n};" %) declarations))
+      (is (some #(= "export type T_two = {\n\tx: string;\n} & {\n\t__kind?: \"T_two\";\n};" %) declarations))
+      (is (= #{"export type T_three = string;" "export type T_four = string;"}
+             (set (filter #(re-find #"T_(three|four)" %) declarations))))))
+  (testing "distinct object aliases stay untouched"
+    (let [distinct-schemas
+          {::one [:map {:closed true} [:x :string]]
+           ::two [:map {:closed true} [:y :int]]}
+          declarations (:declarations
+                        (refs/type-aliases
+                         #{::one ::two}
+                         {:resolve-schema distinct-schemas
+                          :compile-options {:registry distinct-schemas}
+                          :type-name test-type-name
+                          :ref-name test-type-name}))]
+      (is (not-any? #(str/includes? % "__kind") declarations)))))
 
 (deftest ^:parallel unresolved-schema-ref-test
   (let [{:keys [declarations diagnostics]}

@@ -26,7 +26,14 @@
 
 (defn- with-type
   [type-node results]
-  (assoc (merge-result-metadata results) :type type-node))
+  ;; `:multi-branches` must only survive when the parent type is itself the
+  ;; (possibly widened) union: `Extract<>` cannot distribute through arrays,
+  ;; tuples, maps, or intersections, and emitting it there yields `never`.
+  (let [result (assoc (merge-result-metadata results) :type type-node)]
+    (if (and (= :union (:kind type-node))
+             (some :multi-branches results))
+      (assoc result :multi-branches (some :multi-branches results))
+      (dissoc result :multi-branches))))
 
 (defn- unknown-result
   ([schema]
@@ -56,7 +63,8 @@
   [form]
   (and (vector? form)
        (= :fn (first form))
-       (not (explicit-predicate-type form))))
+       (not (or (explicit-predicate-type form)
+                (:ts/predicate-of (fn-schema-props form))))))
 
 (declare sanitize-predicate-fn-constraints)
 
@@ -148,6 +156,32 @@
     s
     (pr-str s)))
 
+(def ^:private simple-camel-case-key-pattern
+  "String keys the emitted `CamelCase` template-literal helper provably converts
+  exactly like the runtime `u/->camelCaseEn` conversion: lowercase alphanumeric
+  segments joined by `-`, `_`, or space, with an optional `?` suffix."
+  #"^[a-z0-9]+(?:[-_ ][a-z0-9]+)*\??$")
+
+(defn- raw-map-key-string
+  "Return the un-transformed JavaScript-facing string for a map key."
+  [key]
+  (cond
+    (keyword? key) (u/qualified-name key)
+    (string? key)  key
+    :else          nil))
+
+(defn- camel-helper-applicable?
+  "True when a closed map's keys can safely delegate their camelCase
+  conversion to the emitted `CamelCase` template-literal helper. Keys outside
+  the simple grammar, or keys that would collide after conversion, keep the
+  exact inline expansion."
+  [raw-keys closed? key-transform]
+  (and (= :camelCase key-transform)
+       closed?
+       (seq raw-keys)
+       (every? #(and (string? %) (re-matches simple-camel-case-key-pattern %)) raw-keys)
+       (apply distinct? (mapv camel-case-key raw-keys))))
+
 (def ^:private number-schema-types
   #{:int :double :> :>= :< :<=
     'pos-int? 'nat-int? 'neg-int? 'int 'int? 'integer? 'number? 'decimal?
@@ -207,17 +241,42 @@
     :union (vec (mapcat repeated-type-members (:members type-node)))
     [type-node]))
 
+(defn- mark-container-readonly
+  "Mark a container node readonly when immutable-boundary output is enabled."
+  [node readonly?]
+  (if readonly? (assoc node :readonly? true) node))
+
+(defn- container-readonly?
+  "Containers are marked immutable only for value positions; parameter types
+  stay mutable so rest parameters remain valid TypeScript."
+  [options]
+  (and (:readonly? options) (not (:argument-context? options))))
+
+(defn- dissoc-multi-branches-unless-union
+  "Wrapping a multi in a non-union container invalidates `Extract<>` metadata."
+  [result]
+  (if (= :union (:kind (:type result)))
+    result
+    (dissoc result :multi-branches)))
+
 (defn- repeated-result
-  [child-result min-count composite-sequence?]
-  (let [child-type (:type child-result)]
+  [child-result min-count composite-sequence? options]
+  (let [child-type (:type child-result)
+        readonly?  (container-readonly? options)]
     (if composite-sequence?
       (-> child-result
-          (assoc :type (type/array (type/union (repeated-type-members child-type))))
+          (assoc :type (mark-container-readonly
+                        (type/array (type/union (repeated-type-members child-type)))
+                        readonly?))
+          dissoc-multi-branches-unless-union
           (update :diagnostics conj {:type :composite-sequence-repetition}))
-      (assoc child-result
-             :type (if (pos? min-count)
-                     (type/tuple (vec (repeat min-count child-type)) child-type)
-                     (type/array child-type))))))
+      (-> child-result
+          (assoc :type (mark-container-readonly
+                        (if (pos? min-count)
+                          (type/tuple (vec (repeat min-count child-type)) child-type)
+                          (type/array child-type))
+                        readonly?))
+          dissoc-multi-branches-unless-union))))
 
 (defn- map-result
   [malli-schema options]
@@ -256,8 +315,25 @@
               final-keys)
         index-signature (when-not closed?
                           {:key (type/primitive "string")
-                           :value (type/unknown)})]
-    (update (with-type (type/object property-nodes index-signature) value-results)
+                           :value (type/unknown)})
+        raw-keys       (map first (mc/children malli-schema))
+        object-type    (mark-container-readonly
+                        (type/object property-nodes index-signature)
+                        (container-readonly? options))
+        ;; Keys the emitted CamelCase helper provably converts exactly delegate
+        ;; to `Camel<...>`; everything else keeps the exact inline expansion.
+        camel-type     (when (camel-helper-applicable? raw-keys closed? (:key-transform options))
+                         (mark-container-readonly
+                          (type/key-transform-type
+                           "Camel"
+                           (type/object
+                            (mapv (fn [property]
+                                    (assoc property
+                                           :name (quoted-property-name (raw-map-key-string (:source-key property)))))
+                                  property-nodes)
+                            nil))
+                          (container-readonly? options)))]
+    (update (with-type (if camel-type camel-type object-type) value-results)
             :diagnostics into collision-diagnostics)))
 
 (defn- enum-property-key-values
@@ -314,7 +390,11 @@
         map-type (if (= :enum (mc/type (mc/schema key-schema)))
                    (type/generic "Partial" [record-type])
                    record-type)]
-    (with-type map-type [key-result value-result])))
+    (with-type (mark-container-readonly map-type (container-readonly? options))
+      [key-result value-result])))
+
+(def ^:private typescript-identifier-pattern
+  #"[A-Za-z_$][\w$]*")
 
 (defn- catn-child-schema
   [child]
@@ -377,6 +457,14 @@
 
 (declare seqex-result*)
 
+(defn- typescript-tuple-item-name
+  "Munge a `:catn` label into a valid TypeScript tuple-element name, or nil
+  when no valid identifier results."
+  [child-name]
+  (let [munged (some-> child-name name symbol comp/munge str)]
+    (when (and munged (re-matches typescript-identifier-pattern munged))
+      munged)))
+
 (defn- cat-seqex-result
   [children options named?]
   (let [child-results
@@ -388,9 +476,11 @@
                     (update child-result :alternatives
                             (fn [alternatives]
                               (mapv (fn [alternative]
-                                      (if (seq (:items alternative))
-                                        (update-in alternative [:items 0]
-                                                   assoc :name (name child-name))
+                                      (if-let [item-name (typescript-tuple-item-name child-name)]
+                                        (if (seq (:items alternative))
+                                          (update-in alternative [:items 0]
+                                                     assoc :name item-name)
+                                          alternative)
                                         alternative))
                                     alternatives)))
                     child-result)))
@@ -474,17 +564,22 @@
       (scalar-seqex-result schema options))))
 
 (defn- fragment->tuple
-  [{:keys [items rest widened-type]}]
+  [{:keys [items rest widened-type]} options]
   (if widened-type
-    (type/array widened-type)
-    (type/tuple (mapv #(select-keys % [:type :optional?]) items) rest)))
+    (mark-container-readonly (type/array widened-type) (container-readonly? options))
+    (let [labeled? (and (seq items) (every? :name items))
+          tuple-items (mapv (if labeled?
+                              #(select-keys % [:name :type :optional?])
+                              #(select-keys % [:type :optional?]))
+                            items)]
+      (mark-container-readonly (type/tuple tuple-items rest) (container-readonly? options)))))
 
 (defn seqex->alternatives
   "Compile a Malli sequence expression into alternative flat tuple nodes."
   ([schema]
    (seqex->alternatives schema {}))
   ([schema options]
-   (mapv fragment->tuple
+   (mapv #(fragment->tuple % options)
          (:alternatives (seqex-result* schema
                                        (merge {:argument-context? false
                                                :key-transform nil
@@ -496,10 +591,7 @@
   [schema options]
   (let [compiled (seqex-result* schema options)]
     (assoc (dissoc compiled :alternatives)
-           :type (type/union (mapv fragment->tuple (:alternatives compiled))))))
-
-(def ^:private typescript-identifier-pattern
-  #"[A-Za-z_$][\w$]*")
+           :type (type/union (mapv #(fragment->tuple % options) (:alternatives compiled))))))
 
 (defn- parameter-name
   [raw-name index used-names]
@@ -544,14 +636,37 @@
                        (type/unknown))
                :rest? true})))))
 
+(defn- predicate-target-info
+  "Normalize a `:ts/predicate-of` property into `{:param index :schema s}`.
+  A bare schema narrows parameter 0."
+  [value]
+  (cond
+    (map? value)    (when (:schema value)
+                      {:param (or (:param value) 0), :schema (:schema value)})
+    (some? value) {:param 0, :schema value}
+    :else          nil))
+
 (defn- function-result
   [malli-schema options]
   (let [[args-schema return-schema] (mc/children malli-schema)
         args-result   (seqex-result* args-schema (assoc options :argument-context? true))
         parameters    (parameters-from-alternatives (:alternatives args-result))
-        return-result (schema->result* return-schema (assoc options :argument-context? false))]
-    (assoc (merge-result-metadata [args-result return-result])
-           :type (type/function-type parameters (:type return-result)))))
+        return-result (schema->result* return-schema (assoc options :argument-context? false))
+        predicate     (when-let [{:keys [param schema]}
+                                 (predicate-target-info
+                                  (:ts/predicate-of (mc/properties (mc/schema return-schema))))]
+                        ;; A type predicate cannot reference a rest parameter.
+                        (when-not (some-> (get parameters param) :rest?)
+                          {:param  param
+                           :result (schema->result* schema (assoc options :argument-context? false))}))]
+    (assoc (merge-result-metadata (cond-> [args-result return-result]
+                                    predicate (conj (:result predicate))))
+           :type (if (and predicate (< (:param predicate) (count parameters)))
+                   (type/function-predicate
+                    (type/function-type parameters (:type return-result))
+                    (:param predicate)
+                    (:type (:result predicate)))
+                   (type/function-type parameters (:type return-result))))))
 
 (defn- registry-ref-result
   [schema-keyword options]
@@ -588,7 +703,11 @@
 
       array-of
       (let [child-result (schema->result* array-of options)]
-        (assoc child-result :type (type/array (:type child-result))))
+        (-> child-result
+            (assoc :type (mark-container-readonly
+                          (type/array (:type child-result))
+                          (container-readonly? options)))
+            dissoc-multi-branches-unless-union))
 
       object-of
       (schema->result* object-of nested-options)
@@ -633,6 +752,91 @@
     (peek child)
     child))
 
+(defn- multi-dispatch-key
+  "Return the map key a `:multi` dispatches on when it can be determined:
+  either an explicit `:ts/dispatch-key` property or a plain keyword
+  `:dispatch` (Malli's key-access form)."
+  [properties]
+  (or (:ts/dispatch-key properties)
+      (let [dispatch (:dispatch properties)]
+        (when (keyword? dispatch)
+          dispatch))))
+
+(defn- synthesize-multi-discriminant
+  "Return a form declaring the `dispatch-key` literal for a branch that omits
+  it. Plain map branches get the entry prepended; registry-ref branches are
+  intersected with a single-key map. Runtime values always carry the key (the
+  dispatcher reads it), so declaring it is sound."
+  [branch-form dispatch-key dispatch-value]
+  (when (not= ::mc/default dispatch-value)
+    (cond
+      (or (qualified-keyword? branch-form)
+          (and (vector? branch-form) (= :ref (first branch-form)) (qualified-keyword? (second branch-form))))
+      [:and branch-form [:map {:closed true} [dispatch-key [:= dispatch-value]]]]
+
+      (vector? branch-form)
+      (let [{:keys [schema-type children] :as parts} (schema-form-parts branch-form)]
+        (when (and (= :map schema-type)
+                   (not (some #(= dispatch-key (first %)) children)))
+          (with-schema-form-parts (assoc parts :children (into [[dispatch-key [:= dispatch-value]]]
+                                                               children)))))
+
+      :else nil)))
+
+(defn- branch-declares-literal?
+  "True when a branch map already constrains `dispatch-key` to a literal equal
+  to `dispatch-value`, so discrimination works without synthesis."
+  [branch-form dispatch-key dispatch-value]
+  (when (vector? branch-form)
+    (let [{:keys [schema-type children]} (schema-form-parts branch-form)]
+      (and (= :map schema-type)
+           (some (fn [entry]
+                   (when (= dispatch-key (first entry))
+                     (let [value-schema (if (map? (second entry)) (nth entry 2) (second entry))]
+                       (and (vector? value-schema)
+                            (= := (first value-schema))
+                            (= dispatch-value (second value-schema))))))
+                 children)))))
+
+(defn- multi-result
+  "Compile a `:multi` as a discriminated union: synthesize the dispatch-key
+  literal into plain-map branches that omit it and record branch metadata for
+  `Extract<>` alias emission. Recorded key/value strings mirror exactly how
+  the synthesized discriminant renders so `Extract<>` filters match."
+  [malli-schema options]
+  (let [properties   (mc/properties malli-schema)
+        dispatch-key (multi-dispatch-key properties)
+        children     (mc/children malli-schema)
+        branches     (mapv (fn [child]
+                             (let [dispatch-value (first child)
+                                   branch-schema  (multi-child-schema child)
+                                   branch-form    (mc/form branch-schema)
+                                   synthesized    (when dispatch-key
+                                                    (or (synthesize-multi-discriminant
+                                                         branch-form dispatch-key dispatch-value)
+                                                        (when (branch-declares-literal?
+                                                               branch-form dispatch-key dispatch-value)
+                                                          branch-form)))]
+                               {:result   (schema->result* (or synthesized branch-schema) options)
+                                :literal? (some? synthesized)}))
+                           children)
+        values-literal? (every? (comp :supported? typescript-literal-value first) children)]
+    (cond-> (with-type (union-type (mapv (comp :type :result) branches)) (mapv :result branches))
+      (and dispatch-key values-literal? (seq children))
+      (assoc :multi-branches
+             {:key-string (transformed-map-key dispatch-key (:key-transform options))
+              :branches (mapv (fn [child branch]
+                                (let [value (first child)
+                                      rendered (when-let [{:keys [supported?] literal-value :value}
+                                                          (typescript-literal-value value)]
+                                                 (when supported?
+                                                   (type/render (type/literal literal-value))))]
+                                  {:value value
+                                   :value-string rendered
+                                   :literal? (and (:literal? branch) (some? rendered))}))
+                              children
+                              branches)}))))
+
 (defn- compile-malli-schema
   [malli-schema options]
   (let [schema-type (mc/type malli-schema)
@@ -664,8 +868,12 @@
       (contains? #{'false? 'false} schema-type)
       (result (type/literal false))
 
-      (contains? #{'seqable? 'coll? 'some? 'ifn? 'fn? 'any? 'associative?} schema-type)
+      (contains? #{'seqable? 'coll? 'some? 'any? 'associative?} schema-type)
       (unknown-result form :weak-schema)
+
+      (contains? #{'ifn? 'fn?} schema-type)
+      (result (type/function-type [{:name "args", :type (type/unknown), :rest? true}]
+                                  (type/unknown)))
 
       (contains? #{'sequential? 'indexed? 'vector 'vector? 'seq? 'list? 'seq} schema-type)
       (result (type/array (type/unknown)))
@@ -701,8 +909,7 @@
         (with-type (union-type (mapv :type results)) results))
 
       (= schema-type :multi)
-      (let [results (mapv #(schema->result* (multi-child-schema %) options) children)]
-        (with-type (union-type (mapv :type results)) results))
+      (multi-result malli-schema options)
 
       (contains? #{:and :merge} schema-type)
       (let [results (compile-children children options)]
@@ -718,15 +925,22 @@
       (contains? #{:vector :sequential} schema-type)
       (let [child-result (schema->result* (first children) options)
             min-count    (long (or (:min properties) 0))]
-        (repeated-result child-result min-count false))
+        (repeated-result child-result min-count false options))
 
       (= schema-type :set)
       (let [child-result (schema->result* (first children) options)]
-        (assoc child-result :type (type/generic "Set" [(:type child-result)])))
+        (-> child-result
+            (assoc :type (mark-container-readonly
+                          (type/generic "Set" [(:type child-result)])
+                          (container-readonly? options)))
+            dissoc-multi-branches-unless-union))
 
       (= schema-type :tuple)
       (let [results (compile-children children options)]
-        (with-type (type/tuple (mapv :type results)) results))
+        (with-type (mark-container-readonly
+                    (type/tuple (mapv :type results))
+                    (container-readonly? options))
+          results))
 
       (contains? #{:cat :catn :alt :altn} schema-type)
       (seqex-type-result malli-schema options)
@@ -741,12 +955,15 @@
         (repeated-result child-result
                          min-count
                          (contains? #{:cat :catn :alt :altn :* :+ :repeat :?}
-                                    child-type)))
+                                    child-type)
+                         options))
 
       (= schema-type :?)
       (let [child-result (schema->result* (first children) options)]
-        (assoc child-result :type (type/union [(:type child-result)
-                                               (type/primitive "undefined")])))
+        (-> child-result
+            (assoc :type (type/union [(:type child-result)
+                                      (type/primitive "undefined")]))
+            dissoc-multi-branches-unless-union))
 
       (= schema-type :schema)
       (let [local-registry (:registry properties)
@@ -759,12 +976,27 @@
 
       (= schema-type :function)
       (let [results (compile-children children options)]
-        (with-type (type/union (mapv :type results)) results))
+        ;; A union of callables is uncallable without arguments valid for every
+        ;; member; an intersection expresses the arities as overloads.
+        (with-type (type/intersection (mapv :type results)) results))
 
       (= schema-type :fn)
-      (if-let [typescript (:typescript properties)]
-        (result (explicit-type typescript))
-        (unknown-result form :predicate-schema))
+      (let [predicate (predicate-target-info (:ts/predicate-of properties))]
+        (cond
+          (:typescript properties)
+          (result (explicit-type (:typescript properties)))
+
+          predicate
+          (let [predicate-result (schema->result* (:schema predicate) options)]
+            (assoc (merge-result-metadata [predicate-result])
+                   :type (type/function-predicate
+                          (type/function-type [{:name "value", :type (type/unknown)}]
+                                              (type/unknown))
+                          0
+                          (:type predicate-result))))
+
+          :else
+          (unknown-result form :predicate-schema)))
 
       (= schema-type :ref)
       (registry-ref-result (first children) options)

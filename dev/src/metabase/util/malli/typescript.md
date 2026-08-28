@@ -187,6 +187,8 @@ The supported properties are:
 - `:ts/promise-of`
 - `:ts/key-transform`
 - `:ts/instance-of`
+- `:ts/predicate-of`
+- `:ts/dispatch-key`
 - `:ts/same-as`
 - `:ts/generic-bound`
 
@@ -245,6 +247,32 @@ Use `:ts/promise-of` for a JavaScript promise result:
 [:any {:ts/promise-of :string}]
 ```
 
+### Emit a type predicate
+
+A predicate that narrows its argument should declare what a `true` result guarantees with `:ts/predicate-of`:
+
+```clojure
+(mu/defn ^:export is-date? :- [:boolean {:ts/predicate-of ::lib.types.isa/type-info}]
+  [column]
+  ...)
+```
+
+This renders `(column: unknown) => column is Shared.TypeInfo`, so JavaScript `if (ML.is_date(x))` narrows `x` inside the branch. A map form `{:param 1, :schema S}` narrows a later argument. The target must be a sound over-approximation: it may only claim what every passing value satisfies. Functions that return `true` unconditionally must not declare a predicate.
+
+### Declare a `:multi` dispatch key
+
+When a `:multi` dispatches through a function on a single map key, declare that key so the compiler emits a discriminated union plus per-branch `Extract<>` aliases:
+
+```clojure
+[:multi {:dispatch #(keyword (:type %))
+         :ts/dispatch-key :type}
+ ...]
+```
+
+A plain keyword `:dispatch` is detected automatically. Plain-map branches get the literal discriminant synthesized; registry-ref branches are intersected with it. Leave derived-value dispatches (presence checks, computed tags) unannotated.
+
+Phantom discriminants for structurally identical aliases, labeled tuple elements, and the `Camel<...>` mapped-type delegation are compiler-emitted automatically; authors never write those.
+
 ### Preserve an input type in the return value
 
 Use `:ts/same-as` on a return schema when a function preserves the kind of one argument:
@@ -265,6 +293,8 @@ This produces a generic return tied to argument index `0`. If the nominal return
 ```
 
 Use this only when the implementation preserves the input kind. It isn't a substitute for a real transformation schema.
+
+Functions whose return schema is the identical registry keyword as exactly one argument schema render as `<T extends X>` automatically; no annotation is needed for that shape.
 
 ## Don't change runtime validation for prettier TypeScript
 
@@ -332,5 +362,11 @@ Use `MB_DEBUG_CLJS=verbose` to list the affected exports.
 Argument schema coverage is incomplete. Missing argument schemas intentionally remain `unknown`; adding argument annotations across the API is separate work.
 
 Custom predicates without a structural mapping or explicit `:typescript` value remain `unknown`. The compiler also doesn't infer arbitrary normalization functions, serializers, or JavaScript interop behavior.
+
+Numeric range properties (`[:int {:min 1 :max 10}]`) are ignored by design; TypeScript cannot express numeric ranges, and widening to `number` is the honest rendering. Regex schemas render as `string` rather than template-literal types by the same reasoning; use the `:typescript` escape hatch for the rare exact pattern. `seqable?` and `coll?` stay `unknown` because ClojureScript collections at the JavaScript boundary have no single representation.
+
+Structurally identical aliases get a compiler-emitted optional `"__kind"?` phantom tag so they stay distinct and discriminable; this is compiler-controlled and never hand-written.
+
+Set `MB_CLJS_TS_READONLY=1` to emit immutable container types (`readonly T[]`, `Readonly<{...}>`, `ReadonlySet<T>`) for value positions. It is off by default because consumers must copy before mutating.
 
 Those limits should produce conservative declarations, not missing runtime exports or invented shapes.

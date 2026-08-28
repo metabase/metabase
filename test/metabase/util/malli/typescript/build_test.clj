@@ -57,14 +57,14 @@
                                [:ref ::local-ref]]}}
         shared-refs (#'build/collect-refs-from-defs 'example.entry defs)
         {:keys [content]} (#'build/ts-content
-                           'example.entry defs shared-refs shared-refs)]
+                           'example.entry defs shared-refs shared-refs true)]
     (is (= #{::global-ref} shared-refs))
     (is (re-find #"type Metabase_Util_Malli_Typescript_BuildTest_LocalRef" content))
     (is (re-find #"Shared.Metabase_Util_Malli_Typescript_BuildTest_GlobalRef" content))
     (is (not (re-find #"Shared.Metabase_Util_Malli_Typescript_BuildTest_LocalRef" content)))))
 
 (deftest shared-alias-diagnostics-test
-  (let [result (#'build/generate-shared-types-result #{::missing-ref})]
+  (let [result (#'build/generate-shared-types-result #{::missing-ref} false)]
     (is (re-find #"export type .*MissingRef = unknown;" (:content result)))
     (is (some #(= :unresolved-schema-ref (:type %))
               (:diagnostics result)))))
@@ -74,7 +74,7 @@
                       :schema [:schema {:registry {::local-ref :string}} ::local-ref]}
               'second {:name 'example.entry/second
                        :schema [:schema {:registry {::local-ref :int}} ::local-ref]}}
-        {:keys [content diagnostics]} (#'build/ts-content 'example.entry defs #{} #{})]
+        {:keys [content diagnostics]} (#'build/ts-content 'example.entry defs #{} #{} false)]
     (is (re-find #"type .*LocalRef = unknown;" content))
     (is (= 1 (count (filter #(= :conflicting-inline-registry-definition (:type %))
                             diagnostics))))))
@@ -84,7 +84,7 @@
                       :schema [:schema {:registry {::local-ref :string}} ::local-ref]}
               'second {:name 'example.entry/second
                        :schema [:schema {:registry {::local-ref :string}} ::local-ref]}}
-        {:keys [content diagnostics]} (#'build/ts-content 'example.entry defs #{} #{})]
+        {:keys [content diagnostics]} (#'build/ts-content 'example.entry defs #{} #{} false)]
     (is (re-find #"type .*LocalRef = string;" content))
     (is (not-any? #(= :conflicting-inline-registry-definition (:type %)) diagnostics))))
 

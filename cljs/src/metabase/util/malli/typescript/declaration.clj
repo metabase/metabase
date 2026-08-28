@@ -123,8 +123,19 @@
        (str "Shared." base-name)
        base-name))))
 
+(defn branch-type-name
+  "Return the TypeScript suffix for a `:multi` branch alias, e.g.
+  `[:field ...]` dispatch value `:field` under `::ref` becomes `Field`."
+  [value]
+  (to-capital-case (if (keyword? value) (name value) (str value))))
+
 (def ^:dynamic *key-transform*
   "Optional map-key transform applied while generating JS-facing object types."
+  nil)
+
+(def ^:dynamic *readonly?*
+  "When true, generated container types are marked immutable (readonly arrays,
+  Readonly objects). Bound from build options; see `MB_CLJS_TS_READONLY`."
   nil)
 
 (defn- indent-ts
@@ -154,7 +165,8 @@
   [malli-schema]
   (let [compiled    (schema/schema->result malli-schema
                                            {:argument-context? *argument-context*
-                                            :key-transform *key-transform*})
+                                            :key-transform *key-transform*
+                                            :readonly? *readonly?*})
         rendered    (type/render (:type compiled) {:ref-name registry-type-name})
         source-type (when (vector? malli-schema) (first malli-schema))]
     (doseq [schema-keyword (:registry-refs compiled)]
@@ -610,6 +622,42 @@
          :base-type     base-schema
          :generic-bound (:ts/generic-bound props)}))))
 
+(defn- auto-generic-info
+  "Detect functions that preserve a registry type without an explicit
+  `:ts/same-as`: when exactly one argument schema is the identical registry
+  keyword as the return schema, render `<T extends X>` so callers keep their
+  subtype through the call."
+  [arg-schema out-schema]
+  (let [out-form (mc/form (mc/schema out-schema))]
+    (when (qualified-keyword? out-form)
+      (let [matches (into []
+                          (keep-indexed (fn [index child]
+                                          (when (= out-form (mc/form (mc/schema child)))
+                                            index)))
+                          (arg-schema-children arg-schema))]
+        (when (= 1 (count matches))
+          {:arg-idx (first matches), :base-type out-form, :auto? true})))))
+
+(defn- predicate-return-info
+  "Normalize a `:ts/predicate-of` return property to `{:param idx :schema s}`.
+  A bare schema narrows argument 0."
+  [out-schema]
+  (when-let [value (:ts/predicate-of (mc/properties (mc/schema out-schema)))]
+    (if (map? value)
+      (when (:schema value)
+        {:param (or (:param value) 0), :schema (:schema value)})
+      {:param 0, :schema value})))
+
+(defn- predicate-parameter-declared?
+  "A type predicate may only reference a fixed, non-variadic argument; rest
+  positions are invalid predicate parameters (TS1229)."
+  [arglist param-idx]
+  (and (nat-int? param-idx)
+       (< param-idx (count arglist))
+       (not (rest-marker? (nth (vec arglist) param-idx)))
+       (not (and (pos-int? param-idx)
+                 (rest-marker? (nth (vec arglist) (dec param-idx)))))))
+
 (defn- -fn->ts
   "Inputs:
   - fnname: \"fnname\"
@@ -639,10 +687,24 @@
                                                     (map? (second schema)) rest)]
                                      [(first children) (second children)])
                                    (mc/children schema))
-         generic-info (extract-generic-info out-schema)]
+         generic-info (or (extract-generic-info out-schema)
+                          (auto-generic-info arg-schema out-schema))
+         predicate (when (nil? generic-info)
+                     (predicate-return-info out-schema))]
      (cond
        (overload-sequence-schema? arglist arg-schema)
        (sequence-overloads fnname arglist arg-schema out-schema doc generic-info)
+
+       (and predicate (predicate-parameter-declared? arglist (:param predicate)))
+       ;; Type predicate: `export function is_date(x: unknown): x is Column;`
+       (let [param-idx   (:param predicate)
+             param-name  (extract-arg-name (nth (vec arglist) param-idx) param-idx)
+             return-type (str param-name " is " (schema->ts (:schema predicate)))]
+         (str (format-jsdoc doc arglist arg-schema out-schema)
+              (format "export function %s(%s): %s;"
+                      (cljs-munge fnname)
+                      (format-ts-args arglist arg-schema)
+                      return-type)))
 
        generic-info
        ;; Generic function with :ts/same-as
@@ -810,7 +872,7 @@
           (throw e))))))
 
 (defn- declaration-result
-  [render defmeta {:keys [current-ns shared-types]
+  [render defmeta {:keys [current-ns shared-types readonly?]
                    :or {shared-types #{}}}]
   (let [registry-refs     (atom #{})
         local-definitions (atom {})
@@ -822,7 +884,8 @@
               *shared-types*      shared-types
               *current-ns*        current-ns
               *current-def*       (some-> (:name defmeta) name)
-              *weak-types*        weak-types]
+              *weak-types*        weak-types
+              *readonly?*         readonly?]
       {:declaration       (render defmeta)
        :registry-refs     @registry-refs
        :local-definitions @local-definitions
