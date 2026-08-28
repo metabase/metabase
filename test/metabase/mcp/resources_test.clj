@@ -118,6 +118,21 @@
         (is (not= viz-html drill-html)
             "visualize-query and render-drill-through HTML must differ byte-wise")))))
 
+(deftest legacy-ui-resource-aliases-test
+  (testing "original UI resource URIs serve the current cache-safe resources"
+    (mcp.resources/with-fallback-template
+      (doseq [[uri scope refresh-tool]
+              [["ui://metabase/visualize-query.html"
+                "agent:viz:mcp-ui:query"
+                "refresh_visualize_query_ui_credential"]
+               ["ui://metabase/render-drill-through.html"
+                "agent:viz:mcp-ui:drill-through"
+                "refresh_render_drill_through_ui_credential"]]]
+        (let [resource (mcp.resources/read-resource uri #{scope} {})]
+          (is (= :ok (:status resource)))
+          (is (= uri (-> resource :contents first :uri)))
+          (is (str/includes? (-> resource :contents first :text) refresh-tool)))))))
+
 (deftest builtin-visualize-query-ui-resource-metadata-test
   (testing "the visualize_query UI resource publishes bare origins; :domain is gated on the ChatGPT client"
     ;; site-url is set with a subpath to confirm `_meta.ui.domain` and the CSP domain lists strip the
