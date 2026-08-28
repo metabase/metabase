@@ -215,9 +215,6 @@
               (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
               (is (= planted (raw-detail))))))))))
 
-(defn- decrypts-strictly? [value]
-  (try (encryption/maybe-decrypt value) true (catch Throwable _ false)))
-
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
     (encryption-test/with-secret-key "fresh-install-test-key-1234"
@@ -227,10 +224,15 @@
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
                   {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
-              (is (decrypts-strictly? value)))))
+              (is (encryption/decryptable-string? value)))))
+        (testing "encrypted-at-rest bytes columns"
+          (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns
+                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
+            (testing (format "%s.%s id %s" (name table) (name column) id)
+              (is (encryption/decryptable-bytes? (#'mdb.encryption/maybe-blob->bytes value))))))
         (testing "settings that are encrypted at rest"
           (doseq [{k :key v :value} (t2/select :setting {:where [:!= :value nil]})
                   :let [definition (get @setting/registered-settings (keyword k))]
                   :when (and definition (not= :no (:encryption definition)))]
             (testing k
-              (is (decrypts-strictly? v)))))))))
+              (is (encryption/decryptable-string? v)))))))))
