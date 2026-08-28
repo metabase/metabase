@@ -171,9 +171,6 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
     settingDefinition: SettingDefinitionInput<TSettings, W, Key>,
   ) => CustomVisualizationSettingDefinition<TSettings>;
 
-/**
- * What `defineSetting` takes: the definition of one setting.
- */
 export type SettingDefinitionInput<
   TSettings extends BaseVisualizationSettings,
   W extends WidgetName | ComponentType<any>,
