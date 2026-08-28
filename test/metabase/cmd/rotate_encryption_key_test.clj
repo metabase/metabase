@@ -216,7 +216,7 @@
             (mdb/decrypt-db :h2 (mdb/data-source))
             (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
             (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
-            (is (nil? (t2/select-one-fn :value :setting :key "encryption-check")))))))
+            (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check")))))))
     (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
       (mt/with-empty-h2-app-db!
         (let [user-id (encryption-test/with-secret-key k1

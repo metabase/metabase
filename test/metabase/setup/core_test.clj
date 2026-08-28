@@ -134,7 +134,8 @@
           (mdb/setup-db! :create-sample-content? true)
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
-            (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
+            ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
+            (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
             (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
@@ -142,7 +143,7 @@
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
-                (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
+                (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
                 (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
                 (is (= 1 (t2/count :model/QueryCache)))
                 (testing "after `enable-encryption` the database is encrypted and starts"
@@ -163,14 +164,17 @@
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
             (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check")))))
-          (testing "A missing sentinel on a database that already has content is never written back on startup"
-            (let [sentinel (t2/select-one-fn :value "setting" :key "encryption-check")]
-              (t2/delete! :setting :key "encryption-check")
-              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-              (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data"
-                                    (mdb/setup-db! :create-sample-content? false)))
-              (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
-              (t2/insert! :setting {:key "encryption-check", :value sentinel})))
+          (testing "A missing sentinel on a database whose content decrypts with the key is written back on startup"
+            (t2/delete! :setting :key "encryption-check")
+            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+          (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
+            (t2/delete! :setting :key "encryption-check")
+            (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
+            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -188,32 +192,37 @@
   (when value
     (t2/insert! :setting {:key "encryption-check", :value value})))
 
-(deftest tampered-sentinel-does-not-launder-plaintext-test
-  (testing "an app-db writer plants a plaintext row and resets the sentinel; a restart must not encrypt it"
-    (encryption-test/with-secret-key "sentinel-tamper-key-1"
+(deftest sentinel-state-never-triggers-encryption-test
+  (testing "a restart must never encrypt a pre-existing plaintext row, whatever state the sentinel is in"
+    (encryption-test/with-secret-key "sentinel-state-key-1"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
         (let [db-id      (t2/select-one-fn :id :metabase_database)
-              planted    "{\"host\":\"evil.example\"}"
+              plaintext  "{\"host\":\"example.com\"}"
               raw-detail #(t2/select-one-fn :details :metabase_database :id db-id)
               restart!   (fn []
                            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                            (mdb/setup-db! :create-sample-content? false))]
           (is (encryption/decryptable-string? (raw-detail)))
-          (t2/update! :metabase_database {:id db-id} {:details planted})
+          (t2/update! :metabase_database {:id db-id} {:details plaintext})
           (testing "with the sentinel deleted"
             (set-encryption-check-raw! nil)
             (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
-            (testing "the planted row is untouched and still rejected by the strict read"
-              (is (= planted (raw-detail)))
+            (testing "the plaintext row is untouched and still rejected by the strict read"
+              (is (= plaintext (raw-detail)))
               (is (thrown? Exception (:details (t2/select-one :model/Database :id db-id)))))
             (testing "no sentinel was written"
               (is (nil? (t2/select-one-fn :value :setting :key "encryption-check")))))
-          (doseq [bogus [(str (random-uuid)) "unencrypted"]]
-            (testing (format "\na plaintext sentinel %s is rejected as a wrong key" (pr-str bogus))
-              (set-encryption-check-raw! bogus)
-              (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
-              (is (= planted (raw-detail))))))))))
+          (testing "\na plaintext random-uuid sentinel is rejected as a wrong key"
+            (set-encryption-check-raw! (str (random-uuid)))
+            (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
+            (is (= plaintext (raw-detail))))
+          (testing "\nthe legacy \"unencrypted\" marker reads as no sentinel: the plaintext row still refuses startup"
+            (set-encryption-check-raw! "unencrypted")
+            (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
+            (is (= plaintext (raw-detail)))
+            (testing "and no sentinel was written"
+              (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check"))))))))))
 
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"

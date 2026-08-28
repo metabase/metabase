@@ -35,5 +35,5 @@
         (is (encryption/decryptable-string? (raw-value _conn "encryption-check")))
         (is (encryption/decryptable-string? (raw-value _conn "test-setting")))
         (remove-encryption!)
-        (is (nil? (raw-value _conn "encryption-check")))
+        (is (= "unencrypted" (raw-value _conn "encryption-check")))
         (is (not (encryption/possibly-encrypted-string? (raw-value _conn "test-setting"))))))))
