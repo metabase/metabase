@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ratchets_file=.clj-kondo/ratchets.edn
+
+if [ -z "$(git ls-files -u -- "$ratchets_file")" ]; then
+  echo "$ratchets_file is not conflicted" >&2
+  exit 1
+fi
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+
+if ! git show ":2:$ratchets_file" > "$tmp_dir/stage-2"; then
+  echo "the target branch has no $ratchets_file; keeping it absent"
+  git rm -q -- "$ratchets_file"
+  exit 0
+fi
+
+if ! git show ":3:$ratchets_file" > "$tmp_dir/stage-3"; then
+  echo "the incoming branch removed $ratchets_file; keeping the target branch's copy"
+  git checkout --ours -- "$ratchets_file"
+  git add -- "$ratchets_file"
+  exit 0
+fi
+
+if ! git show ":1:$ratchets_file" > "$tmp_dir/stage-1"; then
+  printf '{}\n' > "$tmp_dir/stage-1"
+fi
+
+./bin/mage merge-kondo-ratchets \
+  "$tmp_dir/stage-1" \
+  "$tmp_dir/stage-2" \
+  "$tmp_dir/stage-3" \
+  "$ratchets_file"
+git add -- "$ratchets_file"
+echo "staged merged $ratchets_file"
