@@ -14,29 +14,27 @@
 
 (set! *warn-on-reflection* true)
 
-(def ratchets-file
+(def ^:dynamic *ratchets-file*
   "The budgets file, relative to the repo root."
   ".clj-kondo/ratchets.edn")
 
-(def ^:private disabled-key
-  "The key that release branches set to `true` in [[ratchets-file]] to disable the ratchets."
-  :disabled)
-
 (defn read-ratchets
-  "Parsed contents of [[ratchets-file]], with empty defaults for omitted keys.
+  "Parsed contents of [[*ratchets-file*]], with empty defaults for omitted keys.
   Throws when the file is missing; only an explicit `{:disabled true}` opts out of enforcement."
   []
-  (let [file (io/file ratchets-file)]
+  (let [file (io/file *ratchets-file*)]
     (when-not (.exists file)
-      (throw (ex-info (str ratchets-file " is missing -- only {:disabled true} opts out of enforcement")
-                      {:file ratchets-file})))
+      (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
+                      {:file *ratchets-file*})))
     (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
            (edn/read-string (slurp file)))))
 
 (defn disabled?
-  "Whether [[ratchets-file]] explicitly disables the ratchets."
-  []
-  (true? (get (read-ratchets) disabled-key)))
+  "Whether `ratchets` (default: [[read-ratchets]]) explicitly disables the ratchets."
+  ([]
+   (disabled? (read-ratchets)))
+  ([ratchets]
+   (true? (:disabled ratchets))))
 
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
@@ -430,27 +428,27 @@
        (format "unexempted %s (all its ignores are justified now)" linter)))))
 
 (defn fix!
-  "Rewrite [[ratchets-file]]: lower budgets, drop stale comment exemptions, normalize formatting.
+  "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
   Prints the [[change-report]], or `unchanged` on a no-op.
-  Does nothing, including seeding, when [[ratchets-file]] sets [[disabled-key]] to `true`."
+  Does nothing, including seeding, when the file sets `:disabled` to `true`."
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (if (disabled?)
-     (println (str ratchets-file " is disabled -- nothing to do"))
-     (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
-           occurrences   (scan)
-           seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
-           actual        (actual-counts occurrences)
-           config-actual (config-suppressions)
-           text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
-                                  :config-counts  (lowered-counts config-counts config-actual [])
-                                  :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
-           file          (io/file ratchets-file)
-           old           (when (.exists file) (slurp file))]
-       (run! println (change-report ratchets occurrences config-actual seeded))
-       (if (= old text)
-         (println "unchanged")
-         (do (spit file text)
-             (println (str "wrote " ratchets-file))))))))
+   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
+     (if (disabled? ratchets)
+       (println (str *ratchets-file* " is disabled -- nothing to do"))
+       (let [occurrences   (scan)
+             seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+             actual        (actual-counts occurrences)
+             config-actual (config-suppressions)
+             text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                                    :config-counts  (lowered-counts config-counts config-actual [])
+                                    :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
+             file          (io/file *ratchets-file*)
+             old           (when (.exists file) (slurp file))]
+         (run! println (change-report ratchets occurrences config-actual seeded))
+         (if (= old text)
+           (println "unchanged")
+           (do (spit file text)
+               (println (str "wrote " *ratchets-file*)))))))))

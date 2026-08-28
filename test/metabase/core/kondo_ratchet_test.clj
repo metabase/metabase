@@ -23,10 +23,7 @@
     (kondo-ratchet/scan)))
 
 (defn- ratchets-enabled? []
-  (if (kondo-ratchet/disabled?)
-    (do (is true "Skipped: ratchets.edn explicitly disables enforcement")
-        false)
-    true))
+  (not (kondo-ratchet/disabled?)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The self-heal workflow does the same for labelled PRs.
@@ -45,7 +42,7 @@
 
 (deftest ^:parallel budgets-match-actual-counts-test
   (when (ratchets-enabled?)
-    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
+    (testing (str "\nBudgets in " kondo-ratchet/*ratchets-file* " must match the actual inline ignore counts.\n"
                   "Budget too low: remove an ignore, or seed the budget with\n"
                   "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
                   "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
@@ -59,7 +56,7 @@
   (when (ratchets-enabled?)
     (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
                   "(or trailing on the same line) saying why the suppression is warranted.\n"
-                  "Linters in :comment-exempt in " kondo-ratchet/ratchets-file " are grandfathered;\n"
+                  "Linters in :comment-exempt in " kondo-ratchet/*ratchets-file* " are grandfathered;\n"
                   "widening that set is a hand edit to defend in the PR.")
       (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
         (is (= []
@@ -77,7 +74,7 @@
 
 (deftest ^:parallel config-budgets-match-actual-test
   (when (ratchets-enabled?)
-    (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/ratchets-file " must match\n"
+    (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/*ratchets-file* " must match\n"
                   ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
                   "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
                   "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
@@ -87,11 +84,11 @@
 
 (deftest ^:parallel ratchets-file-normalized-test
   (when (ratchets-enabled?)
-    (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
+    (testing (str "\n" kondo-ratchet/*ratchets-file* " should be sorted and aligned exactly as the generator"
                   " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the"
                   " formatting.")
       (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
-             (slurp kondo-ratchet/ratchets-file))))))
+             (slurp kondo-ratchet/*ratchets-file*))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
@@ -284,26 +281,30 @@
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
-(deftest ^:synchronized fix-when-disabled-test
+(deftest ^:parallel fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
     (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                             "kondo-ratchet-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
           budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
-      (with-redefs [kondo-ratchet/ratchets-file (.getPath budgets)]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
         (is (kondo-ratchet/disabled?))
         (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
                (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
-(deftest ^:synchronized missing-ratchets-file-fails-test
-  (with-redefs [kondo-ratchet/ratchets-file "target/does-not-exist/ratchets.edn"]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"ratchets.edn is missing"
-                          (kondo-ratchet/read-ratchets)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"ratchets.edn is missing"
-                          (kondo-ratchet/disabled?)))))
+(deftest ^:parallel missing-ratchets-file-fails-test
+  (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
+                          "kondo-ratchet-test"
+                          (make-array java.nio.file.attribute.FileAttribute 0)))
+        missing (.getPath (io/file dir "missing-ratchets.edn"))]
+    (binding [kondo-ratchet/*ratchets-file* missing]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"ratchets.edn is missing"
+                            (kondo-ratchet/read-ratchets)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"ratchets.edn is missing"
+                            (kondo-ratchet/disabled?))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Justification bookkeeping unit tests

@@ -496,4 +496,4 @@
             (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
                                                               (kondo-ratchet/scan roots))))
               (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
-                               linter kondo-ratchet/ratchets-file))))))))
+                               linter kondo-ratchet/*ratchets-file*))))))))
