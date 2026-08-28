@@ -412,72 +412,6 @@
     (let [q (two-breakout-query)]
       (is (= q (qp.pivot/apply-legacy-pivot-keys q))))))
 
-;;; ---- native-pivot-compatible? ----
-
-(deftest ^:parallel native-pivot-compatible?-test
-  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                 (lib/breakout (meta/field-metadata :orders :created-at)))]
-    (testing "queries without window-function aggregations are compatible"
-      (is (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/count)))))
-    (testing ":cum-count aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base (lib/cum-count))))))
-    (testing ":cum-sum aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible?
-                (lib/aggregate base (lib/cum-sum (meta/field-metadata :orders :total)))))))
-    (testing ":offset aggregation is not compatible"
-      (is (not (qp.pivot/native-pivot-compatible?
-                (lib/aggregate base (lib/offset (lib/count) -1))))))
-    (testing "window-function aggregation nested inside an arithmetic clause is not compatible"
-      (let [total (meta/field-metadata :orders :total)
-            diff  (lib/expression-clause :- [(lib/sum total) (lib/offset (lib/sum total) -1)] nil)]
-        (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base diff)))))))
-  (testing "nested-field (e.g. JSON-unfolded) breakouts are compatible"
-    (let [json-mp (lib.tu/mock-metadata-provider
-                   {:database (assoc meta/database :id 1)
-                    :tables   [(merge (meta/table-metadata :venues)
-                                      {:id 1 :db-id 1 :name "json_table"})]
-                    :fields   [(merge (meta/field-metadata :venues :id)
-                                      {:id            1
-                                       :table-id      1
-                                       :name          "category"
-                                       :nfc-path      ["payload" "category"]
-                                       :database-type "text"})]})
-          query   (-> (lib/query json-mp (lib.metadata/table json-mp 1))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (lib.metadata/field json-mp 1)))]
-      (is (qp.pivot/native-pivot-compatible? query))))
-  (testing "metric whose definition is a window-function aggregation is incompatible"
-    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                           (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
-          metric-card  {:lib/type      :metadata/card
-                        :id            10000
-                        :entity-id     (apply str (repeat 21 "X"))
-                        :database-id   (meta/id)
-                        :name          "Cumulative Total"
-                        :type          :metric
-                        :dataset-query metric-query}
-          mp           (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [metric-card]})
-          query        (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
-                           (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id metric-card)]))
-                           (lib/breakout (lib.metadata/field mp (meta/id :orders :created-at))))]
-      (is (not (qp.pivot/native-pivot-compatible? query)))))
-  (testing "source card with a window-function aggregation"
-    (let [card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                         (lib/breakout (meta/field-metadata :orders :created-at))
-                         (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
-          card       {:lib/type      :metadata/card
-                      :id            10001
-                      :entity-id     (apply str (repeat 21 "Y"))
-                      :database-id   (meta/id)
-                      :name          "Cumulative by Day"
-                      :type          :question
-                      :dataset-query card-query}
-          mp         (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [card]})
-          query      (-> (lib/query mp (lib.metadata/card mp (:id card)))
-                         (lib/aggregate (lib/count)))]
-      (testing "outer aggregations don't inherit the card's window-fn, so the pivot is compatible"
-        (is (qp.pivot/native-pivot-compatible? query))))))
-
 (defn- capture-first-query
   "Return `[p stub]` where `stub` is a `qp/process-query` replacement that delivers its first-received query to
   the promise `p` and returns a benign completed result."
@@ -502,21 +436,21 @@
             (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query)))
           (is (= 1 @invocations)))))))
 
-(deftest ^:parallel native-and-multi-pivot-paths-stash-same-pivot-options-test
+(deftest ^:parallel sql-and-multi-pivot-paths-stash-same-pivot-options-test
   (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
     (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
-        (let [query                        (-> (qp.pivot.test-util/pivot-query)
-                                               qp.middleware.normalize/normalize-preprocessing-middleware)
-              [multi-p multi-stub]         (capture-first-query)
-              [native-p native-stub]       (capture-first-query)]
+        (let [query                  (-> (qp.pivot.test-util/pivot-query)
+                                         qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]   (capture-first-query)
+              [sql-p sql-stub]       (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
             (#'qp.pivot/run-pivot-query-multi query nil))
-          (mt/with-dynamic-fn-redefs [qp.core/process-query native-stub]
-            (#'qp.pivot/run-native-pivot-query query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query sql-stub]
+            (#'qp.pivot/run-sql-pivot-query query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
-          (is (= (get-in @multi-p  [:middleware :pivot-options])
-                 (get-in @native-p [:middleware :pivot-options]))))))))
+          (is (= (get-in @multi-p [:middleware :pivot-options])
+                 (get-in @sql-p   [:middleware :pivot-options]))))))))
 
 (deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
   (testing "pivot with a breakout that references an expression"
@@ -1474,7 +1408,7 @@
                                     :pivot_rows  [0]
                                     :pivot_cols  [1]})
                             qp.middleware.normalize/normalize-preprocessing-middleware)
-            results     (#'qp.pivot/run-native-pivot-query query nil)]
+            results     (#'qp.pivot/run-sql-pivot-query query nil)]
         (testing "row count matches the requested cap"
           (is (= max-results (count (mt/rows results)))))
         (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
