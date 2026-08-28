@@ -2271,3 +2271,27 @@
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
                                  :where  [:!= :public_uuid nil]})))))
+
+(define-reversible-migration EncryptNotificationAndPulseChannelDetails
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:notification_recipient :pulse_channel]]
+      (run! (fn [{:keys [id details]}]
+              (when (and (string? details)
+                         (not (encryption/possibly-encrypted-string? details)))
+                (t2/query {:update table
+                           :set    {:details (encryption/maybe-encrypt details)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :details]
+                                 :from   [table]
+                                 :where  [:!= :details nil]}))))
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:notification_recipient :pulse_channel]]
+      (run! (fn [{:keys [id details]}]
+              (when (and (string? details)
+                         (encryption/possibly-encrypted-string? details))
+                (t2/query {:update table
+                           :set    {:details (encryption/maybe-decrypt details)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :details]
+                                 :from   [table]
+                                 :where  [:!= :details nil]})))))
