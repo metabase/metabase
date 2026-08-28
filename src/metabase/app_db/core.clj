@@ -136,9 +136,10 @@
   `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
   serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts.
 
-  `check-encryption?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database after migrating; it is
-  `false` only for the `enable-encryption` command, which runs precisely when that check would fail."
-  [& {:keys [create-sample-content? check-encryption?] :or {check-encryption? true}}]
+  `manage-encryption-state?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database before migrations
+  run and records the resulting encryption state afterwards; it is `false` for the commands that handle the
+  encryption state themselves (`enable-encryption`, [[metabase.cmd.copy/copy!]])."
+  [& {:keys [create-sample-content? manage-encryption-state?] :or {manage-encryption-state? true}}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
     ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
@@ -152,7 +153,7 @@
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source {:auto-migrate?          auto-migrate?
                                                     :create-sample-content? create-sample-content?
-                                                    :check-encryption?      check-encryption?}))
+                                                    :manage-encryption-state?      manage-encryption-state?}))
         (finish-db-setup!))))
   :done)
 

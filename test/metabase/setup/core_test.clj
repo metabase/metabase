@@ -163,14 +163,17 @@
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
             (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
-          (testing "A missing sentinel on a database that already has content is never written back on startup"
-            (let [sentinel (t2/select-one-fn :value "setting" :key "encryption-check")]
-              (t2/delete! :setting :key "encryption-check")
-              (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-              (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data"
-                                    (mdb/setup-db! :create-sample-content? false)))
-              (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
-              (t2/insert! :setting {:key "encryption-check", :value sentinel})))
+          (testing "A missing sentinel on a database whose content decrypts with the key is written back on startup"
+            (t2/delete! :setting :key "encryption-check")
+            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+          (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
+            (t2/delete! :setting :key "encryption-check")
+            (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
+            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -209,11 +212,16 @@
               (is (thrown? Exception (:details (t2/select-one :model/Database :id db-id)))))
             (testing "no sentinel was written"
               (is (nil? (t2/select-one-fn :value :setting :key "encryption-check")))))
-          (doseq [bogus [(str (random-uuid)) "unencrypted"]]
-            (testing (format "\na plaintext sentinel %s is rejected as a wrong key" (pr-str bogus))
-              (set-encryption-check-raw! bogus)
-              (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
-              (is (= planted (raw-detail))))))))))
+          (testing "\na plaintext random-uuid sentinel is rejected as a wrong key"
+            (set-encryption-check-raw! (str (random-uuid)))
+            (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
+            (is (= planted (raw-detail))))
+          (testing "\nthe legacy \"unencrypted\" marker reads as no sentinel: the planted plaintext still refuses startup"
+            (set-encryption-check-raw! "unencrypted")
+            (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
+            (is (= planted (raw-detail)))
+            (testing "and no sentinel was written"
+              (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check"))))))))))
 
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"

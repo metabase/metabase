@@ -5,6 +5,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
@@ -63,63 +64,80 @@
 
 (def ^:private encryption-check-key "encryption-check")
 
-(defn encryption-check-status
+(mu/defn encryption-check-status :- [:enum :valid :invalid :absent]
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
   `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
 
     :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
-    :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering), or the database cannot be
-               read at all (no `setting` table) -- not a normal state either way
-    :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
+    :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering)
+    :absent  - no sentinel: a `setting` table that does not exist yet (before migrations on a fresh database), no
+               row, or the legacy plaintext \"unencrypted\" marker the v53 migration inserted -- new code never
+               writes that value, so it reads as the missing row it stands for"
   []
-  (try
-    (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
-      (cond
-        (nil? raw)
-        :absent
+  (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting :key encryption-check-key))]
+    (cond
+      (or (nil? raw) (= raw "unencrypted"))
+      :absent
 
-        (and (encryption/default-encryption-enabled?)
-             (string/valid-uuid? (encryption/maybe-decrypt raw)))
-        :valid
+      (and (encryption/default-encryption-enabled?)
+           (u/ignore-exceptions (string/valid-uuid? (encryption/maybe-decrypt raw))))
+      :valid
 
-        :else
-        :invalid))
-    (catch Throwable e
-      (log/warnf "Could not determine encryption status, treating as invalid: %s" (ex-message e))
+      :else
       :invalid)))
 
 (defn- column-exists?
-  "Whether `table`.`column` exists, per JDBC metadata. Identifiers are matched as stored and upper-cased, since H2
+  "Whether `table`.`column` exists in the connection's own catalog and schema, per JDBC metadata (a same-named table
+  in another schema of the database must not count). Identifiers are matched as stored and upper-cased, since H2
   upper-cases unquoted names."
   [table column]
   (t2/with-connection [^java.sql.Connection conn]
-    (let [metadata (.getMetaData conn)]
+    (let [metadata (.getMetaData conn)
+          catalog  (.getCatalog conn)
+          schema   (.getSchema conn)]
       (boolean (some (fn [[t c]]
-                       (with-open [rs (.getColumns metadata nil nil t c)]
+                       (with-open [rs (.getColumns metadata catalog schema t c)]
                          (.next rs)))
                      [[(name table) (name column)]
                       [(u/upper-case-en (name table)) (u/upper-case-en (name column))]])))))
 
-(defn- column-has-values?
-  "Whether `table`.`column` holds any non-null value. A table or column that does not exist yet (this runs before
-  migrations, on a fresh or old database) counts as empty; any other failure to read it propagates, since answering
-  \"empty\" wrongly would mark an unencrypted database as encrypted."
-  [table column]
+(mu/defn- column-sample-value
+  "One non-null value of `table`.`column`, or nil when there is none. A table or column that does not exist yet (this
+  runs before migrations, on a fresh or old database) counts as empty; any other failure to read it propagates, since
+  answering \"empty\" wrongly could mark an unencrypted database as encrypted."
+  [table :- :keyword
+   column :- :keyword]
   (try
-    (boolean (t2/query-one {:select [:id], :from [table], :where [:is-not column nil], :limit 1}))
+    (:value (t2/query-one {:select [[column :value]], :from [table], :where [:is-not column nil], :limit 1}))
     (catch Exception e
       (if (column-exists? table column)
         (throw e)
-        false))))
+        nil))))
 
-(defn encrypted-content-exists?
-  "Whether any encrypted-at-rest column holds a value at all. With MB_ENCRYPTION_SECRET_KEY set and no
-  `encryption-check` sentinel, the database must be one that has never held such content (a fresh install); anything
-  else -- plaintext waiting for `enable-encryption`, or an encrypted database whose sentinel was removed -- means the
-  instance cannot be marked encrypted on its own. Settings are not counted: they are tolerated as plaintext at rest."
+(mu/defn encrypted-content-status :- [:enum :none :decryptable :not-decryptable]
+  "Whether the encrypted-at-rest columns hold content, and whether that content was encrypted under the current key,
+  judged from one sampled value per column (the single rows a NOT NULL probe would touch -- never a full scan):
+
+    :none            - no encrypted-at-rest column holds any value: a database that has never held such content
+    :decryptable     - every sampled value decrypts with the current key, which only a database encrypted under
+                       exactly this key can produce
+    :not-decryptable - some sampled value does not decrypt: plaintext waiting for `enable-encryption`, ciphertext
+                       under some other key, or a mix
+
+  Settings are not counted: they are tolerated as plaintext at rest."
   []
-  (boolean (some (fn [[table column]] (column-has-values? table column))
-                 (concat encrypted-string-columns encrypted-bytes-columns))))
+  (let [sample  (fn [decryptable? [table column]]
+                  (when-some [value (column-sample-value table column)]
+                    (decryptable? value)))
+        samples (into []
+                      (remove nil?)
+                      (concat (map (partial sample encryption/decryptable-string?) encrypted-string-columns)
+                              (map (partial sample (comp encryption/decryptable-bytes? maybe-blob->bytes))
+                                   encrypted-bytes-columns)))]
+    (cond
+      (empty? samples)       :none
+      (every? true? samples) :decryptable
+      :else                  :not-decryptable)))
 
 (defn- replace-encryption-check!
   "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with nothing when

@@ -12,7 +12,7 @@
   []
   (when-not (mdb/db-is-set-up?)
     (log/info "Checking database configuration prior to encryption")
-    (mdb/setup-db! :create-sample-content? true :check-encryption? false))
+    (mdb/setup-db! :create-sample-content? true :manage-encryption-state? false))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (if (= :valid (mdb/encryption-check-status))
     (log/info "Database is already encrypted with MB_ENCRYPTION_SECRET_KEY; nothing to do.")
