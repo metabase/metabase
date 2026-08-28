@@ -22,10 +22,6 @@ const { WEB_PORT, SMTP_PORT } = WEBMAIL_CONFIG;
  * env vars drive both the container's host-port mapping and the URLs used
  * in these helpers, e.g.
  * `MAILDEV_WEB_PORT=2080 MAILDEV_SMTP_PORT=2025 bun run test-cypress`
- *
- * If you're running Cypress without the runner script, start maildev manually:
- * `docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.2.1`
- * or `npx maildev -s 1025 -w 1080`
  */
 export const setupSMTP = () => {
   cy.log("Set up Webmail SMTP server");
