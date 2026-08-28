@@ -1367,8 +1367,11 @@ LIMIT
         cy.button("Change target").click();
         // Anchor on the server rejecting the overwrite before asserting the
         // rendered error, so a mistyped/unchanged name (which would return 200)
-        // fails loudly here instead of as a missing-text timeout.
-        cy.wait("@updateTransform").its("response.statusCode").should("eq", 403);
+        // fails loudly here instead of as a missing-text timeout. Any 4xx will
+        // do -- the exact status differs between branches (400 vs 403).
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("be.within", 400, 499);
         cy.findByText("A table with that name already exists.").should(
           "be.visible",
         );
