@@ -1228,6 +1228,15 @@
           (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
           (is (re-find #"single select statement" (ex-message thrown))))))))
 
+(deftest ^:parallel impersonated-query-placeholder-cast-test
+  (testing "A `?` placeholder (substituted template variable) followed by a `::` cast passes validation (#81373)"
+    (let [sql   "SELECT (?::date - bill_date::date) AS diff FROM some_table"
+          query {:stages [{:lib/type :mbql.stage/native :native sql}]}
+          out   (driver.sql/validate-impersonated-query* :postgres query)
+          out-sql (get-in out [:stages 0 :native])]
+      (is (string? out-sql))
+      (is (re-find #"\?" out-sql) "the placeholder must survive into the re-emitted SQL"))))
+
 (deftest ^:parallel validate-impersonated-query-keys-on-allow-write-flag-test
   (testing "validate-impersonated-query* derives read-vs-write from *impersonation-allow-write?*"
     (let [query   (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})
