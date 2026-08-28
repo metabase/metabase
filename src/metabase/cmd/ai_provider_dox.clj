@@ -17,6 +17,12 @@
 
 (def ^:private intro-resource "metabase/cmd/resources/ai-provider-intro.md")
 
+(def ^:private provider-notes-resources
+  "Hand-written prose appended to a provider type's section, keyed by type. Only the managed provider has an entry: its
+  section is otherwise a models table, and what an admin needs to know about it — that it's a Metabase Cloud offering,
+  how it's billed, how it authenticates — is prose rather than anything the registry holds."
+  {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"})
+
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
   #{"vllm"})
@@ -111,10 +117,12 @@
     (str "Defaults to " (md/code (option-label field default)) ".")))
 
 (defn- field-env-var-sentence
-  "How to set the field without writing JSON into the setting, or nil when no environment variable configures it."
+  "The environment variable that can stand in for filling the field in, or nil when none configures it. Phrased as an
+  alternative rather than an instruction: the admin form is how a connection is normally set up, and a Metabase Cloud
+  admin can't set these themselves at all."
   [{:keys [key]} {:keys [env-vars]}]
   (when-let [env-var (get env-vars key)]
-    (str "Set it with " (md/code env-var) ".")))
+    (str "You can also set it with the environment variable " (md/code env-var) ".")))
 
 (defn- field-entry
   "One credential field as a Markdown bullet, rendered against its `provider`: the type's `:requires` map, the
@@ -202,9 +210,7 @@
     ;; each fact carries its own guard, so a singleton type that isn't managed still says so
     (md/sentences
      [(when managed? "Managed by Metabase, so there's nothing to configure.")
-      (when singleton? "You can only connect one.")
-      (when managed?
-        (str "See " (md/link "Metabase AI Service" "./settings.md#metabase-ai-service") "."))])]))
+      (when singleton? "You can only connect one.")])]))
 
 (defn- required-any-sentence
   "The `:required-any` credential groups spelled out, or nil for a type that has none."
@@ -223,10 +229,11 @@
       (seq fields)
       (md/labeled-block "Credentials:" (md/bullets (map #(field-entry % provider) fields)))
 
-      ;; only the managed provider has nothing to enter; saying so about any other type would tell an admin their
-      ;; credentials are Metabase's problem when they are not
+      ;; only the managed provider has nothing to enter, so it gets no block at all — what it does instead of taking
+      ;; credentials is prose, and lives in its `provider-notes-resources` entry. Saying so about any other type would
+      ;; tell an admin their credentials are Metabase's problem when they are not
       managed?
-      "Metabase authenticates this connection with your instance's license token, so there's no API key to enter."
+      nil
 
       :else
       (throw (ex-info (str "No credential fields for provider type " (pr-str type)
@@ -235,22 +242,25 @@
     (required-any-sentence provider)]))
 
 (defn- provider-section
-  "One provider's section of the page: heading, facts, models, then credentials."
-  [{:keys [type] :as registry-entry}]
+  "One provider's section of the page: heading, facts, models, credentials, then whatever `notes` — a `{type markdown}`
+  map of hand-written prose — holds for this type."
+  [{:keys [type] :as registry-entry} notes]
   ;; one map carries the whole section: the registry entry, plus the environment variables that configure it
   (let [provider (assoc registry-entry :env-vars (llm.provider/connection-env-vars type))]
     (md/paragraphs
      [(md/heading 2 (label provider))
       (provider-facts provider)
       (md/labeled-block "Supported models:" (models-markdown provider))
-      (credentials-section provider)])))
+      (credentials-section provider)
+      (get notes type)])))
 
 (defn- document-markdown
-  "The whole page: the `intro` resource, then a section per registered provider type."
-  [intro provider-types]
+  "The whole page: the `intro` resource, then a section per registered provider type, each carrying whatever prose
+  `notes` holds for it."
+  [intro provider-types notes]
   (when (empty? provider-types)
     (throw (ex-info "No provider types found; metabase.llm.provider's registry likely moved or changed shape" {})))
-  (md/document (cons intro (map provider-section provider-types))))
+  (md/document (cons intro (map #(provider-section % notes) provider-types))))
 
 ;;;; Entry point
 
@@ -264,7 +274,9 @@
    (let [provider-types (llm.provider/provider-types)
          n              (count provider-types)]
      (cmd.common/write-doc-file! path (document-markdown (cmd.common/load-resource! intro-resource)
-                                                         provider-types))
+                                                         provider-types
+                                                         (update-vals provider-notes-resources
+                                                                      cmd.common/load-resource!)))
      (printf "Wrote %s (%d providers)\n" path n)
      (println "Done.")
      {:path path :providers n})))

@@ -127,7 +127,7 @@
 (deftest ^:parallel field-entry-test
   (testing "a required field names itself, links to its docs in the admin form's own words, and gives its env var"
     (is (= (str "**API key** (required). [Where do I find this?](https://example.com/keys) "
-                "Set it with `MB_LLM_EXAMPLE_API_KEY`.")
+                "You can also set it with the environment variable `MB_LLM_EXAMPLE_API_KEY`.")
            (#'ai-provider-dox/field-entry
             api-key-field (provider [api-key-field] :env-vars {:api-key "MB_LLM_EXAMPLE_API_KEY"})))))
   (testing "a field with no environment variable simply omits it"
@@ -150,7 +150,7 @@
       (is (= (str "**Access key ID**. Only together with **Secret access key**. "
                   "Leave the keys blank to authenticate with the AWS default credentials chain. "
                   "On Metabase Cloud, Bedrock always authenticates with your own AWS keys. "
-                  "Set it with `MB_LLM_BEDROCK_ACCESS_KEY_ID`.")
+                  "You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.")
              (#'ai-provider-dox/field-entry
               access-key-field
               (provider fields
@@ -219,16 +219,17 @@
 
 (deftest ^:parallel provider-section-test
   (testing "a section heads with the provider's label, then runs facts, models, and credentials in that order"
-    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "anthropic"))]
+    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "anthropic") nil)]
       (is (str/starts-with? markdown "## Anthropic\n\n"))
       (is (< (str/index-of markdown "Provider key:")
              (str/index-of markdown "Supported models:")
              (str/index-of markdown "Credentials:")))
       (testing "the facts and the per-field environment variable both come off the registry entry"
         (is (str/includes? markdown "Default model: `claude-sonnet-4-6`"))
-        (is (str/includes? markdown "Set it with `MB_LLM_ANTHROPIC_API_KEY`.")))))
+        (is (str/includes? markdown
+                           "You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.")))))
   (testing "a field's references to its siblings are rendered as labels, not keys"
-    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "google"))]
+    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "google") nil)]
       (is (str/includes? markdown
                          (str "needs either **Service account key file**, or "
                               "**OAuth access token** and **Project ID**.")))
@@ -239,16 +240,21 @@
                               first)]
           (is (some? project-id))
           (is (not (str/includes? project-id "Only when")))))))
-  (testing "the managed provider has no credentials list to label"
-    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "metabase"))]
+  (testing "the managed provider has no credentials list to label, and closes on its hand-written prose instead"
+    (let [markdown (#'ai-provider-dox/provider-section (registry-entry "metabase")
+                                                       {"metabase" "There's no API key to enter."})]
       (is (not (str/includes? markdown "Credentials:")))
-      (is (str/includes? markdown "your instance's license token")))))
+      (is (str/ends-with? markdown "\n\nThere's no API key to enter."))))
+  (testing "a type with no prose of its own picks up nobody else's"
+    (is (not (str/includes? (#'ai-provider-dox/provider-section (registry-entry "anthropic")
+                                                                {"metabase" "There's no API key to enter."})
+                            "There's no API key to enter.")))))
 
 (deftest ^:parallel document-markdown-requires-providers-test
   (testing "an empty registry means the source moved, not that Metabase supports nothing"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"No provider types found"
-                          (#'ai-provider-dox/document-markdown "# Intro" [])))))
+                          (#'ai-provider-dox/document-markdown "# Intro" [] nil)))))
 
 (deftest generate-dox-test
   (mt/with-temp-file [path]
@@ -272,6 +278,15 @@
                  (str/index-of section "Credentials:")))))
       (testing "per-provider environment variables make it onto the page"
         (is (str/includes? markdown "`MB_LLM_ANTHROPIC_API_KEY`")))
+      (testing "environment variables read as an alternative to the admin form, not as the way to configure"
+        (is (str/includes? markdown
+                           "You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`."))
+        (is (not (str/includes? markdown "Set it with `MB"))))
+      (testing "the managed provider's prose is inlined, rather than the section being a link elsewhere"
+        (let [section (second (str/split markdown #"\n## Metabase AI service\n"))]
+          (is (some? section))
+          (is (str/includes? section "there's no API key to enter"))
+          (is (str/includes? section "[Pricing](https://www.metabase.com/pricing)"))))
       (testing "the page ends with exactly one newline"
         (is (str/ends-with? markdown "\n"))
         (is (not (str/ends-with? markdown "\n\n")))))))
