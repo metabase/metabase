@@ -17,8 +17,7 @@ type WidgetProps = Record<string, unknown>;
 
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin. Props are translated on the way in,
- * so the plugin sees its own setting ids and never holds a raw host callback.
+ * `WidgetMount` tagged with its plugin.
  */
 export function wrapPluginWidget(
   pluginWidget: WidgetMount,
@@ -30,6 +29,7 @@ export function wrapPluginWidget(
       container,
       toPluginWidgetProps(initialProps, prefix),
     );
+
     return {
       update: (props) => handle.update(toPluginWidgetProps(props, prefix)),
       unmount: () => handle.unmount(),
@@ -39,7 +39,6 @@ export function wrapPluginWidget(
   return Object.assign(mount, { plugin });
 }
 
-// The host's callbacks take extra host-only arguments (e.g. a question) that a plugin must not be able to supply.
 function toPluginWidgetProps(props: WidgetProps, prefix: string): WidgetProps {
   const { id, onChange, onChangeSettings } = props;
   const pluginProps = { ...props };
@@ -47,9 +46,11 @@ function toPluginWidgetProps(props: WidgetProps, prefix: string): WidgetProps {
   if (typeof id === "string" && id.startsWith(prefix)) {
     pluginProps.id = id.slice(prefix.length);
   }
+
   if (isFunction(onChange)) {
     pluginProps.onChange = (value: unknown) => onChange(value);
   }
+
   if (isFunction(onChangeSettings)) {
     pluginProps.onChangeSettings = (settings: unknown) =>
       onChangeSettings(

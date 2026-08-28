@@ -47,15 +47,6 @@ function setup() {
   };
 }
 
-function getCallback(props: WidgetProps, name: string) {
-  const callback = props[name];
-  if (!isFunction(callback)) {
-    throw new Error(`Expected "${name}" to be a function`);
-  }
-
-  return callback;
-}
-
 describe("wrapPluginWidget", () => {
   it("tags the mount with its plugin", () => {
     const { mount } = setup();
@@ -137,3 +128,13 @@ describe("wrapPluginWidget", () => {
     expect(handle.unmount).toHaveBeenCalledTimes(1);
   });
 });
+
+function getCallback(props: WidgetProps, name: string) {
+  const callback = props[name];
+
+  if (!isFunction(callback)) {
+    throw new Error(`Expected "${name}" to be a function`);
+  }
+
+  return callback;
+}
