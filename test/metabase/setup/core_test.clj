@@ -4,11 +4,13 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.settings.models.setting :as setting]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -212,3 +214,23 @@
               (set-encryption-check-raw! bogus)
               (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
               (is (= planted (raw-detail))))))))))
+
+(defn- decrypts-strictly? [value]
+  (try (encryption/maybe-decrypt value) true (catch Throwable _ false)))
+
+(deftest fresh-install-with-encryption-key-test
+  (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
+    (encryption-test/with-secret-key "fresh-install-test-key-1234"
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? true)
+        (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
+          (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
+                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
+            (testing (format "%s.%s id %s" (name table) (name column) id)
+              (is (decrypts-strictly? value)))))
+        (testing "settings that are encrypted at rest"
+          (doseq [{k :key v :value} (t2/select :setting {:where [:!= :value nil]})
+                  :let [definition (get @setting/registered-settings (keyword k))]
+                  :when (and definition (not= :no (:encryption definition)))]
+            (testing k
+              (is (decrypts-strictly? v)))))))))
