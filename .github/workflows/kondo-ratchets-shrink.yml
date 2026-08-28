@@ -33,12 +33,27 @@ jobs:
         run: ./bin/mage fix-kondo-ratchets
       - name: Commit lowered limits
         run: |
-          if git diff --quiet -- .clj-kondo/ratchets.edn; then
-            echo "Ratchets are already tight"
-            exit 0
-          fi
-          git config user.name "Metabase Automation"
-          git config user.email "github-automation@metabase.com"
-          git add .clj-kondo/ratchets.edn
-          git commit -m "Shrink Kondo ratchet limits"
-          git push
+          for attempt in 1 2 3; do
+            if git diff --quiet -- .clj-kondo/ratchets.edn; then
+              echo "Ratchets are already tight"
+              exit 0
+            fi
+
+            git config user.name "Metabase Automation"
+            git config user.email "github-automation@metabase.com"
+            git add .clj-kondo/ratchets.edn
+            git commit -m "Shrink Kondo ratchet limits"
+
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Could not update master after three attempts" >&2
+              exit 1
+            fi
+
+            git fetch origin master
+            git reset --hard origin/master
+            ./bin/mage fix-kondo-ratchets
+          done
