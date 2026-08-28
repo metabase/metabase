@@ -77,6 +77,12 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+Run the repository-level module, ratchet, and migration checks with:
+
+```bash
+./bin/mage project-tests
+```
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source

@@ -216,7 +216,7 @@ jobs:
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
-            :exclude-tags '[ :mb/project-tests ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql:
@@ -310,7 +310,7 @@ jobs:
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
-            :exclude-tags '[ :mb/project-tests ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
@@ -387,7 +387,7 @@ jobs:
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
-            :exclude-tags '[ :mb/project-tests ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   app-db-tests-result:

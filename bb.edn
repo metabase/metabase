@@ -276,6 +276,19 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  project-tests
+  {:doc "Run repository-invariant tests outside the build and database test matrices."
+   :examples [["./bin/mage project-tests" "Check module configuration, Kondo ratchets, and migrations"]
+              ["./bin/mage project-tests invariants" "Check module configuration and Kondo ratchets"]
+              ["./bin/mage project-tests migrations" "Check migration linting"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"} "invariants" "migrations"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]

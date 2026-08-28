@@ -129,6 +129,40 @@ backend_all: &backend_all
   - *backend_sources
   - *backend_specs
 
+# Repository-invariant suites have narrower triggers than the backend matrix.
+# Changes to their shared CI entry points exercise every suite; otherwise each
+# suite follows only the files that can affect its result.
+project_tests_infra: &project_tests_infra
+  - ".github/file-paths.yaml"
+  - ".github/workflows/run-tests.yml"
+  - "bb.edn"
+  - "bin/mage"
+  - "bin/mage.bb"
+  - "mage/src/mage/color.clj"
+  - "mage/src/mage/project_tests.clj"
+  - "mage/src/mage/shell.clj"
+  - "mage/src/mage/util.clj"
+
+project_clojure_invariants:
+  - *project_tests_infra
+  - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
+  - "modules/**/*.clj"
+  - "modules/**/*.cljc"
+  - "modules/**/*.cljs"
+  - "**deps.edn"
+  - ".clj-kondo/config.edn"
+  - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/ratchets.edn"
+  - ".github/team.json"
+  - "dev/resources/dev/modules_config_test/**"
+
+project_migration_linter:
+  - *project_tests_infra
+  - "bin/lint-migrations-file/**"
+  - "resources/migrations/**/*.{yaml,yml}"
+  - "src/metabase/app_db/custom_migrations.clj"
+  - "src/metabase/app_db/custom_migrations/**"
+
 sources: &sources
   - *shared_sources
   - *frontend_sources

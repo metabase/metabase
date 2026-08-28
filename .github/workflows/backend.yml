@@ -263,7 +263,7 @@ jobs:
             echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
             $BASE :only "$(cat target/failed-tests)"
           else
-            $BASE :exclude-tags '[:mb/driver-tests :mb/project-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
+            $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
