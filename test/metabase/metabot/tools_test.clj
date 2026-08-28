@@ -144,7 +144,7 @@
     (let [query-captured (atom nil)
           chart-called  (atom nil)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                  (fn [external-query]
+                                  (fn [external-query & _opts]
                                     (reset! query-captured external-query)
                                     {:structured-output {:query-id "q-1"
                                                          :query {:database 1}
@@ -182,7 +182,7 @@
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
   the `:output` the LLM would see."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
                (agent-tools/construct-notebook-query-tool
                 {:query       {:lib/type "mbql/query" :stages []}
