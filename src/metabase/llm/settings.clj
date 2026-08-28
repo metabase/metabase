@@ -45,7 +45,7 @@
 (defsetting llm-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs.\n"
                      "Options:\n"
-                     "- external-only (only globally routable public addresses)\n"
+                     "- external-only (only globally reachable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
                      "- allow-all (no restrictions).\n"
                      "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"

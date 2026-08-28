@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel host-allowed-external-only-test
-  (testing "external-only allows only globally-routable addresses"
+  (testing "external-only allows only globally reachable addresses"
     (are [host expected] (= expected (http/host-allowed-for-network-policy? :external-only host))
       "https://example.com"    true
       "8.8.8.8"                true
@@ -208,7 +208,7 @@
         non-global-special-ips))
 
 (deftest ^:parallel public-address?-test
-  (testing "globally-routable addresses are allowed"
+  (testing "globally reachable addresses are allowed"
     (doseq [ip public-ips]
       (is (true? (boolean (http/public-address? (InetAddress/getByName ip))))
           (str "should be public: " ip))))
@@ -218,7 +218,7 @@
           (str "should be rejected: " ip)))))
 
 (deftest ^:parallel address-allowed-for-network-policy?-test
-  (testing "external-only admits only globally-routable addresses"
+  (testing "external-only admits only globally reachable addresses"
     (doseq [ip public-ips]
       (is (true? (http/address-allowed-for-network-policy? :external-only (InetAddress/getByName ip))) ip))
     (doseq [ip non-public-ips]
