@@ -126,7 +126,7 @@
     (testing "sharing encrypts the uuid at rest and derives the prefix"
       (t2/update! model id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
-        (is (encryption/possibly-encrypted-string? raw) "public_uuid is stored as ciphertext")
+        (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
         (is (= uuid (encryption/maybe-decrypt raw)) "and decrypts back to the uuid"))
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))

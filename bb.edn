@@ -276,16 +276,6 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
-  settings-encryption-check
-  {:doc "Fail if a setting flipped from plaintext to encrypted at rest without a migration encrypting its stored values."
-   :examples [["./bin/mage settings-encryption-check" "Compare this branch's settings against master (uses the running dev REPL for this branch if available, else a JVM)"]
-              ["./bin/mage settings-encryption-check --base release-x.58" "Compare against another base ref"]]
-   ;; The base ref is dumped from a throwaway worktree in a cold JVM; see dev.settings-encryption.
-   :options [["-b" "--base REF" "Git ref to compare against, defaults to master"]
-             ["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
-   :requires [[mage.settings-encryption]]
-   :task (task! (mage.settings-encryption/cli-check (cli/parse! (current-task))))}
-
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]

@@ -2248,11 +2248,10 @@
 (define-migration EncryptAuthIdentityCredentials
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id credentials]}]
-            (when (and (string? credentials)
-                       (not (str/blank? credentials))
-                       (not (encryption/possibly-encrypted-string? credentials)))
+            (when (and (some? credentials)
+                       (not (encryption/decryptable-string? credentials)))
               (t2/query {:update :auth_identity
-                         :set    {:credentials (encryption/maybe-encrypt credentials)}
+                         :set    {:credentials (encryption/encrypt credentials)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :credentials]
                                :from   [:auth_identity]}))))
@@ -2260,59 +2259,64 @@
 (define-reversible-migration EncryptApiKeys
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
-            (when (and (string? k)
-                       (not (str/blank? k))
-                       (not (encryption/possibly-encrypted-string? k)))
+            (when (and (some? k)
+                       (not (encryption/decryptable-string? k)))
               (t2/query {:update :api_key
-                         :set    {:key (encryption/maybe-encrypt k)}
+                         :set    {:key (encryption/encrypt k)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]})))
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
-            (when (and (string? k)
-                       (not (str/blank? k))
-                       (encryption/possibly-encrypted-string? k))
+            (when (and (some? k)
+                       (encryption/decryptable-string? k))
               (t2/query {:update :api_key
-                         :set    {:key (encryption/maybe-decrypt k)}
+                         :set    {:key (encryption/decrypt k)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]}))))
 
 (defn encrypt-settings
   "Encrypt at rest the plaintext value of every setting in `setting-keys`, so the strict decrypting read of an
-  `:encryption :when-encryption-key-set` setting accepts it. Already-encrypted values are left untouched. A blank value
+  `:encryption :when-encryption-key-set` setting accepts it. A value already encrypted with the current key (e.g. by a
+  key rotation, which re-encrypts every setting) is left untouched -- decided by decrypting it, never by its shape,
+  since plaintext can look like ciphertext (see [[metabase.util.encryption/possibly-encrypted-string?]]). A blank value
   is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
-  forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]]."
+  forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]].
+
+  `setting-keys` must be exactly the settings whose `:encryption` went from `:no` to `:when-encryption-key-set` in the
+  release the migration ships in: only those were stored plaintext by the previous release."
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
-            (when (and (string? value)
-                       (not (encryption/possibly-encrypted-string? value)))
+            (when (and (some? value)
+                       (not (encryption/decryptable-string? value)))
               (t2/query {:update :setting
-                         :set    {:value (encryption/maybe-encrypt value)}
+                         :set    {:value (encryption/encrypt value)}
                          :where  [:= :key key]})))
           (t2/reducible-query {:select [:key :value]
                                :from   [:setting]
                                :where  [:in :key setting-keys]}))))
 
 (defn decrypt-settings
-  "Reverse of [[encrypt-settings]]: store the plaintext value of every encrypted setting in `setting-keys`, so a
-  downgraded version that reads them as `:encryption :no` still sees them. Plaintext values are left untouched."
+  "Reverse of [[encrypt-settings]]: store the plaintext value of every setting in `setting-keys` that is encrypted with
+  the current key, so a downgraded version that reads them as `:encryption :no` still sees them. Plaintext values,
+  including ones that merely look like ciphertext, are left untouched."
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
-            (when (and (string? value)
-                       (encryption/possibly-encrypted-string? value))
+            (when (and (some? value)
+                       (encryption/decryptable-string? value))
               (t2/query {:update :setting
-                         :set    {:value (encryption/maybe-decrypt value)}
+                         :set    {:value (encryption/decrypt value)}
                          :where  [:= :key key]})))
           (t2/reducible-query {:select [:key :value]
                                :from   [:setting]
                                :where  [:in :key setting-keys]}))))
 
 (def ^:private encrypted-settings-v58
-  "Settings marked `:encryption :when-encryption-key-set` in v58 that were previously stored plaintext."
+  "The settings whose `:encryption` went from `:no` to `:when-encryption-key-set` in v58, i.e. the ones a previous
+  release stored plaintext. `encrypt-settings-test` checks every name here is a registered, encrypted setting."
   ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
    "application-favicon-url" "application-font-files" "application-logo-url"
    "csp-img-allowed-hosts" "custom-formatting" "custom-geojson"
@@ -2343,22 +2347,14 @@
   (encrypt-settings encrypted-settings-v58)
   (decrypt-settings encrypted-settings-v58))
 
-(def encrypt-settings-migrations
-  "Migration id => the settings it moves from plaintext to encrypted at rest. `./bin/mage settings-encryption-check`
-  (run by CI on every PR) fails when a setting flips to `:encryption :when-encryption-key-set` without an entry here,
-  since the strict read would reject the plaintext values a released version stored. Add every [[encrypt-settings]]
-  migration to this map."
-  {"v58.2026-08-25T00:00:19" encrypted-settings-v58})
-
 (define-reversible-migration EncryptPublicUuids
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
-              (when (and (string? public_uuid)
-                         (not (str/blank? public_uuid))
-                         (not (encryption/possibly-encrypted-string? public_uuid)))
+              (when (and (some? public_uuid)
+                         (not (encryption/decryptable-string? public_uuid)))
                 (t2/query {:update table
-                           :set    {:public_uuid (encryption/maybe-encrypt public_uuid)}
+                           :set    {:public_uuid (encryption/encrypt public_uuid)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
@@ -2366,11 +2362,10 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
-              (when (and (string? public_uuid)
-                         (not (str/blank? public_uuid))
-                         (encryption/possibly-encrypted-string? public_uuid))
+              (when (and (some? public_uuid)
+                         (encryption/decryptable-string? public_uuid))
                 (t2/query {:update table
-                           :set    {:public_uuid (encryption/maybe-decrypt public_uuid)}
+                           :set    {:public_uuid (encryption/decrypt public_uuid)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
@@ -2380,10 +2375,10 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
-              (when (and (string? details)
-                         (not (encryption/possibly-encrypted-string? details)))
+              (when (and (some? details)
+                         (not (encryption/decryptable-string? details)))
                 (t2/query {:update table
-                           :set    {:details (encryption/maybe-encrypt details)}
+                           :set    {:details (encryption/encrypt details)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :details]
                                  :from   [table]
@@ -2391,10 +2386,10 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
-              (when (and (string? details)
-                         (encryption/possibly-encrypted-string? details))
+              (when (and (some? details)
+                         (encryption/decryptable-string? details))
                 (t2/query {:update table
-                           :set    {:details (encryption/maybe-decrypt details)}
+                           :set    {:details (encryption/decrypt details)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :details]
                                  :from   [table]

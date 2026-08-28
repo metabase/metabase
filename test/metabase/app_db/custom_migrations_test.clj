@@ -31,7 +31,7 @@
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.settings.models.setting]
+   [metabase.settings.models.setting :as setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -1525,7 +1525,7 @@
 (defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
-  (binding [metabase.settings.models.setting/*allow-retired-setting-names* true]
+  (binding [setting/*allow-retired-setting-names* true]
     `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
@@ -2719,7 +2719,7 @@
           (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
           (migrate!)
           (testing "plaintext credentials are encrypted and decrypt to the original value"
-            (is (encryption/possibly-encrypted-string? (raw-cred plain-id)))
+            (is (encryption/decryptable-string? (raw-cred plain-id)))
             (is (= {:password_hash "h" :password_salt "s"}
                    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
           (testing "already-encrypted credentials row is left unchanged"
@@ -2744,7 +2744,7 @@
           (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
           (migrate!)
           (testing "plaintext key is encrypted and decrypts to the original hash"
-            (is (encryption/possibly-encrypted-string? (raw-key plain-id)))
+            (is (encryption/decryptable-string? (raw-key plain-id)))
             (is (= "plaintext-bcrypt-hash"
                    (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
           (testing "already-encrypted key row is left unchanged"
@@ -2772,7 +2772,7 @@
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
           (migrate!)
           (testing "encrypted after migration, and still decrypts to the original value"
-            (is (true? (encryption/possibly-encrypted-string? (raw-pc))))
+            (is (encryption/decryptable-string? (raw-pc)))
             (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
 
 (deftest delete-legacy-encryption-check-marker-test
@@ -2799,24 +2799,38 @@
               (is (= sentinel (raw-sentinel))))))))))
 
 (deftest encrypt-settings-test
+  (testing "every setting the v58 migration encrypts is a registered setting that is now encrypted at rest"
+    (doseq [k @#'custom-migrations/encrypted-settings-v58]
+      (testing k
+        (is (not= :no (:encryption (setting/resolve-setting (keyword k))))))))
   (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
-        (let [ins!    (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw     (fn [k] (t2/select-one-fn :value :setting :key k))
-              enc-str (encryption/maybe-encrypt "https://already.example")]
+        (let [ins!       (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
+              raw        (fn [k] (t2/select-one-fn :value :setting :key k))
+              enc-str    (encryption/maybe-encrypt "https://already.example")
+              ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
+              shaped-str (str (apply str (repeat 86 "a")) "==")]
           (ins! "snowplow-url" "https://plain.example")
           (ins! "ldap-user-filter" "   ")
+          (ins! "email-reply-to" "")
           (ins! "map-tile-server-url" enc-str)
+          (ins! "store-url" shaped-str)
           (ins! "site-name" "Metabase")
           (is (not (encryption/possibly-encrypted-string? (raw "snowplow-url"))))
+          (is (encryption/possibly-encrypted-string? shaped-str))
           (migrate!)
           (testing "a plaintext value of a listed setting is encrypted and decrypts back"
-            (is (encryption/possibly-encrypted-string? (raw "snowplow-url")))
+            (is (encryption/decryptable-string? (raw "snowplow-url")))
             (is (= "https://plain.example" (encryption/maybe-decrypt (raw "snowplow-url")))))
           (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
-            (is (encryption/possibly-encrypted-string? (raw "ldap-user-filter")))
-            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter")))))
+            (is (encryption/decryptable-string? (raw "ldap-user-filter")))
+            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter"))))
+            (is (encryption/decryptable-string? (raw "email-reply-to")))
+            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to")))))
+          (testing "a plaintext value that merely looks like ciphertext is encrypted, not skipped"
+            (is (encryption/decryptable-string? (raw "store-url")))
+            (is (= shaped-str (encryption/maybe-decrypt (raw "store-url")))))
           (testing "an already-encrypted value is left unchanged"
             (is (= enc-str (raw "map-tile-server-url"))))
           (testing "a setting not in the list is left plaintext"
@@ -2825,6 +2839,8 @@
             (migrate! :down 57)
             (is (= "https://plain.example" (raw "snowplow-url")))
             (is (= "   " (raw "ldap-user-filter")))
+            (is (= "" (raw "email-reply-to")))
+            (is (= shaped-str (raw "store-url")))
             (is (= "https://already.example" (raw "map-tile-server-url")))
             (is (= "Metabase" (raw "site-name")))))))))
 
