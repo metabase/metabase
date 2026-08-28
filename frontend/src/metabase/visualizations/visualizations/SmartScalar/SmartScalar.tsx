@@ -86,14 +86,17 @@ function SmartScalarComponent({
     }
   };
 
-  const primaryComparison = comparisons[0];
-  const symbolDirection =
-    primaryComparison?.changeArrowIconName ??
-    (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
-      ? "no_change"
-      : null);
-
   const tier = getScalarSizeTier(width, height);
+  const isSmallestTier = !tier.showsTitle;
+
+  const primaryComparison = comparisons[0];
+  const symbolDirection = isSmallestTier
+    ? null
+    : (primaryComparison?.changeArrowIconName ??
+      (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
+        ? "no_change"
+        : null));
+
   const availableWidth = Math.max(width - tier.xPadding * 2, 0);
   const symbolAllowance =
     symbolDirection != null ? tier.symbolSize + tier.symbolGap : 0;
@@ -145,7 +148,7 @@ function SmartScalarComponent({
         <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
           {valueElement}
           {display.date != null && display.date !== "" && (
-            <Text fz={17} lh={1.38} c="text-secondary" ta="center">
+            <Text fz="lg" lh="lg" c="text-secondary" ta="center">
               {display.date}
             </Text>
           )}
@@ -219,7 +222,11 @@ function SmartScalarComponent({
               style={{ transform: "translateX(-50%)" }}
               {...innerTooltipHoverHandlers}
             >
-              <TrendComparisonRow trend={trend} formatOptions={formatOptions} />
+              <TrendComparisonRow
+                trend={trend}
+                formatOptions={formatOptions}
+                percentOnly={isSmallestTier}
+              />
             </Box>
           )}
         </Stack>

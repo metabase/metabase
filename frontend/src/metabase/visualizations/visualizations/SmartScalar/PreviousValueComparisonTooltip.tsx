@@ -52,22 +52,22 @@ export function PreviousValueComparisonTooltip({
         <Text
           component="span"
           fw={700}
-          fz={14}
-          lh={1.22}
+          fz="md"
+          lh="md"
           miw={PERCENT_MIN_WIDTH}
           c={percentColor}
         >
           {display.percentChange}
         </Text>
       </Flex>
-      <Text component="span" fz={12} lh={1.15} c="text-secondary">
+      <Text component="span" fz="sm" lh="sm" c="text-secondary">
         {comparisonDescStr}
       </Text>
       <Text
         component="span"
         fw={700}
-        fz={14}
-        lh={1.22}
+        fz="md"
+        lh="md"
         c="text-primary"
         ta="right"
       >

@@ -112,8 +112,8 @@ export const ScalarTitle = ({
 
   return (
     <Box
-      fz={14}
-      lh={1.22}
+      fz="md"
+      lh="md"
       fw={700}
       c="text-primary"
       ta="center"
@@ -122,6 +122,7 @@ export const ScalarTitle = ({
     >
       {onSelectTitle ? (
         <LegendLabel
+          className={S.titleLink}
           href={href}
           onClick={onSelectTitle}
           onFocus={computeHref}

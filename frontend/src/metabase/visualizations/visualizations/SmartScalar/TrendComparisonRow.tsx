@@ -1,4 +1,5 @@
-import { Badge, Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
+import { Badge, Box, Flex, Text, Tooltip } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { formatValue } from "metabase/value-formatting";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type { ColumnSettings } from "metabase-types/api";
@@ -22,12 +23,17 @@ const getChangeSign = (percentChange: number | undefined) => {
 interface TrendComparisonRowProps {
   trend: Trend;
   formatOptions: ColumnSettings;
+  percentOnly?: boolean;
 }
 
 export function TrendComparisonRow({
   trend,
   formatOptions,
+  percentOnly,
 }: TrendComparisonRowProps) {
+  const { isTruncated, ref: comparisonTextRef } =
+    useIsTruncated<HTMLDivElement>({ ignoreHeightTruncation: true });
+
   const { comparisons, display } = trend;
   const comparison: ComparisonResult | undefined = comparisons[0];
 
@@ -67,9 +73,12 @@ export function TrendComparisonRow({
       : null;
   const extraComparisonsCount = comparisons.length - 1;
 
+  const showsPanel = percentOnly || extraComparisonsCount > 0 || isTruncated;
+
   return (
     <Tooltip
       position="bottom"
+      disabled={!showsPanel}
       classNames={{ tooltip: S.comparisonPanel }}
       label={
         <div className={S.comparisonTable}>
@@ -89,31 +98,41 @@ export function TrendComparisonRow({
         align="center"
         justify="center"
         maw="100%"
-        fz={12}
-        lh={1.15}
+        fz="sm"
+        lh="sm"
         data-testid="scalar-previous-value"
       >
-        <Ellipsified showTooltip={false}>
-          {display.date != null && display.date !== "" && (
-            <Text component="span" fz={12} lh={1.15} c="text-secondary">
-              {display.date}
-              {", "}
+        <Box ref={comparisonTextRef} className={S.comparisonText}>
+          {percentOnly ? (
+            <Text component="span" fz="sm" lh="sm" c={changeColor}>
+              {changeSign}
+              {comparison.display.percentChange}
             </Text>
-          )}
-          <Text component="span" fz={12} lh={1.15} c={changeColor}>
-            {changeText}
-          </Text>
-          {comparisonValueDisplay != null && comparisonValueDisplay !== "" && (
-            <Text component="span" fz={12} lh={1.15} c={changeColor}>
-              {isChanged ? (
-                <> ({comparisonValueDisplay})</>
-              ) : (
-                <> {comparisonValueDisplay}</>
+          ) : (
+            <>
+              {display.date != null && display.date !== "" && (
+                <Text component="span" fz="sm" lh="sm" c="text-secondary">
+                  {display.date}
+                  {", "}
+                </Text>
               )}
-            </Text>
+              <Text component="span" fz="sm" lh="sm" c={changeColor}>
+                {changeText}
+              </Text>
+              {comparisonValueDisplay != null &&
+                comparisonValueDisplay !== "" && (
+                  <Text component="span" fz="sm" lh="sm" c={changeColor}>
+                    {isChanged ? (
+                      <> ({comparisonValueDisplay})</>
+                    ) : (
+                      <> {comparisonValueDisplay}</>
+                    )}
+                  </Text>
+                )}
+            </>
           )}
-        </Ellipsified>
-        {extraComparisonsCount > 0 && (
+        </Box>
+        {!percentOnly && extraComparisonsCount > 0 && (
           <Badge
             px={6}
             size="xs"

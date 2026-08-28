@@ -58,14 +58,14 @@ export function TrendComparisonList({
           data-testid="scalar-previous-value"
         >
           <Ellipsified showTooltip={false}>
-            <Text component="span" fz={14} lh={1.22} c="text-secondary">
+            <Text component="span" fz="md" lh="md" c="text-secondary">
               {comparison.comparisonDescStr}
             </Text>
           </Ellipsified>
           <Text
             component="span"
-            fz={14}
-            lh={1.22}
+            fz="md"
+            lh="md"
             flex="0 0 auto"
             c={
               comparison.changeColorName != null

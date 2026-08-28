@@ -234,18 +234,20 @@ describe("SmartScalar", () => {
       expect(within(tooltip).getByText("vs. Oct")).toBeInTheDocument();
     });
 
-    it("should compact the value when the full value leaves no room for the trend symbol", () => {
+    it("should show no symbol and only the percentage on the smallest cards", () => {
       const rows = [
         ["2019-10-01T00:00:00", 45000],
         ["2019-11-01T00:00:00", 30759.47],
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      // "30,759.47" alone fits a 100px card, but not together with the symbol
       setup(series({ rows, insights }), 100);
 
-      expect(screen.getByText("30.8k")).toBeInTheDocument();
-      expect(screen.getByTestId("trend-symbol")).toBeInTheDocument();
+      expect(screen.getByText("30,759.47")).toBeInTheDocument();
+      expect(screen.queryByTestId("trend-symbol")).not.toBeInTheDocument();
+      expect(screen.getByText("-31.65%")).toBeInTheDocument();
+      expect(screen.queryByText(/MoM/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Nov 2019/)).not.toBeInTheDocument();
     });
 
     it("should list all comparisons in the query builder", () => {
@@ -310,7 +312,7 @@ describe("SmartScalar", () => {
       expect(await screen.findByText("Last invoice")).toBeInTheDocument();
     });
 
-    it("should display tooltip with full comparison info on hover", async () => {
+    it("should not show a hover panel for a single fully-displayed comparison", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],
         ["2019-11-01T00:00:00", 100],
@@ -322,6 +324,21 @@ describe("SmartScalar", () => {
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
       expect(screen.getByText("+100% MoM")).toBeInTheDocument();
+
+      // one comparison, fully visible — the panel would add no information
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("should show the hover panel with full info on the smallest cards", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 50],
+        ["2019-11-01T00:00:00", 100],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      // narrow width forces the percent-only format, so the panel adds info
+      setup(series({ rows, insights }), 100);
 
       await userEvent.hover(screen.getByTestId("scalar-previous-value"));
       const tooltip = await screen.findByRole("tooltip");

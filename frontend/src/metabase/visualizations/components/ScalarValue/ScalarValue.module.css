@@ -10,3 +10,9 @@
 .hoverable:hover {
   color: var(--mb-color-core-brand);
 }
+
+.titleLink {
+  && {
+    line-height: inherit;
+  }
+}
