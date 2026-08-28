@@ -17,7 +17,6 @@ export interface AppBarProps {
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
-  isCommentSidebarOpen?: boolean;
   isDocumentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;

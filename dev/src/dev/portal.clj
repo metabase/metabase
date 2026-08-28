@@ -35,6 +35,7 @@
                 line   -1
                 column -1
                 time   (java.util.Date.)}}]
+   ;; tap> is how values reach Portal; that's this helper's whole job
    #_{:clj-kondo/ignore [:discouraged-var]}
    (tap> {:result value
           :level  level
@@ -75,6 +76,7 @@
 (defmacro diff->
   "Drop-in replacement for `->` that sends diffs to Portal at each stage."
   [x & forms]
+  ;; the expansion taps each stage to Portal; tap> is the delivery mechanism
   #_{:clj-kondo/ignore [:discouraged-var]}
   (loop [x x, forms forms]
     (if forms

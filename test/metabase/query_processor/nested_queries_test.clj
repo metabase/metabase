@@ -26,6 +26,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -630,6 +631,7 @@
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
                            :id :settings :fingerprint :nfc_path)
+                   ;; mirrors annotate's legacy display-name handling in the expected col
                    #_{:clj-kondo/ignore [:deprecated-var]}
                    lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]
@@ -1753,6 +1755,7 @@
   (testing "can query a card that has an empty column alias (#57685)"
     (let [mp (mt/metadata-provider)
           card-query (lib/native-query mp "select id as \"\" from orders limit 2")]
+      ;; the card is fetched via the app-db metadata provider mid-query, so it must be a real row
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Card card {:dataset_query card-query}]
         (let [query (->> (lib/query mp (lib.metadata/card mp (:id card)))
