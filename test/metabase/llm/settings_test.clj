@@ -266,19 +266,45 @@
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
       (doseq [url ["api.openai.com/v1" "ftp://8.8.8.8/v1" "file:///etc/passwd" "http://" "not a url"]]
         (is (re-find #"must start with http" (llm.settings/llm-url-problem url)) url))))
+  (testing "credentials in the URL are refused under any policy: they would ride along into error messages"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (re-find #"username or password" (llm.settings/llm-url-problem "https://svc:s3cret@8.8.8.8/v1")))))
   (testing "a blank URL is not a problem here: the not-configured handling covers it"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (is (nil? (llm.settings/llm-url-problem nil)))
-      (is (nil? (llm.settings/llm-url-problem "  ")))))
-  (testing "assert-llm-url-allowed! throws the problem as a 400 tagged for the provider error path"
-    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
-      (is (nil? (llm.settings/assert-llm-url-allowed! "https://8.8.8.8/v1")))
-      (is (=? {:status-code 400
-               :api-error   true
-               :error-code  :llm-host-not-allowed
-               :llm-url     "http://127.0.0.1:8000/v1"}
-              (try (llm.settings/assert-llm-url-allowed! "http://127.0.0.1:8000/v1")
-                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+      (is (nil? (llm.settings/llm-url-problem "  "))))))
+
+(deftest llm-request-opts-test
+  ;; IP literals throughout: the resolver goes through real DNS
+  (let [resolver (fn [& args] (:dns-resolver (apply llm.settings/llm-request-opts args)))]
+    (testing "under :external-only the request gets the policy resolver; no lookup happens here"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (is (instance? org.apache.http.conn.DnsResolver (resolver "http://127.0.0.1:8000/v1")))
+        (testing "and it is the resolver that refuses an address the policy does not permit"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"non-permitted"
+               (.resolve ^org.apache.http.conn.DnsResolver (resolver "http://127.0.0.1:8000/v1") "127.0.0.1")))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"non-permitted"
+               (.resolve ^org.apache.http.conn.DnsResolver (resolver "http://10.0.0.1/v1") "10.0.0.1"))))
+        (testing "a floor loosens it for a deployment-controlled endpoint"
+          (is (= 1 (alength ^"[Ljava.net.InetAddress;"
+                    (.resolve ^org.apache.http.conn.DnsResolver (resolver :allow-private "http://10.0.0.1/v1")
+                              "10.0.0.1")))))))
+    (testing "under :allow-all there is nothing to add"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (is (= {} (llm.settings/llm-request-opts "http://127.0.0.1:8000/v1")))))
+    (testing "a URL that is not usable at all is refused up front, naming the host but not what else it carried"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (doseq [url ["https://svc:s3cret@8.8.8.8/v1" "8.8.8.8/v1"]]
+          (is (=? {:status-code 400
+                   :status      400
+                   :api-error   true
+                   :error-code  :llm-host-not-allowed
+                   :llm-host    "8.8.8.8"}
+                  (try (llm.settings/llm-request-opts url)
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              url))))))
 
 (deftest connection-time-network-policy-error-test
   (testing "direct and wrapped DNS policy rejections are recognized and translated to the URL-validation shape"
@@ -286,9 +312,10 @@
                    (ex-info "HTTP client wrapper" {} (ex-info "blocked address" {:ssrf true}))]]
       (is (true? (llm.settings/llm-network-policy-error? cause)))
       (is (=? {:status-code 400
+               :status      400
                :api-error   true
                :error-code  :llm-host-not-allowed
-               :llm-url     "https://rebound.example/v1"}
+               :llm-host    "rebound.example"}
               (try (llm.settings/rethrow-if-llm-network-policy-error!
                     cause "https://rebound.example/v1")
                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))))

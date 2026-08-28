@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.llm.anthropic :as anthropic]
    [metabase.llm.settings :as llm.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (set! *warn-on-reflection* true)
 
@@ -128,13 +129,17 @@
                       (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))))))
 
 (deftest chat-completion-network-policy-test
-  (testing "a base URL on a network llm-allowed-networks forbids is refused before making any request"
-    ;; the URL is redefined rather than set, the way one saved before the policy was tightened would be stored
+  (testing "a base URL on a network llm-allowed-networks forbids is refused when the connection resolves it"
+    ;; the URL is redefined rather than set, the way one saved before the policy was tightened would be stored;
+    ;; the mock stands in for clj-http far enough to run the request's `:dns-resolver` on the host
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key      (constantly "sk-ant-test-key")
                                   llm.settings/llm-anthropic-api-base-url (constantly "http://127.0.0.1:9")
-                                  http/post (fn [& _] (throw (ex-info "http/post should not be called" {})))]
-        (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                                  http/post (fn [url opts]
+                                              (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver opts)
+                                                        (u.http/->hostname url))
+                                              (is false "the resolver should have refused the address"))]
+        (is (=? {:status-code 400 :status 400 :error-code :llm-host-not-allowed :llm-host "127.0.0.1"}
                 (try (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})
                      (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
   (testing "a permitted base URL goes out with the policy-enforcing DNS resolver on the connection"

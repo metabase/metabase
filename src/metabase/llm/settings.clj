@@ -102,59 +102,82 @@
     (tru "The base URL host {0} is on a private network. Metabase Cloud can only connect to LLM providers on the public internet." host)
     (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, or allow-all for one on this machine." host)))
 
+(defn- url-not-allowed-ex
+  "The 400 every policy refusal is thrown as, at set time and at connection time alike.
+  `:status` sits beside `:status-code` because the semantic-search dead-letter queue files errors by `:status`, and a
+  refused endpoint is a permanent failure, not one to retry on the fast schedule."
+  ([message host]
+   (url-not-allowed-ex message host nil))
+  ([message host cause]
+   (ex-info message
+            {:status-code 400
+             :status      400
+             :api-error   true
+             :error-code  :llm-host-not-allowed
+             :llm-host    host}
+            cause)))
+
+(defn llm-url-syntax-problem
+  "Why `url` cannot be an LLM provider base URL under any policy, or nil when it can: it must be an `http` or
+  `https` URL that names a host and carries no username or password.
+  Nothing here resolves the host, so it is cheap enough to run on every request.
+  A blank `url` is not a problem here: the not-configured handling covers it."
+  [url]
+  (when-not (str/blank? url)
+    (let [^URL parsed (try
+                        (URL. ^String url)
+                        (catch MalformedURLException _ nil))]
+      (cond
+        (not (and parsed (#{"http" "https"} (.getProtocol parsed)) (not-empty (.getHost parsed))))
+        (tru "Invalid base URL: it must start with http:// or https://.")
+
+        ;; it would otherwise ride along into error messages and ex-data
+        (some? (.getUserInfo parsed))
+        (tru "Invalid base URL: it must not contain a username or password.")))))
+
 (defn llm-url-problem
-  "Why `url` may not be used as an LLM provider base URL, or nil when it may.
-  It must be an `http` or `https` URL with a host, and every address the host resolves to must be permitted by the
-  supplied network policy. The one-argument form uses [[llm-allowed-networks]]. A blank `url` is not a problem here:
-  the not-configured handling covers it.
-  This is the set-time check; [[metabase.util.http/network-policy-dns-resolver]] repeats it on the addresses
-  the connection actually opens, so a host that rebinds between the two is still refused."
+  "Why `url` may not be used as an LLM provider base URL, or nil when it may: [[llm-url-syntax-problem]], and every
+  address the host resolves to must be permitted by the network policy. The one-argument form uses
+  [[llm-allowed-networks]].
+  This is the set-time check. It resolves the host, so it is not run per request: the `:dns-resolver` from
+  [[llm-request-opts]] makes the same decision about the addresses the connection actually opens, which also
+  covers a host that rebinds after it was saved."
   ([url]
    (llm-url-problem (llm-allowed-networks) url))
   ([network-policy url]
-   (when-not (str/blank? url)
-     (let [^URL parsed (try
-                         (URL. ^String url)
-                         (catch MalformedURLException _ nil))
-           host        (some-> parsed .getHost not-empty)]
-       (cond
-         (not (and parsed (#{"http" "https"} (.getProtocol parsed)) host))
-         (tru "Invalid base URL: it must start with http:// or https://.")
+   (or (llm-url-syntax-problem url)
+       (when-not (str/blank? url)
+         (let [host (.getHost (URL. ^String url))]
+           (when-not (u.http/host-allowed-for-network-policy? network-policy host)
+             (host-not-allowed-message host)))))))
 
-         (not (u.http/host-allowed-for-network-policy? network-policy host))
-         (host-not-allowed-message host))))))
-
-(defn assert-llm-url-allowed!
-  "Throw a 400 when [[llm-url-problem]] finds one with `url`. The one-argument form uses
-  [[llm-allowed-networks]]; the two-argument form enforces `network-policy`."
+(defn llm-request-opts
+  "clj-http options that put the network policy on a request to `url`: a `:dns-resolver` that refuses any address the
+  policy does not permit, or none under `:allow-all`. Throws the same 400 as a set-time refusal when `url` fails
+  [[llm-url-syntax-problem]]. `floor` is for a deployment-controlled endpoint, see [[network-policy]].
+  Pair with [[rethrow-if-llm-network-policy-error!]] around the request."
   ([url]
-   (assert-llm-url-allowed! (llm-allowed-networks) url))
-  ([network-policy url]
-   (when-let [problem (llm-url-problem network-policy url)]
-     (throw (ex-info problem
-                     {:status-code 400
-                      :api-error   true
-                      :error-code  :llm-host-not-allowed
-                      :llm-url     url})))))
+   (llm-request-opts nil url))
+  ([floor url]
+   (when-let [problem (llm-url-syntax-problem url)]
+     (throw (url-not-allowed-ex problem (u.http/->hostname url))))
+   ;; nil under :allow-all, which leaves clj-http on its default resolver
+   (u/assoc-dissoc {} :dns-resolver (u.http/network-policy-dns-resolver (network-policy floor)))))
 
 (defn llm-network-policy-error?
-  "Whether `e` or one of its causes is a connection-time rejection from the policy DNS resolver."
+  "Whether `e` or one of its causes is a connection-time refusal from the policy DNS resolver."
   [e]
-  (boolean
-   (some #(-> % ex-data :ssrf)
-         (take-while some? (iterate ex-cause e)))))
+  (boolean (:ssrf (u/all-ex-data e))))
 
 (defn rethrow-if-llm-network-policy-error!
-  "Translate a connection-time policy rejection in `e` to the same stable 400 shape as
-  [[assert-llm-url-allowed!]]. Returns nil when `e` is unrelated."
+  "Translate a connection-time refusal from the policy DNS resolver in `e` to the 400 a set-time refusal gets.
+  Returns nil when `e` is unrelated. Logs the refusal: it is the only trace a host that rebinds leaves."
   [e url]
   (when (llm-network-policy-error? e)
-    (throw (ex-info (host-not-allowed-message (u.http/->hostname url))
-                    {:status-code 400
-                     :api-error   true
-                     :error-code  :llm-host-not-allowed
-                     :llm-url     url}
-                    e))))
+    (let [host (u.http/->hostname url)]
+      (log/warnf "Refused an LLM request to %s: it resolves to an address llm-allowed-networks=%s does not permit"
+                 host (name (llm-allowed-networks)))
+      (throw (url-not-allowed-ex (host-not-allowed-message host) host e)))))
 
 ;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
 ;; deleting the connection they key off turns those features off. They should name a connection instead.

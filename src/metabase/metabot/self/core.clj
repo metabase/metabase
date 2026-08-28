@@ -12,7 +12,6 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1057,24 +1056,21 @@
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 
-  The base URL is checked against
-  [[metabase.llm.settings/llm-allowed-networks]] before the request, and the
-  connection resolves DNS through a resolver that enforces the same policy on
-  the addresses it actually opens. Auth returned by [[resolve-auth]] may supply
-  `:network-policy-floor` for a deployment-controlled service."
+  The connection resolves DNS through a resolver that enforces
+  [[metabase.llm.settings/llm-allowed-networks]] on the addresses it actually
+  opens; see [[metabase.llm.settings/llm-request-opts]]. Auth returned by
+  [[resolve-auth]] may supply `:network-policy-floor` for a
+  deployment-controlled service."
   [{:keys [url headers network-policy-floor]} req]
   (llm/assert-llm-host-allowed! url)
-  (let [network-policy (llm/network-policy network-policy-floor)
-        resolver       (u.http/network-policy-dns-resolver network-policy)]
-    (llm/assert-llm-url-allowed! network-policy url)
+  (let [policy-opts (llm/llm-request-opts network-policy-floor url)]
     (try
       (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
                          :socket-timeout     (llm/llm-request-timeout-ms)}
                         (merge req)
                         (update :url #(str url %))
                         (update :headers merge headers)
-                        ;; nil under :allow-all, which leaves clj-http on its default resolver
-                        (u/assoc-dissoc :dns-resolver resolver)))
+                        (merge policy-opts)))
       (catch Exception e
         (llm/rethrow-if-llm-network-policy-error! e url)
         (throw e)))))

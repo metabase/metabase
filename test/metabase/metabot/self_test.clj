@@ -24,6 +24,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
@@ -156,52 +157,49 @@
             (is (= 200 (:socket-timeout @captured)))))))))
 
 (deftest request-enforces-llm-allowed-networks-test
-  ;; IP literals throughout: the policy check resolves hostnames through real DNS
-  (let [captured (atom nil)
-        capture  (fn [opts] (reset! captured opts) {:status 200 :body ""})
-        req      {:method :get :url "/v1/models"}]
+  ;; IP literals throughout: the resolver goes through real DNS. `resolving` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  (let [captured  (atom nil)
+        resolving (fn [{:keys [url] :as opts}]
+                    (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts) (.resolve (u.http/->hostname url)))
+                    (reset! captured opts)
+                    {:status 200 :body ""})
+        req       {:method :get :url "/v1/models"}
+        rejected  (fn [auth]
+                    (try (self.core/request auth req)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e (ex-data e))))]
     (testing "under :external-only"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
-        (testing "a base URL on an internal network is refused before any request is made"
-          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
-            (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
-                    (try (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
-                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
-        (testing "a public base URL goes out with the policy-enforcing DNS resolver on the connection"
-          (mt/with-dynamic-fn-redefs [http/request capture]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (testing "a base URL on an internal network is refused when the connection resolves it"
+            (is (=? {:status-code 400
+                     :status      400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-host    "127.0.0.1"}
+                    (rejected {:url "http://127.0.0.1:9" :headers {}}))))
+          (testing "a public base URL goes out with the policy resolver on the connection"
             (self.core/request {:url "https://8.8.8.8" :headers {}} req)
-            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
-        (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
-          (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                     (throw (ex-info "HTTP wrapper" {}
-                                                                     (ex-info "blocked address" {:ssrf true}))))]
-            (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
-                    (try (self.core/request {:url "https://8.8.8.8" :headers {}} req)
-                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
-        (testing "the managed AI proxy's floor allows private addresses under the default policy"
-          (mt/with-dynamic-fn-redefs [http/request capture]
-            (self.core/request {:url                     "http://10.0.0.1:9"
-                                :headers                 {}
-                                :network-policy-floor    :allow-private}
-                               req)
-            (is (= "http://10.0.0.1:9/v1/models" (:url @captured)))
-            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
-        (testing "the managed AI proxy's floor still refuses loopback"
-          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (= "https://8.8.8.8/v1/models" (:url @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))
+          (testing "the managed AI proxy's floor allows private addresses under the default policy"
+            (self.core/request {:url "http://10.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://10.0.0.1:9/v1/models" (:url @captured))))
+          (testing "but still refuses loopback"
             (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
-                    (try (self.core/request {:url                     "http://127.0.0.1:9"
-                                             :headers                 {}
-                                             :network-policy-floor    :allow-private}
-                                            req)
-                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
+                    (rejected {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private})))))
+        (testing "a URL that is not http(s) is refused before any request is made"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "8.8.8.8"}
+                    (rejected {:url "8.8.8.8" :headers {}})))))))
     (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-        (mt/with-dynamic-fn-redefs [http/request capture]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
           (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
           (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
-          (is (not (contains? @captured :dns-resolver))))
-        (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
-          (mt/with-dynamic-fn-redefs [http/request capture]
+          (is (not (contains? @captured :dns-resolver)))
+          (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
             (self.core/request {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
             (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
             (is (not (contains? @captured :dns-resolver)))))))))

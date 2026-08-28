@@ -20,6 +20,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -379,7 +380,8 @@
               (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
 (deftest embedding-endpoints-honor-llm-allowed-networks-test
-  ;; IP literals throughout: the policy check resolves hostnames through real DNS
+  ;; IP literals throughout: the resolver goes through real DNS. `capture` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
   (let [mock-response {:data  [{:object    "embedding"
                                 :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])
                                 :index     0}]
@@ -388,11 +390,12 @@
         model         {:model-name "test-model" :vector-dimensions 4}
         captured      (atom nil)
         capture       (fn [url opts]
+                        (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts)
+                                (.resolve (u.http/->hostname url)))
                         (reset! captured (assoc opts :url url))
                         {:status  200
                          :headers {"Content-Type" "application/json"}
                          :body    (json/encode mock-response)})
-        refuse        (fn [& _] (is false "http/post should not be called"))
         embed         (fn [provider]
                         (embedding/get-embedding (assoc model :provider provider) "text" {:record-tokens? false}))
         rejected      (fn [provider]
@@ -404,12 +407,13 @@
       (testing "the OpenAI base URL is admin input and is refused on an internal network"
         (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
                                     llm.settings/llm-openai-api-base-url loopback
-                                    http/post                            refuse]
-          (is (=? {:status-code 400 :error-code :llm-host-not-allowed} (rejected "openai")))))
+                                    http/post                            capture]
+          (is (=? {:status-code 400 :status 400 :error-code :llm-host-not-allowed :llm-host "127.0.0.1"}
+                  (rejected "openai")))))
       (testing "so is the embedding service URL"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url loopback
                                     semantic.settings/ee-embedding-service-api-key  (constantly "key")
-                                    http/post                                       refuse]
+                                    http/post                                       capture]
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed} (rejected "ai-service")))))
       (testing "a permitted OpenAI base URL goes out with the policy-enforcing DNS resolver on the connection"
         (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
@@ -426,7 +430,7 @@
                                                                                            {:ssrf true})))]
           (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
                   (rejected "openai")))))
-      (testing "the managed AI service overrides the policy to allow private addresses"
+      (testing "the managed AI service's floor allows private addresses under the default policy"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                     llm.settings/ai-service-base-url                (constantly "http://10.0.0.1:9")
                                     premium-features/premium-embedding-token        (constantly "mock-token")
@@ -434,11 +438,11 @@
           (embed "ai-service")
           (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
           (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
-      (testing "the managed AI service override still refuses loopback"
+      (testing "the managed AI service's floor still refuses loopback"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                     llm.settings/ai-service-base-url                loopback
                                     premium-features/premium-embedding-token        (constantly "mock-token")
-                                    http/post                                       refuse]
+                                    http/post                                       capture]
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
                   (rejected "ai-service")))))
       (testing "an embedding service URL the environment names is deployment configuration: private is fine"
