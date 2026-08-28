@@ -62,7 +62,9 @@
         ;; Always authorize physical Fields against their persisted owner; only virtual columns may
         ;; fall back to the table carried by Lib metadata.
         table-id (if (pos-int? field-id)
-                   (api/check-404 (get (metabot.perms/field-id->table-id #{field-id}) field-id))
+                   (or (get (metabot.perms/field-id->table-id #{field-id}) field-id)
+                       (throw (ex-info (str "No field found with ID " field-id)
+                                       {:agent-error? true :status-code 404})))
                    (:table-id col))]
     (when (int? table-id)
       (api/check-403
