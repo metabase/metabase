@@ -189,7 +189,7 @@ export const QuestionPicker = _.compose(
       props.entity || Collections
     ).selectors.getExpandedCollectionsById(state),
     canReadRootCollection: (Collections.selectors.getList(state) ?? []).some(
-      ({ id }) => id === ROOT_COLLECTION.id,
+      ({ id }: { id: CollectionId }) => id === ROOT_COLLECTION.id,
     ),
   })),
 )(QuestionPickerInner);
