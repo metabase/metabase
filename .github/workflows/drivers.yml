@@ -168,7 +168,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 70
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
