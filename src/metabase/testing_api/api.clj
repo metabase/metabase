@@ -153,7 +153,7 @@
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   body :- ms/Map]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
