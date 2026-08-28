@@ -362,6 +362,10 @@
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}
 
+  ;; Includes the small generator tests that validate development-only repository configuration.
+  :dev/test
+  {:extra-paths ["dev/test"]}
+
   ;; run the dev server with
   ;; clojure -M:run
   ;; clojure -M:run:drivers (include all drivers)

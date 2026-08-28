@@ -92,7 +92,3 @@ jobs:
       run: clojure -M:test
       working-directory: bin/lint-migrations-file
       timeout-minutes: 15
-    - name: Run load-namespaces tests
-      run: clojure -M:test
-      working-directory: bin/load-namespaces
-      timeout-minutes: 15

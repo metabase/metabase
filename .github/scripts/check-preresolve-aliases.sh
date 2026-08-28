@@ -47,8 +47,8 @@ scan() { # scan <edition>: alias strings used by clojure invocations, with expre
   grep -rhE 'clojure[[:space:]]+(-P[[:space:]]+)?-[XMATP]?:' \
        --include='*' --exclude='*.png' --exclude='*.jpg' .github/ 2>/dev/null \
     | sed "s/\\\${{[^}]*edition[^}]*}}/$1/g" \
-    | grep -oE 'clojure[[:space:]]+(-P[[:space:]]+)?-[XMATP]?:[A-Za-z0-9:_.-]+' \
-    | grep -oE ':[A-Za-z0-9:_.-]+' \
+    | grep -oE 'clojure[[:space:]]+(-P[[:space:]]+)?-[XMATP]?:[A-Za-z0-9:_./-]+' \
+    | grep -oE ':[A-Za-z0-9:_./-]+' \
     | sed 's/:$//'
 }
 
