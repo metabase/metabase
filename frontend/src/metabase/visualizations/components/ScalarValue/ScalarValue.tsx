@@ -12,7 +12,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Ellipsified, Flex, useMantineTheme } from "metabase/ui";
 
@@ -151,7 +150,7 @@ export const ScalarActionButtons = ({
       pos="absolute"
       top={tier.menuOffset.top}
       right={tier.menuOffset.right}
-      className={cx(CS.hoverChild, S.actionButtons)}
+      className={S.actionButtons}
       data-testid="scalar-action-buttons"
       {...props}
     >
