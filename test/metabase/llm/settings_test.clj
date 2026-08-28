@@ -236,6 +236,10 @@
       (is (nil? (llm.settings/llm-url-problem "http://10.0.0.1/v1")))
       (is (some? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
       (is (some? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
+  (testing "an explicit policy can override the configured policy for a deployment-controlled service"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (nil? (llm.settings/llm-url-problem :allow-private "http://10.0.0.1/v1")))
+      (is (some? (llm.settings/llm-url-problem :allow-private "http://127.0.0.1/v1")))))
   (testing "under :allow-all, anything reachable goes"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
       (is (nil? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
