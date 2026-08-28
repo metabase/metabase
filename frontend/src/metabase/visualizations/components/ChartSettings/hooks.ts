@@ -7,6 +7,7 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { updateSettings } from "metabase/visualizations/lib/settings";
+import { getStoredSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -45,8 +46,9 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
+  // Writes start from the normalized stored settings, so keys saved under an old shape get rewritten on the first edit.
   const chartSettings = useMemo(
-    () => settings || series[0].card.visualization_settings,
+    () => settings || getStoredSettingsForSeries(series),
     [series, settings],
   );
 
