@@ -1241,9 +1241,10 @@
                                           :perm_type     "perms/collection-access"
                                           :perm_value    "read-and-write"
                                           :collection_id example-collection-id}]}))
+              ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
-                                        :value (str example-dashboard-id)}]})))))))
+                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
