@@ -1,10 +1,11 @@
 const { H } = cy;
 
 import {
-  ADMINISTRATORS_GROUP_ID,
+  ALL_USERS_GROUP_ID,
+  COLLECTION_GROUP_ID,
+  DATA_GROUP_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { CollectionId } from "metabase-types/api";
 
 import {
   runContentDiagnosticsScan,
@@ -21,31 +22,6 @@ const READABLE_DASHBOARD_NAME = "E2E trashing readable dashboard";
 const READABLE_COLLECTION_NAME = "E2E trashing readable collection";
 
 const LIST = "imbalanced-content-list";
-
-type CollectionGraph = {
-  revision: number;
-  groups: Record<string, Record<string, string>>;
-};
-
-// Not `cy.updateCollectionGraph`: it replaces a group's whole collection map, and only for the
-// groups named. The normal user is in three groups, all of which have to lose access here,
-// while keeping their permissions on every other collection.
-function setNonAdminAccess(collectionId: CollectionId, level: string) {
-  cy.request<CollectionGraph>("GET", "/api/collection/graph").then(
-    ({ body: graph }) => {
-      const groups = Object.fromEntries(
-        Object.entries(graph.groups).map(([groupId, permissions]) => [
-          groupId,
-          Number(groupId) === ADMINISTRATORS_GROUP_ID
-            ? permissions
-            : { ...permissions, [collectionId]: level },
-        ]),
-      );
-
-      cy.request("PUT", "/api/collection/graph", { ...graph, groups });
-    },
-  );
-}
 
 function findingRow(name: string) {
   return cy.findByTestId(LIST).contains('[role="row"]', name);
@@ -96,7 +72,11 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
           name: READABLE_DASHBOARD_NAME,
           collection_id: collection.id,
         });
-        setNonAdminAccess(collection.id, "read");
+        cy.updateCollectionGraph({
+          [ALL_USERS_GROUP_ID]: { [collection.id]: "read" as const },
+          [COLLECTION_GROUP_ID]: { [collection.id]: "read" as const },
+          [DATA_GROUP_ID]: { [collection.id]: "read" as const },
+        });
       },
     );
     runContentDiagnosticsScan();
