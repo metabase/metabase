@@ -394,11 +394,21 @@
   (log/infof "%s has no after-run hooks." driver))
 
 (defmulti gc-orphans!
-  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Returns the names actually
-  deleted, not those found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never
-  fires when a CI job is cancelled.
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Reports what was attempted, not
+  what was found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never fires when
+  a CI job is cancelled.
 
   `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
+
+  Returns one map per object it tried to delete:
+
+    {:server \"cluster-a.example/testdb\"  ; which account, project, or cluster+database it was on
+     :name   \"sha__abc123_test_data\"     ; nil only when the failure was reaching the server at all
+     :status :deleted or :failed
+     :error  \"...\"}                      ; ex-message, present only when :failed
+
+  A failed object must still be reported by name: the nightly report exists so someone can tell which dataset is
+  stuck, and an exception alone does not carry that.
 
   Implement only for drivers whose tests create objects in a shared cloud account -- not Athena or Databricks, whose
   datasets are preloaded. Match only names the driver's own test extensions generate, never a bare wildcard."
@@ -410,6 +420,24 @@
   [driver _options]
   (log/infof "%s has no orphan GC; skipping." driver)
   [])
+
+(defmulti count-datasets
+  "Census of every test dataset still on each server this driver's tests write to, taken after [[gc-orphans!]] has
+  run. Returns `{server-label count}`, keyed the same way as `:server` in [[gc-orphans!]]'s results.
+
+  Counts everything on the server, including datasets too young to be eligible for collection -- the number worth
+  watching is total pressure toward the account's dataset and table limits, not how much this run happened to be
+  allowed to touch.
+
+  A count that cannot be taken is `nil` rather than a missing key, so the report can say \"unknown\" instead of
+  silently omitting a server."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod count-datasets ::test-extensions
+  [_driver]
+  {})
 
 (defmulti drop-if-exists-and-create-db!
   "Drop a database named `db-name` if it already exists, then create a new empty one with that name"

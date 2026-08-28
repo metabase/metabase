@@ -411,14 +411,15 @@
                     hours))))
 
 (defn- drop-datasets!
-  "Delete each named dataset, returning each name or the exception that stopped it."
+  "Delete each named dataset, reporting per dataset whether it went. See [[tx/gc-orphans!]] for the shape."
   [dataset-ids]
   (mapv (fn [dataset-id]
           (try
             (destroy-dataset! dataset-id)
-            dataset-id
+            {:name dataset-id, :status :deleted}
             ;; usually just another job deleting the same dataset at the same time
-            (catch Exception e e)))
+            (catch Exception e
+              {:name dataset-id, :status :failed, :error (ex-message e)})))
         dataset-ids))
 
 (defn delete-old-datasets! []
@@ -436,7 +437,13 @@
 ;; Nightly garbage collection of orphaned test datasets.
 (defmethod tx/gc-orphans! :bigquery-cloud-sdk
   [_driver {:keys [fixture-hours]}]
-  (drop-datasets! (old-dataset-names fixture-hours)))
+  (let [project (project-id)]
+    (mapv #(assoc % :server project) (drop-datasets! (old-dataset-names fixture-hours)))))
+
+(defmethod tx/count-datasets :bigquery-cloud-sdk
+  [_driver]
+  (let [project (project-id)]
+    {project (ffirst (execute! "SELECT COUNT(*) FROM `%s`.INFORMATION_SCHEMA.SCHEMATA" project))}))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

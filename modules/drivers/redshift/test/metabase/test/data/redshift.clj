@@ -230,8 +230,9 @@
 ;;; --------------------------------- Destruction ----------------------------------
 
 (defn- drop-orphan-schemas!
-  "Drop every schema classified by [[orphan-schemas]] as expired/old, returning each name or the exception that
-  stopped it. Never let one orphan block the rest.
+  "Drop every schema classified by [[orphan-schemas]] as expired/old, reporting per schema whether it went. See
+  [[tx/gc-orphans!]] for the shape; the caller adds `:server`, since a Statement does not know which cluster it is
+  on. Never let one orphan block the rest.
 
   Takes the orphan-map directly so callers can preview-then-drop without
   re-querying. Caller owns the Statement."
@@ -240,8 +241,9 @@
           (log/infof fmt-str schema)
           (try
             (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))
-            schema
-            (catch Exception e e)))
+            {:name schema, :status :deleted}
+            (catch Exception e
+              {:name schema, :status :failed, :error (ex-message e)})))
         (for [[k fmt-str] [[:old                "Dropping old data schema: %s"]
                            [:expired-cache      "Dropping expired cache schema: %s"]
                            [:lacking-created-at "Dropping cache without created-at info: %s"]
@@ -284,22 +286,54 @@
      :user     (tx/db-test-env-var :redshift :user "metabase_ci")
      :password (tx/db-test-env-var-or-throw :redshift :password)}))
 
+(defn- server-label
+  "`host/db`, the `:server` key identifying one cluster+database pair in the nightly report."
+  [{:keys [host db]}]
+  (str host "/" db))
+
+(defn- with-gc-connection
+  "Call `f` with a write-capable Connection to one cluster+database, or return `fallback` built from the exception: a
+  cluster that is down, or a database that does not exist on it, must not cost us the others."
+  [driver details f fallback]
+  (try
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver details)
+     {:write? true}
+     f)
+    (catch Exception e
+      (fallback e))))
+
 (defmethod tx/gc-orphans! :redshift
   [driver {:keys [temp-data-hours]}]
   ;; Redshift schema names carry their own creation time, so we scan for age via the name
   (into []
         (mapcat (fn [details]
-                  ;; a cluster that is down, or a database that does not exist on it, must not cost us the sweep of
-                  ;; the others
-                  (try
-                    (sql-jdbc.execute/do-with-connection-with-options
-                     driver
-                     (sql-jdbc.conn/connection-details->spec driver details)
-                     {:write? true}
-                     (fn [^java.sql.Connection conn]
-                       (with-open [stmt (.createStatement conn)]
-                         (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
-                    (catch Exception e [e]))))
+                  (let [server (server-label details)]
+                    (with-gc-connection
+                      driver details
+                      (fn [^java.sql.Connection conn]
+                        (with-open [stmt (.createStatement conn)]
+                          (mapv #(assoc % :server server)
+                                (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
+                      (fn [e]
+                        [{:server server, :name nil, :status :failed, :error (ex-message e)}])))))
+        (gc-connection-details)))
+
+(defmethod tx/count-datasets :redshift
+  [driver]
+  (into {}
+        (map (fn [details]
+               (let [server (server-label details)]
+                 [server (with-gc-connection
+                           driver details
+                           ;; every schema on the cluster, catalog schemas included: the number worth watching is
+                           ;; total pressure toward the max-tables limit, not our share of it
+                           (fn [^java.sql.Connection conn]
+                             (reduce (fn [n _] (inc n)) 0 (fetch-schemas conn)))
+                           (fn [e]
+                             (log/errorf "[redshift] could not count schemas on %s: %s" server (ex-message e))
+                             nil))])))
         (gc-connection-details)))
 
 (defn- create-session-schema! [^java.sql.Connection conn]

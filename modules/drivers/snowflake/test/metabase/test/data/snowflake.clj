@@ -158,30 +158,47 @@
        (apply f stmt args)))))
 
 (defn- drop-datasets!
-  "Drop each named test database and un-track it, returning each name or the exception that stopped it."
+  "Drop each named test database and un-track it, reporting per database whether it went. See [[tx/gc-orphans!]] for
+  the shape."
   [dataset-names]
-  (with-write-stmt!
-    (fn [^java.sql.Statement stmt]
-      (mapv (fn [dataset-name]
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Deleting old dataset:" dataset-name)
-              (try
-                (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-                (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                       dataset-name))
-                dataset-name
-                ;; usually just another job deleting the same dataset at the same time
-                (catch Exception e e)))
-            dataset-names))))
+  ;; nothing to drop is the common case on a healthy night; don't open a connection to discover that
+  (if (empty? dataset-names)
+    []
+    (with-write-stmt!
+      (fn [^java.sql.Statement stmt]
+        (mapv (fn [dataset-name]
+                #_{:clj-kondo/ignore [:discouraged-var]}
+                (println "[Snowflake] Deleting old dataset:" dataset-name)
+                (try
+                  (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+                  (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                         dataset-name))
+                  {:name dataset-name, :status :deleted}
+                  ;; usually just another job deleting the same dataset at the same time
+                  (catch Exception e
+                    {:name dataset-name, :status :failed, :error (ex-message e)})))
+              dataset-names)))))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
 ;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). This replaces the old in-process cleanup, which
 ;;; ran on every job and was disabled for causing hard-to-debug CI failures.
 
+(defn- account
+  "Label for the Snowflake account under sweep, used as the `:server` key in the nightly report."
+  []
+  (tx/db-test-env-var-or-throw :snowflake :account))
+
 (defmethod tx/gc-orphans! :snowflake
   [_driver options]
-  (drop-datasets! (old-dataset-names options)))
+  (let [server (account)]
+    (mapv #(assoc % :server server) (drop-datasets! (old-dataset-names options)))))
+
+(defmethod tx/count-datasets :snowflake
+  [_driver]
+  {(account) (:count (first (jdbc/query (no-db-connection-spec)
+                                        ["select count(*) as count
+                                          from metabase_test_tracking.information_schema.databases"])))})
 
 (defn- set-current-user-timezone!
   [timezone]
