@@ -10,7 +10,7 @@ import { FrontendLocaleContext } from "metabase/embedding/FrontendLocaleContext"
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useComputedColorScheme } from "metabase/ui";
 import { isRTLLocale } from "metabase/utils/i18n";
-import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 

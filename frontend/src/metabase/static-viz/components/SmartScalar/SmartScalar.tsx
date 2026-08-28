@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 
-import type { RenderingContext } from "metabase/visualizations/types";
 import {
   CHANGE_TYPE_OPTIONS,
   computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { RenderingContext } from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 

@@ -5,7 +5,7 @@ export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 // legitimate reason for it to listen for typed text or clipboard activity
 // outside its own subtree — listening on script-owned elements still
 // works, and that's where the script's own UI events live.
-const GLOBAL_BLOCKED_EVENT_TYPES = new Set([
+export const GLOBAL_BLOCKED_EVENT_TYPES = new Set([
   "keydown",
   "keyup",
   "keypress",

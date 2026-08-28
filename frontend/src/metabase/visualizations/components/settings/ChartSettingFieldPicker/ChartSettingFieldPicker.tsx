@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon } from "metabase/ui";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { keyForSingleSeries } from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn, Series } from "metabase-types/api";
 

@@ -68,8 +68,10 @@
     (sql-tools.tu/test-parser-backends
      (mt/test-driver :h2
        (let [catalog-fetches (atom 0)
-             all-tables      lib.metadata/tables]
-         (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+             ;; capture via `original-fn`: once the var is proxied, a bare symbol ref resolves to the
+             ;; proxy and delegating to it would recurse forever.
+             all-tables      (mt/original-fn #'lib.metadata/tables)]
+         (mt/with-dynamic-fn-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
            (testing "the referenced table still resolves"
              ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
              ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).

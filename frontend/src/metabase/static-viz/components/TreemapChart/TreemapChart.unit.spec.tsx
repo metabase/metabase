@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {

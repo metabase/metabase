@@ -357,6 +357,7 @@
 (api.macros/defendpoint :delete "/v1/test/:id"
   "Delete a test resource."
   {:tool {:name "delete_test"}}
+  ;; binding exists only to carry the param schema into the generated tool manifest
   [#_{:clj-kondo/ignore [:unused-binding]}
    {:keys [id]} :- [:map [:id :int]]]
   nil)
@@ -367,6 +368,7 @@
   "Search for things."
   {:tool {:name "test_search"}}
   [_route-params
+   ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
    {:keys [q limit]} :- [:map
                          [:q :string]
@@ -384,6 +386,7 @@
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
+   ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
    body :- [:map [:action :string]]]
   {:id id :status "active"})
@@ -393,6 +396,7 @@
   "Update a test resource."
   {:tool {:name "test_resource"}}
   [{:keys [id]} :- [:map [:id :int]]
+   ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
    {:keys [dry-run]} :- [:map [:dry-run {:optional true} [:maybe :boolean]]]
    body :- [:map [:name :string]]]

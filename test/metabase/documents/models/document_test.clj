@@ -432,7 +432,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))
@@ -805,3 +805,89 @@
             (binding [mi/*deserializing?* true]
               (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
+
+(defn- export-document-ast
+  "Run a document row through the serdes `:document` export transform and return the exported AST."
+  [document]
+  ((get-in (serdes/make-spec "Document" {}) [:transform :document :export-with-context])
+   document :document nil))
+
+(deftest document-serdes-static-card-embed-test
+  (testing "A static (snapshot-backed) cardEmbed"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [node (-> {:content_type "application/json+vnd.prose-mirror"
+                      :document     {:type    "doc"
+                                     :content [{:type  "cardEmbed"
+                                                :attrs {:id               card-id
+                                                        :stored_result_id 987654321}}]}}
+                     export-document-ast
+                     :content
+                     first)]
+        (testing "still rewrites its Card :id to a portable serdes path — the ephemeral Card is a real serdes entity"
+          (is (vector? (-> node :attrs :id)))
+          (is (= "Card" (-> node :attrs :id first :model))))
+        (testing "drops :stored_result_id — a raw local id for a row that is not a serdes entity, which would resolve to an unrelated snapshot on import"
+          (is (not (contains? (:attrs node) :stored_result_id))))))))
+
+(deftest document-serdes-live-card-embed-keeps-attrs-test
+  (testing "A live cardEmbed exports its :id as a portable path and is otherwise untouched"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [node (-> {:content_type "application/json+vnd.prose-mirror"
+                      :document     {:type    "doc"
+                                     :content [{:type  "cardEmbed"
+                                                :attrs {:id card-id :_id "abc"}}]}}
+                     export-document-ast
+                     :content
+                     first)]
+        (is (= "Card" (-> node :attrs :id first :model)))
+        (is (= "abc" (-> node :attrs :_id)))))))
+
+(deftest serdes-extract-query-excludes-exploration-documents-test
+  (testing "serdes never extracts an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}    {}
+                   :model/User        {user-id :id}    {:email "serdes-doc@example.com"}
+                   :model/Exploration {expl-id :id}    {:name "Explo" :creator_id user-id}
+                   :model/Document    {plain-id :id}   {:name "Plain" :creator_id user-id
+                                                        :collection_id coll-id}
+                   :model/Document    {summary-id :id} {:name           "Summary"
+                                                        :creator_id     user-id
+                                                        :collection_id  coll-id
+                                                        :exploration_id expl-id}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Document :id %)
+            ;; A caller-supplied `:where` must still compose — this is also the shape a full
+            ;; (untargeted) export takes, where the Collection descendants filter never runs.
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Document" {:where [:in :id [plain-id summary-id]]}))]
+        (is (contains? extracted (eid plain-id))
+            "an ordinary document is still exported")
+        (is (not (contains? extracted (eid summary-id)))
+            "a Summary document is never exported — it is not first-class content, and its body embeds
+             values computed under its creator's data-access lens")))))
+
+(defn- import-document-ast
+  "Run an exported AST back through the serdes `:document` import transform."
+  [document]
+  ((get-in (serdes/make-spec "Document" {}) [:transform :document :import-with-context])
+   document :document nil))
+
+(deftest document-serdes-card-embed-round-trips-test
+  (testing "a cardEmbed's Card id survives export and comes back on import"
+    (mt/with-temp [:model/Collection {coll-id :id}  {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [exported (export-document-ast
+                      {:content_type "application/json+vnd.prose-mirror"
+                       :document     {:type    "doc"
+                                      :content [{:type  "cardEmbed"
+                                                 :attrs {:id card-id}}]}})
+            imported (import-document-ast
+                      {:content_type "application/json+vnd.prose-mirror"
+                       :document     exported})]
+        (testing "export rewrites the id to a portable path"
+          (is (vector? (-> exported :content first :attrs :id))))
+        (testing "import rewrites it back to this instance's Card id — on the serialized form the id
+                  is a serdes path, so any guard that expects a raw integer skips the node and leaves
+                  the path in place"
+          (is (= card-id (-> imported :content first :attrs :id))))))))

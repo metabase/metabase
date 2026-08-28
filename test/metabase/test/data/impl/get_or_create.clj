@@ -448,6 +448,7 @@
       ;; Destroying the DB when there's a failure loading and syncing is fine
       ;; for most DBs, but for cloud databases it makes things worse.
       (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        ;; test-harness console notice; stays visible even when log output is captured
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println "create-database! failed; destroying database"
                  driver (pr-str database-name))
