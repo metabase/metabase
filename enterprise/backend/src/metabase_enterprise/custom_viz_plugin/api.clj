@@ -175,6 +175,8 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
+        _            (when-let [error (manifest/identifier-error identifier)]
+                       (throw (ex-info error {:status-code 400})))
         _            (api/check-400
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))

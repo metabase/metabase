@@ -389,7 +389,12 @@
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "name")
-                  "error should mention the missing name field"))))))))
+                  "error should mention the missing name field"))))
+        (testing "dev plugin registration rejects an identifier containing `:`"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a:b"})]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "must not contain \":\"")))))))))
 
 ;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
 
