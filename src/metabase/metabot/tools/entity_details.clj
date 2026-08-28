@@ -726,7 +726,11 @@
             (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
                        detail (cards-details card-type database-id cards options)]
                    detail)
-                 (group-by :type))]
+                 (group-by :type))
+            ;; A model whose table the user has no view-data permission on has already had its
+            ;; :fields permission-filtered down to nothing -- list it as unavailable rather than
+            ;; as a data source with no columns to query.
+            models (remove (comp empty? :fields) models)]
         {:structured-output {:result-type :answer-sources
                              :metrics (vec metrics)
                              :models  (vec models)}}))
