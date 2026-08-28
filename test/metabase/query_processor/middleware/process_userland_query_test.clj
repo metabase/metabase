@@ -24,6 +24,7 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
