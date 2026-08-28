@@ -31,10 +31,11 @@ runs:
         BACKPORT_BRANCH="backport-$TARGET_VERSION-$COMMIT"
 
         # Kondo ignore ratchets apply only to our trunk development.
-        # Release branches created by the current cut workflow keep an explicit opt-out in the file,
-        # which can conflict with backported budget changes. Preserve the release branch's copy only
-        # when it contains that opt-out; otherwise leave the conflict for manual resolution. Older
-        # release branches do not have the file, so remove it there instead.
+        # Release branches created by the current cut workflow keep an explicit opt-out in .clj-kondo/ratchets.edn.
+        # Backported budget changes can conflict with that file.
+        # Preserve the release branch's copy when it contains the explicit opt-out.
+        # If the release branch contains live budgets instead, leave the conflict for manual resolution.
+        # Older release branches do not have the file, so remove it there instead.
         # If no other files conflict, finish the cherry-pick automatically.
         #
         # During a cherry-pick, HEAD ("ours") is the release branch.
