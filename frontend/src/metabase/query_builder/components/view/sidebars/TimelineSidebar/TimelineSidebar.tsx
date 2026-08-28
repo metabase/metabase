@@ -1,15 +1,16 @@
 import { useCallback } from "react";
 
-import {
-  getTimeseriesDataInterval,
-  getUiControls,
-} from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import { onOpenTimelines } from "metabase/redux/query-builder";
 import {
   TimelineSidebar as SharedTimelineSidebar,
   type TimelineSidebarProps as SharedTimelineSidebarProps,
 } from "metabase/timelines/questions/components/TimelineSidebar";
+
+import { onOpenTimelines } from "../../../../store/actions";
+import {
+  getTimeseriesDataInterval,
+  getUiControls,
+} from "../../../../store/selectors";
 
 export type TimelineSidebarProps = Omit<
   SharedTimelineSidebarProps,

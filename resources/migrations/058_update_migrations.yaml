@@ -1609,6 +1609,18 @@ databaseChangeLog:
             class: metabase.app_db.custom_migrations.EncryptPublicUuids
 
   - changeSet:
+      id: v58.2026-08-25T00:00:19
+      author: ranquild
+      comment: >-
+        Encrypt at rest the details column of notification_recipient and pulse_channel, which stores raw external email
+        recipients for alerts and dashboard subscriptions, so a plaintext value written directly to the app DB is
+        rejected on the strict read once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are left untouched.
+        On rollback the values are decrypted back to plaintext.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptNotificationAndPulseChannelDetails
+
+  - changeSet:
       id: v58.2026-08-27T12:00:00
       author: ranquild
       comment: >-

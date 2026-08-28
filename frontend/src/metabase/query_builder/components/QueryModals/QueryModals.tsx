@@ -10,15 +10,6 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { setArchivedQuestion } from "metabase/query_builder/actions";
-import { updateUrl } from "metabase/query_builder/actions/url";
-import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
-import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import {
-  getQuestionWithoutComposing,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
@@ -32,6 +23,16 @@ import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
+
+import { setArchivedQuestion } from "../../actions";
+import { updateUrl } from "../../actions/url";
+import {
+  getQuestionWithoutComposing,
+  getVisualizationSettings,
+} from "../../store/selectors";
+import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
+import { NewDatasetModal } from "../NewDatasetModal";
+import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 

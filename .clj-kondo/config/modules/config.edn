@@ -438,6 +438,7 @@
    :uses #{api
            app-db
            collections
+           permissions
            queries
            util}
    :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
@@ -3808,12 +3809,14 @@
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
+           app-db
            auth-identity
            events
            models
            request
            settings
            system
+           task
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 

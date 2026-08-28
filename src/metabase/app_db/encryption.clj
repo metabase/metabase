@@ -40,7 +40,9 @@
    [:report_card :public_uuid]
    [:report_dashboard :public_uuid]
    [:action :public_uuid]
-   [:document :public_uuid]])
+   [:document :public_uuid]
+   [:notification_recipient :details]
+   [:pulse_channel :details]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike

@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
+   ;; metric definitions may still be stored as legacy MBQL; normalize before lib.convert/->mbql5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]

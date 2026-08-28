@@ -330,7 +330,11 @@ const elements = [
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
-  createElement({ type: "feature", name: "query_builder" }),
+  createElement({
+    type: "feature",
+    name: "query_builder",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "reference" }),
   createElement({ type: "feature", name: "search" }),
 
