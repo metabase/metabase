@@ -148,6 +148,14 @@
             (is (=? {:result {:sql "SELECT 1"}}
                     (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))
             (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))))
+      (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
+                                             llm-anthropic-api-base-url "https://8.8.8.8"]
+            (mt/with-dynamic-fn-redefs [http/post (fn [& _] (throw (ex-info "blocked" {:ssrf true})))]
+              (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
+                      (try (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})
+                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
       (testing "and under :allow-all on clj-http's default resolver"
         (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
           (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"

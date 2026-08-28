@@ -342,7 +342,7 @@
     (and (not (contains? request-specific-statuses status))
          (not= :embedder/unexpected-dimensions reason)
          ;; A connection-time network-policy rejection is about the configured endpoint, not the service's health.
-         (not-any? :ssrf data-chain))))
+         (not (llm.settings/llm-network-policy-error? e)))))
 
 (defn- circuit-open-ex
   [endpoint]
@@ -545,11 +545,13 @@
         (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
       embeddings)
     (catch ConnectException e
+      (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
       (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
       (throw (ex-info (str provider " unavailable (connection refused)")
                       {:status 502 :endpoint endpoint}
                       e)))
     (catch Exception e
+      (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
       ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
       ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
       (when-not (= :embedder/circuit-open (:cause (ex-data e)))
