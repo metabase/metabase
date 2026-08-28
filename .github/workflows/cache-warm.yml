@@ -118,7 +118,9 @@ jobs:
           combos=(
             ":build:dev:ee:ee-dev:drivers:drivers-dev:cljs"     # build + uberjar (combined classpath)
             ":cljs"                                             # shadow-cljs (build:cljs); resolves :cljs alone -> covers asm:9.2
-            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood + eastwood/test)
+            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood)
+            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test" # backend.yml (eastwood tests)
+            ":dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" # run-tests.yml (project tests)
             ":dev:ci:ee:ee-dev:drivers:drivers-dev:test"        # test-driver.yml (ee) -> covers data.json:2.4.0
             ":dev:ci:oss:oss-dev:drivers:drivers-dev:test"      # test-driver.yml (oss)
             ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee)

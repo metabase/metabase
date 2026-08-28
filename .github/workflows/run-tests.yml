@@ -18,6 +18,26 @@ permissions:
   security-events: write
 
 jobs:
+  project-tests:
+    name: Project tests
+    # Fast checks for repository structure, generated configuration, and other
+    # deterministic invariants. These run independently of the expensive test matrix.
+    needs: should-run
+    if: ${{ needs.should-run.outputs.verdict != 'force-skip' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run project tests
+        run: >-
+          clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci
+          :only '[dev.modules-config-test metabase.core.modules-test metabase.core.kondo-ratchet-test]'
+      - name: Run namespace loading tests
+        run: clojure -M:test
+        working-directory: bin/load-namespaces
+
   # `force-run` and `force-skip` are global overrides; `defer` means this
   # job has no opinion and every downstream gate behaves as it always has.
   #
