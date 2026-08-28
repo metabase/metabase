@@ -25,6 +25,7 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -2799,10 +2800,12 @@
               (is (= sentinel (raw-sentinel))))))))))
 
 (deftest encrypt-settings-test
-  (testing "every setting the v58 migration encrypts is a registered setting that is now encrypted at rest"
-    (doseq [k @#'custom-migrations/encrypted-settings-v58]
-      (testing k
-        (is (not= :no (:encryption (setting/resolve-setting (keyword k))))))))
+  ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
+  (when config/ee-available?
+    (testing "every setting the v58 migration encrypts is a registered setting that is now encrypted at rest"
+      (doseq [k @#'custom-migrations/encrypted-settings-v58]
+        (testing k
+          (is (not= :no (:encryption (setting/resolve-setting (keyword k)))))))))
   (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
