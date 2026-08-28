@@ -117,6 +117,15 @@ function spreadPercent(values) {
         warmMs: warm.secondLoadMs,
         steadyMs: warm.steadyStateMs,
         coldSpreadPercent: spreadPercent(cold.everyRunMs),
+        // The cold load broken up, in the order a user meets it: bytes start
+        // arriving, something is drawn, the shell commits, the page has its
+        // data. The warm equivalents come from the same series as `warmMs`.
+        coldTtfbMs: cold.ttfbMs,
+        coldFirstPaintMs: cold.firstContentfulPaintMs,
+        coldAppMountedMs: cold.appMountedMs,
+        coldLargestPaintMs: cold.largestContentfulPaintMs,
+        coldPageReadyMs: cold.pageReadyMs,
+        warmPageReadyMs: warm.pageReadyMs,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
         runs: cold.runs,

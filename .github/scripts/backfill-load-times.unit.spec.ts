@@ -89,6 +89,12 @@ describe("buildRows", () => {
     warmMs: 800,
     steadyMs: 600,
     coldSpreadPercent: 3.5,
+    coldTtfbMs: 90,
+    coldFirstPaintMs: 700,
+    coldAppMountedMs: 1250,
+    coldLargestPaintMs: 1800,
+    coldPageReadyMs: 2100,
+    warmPageReadyMs: 1400,
     scripts: 12,
     scriptKb: 2048,
     runs: 8,
@@ -105,6 +111,16 @@ describe("buildRows", () => {
     expect(row.Date).toBe("2026-08-20");
     expect(row["Cold ms"]).toBe(1200);
     expect(row.Runs).toBe(8);
+  });
+
+  it("carries the phases of the load through to the row", () => {
+    const [row] = buildRows([condition], { sha: "abc", subject: "x" });
+
+    expect(row["Cold ttfb ms"]).toBe(90);
+    expect(row["Cold first paint ms"]).toBe(700);
+    expect(row["Cold app mounted ms"]).toBe(1250);
+    expect(row["Cold page ready ms"]).toBe(2100);
+    expect(row["Warm page ready ms"]).toBe(1400);
   });
 
   it("dates the row today when no date is given", () => {

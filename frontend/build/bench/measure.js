@@ -85,14 +85,33 @@ class Session {
   }
 }
 
+// Everything up to `load` comes from navigation timing, and the paint entries
+// say when the browser first drew. `mb:app-mounted` and `mb:page-ready` are the
+// two the app records itself, because only it knows when the shell committed
+// and when the page has its data. See metabase/utils/performance-marks.ts.
 const READ_METRICS = `JSON.stringify((() => {
   const nav = performance.getEntriesByType("navigation")[0];
   const scripts = performance
     .getEntriesByType("resource")
     .filter((entry) => entry.name.endsWith(".js"));
+  const paint = (name) => {
+    const entry = performance.getEntriesByName(name)[0];
+    return entry ? entry.startTime : 0;
+  };
+  const last = (type) => {
+    const entries = performance.getEntriesByType(type);
+    return entries.length ? entries[entries.length - 1].startTime : 0;
+  };
   return {
     href: location.href,
+    ttfb: nav ? nav.responseStart : 0,
     domContentLoaded: nav ? nav.domContentLoadedEventEnd : 0,
+    load: nav ? nav.loadEventEnd : 0,
+    firstPaint: paint("first-paint"),
+    firstContentfulPaint: paint("first-contentful-paint"),
+    largestContentfulPaint: last("largest-contentful-paint"),
+    appMounted: paint("mb:app-mounted"),
+    pageReady: paint("mb:page-ready"),
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
     scriptCount: scripts.length,
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
@@ -155,19 +174,24 @@ async function loadOnce() {
 
   await session.send("Page.navigate", { url });
 
+  const read = async () => {
+    const { result } = await session.send("Runtime.evaluate", {
+      expression: READ_METRICS,
+      returnByValue: true,
+    });
+    return result && result.value ? JSON.parse(result.value) : null;
+  };
+
   // Polled rather than waiting on a lifecycle event, because the app errors
   // against the stub API and a failed boot must still produce a reading. The
   // href check keeps the blank page the tab opens on out of the results.
   let metrics = null;
   for (let attempt = 0; attempt < 300; attempt++) {
-    const { result } = await session.send("Runtime.evaluate", {
-      expression: READ_METRICS,
-      returnByValue: true,
-    });
-    const parsed = result && result.value ? JSON.parse(result.value) : null;
+    const parsed = await read();
     if (
       parsed &&
       parsed.domContentLoaded > 0 &&
+      parsed.appMounted > 0 &&
       parsed.scriptCount > 0 &&
       parsed.href.startsWith(url)
     ) {
@@ -175,6 +199,18 @@ async function loadOnce() {
       break;
     }
     await sleep(150);
+  }
+
+  // `mb:page-ready` lands after the shell, and only on a route that records it.
+  // Wait a bounded while for it rather than either missing it or hanging on a
+  // page that never fires it.
+  for (
+    let attempt = 0;
+    metrics && !metrics.pageReady && attempt < 80;
+    attempt++
+  ) {
+    await sleep(150);
+    metrics = (await read()) || metrics;
   }
 
   socket.close();
@@ -227,6 +263,14 @@ function median(values) {
             : null,
         medianDomContentLoadedMs: at("domContentLoaded"),
         steadyStateMs: results.length > 2 ? at("domContentLoaded", 2) : null,
+        // The rest of the load, in the order a user meets it. A zero means the
+        // browser or the route never reported that one.
+        ttfbMs: at("ttfb"),
+        firstContentfulPaintMs: at("firstContentfulPaint"),
+        appMountedMs: at("appMounted"),
+        largestContentfulPaintMs: at("largestContentfulPaint"),
+        pageReadyMs: at("pageReady"),
+        loadMs: at("load"),
         everyRunMs: results.map((result) =>
           Math.round(result.domContentLoaded),
         ),
