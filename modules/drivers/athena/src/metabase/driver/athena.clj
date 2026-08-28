@@ -519,8 +519,8 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-;; one-off REPL script kept for reference
-#_{:clj-kondo/ignore [:discouraged-var]}
+;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
+#_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
 (comment
   (require
    '[metabase.test.data.dataset-definitions]
