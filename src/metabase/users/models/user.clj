@@ -414,10 +414,14 @@
         (perms/add-user-to-groups! user-id to-add)))
     true))
 
-(defn add-attributes
-  "Adds the `:attributes` key to a user."
-  [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))
+(mu/defn add-attributes
+  "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
+  this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
+  reading attributes stored on the user row."
+  [{:keys [login_attributes jwt_attributes] :as user} :- [:map [:type (into [:enum] allowed-user-types)]]]
+  (assoc user :attributes (if (= (:type user) :personal)
+                            (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
+                            {})))
 
 ;;; Filtering users
 
