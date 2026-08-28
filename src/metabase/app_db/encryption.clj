@@ -1,5 +1,6 @@
 (ns metabase.app-db.encryption
   (:require
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -39,7 +40,9 @@
    [:report_card :public_uuid]
    [:report_dashboard :public_uuid]
    [:action :public_uuid]
-   [:document :public_uuid]])
+   [:document :public_uuid]
+   [:notification_recipient :details]
+   [:pulse_channel :details]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -58,26 +61,80 @@
 (def ^:private clearable-when-undecryptable
   #{[:core_user :settings]})
 
-(defn- encryption-check-status
+(def ^:private encryption-check-key "encryption-check")
+
+(defn encryption-check-status
   "Whether the current MB_ENCRYPTION_SECRET_KEY is the right key for this database, according to the
-  `encryption-check` sentinel setting (a random UUID stored encrypted whenever the database is encrypted):
+  `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
 
-    :valid   - the sentinel decrypts to a UUID, so the key is correct
-    :invalid - the sentinel exists but does not decrypt, so the key is wrong (or unset) for this database
-    :unknown - no sentinel (database predates it), or the database is marked unencrypted"
+    :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
+    :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering), or the database cannot be
+               read at all (no `setting` table) -- not a normal state either way
+    :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
   []
-  (let [raw (t2/select-one-fn :value :setting :key "encryption-check")]
-    (cond
-      (or (nil? raw) (= raw "unencrypted"))
-      :unknown
+  (try
+    (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
+      (cond
+        (nil? raw)
+        :absent
 
-      (and (encryption/possibly-encrypted-string? raw)
-           (try (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))
-                (catch Throwable _ false)))
-      :valid
+        (and (encryption/default-encryption-enabled?)
+             (string/valid-uuid? (encryption/maybe-decrypt raw)))
+        :valid
 
-      :else
+        :else
+        :invalid))
+    (catch Throwable e
+      (log/warnf "Could not determine encryption status, treating as invalid: %s" (ex-message e))
       :invalid)))
+
+(defn- column-exists?
+  "Whether `table`.`column` exists, per JDBC metadata. Identifiers are matched as stored and upper-cased, since H2
+  upper-cases unquoted names."
+  [table column]
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [metadata (.getMetaData conn)]
+      (boolean (some (fn [[t c]]
+                       (with-open [rs (.getColumns metadata nil nil t c)]
+                         (.next rs)))
+                     [[(name table) (name column)]
+                      [(u/upper-case-en (name table)) (u/upper-case-en (name column))]])))))
+
+(defn- column-has-values?
+  "Whether `table`.`column` holds any non-null value. A table or column that does not exist yet (this runs before
+  migrations, on a fresh or old database) counts as empty; any other failure to read it propagates, since answering
+  \"empty\" wrongly would mark an unencrypted database as encrypted."
+  [table column]
+  (try
+    (boolean (t2/query-one {:select [:id], :from [table], :where [:is-not column nil], :limit 1}))
+    (catch Exception e
+      (if (column-exists? table column)
+        (throw e)
+        false))))
+
+(defn encrypted-content-exists?
+  "Whether any encrypted-at-rest column holds a value at all. With MB_ENCRYPTION_SECRET_KEY set and no
+  `encryption-check` sentinel, the database must be one that has never held such content (a fresh install); anything
+  else -- plaintext waiting for `enable-encryption`, or an encrypted database whose sentinel was removed -- means the
+  instance cannot be marked encrypted on its own. Settings are not counted: they are tolerated as plaintext at rest."
+  []
+  (boolean (some (fn [[table column]] (column-has-values? table column))
+                 (concat encrypted-string-columns encrypted-bytes-columns))))
+
+(defn- replace-encryption-check!
+  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with nothing when
+  `encrypt-fn` is nil (the database is being decrypted)."
+  [conn encrypt-fn]
+  (t2/delete! :conn conn :setting :key encryption-check-key)
+  (when encrypt-fn
+    (t2/insert! :conn conn :setting {:key encryption-check-key, :value (encrypt-fn (str (random-uuid)))})))
+
+(defn write-encryption-check!
+  "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
+  sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
+  []
+  (t2/with-transaction [conn]
+    (replace-encryption-check! conn encryption/encrypt)))
 
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the
@@ -145,10 +202,11 @@
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
                                     (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
-          "encryption-check" (t2/update! :conn conn :setting {:key key} {:value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
+          "encryption-check" nil
           (t2/update! :conn conn :setting
                       {:key key}
                       {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
+      (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))
@@ -159,6 +217,8 @@
   [db-type data-source to-key]
   (when (and (not (nil? to-key)) (empty? to-key))
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
+  (when (and (nil? to-key) (not (encryption/default-encryption-enabled?)))
+    (throw (ex-info "Cannot encrypt database: MB_ENCRYPTION_SECRET_KEY is not set" {})))
   (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
                                             (if
                                              (nil? to-key) maybe-encrypt-fn

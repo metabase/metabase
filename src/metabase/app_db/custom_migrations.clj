@@ -1210,7 +1210,8 @@
             example-dashboard-id  1
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
+            dbs                   (map #(update % :details encryption/maybe-encrypt)
+                                       (table-name->rows table-name->raw-rows :metabase_database))
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
@@ -1256,6 +1257,7 @@
   (defn- pretty-spit [file-name data]
     (with-open [writer (io/writer file-name)]
       (binding [*out* writer]
+        ;; REPL recipe in (comment): pprints EDN into a file writer, not the console
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pprint/pprint data))))
 
@@ -2373,3 +2375,27 @@
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
                                  :where  [:!= :public_uuid nil]})))))
+
+(define-reversible-migration EncryptNotificationAndPulseChannelDetails
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:notification_recipient :pulse_channel]]
+      (run! (fn [{:keys [id details]}]
+              (when (and (string? details)
+                         (not (encryption/possibly-encrypted-string? details)))
+                (t2/query {:update table
+                           :set    {:details (encryption/maybe-encrypt details)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :details]
+                                 :from   [table]
+                                 :where  [:!= :details nil]}))))
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:notification_recipient :pulse_channel]]
+      (run! (fn [{:keys [id details]}]
+              (when (and (string? details)
+                         (encryption/possibly-encrypted-string? details))
+                (t2/query {:update table
+                           :set    {:details (encryption/maybe-decrypt details)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :details]
+                                 :from   [table]
+                                 :where  [:!= :details nil]})))))

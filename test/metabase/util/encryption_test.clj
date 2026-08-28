@@ -96,10 +96,10 @@
       (is (empty? (messages))))))
 
 (def ^:private fake-ciphertext
-  "AES+CBC's block size is 16 bytes and the tag length is 32 bytes. This is a string of characters that is the same
-  length as would be expected for something that has been encrypted, but it is not encrypted, just unlucky enough to
-  have the same size"
-  (apply str (repeat 64 "a")))
+  "AES+CBC's block size is 16 bytes and the tag length is 32 bytes, so the shortest possible ciphertext is 64 bytes
+  (IV + one block + tag). This base64 string decodes to 64 bytes: the size of something that has been encrypted, but
+  it is not encrypted, just unlucky enough to have the same size"
+  (str (apply str (repeat 86 "a")) "=="))
 
 (deftest ^:parallel possibly-encrypted-test
   (testing "a value shaped like ciphertext but that cannot be decrypted with the current key throws rather than being returned as-is"

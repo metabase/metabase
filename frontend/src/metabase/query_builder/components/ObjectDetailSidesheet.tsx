@@ -20,6 +20,7 @@ import {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "../actions";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCanZoomNextRow,
   getCanZoomPreviousRow,
@@ -28,8 +29,7 @@ import {
   getTableMetadata,
   getZoomRow,
   getZoomedObjectId,
-} from "../selectors";
-import { getIsObjectDetail } from "../selectors/mode";
+} from "../store/selectors";
 
 export function ObjectDetailSidesheet() {
   const isObjectDetail = useSelector(getIsObjectDetail);

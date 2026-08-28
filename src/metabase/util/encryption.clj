@@ -212,8 +212,11 @@
     false
     (u/ignore-exceptions
       (let [byte-length (alength b)]
-        (zero? (mod (- byte-length aes256-tag-length)
-                    aes256-block-size))))))
+        ;; IV + at least one cipher block + tag: anything shorter cannot be ciphertext, and `mod` alone would accept
+        ;; 16- and 32-byte plaintext too
+        (and (>= byte-length (+ (* 2 aes256-block-size) aes256-tag-length))
+             (zero? (mod (- byte-length aes256-tag-length)
+                         aes256-block-size)))))))
 
 (defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64

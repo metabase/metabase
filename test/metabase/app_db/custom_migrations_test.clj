@@ -2755,10 +2755,53 @@
             (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
             (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
+(deftest encrypt-notification-and-pulse-channel-details-test
+  (testing "v58.2026-08-25T00:00:19 encrypts pulse_channel details at rest"
+    (impl/test-migrations ["v58.2026-08-25T00:00:19"] [migrate!]
+      (let [user-id      (:id (new-instance-with-default :core_user))
+            pulse-id     (:id (new-instance-with-default :pulse {:creator_id user-id}))
+            pc-details   (json/encode {:emails ["test@test.com"]})
+            pc-id        (:id (new-instance-with-default :pulse_channel
+                                                         {:pulse_id      pulse-id
+                                                          :channel_type  "email"
+                                                          :schedule_type "daily"
+                                                          :details       pc-details}))
+            raw-pc       #(:details (t2/query-one {:select [:details] :from [:pulse_channel] :where [:= :id pc-id]}))]
+        (testing "plaintext before migration (written with no encryption key)"
+          (is (not (encryption/possibly-encrypted-string? (raw-pc)))))
+        (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+          (migrate!)
+          (testing "encrypted after migration, and still decrypts to the original value"
+            (is (true? (encryption/possibly-encrypted-string? (raw-pc))))
+            (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
+
+(deftest delete-legacy-encryption-check-marker-test
+  (testing "v58.2026-08-27T12:00:00 : the plaintext \"unencrypted\" marker is deleted, an encrypted sentinel is kept"
+    (encryption-test/with-secret-key "legacy-marker-test-key-1234"
+      (let [raw-sentinel #(t2/select-one-fn :value :setting :key "encryption-check")
+            set-sentinel! (fn [value]
+                            (t2/delete! :setting :key "encryption-check")
+                            (t2/insert! :setting {:key "encryption-check", :value value}))]
+        (impl/test-migrations "v58.2026-08-27T12:00:00" [migrate!]
+          (set-sentinel! "unencrypted")
+          (migrate!)
+          (is (nil? (raw-sentinel)))
+          (testing "rollback restores the marker when there is no sentinel"
+            (migrate! :down 57)
+            (is (= "unencrypted" (raw-sentinel)))))
+        (impl/test-migrations "v58.2026-08-27T12:00:00" [migrate!]
+          (let [sentinel (encryption/encrypt (str (random-uuid)))]
+            (set-sentinel! sentinel)
+            (migrate!)
+            (is (= sentinel (raw-sentinel)))
+            (testing "rollback leaves an encrypted sentinel alone"
+              (migrate! :down 57)
+              (is (= sentinel (raw-sentinel))))))))))
+
 (deftest encrypt-settings-test
-  (testing "v58.2026-08-25T00:00:19 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
+  (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-25T00:00:19"] [migrate!]
+      (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
         (let [ins!    (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
               raw     (fn [k] (t2/select-one-fn :value :setting :key k))
               enc-str (encryption/maybe-encrypt "https://already.example")]

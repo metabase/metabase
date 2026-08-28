@@ -152,6 +152,7 @@
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
         (doseq [dataset-name old-datasets]
+          ;; test-harness cleanup output goes to the CI console, not the app log
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "[Snowflake] Deleting old dataset:" dataset-name)
           (try
@@ -162,6 +163,7 @@
             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
             (catch Throwable e
+              ;; test-harness cleanup output goes to the CI console, not the app log
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
@@ -223,6 +225,7 @@
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    ;; test-harness cleanup output goes to the CI console, not the app log
     #_{:clj-kondo/ignore [:discouraged-var]}
     (println "[Snowflake] destroy database " database-name (:database-name dbdef))
     (jdbc/query (no-db-connection-spec)
@@ -277,6 +280,19 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
+(defonce ^:private set-up-tracking-db?
+  (atom false))
+
+(defn- setup-tracking-db-if-needed!
+  "Call [[setup-tracking-db!]], only if we haven't done so already.
+
+  Both of its statements are server round trips, and nothing drops `metabase_test_tracking` while a run is in
+  progress, so once they have succeeded they only need repeating in the next process."
+  [conn driver]
+  (when-not @set-up-tracking-db?
+    (setup-tracking-db! conn driver)
+    (reset! set-up-tracking-db? true)))
+
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -324,7 +340,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
+     (setup-tracking-db-if-needed! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn
