@@ -220,18 +220,6 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
-(defn- keep-params-and-param-fields
-  "Keep only the `:parameters` of `dashboard-or-card` whose `:slug` is in the `params-to-keep` set, and only the
-  `:param_fields` entries keyed by the ids of those kept parameters. Preserving by the kept ids (rather than removing
-  the ids of the dropped parameters) means an entry whose key matches no kept parameter — e.g. one keyed by a
-  template-tag id that disagrees with its parameter's id — fails closed instead of leaking."
-  [dashboard-or-card params-to-keep]
-  (let [kept-params (filter #(contains? params-to-keep (keyword (:slug %))) (:parameters dashboard-or-card))
-        kept-ids    (into #{} (map :id) kept-params)]
-    (-> dashboard-or-card
-        (assoc :parameters kept-params)
-        (u/update-some :param_fields #(select-keys % kept-ids)))))
-
 (defn- classify-params-as-keep
   "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
   those explicitly whitelisted as \"enabled\" in `embedding-params`. Anything else — absent from the whitelist, or
@@ -247,16 +235,15 @@
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (keep-params-and-param-fields dashboard-or-card (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)))
+  (let [params-to-keep (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)]
+    (update dashboard-or-card :parameters (partial filter #(contains? params-to-keep (keyword (:slug %)))))))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
   [dashboard-or-card token-params]
-  (keep-params-and-param-fields dashboard-or-card (into #{}
-                                                        (comp (map (comp keyword :slug))
-                                                              (remove (set (keys token-params))))
-                                                        (:parameters dashboard-or-card))))
+  (let [token-slugs (set (keys token-params))]
+    (update dashboard-or-card :parameters (partial remove #(contains? token-slugs (keyword (:slug %)))))))
 
 (defn- substitute-token-parameters-in-text
   "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
@@ -325,6 +312,7 @@
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params resolved-embedding-params)
+        api.public/keep-param-fields-for-parameters
         (assoc :embedding_params resolved-embedding-params))))
 
 (defn- get-embed-card-context
@@ -437,7 +425,8 @@
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params embedding-params))))
+        (remove-locked-and-disabled-params embedding-params)
+        api.public/keep-param-fields-for-parameters)))
 
 (defn- get-embed-dashboard-context
   "If a certain export-format is given, return the correct embedded dashboard context."

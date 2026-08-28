@@ -79,7 +79,7 @@
               (repeatedly (count (lib/aggregations query -1)) lib/count))
       (lib/native-query query "-"))))
 
-(defn- keep-param-fields-for-parameters
+(defn keep-param-fields-for-parameters
   "Keep only the `:param_fields` entries keyed by the ids of the object's own `:parameters`. Entries keyed by anything
   else — e.g. a native card's template-tag id with no matching parameter — have no widget to power, so they fail
   closed."
