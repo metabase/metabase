@@ -1,6 +1,6 @@
 import { PLUGIN_API } from "metabase/api/client";
 
-const MCP_UI_CREDENTIAL_META_KEY = "com.metabase/mcp-apps";
+import { MCP_APPS_METADATA_KEY } from "../constants";
 
 export interface McpUiAuth {
   credential: string;
@@ -13,7 +13,7 @@ export interface McpUiAuth {
 export function getMcpUiAuthFromToolMetadata(
   metadata: Record<string, unknown> | undefined,
 ): McpUiAuth | null {
-  const value = metadata?.[MCP_UI_CREDENTIAL_META_KEY];
+  const value = metadata?.[MCP_APPS_METADATA_KEY];
 
   if (typeof value !== "object" || value === null) {
     return null;
