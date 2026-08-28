@@ -23,9 +23,8 @@
 
 (defn do-with-query-execution! [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-    (let [original-hash    (qp.util/query-hash query)
-          result           (promise)
-          other-executions (atom [])]
+    (let [original-hash (qp.util/query-hash query)
+          result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         ;; Executions batched by earlier tests sit in a JVM-wide queue that drains on a 20s timer, so they would
         ;; otherwise arrive inside the `with-redefs` below. Ordering is what makes this work: the setting above
@@ -38,28 +37,15 @@
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [process-userland-query/save-execution-metadata!*
                       (fn [query-executions]
+                        ;; A promise keeps whichever value arrives first, so an execution from a query running
+                        ;; concurrently on a background thread must not be allowed to win this race.
                         (doseq [{qe-hash :hash, :as query-execution} query-executions
-                                :when qe-hash]
-                          ;; A promise keeps whichever value arrives first, so an execution submitted from a
-                          ;; background thread after the flush above must not be allowed to win the race against
-                          ;; the execution under test.
-                          (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
-                            (deliver result query-execution)
-                            (swap! other-executions conj
-                                   {:hash       (codecs/bytes->hex ^bytes qe-hash)
-                                    :context    (:context query-execution)
-                                    :json_query (:json_query query-execution)}))))]
+                                :when (and qe-hash (java.util.Arrays/equals ^bytes qe-hash original-hash))]
+                          (deliver result query-execution)))]
           (run
            (fn qe-result* []
              ;; generous deadline: slow exports (xlsx/POI) on loaded CI runners miss a 1s window
              (let [qe (deref result 30000 ::timed-out)]
-               (when (= qe ::timed-out)
-                 ;; an entry in :other-executions whose :context matches this test means query hashes are being
-                 ;; calculated inconsistently; compare :query against that entry's :json_query
-                 (throw (ex-info (format "%s: no QueryExecution was saved for this query" `do-with-query-execution!)
-                                 {:query            query
-                                  :original-hash    (codecs/bytes->hex original-hash)
-                                  :other-executions @other-executions})))
                (cond-> qe
                  (:running_time qe) (update :running_time int?)
                  (:hash qe)         (update :hash (fn [^bytes a-hash]
