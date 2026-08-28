@@ -1388,16 +1388,44 @@ LIMIT
     });
 
     it("should not allow to overwrite an existing table when changing the target", () => {
+      cy.log("run a transform so its target table exists");
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.runTab().click();
+      runTransformAndWaitForSuccess();
+
+      cy.log("change another transform's target to that table");
+      createMbqlTransform({
+        name: "Other transform",
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      H.DataStudio.Transforms.settingsTab().click();
+      getTransformsTargetContent().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 403);
+        cy.findByText("A table with that name already exists.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should not allow to change the target to one of the source tables", () => {
       createMbqlTransform({ visitTransform: true });
 
-      cy.log("change the target to an existing table");
+      cy.log("change the target to the source table");
       H.DataStudio.Transforms.settingsTab().click();
       getTransformsTargetContent().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
-        cy.wait("@updateTransform");
-        cy.findByText("A table with that name already exists.").should(
+        cy.wait("@updateTransform")
+          .its("response.statusCode")
+          .should("eq", 400);
+        cy.findByText(/Cyclic transform definitions detected/).should(
           "be.visible",
         );
       });
