@@ -26,10 +26,6 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
-        ;; Executions batched by earlier tests sit in a JVM-wide queue that drains on a 20s timer, so they would
-        ;; otherwise arrive inside the `with-redefs` below. Ordering is what makes this work: the setting above
-        ;; seals the queue (every submit now runs inline), so draining here empties it for good, and doing it
-        ;; before the redef sends those executions to the real save fn rather than dropping them.
         (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
@@ -37,11 +33,22 @@
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [process-userland-query/save-execution-metadata!*
                       (fn [query-executions]
-                        ;; A promise keeps whichever value arrives first, so an execution from a query running
-                        ;; concurrently on a background thread must not be allowed to win this race.
                         (doseq [{qe-hash :hash, :as query-execution} query-executions
-                                :when (and qe-hash (java.util.Arrays/equals ^bytes qe-hash original-hash))]
-                          (deliver result query-execution)))]
+                                :when qe-hash]
+                          (deliver
+                           result
+                           (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                             query-execution
+                             ;; if you're seeing this there is probably some
+                             ;; bug that is causing query hashes to get
+                             ;; calculated in an inconsistent manner; check
+                             ;; `:query` vs `:query-execution-query`
+                             (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
+                                      {:query                 query
+                                       :original-hash         (some-> original-hash codecs/bytes->hex)
+                                       :query-execution       query-execution
+                                       :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
+                                       :query-execution-query (:json_query query-execution)})))))]
           (run
            (fn qe-result* []
              ;; generous deadline: slow exports (xlsx/POI) on loaded CI runners miss a 1s window
@@ -107,16 +114,6 @@
                :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
-
-(deftest ignore-executions-for-other-queries-test
-  (testing "an execution flushed out of the shared batch queue mid-block must not win the promise"
-    (let [query (mt/mbql-query venues)]
-      (with-query-execution! [qe query]
-        (#'process-userland-query/save-execution-metadata!*
-         [{:hash (qp.util/query-hash (mt/mbql-query checkins)), :context :question}])
-        (process-userland-query query)
-        (is (= (codecs/bytes->hex (qp.util/query-hash query))
-               (:hash (qe))))))))
 
 (deftest failure-test
   (let [query (mt/mbql-query venues)]
