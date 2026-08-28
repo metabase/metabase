@@ -40,6 +40,7 @@ const knownIssues = [
   // `--mantine-spacing-*` / `--mantine-radius-*` variables at runtime from the
   // theme object in frontend/src/metabase/ui/theme.ts, so they are not in the
   // static @mantine/core/styles.css this script reads.
+  "--mantine-spacing-xxxs",
   "--mantine-spacing-xxs",
   "--mantine-spacing-xxl",
   "--mantine-radius-xxs",

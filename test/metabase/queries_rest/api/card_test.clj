@@ -631,7 +631,9 @@
     [:model/Card {card-id :id} {:name          "Card"
                                 :display       "line"
                                 :dataset_query (mt/mbql-query venues)
-                                :collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}]
+                                ;; Use get-or-create because the Personal Collection may not exist yet. A nil
+                                ;; `collection_id` would place the Card in the root Collection, which Rasta can read.
+                                :collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
     (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
@@ -1344,52 +1346,55 @@
 
 (deftest updating-model-query-does-not-shift-metadata-overrides-test
   (testing "Metadata should not shift to another column with the same name when the query changes (#60930)"
-    (let [mp                 (mt/metadata-provider)
-          orders-table       (lib.metadata/table mp (mt/id :orders))
-          products-table     (lib.metadata/table mp (mt/id :products))
-          reviews-table      (lib.metadata/table mp (mt/id :reviews))
-          orders-id          (lib.metadata/field mp (mt/id :orders :id))
-          orders-user-id     (lib.metadata/field mp (mt/id :orders :user_id))
-          orders-product-id  (lib.metadata/field mp (mt/id :orders :product_id))
-          orders-created-at  (lib.metadata/field mp (mt/id :orders :created_at))
-          products-id        (lib.metadata/field mp (mt/id :products :id))
-          products-created   (lib.metadata/field mp (mt/id :products :created_at))
-          reviews-id         (lib.metadata/field mp (mt/id :reviews :id))
-          reviews-product-id (lib.metadata/field mp (mt/id :reviews :product_id))
-          reviews-created-at (lib.metadata/field mp (mt/id :reviews :created_at))
-          join-query (fn [products-fields]
-                       (-> (lib/query mp orders-table)
-                           (lib/with-fields [orders-id orders-user-id orders-product-id orders-created-at])
-                           (lib/join (-> (lib/join-clause products-table
-                                                          [(lib/= orders-product-id products-id)])
-                                         (lib/with-join-alias "Products")
-                                         (lib/with-join-fields products-fields)))
-                           (lib/join (-> (lib/join-clause reviews-table
-                                                          [(lib/= orders-product-id reviews-product-id)])
-                                         (lib/with-join-alias "Reviews")
-                                         (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))))
-          with-products (mt/user-http-request :crowberto :post 200 "card"
-                                              {:name                   "model 60930"
-                                               :type                   :model
-                                               :display                :table
-                                               :dataset_query          (join-query [products-id products-created])
-                                               :visualization_settings {}})
-          card-id (:id with-products)
-          without-products (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
-                                                 {:dataset_query   (join-query :none)})]
-      (testing "columns get the correct display name after columns with the same name are removed"
-        (is (= ["ID" "User ID" "Product ID" "Created At"
-                "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
-               (map :display_name (:result_metadata without-products))
-               (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
-      (let [with-products-again (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
-                                                      {:dataset_query   (join-query [products-id products-created])})]
-        (testing "columns get the correct display name after columns with the same name are added"
+    ;; Clean up Revisions explicitly. Direct Card cleanup bypasses the hook that would normally delete the
+    ;; Revisions created by this test's POST and PUT requests.
+    (mt/with-model-cleanup [:model/Card :model/Revision]
+      (let [mp                 (mt/metadata-provider)
+            orders-table       (lib.metadata/table mp (mt/id :orders))
+            products-table     (lib.metadata/table mp (mt/id :products))
+            reviews-table      (lib.metadata/table mp (mt/id :reviews))
+            orders-id          (lib.metadata/field mp (mt/id :orders :id))
+            orders-user-id     (lib.metadata/field mp (mt/id :orders :user_id))
+            orders-product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+            orders-created-at  (lib.metadata/field mp (mt/id :orders :created_at))
+            products-id        (lib.metadata/field mp (mt/id :products :id))
+            products-created   (lib.metadata/field mp (mt/id :products :created_at))
+            reviews-id         (lib.metadata/field mp (mt/id :reviews :id))
+            reviews-product-id (lib.metadata/field mp (mt/id :reviews :product_id))
+            reviews-created-at (lib.metadata/field mp (mt/id :reviews :created_at))
+            join-query (fn [products-fields]
+                         (-> (lib/query mp orders-table)
+                             (lib/with-fields [orders-id orders-user-id orders-product-id orders-created-at])
+                             (lib/join (-> (lib/join-clause products-table
+                                                            [(lib/= orders-product-id products-id)])
+                                           (lib/with-join-alias "Products")
+                                           (lib/with-join-fields products-fields)))
+                             (lib/join (-> (lib/join-clause reviews-table
+                                                            [(lib/= orders-product-id reviews-product-id)])
+                                           (lib/with-join-alias "Reviews")
+                                           (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))))
+            with-products (mt/user-http-request :crowberto :post 200 "card"
+                                                {:name                   "model 60930"
+                                                 :type                   :model
+                                                 :display                :table
+                                                 :dataset_query          (join-query [products-id products-created])
+                                                 :visualization_settings {}})
+            card-id (:id with-products)
+            without-products (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                   {:dataset_query   (join-query :none)})]
+        (testing "columns get the correct display name after columns with the same name are removed"
           (is (= ["ID" "User ID" "Product ID" "Created At"
-                  "Products → ID" "Products → Created At"
                   "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
-                 (map :display_name (:result_metadata with-products-again))
-                 (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+                 (map :display_name (:result_metadata without-products))
+                 (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
+        (let [with-products-again (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                        {:dataset_query   (join-query [products-id products-created])})]
+          (testing "columns get the correct display name after columns with the same name are added"
+            (is (= ["ID" "User ID" "Product ID" "Created At"
+                    "Products → ID" "Products → Created At"
+                    "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
+                   (map :display_name (:result_metadata with-products-again))
+                   (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))
 
 (deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
@@ -1566,7 +1571,9 @@
                           (create-card! :rasta 403))))))))))
 
 (deftest ^:parallel create-card-with-type-and-dataset-test
-  (t2/with-transaction [_]
+  ;; Use `:rollback-only` like the sibling tests below. Otherwise, the two Cards created through the API
+  ;; commit and leak into later tests that scan the Card table.
+  (t2/with-transaction [_ nil {:rollback-only true}]
     (testing "can create a model using type"
       (is (=? {:type "model"}
               (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
@@ -5198,7 +5205,10 @@
                 resp (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))]
             (is (= 3 (count (get-in resp [:data :rows]))))))))))
 
-(deftest ^:parallel reduced-fields-propagate-to-downstream-card-test
+;; Not `^:parallel`: running alongside other tests, something commits the transaction holding this test's
+;; rollback-only savepoint, which discards both `with-temp` Cards. The downstream query then reports its source Card
+;; as missing. Only MySQL shows it, and only under load -- the test passes on its own.
+(deftest ^:synchronized reduced-fields-propagate-to-downstream-card-test
   (testing "A card with reduced :fields only exposes those columns to a card sourced from it (#30610)"
     (let [mp         (mt/metadata-provider)
           venues-id  (lib.metadata/field mp (mt/id :venues :id))

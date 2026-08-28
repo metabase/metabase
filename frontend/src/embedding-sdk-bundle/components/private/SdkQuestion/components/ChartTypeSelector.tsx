@@ -1,6 +1,6 @@
 import { useQuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/hooks/use-question-visualization";
 import CS from "metabase/css/core/index.css";
-import { ChartTypeSettings } from "metabase/query_builder/components/chart-type-selector";
+import { ChartTypeSettings } from "metabase/query_builder";
 import type { StackProps } from "metabase/ui";
 
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
