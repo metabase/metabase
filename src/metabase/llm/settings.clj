@@ -55,7 +55,7 @@
 
 (defsetting llm-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
-                     "Self-hosted only: Metabase Cloud always uses external-only.\n"
+                     "Set through the environment only; on Metabase Cloud the default applies.\n"
                      "Options:\n"
                      "- external-only (default; only globally reachable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
@@ -64,13 +64,17 @@
                      "private addresses."))
   :type       :keyword
   ;; Environment only. A settings manager is who this policy defends against, and on Cloud a customer admin
-  ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API.
+  ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API, and a value
+  ;; that reached the app DB some other way is ignored rather than trusted.
   :visibility :internal
   :setter     :none
   :default    :external-only
   :export?    false
+  :doc        (str "Set this when a self-hosted vLLM server is on your private network (allow-private) or on this "
+                   "machine (allow-all). There is no admin UI for it, and a value stored in the application "
+                   "database is ignored.")
   :getter     (fn []
-                (let [value (setting/get-value-of-type :keyword :llm-allowed-networks)]
+                (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
                   (cond
                     (nil? value)                          :external-only
                     (contains? network-policy-rank value) value
