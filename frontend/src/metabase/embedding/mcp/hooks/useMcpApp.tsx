@@ -83,12 +83,14 @@ export function useMcpApp(): McpAppState {
           {};
 
         if (query) {
+          // Prevent the new tool result from using the previous result's credential and session ID.
           setUiCredential("");
           setMcpSessionId("");
-          setHostError(null);
           setToolResultVersion((version) => version + 1);
+
           setQuery(query);
           setPrompt(prompt ?? null);
+          setHostError(null);
         }
       };
     },
