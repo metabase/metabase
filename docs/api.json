@@ -12175,6 +12175,215 @@
           "required" : [ "payload_type" ]
         } ]
       },
+      "metabase.notification.api.notification.NotificationApiUpdateInput" : {
+        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload" : {
+              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCardUpdate"
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type", "payload" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type" ]
+        } ]
+      },
       "metabase.notification.models.CreateNotificationCardParams" : {
         "description" : "[[::NotificationCard]] on a create request, where the caller does not get to pick the id.",
         "type" : "object",
@@ -12684,6 +12893,25 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "send_condition" : {
+            "type" : "string",
+            "enum" : [ "goal_below", "has_result", "goal_above" ]
+          },
+          "send_once" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "card_id" ]
+      },
+      "metabase.notification.models.NotificationCardUpdate" : {
+        "description" : "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification.",
+        "type" : "object",
+        "properties" : {
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
           },
           "send_condition" : {
             "type" : "string",
@@ -15140,6 +15368,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/agent" ]
@@ -19944,6 +20182,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/comment" ]
       },
       "post" : {
@@ -20020,6 +20268,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/comment" ]
@@ -21407,6 +21665,18 @@
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -22154,6 +22424,18 @@
               "description" : "String must be a valid 21-character NanoID string.",
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
             } ]
           }
         } ],
@@ -23237,6 +23519,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -23788,7 +24082,14 @@
         "operationId" : "get-api-database-virtual-db-datasets-schema",
         "summary" : "GET /api/database/{virtual-db}/datasets/{schema}",
         "description" : "Returns a list of Tables for the datasets virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23828,7 +24129,14 @@
         "operationId" : "get-api-database-virtual-db-schema-schema",
         "summary" : "GET /api/database/{virtual-db}/schema/{schema}",
         "description" : "Returns a list of Tables for the saved questions virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26206,6 +26514,17 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "locale",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -26899,6 +27218,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -27060,6 +27389,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
@@ -27344,6 +27683,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/data-complexity-score" ]
@@ -28526,6 +28875,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/library" ]
       },
       "get" : {
@@ -28559,6 +28918,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/library" ]
@@ -29617,6 +29986,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/permission_debug" ]
       }
     },
@@ -30250,6 +30629,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
@@ -31085,7 +31474,15 @@
         "operationId" : "put-api-ee-scim-v2-Groups-id",
         "summary" : "PUT /api/ee/scim/v2/Groups/{id}",
         "description" : "Update a group.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -31368,7 +31765,15 @@
         "operationId" : "put-api-ee-scim-v2-Users-id",
         "summary" : "PUT /api/ee/scim/v2/Users/{id}",
         "description" : "Update a user.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -32234,6 +32639,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/serialization" ]
       }
     },
@@ -32682,6 +33097,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/tenant" ]
@@ -35228,6 +35653,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/geojson" ]
       }
     },
@@ -35254,6 +35689,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/geojson" ]
@@ -35450,7 +35895,16 @@
         "operationId" : "get-api-health-inspector",
         "summary" : "GET /api/health-inspector",
         "description" : "Get a list of recent health check runs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -39384,7 +39838,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiUpdateInput"
               }
             }
           }
@@ -41154,6 +41608,13 @@
           "schema" : {
             "type" : "string",
             "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -44547,6 +45008,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/session" ]
       }
     },
@@ -45124,7 +45595,7 @@
       "post" : {
         "operationId" : "post-api-slack-bug-report",
         "summary" : "POST /api/slack/bug-report",
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -45144,10 +45615,145 @@
                 "type" : "object",
                 "properties" : {
                   "diagnosticInfo" : {
-                    "type" : "object"
+                    "type" : "object",
+                    "properties" : {
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "additionalProperties" : false
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "additionalProperties" : false
                   }
                 },
-                "required" : [ "diagnosticInfo" ]
+                "required" : [ "diagnosticInfo" ],
+                "additionalProperties" : false
               }
             }
           }
