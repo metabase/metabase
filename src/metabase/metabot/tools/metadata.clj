@@ -176,7 +176,7 @@
 
 (def ^:private get-field-values-schema
   [:map {:closed true}
-   [:data_source [:enum "table" "model" "metric"]]
+   [:data_source [:enum "table" "model" "metric" "question" "report"]]
    [:source_id :int]
    [:field_id [:or :int :string]]])
 
@@ -185,9 +185,12 @@
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]
+  ;; mu/defn schemas aren't enforced in production, so `data_source` may be any string the LLM
+  ;; sends -- fall through to `field-values`'s own agent-facing error instead of throwing here.
   (case data_source
-    "table"           (resources-tools/check-table-resource-database source_id)
-    ("model" "metric") (resources-tools/check-card-resource-database source_id))
+    "table"                                (resources-tools/check-table-resource-database source_id)
+    ("model" "metric" "question" "report") (resources-tools/check-card-resource-database source_id)
+    nil)
   (add-output
    (field-stats-tools/field-values {:entity-type data_source
                                     :entity-id source_id

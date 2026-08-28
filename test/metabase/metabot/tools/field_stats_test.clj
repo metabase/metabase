@@ -143,3 +143,11 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
+
+(deftest field-values-unknown-entity-type-test
+  (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
+            production -- returns a graceful agent-facing message instead of throwing"
+    (mt/as-admin
+      (is (=? {:output #"Unknown data source type: bogus"}
+              (metabot.tools.field-stats/field-values
+               {:entity-type "bogus", :entity-id 1, :field-id 1, :limit 5}))))))

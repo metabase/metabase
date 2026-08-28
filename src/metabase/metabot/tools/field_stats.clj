@@ -118,4 +118,5 @@
   (case entity-type
     "metric"                      (metric-field-stats entity-id field-id limit)
     ("model" "report" "question") (card-field-stats entity-id field-id limit entity-type)
-    "table"                       (table-field-stats entity-id field-id limit)))
+    "table"                       (table-field-stats entity-id field-id limit)
+    {:output (str "Unknown data source type: " entity-type)}))

@@ -4,6 +4,7 @@
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (deftest get-field-values-tool-rejects-destination-database-table-test
@@ -44,6 +45,29 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
                                   (metadata-tools/get-field-values-tool
                                    {:data_source "metric" :source_id metric-id :field_id 1})))))))))
+
+(deftest get-field-values-tool-supports-question-and-report-data-source-test
+  (testing "get_field_values recognizes \"question\"/\"report\" as card-backed data sources -- the same
+            guard applied to \"model\"/\"metric\" -- instead of throwing on an unmatched case clause"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}
+                     :model/Card     {question-id :id}    {:type :question :database_id destination-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (doseq [data-source ["question" "report"]]
+            (testing data-source
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
+                                    (metadata-tools/get-field-values-tool
+                                     {:data_source data-source :source_id question-id :field_id 1}))))))))))
+
+(deftest get-field-values-tool-unknown-data-source-test
+  (testing "an unexpected data_source -- e.g. because the schema that constrains it isn't enforced in
+            production -- doesn't throw before reaching field-values, which reports it gracefully"
+    (mt/as-admin
+      (mu/disable-enforcement
+        (is (=? {:output #"Unknown data source type: bogus"}
+                (metadata-tools/get-field-values-tool
+                 {:data_source "bogus" :source_id 1 :field_id 1})))))))
 
 (deftest get-metadata-rejects-destination-database-table-test
   (testing "list_available_fields for a table on a destination (routed) database is rejected before it
