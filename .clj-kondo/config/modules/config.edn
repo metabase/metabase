@@ -1813,6 +1813,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
