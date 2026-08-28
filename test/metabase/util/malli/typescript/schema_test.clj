@@ -27,12 +27,110 @@
     "(string | null)[]"
     [:any {:ts/array-of [:maybe :string]}]))
 
+(deftest ^:parallel function-intersection-test
+  (is (= "((arg0: string) => number) & ((arg0: string, arg1: number) => number)"
+         (schema/schema->ts
+          [:function
+           [:=> [:cat :string] :int]
+           [:=> [:cat :string :int] :int]]))))
+
+(deftest ^:parallel callable-predicate-test
+  (is (= "(...args: unknown[]) => unknown" (schema/schema->ts 'ifn?)))
+  (is (= "(...args: unknown[]) => unknown" (schema/schema->ts 'fn?))))
+
+(deftest ^:parallel type-predicate-test
+  (is (= "(arg0: unknown) => arg0 is string"
+         (schema/schema->ts [:=> [:cat :any] [:boolean {:ts/predicate-of :string}]])))
+  (is (= "(arg0: unknown, arg1: number) => arg1 is string"
+         (schema/schema->ts
+          [:=> [:cat :any :int]
+           [:boolean {:ts/predicate-of {:param 1, :schema :string}}]])))
+  (is (= "(value: unknown) => value is string"
+         (schema/schema->ts [:fn {:ts/predicate-of :string} string?]))))
+(deftest ^:parallel labeled-tuple-test
+  (is (= "[op: string, value: number]"
+         (schema/schema->ts [:catn [:op :keyword] [:value :int]])))
+  (is (= "[string, number]"
+         (schema/schema->ts [:cat :keyword :int]))))
+(deftest ^:parallel multi-discriminant-test
+  (testing "keyword dispatch synthesizes literal discriminants into map branches"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:multi {:dispatch :type}
+            [:field [:map {:closed true} [:x :string]]]
+            [:expression [:map {:closed true} [:y :int]]]])]
+      (is (= "{\n\ttype: \"field\";\n\tx: string;\n} | {\n\ttype: \"expression\";\n\ty: number;\n}"
+             (type/render type)))
+      (is (= {:key-string "type"
+              :branches [{:value :field, :value-string "\"field\"", :literal? true}
+                         {:value :expression, :value-string "\"expression\"", :literal? true}]}
+             multi-branches))))
+  (testing "branches that already declare the literal are flagged without duplication"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:multi {:dispatch :type}
+            [:field [:map {:closed true} [:type [:= :field]] [:x :string]]]
+            [:other :string]])]
+      (is (= "{\n\ttype: \"field\";\n\tx: string;\n} | string" (type/render type)))
+      (is (= [{:value :field, :value-string "\"field\"", :literal? true}
+              {:value :other, :value-string "\"other\"", :literal? false}]
+             (:branches multi-branches)))))
+  (testing "function dispatch requires :ts/dispatch-key for synthesis"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:multi {:dispatch (fn [_] :field), :ts/dispatch-key :type}
+            [:field [:map {:closed true} [:x :string]]]])]
+      (is (= "{\n\ttype: \"field\";\n\tx: string;\n}" (type/render type)))
+      (is (some? multi-branches))))
+  (testing "opaque function dispatch stays a plain union"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:multi {:dispatch (fn [_] :field)}
+            [:field [:map {:closed true} [:x :string]]]])]
+      (is (= "{\n\tx: string;\n}" (type/render type)))
+      (is (nil? multi-branches)))))
+(deftest ^:parallel camel-helper-test
+  (testing "simple string keys delegate to the Camel helper"
+    (is (= "Camel<{\n\t\"display-name\": string;\n\t\"enabled?\"?: boolean;\n}>"
+           (schema/schema->ts
+            [:any {:ts/object-of
+                   [:map {:closed true}
+                    ["display-name" :string]
+                    ["enabled?" {:optional true} :boolean]]
+                   :ts/key-transform :camelCase}]))))
+  (testing "keys outside the provable grammar keep exact inline expansion"
+    (is (= "{\n\turlValue: number;\n}"
+           (schema/schema->ts
+            [:any {:ts/object-of
+                   [:map {:closed true}
+                    ["URL-value" :int]]
+                   :ts/key-transform :camelCase}])))))
+(deftest ^:parallel readonly-test
+  (are [expected schema-form] (= expected (schema/schema->ts schema-form {:readonly? true}))
+    "readonly string[]"
+    [:vector :string]
+
+    "readonly [string, ...string[]]"
+    [:sequential {:min 1} :string]
+
+    "Readonly<{\n\tx: string;\n}>"
+    [:map {:closed true} [:x :string]]
+
+    "Readonly<Record<string, number>>"
+    [:map-of :string :int]
+
+    "ReadonlySet<string>"
+    [:set :string])
+  (testing "parameter positions stay mutable"
+    (is (= "(arg0: string[]) => number"
+           (schema/schema->ts
+            [:=> [:cat [:vector :string]] :int]
+            {:readonly? true})))))
 (deftest ^:parallel unsupported-predicate-test
   (doseq [schema-form ['bytes? 'uri?]]
     (let [{:keys [type diagnostics]} (schema/schema->result schema-form)]
       (is (= "unknown" (type/render type)))
       (is (seq diagnostics)))))
-
 (deftest ^:parallel literal-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form))
     "\"text\"" [:= "text"]
@@ -55,7 +153,6 @@
     (let [{:keys [type diagnostics]} (schema/schema->result [:enum :valid 1/2])]
       (is (= "unknown" (type/render type)))
       (is (some #(= :unsupported-literal (:type %)) diagnostics)))))
-
 (deftest ^:parallel unsupported-map-key-test
   (doseq [key-schema [[:enum true false]
                       [:enum nil]
@@ -74,7 +171,6 @@
       (is (= "Partial<Record<\"plain\" | \"qualified/name\", number>>"
              (type/render type)))
       (is (empty? diagnostics)))))
-
 (deftest ^:parallel seqex-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form))
     "[string, Record<string, unknown>, unknown, ...unknown[]]"
@@ -90,7 +186,6 @@
 
     "[string, number, number, ...number[]]"
     [:cat :string [:+ {:min 2} :int]]))
-
 (deftest ^:parallel non-trailing-sequence-repetition-test
   (doseq [schema-form [[:cat [:* :string] :int]
                        [:cat [:+ :string] :int]
@@ -98,7 +193,6 @@
     (let [{:keys [type diagnostics]} (schema/schema->result schema-form)]
       (is (= "(string | number)[]" (type/render type)))
       (is (some #(= :non-trailing-sequence-repetition (:type %)) diagnostics)))))
-
 (deftest ^:parallel composite-sequence-repetition-test
   (doseq [schema-form [[:+ [:cat :string [:* :boolean]]]
                        [:repeat {:min 2} [:cat :string [:* :boolean]]]
@@ -106,7 +200,6 @@
     (let [{:keys [type diagnostics]} (schema/schema->result schema-form)]
       (is (= "(string | boolean)[]" (type/render type)))
       (is (some #(= :composite-sequence-repetition (:type %)) diagnostics)))))
-
 (deftest ^:parallel tuple-valued-sequence-repetition-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form))
     "[[string, number], ...[string, number][]]"
@@ -114,13 +207,11 @@
 
     "[[string, number], [string, number], ...[string, number][]]"
     [:repeat {:min 2} [:tuple :string :int]]))
-
 (deftest ^:parallel sequence-alternative-limit-test
   (let [schema-form (into [:cat] (repeat 9 [:? :string]))
         {:keys [type diagnostics]} (schema/schema->result schema-form)]
     (is (= "unknown[]" (type/render type)))
     (is (some #(= :sequence-alternative-limit-exceeded (:type %)) diagnostics))))
-
 (deftest ^:parallel function-seqex-test
   (is (= "(arg0: string, arg1?: number, ...arg2: boolean[]) => string"
          (schema/schema->ts [:=> [:cat :string [:? :int] [:* :boolean]] :string])))
@@ -129,7 +220,6 @@
   (is (= "(arg0: string, arg1: number, a_b: boolean, arg3: string) => string"
          (schema/schema->ts
           [:=> [:catn [:1st :string] [:a.b :int] [:a-b :boolean] [:a_b :string]] :string]))))
-
 (deftest ^:parallel predicate-sanitizer-test
   (testing "explicit TypeScript overrides never evaluate predicates"
     (is (= "Custom"
@@ -146,7 +236,6 @@
            (schema/schema->ts
             [:and [:sequential :string]
              [:fn '(fn [xs] (apply distinct? xs))]])))))
-
 (deftest ^:parallel map-key-collision-test
   (testing "namespace stripping merges colliding fields"
     (let [{:keys [type diagnostics]}

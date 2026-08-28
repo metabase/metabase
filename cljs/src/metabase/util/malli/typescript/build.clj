@@ -52,6 +52,13 @@
   []
   (some? (System/getenv "MB_DEBUG_CLJS")))
 
+(defn- readonly-enabled?
+  "Containers crossing the CLJS→JavaScript boundary are persistent and
+  immutable; set `MB_CLJS_TS_READONLY` to surface that in declarations as
+  `readonly` arrays and `Readonly` objects."
+  []
+  (some? (System/getenv "MB_CLJS_TS_READONLY")))
+
 (defn- registry-schema-resolver
   [resolve-schema require-ns]
   (let [attempted-namespaces (atom #{})]
@@ -92,7 +99,8 @@
   (refs/type-aliases
    initial-refs
    {:resolve-schema #(resolve-registry-schema local-definitions %)
-    :compile-options {:registry local-definitions}
+    :compile-options {:registry local-definitions
+                      :readonly? (readonly-enabled?)}
     :expand? expand?
     :type-name declaration/base-type-name
     :ref-name ref-name}))
@@ -104,7 +112,8 @@
 (defn- declaration-results
   [ns defs shared-types]
   (mapv #(declaration/def->result % {:current-ns ns
-                                     :shared-types shared-types})
+                                     :shared-types shared-types
+                                     :readonly? (readonly-enabled?)})
         (vals defs)))
 
 (defn- merged-local-definitions
@@ -144,9 +153,23 @@
     (set/difference (set (:refs-used alias-result))
                     (set (keys local-defs)))))
 
+(def ^:private camel-helper-content
+  (str "type CamelCase<S extends string> =\n"
+       "  S extends `${infer Rest}?` ? `is${Capitalize<CamelCase<Rest>>}` :\n"
+       "  S extends `${infer H}-${infer R}` ? `${H}${Capitalize<CamelCase<R>>}` :\n"
+       "  S extends `${infer H}_${infer R}` ? `${H}${Capitalize<CamelCase<R>>}` :\n"
+       "  S extends `${infer H} ${infer R}` ? `${H}${Capitalize<CamelCase<R>>}` :\n"
+       "  S;\n"
+       "\n"
+       "export type Camel<T> = { [K in keyof T as CamelCase<K & string>]: T[K] };\n"))
+
+(defn- uses-camel-helper?
+  [content]
+  (boolean (str/includes? content "Camel<")))
+
 (defn- ts-content
   "Generate TypeScript content and diagnostics for one runtime entry namespace."
-  [ns defs shared-types ns-refs]
+  [ns defs shared-types ns-refs shared-exists?]
   (let [results        (declaration-results ns defs shared-types)
         declarations   (str/join "\n\n" (map :declaration results))
         direct-refs    (into (set ns-refs) (mapcat :registry-refs) results)
@@ -158,14 +181,24 @@
                         #(declaration/registry-type-name % shared-types))
         type-aliases   (str/join "\n\n" (:declarations alias-result))
         shared-refs-used (filter shared-types (:refs-used alias-result))
-        import-stmt    (when (seq shared-refs-used)
-                         "import type * as Shared from './metabase.lib.shared';\n\n")]
-    {:content (if (or import-stmt (seq type-aliases) (seq declarations))
-                (str (or import-stmt "")
-                     (if (seq type-aliases)
-                       (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
-                       declarations))
-                "export {};")
+        camel-used?    (uses-camel-helper? (str type-aliases "\n" declarations))
+        import-stmt    (when (and shared-exists? (or (seq shared-refs-used) camel-used?))
+                         "import type * as Shared from './metabase.lib.shared';\n\n")
+        inline-helper  (when (and camel-used? (not shared-exists?))
+                         (str camel-helper-content "\n"))
+        content        (if (or import-stmt inline-helper (seq type-aliases) (seq declarations))
+                         (str (or inline-helper "")
+                              (or import-stmt "")
+                              (if (seq type-aliases)
+                                (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
+                                declarations))
+                         "export {};")
+        ;; The Camel helper lives in the shared module; entry modules reach it as
+        ;; Shared.Camel so the identifier resolves under the namespace import.
+        content        (if (and shared-exists? camel-used?)
+                         (str/replace content "Camel<" "Shared.Camel<")
+                         content)]
+    {:content content
      :diagnostics (vec (concat (mapcat :diagnostics results)
                                local-diagnostics
                                (:diagnostics alias-result)))
@@ -173,15 +206,18 @@
 
 (defn- generate-shared-types-result
   "Generate content and diagnostics for the shared registry alias module."
-  [shared-refs]
+  [shared-refs camel-used?]
   (let [alias-result (generate-type-alias-result
                       shared-refs
                       {}
                       (constantly true)
-                      #(declaration/registry-type-name % #{}))]
+                      #(declaration/registry-type-name % #{}))
+        declarations (str/join "\n\n" (:declarations alias-result))]
     {:content (str "// Shared type aliases for registry schemas reachable from generated declarations\n"
                    "// Auto-generated - do not edit\n\n"
-                   (str/join "\n\n" (:declarations alias-result)))
+                   (when (or camel-used? (uses-camel-helper? declarations))
+                     (str camel-helper-content "\n"))
+                   declarations)
      :diagnostics (:diagnostics alias-result)}))
 
 (defn- ns->file-path
@@ -288,20 +324,24 @@
           ;; Registry aliases used by entry declarations form the shared type surface;
           ;; inline registries remain local to their entry module.
           shared-refs (into #{} (mapcat val) ns-refs)
-          shared-result (when (seq shared-refs)
-                          (generate-shared-types-result shared-refs))
+          shared-exists? (boolean (seq shared-refs))
           module-results
           (mapv (fn [[ns defs]]
                   (let [t            (u/start-timer)
                         fname        (comp/munge (str ns))
                         this-ns-refs (get ns-refs ns #{})
-                        result       (ts-content ns defs shared-refs this-ns-refs)]
+                        result       (ts-content ns defs shared-refs this-ns-refs shared-exists?)
+                        camel-used?  (uses-camel-helper? (:content result))]
                     (swap! weak-types #(merge-with into % (:weak-types result)))
                     (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})
                     {:file (b.data/output-file state (str fname ".d.ts"))
                      :ns ns
+                     :camel-used? camel-used?
                      :result result}))
-                nses-defs)]
+                nses-defs)
+          any-camel-used? (boolean (some :camel-used? module-results))
+          shared-result (when shared-exists?
+                          (generate-shared-types-result shared-refs any-camel-used?))]
       (log/info "Shared types analysis" {:total-refs (count shared-refs)
                                          :shared-refs (count shared-refs)})
       (when (seq (:diagnostics shared-result))

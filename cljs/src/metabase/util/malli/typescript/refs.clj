@@ -1,5 +1,6 @@
 (ns metabase.util.malli.typescript.refs
   (:require
+   [metabase.util.malli.typescript.declaration :as declaration]
    [metabase.util.malli.typescript.schema :as schema]
    [metabase.util.malli.typescript.type :as type]))
 
@@ -87,6 +88,12 @@
   (or (= schema-keyword ref-keyword)
       (reachable? graph ref-keyword schema-keyword)))
 
+(defn- preserve-node-flags
+  "Rebuilt nodes drop flags the constructors don't take; carry them over."
+  [original rebuilt]
+  (cond-> rebuilt
+    (:readonly? original) (assoc :readonly? true)))
+
 (declare make-recursion-safe*)
 
 (defn- transform-tuple-item
@@ -133,12 +140,12 @@
     :array
     (let [[element diagnostics]
           (make-recursion-safe* schema-keyword graph true (:element node))]
-      [(type/array element) diagnostics])
+      [(preserve-node-flags node (type/array element)) diagnostics])
 
     :generic
     (let [[arguments diagnostics]
           (transform-many schema-keyword graph true (:arguments node))]
-      [(type/generic (:name node) arguments) diagnostics])
+      [(preserve-node-flags node (type/generic (:name node) arguments)) diagnostics])
 
     :tuple
     (let [[items item-diagnostics]
@@ -153,7 +160,7 @@
           (if-let [rest-type (:rest node)]
             (make-recursion-safe* schema-keyword graph true rest-type)
             [nil []])]
-      [(type/tuple items rest-type)
+      [(preserve-node-flags node (type/tuple items rest-type))
        (into item-diagnostics rest-diagnostics)])
 
     :object
@@ -171,8 +178,13 @@
             [nil []])
           index-signature (when-let [signature (:index-signature node)]
                             (assoc signature :value index-value))]
-      [(type/object properties index-signature)
+      [(preserve-node-flags node (type/object properties index-signature))
        (into property-diagnostics index-diagnostics)])
+
+    :key-transform
+    (let [[inner diagnostics]
+          (make-recursion-safe* schema-keyword graph true (:inner node))]
+      [(type/key-transform-type (:name node) inner) diagnostics])
 
     :function
     (let [[parameters parameter-diagnostics]
@@ -184,11 +196,31 @@
                   [[] []]
                   (:parameters node))
           [return-type return-diagnostics]
-          (make-recursion-safe* schema-keyword graph true (:return node))]
-      [(type/function-type parameters return-type)
-       (into parameter-diagnostics return-diagnostics)])
+          (make-recursion-safe* schema-keyword graph true (:return node))
+          rebuilt (type/function-type parameters return-type)
+          [predicate predicate-diagnostics]
+          (if-let [predicate (:predicate node)]
+            (let [[predicate-type diagnostics]
+                  (make-recursion-safe* schema-keyword graph true (:type predicate))]
+              [{:parameter (:parameter predicate), :type predicate-type} diagnostics])
+            [nil []])]
+      [(cond-> rebuilt predicate (type/function-predicate (:parameter predicate) (:type predicate)))
+       (into parameter-diagnostics (concat return-diagnostics predicate-diagnostics))])
 
     [node []]))
+
+(defn- phantom-discriminant
+  "Optional synthetic tag distinguishing structurally identical aliases.
+  Compiler-controlled; never written by hand."
+  [type-name]
+  (type/object [{:name "__kind", :optional? true, :type (type/literal type-name)}]))
+
+(defn- collidable-kind?
+  [node]
+  (contains? #{:object :union :intersection} (:kind node)))
+
+(def ^:private typescript-identifier-pattern
+  #"[A-Za-z_$][\w$]*")
 
 (defn type-aliases
   "Generate deterministic TypeScript aliases for a registry dependency closure.
@@ -197,18 +229,54 @@
   [initial-refs {:keys [type-name ref-name] :as options}]
   (let [{:keys [definitions graph refs-used diagnostics] :as closure}
         (dependency-closure initial-refs options)
-        rendered
-        (mapv (fn [[schema-keyword compiled]]
-                (let [[safe-type recursion-diagnostics]
-                      (make-recursion-safe* schema-keyword graph false (:type compiled))]
-                  {:declaration (str "export type "
-                                     (type-name schema-keyword)
-                                     " = "
-                                     (type/render safe-type {:ref-name ref-name})
-                                     ";")
-                   :diagnostics recursion-diagnostics}))
-              definitions)]
+        safe-types
+        (into {}
+              (map (fn [[schema-keyword compiled]]
+                     (let [[safe-type recursion-diagnostics]
+                           (make-recursion-safe* schema-keyword graph false (:type compiled))]
+                       [schema-keyword {:type safe-type
+                                        :diagnostics recursion-diagnostics
+                                        :multi-branches (:multi-branches compiled)}])))
+              definitions)
+        ;; Aliases whose rendered bodies are byte-identical collide structurally;
+        ;; only object/union-shaped collisions get a phantom discriminant so
+        ;; mutually interchangeable primitives stay interchangeable.
+        body-groups (group-by (fn [schema-keyword]
+                                (type/render (get-in safe-types [schema-keyword :type]) {:ref-name ref-name}))
+                              (keys safe-types))
+        render-entry
+        (fn [schema-keyword]
+          (let [{:keys [type multi-branches]} (get safe-types schema-keyword)
+                base-name (type-name schema-keyword)
+                body (type/render type {:ref-name ref-name})
+                phantom (when (and (collidable-kind? type)
+                                   (> (count (get body-groups body)) 1))
+                          (phantom-discriminant base-name))
+                rendered-type (if phantom
+                                (type/intersection [type phantom])
+                                type)
+                declaration (str "export type " base-name " = "
+                                 (type/render rendered-type {:ref-name ref-name}) ";")
+                ;; Extract<> only distributes over a plain union; skip it when the
+                ;; alias was phantom-wrapped into an intersection.
+                extract-declarations
+                (when (and (nil? phantom)
+                           (= :union (:kind type))
+                           (:key-string multi-branches)
+                           (<= 2 (count (filter :literal? (:branches multi-branches)))))
+                  (keep (fn [{:keys [value value-string literal?]}]
+                          (let [tag-name (declaration/branch-type-name value)]
+                            (when (and literal?
+                                       value-string
+                                       (re-matches typescript-identifier-pattern tag-name))
+                              (str "export type " base-name "_" tag-name
+                                   " = Extract<" (ref-name schema-keyword)
+                                   ", { \"" (:key-string multi-branches) "\": " value-string " }>;"))))
+                        (:branches multi-branches)))]
+            {:declarations (into [declaration] extract-declarations)
+             :diagnostics (:diagnostics (get safe-types schema-keyword))}))
+        rendered (mapv render-entry (sort-by str (keys safe-types)))]
     (assoc closure
-           :declarations (mapv :declaration rendered)
+           :declarations (into [] (mapcat :declarations) rendered)
            :refs-used refs-used
            :diagnostics (into (vec diagnostics) (mapcat :diagnostics) rendered))))

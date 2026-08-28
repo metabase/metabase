@@ -37,4 +37,32 @@
   (testing "unsupported literal nodes fail before invalid TypeScript can be emitted"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unsupported TypeScript literal"
-                          (type/render (type/literal 'not-a-typescript-literal))))))
+                          (type/render (type/literal 'not-a-typescript-literal)))))
+  (testing "type predicates narrow parameters"
+    (is (= "(x: unknown) => x is string"
+           (type/render (type/function-predicate
+                         (type/function-type [{:name "x", :type (type/unknown)}]
+                                             (type/primitive "boolean"))
+                         0
+                         (type/primitive "string"))))))
+  (testing "readonly containers"
+    (are [expected node] (= expected (type/render node))
+      "readonly string[]"
+      (assoc (type/array (type/primitive "string")) :readonly? true)
+
+      "readonly [string, number]"
+      (assoc (type/tuple [(type/primitive "string") (type/primitive "number")]) :readonly? true)
+
+      "Readonly<{\n\tx: string;\n}>"
+      (assoc (type/object [{:name "x", :type (type/primitive "string")}]) :readonly? true)
+
+      "ReadonlySet<string>"
+      (assoc (type/generic "Set" [(type/primitive "string")]) :readonly? true)
+
+      "Readonly<Record<string, number>>"
+      (assoc (type/generic "Record" [(type/primitive "string") (type/primitive "number")]) :readonly? true)))
+  (testing "key-transform helper node"
+    (is (= "Camel<{\n\t\"display-name\": string;\n}>"
+           (type/render (type/key-transform-type
+                         "Camel"
+                         (type/object [{:name "\"display-name\"", :type (type/primitive "string")}])))))))
