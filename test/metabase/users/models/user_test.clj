@@ -589,10 +589,11 @@
                                                     :type user-type
                                                     :login_attributes {"user_attr" "user_value"}
                                                     :jwt_attributes {"jwt_attr" "jwt_value"}}))))))
-      (testing "fails closed when :type is missing from the user map"
-        (is (= {}
-               (:attributes (user/add-attributes {:email "test@example.com"
-                                                  :login_attributes {"user_attr" "user_value"}}))))))))
+      (testing "throws (in dev) when :type is missing from the user map, so callers can't forget to select it"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid input"
+                              (user/add-attributes {:email "test@example.com"
+                                                    :login_attributes {"user_attr" "user_value"}})))))))
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
