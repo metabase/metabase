@@ -188,6 +188,27 @@
   [schema]
   (tools-manifest/malli->json-schema schema))
 
+(defn- register-ui-tool-for-resources!
+  [resource-keys tool]
+  (let [resources (mapv (fn [resource-key]
+                          (if-let [uri (get-in @registry [:key->uri resource-key])]
+                            (get-in @registry [:uri->resource uri])
+                            (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
+                        resource-keys)
+        scopes    (into #{} (map :scope) resources)
+        ui-meta   (cond-> {}
+                    (= 1 (count resources)) (assoc :resourceUri (:uri (first resources)))
+                    (:visibility tool)      (assoc :visibility (:visibility tool)))
+        tool      (-> tool
+                      (dissoc :visibility)
+                      (update :inputSchema malli->ui-input-schema)
+                      (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
+                      (assoc :scope (if (= 1 (count scopes)) (first scopes) scopes)
+                             :required-extensions #{:mcp-app-ui}
+                             :_meta {:ui ui-meta}))]
+    (swap! registry assoc-in [:tools (:name tool)] tool)
+    tool))
+
 (mu/defn- register-ui-tool!
   "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas (not JSON Schema)."
   [resource-key :- :keyword
@@ -199,20 +220,7 @@
                     [:annotations  {:optional true} :map]
                     [:visibility   {:optional true} [:sequential [:enum "model" "app"]]]
                     [:response-fn fn?]]]
-  (if-let [uri (get-in @registry [:key->uri resource-key])]
-    (let [scope (get-in @registry [:uri->resource uri :scope])
-          ui-meta (cond-> {:resourceUri uri}
-                    (:visibility tool) (assoc :visibility (:visibility tool)))
-          tool  (-> tool
-                    (dissoc :visibility)
-                    (update :inputSchema  malli->ui-input-schema)
-                    (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
-                    (assoc :scope scope
-                           :required-extensions #{:mcp-app-ui}
-                           :_meta {:ui ui-meta}))]
-      (swap! registry assoc-in [:tools (:name tool)] tool)
-      tool)
-    (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
+  (register-ui-tool-for-resources! [resource-key] tool))
 
 (defn resource-scopes
   "Return the distinct set of scopes registered across all UI resources."
@@ -311,7 +319,7 @@
   :description   "Lightweight MCP Apps visualization for a query"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "visualize-query"
-                                            "refresh_visualize_query_ui_credential")})
+                                            "refresh_ui_credential")})
 
 (register-ui-resource!
  :render-drill-through
@@ -321,7 +329,7 @@
   :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "render-drill-through"
-                                            "refresh_render_drill_through_ui_credential")})
+                                            "refresh_ui_credential")})
 
 (defn- with-ui-credential
   [result session-id]
@@ -341,30 +349,20 @@
        item))
    value))
 
-(defn- register-ui-credential-refresh-tool!
-  [resource-key tool-name]
-  (register-ui-tool!
-   resource-key
-   {:name        tool-name
-    :description "Refresh the scoped credential used by a Metabase MCP App."
-    :inputSchema [:map]
-    :annotations {:readOnlyHint    true
-                  :destructiveHint false
-                  :idempotentHint  true
-                  :openWorldHint   false}
-    :visibility  ["app"]
-    :response-fn (fn [_arguments {:keys [session-id]}]
-                   (with-ui-credential
-                     {:content [{:type "text" :text "MCP UI credential refreshed."}]}
-                     session-id))}))
-
-(register-ui-credential-refresh-tool!
- :visualize-query
- "refresh_visualize_query_ui_credential")
-
-(register-ui-credential-refresh-tool!
- :render-drill-through
- "refresh_render_drill_through_ui_credential")
+(register-ui-tool-for-resources!
+ [:visualize-query :render-drill-through]
+ {:name        "refresh_ui_credential"
+  :description "Refresh the scoped credential used by a Metabase MCP App."
+  :inputSchema [:map]
+  :annotations {:readOnlyHint    true
+                :destructiveHint false
+                :idempotentHint  true
+                :openWorldHint   false}
+  :visibility  ["app"]
+  :response-fn (fn [_arguments {:keys [session-id]}]
+                 (with-ui-credential
+                   {:content [{:type "text" :text "MCP UI credential refreshed."}]}
+                   session-id))})
 
 (register-ui-tool!
  :visualize-query

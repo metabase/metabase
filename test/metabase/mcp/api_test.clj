@@ -315,8 +315,7 @@
     "execute_sql"
     "query"
     "read_resource"
-    "refresh_render_drill_through_ui_credential"
-    "refresh_visualize_query_ui_credential"
+    "refresh_ui_credential"
     "render_drill_through"
     "search"
     "update_dashboard"
@@ -349,8 +348,7 @@
       (is (= (apply disj all-tool-names
                     ["visualize_query"
                      "render_drill_through"
-                     "refresh_visualize_query_ui_credential"
-                     "refresh_render_drill_through_ui_credential"])
+                     "refresh_ui_credential"])
              tool-names))
       (is (not (contains? tool-names "visualize_query")))
       (is (not (contains? tool-names "render_drill_through")))))
@@ -840,26 +838,22 @@
           tools          (get-in (mcp-request (jsonrpc-request "tools/list")
                                               {"mcp-session-id" session-id})
                                  [:body :result :tools])
-          tools-by-name  (into {} (map (juxt :name identity)) tools)]
-      (is (=? {:_meta {:ui {:resourceUri "ui://metabase/visualize-query-v2.html"
-                            :visibility  ["app"]}}}
-              (get tools-by-name "refresh_visualize_query_ui_credential")))
-      (is (=? {:_meta {:ui {:resourceUri "ui://metabase/render-drill-through-v2.html"
-                            :visibility  ["app"]}}}
-              (get tools-by-name "refresh_render_drill_through_ui_credential"))))
+          tools-by-name  (into {} (map (juxt :name identity)) tools)
+          refresh-tool   (get tools-by-name "refresh_ui_credential")]
+      (is (=? {:_meta {:ui {:visibility ["app"]}}}
+              refresh-tool))
+      (is (nil? (get-in refresh-tool [:_meta :ui :resourceUri]))))
     (let [query-tools (into #{} (map :name)
                             (mcp.tools/list-tools #{"agent:viz:mcp-ui:query"}))
           drill-tools (into #{} (map :name)
                             (mcp.tools/list-tools #{"agent:viz:mcp-ui:drill-through"}))]
-      (is (contains? query-tools "refresh_visualize_query_ui_credential"))
-      (is (not (contains? query-tools "refresh_render_drill_through_ui_credential")))
-      (is (contains? drill-tools "refresh_render_drill_through_ui_credential"))
-      (is (not (contains? drill-tools "refresh_visualize_query_ui_credential")))))
+      (is (contains? query-tools "refresh_ui_credential"))
+      (is (contains? drill-tools "refresh_ui_credential"))))
   (testing "a refresh call returns session-bound auth only in private metadata"
     (let [[session-id _] (initialize!)
           result         (get-in (mcp-request
                                   (jsonrpc-request "tools/call"
-                                                   {:name      "refresh_visualize_query_ui_credential"
+                                                   {:name      "refresh_ui_credential"
                                                     :arguments {}})
                                   {"mcp-session-id" session-id})
                                  [:body :result])
@@ -1720,8 +1714,8 @@
         (is (not (str/includes? html2 "uiCredential")))
         (is (not (str/includes? html1 "mcpSessionId")))
         (is (not (str/includes? html2 "mcpSessionId")))
-        (is (str/includes? html1 "refresh_visualize_query_ui_credential"))
-        (is (str/includes? html2 "refresh_visualize_query_ui_credential"))))))
+        (is (str/includes? html1 "refresh_ui_credential"))
+        (is (str/includes? html2 "refresh_ui_credential"))))))
 
 (deftest mcp-ui-credential-validation-test
   (testing "an app-only refresh tool provides the scoped UI request surface, but not general API access"
@@ -1735,7 +1729,7 @@
                 session-id  (get-in initialize [:headers "Mcp-Session-Id"])
                 tool-result (mcp-request-with-bearer token 200
                                                      (jsonrpc-request "tools/call"
-                                                                      {:name      "refresh_visualize_query_ui_credential"
+                                                                      {:name      "refresh_ui_credential"
                                                                        :arguments {}})
                                                      {"mcp-session-id" session-id})
                 credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-apps :credential])
