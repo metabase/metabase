@@ -151,7 +151,6 @@ export const ScalarActionButtons = ({
       pos="absolute"
       top={tier.menuOffset.top}
       right={tier.menuOffset.right}
-      className={S.actionButtons}
       data-testid="scalar-action-buttons"
       {...props}
     >
