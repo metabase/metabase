@@ -1057,9 +1057,11 @@
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 
-  The base URL is checked against [[metabase.llm.settings/llm-allowed-networks]] before the request, and the connection
-  resolves DNS through a resolver that enforces the same policy on the addresses it actually opens. Auth returned by
-  [[resolve-auth]] may supply `:network-policy-override` for a deployment-controlled service."
+  The base URL is checked against
+  [[metabase.llm.settings/llm-allowed-networks]] before the request, and the
+  connection resolves DNS through a resolver that enforces the same policy on
+  the addresses it actually opens. Auth returned by [[resolve-auth]] may supply
+  `:network-policy-override` for a deployment-controlled service."
   [{:keys [url headers network-policy-override]} req]
   (llm/assert-llm-host-allowed! url)
   (let [network-policy (or network-policy-override (llm/llm-allowed-networks))
