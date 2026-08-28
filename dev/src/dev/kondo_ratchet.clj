@@ -1,9 +1,9 @@
 (ns dev.kondo-ratchet
   "Ratchet on inline kondo ignore forms.
 
-  Per-linter budgets live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
-  need a justification comment.
-  `metabase.core.kondo-ratchet-test` fails when either drifts from the tree;
+  Per-linter budgets live in `.clj-kondo/ratchets.edn`, along with unlimited low-severity linters and the
+  set of linters whose ignores don't need a justification comment. Local tests require bounded counts to
+  match exactly; CI only rejects increases so improvements can land before the master shrinker records them.
   `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
@@ -26,8 +26,15 @@
     (when-not (.exists file)
       (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
                       {:file *ratchets-file*})))
-    (merge {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}}
-           (edn/read-string (slurp file)))))
+    (let [ratchets (merge {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}}
+                          (edn/read-string (slurp file)))
+          overlap  (into (sorted-set-by #(compare (str %1) (str %2)))
+                         (filter (set (keys (:limits ratchets))))
+                         (:unlimited ratchets))]
+      (when (seq overlap)
+        (throw (ex-info (str "Linters cannot appear in both :limits and :unlimited: " (pr-str overlap))
+                        {:overlap overlap})))
+      ratchets)))
 
 (defn disabled?
   "Whether `ratchets` (default: [[read-ratchets]]) explicitly disables the ratchets."
@@ -351,8 +358,8 @@
 (def ^:private header
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:limits),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
-       ";; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an\n"
-       ";; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.\n"
+       ";; entries). CI rejects bounded inline counts above :limits; local tests require an exact match.\n"
+       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
        ";; widening the exemptions is a hand edit to defend in your PR.\n"
@@ -376,6 +383,7 @@
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
   [{:keys [limits unlimited config-counts comment-exempt]}]
   (let [counts-indent (apply str (repeat (count "{:limits {") \space))
+        config-indent (apply str (repeat (count " :config-counts  {") \space))
         unlimited     (sort-by str (or unlimited #{}))
         exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
@@ -384,10 +392,10 @@
          (if (empty? unlimited)
            "{}"
            (str "{\n            " (str/join "\n            " (map str unlimited)) "\n           }"))
-         "\n :config-counts  " (render-counts config-counts counts-indent)
+         "\n :config-counts  " (render-counts config-counts config-indent)
          "\n :comment-exempt "
          (if (empty? comment-exempt)
-           "#{}"
+           "#{}\n"
            (str "#{"
                 (str/join (str "\n" exempt-indent)
                           (sort-by str comment-exempt))
@@ -495,11 +503,20 @@
   "Fail the babashka task when inline ignores exceed their limits or the ratchets file is not normalized.
   Only an explicit `{:disabled true}` opts out of enforcement."
   []
-  (let [ratchets (read-ratchets)]
-    (if (disabled? ratchets)
+  (let [file (io/file *ratchets-file*)]
+    (cond
+      (not (.exists file))
+      (let [message (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")]
+        (println message)
+        (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
+
+      (disabled?)
       (println (str *ratchets-file* " is disabled -- nothing to check"))
-      (let [occurrences (scan)
-            lines       (check-report ratchets occurrences (slurp *ratchets-file*))]
+
+      :else
+      (let [ratchets    (read-ratchets)
+            occurrences (scan)
+            lines       (check-report ratchets occurrences (slurp file))]
         (if (empty? lines)
           (println (format "ok -- %d ignore forms within %d limits"
                            (count occurrences) (count (:limits ratchets))))
