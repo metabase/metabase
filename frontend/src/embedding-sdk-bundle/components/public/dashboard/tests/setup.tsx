@@ -28,7 +28,7 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import type { DashboardCard, TokenFeatures } from "metabase-types/api";
+import type { DashboardCard, Dataset, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -122,6 +122,7 @@ export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
+  dataset?: Dataset;
   enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
   tokenFeatures?: Partial<TokenFeatures>;
 }
@@ -143,6 +144,7 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
+  dataset = createMockDataset(),
   enterprisePlugins = [],
   tokenFeatures = {},
   isEmailConfigured = false,
@@ -187,7 +189,11 @@ export const setupSdkDashboard = async ({
     }),
   );
 
-  setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
+  dashcards
+    .filter((dashcard) => dashcard.card_id != null)
+    .forEach((dashcard) =>
+      setupDashcardQueryEndpoints(dashboardId, dashcard, dataset),
+    );
 
   setupAlertsEndpoints(tableCard, []);
 

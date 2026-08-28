@@ -274,6 +274,25 @@ describe("scenarios > organization > timelines > dashboard", () => {
     });
   });
 
+  it("does not show events on a statically embedded dashboard", () => {
+    H.updateSetting("enable-embedding-static", true);
+    setupTwoCharts({ visit: false }).then((dashboard) => {
+      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+        enable_embedding: true,
+      });
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboard.id },
+        params: {},
+      });
+      H.waitForDashcardsToLoad();
+
+      cy.log("the chart renders, but without the events it was saved with");
+      H.getDashboardCard(0).should("be.visible");
+      cardEvent(0, RC1.name).should("not.exist");
+    });
+  });
+
   it("lets a user without curate access toggle events but not change them", () => {
     setupTwoCharts({ visit: false }).then((dashboard) => {
       cy.signIn("readonly");
