@@ -168,10 +168,10 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
     W extends WidgetName | ComponentType<any>,
     Key extends keyof TSettings,
   >(
-    settingDefinition: SettingDefinitionInput<TSettings, W, Key>,
+    settingDefinition: SettingDefinition<TSettings, W, Key>,
   ) => CustomVisualizationSettingDefinition<TSettings>;
 
-export type SettingDefinitionInput<
+type SettingDefinition<
   TSettings extends BaseVisualizationSettings,
   W extends WidgetName | ComponentType<any>,
   Key extends keyof TSettings,
