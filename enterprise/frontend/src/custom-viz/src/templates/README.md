@@ -206,7 +206,8 @@ settings: {
 >
 > Metabase stores your settings under `custom-viz:<plugin name>:<setting id>` keys.
 > You never see the prefix: `settings`, `onChangeSettings`, and the dependency lists
-> use your own ids and can only refer to your own settings.
+> use your own ids and can only refer to your own settings. If one of your ids collides
+> with a Metabase setting id, your setting shadows Metabase's in `settings`.
 
 ### Built-in widgets
 

@@ -286,7 +286,7 @@ Your visualization can still _read_ the per-column formatting: the resolved `set
 
 ### Where your settings are stored
 
-Metabase stores your settings under `custom-viz:<plugin name>:<setting id>` keys in the question's `visualization_settings`, where the plugin name is the `name` from your manifest. You never see the prefix: the `settings` your visualization and widgets receive use your own ids, and so do `onChangeSettings`, `readDependencies`, `writeDependencies`, and `eraseDependencies`. Those can only refer to your own settings — a setting id that matches one of Metabase's (like `card.title`) means your setting, not Metabase's. Metabase's settings stay readable from `settings` without listing them in `readDependencies`.
+Metabase stores your settings under `custom-viz:<plugin name>:<setting id>` keys in the question's `visualization_settings`, where the plugin name is the `name` from your manifest. You never see the prefix: the `settings` your visualization and widgets receive use your own ids, and so do `onChangeSettings`, `readDependencies`, `writeDependencies`, and `eraseDependencies`. Those can only refer to your own settings. If one of your setting ids collides with a Metabase setting id (like `card.title`), your setting shadows Metabase's in the `settings` you receive. Metabase's settings stay readable from `settings` without listing them in `readDependencies`.
 
 ### Built-in widgets
 
