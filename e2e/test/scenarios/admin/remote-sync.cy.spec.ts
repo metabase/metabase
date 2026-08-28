@@ -21,6 +21,15 @@ const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
 
+const setup = (snapshot = "default") => {
+  H.restore(snapshot);
+  H.resetSnowplow();
+  cy.signInAsAdmin();
+  H.activateToken("pro-self-hosted");
+  H.setupGitSync();
+  H.interceptTask();
+};
+
 describe("Remote Sync", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
@@ -28,13 +37,8 @@ describe("Remote Sync", () => {
 
   describe("read-write Mode", () => {
     beforeEach(() => {
-      H.restore("postgres-writable");
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+      setup("postgres-writable");
       H.updateSetting("transforms-enabled", true);
-      H.setupGitSync();
-      H.interceptTask();
     });
 
     it("can push and pull changes", () => {
@@ -464,12 +468,7 @@ describe("Remote Sync", () => {
 
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
     });
 
     it("can set up read-write mode", () => {
@@ -700,12 +699,7 @@ describe("Remote Sync", () => {
 
   describe("read-only mode", () => {
     beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
     });
 
     it("can change branches", { requestTimeout: 15000 }, () => {
@@ -801,12 +795,7 @@ describe("Remote Sync", () => {
 
   describe("shared tenant collections", () => {
     beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
 
       // Enable tenants feature
       H.enableTenants();
@@ -1036,13 +1025,8 @@ describe("Remote Sync", () => {
 
   describe("initial pull conflict handling", () => {
     beforeEach(() => {
-      H.restore("postgres-writable");
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+      setup("postgres-writable");
       H.updateSetting("transforms-enabled", true);
-      H.setupGitSync();
-      H.interceptTask();
 
       // Create a local transform that could be overwritten by the remote
       H.createSqlTransform({
