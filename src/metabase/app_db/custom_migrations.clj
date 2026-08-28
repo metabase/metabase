@@ -2393,22 +2393,13 @@
 (def ^:private encrypt-remaining-columns-v58
   "Encrypted-at-rest string columns that predate any backfill: pre-v53 encryption was write-time only, and the
   v53-v62 startup auto-encrypt and pre-v63 key rotation covered only `metabase_database.details`, `setting`, and
-  `secret`, so an upgraded database can hold a mix of plaintext and encrypted rows within one of these columns."
+  `secret`, so an upgraded database can hold a mix of plaintext and encrypted rows within one of these columns.
+  Columns newer than v58 (`metabase_database.write_data_details` and later) are not listed: they do not exist yet
+  when this changeset runs on an older database."
   [[:metabase_database :details]
    [:metabase_database :settings]
-   [:metabase_database :write_data_details]
    [:core_user :settings]
    [:channel :details]])
-
-(defn- migration-column-exists?
-  "Whether `table`.`column` exists, probed with a throwaway query. The v58 changeset can run before the migration that
-  adds `metabase_database.write_data_details` (a v59 column): a database that old has no rows in it to encrypt, so the
-  column is simply skipped."
-  [table column]
-  (try
-    (t2/query-one {:select [[column :value]] :from [table] :limit 1})
-    true
-    (catch Exception _ false)))
 
 (defn- secret-value->bytes ^bytes [v]
   (cond
@@ -2416,10 +2407,9 @@
     (instance? java.sql.Blob v) (.getBytes ^java.sql.Blob v 0 (.length ^java.sql.Blob v))
     :else                       nil))
 
-(define-reversible-migration EncryptRemainingColumns
+(define-migration EncryptRemainingColumns
   (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] encrypt-remaining-columns-v58
-            :when (migration-column-exists? table column)]
+    (doseq [[table column] encrypt-remaining-columns-v58]
       (run! (fn [{:keys [id value]}]
               (when (and (string? value)
                          (not (str/blank? value))
@@ -2435,27 +2425,6 @@
               (when (and value (not (encryption/possibly-encrypted-bytes? value)))
                 (t2/query {:update :secret
                            :set    {:value (encryption/maybe-encrypt-bytes value)}
-                           :where  [:= :id id]}))))
-          (t2/reducible-query {:select [:id :value]
-                               :from   [:secret]
-                               :where  [:!= :value nil]})))
-  (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] encrypt-remaining-columns-v58
-            :when (migration-column-exists? table column)]
-      (run! (fn [{:keys [id value]}]
-              (when (and (string? value)
-                         (encryption/possibly-encrypted-string? value))
-                (t2/query {:update table
-                           :set    {column (encryption/maybe-decrypt value)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id [column :value]]
-                                 :from   [table]
-                                 :where  [:!= column nil]})))
-    (run! (fn [{:keys [id value]}]
-            (let [value (secret-value->bytes value)]
-              (when (and value (encryption/possibly-encrypted-bytes? value))
-                (t2/query {:update :secret
-                           :set    {:value (encryption/maybe-decrypt-bytes value)}
                            :where  [:= :id id]}))))
           (t2/reducible-query {:select [:id :value]
                                :from   [:secret]

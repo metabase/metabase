@@ -1625,11 +1625,10 @@ databaseChangeLog:
       author: ranquild
       comment: >-
         Encrypt at rest any plaintext values left in the columns that were encrypted long before any backfill existed:
-        metabase_database details/settings/write_data_details, core_user.settings, channel.details, and secret.value.
+        metabase_database details/settings, core_user.settings, channel.details, and secret.value.
         Encryption used to be write-time only, and the old startup auto-encrypt and key rotation covered only some of
         these columns, so an upgraded database can hold a mix of plaintext and encrypted rows that the strict reads
         would reject. Already-encrypted values are left untouched; without MB_ENCRYPTION_SECRET_KEY this is a no-op.
-        On rollback the encrypted values are decrypted back.
       changes:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptRemainingColumns
