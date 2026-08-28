@@ -37,7 +37,8 @@
 ;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
 ;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
 ;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
-;;    any-local, multicast, IPv6 ULA (fc00::/7), and IPv4 CGNAT (100.64/10).
+;;    any-local, multicast, IPv6 ULA (fc00::/7), IPv4 CGNAT (100.64/10), and non-global IANA
+;;    special-purpose ranges.
 ;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
 ;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
 ;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
@@ -50,26 +51,86 @@
 (def ^:private blocked-fetch-hosts #{"localhost" "metadata" "metadata.google.internal"})
 (def ^:private blocked-fetch-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
 
+(defn- address-prefix
+  [address prefix-length]
+  (let [bytes (.getAddress ^InetAddress (InetAddresses/forString address))]
+    (assert (<= 0 prefix-length (* 8 (alength bytes))))
+    [bytes prefix-length]))
+
+(defn- address-in-prefix?
+  [^InetAddress addr [network prefix-length]]
+  (let [address-bytes    (.getAddress addr)
+        ^bytes network  network
+        whole-byte-count (quot prefix-length 8)
+        remaining-bits   (mod prefix-length 8)]
+    (and (= (alength address-bytes) (alength network))
+         (loop [i 0]
+           (or (= i whole-byte-count)
+               (and (= (aget address-bytes i) (aget network i))
+                    (recur (inc i)))))
+         (or (zero? remaining-bits)
+             (let [mask (bit-and 0xff (bit-shift-left 0xff (- 8 remaining-bits)))]
+               (= (bit-and (aget address-bytes whole-byte-count) mask)
+                  (bit-and (aget network whole-byte-count) mask)))))))
+
+(def ^:private globally-reachable-special-prefixes
+  ;; More-specific exceptions inside the broad non-global prefixes below. Keep this aligned with the IANA IPv4 and
+  ;; IPv6 Special-Purpose Address Registries' "Globally Reachable" column.
+  ;; https://www.iana.org/assignments/iana-ipv4-special-registry
+  ;; https://www.iana.org/assignments/iana-ipv6-special-registry
+  [(address-prefix "192.0.0.9" 32)       ; PCP anycast
+   (address-prefix "192.0.0.10" 32)      ; TURN anycast
+   (address-prefix "2001:1::1" 128)      ; PCP anycast
+   (address-prefix "2001:1::2" 128)      ; TURN anycast
+   (address-prefix "2001:1::3" 128)      ; DNS-SD service registration anycast
+   (address-prefix "2001:3::" 32)        ; AMT
+   (address-prefix "2001:4:112::" 48)    ; AS112-v6
+   (address-prefix "2001:20::" 28)       ; ORCHIDv2
+   (address-prefix "2001:30::" 28)])     ; Drone Remote ID protocol entity tags
+
+(def ^:private non-global-special-prefixes
+  ;; Additional IANA special-purpose blocks that are not globally reachable and are not already handled by
+  ;; `InetAddress` or the checks in [[public-address?]]. Entries whose registry value is N/A or blank are also refused:
+  ;; they do not carry the external-reachability guarantee required by `:external-only`.
+  [(address-prefix "192.0.0.0" 24)       ; IETF protocol assignments
+   (address-prefix "192.0.2.0" 24)       ; TEST-NET-1
+   (address-prefix "192.88.99.0" 24)     ; deprecated 6to4 relay anycast
+   (address-prefix "198.18.0.0" 15)      ; benchmarking
+   (address-prefix "198.51.100.0" 24)    ; TEST-NET-2
+   (address-prefix "203.0.113.0" 24)     ; TEST-NET-3
+   (address-prefix "64:ff9b:1::" 48)     ; local-use IPv4/IPv6 translation
+   (address-prefix "100::" 64)           ; discard-only
+   (address-prefix "100:0:0:1::" 64)     ; dummy IPv6 prefix
+   (address-prefix "2001::" 23)          ; IETF protocol assignments
+   (address-prefix "2001:db8::" 32)      ; documentation
+   (address-prefix "2002::" 16)          ; 6to4
+   (address-prefix "3fff::" 20)          ; documentation
+   (address-prefix "5f00::" 16)])        ; segment-routing SIDs
+
 (defn public-address?
-  "True only for globally-routable unicast IP addresses (rejects loopback, link-local, site-local,
-  any-local, multicast, IPv6 unique-local fc00::/7, IPv4 CGNAT 100.64.0.0/10, IPv4 \"this network\"
-  0.0.0.0/8, and IPv4 reserved 240.0.0.0/4 -- which includes the 255.255.255.255 broadcast address)."
+  "True only for globally reachable unicast IP addresses.
+
+  In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
+  IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
+  entries."
   [^InetAddress addr]
   (let [b     (.getAddress addr)
         ipv4? (= 4 (alength b))
         b0    (bit-and (aget b 0) 0xff)]
-    (not (or (.isLoopbackAddress addr)
-             (.isLinkLocalAddress addr)
-             (.isSiteLocalAddress addr)
-             (.isAnyLocalAddress addr)
-             (.isMulticastAddress addr)
-             (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
-                  (= 0xfc (bit-and (aget b 0) 0xfe)))
-             (and ipv4?                                      ; IPv4 CGNAT 100.64.0.0/10
-                  (= 100 b0)
-                  (<= 64 (bit-and (aget b 1) 0xff) 127))
-             (and ipv4? (zero? b0))                          ; IPv4 "this network" 0.0.0.0/8
-             (and ipv4? (<= 240 b0))))))                     ; IPv4 reserved 240.0.0.0/4 + broadcast
+    (and (not (or (.isLoopbackAddress addr)
+                  (.isLinkLocalAddress addr)
+                  (.isSiteLocalAddress addr)
+                  (.isAnyLocalAddress addr)
+                  (.isMulticastAddress addr)
+                  (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
+                       (= 0xfc (bit-and (aget b 0) 0xfe)))
+                  (and ipv4?                                      ; IPv4 CGNAT 100.64.0.0/10
+                       (= 100 b0)
+                       (<= 64 (bit-and (aget b 1) 0xff) 127))
+                  (and ipv4? (zero? b0))                          ; IPv4 "this network" 0.0.0.0/8
+                  (and ipv4? (<= 240 b0))))                       ; IPv4 reserved 240.0.0.0/4 + broadcast
+         (or (some #(address-in-prefix? addr %) globally-reachable-special-prefixes)
+             (not-any? #(address-in-prefix? addr %) non-global-special-prefixes)))))
 
 (defn- private-address?
   "True for addresses that are private but may be intentionally reachable from a self-hosted deployment."
@@ -86,7 +147,7 @@
 (defn address-allowed-for-network-policy?
   "Whether `addr` is allowed by `policy`.
 
-  `:external-only` allows only globally routable public addresses.
+  `:external-only` allows only globally reachable public addresses.
   `:allow-private` adds private, unique-local and carrier-grade NAT addresses.
   `:loopback-and-private` allows *only* loopback plus those same private ranges
   `:allow-all` imposes no address restriction."
