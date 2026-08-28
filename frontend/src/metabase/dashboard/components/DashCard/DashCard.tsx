@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
@@ -39,11 +38,15 @@ import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashCardId,
+  DashCardSeries,
   DashboardCard,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import {
+  isDashCardDataSeries,
+  isVisualizerDashboardCard,
+} from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -168,11 +171,11 @@ function DashCardInner({
     return [mainCard];
   }, [mainCard, dashcard]);
 
-  const series = useMemo(() => {
+  const series: DashCardSeries = useMemo(() => {
     return cards.map((card) => {
       const isSlow = card.id ? slowCards[card.id] : false;
       const isUsuallyFast =
-        card.query_average_duration &&
+        card.query_average_duration != null &&
         card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
 
       if (!card.id) {
@@ -180,7 +183,7 @@ function DashCardInner({
       }
 
       return {
-        ...getIn(dashcardData, [card.id]),
+        ...dashcardData?.[card.id],
         card,
         isSlow,
         isUsuallyFast,
@@ -311,6 +314,9 @@ function DashCardInner({
   }, [dashcard.id, dispatch]);
 
   const getVisualizerInitialState = useCallback(() => {
+    if (!isDashCardDataSeries(series)) {
+      return null;
+    }
     if (isVisualizerDashboardCard(dashcard)) {
       return getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
@@ -323,7 +329,9 @@ function DashCardInner({
   const onEditVisualizationClick = useCallback(() => {
     const initialState = getVisualizerInitialState();
 
-    onEditVisualization(dashcard, initialState);
+    if (initialState != null) {
+      onEditVisualization(dashcard, initialState);
+    }
   }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
   const metadata = useSelector(getMetadata);

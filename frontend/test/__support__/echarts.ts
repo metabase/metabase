@@ -81,6 +81,7 @@ export const createMockCartesianChartModel = (
       column,
       columnIndex: 0,
       columnByCardId: {},
+      columns: [column],
     },
     seriesModels: [],
     dataset: [],

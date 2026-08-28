@@ -88,6 +88,8 @@ export type DimensionModel = {
   columnIndex: number;
   // All dimension columns by their card id
   columnByCardId: Record<CardId, DatasetColumn>;
+  // all cards' dimension columns
+  columns: DatasetColumn[];
 };
 
 export type Datum = Record<DataKey, RowValue> & {

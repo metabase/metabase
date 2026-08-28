@@ -1,9 +1,13 @@
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import type { BaseDashboardCard, Card } from "metabase-types/api";
+import type { BaseDashboardCard, SeriesCard } from "metabase-types/api";
 
 import S from "./Watermark.module.css";
 
-export const Watermark = ({ card }: { card: Card | BaseDashboardCard }) => {
+export const Watermark = ({
+  card,
+}: {
+  card: SeriesCard | BaseDashboardCard;
+}) => {
   if (isVirtualDashCard(card)) {
     return null;
   }

@@ -35,6 +35,7 @@ import type {
   DatasetData,
   GeoJSONData,
   RawSeries,
+  SeriesCard,
   SettingKey,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
@@ -120,7 +121,7 @@ function getVisualizerRawSeries(
 }
 
 function RenderChart(
-  rawSeries: RawSeries,
+  rawSeries: RawSeries<Card>,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
@@ -141,7 +142,7 @@ function RenderChart(
     options.applicationColors,
   );
 
-  let seriesForRender = rawSeries;
+  let seriesForRender: RawSeries<SeriesCard> = rawSeries;
   if (dashcardSettings.visualization) {
     const { visualization } = dashcardSettings;
     const dataSources = rawSeries.map((series) =>

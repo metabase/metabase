@@ -11,15 +11,15 @@ import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/pa
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
-  Card,
   Parameter,
   ParameterTarget,
   ParameterValuesMap,
+  SeriesCard,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
 export function getCardUiParameters(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
   parameterValues: ParameterValuesMap = {},
   parameters = getParametersFromCard(card, metadata),
@@ -43,7 +43,7 @@ export function getCardUiParameters(
  * A question opened from a dashboard shows the dashboard's parameters, which
  * the card's own `param_fields` do not cover.
  */
-function hasParamFields(card: Card) {
+function hasParamFields(card: SeriesCard) {
   return card.id != null && card.dashboardId == null;
 }
 
@@ -54,7 +54,7 @@ function hasParamFields(card: Card) {
  * frontend does not have.
  */
 function getSavedCardUiParameters(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
@@ -84,7 +84,7 @@ function getSavedCardUiParameters(
  * against the query.
  */
 function getUnsavedCardUiParameters(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {

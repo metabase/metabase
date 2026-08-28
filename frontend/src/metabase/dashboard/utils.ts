@@ -277,7 +277,7 @@ export function isDashcardAccessRestricted(
 }
 
 export function getDashcardResultsError(
-  datasets: Dataset[],
+  datasets: Partial<Dataset>[],
   isGuestEmbed: boolean,
 ) {
   const permissionError = datasets

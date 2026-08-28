@@ -5,7 +5,6 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
-  type MaybeTranslatedSeries,
   type PieRow,
   type RawSeries,
   type RowValue,
@@ -213,7 +212,7 @@ export function getColors(
 }
 
 export function getPieRows(
-  rawSeries: MaybeTranslatedSeries,
+  rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   formatter: Formatter,
 ) {

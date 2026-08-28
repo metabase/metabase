@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import type {
-  Card,
+  SeriesCard,
   TableColumnOrderSetting,
   VirtualCard,
   VisualizationSettings,
@@ -81,10 +81,9 @@ export function sanitizeDashcardSettings(
   });
 }
 
-export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
-  card: T,
-  dashcardSettings?: VisualizationSettings,
-): T {
+export function extendCardWithDashcardSettings<
+  T extends SeriesCard | VirtualCard,
+>(card: T, dashcardSettings?: VisualizationSettings): T {
   // Legacy broken behavior: When editing dashcard viz settings, we save both the edited setting and any settings with
   // persistDefault: true. This leads to saving data settings like graph.dimensions/graph.metrics even when they can't be edited in dashboards.
   const visualization = getVisualization(card.display);

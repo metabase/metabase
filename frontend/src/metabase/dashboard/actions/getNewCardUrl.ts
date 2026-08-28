@@ -16,6 +16,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
+  SeriesCard,
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
@@ -40,7 +41,7 @@ export const getNewCardUrl = ({
     ParameterId,
     ParameterValueOrArray | undefined | null
   >;
-  nextCard: Card | VirtualCard;
+  nextCard: SeriesCard | VirtualCard;
   previousCard: Card | VirtualCard;
   dashcard: QuestionDashboardCard;
   objectId?: number | string;

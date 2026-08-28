@@ -7,8 +7,8 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
+  createMockDashCardDataSeries,
   createMockDataset,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
@@ -34,7 +34,7 @@ describe("deserializeCardFromQuery", () => {
 
 describe("getMetricSeriesWithDefaultDisplay", () => {
   function createMetricSeries(query: Lib.Query) {
-    return createMockSingleSeries(
+    return createMockDashCardDataSeries(
       createMockCard({ type: "metric", display: "line" }),
       createMockDataset({ json_query: Lib.toJsQuery(query) }),
     );
@@ -89,7 +89,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
   it("preserves the display of regular questions", () => {
     const series = [
-      createMockSingleSeries(
+      createMockDashCardDataSeries(
         createMockCard({ type: "question", display: "line" }),
         createMockDataset(),
       ),

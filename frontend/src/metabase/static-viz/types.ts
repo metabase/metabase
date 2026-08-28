@@ -1,5 +1,6 @@
 import type { ColorPalette } from "metabase/ui/colors/types";
 import type {
+  Card,
   ColumnFormattingSetting,
   DashCardVisualizationSettings,
   DatasetColumn,
@@ -32,7 +33,7 @@ export type RenderChartDashcardSettings = DashCardVisualizationSettings & {
 // The default (isomorphic) path — anything StaticVisualization can render.
 export type IsomorphicChartInput = {
   kind?: undefined;
-  rawSeries: RawSeries;
+  rawSeries: RawSeries<Card>;
   dashcardSettings: RenderChartDashcardSettings;
   options: RenderChartOptions;
 };

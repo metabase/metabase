@@ -13,7 +13,6 @@ import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Card,
   Dashboard,
   DashboardCard,
   DatasetColumn,
@@ -23,6 +22,7 @@ import type {
   RowValue,
   RowValues,
   Series,
+  SeriesCard,
   TimelineEvent,
   TimelineEventId,
   VisualizationSettings,
@@ -40,8 +40,7 @@ export type TableCellFormatter = (value: RowValue) => ReactNode;
 export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export type OnChangeCardAndRunOpts = {
-  previousCard?: Card;
-  nextCard: Card;
+  nextCard: SeriesCard;
   seriesIndex?: number;
   objectId?: number;
   drillName?: string;
@@ -58,7 +57,7 @@ export interface VisualizationProps {
   series: Series;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  card: Card;
+  card: SeriesCard;
   getHref?: () => string | undefined;
   data: DatasetData;
   metadata?: Metadata;

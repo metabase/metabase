@@ -7,7 +7,12 @@ import * as Urls from "metabase/urls";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, DashboardCard, VirtualCard } from "metabase-types/api";
+import type {
+  Card,
+  DashboardCard,
+  SeriesCard,
+  VirtualCard,
+} from "metabase-types/api";
 
 import { getNewCardUrl } from "./getNewCardUrl";
 
@@ -42,7 +47,7 @@ export const editQuestion = createThunkAction(
  *     - those all can be applied without or with a dashboard filter
  */
 type NavigateToNewCardFromDashboardArgs = {
-  nextCard: Card | VirtualCard;
+  nextCard: SeriesCard | VirtualCard;
   previousCard: Card | VirtualCard;
   dashcard: DashboardCard;
   objectId?: number | string;

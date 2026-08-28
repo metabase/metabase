@@ -4,10 +4,10 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  Card,
   Dataset,
   RawSeries,
   Series,
+  SeriesCard,
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -50,8 +50,8 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   runQuestionQuery?: () => void;
   cancelQuery?: () => void;
   navigateToNewCardInsideQB?: (opts: {
-    nextCard: Card;
-    previousCard: Card;
+    nextCard: SeriesCard;
+    previousCard: SeriesCard;
     objectId?: number;
   }) => void;
   onNavigateBack?: () => void;

@@ -46,10 +46,6 @@ export const TransformedVisualization = ({
   const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
     (options: OnChangeCardAndRunOpts) => {
       const cards = rawSeries.map((series) => series.card);
-      const previousCard =
-        options.previousCard != null
-          ? cards.find((c) => c.id === options.previousCard?.id)
-          : undefined;
       const nextCard = cards.find((c) => c.id === options.nextCard.id);
 
       if (!nextCard) {
@@ -63,7 +59,6 @@ export const TransformedVisualization = ({
       const transformedOptions: OnChangeCardAndRunOpts = {
         ...options,
         nextCard,
-        previousCard,
       };
 
       onChangeCardAndRun?.(transformedOptions);

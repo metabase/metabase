@@ -20,15 +20,16 @@ import type {
   ActionParametersMapping,
   Card,
   CardId,
+  DashCardSeries,
   DashboardParameterMapping,
   DatasetQuery,
   LegacyDatasetQuery,
   Parameter,
   ParameterValuesMap,
-  Series,
   UnsavedCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
+import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -99,10 +100,10 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
 }
 
 export function getMetricSeriesWithDefaultDisplay(
-  series: Series,
+  series: DashCardSeries,
   metadata: Metadata,
-): Series {
-  if (series.length !== 1) {
+): DashCardSeries {
+  if (series.length !== 1 || !isDashCardDataSeries(series)) {
     return series;
   }
 
@@ -187,7 +188,7 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card?: Card | null | undefined) {
+export function isNative(card?: UnsavedCard | null | undefined) {
   if (!card) {
     return false;
   }
@@ -195,7 +196,7 @@ export function isNative(card?: Card | null | undefined) {
   return question.isNative();
 }
 
-function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
+function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return _.isEqual(
     _.pick(cardA, "display", "visualization_settings"),
     _.pick(cardB, "display", "visualization_settings"),
@@ -221,7 +222,7 @@ function datasetQueryForComparison(datasetQuery: DatasetQuery): DatasetQuery {
   return res;
 }
 
-export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
   const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
   return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
@@ -231,7 +232,7 @@ export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
   return _.isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card) {
+export function cardIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
     cardVisualizationIsEquivalent(cardA, cardB)
