@@ -99,6 +99,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
 
     let cancelled = false;
     let consecutiveRefreshFailures = 0;
+    let hasAuthenticated = false;
     let refreshTimeout: number | undefined;
 
     const applyAuth = (auth: McpUiAuth) => {
@@ -131,6 +132,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
 
         applyAuth(refreshedAuth);
         consecutiveRefreshFailures = 0;
+        hasAuthenticated = true;
 
         if (!cancelled) {
           refreshTimeout = window.setTimeout(
@@ -142,7 +144,10 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
         console.error("Error refreshing MCP UI credential", error);
         consecutiveRefreshFailures += 1;
 
-        if (consecutiveRefreshFailures >= UI_CREDENTIAL_REFRESH_MAX_FAILURES) {
+        if (
+          !hasAuthenticated &&
+          consecutiveRefreshFailures >= UI_CREDENTIAL_REFRESH_MAX_FAILURES
+        ) {
           if (!cancelled) {
             setHostError(
               "This visualization did not load. Ask your MCP client to show it again.",

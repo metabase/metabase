@@ -38,8 +38,11 @@ describe("useHandleMcpDrillThrough", () => {
 
     const defaultNavigate = jest.fn();
     const { result } = renderHook(() =>
-      // Unjustified type cast. FIXME
-      useHandleMcpDrillThrough(app as any, "ui-credential", "mcp-session-id"),
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
     );
 
     await result.current(
@@ -69,8 +72,11 @@ describe("useHandleMcpDrillThrough", () => {
 
     const defaultNavigate = jest.fn();
     const { result } = renderHook(() =>
-      // Unjustified type cast. FIXME
-      useHandleMcpDrillThrough(app as any, "ui-credential", "mcp-session-id"),
+      useHandleMcpDrillThrough({
+        app,
+        uiCredential: "ui-credential",
+        mcpSessionId: "mcp-session-id",
+      }),
     );
 
     await result.current(
