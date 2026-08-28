@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -157,27 +158,75 @@
      (with-open [stmt (.createStatement conn)]
        (apply f stmt args)))))
 
+(def ^:private drop-workers
+  "Connections used to drop databases at once. Each `DROP DATABASE` is a round trip of roughly half a second and a
+  backlog runs to thousands, which is what overran the job's first real run. Snowflake caps a session at 8 concurrent
+  statements by default, so more workers than this buys queueing, not throughput."
+  8)
+
+(def ^:private untrack-batch-size
+  "Names per `DELETE` when clearing tracking rows. Snowflake locks the whole table for DML, so this is one statement
+  at a time by design -- the win is round trips, not concurrency."
+  500)
+
+(defn- drop-one!
+  [^java.sql.Statement stmt dataset-name]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "[Snowflake] Deleting old dataset:" dataset-name)
+  (try
+    (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+    {:name dataset-name, :status :deleted}
+    ;; usually just another job deleting the same dataset at the same time
+    (catch Exception e
+      {:name dataset-name, :status :failed, :error (ex-message e)})))
+
+(defn- drop-chunk!
+  "Drop one worker's share on a connection of its own: a JDBC Statement cannot be shared across threads, and
+  reconnecting per database would cost more than the drop does."
+  [dataset-names]
+  (with-write-stmt!
+    (fn [^java.sql.Statement stmt]
+      (mapv #(drop-one! stmt %) dataset-names))))
+
+(defn- untrack!
+  "Forget these databases. Kept out of the workers: every row lives in one table, and Snowflake serializes DML on a
+  table, so per-database deletes would have undone the parallelism they ran alongside."
+  [dataset-names]
+  (doseq [batch (partition-all untrack-batch-size dataset-names)]
+    (jdbc/execute! (no-db-connection-spec)
+                   (into [(format "delete from metabase_test_tracking.PUBLIC.datasets where name in (%s)"
+                                  (str/join "," (repeat (count batch) "?")))]
+                         batch))))
+
 (defn- drop-datasets!
-  "Drop each named test database and un-track it, reporting per database whether it went. See [[tx/gc-orphans!]] for
-  the shape."
+  "Un-track each named test database and then drop it, reporting per database whether it went. See [[tx/gc-orphans!]]
+  for the shape.
+
+  Un-tracking comes first so that being killed partway -- the GitHub job hitting its timeout -- leaves recoverable
+  state. A database that is present but untracked is collected again by the next sweep, which ages an untracked
+  `sha_` database from `created`, necessarily older than the `accessed_at` that made it eligible here. Dropping
+  first would instead strand tracking rows for databases that no longer exist, and the sweep enumerates from
+  `information_schema`, so it would never revisit them and the table would grow without bound.
+
+  Each `DROP DATABASE IF EXISTS` is atomic and idempotent on its own, so no individual delete can be torn in half
+  and the parallelism costs nothing in recoverability."
   [dataset-names]
   ;; nothing to drop is the common case on a healthy night; don't open a connection to discover that
   (if (empty? dataset-names)
     []
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (mapv (fn [dataset-name]
-                #_{:clj-kondo/ignore [:discouraged-var]}
-                (println "[Snowflake] Deleting old dataset:" dataset-name)
-                (try
-                  (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-                  (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                         dataset-name))
-                  {:name dataset-name, :status :deleted}
-                  ;; usually just another job deleting the same dataset at the same time
-                  (catch Exception e
-                    {:name dataset-name, :status :failed, :error (ex-message e)})))
-              dataset-names)))))
+    (if-let [untrack-error (try
+                             (untrack! dataset-names)
+                             nil
+                             (catch Exception e (ex-message e)))]
+      ;; dropping anyway would strand exactly the rows we failed to clear, so drop nothing
+      [{:name   nil
+        :status :failed
+        :error  (format "could not clear tracking rows for %d database(s), so dropped none of them: %s"
+                        (count dataset-names) untrack-error)}]
+      (let [chunks (partition-all (max 1 (long (Math/ceil (/ (count dataset-names) (double drop-workers)))))
+                                  dataset-names)]
+        (cp/with-shutdown! [pool (cp/threadpool (min drop-workers (count chunks)))]
+          (into [] cat (doall (cp/pmap pool drop-chunk! chunks))))))))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
