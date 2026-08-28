@@ -929,7 +929,7 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
-(deftest ^:parallel fetch-database-metadata-primes-table-perms-cache-test
+(deftest fetch-database-metadata-primes-table-perms-cache-test
   (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
