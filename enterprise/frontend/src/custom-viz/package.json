@@ -28,7 +28,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "vite build && cp -r src/templates dist/templates",
+    "build": "bun run type-check && vite build && cp -r src/templates dist/templates",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "dev": "vite build --watch",
     "format": "prettier --write .",
@@ -37,7 +37,7 @@
     "release": "bun run build && np",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.fixtures.json"
   },
   "dependencies": {
     "commander": "^13.1.0",
