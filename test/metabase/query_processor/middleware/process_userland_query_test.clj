@@ -22,9 +22,13 @@
 (set! *warn-on-reflection* true)
 
 (defn do-with-query-execution! [query run]
+  ;; Executions batched by earlier tests sit in a JVM-wide queue that only drains on a 20s timer, so without this
+  ;; they arrive inside the `with-redefs` below. Drain them through the real save fn while it is still installed.
+  (process-userland-query/flush-execution-metadata!)
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-    (let [original-hash (qp.util/query-hash query)
-          result        (promise)]
+    (let [original-hash    (qp.util/query-hash query)
+          result           (promise)
+          other-executions (atom [])]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
@@ -34,24 +38,26 @@
                       (fn [query-executions]
                         (doseq [{qe-hash :hash, :as query-execution} query-executions
                                 :when qe-hash]
-                          (deliver
-                           result
-                           (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
-                             query-execution
-                             ;; if you're seeing this there is probably some
-                             ;; bug that is causing query hashes to get
-                             ;; calculated in an inconsistent manner; check
-                             ;; `:query` vs `:query-execution-query`
-                             (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
-                                      {:query                 query
-                                       :original-hash         (some-> original-hash codecs/bytes->hex)
-                                       :query-execution       query-execution
-                                       :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
-                                       :query-execution-query (:json_query query-execution)})))))]
+                          ;; A promise keeps whichever value arrives first, so an execution submitted from a
+                          ;; background thread after the flush above must not be allowed to win the race against
+                          ;; the execution under test.
+                          (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                            (deliver result query-execution)
+                            (swap! other-executions conj
+                                   {:hash       (codecs/bytes->hex ^bytes qe-hash)
+                                    :context    (:context query-execution)
+                                    :json_query (:json_query query-execution)}))))]
           (run
            (fn qe-result* []
              ;; generous deadline: slow exports (xlsx/POI) on loaded CI runners miss a 1s window
              (let [qe (deref result 30000 ::timed-out)]
+               (when (= qe ::timed-out)
+                 ;; an entry in :other-executions whose :context matches this test means query hashes are being
+                 ;; calculated inconsistently; compare :query against that entry's :json_query
+                 (throw (ex-info (format "%s: no QueryExecution was saved for this query" `do-with-query-execution!)
+                                 {:query            query
+                                  :original-hash    (codecs/bytes->hex original-hash)
+                                  :other-executions @other-executions})))
                (cond-> qe
                  (:running_time qe) (update :running_time int?)
                  (:hash qe)         (update :hash (fn [^bytes a-hash]
@@ -113,6 +119,16 @@
                :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
+
+(deftest ignore-executions-for-other-queries-test
+  (testing "an execution flushed out of the shared batch queue mid-block must not win the promise"
+    (let [query (mt/mbql-query venues)]
+      (with-query-execution! [qe query]
+        (#'process-userland-query/save-execution-metadata!*
+         [{:hash (qp.util/query-hash (mt/mbql-query checkins)), :context :question}])
+        (process-userland-query query)
+        (is (= (codecs/bytes->hex (qp.util/query-hash query))
+               (:hash (qe))))))))
 
 (deftest failure-test
   (let [query (mt/mbql-query venues)]
