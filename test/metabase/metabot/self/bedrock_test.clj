@@ -224,23 +224,67 @@
   (testing "openai.* models omit the field entirely"
     (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
 
-(deftest reasoning-is-disabled-test
-  (testing "anthropic models get no thinking config and reasoning parts are stripped"
+(deftest reasoning-request-config-test
+  (testing "anthropic models request adaptive summarized thinking, and only that"
+    (let [body (captured-body! {:model "anthropic.claude-opus-4-8"})]
+      (is (=? {:thinking {:type "adaptive" :display "summarized"}} body))
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "openai models request reasoning summaries with encrypted-content replay, and only that"
+    (let [body (captured-body! {:model "openai.gpt-5.5"})]
+      (is (=? {:reasoning {:summary "auto"}
+               :include   ["reasoning.encrypted_content"]}
+              body))
+      (is (not (contains? body :thinking)))))
+  (testing "models that do not stream reasoning get no thinking config"
+    (is (not (contains? (captured-body! {:model "anthropic.claude-haiku-4-5"}) :thinking))))
+  (testing ":reasoning? false suppresses both families"
+    (is (not (contains? (captured-body! {:model "anthropic.claude-opus-4-8" :reasoning? false}) :thinking)))
+    (let [body (captured-body! {:model "openai.gpt-5.5" :reasoning? false})]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "structured output suppresses thinking for the anthropic family only"
+    (is (not (contains? (captured-body! {:model  "anthropic.claude-opus-4-8"
+                                         :schema {:type "object"}})
+                        :thinking)))
+    (is (=? {:reasoning {:summary "auto"}}
+            (captured-body! {:model "openai.gpt-5.5" :schema {:type "object"}})))))
+
+(deftest reasoning-replay-test
+  (testing "signed reasoning parts replay as a thinking block merged into the assistant turn"
     (let [body (json/decode+kw
                 (:body (captured-raw-request!
                         {:model "anthropic.claude-opus-4-8"
-                         :input [{:type :reasoning :id "r1" :text ""
+                         :input [{:type :reasoning :id "r1" :text "first "}
+                                 {:type :reasoning :id "r1" :text "second"}
+                                 {:type :reasoning :id "r1" :text ""
                                   :provider-metadata {:anthropic {:signature "abc"}}}
                                  {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
-      (is (not (contains? body :thinking)))
-      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
-              (:messages body)))))
-  (testing "openai models get no reasoning summary or encrypted-content include"
-    (let [body (json/decode+kw
-                (:body (captured-raw-request! {:model "openai.gpt-5.5"
-                                               :input [{:role :user :content "hi"}]})))]
-      (is (not (contains? body :reasoning)))
-      (is (not (contains? body :include))))))
+      (is (=? [{:role    "assistant"
+                :content [{:type "thinking" :thinking "first second" :signature "abc"}
+                          {:type "tool_use" :id "call-1"}]}]
+              (:messages body))))))
+
+(deftest reasoning-gate-matches-request-config-test
+  (testing "the capability gate and the request body agree for every whitelisted model"
+    (doseq [model (keys @#'bedrock/supported-models)]
+      (testing model
+        (let [body (captured-body! {:model model})]
+          (is (= (bedrock/reasoning-model? model)
+                 ;; `case` so a model of an unknown family fails loudly here
+                 (case (#'bedrock/model-family model)
+                   :anthropic (contains? body :thinking)
+                   :openai    (contains? body :reasoning)))))))))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (bedrock/reasoning-model? model))
+    "anthropic.claude-opus-4-8"  true
+    "anthropic.claude-fable-5"   true
+    "anthropic.claude-haiku-4-5" false
+    "openai.gpt-5.5"             true
+    "openai.gpt-5.4-2026-03-05"  true
+    "deepseek.v3.2"              false
+    nil                          false))
 
 (deftest fast-mode-is-disabled-test
   (testing "a fast-mode request is stripped before the anthropic body is built"
@@ -305,6 +349,43 @@
           (aisdk-parts-for!
            "openai.gpt-5.5"
            [{:type "response.created" :response {:id "resp_1" :model "openai.gpt-5.5"}}
+            {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.output_text.delta" :delta "pong" :id "item_1"}
+            {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.completed"
+             :response {:id "resp_1" :usage {:input_tokens 3 :output_tokens 2}}}]))))
+
+(deftest anthropic-model-streams-reasoning-test
+  (is (=? [{:type :start :id "msg_1"}
+           {:type :reasoning :text "let me think" :provider-metadata {:anthropic {:signature "sig-1"}}}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "anthropic.claude-opus-4-8"
+           [{:type "message_start" :message {:id "msg_1" :model "claude-opus-4-8" :usage {:input_tokens 3}}}
+            {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+            {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+            {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "sig-1"}}
+            {:type "content_block_stop" :index 0}
+            {:type "content_block_start" :index 1 :content_block {:type "text"}}
+            {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "pong"}}
+            {:type "content_block_stop" :index 1}
+            {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
+            {:type "message_stop"}]))))
+
+(deftest openai-model-streams-reasoning-test
+  (is (=? [{:type :start :id "resp_1"}
+           {:type :reasoning :text "keeping it short"}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "openai.gpt-5.5"
+           [{:type "response.created" :response {:id "resp_1" :model "openai.gpt-5.5"}}
+            {:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+            {:type "response.reasoning_summary_part.added" :item_id "rs_1"}
+            {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "keeping it short"}
+            {:type "response.reasoning_summary_text.done"  :item_id "rs_1"}
+            {:type "response.output_item.done" :item {:type "reasoning" :id "rs_1"}}
             {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
             {:type "response.output_text.delta" :delta "pong" :id "item_1"}
             {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}

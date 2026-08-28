@@ -187,7 +187,7 @@
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-supports-reasoning-test
-  (testing "only anthropic and openai models that stream reasoning report support"
+  (testing "models that stream reasoning report support; others answer false"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
                        (connection "bedrock" "bedrock")
@@ -197,7 +197,9 @@
                "anthropic/claude-haiku-4-5"                 false
                "openai/gpt-5.4"                             true
                "openai/gpt-4o"                              false
-               "bedrock/anthropic.claude-opus-4-8"          false
+               "bedrock/anthropic.claude-opus-4-8"          true
+               "bedrock/anthropic.claude-haiku-4-5"         false
+               "bedrock/openai.gpt-5.5"                     true
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
@@ -226,6 +228,12 @@
       (with-connections [(connection "metabase" "metabase")]
         (with-selected-model "metabase/anthropic/claude-opus-5"
           (is (false? (metabot.settings/llm-metabot-supports-fast-mode?))))))))
+
+(deftest metabot-supports-reasoning-model-less-ref-test
+  (testing "a ref with no model segment answers false rather than throwing"
+    (with-connections [(connection "bedrock" "bedrock")]
+      (with-selected-model "bedrock"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
 (deftest metabot-supports-reasoning-vllm-test
   (testing "vLLM answers from what the connect-time probe recorded on the connection, since neither its catalog
