@@ -12,6 +12,27 @@
     0 0.3125rem 0.9375rem 0 var(--mb-color-shadow-default);
 }
 
+.comparisonTable {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  column-gap: 0.75rem;
+}
+
+.comparisonRow {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: span 3;
+  align-items: center;
+  height: 2rem;
+}
+
 .comparisonRow:not(:last-child) {
   border-bottom: 0.5px dashed var(--mb-color-border-neutral-strongest);
+}
+
+.comparisonText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }

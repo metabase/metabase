@@ -9,6 +9,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
@@ -229,6 +230,73 @@
                   (str directive " must keep an unrelated wildcard"))
               (is (str/includes? value "https://api.allowed.test")
                   (str directive " must keep an external host")))))))))
+
+(deftest data-app-instance-origin-default-port-and-case-excluded-test
+  ;; `drop-instance-origin` must be at least as permissive as the browser's CSP matcher,
+  ;; or an entry it fails to recognize as the instance survives into `form-action` and the
+  ;; browser still treats it as the instance origin — reopening native `<form>` submits to
+  ;; `/api/user`. The browser applies CSP default-port equivalence (`https://h:443` matches
+  ;; a submit to `https://h/...`) and case-insensitive host matching, so an `allowed_hosts`
+  ;; entry the bundle spells with the default port or different case must be dropped too.
+  (testing "the instance origin spelled with its default port is dropped when site-url is portless"
+    (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mb.company.com:443"   ; the instance, default port -> must be dropped
+                                 "https://api.allowed.test"])]  ; unrelated external host    -> must survive
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (doseq [[directive value] {"form-action" form-action
+                                     "frame-src"   frame-src
+                                     "connect-src" connect-src}]
+            (is (not (str/includes? value "mb.company.com"))
+                (str directive " must not admit the instance origin spelled with its default port"))
+            (is (str/includes? value "https://api.allowed.test")
+                (str directive " must keep an external host")))))))
+  (testing "the instance origin in a different host case is dropped (DNS/CSP host matching is case-insensitive)"
+    (mt/with-temporary-setting-values [site-url "https://MB.Company.COM"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mb.company.com"       ; the instance, lower-cased -> must be dropped
+                                 "https://api.allowed.test"])]  ; unrelated external host    -> must survive
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (doseq [[directive value] {"form-action" form-action
+                                     "frame-src"   frame-src
+                                     "connect-src" connect-src}]
+            (is (not (str/includes? (u/lower-case-en value) "mb.company.com"))
+                (str directive " must not admit the instance origin in a different case"))
+            (is (str/includes? value "https://api.allowed.test")
+                (str directive " must keep an external host"))))))))
+
+(deftest data-app-instance-origin-http-scheme-excluded-test
+  ;; The browser's CSP matcher applies the http→https scheme upgrade: a `form-action`
+  ;; source of `http://h` matches a native submit to `https://h/api/user`. The import gate
+  ;; (`allowed-host-re` is `https?://…`) admits an `http://` entry, so one naming the
+  ;; instance host over http must be dropped for an https instance too — otherwise it
+  ;; re-opens the admin-provisioning submit the barrier exists to block.
+  (testing "an http entry covering an https instance is dropped (CSP http→https upgrade)"
+    (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["http://mb.company.com"        ; the instance over http -> must be dropped
+                                 "https://api.allowed.test"])]  ; unrelated external host  -> must survive
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (doseq [[directive value] {"form-action" form-action
+                                     "frame-src"   frame-src
+                                     "connect-src" connect-src}]
+            (is (not (str/includes? value "mb.company.com"))
+                (str directive " must not admit the instance host spelled with http://"))
+            (is (str/includes? value "https://api.allowed.test")
+                (str directive " must keep an external host")))))))
+  (testing "the reverse (https entry, http instance) is left in place — the browser has no https→http upgrade"
+    (mt/with-temporary-setting-values [site-url "http://mb.company.com"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mb.company.com"])]
+        (is (str/includes? (csp-directive-for "/embed/apps/sales" "form-action")
+                           "https://mb.company.com")
+            "an https entry does not cover an http instance, so it must not be over-dropped")))))
 
 (deftest data-app-connect-src-test
   (testing "a data app's allowed_hosts are added to the iframe document's connect-src"

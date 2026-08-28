@@ -2,7 +2,6 @@ import Color from "color";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { colors } from "metabase/ui/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -68,8 +67,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // default should be previous period (since we have a dateUnit)
     cy.findByTestId("scalar-container").findByText("30,759.47");
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. previous month:");
-      cy.findByText("45,683.68");
+      cy.findByText("vs. previous month");
+      cy.findByText("-32.67% (45.7k)");
     });
 
     // previous value
@@ -78,8 +77,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       .click();
     H.menu().findByText("Previous value").click();
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. Mar:");
-      cy.findByText("45,683.68");
+      cy.findByText("vs. Mar");
+      cy.findByText("-32.67% (45.7k)");
     });
 
     // periods ago
@@ -103,8 +102,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.get("input").click().type("3{enter}");
     });
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. Jan:");
-      cy.findByText("52,249.59");
+      cy.findByText("vs. Jan");
+      cy.findByText("-41.13% (52.2k)");
     });
 
     // static number
@@ -121,9 +120,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.button("Done").click();
     });
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. My Goal:").should("exist");
-      cy.findByText("42,000").should("exist"); // goal
-      cy.findByText("26.76%").should("exist"); // down percentage
+      cy.findByText("vs. My Goal").should("exist");
+      cy.findByText("-26.76% (42.0k)").should("exist"); // down percentage (goal)
     });
     cy.findByTestId("chartsettings-sidebar").findByText("(My Goal)").click();
     H.menu().within(() => {
@@ -139,9 +137,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. Mega Count:").should("exist");
-      cy.findByText("3,440,000").should("exist"); // goal
-      cy.findByText("99.11%").should("exist"); // down percentage
+      cy.findByText("vs. Mega Count").should("exist");
+      cy.findByText("-99.11% (3.4M)").should("exist"); // down percentage (goal)
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
@@ -150,9 +147,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. Count:").should("exist");
-      cy.findByText("344").should("exist"); // goal
-      cy.findByText("8,841.71%").should("exist"); // up percentage
+      cy.findByText("vs. Count").should("exist");
+      cy.findByText("+8,841.71% (344)").should("exist"); // up percentage (goal)
     });
   });
 
@@ -175,36 +171,27 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("comparison-list").children().should("have.length", 1);
 
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("34.72%").should("exist");
-      cy.findByText("vs. previous month:").should("exist");
-      cy.findByText("527").should("exist");
+      cy.findByText("vs. previous month").should("exist");
+      cy.findByText("-34.72% (527)").should("exist");
     });
 
     cy.button("Add comparison").click();
     cy.findByTestId("comparison-list").children().should("have.length", 2);
     H.menu().findByText("months ago").click();
-    cy.findAllByTestId("scalar-previous-value")
-      .children()
-      .should("have.length", 2)
-      .last()
-      .within(() => {
-        cy.findByText("36.65%").should("exist");
-        cy.findByText("vs. Feb:").should("exist");
-        cy.findByText("543").should("exist");
-      });
+    cy.findAllByTestId("scalar-previous-value").should("have.length", 2);
+    cy.findByTestId("scalar-comparison-list").within(() => {
+      cy.findByText("vs. Feb").should("exist");
+      cy.findByText("-36.65% (543)").should("exist");
+    });
 
     cy.button("Add comparison").click();
     cy.findByTestId("comparison-list").children().should("have.length", 3);
     H.menu().findByText("Previous value").click();
-    cy.findAllByTestId("scalar-previous-value")
-      .children()
-      .should("have.length", 3)
-      .last()
-      .within(() => {
-        cy.findByText("34.72%").should("exist");
-        cy.findByText("vs. Mar:").should("exist");
-        cy.findByText("527").should("exist");
-      });
+    cy.findAllByTestId("scalar-previous-value").should("have.length", 3);
+    cy.findByTestId("scalar-comparison-list").within(() => {
+      cy.findByText("vs. Mar").should("exist");
+      cy.findAllByText("-34.72% (527)").should("have.length", 2);
+    });
 
     cy.button("Add comparison").should("be.disabled");
 
@@ -218,11 +205,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("comparison-list")
       .findByText("Previous value")
       .should("not.exist");
-    cy.findAllByTestId("scalar-previous-value")
-      .children()
-      .should("have.length", 2);
-    cy.findAllByTestId("scalar-previous-value")
-      .findByText("vs. Mar:")
+    cy.findAllByTestId("scalar-previous-value").should("have.length", 2);
+    cy.findByTestId("scalar-comparison-list")
+      .findByText("vs. Mar")
       .should("not.exist");
 
     cy.button("Add comparison").should("be.enabled");
@@ -275,8 +260,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
-      cy.findByText("vs. Goal:").should("exist");
-      cy.findByText("400,000").should("exist");
+      cy.findByText("vs. Goal").should("exist");
+      cy.findByText("+760% (400.0k)").should("exist");
     });
 
     // Replacing "Custom value (Goal)" with "Another column (Count)"
@@ -300,8 +285,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-value").should("have.text", "344");
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("Count").should("not.exist");
-      cy.findByText("vs. previous month:").should("exist");
-      cy.findByText("527").should("exist");
+      cy.findByText("vs. previous month").should("exist");
+      cy.findByText("-34.72% (527)").should("exist");
     });
 
     cy.findByTestId("chartsettings-sidebar")
@@ -325,8 +310,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
-      cy.findByText("vs. previous month:").should("exist");
-      cy.findByText("5,270,000").should("exist");
+      cy.findByText("vs. previous month").should("exist");
+      cy.findByText("-34.72% (5.3M)").should("exist");
     });
 
     // Removing the remaining numeric column, so only Count is left
@@ -361,12 +346,23 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    // scalar.switch_positive_negative setting
-    cy.icon("arrow_down").should(
-      "have.css",
-      "color",
-      Color(colors.error).rgb().string(),
-    );
+    // scalar.switch_positive_negative setting changes the comparison sentiment color
+    const assertComparisonColor = (cssVariable) => {
+      cy.document().then((doc) => {
+        const expectedColor = Color(
+          getComputedStyle(doc.documentElement)
+            .getPropertyValue(cssVariable)
+            .trim(),
+        )
+          .rgb()
+          .string();
+        cy.findByTestId("scalar-previous-value")
+          .findByText("-34.72% (527)")
+          .should("have.css", "color", expectedColor);
+      });
+    };
+
+    assertComparisonColor("--mb-color-feedback-negative-strong");
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
@@ -374,11 +370,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
         force: true,
       });
     });
-    cy.icon("arrow_down").should(
-      "have.css",
-      "color",
-      Color(colors.success).rgb().string(),
-    );
+    assertComparisonColor("--mb-color-feedback-positive-strong");
 
     // open the metric column's formatting (now in a popover, since the date
     // column is also configurable)
@@ -428,12 +420,15 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-container").findByText("68’800.0000%");
 
     // add a prefix
+    // a long value auto-compacts to fit the card, so match the affixes only
     cy.findByLabelText("Add a prefix").click().type("Woah: ").blur();
-    cy.findByTestId("scalar-container").findByText("Woah: 68’800.0000%");
+    cy.findByTestId("scalar-container").should("contain", "Woah: ");
 
     // add a suffix
     cy.findByLabelText("Add a suffix").click().type(" ! cool").blur();
-    cy.findByTestId("scalar-container").findByText("Woah: 68’800.0000% ! cool");
+    cy.findByTestId("scalar-container")
+      .should("contain", "Woah: ")
+      .and("contain", " ! cool");
 
     // scalar.compact_primary_number setting
     cy.findByTestId("chartsettings-sidebar").within(() => {
@@ -443,36 +438,37 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().findByRole("option", { name: "Mega Count" }).click();
     cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
 
+    // the comparison list always shows compact values; the setting only
+    // affects the primary number
     cy.findByTestId("scalar-container").findByText("3,440,000");
-    cy.findByTestId("scalar-previous-value").findByText("5,270,000");
+    cy.findByTestId("scalar-previous-value").should("contain", "5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
       .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3.4M");
-    cy.findByTestId("scalar-previous-value").findByText("5.3M");
+    cy.findByTestId("scalar-previous-value").should("contain", "5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
       .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3,440,000");
-    cy.findByTestId("scalar-previous-value").findByText("5,270,000");
+    cy.findByTestId("scalar-previous-value").should("contain", "5.3M");
 
     cy.log("scalar.show_comparison_value setting");
-    cy.findByTestId("scalar-previous-value").should("contain.text", "(5.3M)");
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Show comparison value")
       .should("be.checked")
       .click({ force: true });
     cy.findByTestId("scalar-previous-value")
-      .should("contain.text", "MoM")
-      .and("not.contain.text", "(5.3M)");
+      .should("contain", "-34.72%")
+      .and("not.contain", "5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Show comparison value")
       .should("not.be.checked")
       .click({ force: true });
-    cy.findByTestId("scalar-previous-value").should("contain.text", "(5.3M)");
+    cy.findByTestId("scalar-previous-value").should("contain", "5.3M");
   });
 
   it("should work regardless of column order (metabase#13710)", () => {

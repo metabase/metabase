@@ -1,8 +1,10 @@
 import _ from "underscore";
 
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
-import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/pivot-table";
-import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
+import {
+  computeQuestionPivotTable,
+  getAdHocQuestionWithVizSettings,
+} from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";

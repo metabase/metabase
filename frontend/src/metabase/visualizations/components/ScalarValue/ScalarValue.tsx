@@ -7,12 +7,15 @@ import {
   type PropsWithChildren,
   type ReactNode,
   forwardRef,
+  useCallback,
+  useState,
 } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Ellipsified, Flex, useMantineTheme } from "metabase/ui";
+
+import { LegendLabel } from "../legend/LegendLabel";
 
 import S from "./ScalarValue.module.css";
 import type { ScalarSizeTier } from "./sizing";
@@ -83,20 +86,56 @@ export const ScalarValue = ({
   );
 };
 
-export const ScalarTitle = ({ children }: { children: ReactNode }) => (
-  <Box
-    component="h3"
-    fz={14}
-    lh={1.22}
-    fw={700}
-    c="text-primary"
-    ta="center"
-    maw="100%"
-    data-testid="scalar-title"
-  >
-    <Ellipsified tooltip={children}>{children}</Ellipsified>
-  </Box>
-);
+const TITLE_HREF_PLACEHOLDER = "#";
+
+interface ScalarTitleProps {
+  children: ReactNode;
+  getHref?: () => string | undefined;
+  onSelectTitle?: () => void;
+}
+
+export const ScalarTitle = ({
+  children,
+  getHref,
+  onSelectTitle,
+}: ScalarTitleProps) => {
+  const [href, setHref] = useState(
+    getHref ? TITLE_HREF_PLACEHOLDER : undefined,
+  );
+  const computeHref = useCallback(() => {
+    if (getHref) {
+      setHref(getHref());
+    }
+  }, [getHref]);
+
+  const title = <Ellipsified tooltip={children}>{children}</Ellipsified>;
+
+  return (
+    <Box
+      fz="md"
+      lh="md"
+      fw={700}
+      c="text-primary"
+      ta="center"
+      maw="100%"
+      data-testid="scalar-title"
+    >
+      {onSelectTitle ? (
+        <LegendLabel
+          className={S.titleLink}
+          href={href}
+          onClick={onSelectTitle}
+          onFocus={computeHref}
+          onMouseEnter={computeHref}
+        >
+          {title}
+        </LegendLabel>
+      ) : (
+        title
+      )}
+    </Box>
+  );
+};
 
 export const ScalarActionButtons = ({
   children,
@@ -112,7 +151,7 @@ export const ScalarActionButtons = ({
       pos="absolute"
       top={tier.menuOffset.top}
       right={tier.menuOffset.right}
-      className={cx(CS.hoverChild, S.actionButtons)}
+      className={S.actionButtons}
       data-testid="scalar-action-buttons"
       {...props}
     >

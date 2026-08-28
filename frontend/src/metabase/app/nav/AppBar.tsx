@@ -18,10 +18,7 @@ import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
-import {
-  getOriginalQuestion,
-  getQuestion,
-} from "metabase/query_builder/selectors/question";
+import { getOriginalQuestion, getQuestion } from "metabase/query_builder";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -111,7 +108,7 @@ export function AppBarContainer() {
       // not put the query builder's actions in the initial bundle. Only a search
       // selection on an object-detail page gets here, and the query builder it
       // zooms within is already loaded by then.
-      const { zoomInRow } = await import("metabase/query_builder/actions");
+      const { zoomInRow } = await import("metabase/query_builder");
       dispatch(zoomInRow({ objectId: selection.objectId }));
     } else {
       navigate(selection.url);

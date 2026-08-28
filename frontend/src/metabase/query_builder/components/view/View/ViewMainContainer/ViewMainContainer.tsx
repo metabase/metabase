@@ -3,8 +3,6 @@ import cx from "classnames";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -24,6 +22,8 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { useVisualizationResultQBProps } from "../../../../hooks";
+import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 

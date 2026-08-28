@@ -29,6 +29,7 @@
   code will actually run on, plus this will only run one time per Metabase install, so I'd rather not spend a ton of
   time optimizing for an incredibly unlikely case."
   (:require
+   ;; keep this migration decoupled from later changes to the metabase.util.json facade
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [clojure.set :as set]

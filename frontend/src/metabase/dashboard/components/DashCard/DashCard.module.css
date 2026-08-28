@@ -25,6 +25,10 @@
     box-shadow: 0 0 0 0.5px var(--mb-color-border-neutral-strong);
   }
 
+  &.isAction {
+    box-shadow: none !important;
+  }
+
   &.hasHiddenBackground {
     border: 0 !important;
     background: transparent !important;

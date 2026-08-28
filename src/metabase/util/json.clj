@@ -1,6 +1,7 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
   (:require
+   ;; this ns is the JSON facade; it wraps cheshire directly
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [cheshire.factory]
