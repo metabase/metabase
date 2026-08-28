@@ -16,8 +16,8 @@ import {
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 import { encodeNativeStagesBase64 } from "./utils/encode-native-stages";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 interface IgnorableError {
   ignore_error?: boolean;
