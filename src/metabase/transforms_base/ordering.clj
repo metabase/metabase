@@ -237,6 +237,16 @@
                             (node->children node))]
            (recur stack' (conj visited node))))))))
 
+(defn- live-target-table-id
+  "Id of the synced table `transform`'s `:target` currently points at, or nil if none is synced yet."
+  [{:keys [target] :as transform}]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    (t2/select-one-pk :model/Table
+                      :db_id  db-id
+                      :schema (:schema target)
+                      :name   (:name target)
+                      :active true)))
+
 (defn get-transform-cycle
   "Get a cycle if it exists (otherwise `nil`). Cycle consists of:
 
@@ -247,9 +257,13 @@
 "
   [{transform-id :id :as to-check}]
   (let [db-id            (get-in to-check [:source :query :database])
-        ;; Recompute the transform under test live — its source may have just changed, so any stored
-        ;; deps are stale — and pin its source db. Every other transform uses its stored deps.
-        to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :table_dependencies))
+        ;; Recompute the transform under test live — its source or target may have just changed, so the
+        ;; stored deps and `target_table_id` are stale — and pin its source db. Every other transform
+        ;; uses its stored values.
+        to-check         (-> to-check
+                             (assoc :source_database_id db-id
+                                    :target_table_id    (live-target-table-id to-check))
+                             (dissoc :table_dependencies))
         transforms       (map (fn [{:keys [id] :as transform}]
                                 (if (= id transform-id)
                                   to-check

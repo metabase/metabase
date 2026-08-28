@@ -370,6 +370,25 @@
               :cycle     [t1 t3 t2]}
              (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
 
+(deftest get-transform-cycle-live-target-test
+  (testing "the transform under test resolves its target live, not from a stale target_table_id"
+    (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public), :name "table_1"}
+                   :model/Field _ {:table_id table1
+                                   :name     "foo"}
+                   :model/Table {table2 :id} {:schema (default-schema-or-public), :name "table_2"}
+                   :model/Transform {t1 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table1}}
+                                                  "table_2")
+                                                 (assoc :target_table_id table2))]
+      (let [transform (t2/select-one :model/Transform :id t1)]
+        (is (nil? (ordering/get-transform-cycle transform)))
+        (testing "retargeting onto its own source table is a self-cycle"
+          (is (= {:cycle-str "transform_table_2"
+                  :cycle     [t1]}
+                 (ordering/get-transform-cycle (assoc-in transform [:target :name] "table_1")))))))))
+
 ;;; --------------------------------------- Precomputed table_dependencies ---------------------------------------
 ;;; These exercise the read side in isolation (no driver / SQL parser): transforms carry their deps in the
 ;;; `:table_dependencies` key the way the appdb column supplies them.
