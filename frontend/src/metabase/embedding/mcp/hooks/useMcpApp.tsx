@@ -9,6 +9,11 @@ import {
 import { useEffect, useState } from "react";
 
 import {
+  UI_CREDENTIAL_REFRESH_INTERVAL_MS,
+  UI_CREDENTIAL_REFRESH_MAX_FAILURES,
+  UI_CREDENTIAL_REFRESH_RETRY_MS,
+} from "../constants";
+import {
   type McpUiAuth,
   getMcpUiAuth,
   installMcpUiCredential,
@@ -35,10 +40,6 @@ type VisualizeQueryToolResult = {
   query?: string;
   prompt?: string;
 };
-
-const UI_CREDENTIAL_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
-const UI_CREDENTIAL_REFRESH_RETRY_MS = 30 * 1000;
-const UI_CREDENTIAL_REFRESH_MAX_FAILURES = 2;
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
