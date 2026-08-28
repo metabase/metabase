@@ -11,7 +11,6 @@ type Settings = {
   renameQuestion?: null;
 };
 
-// Tries to write a Metabase setting; the host must keep it inside the plugin's namespace.
 function RenameQuestionWidget({
   onChangeSettings,
 }: BaseWidgetProps<null, Settings>) {
@@ -20,7 +19,7 @@ function RenameQuestionWidget({
       type="button"
       onClick={() =>
         onChangeSettings({
-          // @ts-expect-error -- the SDK type rejects Metabase's setting ids on purpose
+          // @ts-expect-error -- the SDK type rejects internal Metabase setting ids on purpose
           "card.title": "Plugin title",
           threshold: 7,
         })
