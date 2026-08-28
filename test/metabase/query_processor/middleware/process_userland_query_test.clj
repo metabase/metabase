@@ -22,14 +22,16 @@
 (set! *warn-on-reflection* true)
 
 (defn do-with-query-execution! [query run]
-  ;; Executions batched by earlier tests sit in a JVM-wide queue that only drains on a 20s timer, so without this
-  ;; they arrive inside the `with-redefs` below. Drain them through the real save fn while it is still installed.
-  (process-userland-query/flush-execution-metadata!)
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash    (qp.util/query-hash query)
           result           (promise)
           other-executions (atom [])]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; Executions batched by earlier tests sit in a JVM-wide queue that drains on a 20s timer, so they would
+        ;; otherwise arrive inside the `with-redefs` below. Ordering is what makes this work: the setting above
+        ;; seals the queue (every submit now runs inline), so draining here empties it for good, and doing it
+        ;; before the redef sends those executions to the real save fn rather than dropping them.
+        (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
