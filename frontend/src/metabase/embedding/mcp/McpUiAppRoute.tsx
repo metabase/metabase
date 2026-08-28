@@ -111,14 +111,14 @@ function McpUiAppRouteContent({
   query,
   uiCredential,
 }: McpUiAppRouteContentProps) {
-  const handleDrillThrough = useHandleMcpDrillThrough(
+  const isHosted = useSetting("is-hosted?");
+  const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
+
+  const handleDrillThrough = useHandleMcpDrillThrough({
     app,
     uiCredential,
     mcpSessionId,
-  );
-  const isHosted = useSetting("is-hosted?");
-
-  const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
+  });
 
   const deserializedCard = useMemo(() => {
     if (!query) {

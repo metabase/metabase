@@ -32,7 +32,7 @@ const isStayDrill = (drillName: string | undefined) =>
     (prefix) => drillName === prefix || drillName.startsWith(`${prefix}.`),
   );
 
-const isClaudeHost = (app: App) => {
+const isClaudeHost = (app: Pick<App, "getHostVersion">) => {
   const hostVersion = app.getHostVersion();
 
   return hostVersion?.name.toLowerCase().includes("claude");
@@ -43,11 +43,22 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(
-  app: App | null,
-  uiCredential: string,
-  mcpSessionId: string,
-): DrillThroughHandler {
+type McpDrillThroughApp = Pick<
+  App,
+  "getHostVersion" | "openLink" | "sendMessage"
+>;
+
+interface UseHandleMcpDrillThroughParams {
+  app: McpDrillThroughApp | null;
+  uiCredential: string;
+  mcpSessionId: string;
+}
+
+export function useHandleMcpDrillThrough({
+  app,
+  uiCredential,
+  mcpSessionId,
+}: UseHandleMcpDrillThroughParams): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
       if (isStayDrill(drillName) || !app) {
