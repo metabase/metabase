@@ -18,10 +18,8 @@ export const getIsLoggedIn = (state: SdkStoreState) =>
 
 export const getSessionTokenState = (state: SdkStoreState) => state.sdk.token;
 
-export const getGuestTokenForInstance = (
-  state: SdkStoreState,
-  instanceId: string,
-) => state.sdk.token.guestTokensByInstance[instanceId] ?? null;
+export const getGuestTokenForMount = (state: SdkStoreState, mountId: string) =>
+  state.sdk.token.guestTokensByMount[mountId] ?? null;
 
 export const getPlugins = (state: SdkStoreState) => state.sdk.plugins;
 

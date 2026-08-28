@@ -16,10 +16,10 @@ let refreshGuestSessionPromise: ReturnType<
 > | null = null;
 
 // Sets the initial guest embed token when a component first loads. Keyed by a
-// stable per-mount instance id so concurrent guest embeds under one
+// stable per-mount id so concurrent guest embeds under one
 // MetabaseProvider don't overwrite each other's token.
 export const setInitialGuestToken = createAction<{
-  instanceId: string;
+  mountId: string;
   token: string;
 }>("sdk/guest-embed/SET_INITIAL_TOKEN");
 
@@ -41,8 +41,8 @@ export const refreshGuestSession = createAsyncThunk(
     authConfig: MetabaseAuthConfig;
     expiredToken: string;
     // Unused by the fetch itself; carried on the thunk arg so the reducer can
-    // write the refreshed token back to the same guestTokensByInstance key.
-    instanceId: string;
+    // write the refreshed token back to the same guestTokensByMount key.
+    mountId: string;
   }): Promise<string> => {
     if (authConfig.isGuest && !authConfig.guestEmbedProviderUri) {
       throw new Error(
@@ -70,13 +70,16 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     // This thunk only runs for iframe/modular embeds (see the isEmbeddingEajs
     // check below), where each embed gets its own iframe and therefore its
     // own store — so there's only ever one guest token in this map.
-    const instanceId = Object.keys(tokenState.guestTokensByInstance)[0];
-    const currentToken = instanceId
-      ? tokenState.guestTokensByInstance[instanceId]
+    // Needs rework for EMB-2295 (guestEmbedProviderUri in the plain SDK): there
+    // one store can hold several mounts, and picking an arbitrary key would
+    // hand every request the same token again.
+    const mountId = Object.keys(tokenState.guestTokensByMount)[0];
+    const currentToken = mountId
+      ? tokenState.guestTokensByMount[mountId]
       : null;
 
     // No token in Redux yet, so we can't check expiration.
-    if (!currentToken || !instanceId) {
+    if (!currentToken) {
       return null;
     }
 
@@ -114,7 +117,7 @@ export const getOrRefreshGuestSession = createAsyncThunk(
       refreshGuestSession({
         authConfig,
         expiredToken: currentToken,
-        instanceId,
+        mountId,
       }),
     );
 

@@ -99,9 +99,8 @@ describe("StaticQuestion - multiple guest questions", () => {
       expect(screen.getByText("Alpha")).toBeInTheDocument();
     });
 
-    // Mount a second guest question under the same provider/store. Each card's
-    // instance keeps its own guest token, so neither re-queries with the
-    // other's JWT.
+    // Mount a second guest question under the same provider/store. Each mount
+    // keeps its own guest token, so neither re-queries with the other's JWT.
     rerender(
       <div>
         <StaticQuestion token={tokens[0]} />

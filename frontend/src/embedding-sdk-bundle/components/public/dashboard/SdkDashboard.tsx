@@ -38,7 +38,7 @@ import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
-  getGuestTokenForInstance,
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
@@ -264,9 +264,9 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
-  // Stable per-mount id: keeps this instance's guest token isolated from any
+  // Stable per-mount id: keeps this mount's guest token isolated from any
   // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
-  const instanceId = useId();
+  const mountId = useId();
 
   useWarnConflictingParameterProps({
     initialParameters,
@@ -287,15 +287,15 @@ const SdkDashboardInner = ({
 
   const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
   const tokenFromStore = useSdkSelector((state) =>
-    getGuestTokenForInstance(state, instanceId),
+    getGuestTokenForMount(state, mountId),
   );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken({ instanceId, token: rawToken }));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch, instanceId]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
 
   useEffect(() => {
     setIsFirstRender(false);

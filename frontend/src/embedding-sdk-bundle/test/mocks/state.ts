@@ -11,7 +11,7 @@ export const createMockTokenState = ({
     error: null,
     loading: false,
     token: null,
-    guestTokensByInstance: {},
+    guestTokensByMount: {},
     ...opts,
   };
 };

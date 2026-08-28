@@ -71,7 +71,7 @@ const initialState: SdkState = {
   metabaseInstanceVersion: null,
   token: {
     token: null,
-    guestTokensByInstance: {},
+    guestTokensByMount: {},
     loading: false,
     error: null,
   },
@@ -95,7 +95,7 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
-      guestTokensByInstance: {},
+      guestTokensByMount: {},
       loading: false,
       error: null,
     };
@@ -180,16 +180,10 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setInitialGuestToken, (state, action) => {
-    const { instanceId, token } = action.payload;
-    state.token = {
-      ...state.token,
-      guestTokensByInstance: {
-        ...state.token.guestTokensByInstance,
-        [instanceId]: token,
-      },
-      loading: false,
-      error: null,
-    };
+    const { mountId, token } = action.payload;
+    state.token.guestTokensByMount[mountId] = token;
+    state.token.loading = false;
+    state.token.error = null;
   });
 
   builder.addCase(refreshGuestSession.pending, (state) => {
@@ -200,16 +194,10 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
-    const { instanceId } = action.meta.arg;
-    state.token = {
-      ...state.token,
-      guestTokensByInstance: {
-        ...state.token.guestTokensByInstance,
-        [instanceId]: action.payload,
-      },
-      loading: false,
-      error: null,
-    };
+    const { mountId } = action.meta.arg;
+    state.token.guestTokensByMount[mountId] = action.payload;
+    state.token.loading = false;
+    state.token.error = null;
   });
 
   builder.addCase(refreshGuestSession.rejected, (state, action) => {
