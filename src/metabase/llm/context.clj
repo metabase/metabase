@@ -170,41 +170,39 @@
    shared FieldValues cache."
   25)
 
-(defn- cap-restricted-columns
-  "Caps each restricted table's columns at [[max-restricted-field-values-fetches]] independently, so one
-   large restricted table can't starve another restricted table's columns of any fetches at all."
-  [restricted-columns-by-table]
+(defn- cap-restricted-fields
+  "Caps each restricted table's fields at [[max-restricted-field-values-fetches]] independently, so one
+   large restricted table can't starve another restricted table's fields of any fetches at all."
+  [restricted-fields-by-table]
   (into []
-        (mapcat (fn [[table-id cols]]
-                  (when (> (count cols) max-restricted-field-values-fetches)
+        (mapcat (fn [[table-id fields]]
+                  (when (> (count fields) max-restricted-field-values-fetches)
                     (log/infof "Capping restricted-table field values fetch to %d of %d columns for table %d."
-                               max-restricted-field-values-fetches (count cols) table-id))
-                  (take max-restricted-field-values-fetches cols)))
-        restricted-columns-by-table))
+                               max-restricted-field-values-fetches (count fields) table-id))
+                  (take max-restricted-field-values-fetches fields)))
+        restricted-fields-by-table))
 
 (defn- fetch-field-values
   "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
    Values are the ones the current user is allowed to see, and are fetched from the source database when
-   nothing suitable is cached. Columns belonging to a table in `restricted-table-ids` are capped at
-   [[max-restricted-field-values-fetches]] per table."
+   nothing suitable is cached. Fields belonging to a table in `restricted-table-ids` are capped at
+   [[max-restricted-field-values-fetches]] per table -- applied only after narrowing to fields that
+   should have FieldValues, so ineligible fields can't consume another field's budget."
   [columns restricted-table-ids]
-  (let [{restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table-id %)) columns)
-        capped-columns (concat unrestricted (cap-restricted-columns (group-by :table-id restricted)))
-        field-ids (->> capped-columns
-                       (keep :id)
-                       (filter pos-int?)
-                       set)]
+  (let [field-ids (->> columns (keep :id) (filter pos-int?) set)]
     (when (seq field-ids)
-      (let [fields (t2/select :model/Field :id [:in field-ids])]
+      (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
+            ;; :table-id, consistent with the permission checks elsewhere in this namespace.
+            fields (filter field-values/field-should-have-field-values?
+                           (t2/select :model/Field :id [:in field-ids]))
+            {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
+            capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
               (keep (fn [field]
-                      ;; The per-user path skips this check. Without it, every column of the table would
-                      ;; cost a distinct-values query against the warehouse.
-                      (when (field-values/field-should-have-field-values? field)
-                        (when-let [fv (params.field-values/get-or-create-field-values! field)]
-                          (when-let [values (not-empty (:values fv))]
-                            [(:id field) values])))))
-              fields)))))
+                      (when-let [fv (params.field-values/get-or-create-field-values! field)]
+                        (when-let [values (not-empty (:values fv))]
+                          [(:id field) values]))))
+              capped-fields)))))
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
