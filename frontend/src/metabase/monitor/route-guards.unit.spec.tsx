@@ -84,10 +84,13 @@ describe("monitor route-guards", () => {
     const DEPENDENCY_ROUTE = "/monitor/dependency-diagnostics";
     const CONTENT_ROUTE = "/monitor/content-diagnostics";
 
-    const PAGE_TEXT = {
-      [DEPENDENCY_ROUTE]: "dependency diagnostics page",
-      [CONTENT_ROUTE]: "content diagnostics page",
-    };
+    const DEPENDENCY_PAGE = "dependency diagnostics page";
+    const CONTENT_PAGE = "content diagnostics page";
+
+    const BOTH_SECTIONS = [
+      [DEPENDENCY_ROUTE, DEPENDENCY_PAGE],
+      [CONTENT_ROUTE, CONTENT_PAGE],
+    ];
 
     interface SetupOpts {
       currentUser?: ReturnType<typeof createMockUser>;
@@ -100,14 +103,11 @@ describe("monitor route-guards", () => {
           <Route element={<CanAccessDependencyDiagnostics />}>
             <Route
               path={DEPENDENCY_ROUTE}
-              element={<div>{PAGE_TEXT[DEPENDENCY_ROUTE]}</div>}
+              element={<div>{DEPENDENCY_PAGE}</div>}
             />
           </Route>
           <Route element={<CanAccessContentDiagnostics />}>
-            <Route
-              path={CONTENT_ROUTE}
-              element={<div>{PAGE_TEXT[CONTENT_ROUTE]}</div>}
-            />
+            <Route path={CONTENT_ROUTE} element={<div>{CONTENT_PAGE}</div>} />
           </Route>
           <Route path="/unauthorized" element={<div>unauthorized</div>} />
         </>,
@@ -129,9 +129,9 @@ describe("monitor route-guards", () => {
         permissions: { can_access_monitoring: true },
       });
 
-    it.each([DEPENDENCY_ROUTE, CONTENT_ROUTE])(
+    it.each(BOTH_SECTIONS)(
       "renders %s for an analyst",
-      async (initialRoute) => {
+      async (initialRoute, pageText) => {
         setup({
           currentUser: createMockUser({
             is_superuser: false,
@@ -140,9 +140,7 @@ describe("monitor route-guards", () => {
           initialRoute,
         });
 
-        expect(
-          await screen.findByText(PAGE_TEXT[initialRoute]),
-        ).toBeInTheDocument();
+        expect(await screen.findByText(pageText)).toBeInTheDocument();
       },
     );
 
@@ -152,9 +150,7 @@ describe("monitor route-guards", () => {
         initialRoute: CONTENT_ROUTE,
       });
 
-      expect(
-        await screen.findByText(PAGE_TEXT[CONTENT_ROUTE]),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(CONTENT_PAGE)).toBeInTheDocument();
     });
 
     it("redirects a monitoring-only user away from dependency diagnostics", async () => {
@@ -168,14 +164,12 @@ describe("monitor route-guards", () => {
       });
 
       expect(router?.location.search).toBe("");
-      expect(
-        screen.queryByText(PAGE_TEXT[DEPENDENCY_ROUTE]),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(DEPENDENCY_PAGE)).not.toBeInTheDocument();
     });
 
-    it.each([DEPENDENCY_ROUTE, CONTENT_ROUTE])(
+    it.each(BOTH_SECTIONS)(
       "redirects a user with none of the three away from %s",
-      async (initialRoute) => {
+      async (initialRoute, pageText) => {
         const { router } = setup({
           currentUser: createMockUser({
             is_superuser: false,
@@ -189,9 +183,7 @@ describe("monitor route-guards", () => {
           expect(router?.location.pathname).toBe("/unauthorized");
         });
 
-        expect(
-          screen.queryByText(PAGE_TEXT[initialRoute]),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(pageText)).not.toBeInTheDocument();
       },
     );
   });
