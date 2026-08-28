@@ -11,7 +11,8 @@ import { getMonitorRedirects, getMonitorRoutes } from "./routes";
 
 type MonitorGuard =
   | "CanAccessMonitor"
-  | "CanAccessMonitorDiagnostics"
+  | "CanAccessDependencyDiagnostics"
+  | "CanAccessContentDiagnostics"
   | "CanAccessMonitoringTools"
   | "CanAccessAlertsManagement"
   | "CanAccessAiAuditing";
@@ -37,7 +38,8 @@ jest.mock("./route-guards", () => {
 
   return {
     CanAccessMonitor: stubGuard("CanAccessMonitor"),
-    CanAccessMonitorDiagnostics: stubGuard("CanAccessMonitorDiagnostics"),
+    CanAccessDependencyDiagnostics: stubGuard("CanAccessDependencyDiagnostics"),
+    CanAccessContentDiagnostics: stubGuard("CanAccessContentDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
     CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
@@ -289,7 +291,7 @@ describe("monitor routes", () => {
     });
 
     describe("index redirect (/monitor)", () => {
-      it("sends analysts to the diagnostics section", async () => {
+      it("sends analysts to dependency diagnostics", async () => {
         const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
@@ -305,7 +307,7 @@ describe("monitor routes", () => {
         );
       });
 
-      it("sends monitoring-only users to the diagnostics section", async () => {
+      it("sends monitoring-only users to content diagnostics", async () => {
         const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
@@ -317,7 +319,7 @@ describe("monitor routes", () => {
 
         await waitFor(() =>
           expect(router?.location.pathname).toBe(
-            "/monitor/dependency-diagnostics",
+            "/monitor/content-diagnostics",
           ),
         );
       });
@@ -372,10 +374,14 @@ describe("monitor routes", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
+      it("renders NotFound for unknown paths even when every section guard denies (catch-all sits outside the guards)", async () => {
         setup({
           initialRoute: "/monitor/does-not-exist",
-          deny: ["CanAccessMonitorDiagnostics", "CanAccessMonitoringTools"],
+          deny: [
+            "CanAccessDependencyDiagnostics",
+            "CanAccessContentDiagnostics",
+            "CanAccessMonitoringTools",
+          ],
         });
 
         expect(await screen.findByLabelText("error page")).toBeInTheDocument();

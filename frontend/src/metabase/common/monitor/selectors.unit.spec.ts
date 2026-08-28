@@ -4,8 +4,9 @@ import { createMockUser } from "metabase-types/api/mocks";
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessContentDiagnostics,
+  canAccessDependencyDiagnostics,
   canAccessMonitor,
-  canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
 } from "./selectors";
 
@@ -52,7 +53,7 @@ describe("canAccessMonitor", () => {
     expect(canAccessMonitor(state)).toBe(true);
   });
 
-  it("returns true for a monitoring-only user (tools access)", () => {
+  it("returns true for a monitoring-only user (content diagnostics and tools access)", () => {
     const state = createMockState({
       currentUser: createMockUser({
         is_superuser: false,
@@ -77,7 +78,7 @@ describe("canAccessMonitor", () => {
   });
 });
 
-describe("canAccessMonitorDiagnostics", () => {
+describe("canAccessDependencyDiagnostics", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     isWithinIframe.mockReturnValue(false);
@@ -89,7 +90,7 @@ describe("canAccessMonitorDiagnostics", () => {
       currentUser: createMockUser({ is_superuser: true }),
     });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(false);
+    expect(canAccessDependencyDiagnostics(state)).toBe(false);
   });
 
   it("returns true when user is admin", () => {
@@ -97,7 +98,7 @@ describe("canAccessMonitorDiagnostics", () => {
       currentUser: createMockUser({ is_superuser: true }),
     });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+    expect(canAccessDependencyDiagnostics(state)).toBe(true);
   });
 
   it("returns true when user is analyst", () => {
@@ -108,7 +109,54 @@ describe("canAccessMonitorDiagnostics", () => {
       }),
     });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+    expect(canAccessDependencyDiagnostics(state)).toBe(true);
+  });
+
+  it("returns false for a non-admin with only the monitoring application permission", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessDependencyDiagnostics(state)).toBe(false);
+  });
+});
+
+describe("canAccessContentDiagnostics", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isWithinIframe.mockReturnValue(false);
+  });
+
+  it("returns false when in embedding iframe", () => {
+    isWithinIframe.mockReturnValue(true);
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessContentDiagnostics(state)).toBe(false);
+  });
+
+  it("returns true when user is admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessContentDiagnostics(state)).toBe(true);
+  });
+
+  it("returns true when user is analyst", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+    });
+
+    expect(canAccessContentDiagnostics(state)).toBe(true);
   });
 
   it("returns true for a non-admin with the monitoring application permission", () => {
@@ -120,7 +168,7 @@ describe("canAccessMonitorDiagnostics", () => {
       }),
     });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+    expect(canAccessContentDiagnostics(state)).toBe(true);
   });
 
   it("returns false without admin, analyst or the monitoring permission", () => {
@@ -132,7 +180,7 @@ describe("canAccessMonitorDiagnostics", () => {
       }),
     });
 
-    expect(canAccessMonitorDiagnostics(state)).toBe(false);
+    expect(canAccessContentDiagnostics(state)).toBe(false);
   });
 });
 

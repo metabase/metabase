@@ -10,7 +10,14 @@ function getUserHasMonitoringPermission(state: State) {
   return getUser(state)?.permissions?.can_access_monitoring ?? false;
 }
 
-export function canAccessMonitorDiagnostics(state: State) {
+export function canAccessDependencyDiagnostics(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+}
+
+export function canAccessContentDiagnostics(state: State) {
   if (isWithinIframe()) {
     return false;
   }
@@ -44,7 +51,8 @@ export function canAccessAiAuditing(state: State) {
 
 export function canAccessMonitor(state: State) {
   return (
-    canAccessMonitorDiagnostics(state) ||
+    canAccessDependencyDiagnostics(state) ||
+    canAccessContentDiagnostics(state) ||
     canAccessMonitoringTools(state) ||
     canAccessAiAuditing(state)
   );
