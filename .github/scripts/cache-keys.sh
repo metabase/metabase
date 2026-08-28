@@ -72,6 +72,10 @@ if [ "$CYPRESS_MATCHES" != "1" ]; then
 fi
 CYPRESS_VERSION="$CYPRESS_VERSIONS"
 
+# The Clojure CLI version CI installs. It lives here rather than in prepare-backend so that the version
+# and the key that identifies its cache entry cannot drift apart.
+CLOJURE_VERSION="1.12.0.1488"
+
 # An incremental lint cache is only ever an accelerator, so it keys on the commit and always falls back
 # to the newest entry on the prefix. The exact key never pre-exists, which keeps the entry current.
 ESLINT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
@@ -99,6 +103,15 @@ spec() {
   echo "yarn-cache-path=$HOME/.cache/yarn"
   echo "yarn-cache-key=yarn-cache-$OS-$LOCK_HASH"
   echo "yarn-cache-restore-key=yarn-cache-$OS-"
+
+  # No restore-key: an entry from another version installs a working `clojure` of the wrong version, and
+  # the freshness check in prepare-backend - running the binary - would accept it.
+  #
+  # The installer bakes this prefix into the clj/clojure shims, so the tree only works when restored to
+  # the same absolute path it was built at; prepare-backend reinstalls when it is not.
+  echo "clojure-path=$HOME/.clojure-cli"
+  echo "clojure-key=clojure-cli-$OS-$CLOJURE_VERSION"
+  echo "clojure-version=$CLOJURE_VERSION"
 
   echo "cypress-path=$HOME/.cache/Cypress"
   echo "cypress-key=cypress-$OS-$CYPRESS_VERSION"
