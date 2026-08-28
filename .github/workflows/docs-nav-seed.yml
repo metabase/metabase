@@ -1,0 +1,134 @@
+name: Seed docs/_includes/data/nav.yml (one-off)
+
+# One-off migration: creates docs/_includes/data/nav.yml on each target branch, seeded from
+# docs.metabase.github.io's per-version nav file. After this merges everywhere, that file
+# becomes the source of truth for doc nav, and docs.metabase.github.io generates its versioned
+# copies from it instead of the other way around.
+#
+# Safe to re-run: any branch that already has docs/_includes/data/nav.yml is skipped.
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: 'Comma separated target branches, e.g. "release-x.44.x,master". Defaults to release-x.44.x through release-x.63.x plus master.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  params:
+    name: Build branch matrix
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        env:
+          BRANCHES_INPUT: ${{ inputs.branches }}
+        run: |
+          # Each matrix entry maps a metabase branch to the docs.metabase.github.io nav file that
+          # seeds it, and the "/docs/<version>/" URL prefix to strip out of that file's urls.
+          entries="[]"
+          add_entry() {
+            entries=$(jq -c --arg branch "$1" --arg source_file "$2" --arg url_prefix "$3" \
+              '. + [{"branch": $branch, "source_file": $source_file, "url_prefix": $url_prefix}]' <<< "$entries")
+          }
+
+          if [ -n "$BRANCHES_INPUT" ]; then
+            IFS=',' read -ra requested <<< "$BRANCHES_INPUT"
+          else
+            requested=(master)
+            for v in $(seq 44 63); do requested+=("release-x.$v.x"); done
+          fi
+
+          for branch in "${requested[@]}"; do
+            branch="$(echo "$branch" | xargs)" # trim whitespace
+            if [ "$branch" = "master" ]; then
+              add_entry "master" "_data/docs/nav/latest.yml" "/docs/latest/"
+            else
+              version="$(echo "$branch" | sed -E 's/release-x\.([0-9]+)\.x/\1/')"
+              padded="$(printf "%03d" "$version")"
+              add_entry "$branch" "_data/docs/nav/v${padded}.yml" "/docs/v0.${version}/"
+            fi
+          done
+
+          echo "matrix={\"include\":$entries}" >> "$GITHUB_OUTPUT"
+
+  seed-nav-file:
+    needs: params
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
+    name: Seed nav.yml on ${{ matrix.branch }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    env:
+      TARGET_BRANCH: ${{ matrix.branch }}
+      SOURCE_FILE: ${{ matrix.source_file }}
+      URL_PREFIX: ${{ matrix.url_prefix }}
+    steps:
+      - name: Checkout metabase
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Skip if nav.yml already exists
+        id: check
+        run: |
+          if [ -f docs/_includes/data/nav.yml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "docs/_includes/data/nav.yml already exists on $TARGET_BRANCH, skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout docs.metabase.github.io
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/checkout@v6
+        with:
+          repository: metabase/docs.metabase.github.io
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: docs-site
+
+      - name: Generate nav.yml
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          mkdir -p docs/_includes/data
+          content="$(cat "docs-site/$SOURCE_FILE")"
+          # Urls in the source point at the versioned docs site (e.g. "/docs/v0.44/..." or
+          # "/docs/latest/..."); strip that prefix since this file's urls should be relative to
+          # the docs root instead.
+          echo "${content//$URL_PREFIX//}" > docs/_includes/data/nav.yml
+          rm -rf docs-site
+
+      - name: Create branch and commit
+        id: commit
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          seed_branch="add-docs-nav-yml-$TARGET_BRANCH"
+          git checkout -b "$seed_branch"
+          git add docs/_includes/data/nav.yml
+          git commit -m "Add docs/_includes/data/nav.yml (seeded from docs.metabase.github.io)"
+          git push -u origin "$seed_branch"
+          echo "seed_branch=$seed_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEED_BRANCH: ${{ steps.commit.outputs.seed_branch }}
+
+        # FIXME: Should probably add a tag to skip CI so we don't exhaust our runner pool
+
+        run: |
+          gh pr create \
+            --base "$TARGET_BRANCH" \
+            --head "$SEED_BRANCH" \
+            --title "Add docs/_includes/data/nav.yml for $TARGET_BRANCH" \
+            --body "One-off seed of \`docs/_includes/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Once this merges, docs.metabase.github.io will generate its versioned nav file from this branch instead of the other way around." \
+            --label "no-backport"
