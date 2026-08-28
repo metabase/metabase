@@ -213,7 +213,7 @@
                       (throw (ex-info (str "invalid date: '"
                                            date-str
                                            "' expected format: 'yyyy-MM-dd'")
-                                      {:status 400}))))
+                                      {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
@@ -224,7 +224,7 @@
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
                     (t2/update! :model/TransformRun :transform_id id {:start_time date :end_time date}))
-      (throw (ex-info (str "unknown model: '" model "'") {:status 400})))))
+      (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
