@@ -68,13 +68,6 @@ die() {
   exit 1
 }
 
-echo "clojure aliases: " $CLOJURE_ALIASES
-echo "test runner index: " $TEST_RUNNER_INDEX
-echo "test runner count: " $TEST_RUNNER_COUNT
-echo "test JVMs per runner: " $TEST_JVMS_PER_RUNNER
-echo "test heap per JVM: " $TEST_HEAP_PER_JVM
-echo
-
 # Validate before computing anything. These are the mistakes a workflow actually makes —
 # adding a matrix entry without bumping the runner count, or copying one driver's block to
 # another and leaving an index behind — and every one of them is silently wrong rather than
@@ -100,10 +93,6 @@ for ((k = 0; k < TEST_JVMS_PER_RUNNER; k++)); do
   INDEXES+=($((TEST_RUNNER_INDEX + k * TEST_RUNNER_COUNT)))
 done
 
-echo "partition total: " $PARTITION_TOTAL
-echo "indexes: " "${INDEXES[@]}"
-echo
-
 # One JVM: run in the workspace, with no output juggling and no heap override, so a
 # partitioned-but-not-concurrent driver behaves exactly as it did before this script.
 if [ "$TEST_JVMS_PER_RUNNER" -eq 1 ]; then
@@ -119,11 +108,6 @@ WORKSPACE="$PWD"
 # repo, so one JVM's directory can never be copied into the next one's.
 JVM_DIRS_ROOT="$(dirname "$WORKSPACE")/backend-test-jvms"
 STATUS_DIR="$JVM_DIRS_ROOT/status"
-
-echo "workspace: " $WORKSPACE
-echo "jvm dirs root: " $JVM_DIRS_ROOT
-echo "status dir: " $STATUS_DIR
-echo
 
 # Merge every JVM's results into the workspace the rest of the job reads from.
 #
@@ -161,7 +145,6 @@ trap 'exit 130' INT
 # recreated per JVM; `.git` and `node_modules` are left out because nothing on the test
 # classpath reads them and they are the two most expensive trees to walk.
 prepare_jvm_dir() {
-  echo "preparing jvm dir: $1"
   local jvm_dir="$1" entry
   rm -rf "$jvm_dir"
   mkdir -p "$jvm_dir"

@@ -94,6 +94,8 @@
     :bigquery-cloud-sdk
     (mt/dataset
       test-data
+      ;; TODO(rileythomp): Remove this, it's to test re-running failures with 2 jvms per runner
+      (is (= 1 2))
       (is (seq (mt/rows
                 (mt/run-mbql-query orders {:limit 1})))))))
 
