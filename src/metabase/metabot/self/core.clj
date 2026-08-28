@@ -1050,7 +1050,8 @@
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
   Forces a connection + socket timeout on every request so a hung upstream can
   never block the caller forever. The timeouts default to the operator-tunable
-  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  [[metabase.llm.settings/llm-connection-timeout-ms]] and
+  [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
   at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
