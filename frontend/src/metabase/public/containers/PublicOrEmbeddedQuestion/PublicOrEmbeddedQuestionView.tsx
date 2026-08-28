@@ -8,7 +8,7 @@ import type { DisplayTheme } from "metabase/embedding/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { PublicMode } from "metabase/public/PublicMode";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
+import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

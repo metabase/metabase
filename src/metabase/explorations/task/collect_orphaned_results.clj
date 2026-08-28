@@ -9,14 +9,22 @@
   is refcount semantics — collect when the last referent goes — which SQL cannot express
   declaratively, hence a sweep.
 
-  Reachability is what defines an orphan, and it runs through exactly one column:
-  `exploration_query_result.stored_result_id` (see
-  [[metabase.explorations.models.exploration-query-result/stored-results]], the only reader of the
-  blob). A row with no `exploration_query_result` referencing it is unreachable by any code path.
-  `stored_result_use` is bookkeeping rather than reachability, and is deliberately *not* consulted:
-  restarting a thread deletes its query rows — and with them the `exploration_query_result` rows —
-  while leaving `stored_result_use` behind, so treating a use row as a reason to keep would leak a
-  blob on every restart. Deleting the blob cascades those rows away."
+  Reachability is what defines an orphan, and it runs through exactly two columns:
+
+  1. `exploration_query_result.stored_result_id` — the exploration's own charts (see
+     [[metabase.explorations.models.exploration-query-result/stored-results]]).
+  2. `stored_result_use.card_id` — the ephemeral `report_card` behind a static `cardEmbed` in an
+     exploration's Summary document, served by `POST /api/card/:card-id/query` with a
+     `stored_result_id`. A composite embed combines several source snapshots into a *new* blob that
+     no `exploration_query_result` ever points at, so without this arm the sweep would collect the
+     Summary's chart out from under it one grace period after it was added.
+
+  `stored_result_use.exploration_id` is bookkeeping rather than reachability, and is deliberately
+  *not* consulted: restarting a thread deletes its query rows — and with them the
+  `exploration_query_result` rows — while leaving the exploration's use rows behind, so treating one
+  as a reason to keep would leak a blob on every restart. A `card_id` use row is different in kind:
+  it is the embed's only reference, and it is cascade-deleted with the Card, so it releases the blob
+  exactly when the last referent goes. Deleting the blob cascades every use row away."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -44,8 +52,9 @@
   500)
 
 (defn- orphaned-blob-ids
-  "Up to [[batch-size]] `stored_result` ids that no `exploration_query_result` references and that are
-  older than [[grace-period-minutes]]."
+  "Up to [[batch-size]] `stored_result` ids that nothing reaches — neither an
+  `exploration_query_result` nor a Summary embed's Card — and that are older
+  than [[grace-period-minutes]]."
   []
   (mapv :id
         (t2/query
@@ -55,6 +64,11 @@
                      [:not [:exists ^:allow-subquery {:select [1]
                                                       :from   [[:exploration_query_result :eqr]]
                                                       :where  [:= :eqr.stored_result_id :sr.id]}]]
+                     [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [[:stored_result_use :sru]]
+                                                      :where  [:and
+                                                               [:= :sru.stored_result_id :sr.id]
+                                                               [:not= :sru.card_id nil]]}]]
                      [:< :sr.created_at (t/minus (t/offset-date-time)
                                                  (t/minutes grace-period-minutes))]]
           :order-by [[:sr.id :asc]]

@@ -49,6 +49,29 @@
    :id
    {:default []}))
 
+(methodical/defmethod t2/batched-hydrate [:model/Exploration :document]
+  "Hydrate the Summary document attached to each exploration (at most one)."
+  [_model k explorations]
+  (mi/instances-with-hydrated-data
+   explorations k
+   #(into {}
+          (map (fn [[eid docs]] [eid (first docs)]))
+          (group-by :exploration_id
+                    (t2/select [:model/Document
+                                :id :name :exploration_id :creator_id :content_type
+                                :created_at :updated_at :archived :is_placeholder]
+                               :exploration_id [:in (map :id explorations)]
+                               {:order-by [[:created_at :asc] [:id :asc]]})))
+   :id
+   {:default nil}))
+
+;; `:document` is a Toucan automagic-hydration key (FK `document_id` → `:model/Document`).
+;; Explorations have no such FK; without this override the automagic path wins and always
+;; returns nil, shadowing [[batched-hydrate]] above.
+(methodical/defmethod t2/model-for-automagic-hydration [:model/Exploration :document]
+  [_model _k]
+  nil)
+
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "exploration"
@@ -58,11 +81,11 @@
            :creator-id :creator_id
            :created-at :created_at
            :updated-at :updated_at
+           :exploration-id false
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms [:name :description]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:exploration-name :name
-                  :exploration-id :id
                   :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name

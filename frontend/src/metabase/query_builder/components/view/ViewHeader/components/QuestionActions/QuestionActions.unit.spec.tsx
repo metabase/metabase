@@ -13,7 +13,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import {
   createMockQueryBuilderState,
@@ -28,6 +27,8 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import * as modelActions from "../../../../../actions/models";
 
 import { QuestionActions } from "./QuestionActions";
 

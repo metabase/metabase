@@ -1,4 +1,4 @@
-import { SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR } from "metabase/redux/query-builder";
+import { SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR } from "../../store/actions";
 
 export const setIsShowingTemplateTagsEditor = (
   isShowingTemplateTagsEditor: boolean,

@@ -8,6 +8,8 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -517,6 +519,32 @@
           (let [document (t2/select-one :model/Document :id document-id)]
             (is (= "Updated Document with Generated Cards" (:name document)))
             (is (= col-id (:collection_id document)))))))))
+
+(deftest put-document-adhoc-card-without-stored-result-inserts-no-pairings-test
+  (testing "PUT /api/document/:id creating an ad-hoc card with no stored_result_id inserts no stored_result_use rows"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Document {document-id :id} {:name "Test Document"
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
+                                                      :collection_id col-id}]
+      (let [before (t2/count :model/StoredResultUse)
+            result (mt/user-http-request :crowberto
+                                         :put 200 (format "document/%s" document-id)
+                                         {:name "Updated"
+                                          :document {:type "doc"
+                                                     :content [{:type "cardEmbed"
+                                                                :attrs {:id -10}}]}
+                                          :cards {-10 {:name "Ad hoc Card"
+                                                       ;; Lib, not the deprecated `mt/mbql-query`
+                                                       :dataset_query (lib/->legacy-MBQL
+                                                                       (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                       :display :table
+                                                       :visualization_settings {}}}})
+            new-card-id (-> result :document :content first :attrs :id)]
+        (is (pos-int? new-card-id))
+        (is (= before (t2/count :model/StoredResultUse))
+            "no stored_result_use rows are created for a live ad-hoc embed")
+        (is (zero? (t2/count :model/StoredResultUse :card_id new-card-id)))))))
 
 (deftest cards-to-create-schema-validation-test
   (testing "POST /api/document/ - cards schema validation"
@@ -2520,3 +2548,25 @@
                                 {:name "Should Fail"
                                  :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
+
+(deftest document-list-excludes-exploration-documents-test
+  (testing "GET /api/document excludes documents attached to an exploration"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Doc List Collection"}
+                   :model/Exploration {expl-id :id} {:name       "List Exclusion Expl"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :collection_id coll-id}
+                   :model/Document _ {:name          "Standalone Doc"
+                                      :document      (documents.test-util/text->prose-mirror-ast "standalone")
+                                      :collection_id coll-id}
+                   :model/Document _ {:name           "Exploration Summary"
+                                      :document       (documents.test-util/text->prose-mirror-ast "attached")
+                                      :collection_id  coll-id
+                                      :exploration_id expl-id}]
+      (let [doc-names (->> (mt/user-http-request :crowberto :get 200 "document/")
+                           :items
+                           (map :name)
+                           set)]
+        (testing "standalone documents are listed"
+          (is (contains? doc-names "Standalone Doc")))
+        (testing "exploration-attached documents are not (matching search / recents / collection items)"
+          (is (not (contains? doc-names "Exploration Summary"))))))))
