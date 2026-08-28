@@ -335,8 +335,8 @@
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
                     :sessionId  session-id}})))
 
-(defn without-ui-credential
-  "Remove MCP UI credentials from tool results before they are persisted in traces."
+(defn redact-ui-credential
+  "Redact MCP UI credentials before values are persisted in traces."
   [value]
   (walk/postwalk
    (fn [item]
