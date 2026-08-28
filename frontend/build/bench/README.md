@@ -19,9 +19,30 @@ Three states are reported, because a layout can help one and hurt another:
 - **warm**, the second visit, served from the HTTP cache but still compiled,
 - **steady**, the visits after that, once V8 has cached the compiled code.
 
-The page that renders does not enter the measurement. DOMContentLoaded fires
-before the router resolves anything, so the route's own chunk is requested after
-the reading is taken.
+DOMContentLoaded is not the whole story, so the harness also reads the rest of
+the load. Each is a median over the runs.
+
+| Reading                  | Where it comes from        | What it says                                  |
+| ------------------------ | -------------------------- | --------------------------------------------- |
+| `ttfb`                   | `responseStart`            | The server started answering.                 |
+| `firstContentfulPaint`   | paint entry                | The browser drew something.                   |
+| `domContentLoaded`       | `domContentLoadedEventEnd` | The entry scripts downloaded, parsed and ran. |
+| `appMounted`             | `mb:app-mounted` mark      | React committed the app shell.                |
+| `largestContentfulPaint` | LCP entry                  | The biggest element was drawn.                |
+| `pageReady`              | `mb:page-ready` mark       | The route has all its data.                   |
+| `load`                   | `loadEventEnd`             | Everything the document referenced arrived.   |
+
+The two marks come from the app, in
+`frontend/src/metabase/utils/performance-marks.ts`. `mb:app-mounted` is recorded
+in a layout effect inside the render tree, so every entry reports it.
+`mb:page-ready` is opt-in per route, because only the route knows when it is
+done: the dashboard records it from `loadingComplete`, where its last card
+lands. A route that does not record it reports `0`, so a zero means "not
+reported" rather than "instant".
+
+Reading DOMContentLoaded alone understates a route in its own chunk, which is
+requested only after the reading is taken. `pageReady` is the one that covers
+it.
 
 ## Running it against a real Metabase
 
@@ -69,15 +90,15 @@ WARM=1 CPU_THROTTLE=4 node frontend/build/bench/measure.js http://127.0.0.1:8099
 `matrix.js` sets the first four itself, one condition at a time. Pass them to
 `measure.js` when you call it directly.
 
-| variable | default | what it does |
-| -- | -- | -- |
-| `CPU_THROTTLE` | `4` | CPU slowdown, so a laptop stands in for a slower machine |
-| `NETWORK_MBPS` | `10` | throughput, `0` to leave the network alone |
-| `NETWORK_LATENCY` | `40` | added latency in ms |
-| `WARM` | unset | keep the cache between runs, to measure a returning user |
-| `SESSION_COOKIE` | unset | `metabase.SESSION`, to load the page signed in |
-| `PORT_OFFSET` | `0` | added to the debugging port `9222` |
-| `CHROME_PATH` | macOS Chrome | the browser binary |
+| variable          | default      | what it does                                             |
+| ----------------- | ------------ | -------------------------------------------------------- |
+| `CPU_THROTTLE`    | `4`          | CPU slowdown, so a laptop stands in for a slower machine |
+| `NETWORK_MBPS`    | `10`         | throughput, `0` to leave the network alone               |
+| `NETWORK_LATENCY` | `40`         | added latency in ms                                      |
+| `WARM`            | unset        | keep the cache between runs, to measure a returning user |
+| `SESSION_COOKIE`  | unset        | `metabase.SESSION`, to load the page signed in           |
+| `PORT_OFFSET`     | `0`          | added to the debugging port `9222`                       |
+| `CHROME_PATH`     | macOS Chrome | the browser binary                                       |
 
 ## What CI records
 

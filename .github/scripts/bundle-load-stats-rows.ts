@@ -13,6 +13,12 @@ export interface Condition {
   warmMs: number;
   steadyMs: number;
   coldSpreadPercent: number;
+  coldTtfbMs: number;
+  coldFirstPaintMs: number;
+  coldAppMountedMs: number;
+  coldLargestPaintMs: number;
+  coldPageReadyMs: number;
+  warmPageReadyMs: number;
   scripts: number;
   scriptKb: number;
   runs: number;
@@ -51,6 +57,14 @@ export function buildRows(
     "Warm ms": condition.warmMs,
     "Steady ms": condition.steadyMs,
     "Cold spread %": condition.coldSpreadPercent,
+    // The cold load broken up. A zero means the browser or the route never
+    // reported that one, rather than that it happened at time zero.
+    "Cold ttfb ms": condition.coldTtfbMs,
+    "Cold first paint ms": condition.coldFirstPaintMs,
+    "Cold app mounted ms": condition.coldAppMountedMs,
+    "Cold largest paint ms": condition.coldLargestPaintMs,
+    "Cold page ready ms": condition.coldPageReadyMs,
+    "Warm page ready ms": condition.warmPageReadyMs,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,
     Runs: condition.runs,
