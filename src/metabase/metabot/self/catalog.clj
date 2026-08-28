@@ -3,6 +3,7 @@
   and model behind it serve."
   (:require
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.deepseek :as deepseek]
@@ -22,6 +23,7 @@
   (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
       "anthropic" (claude/reasoning-model? model)
+      "azure"     (azure/reasoning-model? model)
       "bedrock"   (bedrock/reasoning-model? model)
       "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)

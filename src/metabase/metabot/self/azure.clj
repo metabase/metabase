@@ -33,24 +33,40 @@
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
-(defn- model->family
-  "Which wire-protocol family serves `model`, by its explicit first segment: `:anthropic` or `:openai`."
+(defn- model-family
+  "Which wire-protocol family serves `model`, by its explicit first segment: `:anthropic`, `:openai`, or nil."
   [model]
   (cond
     (str/starts-with? (str model) "anthropic/") :anthropic
-    (str/starts-with? (str model) "openai/")    :openai
-    :else
-    (throw (ex-info (tru "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported." (pr-str model))
-                    {:api-error   true
-                     :error-code  :unsupported-model
-                     ;; a deployment the admin typed, so this is a bad request rather than an outage
-                     :status-code 400
-                     :model       model}))))
+    (str/starts-with? (str model) "openai/")    :openai))
+
+(defn- model->family
+  "Like [[model-family]], but throws for models outside the supported families."
+  [model]
+  (or (model-family model)
+      (throw (ex-info (tru "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported." (pr-str model))
+                      {:api-error   true
+                       :error-code  :unsupported-model
+                       ;; a deployment the admin typed, so this is a bad request rather than an outage
+                       :status-code 400
+                       :model       model}))))
 
 (defn- model->deployment
   "The Azure deployment name carried by a `{family}/{deployment-name}` model string."
   [model]
   (second (str/split (str model) #"/" 2)))
+
+(defn reasoning-model?
+  "Whether the deployment behind a `{family}/{deployment}` model string streams reasoning.
+  Deployment names are admin-chosen free text, so this is best-effort by name — and symmetric
+  with the request body, which derives its thinking config from the same string. A deployment
+  whose name resembles a reasoning model while serving a different one gets reasoning request
+  fields the served model may reject; name deployments after the model they serve."
+  [model]
+  (case (model-family model)
+    :anthropic (claude/reasoning-model? (model->deployment model))
+    :openai    (openai/reasoning-model? (model->deployment model))
+    nil        false))
 
 (def ^:private model-context-windows
   "Input context windows for the models Azure sells, keyed by model id.
@@ -204,7 +220,7 @@
   throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
-        opts   (assoc opts :model (model->deployment model) :reasoning? false :fast? false)
+        opts   (assoc opts :model (model->deployment model) :fast? false)
         {:keys [path headers req]}
         (case family
           :anthropic {:path    "/v1/messages"
