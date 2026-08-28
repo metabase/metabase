@@ -65,6 +65,7 @@
                                          saml-keystore-path                 nil
                                          saml-keystore-password             nil
                                          saml-keystore-alias                nil
+                                         embedding-app-origins-sdk          "https://app.example.com"
                                          site-url                           "http://localhost:3000"]
         (mt/with-premium-features current-features
           (f))))))
