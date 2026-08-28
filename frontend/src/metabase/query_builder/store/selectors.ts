@@ -19,22 +19,18 @@ import { getSetting } from "metabase/settings";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
+  type TimeSeriesInterval,
   computeTimeseriesDataInterval,
-  minTimeseriesUnit,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import {
+  createRawSeries,
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
   getXValues,
   isTimeseries,
-} from "metabase/visualizations/lib/renderer_utils";
-import { createRawSeries } from "metabase/visualizations/lib/series";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+  minTimeseriesUnit,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";

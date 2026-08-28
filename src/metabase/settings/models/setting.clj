@@ -790,10 +790,12 @@
 
 (defn obfuscated-value?
   "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
-  value rather than entering a new one."
+  value rather than entering a new one.
+
+  `(?s)` so the trailing `.` can also match newlines, e.g. JSON file contents that end with a newline."
   [v]
   (when (seq v)
-    (boolean (re-matches #"^\*{10}.{2}$" v))))
+    (boolean (re-matches #"(?s)^\*{10}.{2}$" v))))
 
 (defn obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the

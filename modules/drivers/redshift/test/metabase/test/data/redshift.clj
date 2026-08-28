@@ -13,6 +13,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [com.climate.claypoole :as cp]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -304,37 +305,46 @@
     (catch Exception e
       (fallback e))))
 
+(defn- with-gc-pool!
+  "Map `f` over every cluster+database at once. They are separate servers -- waiting on them one at a time made the
+  sweep cost the sum of their latencies rather than the worst of them."
+  [f]
+  (let [servers (gc-connection-details)]
+    (cp/with-shutdown! [pool (cp/threadpool (count servers))]
+      (doall (cp/pmap pool f servers)))))
+
 (defmethod tx/gc-orphans! :redshift
   [driver {:keys [temp-data-hours]}]
   ;; Redshift schema names carry their own creation time, so we scan for age via the name
   (into []
-        (mapcat (fn [details]
-                  (let [server (server-label details)]
-                    (with-gc-connection
-                      driver details
-                      (fn [^java.sql.Connection conn]
-                        (with-open [stmt (.createStatement conn)]
-                          (mapv #(assoc % :server server)
-                                (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
-                      (fn [e]
-                        [{:server server, :name nil, :status :failed, :error (ex-message e)}])))))
-        (gc-connection-details)))
+        cat
+        (with-gc-pool!
+          (fn [details]
+            (let [server (server-label details)]
+              (with-gc-connection
+                driver details
+                (fn [^java.sql.Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (mapv #(assoc % :server server)
+                          (drop-orphan-schemas! stmt (orphan-schemas conn temp-data-hours)))))
+                (fn [e]
+                  [{:server server, :name nil, :status :failed, :error (ex-message e)}])))))))
 
 (defmethod tx/count-datasets :redshift
   [driver]
   (into {}
-        (map (fn [details]
-               (let [server (server-label details)]
-                 [server (with-gc-connection
-                           driver details
-                           ;; every schema on the cluster, catalog schemas included: the number worth watching is
-                           ;; total pressure toward the max-tables limit, not our share of it
-                           (fn [^java.sql.Connection conn]
-                             (reduce (fn [n _] (inc n)) 0 (fetch-schemas conn)))
-                           (fn [e]
-                             (log/errorf "[redshift] could not count schemas on %s: %s" server (ex-message e))
-                             nil))])))
-        (gc-connection-details)))
+        (with-gc-pool!
+          (fn [details]
+            (let [server (server-label details)]
+              [server (with-gc-connection
+                        driver details
+                        ;; every schema on the cluster, catalog schemas included: the number worth watching is
+                        ;; total pressure toward the max-tables limit, not our share of it
+                        (fn [^java.sql.Connection conn]
+                          (reduce (fn [n _] (inc n)) 0 (fetch-schemas conn)))
+                        (fn [e]
+                          (log/errorf "[redshift] could not count schemas on %s: %s" server (ex-message e))
+                          nil))])))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

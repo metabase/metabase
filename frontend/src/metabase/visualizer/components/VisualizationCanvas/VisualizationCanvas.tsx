@@ -17,13 +17,13 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getIsLoading,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
+import { isCartesianChart } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
