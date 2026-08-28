@@ -793,8 +793,46 @@
                                  :dimensions         []}]}
                (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:id 1}})))))))))
 
+(deftest dashboard-param-fields-template-tag-entries-pruned-test
+  (testing "GET /api/embed/dashboard/:token :param_fields entries keyed by a native card's template-tag id (disagreeing
+            with the parameter's own id) fail closed: pruned when the parameter is locked, and only the entry keyed by
+            the parameter id survives when it's enabled"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp        (mt/metadata-provider)
+            card      {:dataset_query (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}}")
+                                          (lib/with-template-tags
+                                            {"category" {:id           "_TAG_CATEGORY_"
+                                                         :name         "category"
+                                                         :display-name "Category"
+                                                         :type         :dimension
+                                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                         :widget-type  :id}}))}
+            dash-with (fn [status]
+                        {:enable_embedding true
+                         :embedding_params {:category_id status}
+                         :parameters       [{:id "_CATEGORY_ID_", :name "Category ID", :slug "category_id", :type :id}]})
+            mappings  {:parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                             :target       [:dimension [:template-tag "category"]]}]}]
+        (testing "locked parameter: no entries at all, the template-tag id one included"
+          (with-temp-dashcard [dashcard {:card card, :dash (dash-with "locked"), :dashcard mappings}]
+            (is (= {}
+                   (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:category_id 2}})))))))
+        (testing "enabled parameter: one entry, keyed by the parameter id"
+          (with-temp-dashcard [dashcard {:card card, :dash (dash-with "enabled"), :dashcard mappings}]
+            (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                     :table_id           (mt/id :venues)
+                                     :display_name       "Category ID"
+                                     :base_type          "type/Integer"
+                                     :name               "CATEGORY_ID"
+                                     :semantic_type      "type/FK"
+                                     :has_field_values   "none"
+                                     :fk_target_field_id (mt/id :categories :id)
+                                     :dimensions         []}]}
+                   (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))))
+
 (deftest locked-params-removes-values-fields-and-mappings-test
-  (testing "check that locked params are removed in parameter mappings, param_values, and param_fields"
+  (testing "locked params are removed from parameter mappings, param_values, and param_fields; a mapping whose
+            parameter_id matches no dashboard parameter is dropped too (fails closed)"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
                                                          :embedding_params {:venue_name "locked"}
@@ -821,7 +859,7 @@
                  (-> embedding-dashboard
                      :param_fields
                      (get (mt/id :venues :name)))))
-          (is (= 1
+          (is (= 0
                  (-> embedding-dashboard
                      :dashcards
                      first
@@ -832,7 +870,7 @@
                  (-> eid-embedding-dashboard
                      :param_fields
                      (get (mt/id :venues :name)))))
-          (is (= 1
+          (is (= 0
                  (-> eid-embedding-dashboard
                      :dashcards
                      first

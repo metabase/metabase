@@ -220,50 +220,43 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
-(defn- remove-params-in-set
-  "Remove the `:parameters` of `dashboard-or-card` whose `:slug` is in the `params-to-remove` set, along with their
-  `:param_fields` entries (keyed by parameter id), so neither the widgets nor their Fields are exposed."
-  [dashboard-or-card params-to-remove]
-  (let [remove?     (fn [param] (contains? params-to-remove (keyword (:slug param))))
-        ids-to-remove (into #{} (comp (filter remove?) (map :id)) (:parameters dashboard-or-card))]
+(defn- keep-params-in-set
+  "Keep only the `:parameters` of `dashboard-or-card` whose `:slug` is in the `params-to-keep` set, and only the
+  `:param_fields` entries keyed by the ids of those kept parameters. Preserving by the kept ids (rather than removing
+  the ids of the dropped parameters) means an entry whose key matches no kept parameter — e.g. one keyed by a
+  template-tag id that disagrees with its parameter's id — fails closed instead of leaking."
+  [dashboard-or-card params-to-keep]
+  (let [kept-params (filter #(contains? params-to-keep (keyword (:slug %))) (:parameters dashboard-or-card))
+        kept-ids    (into #{} (map :id) kept-params)]
     (-> dashboard-or-card
-        (update :parameters (partial remove remove?))
-        (u/update-some :param_fields #(apply dissoc % ids-to-remove)))))
+        (assoc :parameters kept-params)
+        (u/update-some :param_fields #(select-keys % kept-ids)))))
 
-(defn- classify-params-as-keep-or-remove
-  "Classifies the params in the `dashboard-or-card-params` seq and the param slugs in `embedding-params` map according to:
-  Parameters in `dashboard-or-card-params` whose slugs are NOT in the `embedding-params` map must be removed.
-  Parameter slugs in `embedding-params` with the value 'enabled' are kept, 'disabled' or 'locked' are not kept.
-
-  The resulting classification is returned as a map with keys :keep and :remove whose values are sets of parameter slugs."
+(defn- classify-params-as-keep
+  "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
+  those explicitly whitelisted as \"enabled\" in `embedding-params`. Anything else — absent from the whitelist, or
+  listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
   [dashboard-or-card-params embedding-params]
-  (let [param-slugs                   (map #(keyword (:slug %)) dashboard-or-card-params)
-        grouped-param-slugs           {:remove (remove (fn [k] (contains? embedding-params k)) param-slugs)}
-        grouped-embedding-param-slugs (-> (group-by #(= (second %) "enabled") embedding-params)
-                                          (update-keys {true :keep false :remove})
-                                          (update-vals #(into #{} (map first) %)))]
-    (merge-with (comp set concat)
-                {:keep #{} :remove #{}}
-                grouped-param-slugs
-                grouped-embedding-param-slugs)))
-
-(defn- get-params-to-remove
-  [dashboard-or-card-params embedding-params]
-  (:remove (classify-params-as-keep-or-remove dashboard-or-card-params embedding-params)))
+  (into #{}
+        (comp (map (comp keyword :slug))
+              (filter #(= (get embedding-params %) "enabled")))
+        dashboard-or-card-params))
 
 (mu/defn- remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [params-to-remove (get-params-to-remove (:parameters dashboard-or-card) embedding-params)]
-    (remove-params-in-set dashboard-or-card params-to-remove)))
+  (keep-params-in-set dashboard-or-card (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
   [dashboard-or-card token-params]
-  (remove-params-in-set dashboard-or-card (set (keys token-params))))
+  (keep-params-in-set dashboard-or-card (into #{}
+                                              (comp (map (comp keyword :slug))
+                                                    (remove (set (keys token-params))))
+                                              (:parameters dashboard-or-card))))
 
 (defn- substitute-token-parameters-in-text
   "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
@@ -407,23 +400,23 @@
 
 (defn- remove-locked-parameters
   [dashboard embedding-params]
-  (let [params                    (:parameters dashboard)
-        params-to-remove          (get-params-to-remove params embedding-params)
-        param-ids-to-remove       (set (keep (fn [{:keys [slug id]}]
-                                               (when (contains? params-to-remove (keyword slug)) id))
-                                             params))
-        remove-parameter-mappings (fn [dashcard]
-                                    (update dashcard :parameter_mappings
-                                            (fn [param-mappings]
-                                              (remove (fn [{:keys [parameter_id]}]
-                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))
-        remove-inline-parameters  (fn [dashcard]
-                                    (update dashcard :inline_parameters
-                                            (fn [inline-params]
-                                              (remove (fn [id] (contains? param-ids-to-remove id)) inline-params))))]
+  (let [params                  (:parameters dashboard)
+        params-to-keep          (classify-params-as-keep params embedding-params)
+        param-ids-to-keep       (set (keep (fn [{:keys [slug id]}]
+                                             (when (contains? params-to-keep (keyword slug)) id))
+                                           params))
+        keep-parameter-mappings (fn [dashcard]
+                                  (update dashcard :parameter_mappings
+                                          (fn [param-mappings]
+                                            (filter (fn [{:keys [parameter_id]}]
+                                                      (contains? param-ids-to-keep parameter_id)) param-mappings))))
+        keep-inline-parameters  (fn [dashcard]
+                                  (update dashcard :inline_parameters
+                                          (fn [inline-params]
+                                            (filter (fn [id] (contains? param-ids-to-keep id)) inline-params))))]
     (-> dashboard
-        (update :dashcards #(map remove-parameter-mappings %))
-        (update :dashcards #(map remove-inline-parameters %)))))
+        (update :dashcards #(map keep-parameter-mappings %))
+        (update :dashcards #(map keep-inline-parameters %)))))
 
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."
