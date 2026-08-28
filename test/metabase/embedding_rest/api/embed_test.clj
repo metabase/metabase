@@ -855,10 +855,7 @@
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :categories :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (= nil
-                 (-> embedding-dashboard
-                     :param_fields
-                     (get (mt/id :venues :name)))))
+          (is (not (contains? (:param_fields embedding-dashboard) :foo)))
           (is (= 0
                  (-> embedding-dashboard
                      :dashcards
@@ -866,10 +863,7 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (= nil
-                 (-> eid-embedding-dashboard
-                     :param_fields
-                     (get (mt/id :venues :name)))))
+          (is (not (contains? (:param_fields eid-embedding-dashboard) :foo)))
           (is (= 0
                  (-> eid-embedding-dashboard
                      :dashcards

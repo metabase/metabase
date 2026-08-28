@@ -220,7 +220,7 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
-(defn- keep-params-in-set
+(defn- keep-params-and-param-fields
   "Keep only the `:parameters` of `dashboard-or-card` whose `:slug` is in the `params-to-keep` set, and only the
   `:param_fields` entries keyed by the ids of those kept parameters. Preserving by the kept ids (rather than removing
   the ids of the dropped parameters) means an entry whose key matches no kept parameter — e.g. one keyed by a
@@ -247,16 +247,16 @@
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (keep-params-in-set dashboard-or-card (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)))
+  (keep-params-and-param-fields dashboard-or-card (classify-params-as-keep (:parameters dashboard-or-card) embedding-params)))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
   [dashboard-or-card token-params]
-  (keep-params-in-set dashboard-or-card (into #{}
-                                              (comp (map (comp keyword :slug))
-                                                    (remove (set (keys token-params))))
-                                              (:parameters dashboard-or-card))))
+  (keep-params-and-param-fields dashboard-or-card (into #{}
+                                                        (comp (map (comp keyword :slug))
+                                                              (remove (set (keys token-params))))
+                                                        (:parameters dashboard-or-card))))
 
 (defn- substitute-token-parameters-in-text
   "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the

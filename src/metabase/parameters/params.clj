@@ -158,8 +158,8 @@
   "Strip every column but [[param-field-columns]] from a `:param_fields` Field, recursing into the nested Fields it
   carries: its `:name_field`, its FK `:target` (and that target's `:name_field`), and the `:human_readable_field` of
   its `:dimensions`; `nil` nested Fields are dropped. The frontend depends on the nested Fields to decide whether to
-  call the remapping endpoints, but `:target` is hydrated as a full Field row, so without this it leaks columns like
-  `:fingerprint` and `:description`."
+  call the remapping endpoints, but when the request carries a session, `:target` hydrates as a full Field row, so
+  without this it carries columns like `:fingerprint` and `:description`."
   [field]
   (-> (select-keys field (conj param-field-columns :name_field :target :dimensions))
       (u/update-some :name_field remove-param-field-non-public-columns)

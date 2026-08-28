@@ -79,6 +79,14 @@
               (repeatedly (count (lib/aggregations query -1)) lib/count))
       (lib/native-query query "-"))))
 
+(defn- keep-param-fields-for-parameters
+  "Keep only the `:param_fields` entries keyed by the ids of the object's own `:parameters`. Entries keyed by anything
+  else — e.g. a native card's template-tag id with no matching parameter — have no widget to power, so they fail
+  closed."
+  [card-or-dashboard]
+  (m/update-existing card-or-dashboard :param_fields
+                     #(select-keys % (into #{} (map :id) (:parameters card-or-dashboard)))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
 
@@ -110,6 +118,7 @@
                               :id card-id, :archived false, conditions))
         combine-parameters-and-template-tags
         (t2/hydrate :param_fields)
+        keep-param-fields-for-parameters
         remove-card-non-public-columns)))
 
 (defn- card-with-uuid [uuid] (public-card (public-sharing/public-uuid->id :model/Card uuid)))
@@ -279,6 +288,7 @@
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :id dashboard-id, :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
+        keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]

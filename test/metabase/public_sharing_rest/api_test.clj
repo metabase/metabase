@@ -1608,6 +1608,27 @@
                                                       :human_readable_field    categories-name}])]}
                    (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))))
 
+(deftest dashboard-param-fields-unmapped-template-tag-test
+  (testing "GET /api/public/dashboard/:uuid :param_fields never carry entries for a native card's template tags that
+            have no matching dashboard parameter"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Dashboard     dash (assoc (shared-obj) :parameters [])
+                       :model/Card          card {:dataset_query (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}}")
+                                                                     (lib/with-template-tags
+                                                                       {"category" {:id           "_TAG_CATEGORY_"
+                                                                                    :name         "category"
+                                                                                    :display-name "Category"
+                                                                                    :type         :dimension
+                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :widget-type  :id}}))}
+                       :model/DashboardCard _    {:dashboard_id       (:id dash)
+                                                  :card_id            (:id card)
+                                                  :parameter_mappings []}]
+          (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
+            (is (= [] (:parameters response)))
+            (is (= {} (:param_fields response)))))))))
+
 (deftest dashboard-field-params-field-names-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp
