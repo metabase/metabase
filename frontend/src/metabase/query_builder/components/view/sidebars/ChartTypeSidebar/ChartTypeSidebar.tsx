@@ -11,7 +11,7 @@ import { setUIControls } from "metabase/redux/query-builder";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
-} from "metabase/visualizations/lib/sensibility";
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";

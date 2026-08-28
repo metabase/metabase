@@ -69,6 +69,8 @@ const elements = [
     name: "value-formatting",
     enforcePublicApi: true,
   }),
+  // static-viz runs this in GraalJS, so it stays free of the React and redux side of visualizations.
+  createElement({ type: "basic", name: "viz-core", enforcePublicApi: true }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
@@ -441,6 +443,11 @@ const baseRules = [
   {
     from: ["basic/value-formatting"],
     allow: ["basic/mlv1"],
+  },
+  // mlv1 for the column predicates, value-formatting for formatValue, ui for the colour utilities and theme types.
+  {
+    from: ["basic/viz-core"],
+    allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
   {
     from: ["shared/*"],

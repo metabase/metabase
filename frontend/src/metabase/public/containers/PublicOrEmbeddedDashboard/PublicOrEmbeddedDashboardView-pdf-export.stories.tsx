@@ -20,8 +20,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
-import { registerVisualization } from "metabase/visualizations";
 import { Map } from "metabase/visualizations/visualizations/Map";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

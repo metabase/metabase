@@ -21,7 +21,7 @@ import type {
 import { navigate } from "metabase/router";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { HighlightedObject } from "metabase/visualizations/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type { ExplorationQueryId, Series } from "metabase-types/api";
 
 import { resolveHighlightForSeries } from "../ExplorationVisualization/utils";

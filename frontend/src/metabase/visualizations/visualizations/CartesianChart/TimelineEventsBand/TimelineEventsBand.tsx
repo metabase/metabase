@@ -2,14 +2,12 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  type ChartLayout,
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
-} from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type {
-  TimelineEventGroup,
-  TimelineEventsModel,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+  type TimelineEventGroup,
+  type TimelineEventsModel,
+} from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";

@@ -8,7 +8,7 @@ import { t } from "ttag";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, useMantineTheme } from "metabase/ui";
-import type { VisualizationGridSize } from "metabase/visualizations/types";
+import type { VisualizationGridSize } from "metabase/viz-core";
 
 import S from "./ScalarValue.module.css";
 import { findSize, getMaxFontSize } from "./utils";

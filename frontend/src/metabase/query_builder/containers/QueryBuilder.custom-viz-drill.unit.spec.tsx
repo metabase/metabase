@@ -3,12 +3,12 @@ import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
+import { registerVisualization } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType, DatasetData } from "metabase-types/api";
 import {

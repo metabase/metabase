@@ -16,11 +16,11 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { getVisualizationRaw } from "metabase/visualizations";
 import {
   isDisabledForVisualizer,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
+import { getVisualizationRaw } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,

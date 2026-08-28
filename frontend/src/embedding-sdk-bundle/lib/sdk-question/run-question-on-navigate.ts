@@ -8,7 +8,7 @@ import { loadCard } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";

@@ -1,5 +1,5 @@
-import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
