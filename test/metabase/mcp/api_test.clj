@@ -861,6 +861,23 @@
       (is (not (str/includes? (pr-str (select-keys result [:content :structuredContent]))
                               credential))))))
 
+(deftest refresh-ui-credential-is-redacted-from-tool-traces-test
+  (testing "refresh_ui_credential returns private credentials without storing it in AI traces"
+    (let [session-id (str (random-uuid))
+          {:keys [result trace]}
+          (mt/with-current-user (mt/user->id :crowberto)
+            (ait/capturing
+             (mcp.tools/call-tool #{::scope/unrestricted}
+                                  session-id
+                                  "refresh_ui_credential"
+                                  {})))
+          credential (get-in result [:_meta :com.metabase/mcp-apps :credential])
+          tool-output (get-in trace [0 :attributes :ai/tool-output])]
+      (is (string? credential))
+      (is (= session-id (get-in result [:_meta :com.metabase/mcp-apps :sessionId])))
+      (is (= (assoc result :_meta {}) tool-output))
+      (is (not (str/includes? (pr-str trace) credential))))))
+
 (deftest tools-call-rejects-ui-tools-without-ui-capability-test
   (testing "direct calls to UI-only tools are rejected for clients without MCP Apps UI support"
     (let [[session-id _] (initialize-without-ui!)
