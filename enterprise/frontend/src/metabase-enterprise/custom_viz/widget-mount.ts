@@ -42,21 +42,22 @@ export function wrapPluginWidget(
 // The host's callbacks take extra host-only arguments (e.g. a question) that a plugin must not be able to supply.
 function toPluginWidgetProps(props: WidgetProps, prefix: string): WidgetProps {
   const { id, onChange, onChangeSettings } = props;
+  const pluginProps = { ...props };
 
-  return {
-    ...props,
-    ...(typeof id === "string" &&
-      id.startsWith(prefix) && { id: id.slice(prefix.length) }),
-    ...(isFunction(onChange) && {
-      onChange: (value: unknown) => onChange(value),
-    }),
-    ...(isFunction(onChangeSettings) && {
-      onChangeSettings: (settings: unknown) =>
-        onChangeSettings(
-          toHostSettings(isObject(settings) ? settings : {}, prefix),
-        ),
-    }),
-  };
+  if (typeof id === "string" && id.startsWith(prefix)) {
+    pluginProps.id = id.slice(prefix.length);
+  }
+  if (isFunction(onChange)) {
+    pluginProps.onChange = (value: unknown) => onChange(value);
+  }
+  if (isFunction(onChangeSettings)) {
+    pluginProps.onChangeSettings = (settings: unknown) =>
+      onChangeSettings(
+        toHostSettings(isObject(settings) ? settings : {}, prefix),
+      );
+  }
+
+  return pluginProps;
 }
 
 export function isWidgetMount(

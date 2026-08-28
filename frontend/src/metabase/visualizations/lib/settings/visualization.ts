@@ -95,6 +95,7 @@ function normalizeColumnSettings(
 
 export function getStoredSettingsForSeries(
   series: Series | null | undefined,
+  definitions?: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
   if (storedSettings.column_settings) {
@@ -110,7 +111,7 @@ export function getStoredSettingsForSeries(
     storedSettings = adoptLegacyCustomVizSettings(
       storedSettings,
       getCustomVizSettingKeyPrefix(display),
-      getSettingDefinitionsForSeries(series),
+      definitions ?? getSettingDefinitionsForSeries(series),
     );
   }
   return storedSettings;
@@ -151,7 +152,7 @@ export function getComputedSettingsForSeries(
   }
 
   const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series, settingsDefs);
   return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 

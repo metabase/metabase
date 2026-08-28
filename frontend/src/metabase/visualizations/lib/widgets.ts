@@ -129,7 +129,7 @@ export function getSettingsWidgetsForSeries(
   extra: SettingsExtra = {},
 ) {
   const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series, settingsDefs);
   const computedSettings = getComputedSettingsForSeries(series);
 
   return getSettingsWidgets(

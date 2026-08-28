@@ -1,8 +1,9 @@
 import type {
-  CreateDefineSetting,
   CustomVisualization,
   CustomVisualizationMount,
   ReservedVisualizationSettingId,
+  SettingDefinitionInput,
+  WidgetName,
   Widgets,
 } from "custom-viz";
 import type { ComponentType } from "react";
@@ -31,9 +32,11 @@ type PluginSettingDefinitions = CustomVisualization<
 >["settings"];
 
 // What a plugin passes to `defineSetting`: the shape we hold plugin definitions to.
-type PluginSettingDefinition = Parameters<
-  ReturnType<CreateDefineSetting<Record<string, unknown>>>
->[0];
+type PluginSettingDefinition = SettingDefinitionInput<
+  Record<string, unknown>,
+  WidgetName | ComponentType<any>,
+  string
+>;
 
 export type HostContext = {
   prefix: string;
