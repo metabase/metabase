@@ -2780,6 +2780,26 @@
             (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
             (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
+(deftest encrypt-notification-and-pulse-channel-details-test
+  (testing "v58.2026-08-25T00:00:19 encrypts pulse_channel details at rest"
+    (impl/test-migrations ["v58.2026-08-25T00:00:19"] [migrate!]
+      (let [user-id      (:id (new-instance-with-default :core_user))
+            pulse-id     (:id (new-instance-with-default :pulse {:creator_id user-id}))
+            pc-details   (json/encode {:emails ["test@test.com"]})
+            pc-id        (:id (new-instance-with-default :pulse_channel
+                                                         {:pulse_id      pulse-id
+                                                          :channel_type  "email"
+                                                          :schedule_type "daily"
+                                                          :details       pc-details}))
+            raw-pc       #(:details (t2/query-one {:select [:details] :from [:pulse_channel] :where [:= :id pc-id]}))]
+        (testing "plaintext before migration (written with no encryption key)"
+          (is (not (encryption/possibly-encrypted-string? (raw-pc)))))
+        (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+          (migrate!)
+          (testing "encrypted after migration, and still decrypts to the original value"
+            (is (true? (encryption/possibly-encrypted-string? (raw-pc))))
+            (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
+
 (deftest fix-clickhouse-upload-db-schema-names-test
   (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
     (encryption-test/with-secret-key "fake-secret-key"
