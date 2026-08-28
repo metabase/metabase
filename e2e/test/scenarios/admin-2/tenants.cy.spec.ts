@@ -357,9 +357,19 @@ describe("Tenants - management", () => {
     const EXTERNAL_USER_GROUP_NAME = "All tenant users";
     const TENANT_GROUP_NAME = "Favorite tenant users";
 
+    cy.log("Turn on tenants so that we can create a tenant perms group");
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": true,
+    });
+
     cy.request("POST", "/api/permissions/group", {
       name: TENANT_GROUP_NAME,
       is_tenant_group: true,
+    });
+
+    cy.log("Turn tenants back off");
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": false,
     });
 
     cy.visit("/admin/permissions");
@@ -368,6 +378,7 @@ describe("Tenants - management", () => {
       "not.exist",
     );
 
+    cy.log("Turn tenants back on");
     cy.request("PUT", "/api/setting", {
       "use-tenants": true,
     });
