@@ -4,6 +4,7 @@
 
   &:has(.tooltip:empty) {
     border: none;
+    box-shadow: none;
   }
 }
 
