@@ -4,10 +4,10 @@
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
    [clojure.test :refer [deftest is testing]]
-   ;; Loaded for its load-time side effects: the OAuth provider's scopes-supported is derived by
-   ;; reflecting over the agent API route table (see [[metabase.mcp.core/all-scopes]]), which in a
-   ;; full server boot is loaded by [[metabase.api-routes.routes]]. The isolated test classpath does
-   ;; not mount the routes, so require it here as that route ns does.
+   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
+   ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
+   ;; server boot [[metabase.api-routes.routes]] loads it; the isolated test classpath does not
+   ;; mount the routes, so require it here as that route ns does.
    [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
@@ -30,28 +30,21 @@
 (defn- bearer-request [token]
   {:headers {"authorization" (str "Bearer " token)}})
 
-(def ^:private test-client-id "test-client")
-
-(defn- ensure-test-client!
-  "Register the `oauth_client` row that saved tokens reference. `resolve-access-token` fails closed when a
-   token's client is gone (SEC-863), so a token only authenticates while its client exists. Idempotent."
-  []
-  (when-not (t2/exists? :model/OAuthClient :client_id test-client-id)
-    (t2/insert! :model/OAuthClient {:client_id         test-client-id
+(defn- save-access-token!
+  "Persist an OAuth access token into the live provider's token store (the one [[oauth-server/resolve-access-token]]
+   reads from) for the given user, scopes, and expiry (epoch millis). Registers a fresh `oauth_client` row for
+   the token to reference, because `resolve-access-token` fails closed when a token's client is gone (SEC-863).
+   Callers run inside a rollback-only transaction, which cleans the row up."
+  [token user-id scopes expiry]
+  (let [client-id (str (random-uuid))]
+    (t2/insert! :model/OAuthClient {:client_id         client-id
                                     :redirect_uris     ["https://example.com/callback"]
                                     :grant_types       ["authorization_code"]
                                     :response_types    ["code"]
                                     :scopes            ["openid"]
-                                    :registration_type "static"})))
-
-(defn- save-access-token!
-  "Persist an OAuth access token into the live provider's token store (the one [[oauth-server/resolve-access-token]]
-   reads from) for the given user, scopes, and expiry (epoch millis). Also ensures the token's client exists so
-   the bearer bridge's client-existence check passes."
-  [token user-id scopes expiry]
-  (ensure-test-client!)
-  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                token (str user-id) test-client-id (vec scopes) expiry nil))
+                                    :registration_type "static"})
+    (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                  token (str user-id) client-id (vec scopes) expiry nil)))
 
 (defn- revoke-access-token!
   "Revoke a token in the live provider's token store, as the `/oauth/revoke` endpoint does on logout."

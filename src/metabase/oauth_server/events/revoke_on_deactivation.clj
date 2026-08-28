@@ -11,6 +11,5 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
-  (when user-id
-    (t2/update! :model/OAuthAccessToken  {:user_id user-id, :revoked_at nil} {:revoked_at :%now})
-    (t2/update! :model/OAuthRefreshToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now})))
+  (t2/update! :model/OAuthAccessToken  {:user_id user-id, :revoked_at nil} {:revoked_at :%now})
+  (t2/update! :model/OAuthRefreshToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now}))

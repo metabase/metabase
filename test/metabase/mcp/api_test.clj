@@ -76,19 +76,20 @@
 (defn- save-access-token!
   "Persist an OAuth access token into the provider backing the MCP endpoint.
 
-   Token resolution fails closed when the issuing client is gone (SEC-863), so also make sure the
-   `test-client` row exists. Callers wrap this in a rollback-only transaction, which cleans it up."
+   Registers a fresh `oauth_client` row for the token to reference, because token resolution fails
+   closed when the issuing client is gone (SEC-863). Callers run inside a rollback-only transaction,
+   which cleans the row up."
   [token user-id scopes]
-  (when-not (t2/exists? :model/OAuthClient :client_id "test-client")
-    (t2/insert! :model/OAuthClient {:client_id         "test-client"
+  (let [client-id (str (random-uuid))]
+    (t2/insert! :model/OAuthClient {:client_id         client-id
                                     :redirect_uris     ["https://example.com/callback"]
                                     :grant_types       ["authorization_code"]
                                     :response_types    ["code"]
                                     :scopes            ["openid"]
-                                    :registration_type "static"}))
-  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                token (str user-id) "test-client" (vec scopes)
-                                (+ (inst-ms (java.util.Date.)) 3600000) nil))
+                                    :registration_type "static"})
+    (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                  token (str user-id) client-id (vec scopes)
+                                  (+ (inst-ms (java.util.Date.)) 3600000) nil)))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.

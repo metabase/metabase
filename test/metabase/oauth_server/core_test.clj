@@ -1,7 +1,9 @@
 (ns metabase.oauth-server.core-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.agent-api.api] ; for side effects: get-provider reflects over its route table for scopes
+   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which
+   ;; `get-provider` derives the provider's supported scopes (see [[metabase.mcp.core/all-scopes]]).
+   [metabase.agent-api.api]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
