@@ -1762,13 +1762,10 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     return json.dumps(result)
 
 def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
-    """sqlglot's base tokenizer treats `?::` as a single token (DuckDB's try-cast operator) in
-    every dialect, and only DuckDB's parser can consume it. A JDBC positional placeholder
-    immediately followed by a `::` cast -- e.g. `{{var}}::date` after Metabase parameter
-    substitution -- therefore fails to parse (#81373). Rewrite `?::` to `? ::` so the
-    tokenizer sees a placeholder followed by a cast. Occurrences are located via the
-    tokenizer itself, so `?::` inside string literals, dollar-quoted strings, and comments
-    is left alone; the placeholder survives into the reconstructed SQL as `CAST(? AS type)`.
+    """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only DuckDB's
+    parser consumes it (try-cast operator). So a JDBC parameter followed by a cast
+    (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in non-DuckDB
+    dialects. To work around this we rewrite `?::` to `? ::` for non-DuckDB dialects (#81373).
     """
     if dialect == "duckdb" or "?::" not in sql:
         return sql

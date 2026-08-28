@@ -235,21 +235,21 @@
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
 
 (deftest ^:parallel is-single-stmt-of-type-placeholder-cast-test
-  (testing "JDBC `?` placeholders followed by a `::` cast parse instead of tripping over sqlglot's `?::` token (#81373)"
-    (testing "placeholder casts are accepted and the placeholder survives into the reconstructed SQL"
-      (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?s).*\?.*"}
-                     (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        "SELECT (?::date - bill_date::date) AS diff FROM some_table"
-        "SELECT ?::date"
-        "SELECT ?::date, ?::integer FROM t WHERE x = ?"))
-    (testing "`?::` inside string literals is left untouched"
-      (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
-             (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
-    (testing "multi-statement queries with placeholder casts are still rejected"
-      (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
-                     (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        "SELECT ?::date; DROP TABLE t"
-        "SET ROLE NONE; SELECT ?::date"))))
+  (testing "queries with `?::` are parsed correctly"
+    (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?s).*\?.*"}
+                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+      "SELECT ?::date"
+      "SELECT (?::date - x::date)"
+      "SELECT ?::text, ?::integer, ?::boolean FROM t WHERE x = ?"
+      "SELECT (?::date - CURRENT_DATE) AS diff"))
+  (testing "a query with `?::` inside string literals are left untouched"
+    (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
+           (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
+  (testing "multi-statement queries with placeholder casts are still rejected"
+    (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
+                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+      "SELECT ?::date; DROP TABLE t"
+      "SET ROLE NONE; SELECT ?::date")))
 
 (deftest ^:parallel is-single-stmt-of-type-not-stripped-test
   (testing "we don't remove value clauses when validating impersonated queries (#74284)"
