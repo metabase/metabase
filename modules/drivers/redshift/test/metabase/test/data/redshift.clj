@@ -305,7 +305,7 @@
     (catch Exception e
       (fallback e))))
 
-(defn- with-gc-pool
+(defn- with-gc-pool!
   "Map `f` over every cluster+database at once. They are separate servers -- waiting on them one at a time made the
   sweep cost the sum of their latencies rather than the worst of them."
   [f]
@@ -318,7 +318,7 @@
   ;; Redshift schema names carry their own creation time, so we scan for age via the name
   (into []
         cat
-        (with-gc-pool
+        (with-gc-pool!
           (fn [details]
             (let [server (server-label details)]
               (with-gc-connection
@@ -333,7 +333,7 @@
 (defmethod tx/count-datasets :redshift
   [driver]
   (into {}
-        (with-gc-pool
+        (with-gc-pool!
           (fn [details]
             (let [server (server-label details)]
               [server (with-gc-connection
