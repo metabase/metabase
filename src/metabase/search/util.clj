@@ -52,40 +52,45 @@
 
 (def ^:private available-tsv-languages
   "Mapping of our available locals to the names of the postgres tsvector languages.
-  Queries the pg_ts_config table to find out which languages are actually available."
-  (if (= :postgres (mdb/db-type))
-    (let [default-mapping {:ar    :arabic
-                           :ar_SA :arabic
-                           :ca    :catalan
-                           :da    :danish
-                           :en    :english
-                           :fi    :finnish
-                           :fr    :french
-                           :de    :german
-                           :hu    :hungarian
-                           :id    :indonesian
-                           :it    :italian
-                           :nb    :norwegian
-                           :pt_BR :portuguese
-                           :ru    :russian
-                           :sr    :serbian
-                           :es    :spanish
-                           :sv    :swedish
-                           :tr    :turkish}
-          available-languages (->> (t2/query {:select [:cfgname]
-                                              :from   [:pg_ts_config]})
-                                   (map :cfgname)
-                                   (map keyword)
-                                   set)]
-      (into {} (filter (comp available-languages val) default-mapping)))
-    {}))
+  Queries the pg_ts_config table to find out which languages are actually available.
+
+  This is a delay so that merely loading this namespace doesn't hit the app DB -- if the app DB is unavailable, an
+  eager query here would blow up namespace loading with an `ExceptionInInitializerError` before we ever get a chance
+  to verify the connection and report the real problem. See #81232."
+  (delay
+    (if (= :postgres (mdb/db-type))
+      (let [default-mapping {:ar    :arabic
+                             :ar_SA :arabic
+                             :ca    :catalan
+                             :da    :danish
+                             :en    :english
+                             :fi    :finnish
+                             :fr    :french
+                             :de    :german
+                             :hu    :hungarian
+                             :id    :indonesian
+                             :it    :italian
+                             :nb    :norwegian
+                             :pt_BR :portuguese
+                             :ru    :russian
+                             :sr    :serbian
+                             :es    :spanish
+                             :sv    :swedish
+                             :tr    :turkish}
+            available-languages (->> (t2/query {:select [:cfgname]
+                                                :from   [:pg_ts_config]})
+                                     (map :cfgname)
+                                     (map keyword)
+                                     set)]
+        (into {} (filter (comp available-languages val) default-mapping)))
+      {})))
 
 (defn tsv-language
   "Get the appropriate text search configuration language for Postgres tsvector operations."
   []
   (if-let [custom-language (search.settings/search-language)]
     custom-language
-    (if-let [lang ((keyword (i18n/site-locale-string)) available-tsv-languages)]
+    (if-let [lang ((keyword (i18n/site-locale-string)) @available-tsv-languages)]
       (name lang)
       "simple")))
 

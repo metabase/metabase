@@ -32,6 +32,8 @@
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
+   (com.mchange.v2.c3p0 WrapperConnectionPoolDataSource)
+   (com.mchange.v2.c3p0.impl AbstractPoolBackedDataSource)
    (liquibase.exception LockException)))
 
 (set! *warn-on-reflection* true)
@@ -158,6 +160,21 @@
          (not (pos? (compare ((juxt :major :minor :patch) required-version)
                              [major minor patch]))))))
 
+(defn- unpooled-data-source
+  "If `data-source` is a c3p0 connection pool, return the underlying unpooled [[javax.sql.DataSource]]; otherwise
+  return `data-source` as-is.
+
+  When probing initial connectivity we don't want to go through the pool: c3p0 swallows the actual connection error
+  and keeps retrying acquisition until the checkout times out, so all you'd see is a misleading 'attempt by a client
+  to checkout a Connection has timed out' error instead of the real problem (e.g. the database doesn't exist). See
+  #81232."
+  ^javax.sql.DataSource [^javax.sql.DataSource data-source]
+  (or (when (instance? AbstractPoolBackedDataSource data-source)
+        (let [cpds (.getConnectionPoolDataSource ^AbstractPoolBackedDataSource data-source)]
+          (when (instance? WrapperConnectionPoolDataSource cpds)
+            (.getNestedDataSource ^WrapperConnectionPoolDataSource cpds))))
+      data-source))
+
 (mu/defn verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
@@ -165,7 +182,10 @@
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
-  (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
+  ;; check the connection against the unpooled data source, so if it fails we get the actual error from the driver
+  ;; instead of a c3p0 pool checkout timeout that hides it
+  (let [data-source (unpooled-data-source data-source)
+        error-msg   (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert (can-connect-to-data-source? data-source) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
