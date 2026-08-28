@@ -7,8 +7,10 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { resolveCards } from "metabase/query_builder/actions";
-import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
+import {
+  getParameterValuesForQuestion,
+  resolveCards,
+} from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
