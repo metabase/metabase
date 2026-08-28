@@ -1,64 +1,62 @@
 .ansiLogs {
-  :global {
-    .react-ansi-style-bold {
-      font-weight: bold;
-    }
+  :global(.react-ansi-style-bold) {
+    font-weight: bold;
+  }
 
-    .react-ansi-style-dim {
-      font-weight: lighter;
-    }
+  :global(.react-ansi-style-dim) {
+    font-weight: lighter;
+  }
 
-    .react-ansi-style-italic {
-      font-style: italic;
-    }
+  :global(.react-ansi-style-italic) {
+    font-style: italic;
+  }
 
-    .react-ansi-style-inverse {
-      color: var(--mb-color-text-primary);
-      background-color: var(--mb-color-background_page-primary);
-    }
+  :global(.react-ansi-style-inverse) {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_page-primary);
+  }
 
-    .react-ansi-style-hidden {
-      color: transparent;
-    }
+  :global(.react-ansi-style-hidden) {
+    color: transparent;
+  }
 
-    .react-ansi-style-underline {
-      text-decoration: underline;
-    }
+  :global(.react-ansi-style-underline) {
+    text-decoration: underline;
+  }
 
-    .react-ansi-style-strikethrough {
-      text-decoration: line-through;
-    }
+  :global(.react-ansi-style-strikethrough) {
+    text-decoration: line-through;
+  }
 
-    .react-ansi-style-black {
-      color: var(--mb-color-text-primary);
-    }
+  :global(.react-ansi-style-black) {
+    color: var(--mb-color-text-primary);
+  }
 
-    .react-ansi-style-white {
-      color: var(--mb-color-text-primary-inverse);
-    }
+  :global(.react-ansi-style-white) {
+    color: var(--mb-color-text-primary-inverse);
+  }
 
-    .react-ansi-style-gray {
-      color: var(--mb-color-text-disabled);
-    }
+  :global(.react-ansi-style-gray) {
+    color: var(--mb-color-text-disabled);
+  }
 
-    .react-ansi-style-red {
-      color: var(--mb-color-core-red-saturated);
-    }
+  :global(.react-ansi-style-red) {
+    color: var(--mb-color-core-red-saturated);
+  }
 
-    .react-ansi-style-green {
-      color: var(--mb-color-core-green-saturated);
-    }
+  :global(.react-ansi-style-green) {
+    color: var(--mb-color-core-green-saturated);
+  }
 
-    .react-ansi-style-yellow {
-      color: var(--mb-color-core-yellow-saturated);
-    }
+  :global(.react-ansi-style-yellow) {
+    color: var(--mb-color-core-yellow-saturated);
+  }
 
-    .react-ansi-style-blue {
-      color: var(--mb-color-core-blue-saturated);
-    }
+  :global(.react-ansi-style-blue) {
+    color: var(--mb-color-core-blue-saturated);
+  }
 
-    .react-ansi-style-purple {
-      color: var(--mb-color-core-purple-saturated);
-    }
+  :global(.react-ansi-style-purple) {
+    color: var(--mb-color-core-purple-saturated);
   }
 }

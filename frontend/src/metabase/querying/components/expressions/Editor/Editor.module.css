@@ -32,23 +32,19 @@
   color: var(--mb-color-text-primary);
   margin-right: calc(28px + var(--mantine-spacing-sm));
 
-  :global {
-    .cm-gutters {
-      border-top-left-radius: var(--mantine-radius-sm);
-    }
+  :global(.cm-gutters) {
+    border-top-left-radius: var(--mantine-radius-sm);
   }
 }
 
 .tooltips {
-  :global {
-    .cm-tooltip {
-      border: none !important;
-      background: none !important;
-    }
+  :global(.cm-tooltip) {
+    border: none !important;
+    background: none !important;
+  }
 
-    .cm-tooltip-autocomplete {
-      display: none;
-    }
+  :global(.cm-tooltip-autocomplete) {
+    display: none;
   }
 }
 
