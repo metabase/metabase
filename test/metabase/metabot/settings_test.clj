@@ -199,7 +199,9 @@
                "openai/gpt-4o"                              false
                "bedrock/anthropic.claude-opus-4-8"          true
                "bedrock/anthropic.claude-haiku-4-5"         false
-               "bedrock/openai.gpt-5.5"                     true
+               ;; requests reasoning (encrypted replay), but the mantle never
+               ;; streams summaries, so nothing renders — see bedrock/reasoning-model?
+               "bedrock/openai.gpt-5.5"                     false
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false

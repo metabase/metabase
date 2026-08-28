@@ -266,23 +266,30 @@
               (:messages body))))))
 
 (deftest reasoning-gate-matches-request-config-test
-  (testing "the capability gate and the request body agree for every whitelisted model"
-    (doseq [model (keys @#'bedrock/supported-models)]
-      (testing model
-        (let [body (captured-body! {:model model})]
-          (is (= (bedrock/reasoning-model? model)
-                 ;; `case` so a model of an unknown family fails loudly here
-                 (case (#'bedrock/model-family model)
-                   :anthropic (contains? body :thinking)
-                   :openai    (contains? body :reasoning)))))))))
+  (doseq [model (keys @#'bedrock/supported-models)]
+    (testing model
+      (let [body (captured-body! {:model model})]
+        ;; `case` so a model of an unknown family fails loudly here
+        (case (#'bedrock/model-family model)
+          :anthropic
+          (testing "the gate and the thinking request agree"
+            (is (= (bedrock/reasoning-model? model) (contains? body :thinking))))
+          ;; deliberately asymmetric: the request keeps its reasoning fields
+          ;; (encrypted-content replay works) while the gate answers false,
+          ;; because the mantle never streams summaries — nothing will render.
+          ;; See [[bedrock/reasoning-model?]].
+          :openai
+          (testing "reasoning is requested but the gate answers false"
+            (is (contains? body :reasoning))
+            (is (false? (bedrock/reasoning-model? model)))))))))
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (bedrock/reasoning-model? model))
     "anthropic.claude-opus-4-8"  true
     "anthropic.claude-fable-5"   true
     "anthropic.claude-haiku-4-5" false
-    "openai.gpt-5.5"             true
-    "openai.gpt-5.4-2026-03-05"  true
+    "openai.gpt-5.5"             false
+    "openai.gpt-5.4-2026-03-05"  false
     "deepseek.v3.2"              false
     nil                          false))
 
@@ -373,6 +380,9 @@
             {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
             {:type "message_stop"}]))))
 
+;; The mantle has never been observed to emit reasoning_summary_* events (see
+;; [[bedrock/reasoning-model?]]) — this pins the translation wiring so only the
+;; gate needs flipping if it ever starts.
 (deftest openai-model-streams-reasoning-test
   (is (=? [{:type :start :id "resp_1"}
            {:type :reasoning :text "keeping it short"}

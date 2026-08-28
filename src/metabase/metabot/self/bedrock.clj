@@ -240,13 +240,20 @@
                        :model      model}))))
 
 (defn reasoning-model?
-  "Whether `model` streams reasoning back to us, per its API family's own rule.
+  "Whether `model` streams renderable reasoning back to us.
   False (rather than [[model->family]]'s throw) outside the supported families:
   the settings capability gate asks about whatever model is selected."
   [model]
   (case (model-family model)
     :anthropic (claude/reasoning-model? model)
-    :openai    (openai/reasoning-model? model)
+    ;; The mantle's Responses surface accepts the reasoning request fields and
+    ;; the GPT models do reason (at a per-model default effort: gpt-5.4 "none",
+    ;; gpt-5.5 "medium"), but it never streams reasoning summaries — `summary`
+    ;; comes back empty at every effort/summary combination — so nothing will
+    ;; ever render. The request deliberately keeps its reasoning fields (see
+    ;; [[openai/openai-request-body]]): where the model reasons by default they
+    ;; buy encrypted-content replay across tool calls.
+    :openai    false
     nil        false))
 
 (defn ->mantle-anthropic-body
