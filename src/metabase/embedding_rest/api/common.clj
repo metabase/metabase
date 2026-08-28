@@ -13,7 +13,6 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.dashboard :as parameters.dashboard]
-   [metabase.parameters.params :as params]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -222,11 +221,14 @@
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
 (defn- remove-params-in-set
-  "Remove any `params` from the list whose `:slug` is in the `params-to-remove` set."
-  [params params-to-remove]
-  (for [param params
-        :when (not (contains? params-to-remove (keyword (:slug param))))]
-    param))
+  "Remove the `:parameters` of `dashboard-or-card` whose `:slug` is in the `params-to-remove` set, along with their
+  `:param_fields` entries (keyed by parameter id), so neither the widgets nor their Fields are exposed."
+  [dashboard-or-card params-to-remove]
+  (let [remove?     (fn [param] (contains? params-to-remove (keyword (:slug param))))
+        ids-to-remove (into #{} (comp (filter remove?) (map :id)) (:parameters dashboard-or-card))]
+    (-> dashboard-or-card
+        (update :parameters (partial remove remove?))
+        (u/update-some :param_fields #(apply dissoc % ids-to-remove)))))
 
 (defn- classify-params-as-keep-or-remove
   "Classifies the params in the `dashboard-or-card-params` seq and the param slugs in `embedding-params` map according to:
@@ -255,13 +257,13 @@
   can't set."
   [dashboard-or-card embedding-params :- ms/EmbeddingParams]
   (let [params-to-remove (get-params-to-remove (:parameters dashboard-or-card) embedding-params)]
-    (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
+    (remove-params-in-set dashboard-or-card params-to-remove)))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
   [dashboard-or-card token-params]
-  (update dashboard-or-card :parameters remove-params-in-set (set (keys token-params))))
+  (remove-params-in-set dashboard-or-card (set (keys token-params))))
 
 (defn- substitute-token-parameters-in-text
   "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
@@ -406,17 +408,10 @@
 (defn- remove-locked-parameters
   [dashboard embedding-params]
   (let [params                    (:parameters dashboard)
-        {params-to-remove :remove
-         params-to-keep   :keep}  (classify-params-as-keep-or-remove params embedding-params)
+        params-to-remove          (get-params-to-remove params embedding-params)
         param-ids-to-remove       (set (keep (fn [{:keys [slug id]}]
                                                (when (contains? params-to-remove (keyword slug)) id))
                                              params))
-        param-ids-to-keep         (set (keep (fn [{:keys [slug id]}]
-                                               (when (contains? params-to-keep (keyword slug)) id))
-                                             params))
-        field-ids-to-maybe-remove (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
-        field-ids-to-keep         (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-keep))
-        field-ids-to-remove       (set/difference field-ids-to-maybe-remove field-ids-to-keep)
         remove-parameter-mappings (fn [dashcard]
                                     (update dashcard :parameter_mappings
                                             (fn [param-mappings]
@@ -428,9 +423,7 @@
                                               (remove (fn [id] (contains? param-ids-to-remove id)) inline-params))))]
     (-> dashboard
         (update :dashcards #(map remove-parameter-mappings %))
-        (update :dashcards #(map remove-inline-parameters %))
-        ;; TODO cleanup
-        (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
+        (update :dashcards #(map remove-inline-parameters %)))))
 
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."

@@ -97,7 +97,8 @@
                        :dataset_query])
          (update :dataset_query (fn [query]
                                   (cond-> query
-                                    (seq query) blank-dataset-query)))))))
+                                    (seq query) blank-dataset-query)))
+         params/remove-param-fields-non-public-columns))))
 
 (defn public-card
   "Return the public Card with the given `card-id` (plus any extra key-value `conditions`), removing all columns that
@@ -278,6 +279,7 @@
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :id dashboard-id, :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
+        params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]

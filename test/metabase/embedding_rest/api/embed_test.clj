@@ -675,6 +675,124 @@
                      :visualization_settings
                      :text))))))))
 
+(deftest card-param-fields-public-columns-test
+  (testing "GET /api/embed/card/:token :param_fields only carry the public Field columns"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (with-temp-card [card {:enable_embedding true
+                               :embedding_params {:category "enabled"}
+                               :dataset_query    (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}}")
+                                                     (lib/with-template-tags
+                                                       {"category" {:id           "_CATEGORY_"
+                                                                    :name         "category"
+                                                                    :display-name "Category"
+                                                                    :type         :dimension
+                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :widget-type  :id}}))}]
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :dimensions         []}]}
+                 (:param_fields (client/client :get 200 (card-url card))))))))))
+
+(deftest dashboard-param-fields-public-columns-test
+  (testing "GET /api/embed/dashboard/:token :param_fields only carry the public Field columns"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
+                                                :embedding_params {:category_id "enabled"}
+                                                :parameters       [{:id   "_CATEGORY_ID_"
+                                                                    :name "Category ID"
+                                                                    :slug "category_id"
+                                                                    :type :id}]}
+                                     :dashcard {:parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                                                      :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]}}]
+        (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                 :table_id           (mt/id :venues)
+                                 :display_name       "Category ID"
+                                 :base_type          "type/Integer"
+                                 :name               "CATEGORY_ID"
+                                 :semantic_type      "type/FK"
+                                 :has_field_values   "none"
+                                 :fk_target_field_id (mt/id :categories :id)
+                                 :dimensions         []}]}
+               (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))
+
+(deftest card-param-fields-only-for-enabled-params-test
+  (testing "GET /api/embed/card/:token :param_fields only include enabled parameters, not locked/disabled/unlisted ones"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (with-temp-card [card {:enable_embedding true
+                               :embedding_params {:category "enabled", :id "locked", :name "disabled"}
+                               :dataset_query    (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}} AND {{id}} AND {{name}} AND {{price}}")
+                                                     (lib/with-template-tags
+                                                       {"category" {:id           "_CATEGORY_"
+                                                                    :name         "category"
+                                                                    :display-name "Category"
+                                                                    :type         :dimension
+                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :widget-type  :id}
+                                                        "id"       {:id           "_ID_"
+                                                                    :name         "id"
+                                                                    :display-name "ID"
+                                                                    :type         :dimension
+                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                    :widget-type  :id}
+                                                        "name"     {:id           "_NAME_"
+                                                                    :name         "name"
+                                                                    :display-name "Name"
+                                                                    :type         :dimension
+                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))
+                                                                    :widget-type  :id}
+                                                        "price"    {:id           "_PRICE_"
+                                                                    :name         "price"
+                                                                    :display-name "Price"
+                                                                    :type         :dimension
+                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                                                    :widget-type  :id}}))}]
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :dimensions         []}]}
+                 (:param_fields (client/client :get 200 (card-url card {:params {:id 1}}))))))))))
+
+(deftest dashboard-param-fields-only-for-enabled-params-test
+  (testing "GET /api/embed/dashboard/:token :param_fields only include enabled parameters, not locked/disabled/unlisted ones"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
+                                                :embedding_params {:category_id "enabled", :id "locked", :name "disabled"}
+                                                :parameters       [{:id "_CATEGORY_ID_", :name "Category ID", :slug "category_id", :type :id}
+                                                                   {:id "_ID_",          :name "ID",          :slug "id",          :type :id}
+                                                                   {:id "_NAME_",        :name "Name",        :slug "name",        :type :string/=}
+                                                                   {:id "_PRICE_",       :name "Price",       :slug "price",       :type :number/=}]}
+                                     :dashcard {:parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                                                      :target       [:dimension [:field (mt/id :venues :category_id) nil]]}
+                                                                     {:parameter_id "_ID_"
+                                                                      :target       [:dimension [:field (mt/id :venues :id) nil]]}
+                                                                     {:parameter_id "_NAME_"
+                                                                      :target       [:dimension [:field (mt/id :venues :name) nil]]}
+                                                                     {:parameter_id "_PRICE_"
+                                                                      :target       [:dimension [:field (mt/id :venues :price) nil]]}]}}]
+        (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                 :table_id           (mt/id :venues)
+                                 :display_name       "Category ID"
+                                 :base_type          "type/Integer"
+                                 :name               "CATEGORY_ID"
+                                 :semantic_type      "type/FK"
+                                 :has_field_values   "none"
+                                 :fk_target_field_id (mt/id :categories :id)
+                                 :dimensions         []}]}
+               (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:id 1}})))))))))
+
 (deftest locked-params-removes-values-fields-and-mappings-test
   (testing "check that locked params are removed in parameter mappings, param_values, and param_fields"
     (with-embedding-enabled-and-new-secret-key!
@@ -722,7 +840,7 @@
                      count))))))))
 
 (deftest locked-params-removes-values-fields-when-not-used-in-enabled-params
-  (testing "check that locked params are not removed in parameter mappings, param_values, and param_fields when an enabled param uses them (#37914)"
+  (testing "an enabled param keeps its param_fields Field even when a locked param shares it (#37914); the locked param's own entry is removed"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
                                                          :embedding_params {:venue_name   "locked"
@@ -752,9 +870,9 @@
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (=? {:foo [{}]
-                   :bar [{}]}
+          (is (=? {:bar [{:id (mt/id :venues :name)}]}
                   (:param_fields embedding-dashboard)))
+          (is (not (contains? (:param_fields embedding-dashboard) :foo)))
           (is (= 1
                  (-> embedding-dashboard
                      :dashcards
@@ -762,9 +880,9 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (=? {:foo [{}]
-                   :bar [{}]}
+          (is (=? {:bar [{:id (mt/id :venues :name)}]}
                   (:param_fields eid-embedding-dashboard)))
+          (is (not (contains? (:param_fields eid-embedding-dashboard) :foo)))
           (is (= 1
                  (-> eid-embedding-dashboard
                      :dashcards
