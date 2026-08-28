@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1549,6 +1550,24 @@
               (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta))
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
+
+(deftest reset-password-old-password-check-is-throttled-test
+  (testing "PUT /api/user/:id/password - repeated wrong old_password attempts are throttled"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "correct-horse-1!")
+      (let [creds     {:username (:email user) :password "correct-horse-1!"}
+            wrong     (fn [] (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                        {:password "abc123!!DEF" :old_password "wrong"}))
+            throttler (throttle/make-throttler :user-id :attempts-threshold 3)]
+        (with-redefs [api.user/password-change-throttler throttler]
+          (testing "attempts up to the threshold return the normal Invalid password error"
+            (dotimes [_ 3]
+              (is (=? {:errors {:old_password "Invalid password"}} (wrong)))))
+          (testing "the next attempt is throttled, not a fresh password check"
+            (is (re-find #"^Too many attempts!"
+                         (get-in (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                            {:password "abc123!!DEF" :old_password "wrong"})
+                                 [:errors :user-id] "")))))))))
 
 (deftest reset-password-verifies-old-password-against-auth-identity-test
   (testing "PUT /api/user/:id/password"
