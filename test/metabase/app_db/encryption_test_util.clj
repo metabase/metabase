@@ -5,6 +5,7 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.test.initialize :as initialize]
    [metabase.test.initialize.test-users :as init.test-users]
    [metabase.util.encryption :as encryption]))
 
@@ -29,6 +30,10 @@
   under an active key strictly decrypts it, which throws on a plaintext value another namespace may have left in the
   shared DB. Standard test users are seeded so `:rasta` &c. resolve there (`user->id` memoizes per application DB)."
   [secret-key thunk]
+  ;; initialize the ambient test app DB first: seeding the isolated DB below forces the one-time :db initialization
+  ;; while *application-db* is bound to it, which would mark :db initialized without ever migrating the ambient DB --
+  ;; the first test to touch the ambient DB would then find it empty.
+  (initialize/initialize-if-needed! :db)
   (let [data-source (mdb.data-source/raw-connection-string->DataSource
                      (str "jdbc:h2:mem:" (gensym "encryption-test-db-")))]
     ;; hold one connection open for the whole fixture so the in-memory DB survives until every test has run
