@@ -3,6 +3,7 @@
   the [[metabase.warehouse-schema.models.field-values]] namespace."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -11,6 +12,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -698,3 +700,36 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(def ^:private warehouse-values
+  ["Great Horned Owl" "Snowy Plover" "Tufted Titmouse"])
+
+(deftest values-are-encrypted-at-rest-test
+  (testing "FieldValues hold verbatim warehouse rows, so they must not sit in the clear"
+    (encryption-test/with-secret-key "field-values-encryption-test-key"
+      (mt/with-temp [:model/FieldValues fv {:field_id              (mt/id :venues :name)
+                                            :values                warehouse-values
+                                            :human_readable_values ["Owl" "Plover" "Titmouse"]}]
+        (let [raw (t2/query-one {:select [:values :human_readable_values]
+                                 :from   [:metabase_fieldvalues]
+                                 :where  [:= :id (u/the-id fv)]})]
+          (testing "neither column contains the warehouse value"
+            (is (not (str/includes? (:values raw) "Tufted Titmouse"))
+                "values were stored in plaintext")
+            (is (not (str/includes? (:human_readable_values raw) "Titmouse"))
+                "human_readable_values were stored in plaintext"))
+          (testing "and both still decrypt back to the originals"
+            (is (= warehouse-values
+                   (t2/select-one-fn :values :model/FieldValues :id (u/the-id fv))))
+            (is (= ["Owl" "Plover" "Titmouse"]
+                   (t2/select-one-fn :human_readable_values :model/FieldValues :id (u/the-id fv))))))))))
+
+(deftest values-read-pre-encryption-plaintext-test
+  (testing "FieldValues written before these columns were encrypted keep reading, so no migration is needed"
+    (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :name) :values []}]
+      (t2/query-one {:update :metabase_fieldvalues
+                     :set    {:values (json/encode warehouse-values)}
+                     :where  [:= :id (u/the-id fv)]})
+      (encryption-test/with-secret-key "field-values-encryption-test-key"
+        (is (= warehouse-values
+               (t2/select-one-fn :values :model/FieldValues :id (u/the-id fv))))))))

@@ -1,6 +1,7 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -24,6 +25,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -1772,3 +1774,41 @@
         (is (not (contains? extracted (eid summary-card)))
             "a card belonging to an exploration Summary is never exported — its name and dataset_query
              carry values discovered under the creator's lens, and its parent document is excluded")))))
+
+(def ^:private warehouse-result-metadata
+  [{:name         "NAME"
+    :display_name "Name"
+    :base_type    :type/Text
+    :fingerprint  {:global {:distinct-count 3 :nil% 0.0}
+                   :type   {:type/Text {:percent-json 0.0 :percent-url 0.0 :percent-email 0.0
+                                        :average-length 19.0}}}}
+   {:name         "PRICE"
+    :display_name "Price"
+    :base_type    :type/Integer
+    :fingerprint  {:global {:distinct-count 4 :nil% 0.0}
+                   :type   {:type/Number {:min 1.0 :max 987654.25 :avg 2.03 :q1 1.5 :q3 3.0 :sd 0.77}}}}])
+
+(deftest result-metadata-is-encrypted-at-rest-test
+  (testing "result_metadata embeds per-column fingerprints, which are warehouse values, so it must not sit in the clear"
+    (encryption-test/with-secret-key "card-result-metadata-encryption-test-key"
+      (mt/with-temp [:model/Card card {:result_metadata warehouse-result-metadata}]
+        (let [raw (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                   :from   [:report_card]
+                                                   :where  [:= :id (u/the-id card)]}))]
+          (testing "the stored value does not contain the warehouse number"
+            (is (string? raw))
+            (is (not (str/includes? raw "987654.25"))
+                "result_metadata was stored in plaintext"))
+          (testing "and it still decrypts back to the original metadata"
+            (is (=? [{:name "NAME"} {:name "PRICE"}]
+                    (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))))))))))
+
+(deftest result-metadata-reads-pre-encryption-plaintext-test
+  (testing "cards written before this column was encrypted keep reading, so no migration is needed"
+    (mt/with-temp [:model/Card card {}]
+      (t2/query-one {:update :report_card
+                     :set    {:result_metadata (json/encode warehouse-result-metadata)}
+                     :where  [:= :id (u/the-id card)]})
+      (encryption-test/with-secret-key "card-result-metadata-encryption-test-key"
+        (is (=? [{:name "NAME"} {:name "PRICE"}]
+                (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))))))))
