@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [metabase.test.data.interface :as tx]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -35,28 +36,58 @@
                  (str/split (or drivers "") #",")))
       default-drivers))
 
+(defn- census
+  "Datasets on each of a driver's servers, best effort: a count we cannot take must not cost us the sweep.
+
+  Runs on its own thread, which is why the skip is bound here rather than around the whole job: a `binding` does not
+  reach pool threads, and losing it would let Redshift's before-run hook create the very session schema this job
+  would then leak nightly."
+  [driver]
+  (binding [tx/*skip-before-run?* true]
+    (try
+      (tx/count-datasets driver)
+      (catch Exception e
+        (log/errorf "[%s] could not count datasets: %s" (name driver) (ex-message e))
+        {}))))
+
+(defn- log-census!
+  "One line per driver before anything is deleted, so a run that is killed partway still says what it was up against."
+  [driver->counts]
+  (doseq [[driver counts] driver->counts]
+    (log/infof "[%s] %s dataset(s) before sweep%s"
+               (name driver)
+               (if (empty? counts) "unknown" (reduce + 0 (remove nil? (vals counts))))
+               (if (empty? counts)
+                 ""
+                 (str " — " (str/join ", " (for [[server n] (sort-by key counts)]
+                                             (format "%s: %s" server (if (nil? n) "unknown" n))))))))
+  (log/infof "%s dataset(s) before sweep, across %d driver(s)"
+             (reduce + 0 (for [counts (vals driver->counts), n (vals counts) :when (some? n)] n))
+             (count driver->counts)))
+
 (defn- sweep-driver!
   "Sweep one driver and take a census of what is left, each best effort. A driver that cannot connect at all, or a
-  census that fails, must cost neither the other drivers nor the deletions this one did manage."
-  [driver options]
-  (let [results   (try
-                    (vec (tx/gc-orphans! driver options))
-                    (catch Exception e
-                      [{:name nil, :status :failed, :error (ex-message e)}]))
-        remaining (try
-                    (tx/count-datasets driver)
-                    (catch Exception e
-                      (log/errorf "[%s] could not count remaining datasets: %s" (name driver) (ex-message e))
-                      {}))
-        {deleted :deleted, failed :failed} (group-by :status results)]
-    (log/infof "[%s] %d deleted, %d failed" (name driver) (count deleted) (count failed))
-    (doseq [{dataset-name :name, :keys [error]} failed]
-      (log/errorf "[%s] %s: %s" (name driver) (or dataset-name "<server unreachable>") error))
-    {:driver    (name driver)
-     :deleted   (vec deleted)
-     :failed    (vec failed)
-     :counts    {:deleted (count deleted), :failed (count failed)}
-     :remaining remaining}))
+  census that fails, must cost neither the other drivers nor the deletions this one did manage.
+
+  `before` is this driver's pre-sweep census, passed in rather than retaken so the report's before and after come
+  from the same numbers the log reported."
+  [driver before options]
+  (binding [tx/*skip-before-run?* true]
+    (let [results   (try
+                      (vec (tx/gc-orphans! driver options))
+                      (catch Exception e
+                        [{:name nil, :status :failed, :error (ex-message e)}]))
+          remaining (census driver)
+          {deleted :deleted, failed :failed} (group-by :status results)]
+      (log/infof "[%s] %d deleted, %d failed" (name driver) (count deleted) (count failed))
+      (doseq [{dataset-name :name, :keys [error]} failed]
+        (log/errorf "[%s] %s: %s" (name driver) (or dataset-name "<server unreachable>") error))
+      {:driver    (name driver)
+       :deleted   (vec deleted)
+       :failed    (vec failed)
+       :counts    {:deleted (count deleted), :failed (count failed)}
+       :before    before
+       :remaining remaining})))
 
 (defn- build-report
   [options driver-reports]
@@ -88,13 +119,16 @@
        (when (and error (or server dataset-name)) ": ")
        error))
 
-(defn- render-driver [{:keys [driver counts remaining deleted failed]}]
+(defn- render-driver [{:keys [driver counts before remaining deleted failed]}]
   (str (format "### %s — %d deleted, %d failed\n\n" driver (:deleted counts) (:failed counts))
        (if (empty? remaining)
-         "Remaining datasets: unknown\n\n"
-         (str "Remaining datasets:\n\n"
+         "Datasets: unknown\n\n"
+         (str "Datasets, before and after:\n\n"
               (str/join "\n" (for [[server n] (sort-by key remaining)]
-                               (format "- `%s`: %s" server (if (nil? n) "unknown" n))))
+                               (format "- `%s`: %s → %s"
+                                       server
+                                       (let [b (get before server)] (if (nil? b) "unknown" b))
+                                       (if (nil? n) "unknown" n))))
               "\n\n"))
        (render-names "Deleted" deleted render-object)
        (render-names "Failed" failed render-object)))
@@ -139,14 +173,17 @@
         (throw (ex-info (format "%s must be a whole number of hours >= %d; refusing to sweep with %s"
                                 k floor (pr-str v))
                         {:option k, :value v}))))
-    ;; we want the extensions, not their before-run hooks: Redshift's creates a session schema, which this job would
-    ;; then leak nightly
-    (binding [tx/*skip-before-run?* true]
-      (let [report (build-report options (mapv #(sweep-driver! % options) (parse-drivers drivers)))]
-        ;; write before throwing: the report is most wanted on the runs that fail
-        (write-report! report (or report-dir default-report-dir))
-        ;; fail loudly rather than going green having deleted nothing
-        (when (pos? (get-in report [:totals :failed]))
-          (throw (ex-info (format "%d object(s) could not be deleted"
-                                  (get-in report [:totals :failed]))
-                          {:errors (into [] (comp (mapcat :failed) (map :error)) (:drivers report))})))))))
+    (let [swept  (let [ds (parse-drivers drivers)]
+                   ;; drivers share nothing, so the job costs the slowest one rather than the sum of all three
+                   (cp/with-shutdown! [pool (cp/threadpool (count ds))]
+                     (let [before (zipmap ds (doall (cp/pmap pool census ds)))]
+                       (log-census! before)
+                       (doall (cp/pmap pool #(sweep-driver! % (get before %) options) ds)))))
+          report (build-report options swept)]
+      ;; write before throwing: the report is most wanted on the runs that fail
+      (write-report! report (or report-dir default-report-dir))
+      ;; fail loudly rather than going green having deleted nothing
+      (when (pos? (get-in report [:totals :failed]))
+        (throw (ex-info (format "%d object(s) could not be deleted"
+                                (get-in report [:totals :failed]))
+                        {:errors (into [] (comp (mapcat :failed) (map :error)) (:drivers report))}))))))
