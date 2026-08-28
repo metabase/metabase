@@ -538,6 +538,8 @@
   [& args]
   (let [{:keys [model] :or {model default-model}} (first args)
         raw (apply google-raw args)]
+    ;; Keep this dispatch in sync with `google-raw`, which independently uses
+    ;; `model->family` to select the request protocol.
     (eduction (case (model->family model)
                 :anthropic (raw-predict/->aisdk-chunks-xf)
                 :google    (stream-generate-content/->aisdk-chunks-xf))
