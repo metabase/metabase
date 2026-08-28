@@ -40,10 +40,13 @@ const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
  * happens to reach today.
  *
  * Everything else stays in `app-main`, where module concatenation can hoist it
- * into the code that uses it. That is worth ~79 kb of brotli, and it keeps this
- * chunk's hash still: a package only leaves it when we change its version, not
- * when a feature stops importing something. The old `vendor`, which claimed
- * every `node_modules` module, changed in three of the last four releases.
+ * into the code that uses it. That is worth 25 kb of brotli, and a repeat visit
+ * about 34 ms.
+ *
+ * The reason to do it is neither of those. It keeps this chunk's hash still: a
+ * package only leaves it when we change its version, not when a feature stops
+ * importing something. The old `vendor`, which claimed every `node_modules`
+ * module, changed in three of the last four releases.
  */
 const CORE_VENDOR_PACKAGES = [
   "react",
