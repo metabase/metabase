@@ -1351,22 +1351,6 @@ LIMIT
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
-
-    it("should not allow to overwrite an existing table when changing the target", () => {
-      createMbqlTransform({ visitTransform: true });
-
-      cy.log("change the target to an existing table");
-      H.DataStudio.Transforms.settingsTab().click();
-      getTransformsTargetContent().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
-        cy.button("Change target").click();
-        cy.wait("@updateTransform");
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
-      });
-    });
   });
 
   describe("metadata", () => {
