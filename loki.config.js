@@ -20,6 +20,7 @@ module.exports = {
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
     "^Components/Overlays/Tooltip",
+    "^Components/Overlays/Popover Overview",
     "^Components/Documents",
     "^Components/Feedback/Alert",
     "^Components/Feedback/Loader Overview",
