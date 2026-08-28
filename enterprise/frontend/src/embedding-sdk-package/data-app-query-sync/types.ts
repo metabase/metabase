@@ -61,11 +61,6 @@ export interface DataAppMetadata {
   resource_collection_id: number;
 }
 
-export interface DraftDataAppMetadata extends DataAppMetadata {
-  resource_collection_entity_id: string;
-  permission_group_entity_id: string;
-}
-
 export interface MetabaseCard {
   id: number;
   name: string;
