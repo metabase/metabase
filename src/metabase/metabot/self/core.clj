@@ -1031,7 +1031,7 @@
 
   - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Proxy auth is tagged
     `:proxy? true`: its URL is operator configuration, not admin input, so [[request]] exempts it from
-    `llm/llm-allowed-networks`.
+    [[metabase.llm.settings/llm-allowed-networks]].
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
@@ -1056,7 +1056,7 @@
   `:socket-timeout` in `req`.
 
   The base URL is admin input, so unless the auth is the AI proxy's (see [[resolve-auth]]) it is
-  checked against `llm/llm-allowed-networks` before the request, and the connection resolves DNS
+  checked against [[metabase.llm.settings/llm-allowed-networks]] before the request, and the connection resolves DNS
   through a resolver that enforces the same policy on the addresses it actually opens."
   [{:keys [url headers proxy?]} req]
   (llm/assert-llm-host-allowed! url)
