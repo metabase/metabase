@@ -115,7 +115,7 @@ describe("useMcpApp", () => {
     act(() => app.ontoolresult(QUERY_RESULT));
 
     expect(result.current.hostError).toBe(
-      "Codex Desktop does not support this visualization.",
+      "Codex Desktop does not support query visualization.",
     );
   });
 

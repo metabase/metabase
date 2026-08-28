@@ -13,10 +13,11 @@ jest.mock("metabase/settings", () => ({
 }));
 
 describe("useMcpUserAndSettingsFetch", () => {
-  it("keeps settings ready when the UI credential changes", async () => {
+  it("keeps settings ready state even when the ui credential changes", async () => {
     const unwrap = jest.fn().mockResolvedValue(undefined);
     const dispatch = jest.fn(() => ({ unwrap }));
-    // The hook only uses dispatch, so the test does not need a complete Redux store.
+
+    // The hook only uses dispatch
     const store = { dispatch } as unknown as SdkStore;
 
     const { result, rerender } = renderHook(
@@ -32,10 +33,10 @@ describe("useMcpUserAndSettingsFetch", () => {
     await waitFor(() => {
       expect(result.current.isSettingsReady).toBe(true);
     });
+
     expect(dispatch).toHaveBeenCalledTimes(2);
 
     rerender({ uiCredential: "credential-2" });
-
     expect(result.current.isSettingsReady).toBe(true);
     expect(dispatch).toHaveBeenCalledTimes(2);
   });
