@@ -307,11 +307,9 @@
             {:instanceUrl    (json/encode site-url)
              :instanceUrlRaw site-url})))))
 
-;; MCP hosts cache app resources by URI. The version suffix prevents existing clients from reusing
-;; the released HTML, which contains an expiring UI credential.
 (register-ui-resource!
  :visualize-query
- "ui://metabase/visualize-query-v2.html"
+ "ui://metabase/visualize-query.html"
  "agent:viz:mcp-ui:query"
  {:name          "Visualize Query"
   :description   "Lightweight MCP Apps visualization for a query"
@@ -320,7 +318,7 @@
 
 (register-ui-resource!
  :render-drill-through
- "ui://metabase/render-drill-through-v2.html"
+ "ui://metabase/render-drill-through.html"
  "agent:viz:mcp-ui:drill-through"
  {:name          "Render Drill Through"
   :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
