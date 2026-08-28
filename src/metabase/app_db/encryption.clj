@@ -114,7 +114,7 @@
         (throw e)
         nil))))
 
-(mu/defn encrypted-content-status :- [:enum :none :decryptable :not-decryptable]
+(mu/defn- encrypted-content-status :- [:enum :none :decryptable :not-decryptable]
   "Whether the encrypted-at-rest columns hold content, and whether that content was encrypted under the current key,
   judged from one sampled value per column (the single rows a NOT NULL probe would touch -- never a full scan):
 
@@ -150,7 +150,7 @@
                                             (encrypt-fn (str (random-uuid)))
                                             "unencrypted")}))
 
-(defn write-encryption-check!
+(defn- write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
