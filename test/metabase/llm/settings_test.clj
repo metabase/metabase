@@ -216,7 +216,11 @@
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
         (is (= :external-only (llm.settings/llm-allowed-networks)))))
     (testing "it is not settable: nobody loosens it through the API"
-      (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all))))))
+      (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all)))))
+  (testing "a value that reached the application database some other way is ignored"
+    (mt/with-temporary-raw-setting-values [llm-allowed-networks "allow-all"]
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
+        (is (= :external-only (llm.settings/llm-allowed-networks)))))))
 
 (deftest network-policy-floor-test
   (testing "a deployment-controlled endpoint's floor can only loosen the configured policy"
