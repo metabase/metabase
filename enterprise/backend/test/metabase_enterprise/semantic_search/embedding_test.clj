@@ -426,14 +426,21 @@
                                                                                            {:ssrf true})))]
           (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
                   (rejected "openai")))))
-      (testing "the AI service URL is operator configuration and is exempt"
+      (testing "the managed AI service overrides the policy to allow private addresses"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
-                                    llm.settings/ai-service-base-url                loopback
+                                    llm.settings/ai-service-base-url                (constantly "http://10.0.0.1:9")
                                     premium-features/premium-embedding-token        (constantly "mock-token")
                                     http/post                                       capture]
           (embed "ai-service")
-          (is (= "http://127.0.0.1:9/v1/embeddings" (:url @captured)))
-          (is (not (contains? @captured :dns-resolver)))))
+          (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
+          (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
+      (testing "the managed AI service override still refuses loopback"
+        (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                    llm.settings/ai-service-base-url                loopback
+                                    premium-features/premium-embedding-token        (constantly "mock-token")
+                                    http/post                                       refuse]
+          (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                  (rejected "ai-service")))))
       (testing "the embedding service URL is checked on write as well"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"not allowed to connect"

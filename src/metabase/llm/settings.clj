@@ -49,7 +49,8 @@
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
                      "- allow-all (no restrictions).\n"
                      "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
-                     "Does not apply to the Metabase AI service, whose proxy URL the operator configures."))
+                     "Deployment-controlled Metabase AI services use allow-private so they remain reachable on "
+                     "private networks without allowing loopback or link-local addresses."))
   :type       :keyword
   :visibility :admin
   :export?    false
@@ -71,32 +72,38 @@
 
 (defn llm-url-problem
   "Why `url` may not be used as an LLM provider base URL, or nil when it may.
-  It must be an `http` or `https` URL with a host, and every address the host resolves to must be permitted by
-  [[llm-allowed-networks]]. A blank `url` is not a problem here: the not-configured handling covers it.
+  It must be an `http` or `https` URL with a host, and every address the host resolves to must be permitted by the
+  supplied network policy. The one-argument form uses [[llm-allowed-networks]]. A blank `url` is not a problem here:
+  the not-configured handling covers it.
   This is the set-time check; [[metabase.util.http/network-policy-dns-resolver]] repeats it on the addresses
   the connection actually opens, so a host that rebinds between the two is still refused."
-  [url]
-  (when-not (str/blank? url)
-    (let [^URL parsed (try
-                        (URL. ^String url)
-                        (catch MalformedURLException _ nil))
-          host        (some-> parsed .getHost not-empty)]
-      (cond
-        (not (and parsed (#{"http" "https"} (.getProtocol parsed)) host))
-        (tru "Invalid base URL: it must start with http:// or https://.")
+  ([url]
+   (llm-url-problem (llm-allowed-networks) url))
+  ([network-policy url]
+   (when-not (str/blank? url)
+     (let [^URL parsed (try
+                         (URL. ^String url)
+                         (catch MalformedURLException _ nil))
+           host        (some-> parsed .getHost not-empty)]
+       (cond
+         (not (and parsed (#{"http" "https"} (.getProtocol parsed)) host))
+         (tru "Invalid base URL: it must start with http:// or https://.")
 
-        (not (u.http/host-allowed-for-network-policy? (llm-allowed-networks) host))
-        (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url)))))
+         (not (u.http/host-allowed-for-network-policy? network-policy host))
+         (tru "The base URL {0} points at a network Metabase is not allowed to connect to." url))))))
 
 (defn assert-llm-url-allowed!
-  "Throw a 400 when [[llm-url-problem]] finds one with `url`."
-  [url]
-  (when-let [problem (llm-url-problem url)]
-    (throw (ex-info problem
-                    {:status-code 400
-                     :api-error   true
-                     :error-code  :llm-host-not-allowed
-                     :llm-url     url}))))
+  "Throw a 400 when [[llm-url-problem]] finds one with `url`. The one-argument form uses
+  [[llm-allowed-networks]]; the two-argument form enforces `network-policy`."
+  ([url]
+   (assert-llm-url-allowed! (llm-allowed-networks) url))
+  ([network-policy url]
+   (when-let [problem (llm-url-problem network-policy url)]
+     (throw (ex-info problem
+                     {:status-code 400
+                      :api-error   true
+                      :error-code  :llm-host-not-allowed
+                      :llm-url     url})))))
 
 (defn llm-network-policy-error?
   "Whether `e` or one of its causes is a connection-time rejection from the policy DNS resolver."

@@ -1029,15 +1029,16 @@
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
-  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Proxy auth is tagged
-    `:proxy? true`: its URL is operator configuration, not admin input, so [[request]] exempts it from
-    [[metabase.llm.settings/llm-allowed-networks]].
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Its deployment-controlled URL
+    carries a `:network-policy-override` of `:allow-private`, so private cluster addresses remain reachable while
+    loopback and link-local addresses stay blocked.
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}
-                      :proxy?  true})]
+                     {:url                     (str (str/replace base #"/+$" "") "/" provider-slug)
+                      :headers                 {"x-metabase-instance-token"
+                                                (premium-features/premium-embedding-token)}
+                      :network-policy-override :allow-private})]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
@@ -1056,15 +1057,14 @@
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 
-  The base URL is admin input, so unless the auth is the AI proxy's (see [[resolve-auth]]) it is
-  checked against [[metabase.llm.settings/llm-allowed-networks]] before the request, and the connection resolves DNS
-  through a resolver that enforces the same policy on the addresses it actually opens."
-  [{:keys [url headers proxy?]} req]
+  The base URL is checked against [[metabase.llm.settings/llm-allowed-networks]] before the request, and the connection
+  resolves DNS through a resolver that enforces the same policy on the addresses it actually opens. Auth returned by
+  [[resolve-auth]] may supply `:network-policy-override` for a deployment-controlled service."
+  [{:keys [url headers network-policy-override]} req]
   (llm/assert-llm-host-allowed! url)
-  (when-not proxy?
-    (llm/assert-llm-url-allowed! url))
-  (let [resolver (when-not proxy?
-                   (u.http/network-policy-dns-resolver (llm/llm-allowed-networks)))]
+  (let [network-policy (or network-policy-override (llm/llm-allowed-networks))
+        resolver       (u.http/network-policy-dns-resolver network-policy)]
+    (llm/assert-llm-url-allowed! network-policy url)
     (try
       (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
                          :socket-timeout     (llm/llm-request-timeout-ms)}
