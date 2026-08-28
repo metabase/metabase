@@ -1,11 +1,11 @@
 import type {
   BrowserEmbedOptions,
-  DashboardEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
-  QuestionEmbedOptions,
+  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedAuthTypeSettings,
   SdkIframeEmbedBaseSettings,
+  SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type {
   BaseRecentItem,
@@ -33,14 +33,6 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
 
 export type SdkIframeEmbedSetupGuestEmbedSettings =
   SdkIframeEmbedAuthTypeSettings;
-
-export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
-  lockedParameters?: string[];
-};
-
-export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
-  lockedParameters?: string[];
-};
 
 export type SdkIframeEmbedSetupTemplateSettings =
   | SdkIframeDashboardEmbedSettings
