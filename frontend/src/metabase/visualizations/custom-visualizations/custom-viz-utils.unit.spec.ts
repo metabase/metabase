@@ -1,26 +1,7 @@
-import {
-  getCustomVizSettingKeyPrefix,
-  isCustomVizSettingKey,
-  toHostSettingKeys,
-  toPluginSettings,
-} from "./custom-viz-utils";
+import { toHostSettingKeys, toPluginSettings } from "./custom-viz-utils";
+import { getCustomVizSettingKeyPrefix } from "./setting-keys";
 
 const PREFIX = getCustomVizSettingKeyPrefix("custom:demo-viz");
-
-describe("getCustomVizSettingKeyPrefix", () => {
-  it("namespaces keys by the plugin identifier", () => {
-    expect(PREFIX).toBe("custom-viz:demo-viz:");
-  });
-});
-
-describe("isCustomVizSettingKey", () => {
-  it("recognizes keys of any plugin", () => {
-    expect(isCustomVizSettingKey("custom-viz:demo-viz:threshold")).toBe(true);
-    expect(isCustomVizSettingKey("custom-viz:other:threshold")).toBe(true);
-    expect(isCustomVizSettingKey("threshold")).toBe(false);
-    expect(isCustomVizSettingKey("custom:demo-viz")).toBe(false);
-  });
-});
 
 describe("toPluginSettings", () => {
   it("strips the plugin's prefix and keeps host settings", () => {

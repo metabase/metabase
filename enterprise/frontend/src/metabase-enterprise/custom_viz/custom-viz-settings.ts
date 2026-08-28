@@ -8,10 +8,8 @@ import type {
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import {
-  getCustomPluginIdentifier,
-  getCustomVizSettingKeyPrefix,
-} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import type {
   ComputedVisualizationSettings,
   VisualizationSettingDefinition,

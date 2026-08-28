@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import type {
   ComputedVisualizationSettings,

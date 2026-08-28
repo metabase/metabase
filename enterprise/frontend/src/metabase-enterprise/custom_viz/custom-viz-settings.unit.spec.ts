@@ -6,10 +6,8 @@ import type {
 } from "custom-viz";
 import type { ComponentType } from "react";
 
-import {
-  getCustomPluginIdentifier,
-  getCustomVizSettingKeyPrefix,
-} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,

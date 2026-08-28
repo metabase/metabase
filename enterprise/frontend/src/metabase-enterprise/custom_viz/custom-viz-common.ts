@@ -1,7 +1,7 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type {
   Visualization,
