@@ -30,14 +30,14 @@ runs:
 
         BACKPORT_BRANCH="backport-$TARGET_VERSION-$COMMIT"
 
-        # Kondo ignore ratchets apply only to master. Release branches keep an explicit opt-out in
-        # .clj-kondo/ratchets.edn, which can conflict with backported budget changes. Resolve that
-        # conflict by preserving the release branch's opt-out. Older release branches do not have
-        # the file, so remove it there instead. If no other files conflict, finish the cherry-pick
-        # automatically (BEGUILD-30).
+        # Kondo ignore ratchets apply only to our trunk development. 
+        # Release branches keep an explicit opt-out in the file, which can conflict with backported budget changes. 
+        # Resolve that conflict by preserving the release branch's opt-out. 
+        # Older release branches do not have the file, so remove it there instead. 
+        # If no other files conflict, finish the cherry-pick automatically.
         #
-        # During a cherry-pick, HEAD ("ours") is the release branch. This is also true when the
-        # function is copied into backport.sh for manual conflict resolution.
+        # During a cherry-pick, HEAD ("ours") is the release branch. 
+        # This is also true when the function is copied into backport.sh for manual conflict resolution.
         resolve_ratchets() {
           local f=.clj-kondo/ratchets.edn
           [ -n "$(git ls-files -u -- "$f")" ] || return 0
