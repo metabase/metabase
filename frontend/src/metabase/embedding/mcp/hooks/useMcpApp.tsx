@@ -8,6 +8,8 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useState } from "react";
 
+import { retry } from "metabase/utils/retry";
+
 import {
   UI_CREDENTIAL_REFRESH_INTERVAL_MS,
   UI_CREDENTIAL_REFRESH_MAX_FAILURES,
@@ -56,6 +58,21 @@ function applyHostContext(ctx: McpUiHostContext) {
   }
 }
 
+async function requestMcpUiAuth(app: App): Promise<McpUiAuth> {
+  const result = await app.callServerTool({
+    name: UI_CREDENTIAL_REFRESH_TOOL,
+    arguments: {},
+  });
+
+  const auth = getMcpUiAuthFromToolMetadata(result._meta);
+
+  if (!auth || result.isError) {
+    throw new Error("MCP UI credential refresh failed");
+  }
+
+  return auth;
+}
+
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [toolResultVersion, setToolResultVersion] = useState(0);
@@ -101,19 +118,6 @@ export function useMcpApp(): McpAppState {
       return;
     }
 
-    let cancelled = false;
-    let consecutiveRefreshFailures = 0;
-    let hasAuthenticated = false;
-    let refreshTimeout: number | undefined;
-
-    const applyAuth = (auth: McpUiAuth) => {
-      if (!cancelled) {
-        installMcpUiCredential(auth.credential);
-        setUiCredential(auth.credential);
-        setMcpSessionId(auth.sessionId);
-      }
-    };
-
     if (!app.getHostCapabilities()?.serverTools) {
       const hostName = app.getHostVersion()?.name.trim() || "Your MCP client";
 
@@ -121,59 +125,63 @@ export function useMcpApp(): McpAppState {
       return;
     }
 
-    const refreshMcpAuth = async () => {
+    const connectedApp = app;
+
+    const abortController = new AbortController();
+    let hasAuthenticated = false;
+    let refreshTimeout: number | undefined;
+
+    function scheduleRefresh(delay: number) {
+      refreshTimeout = window.setTimeout(() => void refreshMcpAuth(), delay);
+    }
+
+    async function refreshMcpAuth() {
       try {
-        const result = await app.callServerTool({
-          name: UI_CREDENTIAL_REFRESH_TOOL,
-          arguments: {},
+        const auth = await retry(() => requestMcpUiAuth(connectedApp), {
+          maxRetries: UI_CREDENTIAL_REFRESH_MAX_FAILURES - 1,
+          shouldRetry: (error) => {
+            if (abortController.signal.aborted) {
+              return false;
+            }
+
+            console.error("Error refreshing MCP UI credential", error);
+
+            return true;
+          },
+          delayMs: () => UI_CREDENTIAL_REFRESH_RETRY_MS,
+          signal: abortController.signal,
         });
 
-        const refreshedAuth = getMcpUiAuthFromToolMetadata(result._meta);
+        abortController.signal.throwIfAborted();
 
-        if (!refreshedAuth || result.isError) {
-          throw new Error("MCP UI credential refresh failed");
-        }
+        installMcpUiCredential(auth.credential);
+        setUiCredential(auth.credential);
+        setMcpSessionId(auth.sessionId);
 
-        applyAuth(refreshedAuth);
-        consecutiveRefreshFailures = 0;
         hasAuthenticated = true;
 
-        if (!cancelled) {
-          refreshTimeout = window.setTimeout(
-            refreshMcpAuth,
-            UI_CREDENTIAL_REFRESH_INTERVAL_MS,
-          );
+        scheduleRefresh(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
+      } catch {
+        if (abortController.signal.aborted) {
+          return;
         }
-      } catch (error) {
-        console.error("Error refreshing MCP UI credential", error);
-        consecutiveRefreshFailures += 1;
 
-        if (
-          !hasAuthenticated &&
-          consecutiveRefreshFailures >= UI_CREDENTIAL_REFRESH_MAX_FAILURES
-        ) {
-          if (!cancelled) {
-            setHostError(
-              "This visualization did not load. Ask your MCP client to show it again.",
-            );
-          }
+        if (!hasAuthenticated) {
+          setHostError(
+            "This visualization did not load. Ask your MCP client to show it again.",
+          );
 
           return;
         }
 
-        if (!cancelled) {
-          refreshTimeout = window.setTimeout(
-            refreshMcpAuth,
-            UI_CREDENTIAL_REFRESH_RETRY_MS,
-          );
-        }
+        scheduleRefresh(UI_CREDENTIAL_REFRESH_RETRY_MS);
       }
-    };
+    }
 
     refreshMcpAuth();
 
     return () => {
-      cancelled = true;
+      abortController.abort();
       window.clearTimeout(refreshTimeout);
     };
   }, [app, query, toolResultVersion]);
