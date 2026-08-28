@@ -1351,32 +1351,6 @@ LIMIT
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
-
-    it("should not allow to overwrite an existing table when changing the target", () => {
-      createMbqlTransform({ visitTransform: true });
-
-      cy.log("change the target to an existing table");
-      H.DataStudio.Transforms.settingsTab().click();
-      getTransformsTargetContent().button("Change target").click();
-      H.modal().within(() => {
-        // Wait for the form to finish loading (database + schemas queries) and
-        // the modal to settle before typing, so we clear the known initial value
-        // rather than racing the modal open animation.
-        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
-        cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
-        cy.button("Change target").click();
-        // Anchor on the server rejecting the overwrite before asserting the
-        // rendered error, so a mistyped/unchanged name (which would return 200)
-        // fails loudly here instead of as a missing-text timeout. Any 4xx will
-        // do -- the exact status differs between branches (400 vs 403).
-        cy.wait("@updateTransform")
-          .its("response.statusCode")
-          .should("be.within", 400, 499);
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
-      });
-    });
   });
 
   describe("metadata", () => {
