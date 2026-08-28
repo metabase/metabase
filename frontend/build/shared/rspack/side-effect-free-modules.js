@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 const path = require("path");
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
