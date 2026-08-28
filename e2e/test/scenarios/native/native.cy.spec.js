@@ -1,9 +1,5 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -525,117 +521,6 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
     cy.findByTestId("sidebar-right").invoke("width").should("be.gt", 350);
   });
-});
-
-// causes error in cypress 13
-describe("no native access", { tags: ["@external", "@skip"] }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-    cy.intercept("/api/database?saved=true").as("database");
-    cy.updatePermissionsGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
-      },
-      [USER_GROUPS.NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
-        [WRITABLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder",
-        },
-      },
-    });
-
-    cy.updateCollectionGraph({
-      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
-    });
-
-    H.createNativeQuestion(
-      {
-        name: "Secret Orders",
-        native: {
-          query: "SELECT * FROM ORDERS",
-        },
-        database: WRITABLE_DB_ID,
-      },
-      {
-        wrapId: true,
-      },
-    );
-
-    cy.signIn("nosql");
-  });
-
-  it("should not display the query when you do not have native access to the data source", () => {
-    cy.get("@questionId").then((questionId) =>
-      cy.visit(`/question/${questionId}`),
-    );
-
-    cy.findByTestId("native-query-top-bar").within(() => {
-      cy.findByText("This question is written in SQL.").should("be.visible");
-      cy.findByTestId("visibility-toggler").should("not.exist");
-    });
-
-    cy.log("#32387");
-    cy.findByRole("button", { name: /New/ }).click();
-    H.popover().findByText("SQL query").click();
-
-    cy.wait("@database");
-    cy.go("back");
-
-    cy.findByTestId("native-query-top-bar").within(() => {
-      cy.findByText("This question is written in SQL.").should("be.visible");
-      cy.findByTestId("visibility-toggler").should("not.exist");
-    });
-  });
-
-  it(
-    "shows format query button only for sql queries",
-    { tags: "@mongo" },
-    () => {
-      const MONGO_DB_NAME = "QA Mongo";
-
-      cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.restore("mongo-5");
-      cy.signInAsNormalUser();
-
-      H.startNewNativeQuestion();
-      cy.findByTestId("gui-builder-data").click();
-      cy.findByLabelText(MONGO_DB_NAME).click();
-      cy.findByLabelText("Auto-format").should("not.exist");
-
-      cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
-
-      // Switch to SQL engine which is supported by the formatter
-      H.popover().findByText("Sample Database").click();
-
-      H.NativeEditor.focus().type("select * from orders", {
-        parseSpecialCharSequences: false,
-      });
-
-      // It should load the formatter chunk only when used
-      cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
-
-      cy.findByLabelText("Auto-format").click();
-
-      cy.wait("@sqlFormatter");
-
-      H.NativeEditor.get().should("be.visible").get(".ace_line").as("lines");
-
-      cy.get("@lines").eq(0).should("have.text", "SELECT");
-      cy.get("@lines").eq(1).should("have.text", "  *");
-      cy.get("@lines").eq(2).should("have.text", "FROM");
-      cy.get("@lines").eq(3).should("have.text", "  orders");
-    },
-  );
 });
 
 describe("scenarios > native question > data reference sidebar", () => {

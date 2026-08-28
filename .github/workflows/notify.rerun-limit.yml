@@ -13,6 +13,9 @@ jobs:
     if: ${{ github.event.workflow_run.run_attempt > 5 && github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -30,22 +33,72 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
           COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_NAME: ${{ github.event.workflow_run.name }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           TRIGGERING_ACTOR_LOGIN: ${{ github.event.workflow_run.triggering_actor.login }}
         with:
           script: |
-            const { mentionUserByGithubLogin, sendSlackMessage } = require(`${{ github.workspace }}/release/dist/index.cjs`);
+            const { findSlackMessage, mentionUserByGithubLogin, sendSlackMessage, sendSlackReply } = require(`${{ github.workspace }}/release/dist/index.cjs`);
+
+            const CHANNEL_NAME = 'engineering-ci';
 
             const ATTEMPT = Number(process.env.ATTEMPT);
             const COMMIT = process.env.COMMIT;
+            const SHORT_COMMIT = COMMIT.slice(0, 7);
+            const RUN_ID = process.env.RUN_ID;
             const RUN_NAME = process.env.RUN_NAME;
             const RUN_URL = process.env.RUN_URL;
             const TRIGGERING_ACTOR_LOGIN = process.env.TRIGGERING_ACTOR_LOGIN;
 
+            // Every pull request in a stack re-runs as the stack is rebased, so re-runs shouldn't trigger notifications.
+            const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: COMMIT,
+            }).catch(error => {
+              core.warning(`Could not fetch pull requests for ${SHORT_COMMIT}: ${error.message}`);
+              return { data: [] };
+            });
+
+            const stackedPullRequest = pullRequests.find(pullRequest => pullRequest.stack);
+            if (stackedPullRequest) {
+              const { number, stack } = stackedPullRequest;
+              core.info(`Skipping notification: PR #${number} is ${stack.position} of ${stack.size} in stack #${stack.number}.`);
+              return;
+            }
+
+            // Clean up PR title to avoid breaking the link to the PR in Slack
+            const pullRequest = pullRequests.find(pullRequest => pullRequest.state === 'open') ?? pullRequests[0];
+            const pullRequestLink = pullRequest
+              ? ` in <${pullRequest.html_url}|#${pullRequest.number} ${pullRequest.title.replace(/[<>|]/g, '')}>`
+              : '';
+
+            const messageText = `Workflow Retry Limit Exceeded for run ${RUN_ID} of ${RUN_NAME}`;
+            const existingMessage = await findSlackMessage({
+              channelName: CHANNEL_NAME,
+              text: messageText,
+              limit: 200,
+            }).catch(error => {
+              core.warning(`Could not search #${CHANNEL_NAME} for an existing message: ${error.message}`);
+              return null;
+            });
+
+            if (existingMessage) {
+              await sendSlackReply({
+                channelName: CHANNEL_NAME,
+                messageId: existingMessage.id,
+                message: `:repeat: <${RUN_URL}|${RUN_NAME}> ran again: that is ${ATTEMPT - 1} re-runs for this workflow run.`,
+              }).catch(error => {
+                core.warning(`Could not post a reply to #${CHANNEL_NAME}: ${error.message}`);
+              });
+
+              return;
+            }
+
             await sendSlackMessage({
-              channelName: 'engineering-ci',
-              message: 'Workflow Retry Limit Exceeded',
+              channelName: CHANNEL_NAME,
+              message: messageText,
               blocks: [
                 {
                   "type": "header",
@@ -63,7 +116,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit.`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${SHORT_COMMIT}> commit${pullRequestLink}.`
                     },
                   },
                   {
@@ -75,4 +128,6 @@ jobs:
                   }
                 ],
               }],
+            }).catch(error => {
+              core.warning(`Could not post a message to #${CHANNEL_NAME}: ${error.message}`);
             });

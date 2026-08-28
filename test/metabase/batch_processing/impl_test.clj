@@ -17,3 +17,25 @@
         (u/with-timeout 1000
           (grouper/submit! g 1))
         (is (= [1] @processed?))))))
+
+(deftest flush-test
+  (testing "flush! processes everything already submitted, without exposing its sentinel to the batch fn"
+    (let [batches (atom [])
+          g       (grouper/start!
+                   (fn [items]
+                     (swap! batches conj (vec items)))
+                   :capacity 5
+                   :interval (* 60 1000))]
+      (try
+        (grouper/submit! g 1)
+        (grouper/submit! g 2)
+        (is (= [] @batches))
+        (u/with-timeout 5000
+          (grouper/flush! g))
+        (is (= [[1 2]] @batches))
+        (testing "a flush with nothing queued does not call the batch fn"
+          (u/with-timeout 5000
+            (grouper/flush! g))
+          (is (= [[1 2]] @batches)))
+        (finally
+          (grouper/shutdown! g))))))

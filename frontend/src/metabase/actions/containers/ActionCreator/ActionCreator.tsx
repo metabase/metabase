@@ -7,8 +7,7 @@ import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Modal } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { WritebackAction } from "metabase-types/api";
+import type { CardId, WritebackAction } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
 
@@ -19,7 +18,9 @@ import CreateActionForm from "./CreateActionForm";
 import type { DataReferenceSlot } from "./types";
 
 export interface ActionCreatorProps {
-  model?: Question;
+  modelId?: CardId;
+  /** Whether the model accepts new actions, i.e. `Question.canWriteActions`. */
+  canWriteModelActions?: boolean;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
@@ -32,7 +33,8 @@ export interface ActionCreatorProps {
 }
 
 export function ActionCreator({
-  model,
+  modelId,
+  canWriteModelActions = false,
   isRouted,
   dataReference,
   onSubmit,
@@ -60,7 +62,7 @@ export function ActionCreator({
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || (model != null && model.canWriteActions());
+  const isEditable = isNew || canWriteModelActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
@@ -101,7 +103,7 @@ export function ActionCreator({
     try {
       const updatedAction = await updateAction({
         ...action,
-        model_id: model?.id(),
+        model_id: modelId,
         visualization_settings: formSettings,
       }).unwrap();
 
@@ -155,7 +157,7 @@ export function ActionCreator({
           initialValues={{
             name: action.name,
             description: action.description,
-            model_id: model?.id(),
+            model_id: modelId,
           }}
           onCreate={handleCreate}
           onCancel={handleCloseNewActionModal}

@@ -38,9 +38,13 @@ const deprecatedColors = {
   filter: baseColors.octopus[50],
   focus: baseColors.blue[20],
   "icon-brand": baseColors.brand[50], // Matches text-brand
+  "icon-brand-inverse": baseColors.brand[20],
   "icon-primary": baseColors.orionAlpha[80], // Matches text-primary
+  "icon-primary-inverse": baseColors.orionAlphaInverse[80], // Matches text-primary-inverse
   "icon-disabled": baseColors.orionAlpha[40], // Matches text-disabled
+  "icon-disabled-inverse": baseColors.orionAlphaInverse[40], // Matches text-disabled-inverse
   "icon-secondary": baseColors.orionAlpha[60], // Matches text-secondary
+  "icon-secondary-inverse": baseColors.orionAlphaInverse[60], // Matches text-secondary-inverse
   "illustration-brand-secondary": baseColors.brand[10],
   "illustration-brand-tertiary": baseColors.brand[5],
   "metabase-brand": baseColors.blue[40],

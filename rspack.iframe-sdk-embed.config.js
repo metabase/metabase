@@ -11,6 +11,10 @@ const {
   COMPRESSION_CONFIG,
 } = require("./frontend/build/shared/rspack/compression");
 
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -53,6 +57,7 @@ module.exports = {
   devServer: { hot: false },
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(ts|js)$/,
         use: [

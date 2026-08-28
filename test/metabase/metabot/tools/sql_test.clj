@@ -8,6 +8,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (deftest create-sql-query-output-test
@@ -62,13 +64,14 @@
         (is (str/includes? output "not found"))))))
 
 (deftest create-sql-query-code-edit-permission-error-output-test
-  (testing "create_sql_query in the code editor returns a permission failure as output with its status code"
+  (testing "create_sql_query in the code editor returns a permission failure as terminal output with its status code"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [output status-code]} (create-sql-query-in-code-editor {:database_id db-id})]
+          (let [{:keys [output status-code terminal-error?]} (create-sql-query-in-code-editor {:database_id db-id})]
             (is (= 403 status-code))
-            (is (str/includes? output "permissions"))))))))
+            (is (= "You do not have access to this database." output))
+            (is (true? terminal-error?))))))))
 
 (deftest create-sql-query-code-edit-unexpected-error-test
   (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
@@ -208,3 +211,78 @@
                                                                   :buffers [{:id "buf-1"}]}]}))]
                   (is (= 1 (count parts)))
                   (is (= "code_edit" (:data-type (first parts)))))))))))))
+
+(def ^:private no-native-permission-output
+  "You do not have permission to write SQL queries against this database. Native query permissions are required.")
+
+(deftest create-sql-query-refuses-database-without-native-permission-test
+  (testing "create_sql_query is allowed per database, not per instance"
+    (mt/with-temp [:model/Database {native-db :id} {:engine :h2}
+                   :model/Database {builder-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [db-id [native-db builder-db]]
+          (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+        (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "the database the user has native permission on is queried"
+            (is (str/includes? (:output (agent-sql/create-sql-query-tool
+                                         {:database_id native-db
+                                          :sql_query   "SELECT 1"
+                                          :title       "Results"}))
+                               "SQL query successfully constructed")))
+          (testing "a database the user can browse but not query natively is refused"
+            (let [result (agent-sql/create-sql-query-tool {:database_id builder-db
+                                                           :sql_query   "SELECT 1"
+                                                           :title       "Results"})]
+              (is (= no-native-permission-output (:output result)))
+              (is (true? (:terminal-error? result))
+                  "marked terminal so a forced-tool-call profile stops instead of retrying"))))))))
+
+(deftest create-sql-query-refuses-database-the-user-cannot-read-test
+  (testing "the read-check denial is terminal too, so the stricter permission is not the looser stop"
+    (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                   :model/Database {unreadable-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [db-id [native-db unreadable-db]]
+          (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+        (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (agent-sql/create-sql-query-tool {:database_id unreadable-db
+                                                         :sql_query   "SELECT 1"
+                                                         :title       "Results"})]
+            (is (= "You do not have access to this database." (:output result)))
+            (is (true? (:terminal-error? result))))))))
+  (testing "a database that does not exist stays retryable -- the model can list databases again"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [result (agent-sql/create-sql-query-tool {:database_id Integer/MAX_VALUE
+                                                     :sql_query   "SELECT 1"
+                                                     :title       "Results"})]
+        (is (str/includes? (:output result) "not found"))
+        (is (nil? (:terminal-error? result)))))))
+
+(deftest edit-and-replace-sql-query-refuse-database-without-native-permission-test
+  (testing "edit_sql_query and replace_sql_query refuse a query whose database the user cannot query natively"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [query-id "seeded-q"
+                memory   (atom {:state {:queries {query-id {:database db-id
+                                                            :type     :native
+                                                            :native   {:query "SELECT 1"}}}}})]
+            (binding [shared/*memory-atom* memory]
+              (is (= no-native-permission-output
+                     (:output (agent-sql/edit-sql-query-tool
+                               {:query_id  query-id
+                                :checklist "- [x] checked"
+                                :edits     [{:old_string "1" :new_string "2"}]
+                                :title     "Results"}))))
+              (is (= no-native-permission-output
+                     (:output (agent-sql/replace-sql-query-tool
+                               {:query_id  query-id
+                                :checklist "- [x] checked"
+                                :new_query "SELECT 2"
+                                :title     "Results"})))))))))))
