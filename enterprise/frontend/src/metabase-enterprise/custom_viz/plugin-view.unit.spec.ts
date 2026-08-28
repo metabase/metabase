@@ -8,15 +8,6 @@ import {
   toPluginSettings,
 } from "./plugin-view";
 
-// The SDK types leave the card out, but the host hands it over at runtime.
-function getPluginCard(single: PluginSeries[number]) {
-  const card = Reflect.get(single, "card");
-  if (!isObject(card)) {
-    throw new Error("Expected the plugin series to carry the card");
-  }
-  return card;
-}
-
 const PREFIX = "custom-viz:demo-viz:";
 
 describe("toPluginSeries", () => {
@@ -40,9 +31,11 @@ describe("toPluginSeries", () => {
     const pluginSettings = getPluginCard(
       pluginSeries[0],
     ).visualization_settings;
+
     if (!isObject(pluginSettings)) {
       throw new Error("Expected the plugin card to carry settings");
     }
+
     pluginSettings["graph.goal_value"] = 1;
     pluginSeries[0].data.rows.push([1]);
 
@@ -108,3 +101,14 @@ describe("toHostSettings", () => {
     });
   });
 });
+
+// The SDK types leave the card out, but the host hands it over at runtime.
+function getPluginCard(single: PluginSeries[number]) {
+  const card = Reflect.get(single, "card");
+
+  if (!isObject(card)) {
+    throw new Error("Expected the plugin series to carry the card");
+  }
+
+  return card;
+}
