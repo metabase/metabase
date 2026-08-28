@@ -1,9 +1,11 @@
 const { H } = cy;
 
 import {
+  ADMINISTRATORS_GROUP_ID,
   ALL_USERS_GROUP_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   runContentDiagnosticsScan,
@@ -18,6 +20,31 @@ const HIDDEN_COLLECTION_NAME = "E2E permissioned hidden collection";
 
 const CONTENT_DIAGNOSTICS_PATH = "/monitor/content-diagnostics/stale";
 const UPSELL_TITLE = "Find and clean up stale content without hunting it down";
+
+type CollectionGraph = {
+  revision: number;
+  groups: Record<string, Record<string, string>>;
+};
+
+// Not `cy.updateCollectionGraph`: it replaces a group's whole collection map, and only for the
+// groups named. The normal user is in three groups, all of which have to lose access here,
+// while keeping their permissions on every other collection.
+function revokeNonAdminAccess(collectionId: CollectionId) {
+  cy.request<CollectionGraph>("GET", "/api/collection/graph").then(
+    ({ body: graph }) => {
+      const groups = Object.fromEntries(
+        Object.entries(graph.groups).map(([groupId, permissions]) => [
+          groupId,
+          Number(groupId) === ADMINISTRATORS_GROUP_ID
+            ? permissions
+            : { ...permissions, [collectionId]: "none" },
+        ]),
+      );
+
+      cy.request("PUT", "/api/collection/graph", { ...graph, groups });
+    },
+  );
+}
 
 describe("scenarios > monitor > content diagnostics > permissions", () => {
   beforeEach(() => {
@@ -47,9 +74,7 @@ describe("scenarios > monitor > content diagnostics > permissions", () => {
             name: HIDDEN_DASHBOARD_NAME,
             collection_id: collection.id,
           });
-          cy.updateCollectionGraph({
-            [ALL_USERS_GROUP_ID]: { [collection.id]: "none" as const },
-          });
+          revokeNonAdminAccess(collection.id);
         },
       );
       runContentDiagnosticsScan();
