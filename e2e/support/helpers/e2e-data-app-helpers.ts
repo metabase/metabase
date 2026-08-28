@@ -250,8 +250,6 @@ export function syncDataAppResources(apiKey: string, appRoot: string) {
   });
 }
 
-const SYNCED_DATA_APP_SLUGS = ["good", "broken-bundle"];
-
 export const copySyncedDataAppsFixture = () =>
   cy.task("copyDirectory", {
     source: `${Cypress.config("projectRoot")}/e2e/support/assets/example_synced_data_apps`,
@@ -278,19 +276,6 @@ export function declareSyncedDataAppQuery(slug: string, tableId: number) {
     },
   });
 }
-
-/** Provisions each fixture app the way an author does, so its manifest carries the entity IDs the repo sync resolves. */
-export const provisionSyncedDataAppResources = () =>
-  createDataAppApiKey().then((apiKey) =>
-    cy.wrap<string[]>(SYNCED_DATA_APP_SLUGS).each((slug: string) =>
-      syncDataAppResources(apiKey, `${LOCAL_GIT_PATH}/data_apps/${slug}`).then(
-        ({ ok, error }) => {
-          expect(error, `sync-resources failed for ${slug}`).to.eq(null);
-          expect(ok).to.eq(true);
-        },
-      ),
-    ),
-  );
 
 export function createDataAppApiKey() {
   return cy

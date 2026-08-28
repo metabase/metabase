@@ -20,7 +20,6 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
-  collection-empty?
   create-library-collection!
   descendant-ids
   ineligible-dependencies

@@ -8,42 +8,16 @@
 (defn- ->bytes ^bytes [^String s]
   (.getBytes s "UTF-8"))
 
-(def ^:private resource-ids
-  "\nresource_collection_entity_id: resourcecollectionid1\npermission_group_entity_id: permissiongroupid0001\n")
-
-(defn- parse-raw
-  ([s] (parse-raw s "data_apps/sales"))
-  ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
-
 (defn- parse
   "Parse a `data_app.yaml` as if it sat in `dir` (default `data_apps/sales`, so the
    parsed slug is `sales` — the slug is the directory's name, never a config key)."
   ([s] (parse s "data_apps/sales"))
-  ([s dir] (parse-raw (str s resource-ids) dir)))
+  ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
 
 (deftest parse-valid-config-test
-  (is (= {:slug                          "sales"
-          :display_name                  "Sales dashboard"
-          :description                   nil
-          :path                          "dist/index.js"
-          :allowed_hosts                 []
-          :resource_collection_entity_id "resourcecollectionid1"
-          :permission_group_entity_id    "permissiongroupid0001"}
+  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :path "dist/index.js" :allowed_hosts []}
          (parse "name: Sales dashboard
 path: ./dist/index.js"))))
-
-(deftest parse-resource-entity-ids-test
-  (testing "both entity IDs are required"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource_collection_entity_id.*21-character"
-                          (parse-raw "name: Sales\npath: dist/index.js")))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission_group_entity_id.*21-character"
-                          (parse-raw "name: Sales\npath: dist/index.js\nresource_collection_entity_id: resourcecollectionid1"))))
-  (testing "blank values are rejected"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource_collection_entity_id.*21-character"
-                          (parse-raw "name: Sales\npath: dist/index.js\nresource_collection_entity_id: '  '\npermission_group_entity_id: permissiongroupid0001"))))
-  (testing "entity IDs must have the standard length"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission_group_entity_id.*21-character"
-                          (parse-raw "name: Sales\npath: dist/index.js\nresource_collection_entity_id: resourcecollectionid1\npermission_group_entity_id: short")))))
 
 (deftest parse-description-test
   (testing "an optional one-liner is trimmed and carried through"
@@ -108,13 +82,7 @@ path: ./dist/index.js"))))
 
 (deftest unknown-fields-are-ignored-test
   (testing "unknown keys don't fail the parse — including a stray `slug`, which the directory name overrides"
-    (is (= {:slug                          "sales"
-            :display_name                  "X"
-            :description                   nil
-            :path                          "dist/index.js"
-            :allowed_hosts                 []
-            :resource_collection_entity_id "resourcecollectionid1"
-            :permission_group_entity_id    "permissiongroupid0001"}
+    (is (= {:slug "sales" :display_name "X" :description nil :path "dist/index.js" :allowed_hosts []}
            (parse "name: X\nslug: elsewhere\nfuture_option: 1\npath: dist/index.js")))))
 
 (deftest parse-errors-test

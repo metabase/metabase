@@ -13,17 +13,12 @@
 
 (defn- create-permission-group! [app]
   (let [group (t2/insert-returning-instance! :model/PermissionsGroup
-                                             (cond-> {:name (resource-name app)}
-                                               (:permission_group_entity_id app)
-                                               (assoc :entity_id (:permission_group_entity_id app))))]
-    (t2/update! :model/DataApp :id (:id app)
-                {:permission_group_id (:id group)})
+                                             :name (resource-name app))]
+    (t2/update! :model/DataApp :id (:id app) {:permission_group_id (:id group)})
     group))
 
 (defn- permission-group! [app]
-  (or (some->> (:permission_group_entity_id app)
-               (t2/select-one :model/PermissionsGroup :entity_id))
-      (some->> (:permission_group_id app)
+  (or (some->> (:permission_group_id app)
                (t2/select-one :model/PermissionsGroup :id))
       (create-permission-group! app)))
 
@@ -71,18 +66,13 @@
 
 (defn- create-resource-collection! [app]
   (let [collection (t2/insert-returning-instance! :model/Collection
-                                                  (cond-> {:name     (resource-name app)
-                                                           :location "/"}
-                                                    (:resource_collection_entity_id app)
-                                                    (assoc :entity_id (:resource_collection_entity_id app))))]
-    (t2/update! :model/DataApp :id (:id app)
-                {:resource_collection_id (:id collection)})
+                                                  :name (resource-name app)
+                                                  :location "/")]
+    (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})
     collection))
 
 (defn- resource-collection! [app]
-  (or (some->> (:resource_collection_entity_id app)
-               (t2/select-one :model/Collection :entity_id))
-      (some->> (:resource_collection_id app)
+  (or (some->> (:resource_collection_id app)
                (t2/select-one :model/Collection :id))
       (create-resource-collection! app)))
 
@@ -101,86 +91,6 @@
       (apply-resource-permissions! group collection)
       {:permission_group_id    (:id group)
        :resource_collection_id (:id collection)})))
-
-(defn resource-entity-ids
-  "Return the portable entity IDs for the resources linked to `app`."
-  [{:keys [permission_group_id resource_collection_id]}]
-  {:permission_group_entity_id
-   (t2/select-one-fn :entity_id :model/PermissionsGroup :id permission_group_id)
-   :resource_collection_entity_id
-   (t2/select-one-fn :entity_id :model/Collection :id resource_collection_id)})
-
-(defn- resource-not-found!
-  [app field entity-id]
-  (throw (ex-info (format "%s '%s' for data app '%s' does not identify an existing resource."
-                          (name field) entity-id (:name app))
-                  {:data-app (:name app)
-                   :field field
-                   :entity-id entity-id})))
-
-(defn- resolve-resource!
-  [app model field entity-id]
-  (or (t2/select-one model :entity_id entity-id)
-      (resource-not-found! app field entity-id)))
-
-(defn- claimed-by-another-app?
-  [app foreign-key resource-id]
-  (t2/exists? :model/DataApp
-              :id [:not= (:id app)]
-              foreign-key resource-id))
-
-(defn- validate-unclaimed!
-  [app foreign-key field resource]
-  (when (claimed-by-another-app? app foreign-key (:id resource))
-    (throw (ex-info (format "%s '%s' is linked to another data app."
-                            (name field) (:entity_id resource))
-                    {:data-app (:name app)
-                     :field field
-                     :entity-id (:entity_id resource)}))))
-
-(defn- permission-group-empty?
-  [{:keys [id]}]
-  (not (or (t2/exists? :model/PermissionsGroupMembership :group_id id)
-           (t2/exists? :model/Permissions :group_id id))))
-
-(defn- validate-empty-rebind!
-  [app foreign-key field resource empty-resource?]
-  (when (and (not= (foreign-key app) (:id resource))
-             (not (empty-resource? resource)))
-    (throw (ex-info (format "%s '%s' must be empty before a data app can use it."
-                            (name field) (:entity_id resource))
-                    {:data-app (:name app)
-                     :field field
-                     :entity-id (:entity_id resource)}))))
-
-(defn reconcile-resources!
-  "Resolve the manifest resource entity IDs, validate their ownership, and update `app`.
-
-  The manifest is the source of truth. `app-changes` and both resource links use
-  the same transaction. This function does not create or delete resources."
-  ([app manifest-resource-ids]
-   (reconcile-resources! app manifest-resource-ids {}))
-  ([app {:keys [permission_group_entity_id resource_collection_entity_id]} app-changes]
-   (perms/with-global-permissions-lock
-     (t2/with-transaction [_conn]
-       (let [group      (resolve-resource! app :model/PermissionsGroup
-                                           :permission_group_entity_id permission_group_entity_id)
-             collection (resolve-resource! app :model/Collection
-                                           :resource_collection_entity_id resource_collection_entity_id)
-             links      {:permission_group_id    (:id group)
-                         :resource_collection_id (:id collection)}
-             changed?   (not= links (select-keys app (keys links)))]
-         (validate-unclaimed! app :permission_group_id :permission_group_entity_id group)
-         (validate-unclaimed! app :resource_collection_id :resource_collection_entity_id collection)
-         (validate-empty-rebind! app :permission_group_id :permission_group_entity_id group
-                                 permission-group-empty?)
-         (validate-empty-rebind! app :resource_collection_id :resource_collection_entity_id collection
-                                 collection/collection-empty?)
-         (when (or changed? (seq app-changes))
-           (t2/update! :model/DataApp :id (:id app) (merge app-changes links)))
-         (restore-trashed-collection! collection)
-         (apply-resource-permissions! group collection)
-         (assoc links :changed? changed?))))))
 
 (defn- view-data-permissions-match?
   [permissions group-id database-id tables table-ids]
