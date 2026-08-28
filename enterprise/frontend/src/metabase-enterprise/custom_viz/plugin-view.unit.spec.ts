@@ -80,6 +80,20 @@ describe("toPluginSettings", () => {
       ),
     ).toEqual({ "card.title": "Plugin" });
   });
+
+  it("reuses the translation for the same settings object", () => {
+    const settings = { [`${PREFIX}threshold`]: 42 };
+
+    expect(toPluginSettings(settings, PREFIX)).toBe(
+      toPluginSettings(settings, PREFIX),
+    );
+    expect(toPluginSettings(settings, "custom-viz:other:")).not.toBe(
+      toPluginSettings(settings, PREFIX),
+    );
+    expect(toPluginSettings({ ...settings }, PREFIX)).not.toBe(
+      toPluginSettings(settings, PREFIX),
+    );
+  });
 });
 
 describe("toHostSettings", () => {
