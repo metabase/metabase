@@ -87,6 +87,7 @@ const ChartSettingsWidget = ({
             widgetProps={{
               ..._.pick(
                 extraWidgetProps,
+                // all attributes of BaseWidgetProps need to be listed below
                 "id",
                 "value",
                 "onChange",
