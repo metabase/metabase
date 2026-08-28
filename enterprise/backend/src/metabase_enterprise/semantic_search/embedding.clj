@@ -16,7 +16,6 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -337,11 +336,9 @@
 
 (defn- service-failure?
   [e]
-  (let [data-chain (keep ex-data (take-while some? (iterate ex-cause e)))
-        status     (some :status data-chain)
-        reason     (some :cause data-chain)]
+  (let [{:keys [status cause]} (u/all-ex-data e)]
     (and (not (contains? request-specific-statuses status))
-         (not= :embedder/unexpected-dimensions reason)
+         (not= :embedder/unexpected-dimensions cause)
          ;; A connection-time network-policy rejection is about the configured endpoint, not the service's health.
          (not (llm.settings/llm-network-policy-error? e)))))
 
@@ -489,76 +486,72 @@
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
-  (try
-    (log/debug (str "Calling " provider " embeddings API")
-               {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-    ;; Outside the breaker: a URL the network policy refuses is not a service outage.
-    (let [network-policy       (llm.settings/network-policy network-policy-floor)
-          resolver             (do
-                                 (llm.settings/assert-llm-url-allowed! network-policy endpoint)
-                                 (u.http/network-policy-dns-resolver network-policy))
-          headers              (merge {"Content-Type" "application/json"}
-                                      (if (and (empty? api-key) (= "ai-service" provider))
-                                        {"x-metabase-instance-token"
-                                         (u/prog1 (premium-features/premium-embedding-token)
-                                           (when (nil? <>)
-                                             (throw (ex-info "Premium embedding token not set"
-                                                             {:provider provider}))))}
-                                        {"Authorization" (str "Bearer " api-key)}))
-          request              (-> (merge embedding-http-timeouts
-                                          {:headers headers
-                                           :body    (json/encode
-                                                     (merge {:model           model-name
-                                                             :input           texts
-                                                             :encoding_format "base64"}
-                                                            extra-body))})
-                                   ;; nil under :allow-all, which leaves clj-http on its default resolver
-                                   (u/assoc-dissoc :dns-resolver resolver))
-          start-ms             (u/start-timer)
-          {:keys [usage embeddings]}
-          (call-through-embedder-breaker
-           #(let [{:keys [usage data]} (-> (http/post endpoint request)
-                                           :body
-                                           (json/decode true))]
-              {:usage usage
-               :embeddings (validate-embeddings! (decode-embeddings data)
-                                                 (count texts)
-                                                 vector-dimensions)})
-           :endpoint endpoint)
-          total-tokens         (:total_tokens usage 0)
-          prompt-tokens        (:prompt_tokens usage total-tokens)]
-      (analytics/inc! :metabase-search/semantic-embedding-tokens
-                      {:provider provider :model model-name}
-                      total-tokens)
-      (when snowplow?
-        (analytics.core/track-token-usage!
-         {:snowplow            true
-          :prometheus          false    ; already tracked via inc! above
-          :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
-          :model-id            model-name
-          :total-tokens        total-tokens
-          :prompt-tokens       prompt-tokens
-          :completion-tokens   0        ; embedding models don't produce completion tokens
-          :estimated-costs-usd 0.0
-          :duration-ms         (long (u/since-ms start-ms))
-          :tag                 "embedding_generation"}))
-      (when record-tokens?
-        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
-      embeddings)
-    (catch ConnectException e
-      (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
-      (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
-      (throw (ex-info (str provider " unavailable (connection refused)")
-                      {:status 502 :endpoint endpoint}
-                      e)))
-    (catch Exception e
-      (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
-      ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
-      ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
-      (when-not (= :embedder/circuit-open (:cause (ex-data e)))
-        (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
-                   {:documents (count texts) :tokens (count-tokens-batch texts)}))
-      (throw e))))
+  ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
+  (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
+    (try
+      (log/debug (str "Calling " provider " embeddings API")
+                 {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
+      (let [headers              (merge {"Content-Type" "application/json"}
+                                        (if (and (empty? api-key) (= "ai-service" provider))
+                                          {"x-metabase-instance-token"
+                                           (u/prog1 (premium-features/premium-embedding-token)
+                                             (when (nil? <>)
+                                               (throw (ex-info "Premium embedding token not set"
+                                                               {:provider provider}))))}
+                                          {"Authorization" (str "Bearer " api-key)}))
+            request              (merge embedding-http-timeouts
+                                        {:headers headers
+                                         :body    (json/encode
+                                                   (merge {:model           model-name
+                                                           :input           texts
+                                                           :encoding_format "base64"}
+                                                          extra-body))}
+                                        policy-opts)
+            start-ms             (u/start-timer)
+            {:keys [usage embeddings]}
+            (call-through-embedder-breaker
+             #(let [{:keys [usage data]} (-> (http/post endpoint request)
+                                             :body
+                                             (json/decode true))]
+                {:usage usage
+                 :embeddings (validate-embeddings! (decode-embeddings data)
+                                                   (count texts)
+                                                   vector-dimensions)})
+             :endpoint endpoint)
+            total-tokens         (:total_tokens usage 0)
+            prompt-tokens        (:prompt_tokens usage total-tokens)]
+        (analytics/inc! :metabase-search/semantic-embedding-tokens
+                        {:provider provider :model model-name}
+                        total-tokens)
+        (when snowplow?
+          (analytics.core/track-token-usage!
+           {:snowplow            true
+            :prometheus          false    ; already tracked via inc! above
+            :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
+            :model-id            model-name
+            :total-tokens        total-tokens
+            :prompt-tokens       prompt-tokens
+            :completion-tokens   0        ; embedding models don't produce completion tokens
+            :estimated-costs-usd 0.0
+            :duration-ms         (long (u/since-ms start-ms))
+            :tag                 "embedding_generation"}))
+        (when record-tokens?
+          (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
+        embeddings)
+      (catch ConnectException e
+        (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
+        (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
+        (throw (ex-info (str provider " unavailable (connection refused)")
+                        {:status 502 :endpoint endpoint}
+                        e)))
+      (catch Exception e
+        (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
+        ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
+        ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
+        (when-not (= :embedder/circuit-open (:cause (ex-data e)))
+          (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
+                     {:documents (count texts) :tokens (count-tokens-batch texts)}))
+        (throw e)))))
 
 ;;;; Embedding-service provider
 
