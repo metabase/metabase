@@ -1,16 +1,14 @@
 import type { CustomVisualizationProps } from "custom-viz";
 
 import { clone } from "metabase/utils/clone";
-import { toPluginSettings } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { Series } from "metabase-types/api";
+import { isCustomVizSettingKey } from "metabase/visualizations/custom-visualizations/setting-keys";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 type PluginProps = CustomVisualizationProps<Record<string, unknown>>;
 export type PluginSeries = PluginProps["series"];
-export type PluginVizSettings = PluginProps["settings"];
+export type PluginSettings = PluginProps["settings"];
 
 const pluginSeriesCache = new WeakMap<Series, PluginSeries>();
-
 // Sandbox proxies are writable and `card` is redux state, so the plugin gets a copy.
 export function toPluginSeries(series: Series): PluginSeries {
   const cached = pluginSeriesCache.get(series);
@@ -27,10 +25,28 @@ export function toPluginSeries(series: Series): PluginSeries {
   return pluginSeries;
 }
 
-export function toPluginVizSettings(
-  settings: ComputedVisualizationSettings,
+// The plugin sees host settings plus its own without the prefix; a same-named plugin setting shadows the host one.
+export function toPluginSettings(
+  settings: VisualizationSettings,
   prefix: string,
-): PluginVizSettings {
+): PluginSettings {
+  const entries = Object.entries(settings);
+  const hostEntries = entries.filter(([key]) => !isCustomVizSettingKey(key));
+  const pluginEntries = entries
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, value]) => [key.slice(prefix.length), value]);
   // The plugin API types the host's common settings more loosely (e.g. `column` returns plain strings).
-  return toPluginSettings(settings, prefix) as unknown as PluginVizSettings;
+  return Object.fromEntries([
+    ...hostEntries,
+    ...pluginEntries,
+  ]) as unknown as PluginSettings;
+}
+
+export function toHostSettings(
+  settings: Record<string, unknown>,
+  prefix: string,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(settings).map(([key, value]) => [`${prefix}${key}`, value]),
+  );
 }

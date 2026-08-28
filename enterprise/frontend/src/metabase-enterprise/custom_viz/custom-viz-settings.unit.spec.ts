@@ -19,7 +19,10 @@ import {
 } from "metabase-types/api/mocks";
 import { isFunction, isObject } from "metabase-types/guards";
 
-import { sanitizePluginSettings } from "./custom-viz-settings";
+import {
+  type HostContext,
+  sanitizePluginSettings,
+} from "./custom-viz-settings";
 import { getWidgetMountPlugin, isWidgetMount } from "./widget-mount";
 
 const PLUGIN = createMockCustomVizPluginRuntime();
@@ -54,7 +57,9 @@ function setupMount() {
     return handle;
   };
 
-  return { mount, calls, handle };
+  const context: HostContext = { prefix: PREFIX, mount, plugin: PLUGIN };
+
+  return { context, calls, handle };
 }
 
 function mockWarn() {
@@ -63,13 +68,13 @@ function mockWarn() {
 
 describe("sanitizePluginSettings", () => {
   it("returns no definitions when the plugin declares no settings", () => {
-    const { mount } = setupMount();
+    const { context } = setupMount();
 
-    expect(sanitizePluginSettings(undefined, mount, PLUGIN)).toEqual({});
+    expect(sanitizePluginSettings(undefined, context)).toEqual({});
   });
 
   it("namespaces setting ids and copies the documented fields", () => {
-    const { mount } = setupMount();
+    const { context } = setupMount();
     const threshold = definePluginSetting({
       title: "Threshold",
       group: "Limits",
@@ -79,7 +84,7 @@ describe("sanitizePluginSettings", () => {
       widget: "number",
     });
 
-    const sanitized = sanitizePluginSettings({ threshold }, mount, PLUGIN);
+    const sanitized = sanitizePluginSettings({ threshold }, context);
 
     expect(Object.keys(sanitized)).toEqual([`${PREFIX}threshold`]);
     const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
@@ -95,7 +100,7 @@ describe("sanitizePluginSettings", () => {
   });
 
   it("leaves out fields that are not part of the plugin API", () => {
-    const { mount } = setupMount();
+    const { context } = setupMount();
 
     const sanitized = sanitizePluginSettings(
       {
@@ -106,8 +111,7 @@ describe("sanitizePluginSettings", () => {
           onUpdate: () => undefined,
         }),
       },
-      mount,
-      PLUGIN,
+      context,
     );
 
     const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
@@ -117,12 +121,11 @@ describe("sanitizePluginSettings", () => {
   });
 
   it("skips definitions that are not objects", () => {
-    const { mount } = setupMount();
+    const { context } = setupMount();
 
     const sanitized = sanitizePluginSettings(
       { broken: definePluginSetting("not-a-definition") },
-      mount,
-      PLUGIN,
+      context,
     );
 
     expect(sanitized).toEqual({});
@@ -130,7 +133,7 @@ describe("sanitizePluginSettings", () => {
 
   it("drops settings with reserved ids and warns, keeping the rest", () => {
     const warn = mockWarn();
-    const { mount } = setupMount();
+    const { context } = setupMount();
 
     const sanitized = sanitizePluginSettings(
       {
@@ -138,8 +141,7 @@ describe("sanitizePluginSettings", () => {
         column_settings: definePluginSetting({ widget: "input" }),
         threshold: definePluginSetting({ widget: "number" }),
       },
-      mount,
-      PLUGIN,
+      context,
     );
 
     expect(Object.keys(sanitized)).toEqual([`${PREFIX}threshold`]);
@@ -156,7 +158,7 @@ describe("sanitizePluginSettings", () => {
 
   describe("dependencies", () => {
     it("namespaces read, write and erase dependencies", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
 
       const sanitized = sanitizePluginSettings(
         {
@@ -167,8 +169,7 @@ describe("sanitizePluginSettings", () => {
             eraseDependencies: ["gauge.segments"],
           }),
         },
-        mount,
-        PLUGIN,
+        context,
       );
 
       expect(getHostDefinition(sanitized, `${PREFIX}threshold`)).toMatchObject({
@@ -179,7 +180,7 @@ describe("sanitizePluginSettings", () => {
     });
 
     it("drops dependencies that are not lists of ids", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
 
       const sanitized = sanitizePluginSettings(
         {
@@ -189,8 +190,7 @@ describe("sanitizePluginSettings", () => {
             writeDependencies: ["label", 42],
           }),
         },
-        mount,
-        PLUGIN,
+        context,
       );
 
       const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
@@ -204,7 +204,7 @@ describe("sanitizePluginSettings", () => {
     it.each(["getDefault", "getValue", "isValid", "getProps"])(
       "calls %s with the plugin's view of the series and settings only",
       (name) => {
-        const { mount } = setupMount();
+        const { context } = setupMount();
         const callback = jest.fn<boolean, [Series, ...unknown[]]>(() => true);
 
         const sanitized = sanitizePluginSettings(
@@ -214,8 +214,7 @@ describe("sanitizePluginSettings", () => {
               [name]: callback,
             }),
           },
-          mount,
-          PLUGIN,
+          context,
         );
         getCallback(getHostDefinition(sanitized, `${PREFIX}threshold`), name)(
           SERIES,
@@ -236,13 +235,12 @@ describe("sanitizePluginSettings", () => {
     );
 
     it("calls getSection without arguments", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
       const getSection = jest.fn(() => "Display");
 
       const sanitized = sanitizePluginSettings(
         { threshold: definePluginSetting({ widget: "number", getSection }) },
-        mount,
-        PLUGIN,
+        context,
       );
 
       expect(
@@ -259,13 +257,12 @@ describe("sanitizePluginSettings", () => {
     const Widget: ComponentType<Record<string, unknown>> = () => null;
 
     it("rewrites a component widget into a plugin-tagged WidgetMount", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
       const original = definePluginSetting({ title: "Custom", widget: Widget });
 
       const sanitized = sanitizePluginSettings(
         { customWidget: original },
-        mount,
-        PLUGIN,
+        context,
       );
 
       const definition = getHostDefinition(sanitized, `${PREFIX}customWidget`);
@@ -277,11 +274,10 @@ describe("sanitizePluginSettings", () => {
     });
 
     it("delegates mounting to the plugin's shared mount function with the plugin's setting id", () => {
-      const { mount, calls, handle } = setupMount();
+      const { context, calls, handle } = setupMount();
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
-        mount,
-        PLUGIN,
+        context,
       );
 
       const widget = getMountWidget(
@@ -299,12 +295,11 @@ describe("sanitizePluginSettings", () => {
     });
 
     it("namespaces the settings a widget writes", () => {
-      const { mount, calls } = setupMount();
+      const { context, calls } = setupMount();
       const onChangeSettings = jest.fn();
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
-        mount,
-        PLUGIN,
+        context,
       );
 
       const widget = getMountWidget(
@@ -332,7 +327,7 @@ describe("sanitizePluginSettings", () => {
 
   describe("widget validation", () => {
     it("throws for unsupported built-in widget names", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
 
       expect(() =>
         sanitizePluginSettings(
@@ -340,14 +335,13 @@ describe("sanitizePluginSettings", () => {
             threshold: definePluginSetting({ widget: "number" }),
             bad: definePluginSetting({ widget: "dropdown" }),
           },
-          mount,
-          PLUGIN,
+          context,
         ),
       ).toThrow();
     });
 
     it("accepts every allowed built-in widget name", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
       const allowedNames = [
         "input",
         "number",
@@ -367,9 +361,7 @@ describe("sanitizePluginSettings", () => {
         ]),
       );
 
-      expect(() =>
-        sanitizePluginSettings(settings, mount, PLUGIN),
-      ).not.toThrow();
+      expect(() => sanitizePluginSettings(settings, context)).not.toThrow();
     });
   });
 });

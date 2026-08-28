@@ -44,7 +44,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
-import { toPluginSeries, toPluginVizSettings } from "./plugin-view";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
@@ -427,11 +427,13 @@ async function fetchAndRegisterCustomVizPlugin(
 
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
+    const prefix = getCustomVizSettingKeyPrefix(identifier);
 
     const Wrapper = createCustomVizWrapper(
       vizDef.mount,
       vizDef.VisualizationComponent,
       plugin,
+      prefix,
     );
 
     // core app resolves these to a plain same-origin url like
@@ -449,6 +451,7 @@ async function fetchAndRegisterCustomVizPlugin(
       {
         identifier,
         plugin,
+        prefix,
         getUiName: () => plugin.display_name,
         iconUrl: resolvedIconUrl,
         isDev: Boolean(plugin.dev_bundle_url),
@@ -587,11 +590,8 @@ function createCustomVizWrapper(
   mount: GenericVizMount,
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
   plugin: CustomVizPluginRuntime,
+  prefix: string,
 ) {
-  const prefix = getCustomVizSettingKeyPrefix(
-    getCustomPluginIdentifier(plugin),
-  );
-
   return function CustomVizWrapper({
     width,
     height,
@@ -626,7 +626,7 @@ function createCustomVizWrapper(
       width,
       height,
       series: toPluginSeries(series),
-      settings: toPluginVizSettings(settings, prefix),
+      settings: toPluginSettings(settings, prefix),
       renderingContext,
       // The plugin API mirrors host click objects with looser public types.
       onClick: handleClick as unknown as (

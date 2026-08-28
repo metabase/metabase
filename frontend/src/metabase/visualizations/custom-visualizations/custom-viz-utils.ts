@@ -7,8 +7,6 @@ import type {
   CustomVizPluginRuntime,
 } from "metabase-types/api";
 
-import { isCustomVizSettingKey } from "./setting-keys";
-
 export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {
     ...options,
@@ -54,25 +52,3 @@ export function getCustomPluginIdentifier(
 }
 
 export const defineSetting = <T>(definition: T) => definition;
-
-// The plugin sees host settings plus its own without the prefix; a same-named plugin setting shadows the host one.
-export function toPluginSettings<T>(
-  settings: Record<string, T>,
-  prefix: string,
-): Record<string, T> {
-  const entries = Object.entries(settings);
-  const hostEntries = entries.filter(([key]) => !isCustomVizSettingKey(key));
-  const pluginEntries = entries
-    .filter(([key]) => key.startsWith(prefix))
-    .map(([key, value]) => [key.slice(prefix.length), value]);
-  return Object.fromEntries([...hostEntries, ...pluginEntries]);
-}
-
-export function toHostSettingKeys<T>(
-  settings: Record<string, T>,
-  prefix: string,
-): Record<string, T> {
-  return Object.fromEntries(
-    Object.entries(settings).map(([key, value]) => [`${prefix}${key}`, value]),
-  );
-}

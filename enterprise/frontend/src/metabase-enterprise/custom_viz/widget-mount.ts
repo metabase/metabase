@@ -1,9 +1,10 @@
 import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { toHostSettingKeys } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isFunction, isObject } from "metabase-types/guards";
+
+import { toHostSettings } from "./plugin-view";
 
 /**
  * A host-allocated `WidgetMount` tagged with the plugin it renders.
@@ -52,7 +53,7 @@ function toPluginWidgetProps(props: WidgetProps, prefix: string): WidgetProps {
     ...(isFunction(onChangeSettings) && {
       onChangeSettings: (settings: unknown) =>
         onChangeSettings(
-          toHostSettingKeys(isObject(settings) ? settings : {}, prefix),
+          toHostSettings(isObject(settings) ? settings : {}, prefix),
         ),
     }),
   };

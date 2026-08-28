@@ -8,8 +8,6 @@ import type {
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import type {
   ComputedVisualizationSettings,
   VisualizationSettingDefinition,
@@ -18,7 +16,7 @@ import type {
 import type { CustomVizPluginRuntime, Series } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { toPluginSeries, toPluginVizSettings } from "./plugin-view";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 import { wrapPluginWidget } from "./widget-mount";
 
 const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
@@ -28,14 +26,16 @@ const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
   } satisfies Record<ReservedVisualizationSettingId, true>),
 );
 
-type PluginSettings = CustomVisualization<Record<string, unknown>>["settings"];
+type PluginSettingDefinitions = CustomVisualization<
+  Record<string, unknown>
+>["settings"];
 
 // What a plugin passes to `defineSetting`: the shape we hold plugin definitions to.
 type PluginSettingDefinition = Parameters<
   ReturnType<CreateDefineSetting<Record<string, unknown>>>
 >[0];
 
-type HostContext = {
+export type HostContext = {
   prefix: string;
   mount: CustomVisualizationMount;
   plugin: CustomVizPluginRuntime;
@@ -48,9 +48,8 @@ type HostContext = {
  * host-allocated `WidgetMount`s that delegate to the plugin's `mount`.
  */
 export function sanitizePluginSettings(
-  settings: PluginSettings | undefined,
-  mount: CustomVisualizationMount,
-  plugin: CustomVizPluginRuntime,
+  settings: PluginSettingDefinitions | undefined,
+  context: HostContext,
 ): VisualizationSettingsDefinitions {
   if (!settings) {
     return {};
@@ -73,12 +72,6 @@ export function sanitizePluginSettings(
   );
 
   assertValidSettingWidgets(definitions);
-
-  const context: HostContext = {
-    prefix: getCustomVizSettingKeyPrefix(getCustomPluginIdentifier(plugin)),
-    mount,
-    plugin,
-  };
 
   return Object.fromEntries(
     definitions.map(([settingId, definition]) => [
@@ -111,7 +104,7 @@ function toHostDefinition(
   const pluginArgs = (
     series: Series,
     settings: ComputedVisualizationSettings,
-  ) => [toPluginSeries(series), toPluginVizSettings(settings, prefix)] as const;
+  ) => [toPluginSeries(series), toPluginSettings(settings, prefix)] as const;
 
   return {
     title,

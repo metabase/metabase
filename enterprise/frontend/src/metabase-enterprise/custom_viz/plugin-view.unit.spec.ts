@@ -3,8 +3,9 @@ import { isObject } from "metabase-types/guards";
 
 import {
   type PluginSeries,
+  toHostSettings,
   toPluginSeries,
-  toPluginVizSettings,
+  toPluginSettings,
 } from "./plugin-view";
 
 // The SDK types leave the card out, but the host hands it over at runtime.
@@ -55,13 +56,39 @@ describe("toPluginSeries", () => {
   });
 });
 
-describe("toPluginVizSettings", () => {
-  it("strips the plugin's prefix", () => {
+describe("toPluginSettings", () => {
+  it("strips the plugin's prefix and keeps host settings", () => {
     expect(
-      toPluginVizSettings(
+      toPluginSettings(
         { "card.title": "Title", [`${PREFIX}threshold`]: 42 },
         PREFIX,
       ),
     ).toEqual({ "card.title": "Title", threshold: 42 });
+  });
+
+  it("drops other plugins' settings", () => {
+    expect(
+      toPluginSettings({ "custom-viz:other:threshold": 1 }, PREFIX),
+    ).toEqual({});
+  });
+
+  it("lets a plugin setting shadow a same-named host setting", () => {
+    expect(
+      toPluginSettings(
+        { "card.title": "Host", [`${PREFIX}card.title`]: "Plugin" },
+        PREFIX,
+      ),
+    ).toEqual({ "card.title": "Plugin" });
+  });
+});
+
+describe("toHostSettings", () => {
+  it("prefixes every key", () => {
+    expect(
+      toHostSettings({ threshold: 1, "gauge.segments": [] }, PREFIX),
+    ).toEqual({
+      [`${PREFIX}threshold`]: 1,
+      [`${PREFIX}gauge.segments`]: [],
+    });
   });
 });

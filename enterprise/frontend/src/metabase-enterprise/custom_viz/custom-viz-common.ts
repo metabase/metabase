@@ -1,7 +1,6 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type {
   Visualization,
@@ -16,7 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
-import { toPluginSeries, toPluginVizSettings } from "./plugin-view";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -36,22 +35,26 @@ export function applyDefaultVisualizationProps(
   settings: {
     identifier: CustomVizDisplayType;
     plugin: CustomVizPluginRuntime;
+    prefix: string;
     getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
 ): Visualization {
-  const { plugin, ...componentSettings } = settings;
-  const prefix = getCustomVizSettingKeyPrefix(settings.identifier);
+  const { plugin, prefix, ...componentSettings } = settings;
   return Object.assign(Component, {
     settings: {
       ...columnSettings({ getHidden: () => true }),
-      ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
+      ...sanitizePluginSettings(vizDef.settings, {
+        prefix,
+        mount: vizDef.mount,
+        plugin,
+      }),
     },
     checkRenderable: (series: Series, vizSettings: VisualizationSettings) =>
       vizDef.checkRenderable(
         toPluginSeries(series),
-        toPluginVizSettings(vizSettings, prefix),
+        toPluginSettings(vizSettings, prefix),
       ),
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
