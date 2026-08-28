@@ -188,6 +188,9 @@ const defaultConfig = {
     ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
+    // Ports of the local maildev instance used by e2e-email-helpers.js
+    MAILDEV_WEB_PORT: Number(process.env["MAILDEV_WEB_PORT"]) || 1080,
+    MAILDEV_SMTP_PORT: Number(process.env["MAILDEV_SMTP_PORT"]) || 1025,
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,

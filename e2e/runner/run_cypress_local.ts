@@ -45,6 +45,63 @@ printBold(`Running Cypress with options:
   - JAR_PATH             : ${options.JAR_PATH}
 `);
 
+const DOCKER_COMPOSE =
+  "docker compose -f ./e2e/test/scenarios/docker-compose.yml";
+
+const isPortInUse = (port: string | number) =>
+  !!shell(`lsof -ti:${port} || echo ''`, { quiet: true });
+
+/** maildev's web server answers `GET /healthz` with `true`. */
+const isMaildevListening = async (webPort: string | number) => {
+  try {
+    const response = await fetch(`http://localhost:${webPort}/healthz`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    return response.ok && (await response.text()).trim() === "true";
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Starts the e2e containers. If a maildev instance is already listening on the
+ * maildev ports (a previous compose run, a manually started maildev, ...), the
+ * `maildev` service is skipped and the existing instance is reused instead of
+ * failing on a port conflict.
+ */
+const startContainers = async () => {
+  const webPort = process.env.MAILDEV_WEB_PORT || 1080;
+  const smtpPort = process.env.MAILDEV_SMTP_PORT || 1025;
+
+  if (!isPortInUse(webPort) && !isPortInUse(smtpPort)) {
+    shell(`${DOCKER_COMPOSE} up -d`);
+    return;
+  }
+
+  if (!(await isMaildevListening(webPort))) {
+    printBold(
+      `⚠️ Port ${webPort} or ${smtpPort} is in use, but not by maildev`,
+    );
+    console.log(`The maildev container can't start on these ports.
+        - Free the ports (\`lsof -i:${webPort} -i:${smtpPort}\` shows what holds them) and run the script again
+        - Alternatively, set MAILDEV_WEB_PORT / MAILDEV_SMTP_PORT in this shell and try again
+        `);
+
+    process.exit(FAILURE_EXIT_CODE);
+  }
+
+  console.log(
+    `ℹ️ maildev is already running on ports ${webPort}/${smtpPort}. Reusing it instead of starting the \`maildev\` container.`,
+  );
+
+  const services = shell(`${DOCKER_COMPOSE} config --services`, { quiet: true })
+    .split("\n")
+    .map((service) => service.trim())
+    .filter((service) => service && service !== "maildev");
+
+  shell(`${DOCKER_COMPOSE} up -d ${services.join(" ")}`);
+};
+
 const init = async () => {
   const cliArguments = process.argv.slice(2);
   const userOverrides = await parseArguments(cliArguments);
@@ -55,7 +112,7 @@ const init = async () => {
   const runningFromJar = !!options.JAR_PATH;
 
   printBold("⏳ Starting containers");
-  shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
+  await startContainers();
 
   if (runningFromJar) {
     if (isBackendRunning) {
