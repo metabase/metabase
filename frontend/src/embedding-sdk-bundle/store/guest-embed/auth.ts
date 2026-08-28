@@ -15,10 +15,13 @@ let refreshGuestSessionPromise: ReturnType<
   AsyncThunkAction<string | null, unknown, any>
 > | null = null;
 
-// Sets the initial guest embed token when a component first loads.
-export const setInitialGuestToken = createAction<string>(
-  "sdk/guest-embed/SET_INITIAL_TOKEN",
-);
+// Sets the initial guest embed token when a component first loads. Keyed by a
+// stable per-mount instance id so concurrent guest embeds under one
+// MetabaseProvider don't overwrite each other's token.
+export const setInitialGuestToken = createAction<{
+  instanceId: string;
+  token: string;
+}>("sdk/guest-embed/SET_INITIAL_TOKEN");
 
 export const setGuestTokenFetchError = createAction<SerializedError | null>(
   "sdk/guest-embed/SET_TOKEN_FETCH_ERROR",
@@ -37,6 +40,9 @@ export const refreshGuestSession = createAsyncThunk(
   }: {
     authConfig: MetabaseAuthConfig;
     expiredToken: string;
+    // Unused by the fetch itself; carried on the thunk arg so the reducer can
+    // write the refreshed token back to the same guestTokensByInstance key.
+    instanceId: string;
   }): Promise<string> => {
     if (authConfig.isGuest && !authConfig.guestEmbedProviderUri) {
       throw new Error(
@@ -61,10 +67,16 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     // Unjustified type cast. FIXME
     const state = getState() as SdkStoreState;
     const tokenState = getSessionTokenState(state);
-    const currentToken = tokenState.rawToken;
+    // This thunk only runs for iframe/modular embeds (see the isEmbeddingEajs
+    // check below), where each embed gets its own iframe and therefore its
+    // own store — so there's only ever one guest token in this map.
+    const instanceId = Object.keys(tokenState.guestTokensByInstance)[0];
+    const currentToken = instanceId
+      ? tokenState.guestTokensByInstance[instanceId]
+      : null;
 
     // No token in Redux yet, so we can't check expiration.
-    if (!currentToken) {
+    if (!currentToken || !instanceId) {
       return null;
     }
 
@@ -102,6 +114,7 @@ export const getOrRefreshGuestSession = createAsyncThunk(
       refreshGuestSession({
         authConfig,
         expiredToken: currentToken,
+        instanceId,
       }),
     );
 

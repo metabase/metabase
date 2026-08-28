@@ -21,7 +21,10 @@ import type { State } from "metabase/redux/store";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
-  rawToken: string | null; // Raw JWT string for guest embeds token refresh
+  // Guest embed JWTs, keyed by a stable per-mount instance id so that
+  // concurrent guest StaticQuestion/StaticDashboard embeds under one
+  // MetabaseProvider don't overwrite each other's token.
+  guestTokensByInstance: Record<string, string>;
   loading: boolean;
   error: SerializedError | null;
 };

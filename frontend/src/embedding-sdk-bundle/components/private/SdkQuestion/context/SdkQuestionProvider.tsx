@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -24,6 +25,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
   getError,
+  getGuestTokenForInstance,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
@@ -94,8 +96,13 @@ export const SdkQuestionProvider = ({
   const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
   const [isFirstRender, setIsFirstRender] = useState(true);
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  // Stable per-mount id: keeps this instance's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const instanceId = useId();
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForInstance(state, instanceId),
+  );
 
   const effectiveInitialSqlParameters = getEffectiveParameterValues(
     sqlParameters,
@@ -105,9 +112,9 @@ export const SdkQuestionProvider = ({
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ instanceId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, instanceId]);
 
   useEffect(() => {
     setIsFirstRender(false);

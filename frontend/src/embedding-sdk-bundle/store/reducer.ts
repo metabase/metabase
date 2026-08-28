@@ -71,7 +71,7 @@ const initialState: SdkState = {
   metabaseInstanceVersion: null,
   token: {
     token: null,
-    rawToken: null,
+    guestTokensByInstance: {},
     loading: false,
     error: null,
   },
@@ -95,7 +95,7 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
-      rawToken: null,
+      guestTokensByInstance: {},
       loading: false,
       error: null,
     };
@@ -180,9 +180,13 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setInitialGuestToken, (state, action) => {
+    const { instanceId, token } = action.payload;
     state.token = {
       ...state.token,
-      rawToken: action.payload,
+      guestTokensByInstance: {
+        ...state.token.guestTokensByInstance,
+        [instanceId]: token,
+      },
       loading: false,
       error: null,
     };
@@ -196,9 +200,13 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
+    const { instanceId } = action.meta.arg;
     state.token = {
       ...state.token,
-      rawToken: action.payload,
+      guestTokensByInstance: {
+        ...state.token.guestTokensByInstance,
+        [instanceId]: action.payload,
+      },
       loading: false,
       error: null,
     };
