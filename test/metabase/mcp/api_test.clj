@@ -15,6 +15,7 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.search.test-util :as search.tu]
    [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
@@ -76,20 +77,12 @@
 (defn- save-access-token!
   "Persist an OAuth access token into the provider backing the MCP endpoint.
 
-   Registers a fresh `oauth_client` row for the token to reference, because token resolution fails
-   closed when the issuing client is gone (SEC-863). Callers run inside a rollback-only transaction,
-   which cleans the row up."
-  [token user-id scopes]
-  (let [client-id (str (random-uuid))]
-    (t2/insert! :model/OAuthClient {:client_id         client-id
-                                    :redirect_uris     ["https://example.com/callback"]
-                                    :grant_types       ["authorization_code"]
-                                    :response_types    ["code"]
-                                    :scopes            ["openid"]
-                                    :registration_type "static"})
-    (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                  token (str user-id) client-id (vec scopes)
-                                  (+ (inst-ms (java.util.Date.)) 3600000) nil)))
+   `client-id` must name a live `oauth_client` row (see [[oauth-server.tu/with-oauth-client]]) —
+   token resolution fails closed when the issuing client is gone (SEC-863)."
+  [token user-id client-id scopes]
+  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                token (str user-id) client-id (vec scopes)
+                                (+ (inst-ms (java.util.Date.)) 3600000) nil))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
@@ -1457,31 +1450,33 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
-        (let [token (str (random-uuid))]
-          (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
-          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
-                               (get-in [:headers "Mcp-Session-Id"]))
-                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
-                                                    {"mcp-session-id" sid})
-                tool-names (set (map :name (get-in response [:body :result :tools])))]
-            (is (contains? tool-names "search"))
-            (is (not (contains? tool-names "update_question"))
-                "Only matching tools should be available")))))))
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token (str (random-uuid))]
+            (save-access-token! token (mt/user->id :crowberto) client-id #{"agent:search"})
+            (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                                 (get-in [:headers "Mcp-Session-Id"]))
+                  response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                      {"mcp-session-id" sid})
+                  tool-names (set (map :name (get-in response [:body :result :tools])))]
+              (is (contains? tool-names "search"))
+              (is (not (contains? tool-names "update_question"))
+                  "Only matching tools should be available"))))))))
 
 (deftest full-access-token-scope-validation-test
   (testing "an OAuth token with the full-access grant exposes all tools"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
-        (let [token (str (random-uuid))]
-          (save-access-token! token (mt/user->id :crowberto) #{oauth-server/full-access-scope})
-          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
-                               (get-in [:headers "Mcp-Session-Id"]))
-                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
-                                                    {"mcp-session-id" sid})
-                tool-names (set (map :name (get-in response [:body :result :tools])))]
-            (is (contains? tool-names "search"))
-            (is (contains? tool-names "update_question"))))))))
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token (str (random-uuid))]
+            (save-access-token! token (mt/user->id :crowberto) client-id #{oauth-server/full-access-scope})
+            (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                                 (get-in [:headers "Mcp-Session-Id"]))
+                  response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                      {"mcp-session-id" sid})
+                  tool-names (set (map :name (get-in response [:body :result :tools])))]
+              (is (contains? tool-names "search"))
+              (is (contains? tool-names "update_question")))))))))
 
 (deftest tools-call-token-scope-validation-test
   (testing "an OAuth token with a limited scope cannot call a tool outside that scope"
@@ -1491,19 +1486,20 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (oauth-server/reset-provider!)
-          (let [token (str (random-uuid))]
-            (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
-            (let [sid      (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
-                               (get-in [:headers "Mcp-Session-Id"]))
-                  response (mcp-request-with-bearer token 200
-                                                    (jsonrpc-request "tools/call"
-                                                                     {:name      "update_question"
-                                                                      :arguments {:id card-id :name "Renamed by narrow token"}})
-                                                    {"mcp-session-id" sid})]
-              (is (=? {:isError true} (get-in response [:body :result]))
-                  "update_question is outside agent:search and must be refused")
-              (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
-                  "the card must not have been renamed"))))))))
+          (oauth-server.tu/with-oauth-client [client-id]
+            (let [token (str (random-uuid))]
+              (save-access-token! token (mt/user->id :crowberto) client-id #{"agent:search"})
+              (let [sid      (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                                 (get-in [:headers "Mcp-Session-Id"]))
+                    response (mcp-request-with-bearer token 200
+                                                      (jsonrpc-request "tools/call"
+                                                                       {:name      "update_question"
+                                                                        :arguments {:id card-id :name "Renamed by narrow token"}})
+                                                      {"mcp-session-id" sid})]
+                (is (=? {:isError true} (get-in response [:body :result]))
+                    "update_question is outside agent:search and must be refused")
+                (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
+                    "the card must not have been renamed")))))))))
 
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
@@ -1524,14 +1520,17 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
-        (let [user-id  (mt/user->id :crowberto)
-              token    (insert-expired-oauth-token! user-id (str (random-uuid)))
-              response (mcp-request-with-bearer token 401
-                                                (jsonrpc-request "initialize")
-                                                {})]
-          (is (=? {:status  401
-                   :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
-                  response)))))))
+        ;; register the token's client so the 401 can only come from the expiry, not the
+        ;; missing-client fail-closed path
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [user-id  (mt/user->id :crowberto)
+                token    (insert-expired-oauth-token! user-id client-id)
+                response (mcp-request-with-bearer token 401
+                                                  (jsonrpc-request "initialize")
+                                                  {})]
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                    response))))))))
 
 (deftest tools-call-scope-enforcement-test
   (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Test Card"
@@ -1665,21 +1664,22 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
-        (let [token       (str (random-uuid))
-              _           (save-access-token! token (mt/user->id :crowberto) #{"agent:viz:mcp-ui:query"})
-              initialize  (mcp-request-with-bearer token 200 (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities}) {})
-              session-id  (get-in initialize [:headers "Mcp-Session-Id"])
-              resource    (mcp-request-with-bearer token 200
-                                                   (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
-                                                   {"mcp-session-id" session-id})
-              html        (-> resource :body :result :contents first :text)
-              credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
-              headers     {"x-metabase-mcp-ui-auth" credential}]
-          (is (string? credential))
-          (is (= 200 (:status (client/client-full-response :get 200 "user/current"
-                                                           {:request-options {:headers headers}}))))
-          (is (= 401 (:status (client/client-full-response :get 401 "collection"
-                                                           {:request-options {:headers headers}})))))))))
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token       (str (random-uuid))
+                _           (save-access-token! token (mt/user->id :crowberto) client-id #{"agent:viz:mcp-ui:query"})
+                initialize  (mcp-request-with-bearer token 200 (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities}) {})
+                session-id  (get-in initialize [:headers "Mcp-Session-Id"])
+                resource    (mcp-request-with-bearer token 200
+                                                     (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
+                                                     {"mcp-session-id" session-id})
+                html        (-> resource :body :result :contents first :text)
+                credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
+                headers     {"x-metabase-mcp-ui-auth" credential}]
+            (is (string? credential))
+            (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                             {:request-options {:headers headers}}))))
+            (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                             {:request-options {:headers headers}}))))))))))
 
 (deftest batch-initialized-then-resources-read-test
   (testing "batch containing notifications/initialized + resources/read succeeds"

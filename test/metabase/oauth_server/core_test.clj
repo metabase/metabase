@@ -5,6 +5,7 @@
    ;; `get-provider` derives the provider's supported scopes (see [[metabase.mcp.core/all-scopes]]).
    [metabase.agent-api.api]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
@@ -34,22 +35,16 @@
   (testing "an access token stops authenticating once its oauth_client row is deleted (SEC-863)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [token     (str (random-uuid))
-              client-id (str (random-uuid))
-              user-id   (mt/user->id :rasta)
-              expiry    (+ (inst-ms (java.util.Date.)) 3600000)]
-          (t2/insert! :model/OAuthClient {:client_id         client-id
-                                          :redirect_uris     ["https://example.com/callback"]
-                                          :grant_types       ["authorization_code"]
-                                          :response_types    ["code"]
-                                          :scopes            ["openid"]
-                                          :registration_type "static"})
-          (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                        token (str user-id) client-id ["openid"] expiry nil)
-          (testing "resolves while the client exists"
-            (is (=? {:user-id user-id
-                     :scopes  #{"openid"}}
-                    (oauth-server/resolve-access-token token))))
-          (testing "returns nil once the client row is gone — token must not outlive its client"
-            (t2/delete! :model/OAuthClient :client_id client-id)
-            (is (nil? (oauth-server/resolve-access-token token)))))))))
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token   (str (random-uuid))
+                user-id (mt/user->id :rasta)
+                expiry  (+ (inst-ms (java.util.Date.)) 3600000)]
+            (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                          token (str user-id) client-id ["openid"] expiry nil)
+            (testing "resolves while the client exists"
+              (is (=? {:user-id user-id
+                       :scopes  #{"openid"}}
+                      (oauth-server/resolve-access-token token))))
+            (testing "returns nil once the client row is gone — token must not outlive its client"
+              (t2/delete! :model/OAuthClient :client_id client-id)
+              (is (nil? (oauth-server/resolve-access-token token))))))))))
