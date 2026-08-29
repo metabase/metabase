@@ -344,7 +344,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache}}
 
   appearance
   {:team "UX West"
