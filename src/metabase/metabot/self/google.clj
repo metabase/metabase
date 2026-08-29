@@ -63,9 +63,10 @@
   #{"oauth2.googleapis.com" "accounts.google.com"})
 
 (defn- check-token-uri!
-  "Refuse a key whose `token_uri` is not one of Google's.
-  The credential library posts to that URL to mint an access token, before any request our own network policy
-  guards, so an admin-supplied key could otherwise point it at an internal host."
+  "Reject a service account key whose `token_uri` is not a recognized Google OAuth endpoint.
+
+  The credential library posts to this URL before making a request protected by our network policy. Without this
+  allowlist, an admin-supplied key could direct that request to an internal host."
   [^ServiceAccountCredentials creds]
   (let [uri (.getTokenServerUri creds)]
     (when-not (and uri

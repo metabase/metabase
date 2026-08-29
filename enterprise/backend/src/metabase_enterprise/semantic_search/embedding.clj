@@ -339,7 +339,7 @@
   (let [{:keys [status cause]} (u/all-ex-data e)]
     (and (not (contains? request-specific-statuses status))
          (not= :embedder/unexpected-dimensions cause)
-         ;; A connection-time network-policy rejection is about the configured endpoint, not the service's health.
+         ;; A network-policy refusal identifies invalid endpoint configuration, not a service outage.
          (not (llm.settings/llm-network-policy-error? e)))))
 
 (defn- circuit-open-ex
@@ -456,22 +456,21 @@
      (str/starts-with? model-name "text-embedding-3"))))
 
 (mu/defn- openai-compatible-get-embeddings-batch
-  "Call an OpenAI-compatible /v1/embeddings endpoint. The breaker guards only the remote request and
+  "Call an OpenAI-compatible `/v1/embeddings` endpoint. The breaker guards only the remote request and
   response decoding; analytics and token persistence happen after it returns.
 
-  `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
-  `:endpoint`        — full URL including /v1/embeddings
-  `:api-key`         — Bearer token. If empty ai service proxying is assumed and premium-embedding-token is
-                       used for authentication
-  `:model-name`      — model identifier sent in the request body
-  `:vector-dimensions` — expected dimensions of each returned vector
-  `:texts`           — collection of input strings
-  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
-  `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
-  `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
-  `:type`            — optional; forwarded to the token-tracking row
-  `:network-policy-floor` — optional; the least [[metabase.llm.settings/llm-allowed-networks]] a
-                            deployment-controlled endpoint gets, see [[metabase.llm.settings/network-policy]]"
+  `:provider`             — analytics label, such as `\"ai-service\"` or `\"openai\"`
+  `:endpoint`             — full URL, including `/v1/embeddings`
+  `:api-key`              — Bearer token; when absent for `ai-service`, use the premium embedding token
+  `:model-name`           — model identifier sent in the request body
+  `:vector-dimensions`    — expected dimensions of each returned vector
+  `:texts`                — input strings
+  `:record-tokens?`       — whether to write a `semantic_search_token_tracking` row
+  `:snowplow?`            — optional; whether to emit a Snowplow `token_usage` event
+  `:extra-body`           — optional map merged into the request body, such as `{:dimensions 1024}`
+  `:type`                 — optional value forwarded to the token-tracking row
+  `:network-policy-floor` — optional minimum network access for a deployment-controlled endpoint; see
+                            [[metabase.llm.settings/network-policy]]"
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            network-policy-floor]
     :as opts}
@@ -486,7 +485,8 @@
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
-  ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
+  ;; Build policy options before entering the circuit-breaker error path. A malformed endpoint is a configuration
+  ;; error, not a service failure to record and log for every batch.
   (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
     (try
       (log/debug (str "Calling " provider " embeddings API")
@@ -562,17 +562,21 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Returns an endpoint config map. When api key is not set or when service url is not set but
-  `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. A deployment-controlled endpoint -- the AI service, or an embedding service the
-  environment names -- gets a `:network-policy-floor` of `:allow-private`, so a private address works under the
-  default policy while loopback and link-local stay blocked. Throws if neither base URL is configured."
+  "Resolve the embedding endpoint and its authentication and network-policy options.
+
+  Prefer [[metabase-enterprise.semantic-search.settings/ee-embedding-service-base-url]], then fall back to
+  [[metabase.llm.settings/ai-service-base-url]]. A request without an API key uses the premium embedding token.
+
+  The built-in AI service and an environment-supplied embedding-service URL are deployment-controlled, so they get an
+  `:allow-private` policy floor. This allows private addresses under the default policy while still blocking loopback
+  and link-local addresses. Throw if neither base URL is configured."
   []
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
         (cond-> {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
                                 "/v1/embeddings")
                  :api-key  (semantic-settings/ee-embedding-service-api-key)}
-          ;; the setter can't vet a value the environment supplies, so it is trusted like the AI service's
+          ;; The setting's validator cannot vet an environment-supplied URL. Treat it as deployment-controlled, like
+          ;; the built-in AI service, rather than as an admin-supplied endpoint.
           (setting/env-var-value :ee-embedding-service-base-url)
           (assoc :network-policy-floor :allow-private))
 

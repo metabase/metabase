@@ -199,7 +199,7 @@
 ;;; ----------------------------------------- llm-allowed-networks Tests -----------------------------------------
 
 (deftest llm-allowed-networks-default-test
-  ;; the raw binding clears any stored value, so the default is what is under test
+  ;; Clear any stored value so this exercises the setting's default.
   (mt/with-temporary-raw-setting-values [llm-allowed-networks nil]
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
       (testing "with nothing configured only public addresses are allowed, hosted or not"
@@ -232,7 +232,7 @@
       (is (= :allow-all (llm.settings/network-policy :allow-private))))))
 
 (deftest llm-url-problem-test
-  ;; IP literals throughout: `host-allowed-for-network-policy?` resolves hostnames through real DNS
+  ;; Use IP literals because `host-allowed-for-network-policy?` resolves hostnames through real DNS.
   (testing "under :external-only, internal addresses are refused and public ones are not"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (doseq [url ["http://127.0.0.1:8000/v1"
@@ -279,7 +279,7 @@
       (is (nil? (llm.settings/llm-url-problem "  "))))))
 
 (deftest llm-request-opts-test
-  ;; IP literals throughout: the resolver goes through real DNS
+  ;; Use IP literals to avoid real DNS.
   (let [resolver (fn [& args] (:dns-resolver (apply llm.settings/llm-request-opts args)))]
     (testing "redirects are disabled under every network policy"
       (doseq [policy ["external-only" "allow-private" "allow-all"]]
