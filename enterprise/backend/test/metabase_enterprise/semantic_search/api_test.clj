@@ -72,8 +72,12 @@
               (is (:active best-index)))
             (testing "re-init creates the new index"
               (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
-                (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
-                  (is (contains? response :message))))
+                ;; Synchronous single-process mode: the request runs inside the test transaction (conveyed
+                ;; bindings), where a lease may not be acquired -- and the assertions below want the re-init
+                ;; complete when the POST returns anyway.
+                (binding [search.ingestion/*force-sync* true]
+                  (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
+                    (is (contains? response :message)))))
               (is (not= original-table-name new-table-name))
               (is (semantic.tu/table-exists-in-db? original-table-name))
               (is (semantic.tu/table-exists-in-db? new-table-name))
