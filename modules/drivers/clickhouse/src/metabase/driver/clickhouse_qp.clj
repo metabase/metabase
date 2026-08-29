@@ -83,7 +83,7 @@
   #{:week :month :quarter :year})
 
 (defmethod sql.qp/->honeysql [:clickhouse :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ _id-or-name opts :as clause]]
   ;; MBQL preserves a column's `:effective-type` through temporal truncation, but ClickHouse's
   ;; `toStartOfWeek`/`Month`/`Quarter`/`Year` return `Date`, not `DateTime`. When such a ref reaches an
   ;; outer stage, downgrade a DateTime-derived effective type to `:type/Date` so `in-report-timezone`
