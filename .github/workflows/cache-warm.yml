@@ -142,6 +142,17 @@ jobs:
             echo "::endgroup::"
           done
 
+          nested_combos=(
+            "bin/lint-migrations-file|:test" # project migration checks
+          )
+          for spec in "${nested_combos[@]}"; do
+            project=${spec%%|*}
+            combo=${spec#*|}
+            echo "::group::${project}: clojure -P -M${combo}"
+            (cd "$project" && clojure -P -M"${combo}")
+            echo "::endgroup::"
+          done
+
           echo "::group::./bin/mage"
           ./bin/mage
           echo "::endgroup::"
