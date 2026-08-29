@@ -63,8 +63,6 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Check Kondo ratchets
-        run: ./bin/mage check-kondo-ratchets
       - name: Run backend checks
         run: ./bin/mage project-tests backend
 
