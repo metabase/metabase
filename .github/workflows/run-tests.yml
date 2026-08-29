@@ -18,6 +18,17 @@ permissions:
   security-events: write
 
 jobs:
+  # This release branch predates the Project tests suite on master. Keep the
+  # check name available so it can be required consistently across supported
+  # branches without implying that the newer tests were backported here.
+  project-tests:
+    name: Project tests
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Explain compatibility placeholder
+        run: echo "Project tests were introduced after this release branch was cut; nothing to run."
+
   # `force-run` and `force-skip` are global overrides; `defer` means this
   # job has no opinion and every downstream gate behaves as it always has.
   #
