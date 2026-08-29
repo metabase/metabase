@@ -25,7 +25,6 @@ runs:
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
       run: | # bash
-        # shellcheck source=.github/actions/create-backport/kondo-ratchets.sh
         source "${{ github.action_path }}/kondo-ratchets.sh"
 
         git config --global user.email "metabase-bot@metabase.com"
