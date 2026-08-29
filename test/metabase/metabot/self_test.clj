@@ -157,8 +157,8 @@
             (is (= 200 (:socket-timeout @captured)))))))))
 
 (deftest request-enforces-llm-allowed-networks-test
-  ;; Use IP literals to avoid real DNS. `resolving` emulates enough of clj-http to invoke the request's DNS resolver,
-  ;; where the network policy is enforced.
+  ;; IP literals throughout: the resolver goes through real DNS. `resolving` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
   (let [captured  (atom nil)
         resolving (fn [{:keys [url] :as opts}]
                     (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts) (.resolve (u.http/->hostname url)))
