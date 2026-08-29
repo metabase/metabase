@@ -470,8 +470,9 @@
   `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
   `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
   `:type`            — optional; forwarded to the token-tracking row
-  `:network-policy-floor` — optional; the least [[metabase.llm.settings/llm-allowed-networks]] a
-                            deployment-controlled endpoint gets, see [[metabase.llm.settings/network-policy]]"
+
+  `:network-policy-floor` optionally sets the minimum network access for a deployment-controlled endpoint; see
+  [[metabase.llm.settings/network-policy]]."
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            network-policy-floor]
     :as opts}
@@ -562,11 +563,11 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Returns an endpoint config map. When api key is not set or when service url is not set but
-  `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. A deployment-controlled endpoint -- the AI service, or an embedding service the
-  environment names -- gets a `:network-policy-floor` of `:allow-private`, so a private address works under the
-  default policy while loopback and link-local stay blocked. Throws if neither base URL is configured."
+  "Return the embedding endpoint config, or throw if no base URL is configured.
+
+  Requests without an API key use the premium embedding token. The AI service and environment-configured embedding
+  services are deployment-controlled. Their `:allow-private` policy floor admits private addresses but still blocks
+  loopback and link-local."
   []
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
         (cond-> {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
