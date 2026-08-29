@@ -144,4 +144,13 @@
       (testing "unknown provider config fields are rejected"
         (is (some? (mt/user-http-request :rasta :put 400 "testing/llm-providers"
                                          {:value [(update (first connections) :config assoc :unknown "value")]})))
-        (is (= connections (vec (llm.settings/llm-providers))))))))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "provider-internal stored config fields are accepted"
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (let [vllm [{:key    "vllm"
+                       :type   "vllm"
+                       :name   "vLLM"
+                       :config {:base-url       "http://localhost:8000/v1"
+                                :model-reasoning "true"}}]]
+            (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
+            (is (= vllm (vec (llm.settings/llm-providers))))))))))

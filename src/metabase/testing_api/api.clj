@@ -48,7 +48,7 @@
 (defn- validate-llm-provider-fixture!
   [{:keys [type config]}]
   (let [provider-type (llm.provider/provider-type type)
-        known-fields  (into #{} (map :key) (:fields provider-type))
+        known-fields  (into (set (:stored-config-fields provider-type)) (map :key) (:fields provider-type))
         unknown-fields (remove known-fields (keys config))]
     (api/check-400 provider-type (str "Unknown provider type " (pr-str type) "."))
     (api/check-400 (empty? unknown-fields)
