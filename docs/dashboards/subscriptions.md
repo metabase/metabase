@@ -43,7 +43,6 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 You can also send subscriptions to private channels, but that requires additional configuration, see [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
-
 If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
 ### Frequency and timing
@@ -79,8 +78,6 @@ This is helpful for dashboards that are displaying time-limited results (for exa
 
 When configuring an email subscription, you can tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
 
-Currently, you can only send attachments with question results. You can't send the whole dashboard as a PDF attachment.
-
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
 ### File format
@@ -104,6 +101,20 @@ The attached files will include up to 1 048 575 rows by default (Excel's row lim
 
 You can toggle on "Send only attachments (no charts)" if you want to receive just the .csv or .xlsx files without the charts. Remember to select the results you want to attach in "Questions to attach" above the toggle.
 
+## Attach a PDF of the dashboard
+
+To attach a PDF of the dashboard to your subscription, enable the **Attach a PDF of the dashboard** toggle in the subscription settings. When the subscription runs, Metabase generates the PDF and attaches it to the email or Slack message.
+
+The PDF attachment follows the layout of your dashboard. Cards appear in the same arrangement as the dashboard, and each tab starts a new page. Some cards may display differently than they do in your browser. For example, tables that scroll on the dashboard may display all of their columns in the PDF.
+
+Metabase generates the PDF on the Metabase server, which means:
+
+- Generating the PDF can take a minute or more.
+- The PDF uses a light theme. It doesn't follow the theme you set in your browser.
+- The PDF can differ in small ways from the dashboard in your browser. For example, map legends may display in a different position, and charts with many small segments may hide some labels.
+
+Iframe cards created from a URL display as links. Iframe cards created from embed code display "Unable to render this card".
+
 ## Adding multiple subscriptions
 
 You can add multiple subscriptions to a single dashboard. To add a subscription, click on the **+** icon in the dashboard subscription panel.
@@ -122,7 +133,7 @@ You can view a list of all alerts and dashboard subscriptions that people have s
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-You can customize which filter values to apply to each dashboard subscription. That way you can send  an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
+You can customize which filter values to apply to each dashboard subscription. That way you can send an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 
 ### Setting filter values
 
@@ -146,9 +157,14 @@ See [Remove Metabase branding from exports](../questions/exporting-results.md#re
 
 Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
 
+## Custom visualizations fall back to the default chart
+
+Nobody's signed in when Metabase renders a subscription, so a card that uses a [custom visualization](../questions/visualizations/custom.md) falls back to the default visualization for its results.
+
 ## Further reading
 
 - [Alerts](../questions/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Custom visualizations](../questions/visualizations/custom.md)

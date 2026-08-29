@@ -25,11 +25,13 @@ Make people use longer and more complex passwords.
 
 Tell Metabase how long it should wait before asking people to log in again.
 
+## [Two-factor authentication](./two-factor-authentication.md)
+
+Have people confirm their identity with an authenticator app when they log in.
+
 ## Authentication
 
 Metabase offers several options for authentication.
-
-> If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
 ### SSO for Metabase Open Source and Starter plans
 

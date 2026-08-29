@@ -3,7 +3,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
 
-import { BOXPLOT_CHART_DEFINITION } from "./chart-definition";
+import { BOXPLOT_CHART_DEFINITION } from "./definition";
 
 const categoryColumn = createMockColumn({
   name: "Category",

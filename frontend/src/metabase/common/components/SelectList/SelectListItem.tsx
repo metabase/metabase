@@ -24,6 +24,7 @@ export interface SelectListItemProps extends Omit<
 }
 
 const getIconProps = (icon?: string | IconProps): IconProps =>
+  // Unjustified type cast. FIXME
   _.isObject(icon) ? icon : ({ name: icon } as IconProps);
 
 export function SelectListItem({

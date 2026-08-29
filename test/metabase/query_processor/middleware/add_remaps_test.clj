@@ -11,6 +11,7 @@
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -180,6 +181,21 @@
                                                 {:source-field %category-id
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel add-remapped-columns-with-previous-stage-test
+  (let [query        (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                         (lib/append-stage)
+                         (lib/with-fields [(meta/field-metadata :venues :category-id)]))
+        dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
+                             [:lib/external-remap :id])]
+    ;; The `lib/append-stage` models the sandbox behaviour where an extra stage is added
+    ;; and the `remap-column-infos` become name based instead of id based
+    (is (=? {:stages [{}
+                      {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                 (meta/id :venues :category-id)]
+                                [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
+                                 (meta/id :categories :name)]]}]}
+            (qp.add-remaps/add-remapped-columns query)))))
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 

@@ -2,23 +2,16 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
+import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
-import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
-import type { IconName, Timeline, TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,
   CardBody,
   CardCheckboxContainer,
-  CardCreatorInfo,
-  CardDateInfo,
-  CardDescription,
-  CardIcon,
-  CardIconAndDateContainer,
   CardRoot,
-  CardTitle,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -48,8 +41,6 @@ const EventCard = ({
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount<HTMLDivElement>();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
-  const dateMessage = getDateMessage(event);
-  const creatorMessage = getCreatorMessage(event);
 
   const handleToggleSelected = useCallback(() => {
     if (isVisible) {
@@ -81,22 +72,13 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
-          size="sm"
           checked={isVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}
         />
       </CardCheckboxContainer>
       <CardBody>
-        <CardIconAndDateContainer>
-          <CardIcon name={event.icon as unknown as IconName} />
-          <CardDateInfo>{dateMessage}</CardDateInfo>
-        </CardIconAndDateContainer>
-        <CardTitle>{event.name}</CardTitle>
-        {event.description && (
-          <CardDescription>{event.description}</CardDescription>
-        )}
-        <CardCreatorInfo data-server-date>{creatorMessage}</CardCreatorInfo>
+        <TimelineEventInfo event={event} />
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside onClick={handleAsideClick}>
@@ -125,39 +107,29 @@ const getMenuItems = (
     return [];
   }
 
-  return [
-    <Menu.Item key="edit-event" onClick={() => onEdit?.(event)}>
-      {t`Edit event`}
-    </Menu.Item>,
-    <Menu.Item key="move-event" onClick={() => onMove?.(event)}>
-      {t`Move event`}
-    </Menu.Item>,
-    <Menu.Item key="archive-event" onClick={() => onArchive?.(event)}>
-      {t`Archive event`}
-    </Menu.Item>,
-  ];
-};
-
-const getDateMessage = (event: TimelineEvent) => {
-  const date = event.timestamp;
-  const options = Settings.formattingOptions();
-
-  if (event.time_matters) {
-    return formatDateTimeWithUnit(date, "default", options);
-  } else {
-    return formatDateTimeWithUnit(date, "day", options);
+  const items = [];
+  if (onEdit) {
+    items.push(
+      <Menu.Item key="edit-event" onClick={() => onEdit(event)}>
+        {t`Edit event`}
+      </Menu.Item>,
+    );
   }
-};
-
-const getCreatorMessage = (event: TimelineEvent) => {
-  const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
-
-  if (event.creator) {
-    return t`${event.creator.common_name} added this on ${createdAt}`;
-  } else {
-    return t`Added on ${createdAt}`;
+  if (onMove) {
+    items.push(
+      <Menu.Item key="move-event" onClick={() => onMove(event)}>
+        {t`Move event`}
+      </Menu.Item>,
+    );
   }
+  if (onArchive) {
+    items.push(
+      <Menu.Item key="archive-event" onClick={() => onArchive(event)}>
+        {t`Archive event`}
+      </Menu.Item>,
+    );
+  }
+  return items;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

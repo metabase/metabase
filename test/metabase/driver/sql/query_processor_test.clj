@@ -24,6 +24,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -234,9 +235,7 @@
                     (sql.qp/mbql->native :h2))))))))
 
 (defn- legacy-join->honeysql [driver join]
-  (sql.qp/join->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
-                                  (lib.convert/->mbql5 (#'lib.util/join->pipeline join))
-                                  join)))
+  (sql.qp/join->honeysql driver (lib.convert/->mbql5 (#'lib.util/join->pipeline join))))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -275,7 +274,7 @@
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
-;;; to be run against all supported drivers
+;;; to be run against all supported drivers [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
@@ -1426,7 +1425,7 @@
         (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
           (is (= uuid
                  (sql.qp/->honeysql driver
-                                    (sql.qp/mbql-clause-with-opts driver :value {:base_type :type/UUID :effective_type :type/UUID} uuid)))))))))
+                                    [:value {:base_type :type/UUID :effective_type :type/UUID} uuid]))))))))
 
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"

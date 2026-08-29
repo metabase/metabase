@@ -5,6 +5,7 @@
  * This list is used by both jest.config.js and jest.tz.unit.conf.js
  */
 const esmPackages = [
+  "@metabase\\+track",
   "bail",
   "ccount",
   "character-entities.*",
@@ -38,6 +39,7 @@ const esmPackages = [
   "jose",
   "longest-streak",
   "markdown-table",
+  "marked",
   "mdast.*",
   "micromark.*",
   "parse-entities",
@@ -45,6 +47,7 @@ const esmPackages = [
   "react-markdown",
   "rehype-external-links",
   "remark.*",
+  "remend",
   "space-separated-tokens",
   "stringify-entities",
   "trim-lines",

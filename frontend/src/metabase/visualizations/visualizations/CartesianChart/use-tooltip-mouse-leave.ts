@@ -2,8 +2,8 @@ import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 import _ from "underscore";
 
-import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core";
 
 const ECHARTS_TOOLTIP_SELECTOR = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS} > div`;
 const MOUSEMOVE_THROTTLE_MS = 50;
@@ -22,7 +22,9 @@ export const useTooltipMouseLeave = (
 
     const handleGlobalMouseMove = _.throttle((e: MouseEvent) => {
       try {
+        // Unjustified type cast. FIXME
         const target = e.target as HTMLElement;
+        // Unjustified type cast. FIXME
         const tooltipElement = target.closest(
           ECHARTS_TOOLTIP_SELECTOR,
         ) as HTMLElement;

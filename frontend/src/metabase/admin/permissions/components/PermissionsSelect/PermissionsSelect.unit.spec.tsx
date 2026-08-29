@@ -16,7 +16,7 @@ const options: PermissionOption[] = [
     label: "Allowed",
     value: DataPermissionValue.ALL,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   {
     label: "Limited",
@@ -28,7 +28,7 @@ const options: PermissionOption[] = [
     label: "No access",
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 ];
 

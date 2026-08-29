@@ -15,13 +15,12 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -31,6 +30,8 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
+
+import { ObjectDetailSidesheet } from "./ObjectDetailSidesheet";
 
 registerVisualizations();
 
@@ -62,15 +63,19 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
+      // Unjustified type cast. FIXME
       origin_id: ordersProductId.id as number,
       destination: productsId,
+      // Unjustified type cast. FIXME
       destination_id: productsId.id as number,
       relationship: "Mt1",
     },
     {
       origin: reviewsProductId,
+      // Unjustified type cast. FIXME
       origin_id: reviewsProductId.id as number,
       destination: productsId,
+      // Unjustified type cast. FIXME
       destination_id: productsId.id as number,
       relationship: "Mt1",
     },
@@ -96,6 +101,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
           },
         },
       }),
+      // Unjustified type cast. FIXME
       zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
       queryResults: [
         createMockDataset({

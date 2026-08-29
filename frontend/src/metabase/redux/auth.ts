@@ -1,28 +1,25 @@
 import {
   type ThunkDispatch,
-  type UnknownAction,
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
+import { Api } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
-import { sessionApi } from "metabase/api/session";
+import {
+  type MfaChallengeResponse,
+  isMfaChallenge,
+  sessionApi,
+} from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
+import { navigate } from "metabase/router";
+import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -48,10 +45,21 @@ export const refreshSession = createAsyncThunk(
   REFRESH_SESSION,
   async (_, { dispatch }) => {
     await Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refetchCurrentUser()),
+      dispatch(refetchSiteSettings()),
     ]);
     await dispatch(refreshLocale()).unwrap();
+  },
+);
+
+export const COMPLETE_LOGIN = "metabase/auth/COMPLETE_LOGIN";
+export const completeLogin = createAsyncThunk(
+  COMPLETE_LOGIN,
+  async (_, { dispatch }) => {
+    await dispatch(refreshSession()).unwrap();
+    if (!isSmallScreen()) {
+      dispatch(openNavbar());
+    }
   },
 );
 
@@ -60,18 +68,27 @@ interface LoginPayload {
   redirectUrl?: string;
 }
 
+export interface LoginResult {
+  mfaChallenge?: MfaChallengeResponse;
+}
+
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await dispatch(
+      const result = await dispatch(
         sessionApi.endpoints.createSession.initiate(data),
       ).unwrap();
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
+
+      if (isMfaChallenge(result)) {
+        const challenge: LoginResult = { mfaChallenge: result };
+        return challenge;
       }
+
+      await dispatch(completeLogin()).unwrap();
+      const success: LoginResult = {};
+      return success;
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -98,10 +115,7 @@ export const loginGoogle = createAsyncThunk(
           remember,
         }),
       ).unwrap();
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
-      }
+      await dispatch(completeLogin()).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -123,20 +137,19 @@ export const logout = createAsyncThunk(
         const { "saml-logout-url": samlLogoutUrl } =
           (await initiateSLO(dispatch)) ?? {};
 
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
+
+        dispatch(Api.util.resetApiState());
 
         if (samlLogoutUrl) {
           window.location.href = samlLogoutUrl;
         }
       } else {
         await deleteSession(dispatch);
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        // We use old react-router-redux which references old redux, which does not require
-        // action type to be a string - unlike RTK v2+
-        dispatch(push(Urls.login()) as unknown as UnknownAction);
+        navigate(Urls.login());
+        dispatch(Api.util.resetApiState());
         reload(); // clears redux state and browser caches
       }
     } catch (error) {
@@ -169,13 +182,14 @@ export const resetPassword = createAsyncThunk(
   RESET_PASSWORD,
   async (
     { token, password }: ResetPasswordPayload,
-    { dispatch, rejectWithValue },
+    { dispatch, getState, rejectWithValue },
   ) => {
     try {
       await dispatch(
         sessionApi.endpoints.resetPassword.initiate({ token, password }),
       ).unwrap();
       await dispatch(refreshSession()).unwrap();
+      return { sessionCreated: getUser(getState()) != null };
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -219,6 +233,16 @@ export const reducer = createReducer(initialState, (builder) => {
     state.loginPending = true;
   });
   builder.addCase(loginGoogle.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+
+  builder.addCase(completeLogin.pending, (state) => {
+    state.loginPending = true;
+  });
+  builder.addCase(completeLogin.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+  builder.addCase(completeLogin.rejected, (state) => {
     state.loginPending = false;
   });
   builder.addCase(pauseRedirect.toString(), (state) => {

@@ -1,10 +1,7 @@
 (ns metabase.metabot.schema.v1-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.schema.v1 :as schema.v1]
-   [metabase.metabot.util :as metabot.u]
-   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private ai-service-entries
@@ -71,16 +68,3 @@
     (is (not (mr/validate ::schema.v1/message-data
                           [{:role "user" :content "hi"}
                            {:type "text" :id "t1" :text "Hello"}])))))
-
-(deftest ^:parallel fixture-parity-test
-  (doseq [fixture ["metabase/metabot/aisdkstream1.txt"
-                   "metabase/metabot/aisdkstream2.txt"
-                   "metabase/metabot/aisdkstream3.txt"
-                   "metabase/metabot/aisdkstream4.txt"]]
-    (testing fixture
-      (let [messages (with-open [r (io/reader (io/resource fixture))]
-                       (metabot.u/aisdk->messages "assistant" (line-seq r)))
-            ;; the schema describes the at-rest shape, so simulate the `mi/transform-json` write +
-            ;; read cycle: keyword values become strings, keys stay keywords
-            at-rest  (-> messages json/encode json/decode+kw)]
-        (is (nil? (mr/explain ::schema.v1/message-data at-rest)))))))

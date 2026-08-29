@@ -145,20 +145,39 @@ describe("scenarios > account > notifications", () => {
       cy.signInAsAdmin();
       openUserNotifications();
 
+      cy.intercept("POST", "/api/notification/*/unsubscribe").as(
+        "alertUnsubscribe",
+      );
+
       cy.findByTestId("notifications-list")
         .findByText("Created by Robert Tableton", { exact: false })
-        .should("exist");
+        .should("be.visible");
 
       clickUnsubscribe();
 
+      // Wait for the confirm modal's entrance transition to settle before
+      // clicking. A bare findByText resolves the instant the title mounts, while
+      // the modal is still animating in and its title transiently overlaps the
+      // Unsubscribe button — clicking then fails "covered by another element".
+      // Anchoring on the title being visible defers the click until the modal
+      // has finished opening.
       H.modal().within(() => {
-        cy.findByText("Confirm you want to unsubscribe");
+        cy.findByText("Confirm you want to unsubscribe").should("be.visible");
         cy.findByText("Unsubscribe").click();
       });
 
-      cy.findByTestId("notifications-list")
-        .findByText("Created by Robert Tableton", { exact: false })
-        .should("not.exist");
+      cy.wait("@alertUnsubscribe");
+
+      // This was the admin's only notification and they didn't create it, so
+      // unsubscribing empties the list and the notifications-list container
+      // unmounts into the empty state. Anchor on the success toast first, then
+      // assert the list is gone — don't scope the negative check inside the
+      // container that disappears.
+      H.undoToastList()
+        .findByText("Successfully unsubscribed.")
+        .should("be.visible");
+
+      cy.findByTestId("notifications-list").should("not.exist");
     });
 
     it("should be able to see created notifications that a user is not subscribed to", () => {

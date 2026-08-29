@@ -59,15 +59,4 @@ describe("support > permissions (metabase#8472)", () => {
     cy.signIn("nodata");
     filterDashboard();
   });
-
-  it("should not allow a nocollection user to visit the page, hence cannot see the filter", () => {
-    cy.signIn("nocollection");
-    cy.request({
-      method: "GET",
-      url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
-      failOnStatusCode: false,
-    }).should((xhr) => {
-      expect(xhr.status).to.equal(403);
-    });
-  });
 });

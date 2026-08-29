@@ -301,7 +301,7 @@ const ParameterItem = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <Box className={S.parameterItem} bg="background-secondary">
+    <Box className={S.parameterItem} bg="background_page-secondary">
       <Group justify="space-between" align="center" pr="md">
         <Button
           c={isCompatible ? "text-primary" : undefined}

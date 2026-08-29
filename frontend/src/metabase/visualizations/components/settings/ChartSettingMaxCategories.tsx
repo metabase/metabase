@@ -2,20 +2,12 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Select, Stack, Text } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  AggregationFunction,
+  ChartSettingMaxCategoriesProps,
+} from "metabase/viz-core";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
-import type { ChartSettingWidgetProps } from "./types";
-
-type AggregationFunction = Exclude<
-  VisualizationSettings["graph.other_category_aggregation_fn"],
-  undefined
->;
-
-export type ChartSettingMaxCategoriesProps = ChartSettingWidgetProps<number> & {
-  isEnabled?: boolean;
-  aggregationFunction: AggregationFunction;
-};
 
 export const ChartSettingMaxCategories = ({
   isEnabled,
@@ -35,6 +27,7 @@ export const ChartSettingMaxCategories = ({
     (value: string | null) => {
       if (value) {
         onChangeSettings({
+          // Unjustified type cast. FIXME
           "graph.other_category_aggregation_fn": value as AggregationFunction,
         });
       }

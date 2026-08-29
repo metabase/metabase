@@ -7,8 +7,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -23,13 +23,13 @@ export default {
   component: Funnel,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Funnel);
 
 const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": 1 },
 });
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ id: 1, display: "funnel", dataset_query }),

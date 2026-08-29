@@ -1,7 +1,11 @@
 import { c, t } from "ttag";
 
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
 
 import { DiagnosticCheckboxes } from "./DiagnosticCheckboxes";
@@ -49,10 +53,12 @@ export const DownloadDiagnosticModal = ({
     >
       <Form>
         <Text py="md">{t`Could you provide us with a little context?`}</Text>
-        <FormTextArea
+        <FormTextarea
           name="description"
-          autoFocus
+          data-autofocus
           placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+          minRows={5}
+          mb="md"
         />
         <Text>
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}

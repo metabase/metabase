@@ -1,6 +1,7 @@
 import { trackSimpleEvent } from "metabase/analytics";
+import type { ChecklistItemValue } from "metabase/redux/store";
 
-import type { ChecklistItemCTA, ChecklistItemValue } from "./types";
+import type { ChecklistItemCTA } from "./types";
 
 export const trackChecklistItemExpanded = (value: ChecklistItemValue) => {
   trackSimpleEvent({

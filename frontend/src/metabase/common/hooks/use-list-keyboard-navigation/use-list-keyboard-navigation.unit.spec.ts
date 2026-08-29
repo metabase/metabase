@@ -40,6 +40,27 @@ describe("useListKeyboardNavigation", () => {
     expect(list.some(getRef)).toBeFalsy();
   });
 
+  // The search bar renders this list over an input that treats Enter as "show
+  // all results" and navigates. Consuming the key keeps that from replacing the
+  // navigation the selection just started.
+  it("consumes Enter when an item is selected", () => {
+    renderHook(() =>
+      useListKeyboardNavigation<unknown>({ list, onEnter: jest.fn() }),
+    );
+
+    fireKey("ArrowDown");
+
+    expect(fireEvent.keyDown(window, { key: "Enter" })).toBe(false);
+  });
+
+  it("leaves Enter alone when no item is selected", () => {
+    renderHook(() =>
+      useListKeyboardNavigation<unknown>({ list, onEnter: jest.fn() }),
+    );
+
+    expect(fireEvent.keyDown(window, { key: "Enter" })).toBe(true);
+  });
+
   it("does nothing on key down if no list items", () => {
     const onEnterMock = jest.fn();
     const { result } = renderHook(() =>

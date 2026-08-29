@@ -91,7 +91,7 @@ function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
 export function defineCompactSchema<T>(
   config: SchemaConfig<T>,
 ): CompactSchema<T> {
-  const entries = Object.entries(config) as [string, FieldDescriptor][];
+  const entries: [string, FieldDescriptor][] = Object.entries(config);
   const normalized = entries.map(
     ([fullKey, descriptor]) =>
       [fullKey, normalizeDescriptor(descriptor)] as const,
@@ -102,6 +102,7 @@ export function defineCompactSchema<T>(
       const result: Record<string, unknown> = {};
 
       for (const [fullKey, field] of normalized) {
+        // Unjustified type cast. FIXME
         const val = (value as Record<string, unknown>)[fullKey];
 
         if (field.optional && val === undefined) {
@@ -132,6 +133,7 @@ export function defineCompactSchema<T>(
         return null;
       }
 
+      // Unjustified type cast. FIXME
       const obj = raw as Record<string, unknown>;
       const result: Record<string, unknown> = {};
 
@@ -164,6 +166,7 @@ export function defineCompactSchema<T>(
         }
       }
 
+      // Unjustified type cast. FIXME
       return result as T;
     },
   };

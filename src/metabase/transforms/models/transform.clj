@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -40,6 +41,20 @@
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
+(defn- native-transform-write-allowed?
+  [instance source-db-id]
+  (or (not (transforms-base.u/native-query-transform? instance))
+      (and source-db-id
+           (= :query-builder-and-native
+              (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+
+(defn- transform-database-permissions?
+  [instance]
+  (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
+        target-db-id (transforms-base.i/target-db-id instance)]
+    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+            (distinct (keep identity [source-db-id target-db-id])))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -48,7 +63,8 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+                (transform-database-permissions? instance)
+                (native-transform-write-allowed? instance (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
@@ -82,7 +98,8 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
                   (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
+                  (transform-database-permissions? instance)
+                  (native-transform-write-allowed? instance source-db-id))))))
 
 (defn- orphan-query?
   "True when the query map has its `:database` key explicitly set to nil — the
@@ -101,7 +118,10 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-incremental-strategy
+                         (fn [strategy]
+                           (-> (update-keys strategy keyword)
+                               (m/update-existing :lookback #(some-> % (update-keys keyword))))))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
 
@@ -116,10 +136,12 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source_type mi/transform-keyword
-   :source      {:out transform-source-out, :in transform-source-in}
-   :target      mi/transform-json
-   :run_trigger mi/transform-keyword})
+  {:source_type        mi/transform-keyword
+   :source             {:out transform-source-out, :in transform-source-in}
+   :target             mi/transform-json
+   ;; nil round-trips as NULL
+   :table_dependencies {:in #(some-> % mi/json-in), :out mi/json-out-with-keywordization}
+   :run_trigger        mi/transform-keyword})
 
 (defmethod collection/allowed-namespaces :model/Transform
   [_]
@@ -136,13 +158,30 @@
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
     (when (and target-db-id (not valid-db-id?))
-      (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
+      (log/warnf "Invalid target database id (%s) ignored for new transform" target-db-id))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
          :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
+
+(defn- resolve-merge-key-field-ids
+  "Fill `:field-id` on a merge target's unique-key columns from the synced target table's fields, once
+  the table exists and any are still by-name only."
+  [transform]
+  (let [target     (or (:target transform) (:target (t2/original transform)))
+        table-id   (or (:target_table_id transform) (:target_table_id (t2/original transform)))
+        unique-key (get-in target [:target-incremental-strategy :unique-key])]
+    (if (and (transforms-base.u/merge-target? {:target target})
+             table-id
+             (some #(nil? (:field-id %)) unique-key))
+      (let [name->id (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true)]
+        (assoc transform :target
+               (assoc-in target [:target-incremental-strategy :unique-key]
+                         (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
+                               unique-key))))
+      transform)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
@@ -156,10 +195,18 @@
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
                           (transforms-base.i/target-db-id transform))]
+    ;; A source or target edit may change the output columns, and we can't cheaply tell, so invalidate conservatively:
+    ;; the next run re-applies the managed indexes against the new schema and fails if a column is gone.
+    (when (and target-changed? (not mi/*deserializing?*))
+      (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
              :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+
+      ;; Invalidate cached deps when the source changes
+      (:source (t2/changes transform))
+      (assoc :table_dependencies nil)
 
       target-changed?
       (assoc :target_db_id target-db-id)
@@ -168,7 +215,10 @@
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
             new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
         (and old-field-id (not= old-field-id new-field-id)))
-      (assoc :last_checkpoint_value nil))))
+      (assoc :last_checkpoint_value nil)
+
+      true
+      resolve-merge-key-field-ids)))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -368,6 +418,20 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method indexes
+  :indexes
+  "Fetch the table indexes that belong to each transform"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          idx-mappings  (group-by :transform_id
+                                  (filter table-index/applicable?
+                                          (t2/select :model/TableIndex
+                                                     :transform_id [:in transform-ids]
+                                                     {:order-by [[:index_name :asc]]})))]
+      (for [transform transforms]
+        (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
+
 (mi/define-batched-hydration-method table-with-db-and-fields
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
@@ -379,10 +443,6 @@
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
-
-(defmethod serdes/hash-fields :model/Transform
-  [_transform]
-  [:name :created_at])
 
 (defn- import-maybe-int-database-fk
   "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
@@ -396,10 +456,28 @@
   [v]
   (if (pos-int? v) v (serdes/*import-table-fk* v)))
 
+(defn- import-maybe-int-field-fk [v]
+  (if (pos-int? v) v (some-> v serdes/*import-field-fk*)))
+
+(defn- export-checkpoint-field-fk
+  "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
+  the importer passes numbers through, so one stale config can't fail the whole import."
+  [field-id]
+  (if (t2/exists? :model/Field :id field-id)
+    (serdes/*export-field-fk* field-id)
+    field-id))
+
+(defn- update-checkpoint-field
+  "Apply `f` to the source's `:checkpoint-filter-field-id`, when one is set."
+  [source f]
+  (m/update-existing source :source-incremental-strategy
+                     (fn [strategy]
+                       (m/update-existing strategy :checkpoint-filter-field-id f))))
+
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value]
+   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -416,7 +494,8 @@
                                                                  (->> (transforms-base.u/normalize-source-tables entries)
                                                                       (mapv #(-> %
                                                                                  (m/update-existing :table_id serdes/*export-table-fk*)
-                                                                                 (m/update-existing :database_id serdes/*export-database-fk*)))))))
+                                                                                 (m/update-existing :database_id serdes/*export-database-fk*))))))
+                                            (update-checkpoint-field export-checkpoint-field-fk))
                                         ;; Orphan: source DB has been deleted, so table/field rows it referenced
                                         ;; are gone too. Null the dead numeric refs and flag the body so
                                         ;; the importer skips ref resolution.
@@ -425,7 +504,8 @@
                                             (m/update-existing :query assoc :database nil)
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
-                                                               #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %)))))
+                                                               #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
+                                            (update-checkpoint-field (constantly nil)))))
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
@@ -439,22 +519,27 @@
                                                                       (mapv (fn [entry]
                                                                               (-> entry
                                                                                   (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk))))))))))}
+                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                            (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
-(defmethod serdes/dependencies "Transform"
+(defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
-  (set
-   (concat
-    (when collection_id
-      [[{:model "Collection" :id collection_id}]])
-    (when source_database_id
-      [[{:model "Database" :id source_database_id}]])
-    (for [{tag-id :tag_id} tags]
-      [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source))))
+  (let [checkpoint-field-ref (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
+    (set
+     (concat
+      (when collection_id
+        [[{:model "Collection" :id collection_id}]])
+      (when source_database_id
+        [[{:model "Database" :id source_database_id}]])
+      (for [{tag-id :tag_id} tags]
+        [{:model "TransformTag" :id tag-id}])
+      (when (some-> checkpoint-field-ref pos-int? not)
+        [(serdes/field->path checkpoint-field-ref)])
+      (serdes/mbql-deps false source)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))

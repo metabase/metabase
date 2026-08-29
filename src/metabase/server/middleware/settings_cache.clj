@@ -16,10 +16,10 @@
       (when (and last-known-update
                  (try (pos? (compare cookie-timestamp last-known-update))
                       (catch Exception _e
-                        (log/infof "Strange last known update cookie: %s" cookie-timestamp)
+                        (log/info "Strange last known update cookie")
                         false)))
         (log/info "Settings cookie indicates cache is out of date. Refreshing...")
-        (setting/restore-cache!)
+        (setting/restore-cache-if-needed! :force-check? true)
         ::restored))))
 
 (defn- maybe-set-settings-last-updated-cookie

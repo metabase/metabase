@@ -8,16 +8,14 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { api } from "metabase/api/client";
 import { datasetApi } from "metabase/api/dataset";
-import { exportFormatPng } from "metabase/common/types/export";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/settings";
 import * as Urls from "metabase/urls";
-import { openSaveDialog } from "metabase/utils/dom";
+import { getBasename } from "metabase/utils/basename";
+import { openSaveDialog, waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
 import { checkNotNull } from "metabase/utils/types";
@@ -28,7 +26,7 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -37,6 +35,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import { exportFormatPng } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";
@@ -240,6 +239,24 @@ export const downloadQueryResults = createAsyncThunk(
   },
 );
 
+/**
+ * Read a download response body as a Blob. When a query fails *after* the
+ * download has started streaming, the server has already committed the HTTP
+ * status, so it signals the failure by aborting the connection. That truncates
+ * the response and makes `blob()` reject — surface a clean, localized error
+ * instead of a raw network error like "Failed to fetch", so the user knows the
+ * file did not download completely.
+ */
+export const readDownloadBlob = async (response: Response): Promise<Blob> => {
+  try {
+    return await response.blob();
+  } catch {
+    throw new Error(
+      t`The download was interrupted and the file may be incomplete. Please try again.`,
+    );
+  }
+};
+
 export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
   async (
@@ -257,7 +274,7 @@ export const downloadDataset = createAsyncThunk(
     try {
       const response = await promise.unwrap();
       const fileName = getDatasetFileName(response.headers, opts.type);
-      const fileContent = await response.blob();
+      const fileContent = await readDownloadBlob(response);
       openSaveDialog(fileName, fileContent);
 
       return { id, fileName };
@@ -270,6 +287,7 @@ export const downloadDataset = createAsyncThunk(
 type ExportParams = {
   format_rows: boolean;
   pivot_results: boolean;
+  csv_include_bom: boolean;
 };
 
 const getPublicDashcardParams = (
@@ -344,10 +362,8 @@ const convertSearchParamsToObject = (params: URLSearchParams) => {
   const object: Record<string, string | string[]> = {};
   for (const [key, value] of params.entries()) {
     if (object[key]) {
-      object[key] = ([] as string[]).concat(
-        object[key] as string | string[],
-        value,
-      );
+      // Unjustified type cast. FIXME
+      object[key] = ([] as string[]).concat(object[key], value);
     } else {
       object[key] = value;
     }
@@ -461,6 +477,7 @@ export const getDatasetParams = ({
   const exportParams: ExportParams = {
     format_rows: enableFormatting,
     pivot_results: enablePivot,
+    csv_include_bom: true,
   };
 
   const { accessedVia, resourceType } = getDownloadedResourceType({
@@ -560,7 +577,10 @@ export function getDatasetDownloadUrl(
   url: string,
   params?: URLSearchParams | string,
 ) {
-  url = url.replace(api.basename, ""); // make url relative if it's not
+  const basename = getBasename();
+  if (basename && url.startsWith(basename)) {
+    url = url.slice(basename.length); // make url relative if it's not
+  }
   if (params) {
     url += `?${params.toString()}`;
   }

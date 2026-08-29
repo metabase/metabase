@@ -1,7 +1,11 @@
 import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  RTK_CACHE_KEY_PARAM,
+  skipToken,
+  useGetAdhocQueryQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";
@@ -9,7 +13,7 @@ import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -142,7 +146,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
       ? {
           ...Lib.toJsQuery(query),
           ignore_error: true,
-          _refetchDeps: field,
+          [RTK_CACHE_KEY_PARAM]: field,
         }
       : skipToken,
   );

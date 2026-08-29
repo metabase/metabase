@@ -1,11 +1,15 @@
 (ns metabase-enterprise.tenants.user-api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.users.models.user-test :as user-test]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 (defn- group-or-ids->user-group-memberships
   [group-or-ids]
@@ -202,3 +206,49 @@
           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id tenant-id})
           (is (= #{(u/the-id (perms/all-external-users-group))}
                  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))))))
+
+(deftest tenant-user-creation-sends-no-invite-email-test
+  (testing "POST /api/user creating a tenant user does not send an invite email even when SMTP is configured"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tid :id} {:name "T" :slug "t"}]
+          (notification.tu/with-send-notification-sync
+            (mt/with-fake-inbox
+              (mt/with-model-cleanup [:model/User]
+                (mt/user-http-request :crowberto :post 200 "user"
+                                      {:first_name "A" :last_name "B" :email (mt/random-email) :tenant_id tid})
+                (is (empty? @mt/inbox))))))))))
+
+(deftest tenant-user-can-join-custom-tenant-group-test
+  (testing "POST /api/user with a custom tenant group persists exactly two memberships (All tenant users + the custom group)"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tid :id} {:name "T" :slug "t"}
+                       :model/PermissionsGroup {gid :id} {:name "Fav" :is_tenant_group true}]
+          (mt/with-model-cleanup [:model/User]
+            (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name "M" :last_name "C" :email (mt/random-email) :tenant_id tid
+                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
+                                                                       {:id gid}]})]
+              (is (= #{(u/the-id (perms/all-external-users-group)) gid}
+                     (set (map :id (:user_group_memberships resp))))))))))))
+
+(deftest tenant-user-visibility-when-tenants-disabled-test
+  (testing "Tenant users when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/Tenant {tenant-id :id}      {:name "Test Tenant"}
+                     :model/User   {tenant-user-id :id} {:tenant_id  tenant-id
+                                                         :email      "tenant-hide@example.com"
+                                                         :first_name "Tenant"
+                                                         :last_name  "Hide"}]
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "explicit opt-in paths still surface tenant users (needed for the demote workflow)"
+            (testing "GET /api/user/:id by known ID returns the tenant user"
+              (is (=? {:id tenant-user-id :tenant_id tenant-id}
+                      (mt/user-http-request :crowberto :get 200 (format "user/%d" tenant-user-id)))))
+            (testing "GET /api/user?tenancy=external still lists tenant users"
+              (is (some #(= tenant-user-id (:id %))
+                        (:data (mt/user-http-request :crowberto :get 200 "user" :tenancy "external" :status "all"))))))
+          (testing "GET /api/user/recipients hides tenant users (no opt-in API)"
+            (is (not-any? #(= tenant-user-id (:id %))
+                          (:data (mt/user-http-request :crowberto :get 200 "user/recipients"))))))))))

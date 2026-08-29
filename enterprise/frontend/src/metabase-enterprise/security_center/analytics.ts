@@ -5,3 +5,9 @@ export const trackSecurityCenterPageViewed = () => {
     event: "security_center_page_viewed",
   });
 };
+
+export const trackSecurityAdvisoryDownloadClicked = () => {
+  trackSimpleEvent({
+    event: "security_advisory_download_clicked",
+  });
+};

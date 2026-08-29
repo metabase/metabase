@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -166,3 +167,21 @@
                                                  (u.date/format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (u.date/parse s))
                                                  s))]
                                     (qp/process-query query)))))))))
+
+(deftest ^:parallel coerced-field-through-model-test
+  (testing "#22519 a field with a coercion strategy still executes through a model source"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [base-mp (lib.tu/merged-mock-metadata-provider
+                     (mt/metadata-provider)
+                     {:fields [{:id                (mt/id :reviews :rating)
+                                :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                                :effective-type    :type/DateTime}]})
+            mp      (lib.tu/mock-metadata-provider
+                     base-mp
+                     {:cards [{:id            1
+                               :type          :model
+                               :database-id   (mt/id)
+                               :dataset-query (lib/query base-mp (lib.metadata/table base-mp (mt/id :reviews)))}]})
+            query   (lib/query mp (lib.metadata/card mp 1))]
+        (mt/with-native-query-testing-context query
+          (is (seq (mt/rows (qp/process-query query)))))))))

@@ -9,7 +9,7 @@ import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
-import { ROOT_COLLECTION as ROOT } from "metabase/collections/constants";
+import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import type { Collection, Dashboard } from "metabase-types/api";
 import {
@@ -27,6 +27,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
 const CURRENT_USER = createMockUser({
@@ -41,7 +42,7 @@ const ROOT_COLLECTION = createMockCollection({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "Personal collection",
   can_write: true,
   is_personal: true,

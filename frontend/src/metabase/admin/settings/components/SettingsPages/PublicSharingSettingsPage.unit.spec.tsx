@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -32,6 +31,7 @@ const setup = async (enablePublicSharing = false) => {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -76,13 +76,13 @@ const setup = async (enablePublicSharing = false) => {
       },
     },
   );
+
+  await screen.findByText("Enable Public Sharing");
 };
 
 describe("PublicSharingSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
-    await act(() => setup(false));
-
-    expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
+    await setup(false);
 
     [
       "Shared dashboards",
@@ -99,17 +99,19 @@ describe("PublicSharingSettingsPage", () => {
   });
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
-    await act(() => setup(true));
+    await setup(true);
+
+    // Each list loads from its own endpoint, so await one row per list.
+    expect(await screen.findByText("Test Action")).toBeInTheDocument();
+    expect(await screen.findByText("Test Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Test Question")).toBeInTheDocument();
+    expect(await screen.findByText("Test Document")).toBeInTheDocument();
+
     [
-      "Enable Public Sharing",
       "Shared dashboards",
       "Shared questions",
       "Shared action forms",
       "Shared documents",
-      "Test Action",
-      "Test Dashboard",
-      "Test Question",
-      "Test Document",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -123,7 +125,7 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.queryByText("Shared Documents")).not.toBeInTheDocument();
 
     // Toggle public sharing on
-    const toggle = await screen.findByRole("switch");
+    const toggle = screen.getByRole("switch");
     await userEvent.click(toggle);
 
     await waitFor(async () => {

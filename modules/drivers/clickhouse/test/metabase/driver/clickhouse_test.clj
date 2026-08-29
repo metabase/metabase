@@ -5,10 +5,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -20,7 +22,10 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.upload.impl-test :as upload-test]
    [taoensso.nippy :as nippy]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.clickhouse.jdbc ConnectionImpl)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +35,23 @@
   (if (resolve `mt/with-dynamic-redefs)
     `(mt/with-dynamic-redefs ~bindings ~@body)
     `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
+
+(deftest ^:parallel expr->columns-test
+  (testing "splits a ClickHouse key expression into its top-level columns/expressions (no live DB needed)"
+    ;; the catalog strings here are the real stored forms: `system.tables.sorting_key` is unwrapped, a single-expression
+    ;; `system.data_skipping_indices.expr` is paren-wrapped, and a function key carries its own inner comma.
+    (are [expr expected] (= expected (#'clickhouse/expr->columns expr))
+      "a, b"                ["a" "b"]                  ; sorting key, no wrapper
+      "(a, b)"              ["a" "b"]                  ; skip-index, wrapped
+      "a"                   ["a"]
+      "(lower(s))"          ["lower(s)"]               ; wrapped single expression, not truncated
+      "a, cityHash64(s, b)" ["a" "cityHash64(s, b)"]   ; function key's inner comma is not a split point
+      ;; a backtick-quoted name can hold a comma or paren; it must stay one column and come out bare
+      "`weird,name`, b"     ["weird,name" "b"]
+      "`paren(col`, b"      ["paren(col" "b"]
+      "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
+      ""                    []                         ; blank -> [], so :key-columns stays schema-valid
+      nil                   [])))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
@@ -48,6 +70,40 @@
            (let [details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
                  spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
              (driver/db-default-timezone :clickhouse spec))))))
+
+(deftest clickhouse-report-timezone-reaches-server-test
+  ;; Regression for #79671.
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "America/Santiago"
+      (is (= [["America/Santiago" "America/Santiago"]]
+             (->> "SELECT timezone() AS tz, getSetting('session_timezone') AS s"
+                  (lib/native-query (mt/metadata-provider))
+                  qp/process-query
+                  mt/rows))))))
+
+(deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
+  (mt/test-driver :clickhouse
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (let [underlying-conn-ids (atom [])
+          observe (fn [opts]
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse (mt/id) opts
+                     (fn [^Connection conn]
+                       (swap! underlying-conn-ids conj
+                              (System/identityHashCode (.unwrap conn ConnectionImpl)))
+                       (with-open [stmt (.createStatement conn)
+                                   rs   (.executeQuery stmt "SELECT getSetting('session_timezone')")]
+                         (.next rs)
+                         (.getString rs 1)))))]
+      (is (= "America/Santiago" (observe {:session-timezone "America/Santiago"})))
+      (let [result (observe nil)]
+        ;; Guard: the leak is only observable when the pool hands us the same underlying
+        ;; ConnectionImpl. With a freshly invalidated pool and back-to-back borrows this holds;
+        ;; if it stops holding, the test has to be fixed.
+        (is (apply = @underlying-conn-ids)
+            (str "expected both borrows to reuse the same underlying connection: " @underlying-conn-ids))
+        (is (= "" result)
+            "a borrow without :session-timezone must not inherit the previous borrow's timezone")))))
 
 (deftest ^:parallel clickhouse-connection-string
   (testing "connection with no additional options"
@@ -488,6 +544,24 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(deftest ^:parallel recursive-cte-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a native query with a recursive CTE (#73161)"
+      (is (= [[1] [2] [3]]
+             (->> "WITH RECURSIVE t AS ( SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 3 ) SELECT * FROM t;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/formatted-rows [int])))))))
+
+(deftest ^:parallel query-with-boolean-setting-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a query with settings set to a boolean (#73431)"
+      (is (= [[2]]
+             (->> "select 2 SETTINGS use_query_cache = true"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))
+
 (defn- check-legacy-dbname [dbname exp-name]
   (let [details (assoc (:details (mt/db)) :dbname dbname)
         spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
@@ -531,16 +605,21 @@
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
-(deftest ^:parallel set-role-statement-escape-quotes-test
+(deftest ^:parallel set-role-statement-quotes-role-test
   (are [role sql] (= sql
                      (sql-jdbc/set-role-statement :clickhouse nil role))
+    ;; the whole role is quoted as a single identifier
     "x"                             "SET ROLE \"x\""
-    ;; don't re-quote something that already has quotes
+    ;; a comma is part of the role name, not a separator between roles
+    "x,y"                           "SET ROLE \"x,y\""
+    "a,b"                           "SET ROLE \"a,b\""
+    ;; an already-quoted value is left as-is
     "\"x\""                         "SET ROLE \"x\""
-    ;; split on commas and quote separately
-    "x,y"                           "SET ROLE \"x\",\"y\""
-    ;; default database role, don't quote
+    ;; default database role is emitted verbatim, not quoted
     "NONE"                          "SET ROLE NONE"
-    ;; escape double-quotes in the role
+    ;; interior double-quotes are doubled
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
-    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    ;; a trailing backslash is escaped so it cannot close the quoted identifier
+    "foo\\"                         "SET ROLE \"foo\\\\\""
+    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""))

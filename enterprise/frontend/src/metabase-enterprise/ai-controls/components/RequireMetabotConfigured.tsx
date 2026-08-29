@@ -1,25 +1,24 @@
 import { useLayoutEffect } from "react";
-import { replace } from "react-router-redux";
 
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { Outlet, useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 
 const FALLBACK_PATH = "/admin/metabot/";
 
 /** Redirects Metabot admin sub-pages to the index until AI is configured. */
 export const RequireMetabotConfigured = ({
-  children,
+  children = <Outlet />,
 }: {
   children?: React.ReactNode;
 }) => {
   const isConfigured = useSetting("llm-metabot-configured?");
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useLayoutEffect(() => {
     if (!isConfigured) {
-      dispatch(replace(FALLBACK_PATH));
+      navigate(FALLBACK_PATH, { replace: true });
     }
-  }, [isConfigured, dispatch]);
+  }, [isConfigured, navigate]);
 
   if (!isConfigured) {
     return null;

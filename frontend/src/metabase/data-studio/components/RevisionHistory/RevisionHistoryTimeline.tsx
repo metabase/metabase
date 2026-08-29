@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserId } from "metabase/selectors/user";
 import { Center, Stack, Text, Timeline } from "metabase/ui";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type { RevisionEntityType, TableId } from "metabase-types/api";

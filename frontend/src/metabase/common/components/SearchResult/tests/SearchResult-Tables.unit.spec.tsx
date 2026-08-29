@@ -72,4 +72,29 @@ describe("SearchResult > Tables", () => {
     await userEvent.click(link);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("does not turn a still-syncing table into a link (no middle/ctrl-click navigation)", () => {
+    const TEST_TABLE = createMockTable({
+      name: "Syncing Table",
+      initial_sync_status: "incomplete",
+    });
+    const TEST_DATABASE = createMockDatabase();
+    setupTableEndpoints(TEST_TABLE);
+    setupDatabaseEndpoints(TEST_DATABASE);
+    setupUsersEndpoints([USER]);
+    setupUserRecipientsEndpoint({ users: [USER] });
+    const result = createWrappedSearchResult({
+      model: "table",
+      table_id: TEST_TABLE.id,
+      database_id: TEST_DATABASE.id,
+      name: "Syncing Table",
+      initial_sync_status: "incomplete",
+    });
+
+    renderWithProviders(<SearchResult result={result} index={0} />);
+
+    expect(screen.getByTestId("search-result-item-name")).not.toHaveAttribute(
+      "href",
+    );
+  });
 });

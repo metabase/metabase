@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -66,17 +67,17 @@
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
-       (log/warnf "Expression %s does not exist in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+       (log/warnf "Expression does not exist in stage %d" (lib.util/canonical-stage-index query stage-number))
        (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
          (u/prog1 (resolve-expression query previous-stage-number expression-name)
            (when <>
-             (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
+             (log/warn "Found expression in previous stage"))))
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card (lib.metadata.calculation/primary-source-card query)]
            (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
              (when <>
-               (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
-                          (pr-str expression-name) (:id source-card))))))
+               (log/warnf "Found expression in source card %d. Next time, use a :field name ref!"
+                          (:id source-card))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
@@ -421,12 +422,25 @@
     unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
-  "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
-  [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
-  (let [base-type (lib.schema.expression/type-of-resolved literal)]
-    (lib.options/ensure-uuid [:value
-                              {:base-type base-type, :effective-type base-type}
-                              (cond-> literal (u.number/bigint? literal) str)])))
+  "Generate a new `:value` clause, used to wrap wrap value literals to allow type information to be attached to them.
+  Mostly used by the query processor. Converts bigint literals to strings for serialization purposes.
+
+  Note that `:effective-type` is required in `opts`."
+  ([literal :- [:or :string number? :boolean [:fn {:error/message "big integer?"} u.number/bigint?]]]
+   (value nil literal))
+  ([opts :- [:maybe [:merge
+                     [:ref ::lib.schema.literal/value.options]
+                     ;; `:lib/uuid` and `:effective-type` are optional, as they will be added automatically
+                     [:map
+                      [:lib/uuid       {:optional true} ::lib.schema.common/uuid]
+                      [:effective-type {:optional true} ::lib.schema.common/base-type]]]]
+    literal]
+   (let [base-type      (or (:base-type opts) (lib.schema.expression/type-of-resolved literal))
+         effective-type (or (:effective-type opts) base-type)]
+     (-> [:value
+          (merge {:base-type base-type, :effective-type effective-type} opts)
+          (cond-> literal (u.number/bigint? literal) str)]
+         lib.options/ensure-uuid))))
 
 (mu/defn expression-metadata :- ::lib.schema.metadata/column
   "Return column metadata for an `expression-definition` MBQL clause."

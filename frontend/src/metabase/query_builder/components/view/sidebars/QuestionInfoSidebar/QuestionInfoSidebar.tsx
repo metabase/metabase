@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import { Link } from "metabase/common/components/Link";
 import {
@@ -12,17 +12,18 @@ import {
   SidesheetCardTitle,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
-import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";
-import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+
+import { onCloseQuestionInfo } from "../../../../store/actions";
+import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
@@ -30,7 +31,7 @@ import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
 }
 
 export const QuestionInfoSidebar = ({

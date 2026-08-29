@@ -7,17 +7,12 @@ import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
-
-export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
-  canRemoveAll?: boolean;
-};
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,
@@ -103,7 +98,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      leftSection={<Icon name="trash" c="text-tertiary" />}
+                      leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -138,10 +133,10 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    Color(color("error")).hex(),
-    Color(color("warning")).hex(),
-    Color(color("success")).hex(),
-    Color(color("background-tertiary")).hex(),
+    Color(color("feedback-negative")).hex(),
+    Color(color("feedback-warning")).hex(),
+    Color(color("feedback-positive")).hex(),
+    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

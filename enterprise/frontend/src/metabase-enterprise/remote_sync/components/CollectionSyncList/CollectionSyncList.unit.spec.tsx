@@ -388,6 +388,7 @@ describe("CollectionSyncList", () => {
         // Simulate server update by changing initial values to match submitted values
         setCurrentInitialValues({
           ...currentInitialValues,
+          // Unjustified type cast. FIXME
           [COLLECTIONS_KEY]: values[
             COLLECTIONS_KEY
           ] as CollectionSyncPreferences,

@@ -2,8 +2,7 @@ import { useMemo } from "react";
 
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
-import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
+import { type RowChartTheme, getVisualizationTheme } from "metabase/viz-core";
 
 export const useRowChartTheme = (
   fontFamily: string = "Lato",
@@ -19,7 +18,7 @@ export const useRowChartTheme = (
 
     return {
       axis: {
-        color: color("border"),
+        color: color("border-neutral"),
         ticks: {
           size: cartesian.label.fontSize,
           weight: 400,
@@ -49,7 +48,7 @@ export const useRowChartTheme = (
         family: fontFamily,
       },
       grid: {
-        color: color("border-subtle"),
+        color: color("border-neutral-subtle"),
       },
     };
   }, [theme, fontFamily, isDashboard]);

@@ -13,7 +13,7 @@ import { getDataSourceParts } from "./utils";
 
 interface QuestionDataSourceProps {
   className?: string;
-  question: Question;
+  question?: Question;
   originalQuestion?: Question;
   subHead?: boolean;
   isObjectDetail?: boolean;

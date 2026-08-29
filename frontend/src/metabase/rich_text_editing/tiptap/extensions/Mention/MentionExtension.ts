@@ -3,7 +3,6 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 
-import { trackDocumentAddSmartLink } from "metabase/documents/analytics";
 import type { Document } from "metabase-types/api";
 
 export interface MentionOptions {
@@ -65,9 +64,6 @@ export const MentionExtension = Extension.create<MentionOptions>({
               })
               .insertContent(" ")
               .run();
-            if (props.document) {
-              trackDocumentAddSmartLink(props.document);
-            }
           }
         },
       },

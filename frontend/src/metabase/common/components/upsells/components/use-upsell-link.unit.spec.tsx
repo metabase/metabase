@@ -25,6 +25,7 @@ const TestComponent = ({ url, campaign, location }: TestComponentProps) => {
 };
 
 const OSSFeatures = createMockTokenFeatures();
+// Unjustified type cast. FIXME
 const EEFeatures = Object.fromEntries(
   Object.entries(createMockTokenFeatures()).map(([key, value]) => [
     key,

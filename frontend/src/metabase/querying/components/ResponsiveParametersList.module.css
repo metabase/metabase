@@ -3,14 +3,14 @@
 }
 
 .ParametersListContainer {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 
   &.isSmallScreen {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     overflow-y: auto;
     bottom: 100%;
     padding-bottom: 0.5rem;

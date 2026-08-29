@@ -5,6 +5,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [malli.core :as mc]
    [medley.core :as m]
@@ -83,10 +84,6 @@
   (derive :metabase/model))
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
-
-(defmethod serdes/hash-fields :model/Setting
-  [_setting]
-  [:key])
 
 (declare export?)
 
@@ -342,8 +339,17 @@
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
 
-(defn- prohibits-encryption? [setting-or-name]
-  (= :no (:encryption (resolve-setting setting-or-name))))
+(defn- maybe-resolve-setting
+  "Like [[resolve-setting]] but returns nil for a setting with no code definition (e.g. one written straight to the DB
+  in a test) instead of throwing."
+  [setting-or-name]
+  (try (resolve-setting setting-or-name)
+       (catch clojure.lang.ExceptionInfo e
+         (when-not (::unknown-setting-error (ex-data e))
+           (throw e)))))
+
+(defn- encrypts? [setting-or-name]
+  (not= :no (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -412,7 +418,7 @@
        ;; Non-admin setting managers can only access settings that are not marked as admin-only
        (not api/*is-superuser?*)
        (has-advanced-setting-access?)
-       (not= (:visibility setting) :admin))
+       (contains? #{:public :authenticated :settings-manager} (:visibility setting)))
       (and
        ;; Non-admins can only access user-local settings not marked as admin-only
        (allows-user-local-values? setting)
@@ -730,7 +736,7 @@
 (defn- throw-or-log
   "Given an error that should never happen, throw it for us, log it for customers."
   [e]
-  (if config/is-prod? (log/warn e) (throw e)))
+  (if config/is-prod? (log/warn (ex-message e)) (throw e)))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -787,14 +793,18 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn "Error inserting a new Setting:\n"
-                   (ex-message e) "\n"
-                   "Assuming Setting already exists in DB and updating existing value.")
+         (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
+                    (ex-message e))
          (update-setting! setting-name new-value))))
 
-(defn- obfuscated-value? [v]
+(defn obfuscated-value?
+  "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
+  value rather than entering a new one.
+
+  `(?s)` so the trailing `.` can also match newlines, e.g. JSON file contents that end with a newline."
+  [v]
   (when (seq v)
-    (boolean (re-matches #"^\*{10}.{2}$" v))))
+    (boolean (re-matches #"(?s)^\*{10}.{2}$" v))))
 
 (defn obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
@@ -993,11 +1003,19 @@
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
-       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
+                       {:status-code 402
+                        :status      "error-premium-feature-not-available"
+                        :setting     s-name
+                        :feature     feature})))
      (when (and enabled? (not (enabled?)))
-       (throw (ex-info (tru "Setting {0} is not enabled" s-name) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not (current-user-can-access-setting? setting)
-       (throw (ex-info (tru "You do not have access to the setting {0}" s-name) setting)))
+       (throw (ex-info (tru "You do not have access to the setting {0}" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not bypass-read-only?
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
@@ -1034,7 +1052,10 @@
 
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
-  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)]
+  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
+        new-value                    (cond-> new-value
+                                       (and (= (:type setting) :json) (coll? new-value))
+                                       walk/keywordize-keys)]
     (validate-settable! setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
@@ -1524,7 +1545,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e "Error fetching value of Setting")))
+                         (log/errorf "Error fetching value of Setting: %s" (ex-message e))))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
@@ -1667,7 +1688,7 @@
   (cond
     (instance? JsonEOFException ex) false
     (instance? JsonParseException ex) true
-    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+    :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))
 
@@ -1704,8 +1725,9 @@
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))
-      (log/warn (:parse-error invalid-setting)
-                (format "Unable to parse setting %s" (:name invalid-setting))))))
+      (log/warnf "Unable to parse setting %s: %s"
+                 (name (:name invalid-setting))
+                 (ex-message (:parse-error invalid-setting))))))
 
 (defn migrate-encrypted-settings!
   "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.
@@ -1721,14 +1743,14 @@
   ;; we can't do anything about it (since we can't decrypt it). If stuff isn't decrypted in the DB, we have nothing to
   ;; do.
   (when (encryption/default-encryption-enabled?)
-    (let [settings (filter prohibits-encryption? (vals @registered-settings))]
+    (let [settings (remove encrypts? (vals @registered-settings))]
       (t2/with-transaction [_conn]
         (doseq [{v :value k :key}
                 (t2/select :setting {:for :update :where [:and
                                                           [:in :key (map setting-name settings)]
                                                           ;; these are *definitely* decrypted already, let's not bother looking
                                                           [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt v)]
+                :let [decrypted-v (encryption/maybe-decrypt-accepting-plaintext v)]
                 :when (not= decrypted-v v)]
           (t2/update! :setting :key k {:value decrypted-v}))))))
 
@@ -1738,13 +1760,10 @@
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting-model))
     setting-model
-    (let [resolved (try (resolve-setting (:key setting-model))
-                        (catch clojure.lang.ExceptionInfo e
-                          (when (not (::unknown-setting-error (ex-data e)))
-                            (throw e))))]
+    (let [resolved (maybe-resolve-setting (:key setting-model))]
       (cond-> setting-model
         (or (nil? resolved)
-            (not (prohibits-encryption? resolved)))
+            (encrypts? resolved))
         (update :value encryption/maybe-encrypt)))))
 
 (t2/define-before-update :model/Setting
@@ -1755,9 +1774,24 @@
   [setting]
   (maybe-encrypt setting))
 
+(defn- decrypt-setting-value-on-read
+  "Decrypt a Setting's `:value` on read. A setting whose `:encryption` is not `:no` is stored encrypted at rest, so it
+  is read strictly with [[encryption/maybe-decrypt]]: a plaintext value — forged via a direct DB write, or a legacy row
+  from before the setting became encrypted — is rejected rather than trusted. A `:no` setting (or one with no code
+  definition, e.g. in tests) is intentionally plaintext, so it is read leniently with
+  [[encryption/maybe-decrypt-accepting-plaintext]], which returns a plaintext value unchanged."
+  [setting]
+  (let [resolved (maybe-resolve-setting (:key setting))
+        decrypt  (if (or (nil? resolved) (not (encrypts? resolved)))
+                   encryption/maybe-decrypt-accepting-plaintext
+                   encryption/maybe-decrypt)]
+    (update setting :value decrypt)))
+
 (t2/define-after-select :model/Setting
   [setting]
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting))
+  ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve or `:value` to decrypt, and don't do
+  ;; any automatic handling of the "encryption-check" special setting used by mdb.encryption.
+  (if (or (nil? (:key setting))
+          (= "encryption-check" (:key setting)))
     setting
-    (update setting :value encryption/maybe-decrypt)))
+    (decrypt-setting-value-on-read setting)))

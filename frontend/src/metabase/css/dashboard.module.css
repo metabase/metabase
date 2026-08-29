@@ -39,14 +39,9 @@
   pointer-events: all;
 }
 
-.PinMapUpdateButtonDisabled {
-  pointer-events: none;
-  color: var(--mb-color-text-tertiary);
-}
-
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card {
-  box-shadow: 3px 3px 8px var(--mb-color-shadow);
+  box-shadow: 3px 3px 8px var(--mb-color-shadow-default);
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {
@@ -60,7 +55,7 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--mb-color-background-tertiary) !important;
+  background-color: var(--mb-color-background_page-tertiary) !important;
   border: 1px solid var(--mb-color-core-brand);
 }
 
@@ -99,15 +94,15 @@
   height: 8px;
   bottom: 6px;
   right: 6px;
-  border-bottom: 2px solid var(--mb-color-border);
-  border-right: 2px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border-neutral);
+  border-right: 2px solid var(--mb-color-border-neutral);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
 .DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .DashEditing .DashCard:hover :global(.react-resizable-handle::after) {
@@ -121,10 +116,18 @@
   opacity: 0.01;
 }
 
-/* .react-grid-placeholder is a global class from `react-grid-layout` */
-.DashEditing :global(.react-grid-placeholder) {
+/*
+ * .react-grid-placeholder is a global class from `react-grid-layout`.
+ *
+ * Match the library's own `.react-grid-item.react-grid-placeholder` and add a
+ * class, so this outranks it rather than merely following it. The library's
+ * stylesheet is imported by `GridLayout`, which now lives in the dashboard
+ * chunk, so it is injected after this one. At equal specificity that made its
+ * `z-index: 2` win and the placeholder covered the card being dragged.
+ */
+.DashEditing :global(.react-grid-item.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--mb-color-background-secondary) !important;
+  background-color: var(--mb-color-background_page-secondary) !important;
   transition: all 0.15s linear;
 }
 

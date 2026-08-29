@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
 import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useGetSettingsQuery } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -65,10 +65,10 @@ export function UpgradeModalLoading({
         justify="center"
         w={64}
         h={64}
-        bg="success"
+        bg="feedback-positive"
         style={{ borderRadius: "50%" }}
       >
-        <Icon name="check" c="white" size={32} />
+        <Icon name="check" c="core-white" size={32} />
       </Flex>
 
       <Stack align="center" gap="xs">

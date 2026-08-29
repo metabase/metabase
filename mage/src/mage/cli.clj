@@ -72,8 +72,10 @@
           (println "\n" cmd "\n -" (c/magenta effect))))
       (when usage-fn
         (println "\n"
-                 #_:clj-kondo/ignore
+                 ;; usage-fn comes as data from bb.edn; eval makes it callable
+                 #_{:clj-kondo/ignore [:discouraged-var]}
                  ((eval usage-fn) current-task)))
+      ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
@@ -82,18 +84,16 @@
     arguments
     (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
                             (catch Exception _e arguments))]
-      #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
+      #_{:clj-kondo/ignore [:discouraged-java-method :discouraged-var]} ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
         (do (doseq [{:keys [path schema value]} (:errors
-                                                 #_:clj-kondo/ignore
                                                  (mc/explain arg-schema decoded-args))]
               (println (c/red "Invalid Argument at " path
                               ". It should match: " (mc/form schema)
                               " got: " (pr-str value))))
             (binding [*command-line-args* ["-h"]]
               (check-print-help current-task))
-            #_{:clj-kondo/ignore [:discouraged-java-method]}
             (System/exit 0))))))
 
 (defn- check-option-errors [option-errors *error-hit? summary]
@@ -106,6 +106,7 @@
     (when @*error-hit?
       (println "Usage:")
       (println summary)
+      ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
@@ -126,7 +127,7 @@
     (check-print-help current-task)
     (let [;; options are defined in bb.edn, as data,
           ;; so we need to eval them to get any functions to work
-          options #_:clj-kondo/ignore (eval options)
+          options #_{:clj-kondo/ignore [:discouraged-var]} (eval options)
           *error-hit? (atom false)
           {:keys [summary]
            option-errors :errors
@@ -138,6 +139,7 @@
       parsed)
     (catch Exception e
       (println (c/red "Mage CLI parsing Error:") (.getMessage e))
+      ;; parse failure must kill the bb process with code 1; u/exit's throw could be caught upstream
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 1))))
 

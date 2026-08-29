@@ -2,17 +2,17 @@ import type { NumberLike, StringLike } from "@visx/scale";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
-import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import type {
-  GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+import { formatValue } from "metabase/value-formatting";
+import {
+  type BarData,
+  type CartesianChartColumns,
+  type ChartTicksFormatters,
+  type GroupedDatum,
+  type SeriesInfo,
+  getFormattingOptionsWithoutScaling,
+  getLabelsMetricColumn,
+  getStackOffset,
+} from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,

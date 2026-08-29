@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
 
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type AggregationItem,
   getAggregationItems,
-} from "metabase/query_builder/utils/get-aggregation-items";
+} from "metabase/query_builder";
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";

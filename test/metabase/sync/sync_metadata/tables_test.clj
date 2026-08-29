@@ -48,25 +48,21 @@
         normal-table {:name   "orders"
                       :schema "public"}
         db-metadata  {:tables #{temp-table normal-table}}]
-    (testing "with no premium features, table-set excludes transform temporary tables"
-      (mt/with-premium-features #{}
-        (is (= #{normal-table}
-               (#'sync-tables/table-set db-metadata)))))
     (testing "when hosted, includes transform temporary tables"
       (mt/with-premium-features #{:hosting}
         (is (= #{normal-table temp-table}
-               (#'sync-tables/table-set db-metadata)))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted with `transforms` enabled, excludes the temp tables"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (is (= #{normal-table}
-               (#'sync-tables/table-set db-metadata)))))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
-                   :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
-      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
+    (mt/with-temp [:model/Database db               {}
+                   :model/Table    {table-1-id :id} {:name "Table 1" :db_id (u/the-id db)}
+                   :model/Table    _                {:name "Table 2" :db_id (u/the-id db)}]
+      (#'sync-tables/retire-tables! #{table-1-id})
       (is (= {"Table 1" false "Table 2" true}
              (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
 
@@ -362,7 +358,7 @@
                       {:schema "public" :name "apple"}
                       {:schema "public" :name "mango"}}]
       (mt/with-temp [:model/Database db {}]
-        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (#'sync-tables/create-tables! db metadatas)
         (is (= ["beta" "apple" "mango" "zebra"]
                (map :name (t2/select [:model/Table :name]
                                      :db_id (u/the-id db)

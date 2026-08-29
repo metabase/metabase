@@ -1,30 +1,21 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { setArchivedQuestion } from "metabase/query_builder/actions";
-import { updateUrl } from "metabase/query_builder/actions/url";
-import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
-import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import {
-  getQuestionWithoutComposing,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import { useNavigate } from "metabase/router";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -32,6 +23,16 @@ import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
+
+import { setArchivedQuestion } from "../../actions";
+import { updateUrl } from "../../actions/url";
+import {
+  getQuestionWithoutComposing,
+  getVisualizationSettings,
+} from "../../store/selectors";
+import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
+import { NewDatasetModal } from "../NewDatasetModal";
+import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
@@ -69,6 +70,7 @@ export function QueryModals({
   onChangeLocation,
 }: QueryModalsProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
@@ -121,9 +123,9 @@ export function QueryModals({
         { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
         { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
-      dispatch(push(url));
+      navigate(url);
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const handleSaveModalCreate = useCallback(

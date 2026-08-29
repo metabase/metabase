@@ -20,11 +20,12 @@ import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getPieDimensions } from "metabase/visualizations/shared/settings/pie";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type DimensionsWidgetProps,
+  getOptionFromColumn,
+  getPieDimensions,
+} from "metabase/viz-core";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries } from "metabase-types/api";
 
 import Styles from "./DimensionsWidget.module.css";
 import { PieRowsPicker } from "./PieRowsPicker";
@@ -85,13 +86,6 @@ const THREE_RING_SETTING_TITLES = [
   OUTER_RING_TITLE,
 ];
 
-export type DimensionsWidgetProps = {
-  rawSeries: RawSeries;
-  settings: ComputedVisualizationSettings;
-  onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
-  onShowWidget: (widget: any, ref: any) => void;
-};
-
 export function DimensionsWidget({
   rawSeries,
   settings,
@@ -114,7 +108,7 @@ export function DimensionsWidget({
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
     onChangeSettings({
-      "pie.dimension": newDimensions.filter((d) => d != null) as string[],
+      "pie.dimension": newDimensions.filter((d) => d != null),
     });
   };
 
@@ -184,9 +178,11 @@ export function DimensionsWidget({
         sensors={[pointerSensor]}
       >
         <SortableContext
-          items={(dimensions.filter((d) => d != null) as string[]).map((d) => ({
-            id: d,
-          }))}
+          items={dimensions
+            .filter((d) => d != null)
+            .map((d) => ({
+              id: d,
+            }))}
           strategy={verticalListSortingStrategy}
         >
           {dimensions.map((dimension, index) => (

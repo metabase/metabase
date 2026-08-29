@@ -2,19 +2,19 @@ import type { EChartsType } from "echarts/core";
 import { useMemo } from "react";
 
 import type {
-  ColumnKey,
-  SankeyChartColumns,
-  SankeyLink,
-  SankeyNode,
-} from "metabase/visualizations/echarts/graph/sankey/model/types";
-import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
-import type {
   ClickObject,
-  ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import {
+  type ColumnKey,
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type SankeyChartColumns,
+  type SankeyLink,
+  type SankeyNode,
+  useClickedStateTooltipSync,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { Card, RawSeries, RowValue } from "metabase-types/api";
@@ -70,7 +70,11 @@ export const createSankeyClickData = (
     clickData.column = event.data.hasInputs ? target.column : source.column;
     clickData.value = event.data.rawName;
 
-    clickData.data = getSankeyClickData(rawSeries, columnValues);
+    clickData.data = getSankeyClickData(rawSeries, {
+      ...columnValues,
+      [getColumnKey(source.column)]: event.data.rawName,
+      [getColumnKey(target.column)]: event.data.rawName,
+    });
   } else if (isSankeyEdgeEvent(event)) {
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
     if (!isNativeQuery(rawSeries[0].card)) {

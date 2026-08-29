@@ -16,6 +16,7 @@ export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   contentTestId?: string;
 }
 
+// Unjustified type cast. FIXME
 export const BodyCell = memo(function BodyCell<TValue>({
   value,
   formatter,

@@ -1,7 +1,7 @@
 .TagContainer {
   padding: 1.5rem 1.5rem 0 1.5rem;
   margin-bottom: 1.5rem;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .TagName {

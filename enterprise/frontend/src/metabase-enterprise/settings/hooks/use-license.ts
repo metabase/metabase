@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { premiumFeaturesApi, useUpdateSettingMutation } from "metabase/api";
+import { premiumFeaturesApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -46,6 +47,7 @@ export const useLicense = (onActivated?: () => void) => {
         }
         reload();
       } catch (e) {
+        // Unjustified type cast. FIXME
         if ((e as any).status === 503) {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         } else {
@@ -69,6 +71,7 @@ export const useLicense = (onActivated?: () => void) => {
           ),
         );
       } catch (e) {
+        // Unjustified type cast. FIXME
         if ((e as any).status !== 404) {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         }

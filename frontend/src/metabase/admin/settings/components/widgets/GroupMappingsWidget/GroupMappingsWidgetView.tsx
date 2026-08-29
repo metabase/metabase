@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { FormSwitch } from "metabase/forms";
 import {
   Box,
@@ -27,6 +27,13 @@ import S from "./GroupMappingsWidget.module.css";
 import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
+
+/** The auth-provider group-mapping settings this widget can edit. */
+export type MappingSettingKey =
+  | "ldap-group-mappings"
+  | "saml-group-mappings"
+  | "jwt-group-mappings"
+  | "oidc-group-mappings";
 
 const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
@@ -49,14 +56,14 @@ interface GroupMappingsWidgetViewProps {
   groupHeading: string;
   groupPlaceholder: string;
   allGroups: GroupInfo[];
-  mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
+  mappingSetting: MappingSettingKey;
   deleteGroup: ({ id }: { id: number }) => Promise<void>;
   clearGroupMember: ({ id }: { id: number }) => Promise<void>;
   updateSetting: ({
     key,
     value,
   }: {
-    key: string;
+    key: MappingSettingKey;
     value: Record<string, GroupId[]>;
   }) => Promise<void>;
   mappings: Record<string, GroupId[]>;
@@ -159,7 +166,7 @@ export function GroupMappingsWidgetView({
       </Group>
 
       <Flex
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="md"
         direction="column"
         w="100%"
@@ -231,7 +238,7 @@ export function GroupMappingsWidgetView({
         )}
       </Flex>
       {saveError && (
-        <Text c="error" fw="bold" m="sm">
+        <Text c="feedback-negative" fw="bold" m="sm">
           {saveError}
         </Text>
       )}

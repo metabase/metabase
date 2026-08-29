@@ -9,12 +9,16 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api :as api.public]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
@@ -25,6 +29,7 @@
    [metabase.test.util :as tu]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -84,6 +89,117 @@
     (fn [~binding]
       ~@body)))
 
+;;; ------------------------------------- public_uuid encryption + prefix -------------------------------------
+
+(def ^:private encryption-test-secret-key "public-uuid-encryption-test-key")
+
+(use-fixtures :once
+  (encryption-tu/with-encrypted-app-db-fixture (encryption/secret-key->hash encryption-test-secret-key)))
+
+(defn- raw-public-uuid
+  "Read the `public_uuid` column straight from the DB (raw ciphertext), bypassing the model's decrypting transform."
+  [model id]
+  (:public_uuid (t2/query-one {:select [:public_uuid] :from [(t2/table-name model)] :where [:= :id id]})))
+
+(defn- raw-public-uuid-prefix
+  [model id]
+  (:public_uuid_prefix (t2/query-one {:select [:public_uuid_prefix] :from [(t2/table-name model)] :where [:= :id id]})))
+
+(defn- set-raw-public-uuid!
+  "Forge a public link via raw SQL: write a plaintext `public_uuid` (and a matching prefix so the lookup would find it),
+  bypassing the model's encrypting transform."
+  [model id value]
+  (t2/query {:update (t2/table-name model)
+             :set    {:public_uuid        value
+                      :public_uuid_prefix (public-sharing/public-uuid-prefix value)}
+             :where  [:= :id id]}))
+
+(defn- assert-public-uuid-lifecycle!
+  "For an already-created UNSHARED `model` row `id` (no public_uuid), exercise share / unrelated-update-while-disabled /
+  unshare and assert `public_uuid` stays encrypted at rest while `public_uuid_prefix` always tracks it. Runs inside a
+  secret-key + public-sharing-enabled context."
+  [model id]
+  (testing "a row with no public_uuid has no prefix"
+    (is (nil? (raw-public-uuid model id)))
+    (is (nil? (raw-public-uuid-prefix model id))))
+  (let [uuid (str (random-uuid))]
+    (testing "sharing encrypts the uuid at rest and derives the prefix"
+      (t2/update! model id {:public_uuid uuid})
+      (let [raw (raw-public-uuid model id)]
+        (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
+        (is (not= uuid raw) "public_uuid is not stored in plaintext")
+        (is (= uuid (encryption/maybe-decrypt raw)) "and decrypts back to the uuid"))
+      (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
+          "prefix is the plaintext leading characters of the uuid")
+      (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
+    (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
+      (mt/with-temporary-setting-values [enable-public-sharing false]
+        (t2/update! model id {:name "renamed while unshared"}))
+      (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id))) "public_uuid untouched")
+      (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
+          "prefix untouched")
+      (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))
+    (testing "unsharing clears uuid + prefix"
+      (t2/update! model id {:public_uuid nil})
+      (is (nil? (raw-public-uuid model id)))
+      (is (nil? (raw-public-uuid-prefix model id)))
+      (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
+
+(deftest ^:synchronized card-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {id :id} {}]
+        (assert-public-uuid-lifecycle! :model/Card id)))))
+
+(deftest ^:synchronized dashboard-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Dashboard {id :id} {}]
+        (assert-public-uuid-lifecycle! :model/Dashboard id)))))
+
+(deftest ^:synchronized document-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document {id :id} {:name "Signature Doc"}]
+        (assert-public-uuid-lifecycle! :model/Document id)))))
+
+(deftest ^:synchronized action-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
+    (mt/with-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-actions [{action-id :action-id} {}]
+          ;; with-actions creates the action already shared; unshare it so the lifecycle starts from a clean slate
+          (t2/update! :model/Action action-id {:public_uuid nil})
+          (assert-public-uuid-lifecycle! :model/Action action-id))))))
+
+(deftest ^:synchronized public-uuid-resolves-via-endpoint-test
+  (testing "GET /api/public/... resolves a shared entity by its uuid through the prefix lookup"
+    (encryption-tu/with-encrypted-app-db
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid, card-id :id}]
+          (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid))))))
+        (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
+          (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid))))))))))
+
+(defn- assert-forged-plaintext-does-not-resolve!
+  [model id]
+  (let [uuid (str (random-uuid))]
+    (t2/update! model id {:public_uuid uuid})
+    (is (= id (public-sharing/public-uuid->id model uuid)) "a genuine encrypted public_uuid resolves")
+    (let [forged (str (random-uuid))]
+      (set-raw-public-uuid! model id forged)
+      (is (thrown? Exception (public-sharing/public-uuid->id model forged))
+          "a plaintext public_uuid forged via raw SQL fails the strict read instead of resolving")
+      (set-raw-public-uuid! model id nil))))
+
+(deftest ^:synchronized forged-plaintext-public-uuid-does-not-resolve-test
+  (encryption-tu/with-encrypted-app-db
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (assert-forged-plaintext-does-not-resolve! :model/Card card-id))
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+        (assert-forged-plaintext-does-not-resolve! :model/Dashboard dash-id)))))
+
 (defn- venues-query
   []
   {:database (mt/id)
@@ -141,6 +257,59 @@
           (mt/with-temp-vals-in-db :model/Card card-id {:archived true}
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
+
+(deftest fetch-card-strips-dataset-query-test
+  (testing "GET /api/public/card/:uuid replaces the Card's query with a blank query so its contents are not exposed"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid}]
+        (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  dataset_query)))))))
+
+(deftest fetch-card-strips-native-query-test
+  (testing "GET /api/public/card/:uuid strips the native query text and its template tags"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "greeting" :content "'hello'"}]
+        (with-temp-public-card
+         [{uuid :public_uuid}
+          (let [mp (mt/metadata-provider)]
+            {:dataset_query
+             (-> (lib/native-query mp "SELECT {{snippet: greeting}} FROM venues WHERE {{price}}")
+                 (lib/with-template-tags
+                   {"price"             {:id           "_PRICE_"
+                                         :name         "price"
+                                         :display-name "Price"
+                                         :type         :dimension
+                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :widget-type  :category}
+                    "snippet: greeting" {:type         :snippet
+                                         :name         "snippet: greeting"
+                                         :id           (str (random-uuid))
+                                         :snippet-name "greeting"
+                                         :display-name "Snippet: Greeting"
+                                         :snippet-id   (:id snippet)}}))})]
+          (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
+            (is (= {:lib/type "mbql/query"
+                    :database (mt/id)
+                    :stages   [{:lib/type "mbql.stage/native"
+                                :native   "-"}]}
+                   dataset_query))))))))
+
+(deftest fetch-dashboard-strips-dataset-query-test
+  (testing "GET /api/public/dashboard/:uuid replaces each Card's query with a blank query so its contents are not exposed"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash _card]
+        (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
@@ -306,11 +475,69 @@
                  (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
+                 (u/strip-bom (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv)))))
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
                   (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
+
+(deftest execute-public-card-with-snippet-test
+  (testing "GET /api/public/card/:uuid/query resolves {{snippet: name}} snippets at execution time"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "greeting" :content "'hello'"}]
+        (with-temp-public-card
+         [{uuid :public_uuid}
+          {:dataset_query
+           (lib/with-template-tags
+             (lib/native-query (mt/metadata-provider) "select {{snippet: greeting}}")
+             {"snippet: greeting" {:type         :snippet
+                                   :name         "snippet: greeting"
+                                   :id           (str (random-uuid))
+                                   :snippet-name "greeting"
+                                   :display-name "Snippet: Greeting"
+                                   :snippet-id   (:id snippet)}})}]
+          (is (= [["hello"]] (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))))))
+
+(deftest execute-public-card-with-referenced-card-template-tag-test
+  (testing "GET /api/public/card/:uuid/query resolves {{#<id>}} referenced-card template tags at execution time"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card ref-card {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1 AS n")}]
+        (let [tag-name (str (:id ref-card) "-ref")]
+          (with-temp-public-card
+           [{uuid :public_uuid}
+            {:dataset_query
+             (lib/with-template-tags
+               (lib/native-query (mt/metadata-provider) (format "select * from {{#%s}}" tag-name))
+               {tag-name {:type         :card
+                          :name         tag-name
+                          :id           (str (random-uuid))
+                          :display-name "Referenced card"
+                          :card-id      (:id ref-card)}})}]
+            (is (= [[1]] (mt/rows (client/client :get 202 (str "public/card/" uuid "/query")))))))))))
+
+(deftest execute-public-card-with-multi-value-parameter-test
+  (testing "GET /api/public/card/:uuid/query resolves a multi-value (IN (...)) field-filter parameter"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card
+       [{uuid :public_uuid}
+        (let [mp (mt/metadata-provider)]
+          {:dataset_query
+           (lib/with-template-tags
+             (lib/native-query mp "SELECT count(*) FROM venues WHERE {{price}}")
+             {"price" {:id           "_PRICE_"
+                       :name         "price"
+                       :display-name "Price"
+                       :type         :dimension
+                       :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                       :widget-type  :category}})
+           :parameters [{:id "_PRICE_" :type :category :target [:dimension [:template-tag "price"]]}]})]
+        (is (=? {:status     "completed"
+                 :json_query {:parameters [{:id "_PRICE_" :value [1 2]}]}}
+                (client/client :get 202 (str "public/card/" uuid "/query")
+                               :parameters (json/encode [{:id     "_PRICE_"
+                                                          :type   "category"
+                                                          :target ["dimension" ["template-tag" "price"]]
+                                                          :value  [1 2]}]))))))))
 
 (deftest download-public-card-filename-test
   (testing "GET /api/public/card/:uuid/query - filename generation"
@@ -416,7 +643,7 @@
                                  :parameters (json/encode [{:type   "category"
                                                             :value  "456"
                                                             :target ["variable" ["template-tag" "foo"]]
-                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+                                                            :id     "abc123"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -466,6 +693,21 @@
                                                                     :target ["dimension" ["template-tag" "venue_id"]],
                                                                     :type "id",
                                                                     :value nil}]))))))))))
+
+(deftest execute-public-card-with-invalid-parameters-test
+  (testing "GET /api/public/card/:uuid/query -- malformed `parameters` is rejected with a 400"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {}]
+        (let [url (str "public/card/" uuid "/query")]
+          (testing "valid JSON that is not a sequence of parameter maps"
+            (client/client :get 400 url
+                           :parameters (json/encode {:_PRICE_ 3})))
+          (testing "a sequence of maps missing the required :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:value 3}])))
+          (testing "a parameter with a non-scalar garbage :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:id {:not "a string"} :value 3}]))))))))
 
 ;; Cards with required params
 (defn- do-with-required-param-card! [f]
@@ -520,11 +762,12 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp [:model/Card {uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
-             (client/client :get 200 (str "public/card/" uuid "/query/csv")
-                            :parameters (json/encode [{:id     "_DATE_"
-                                                       :type   :date/quarter-year
-                                                       :target [:dimension [:template-tag :date]]
-                                                       :value  "Q1-2014"}])))))))
+             (u/strip-bom
+              (client/client :get 200 (str "public/card/" uuid "/query/csv")
+                             :parameters (json/encode [{:id     "_DATE_"
+                                                        :type   :date/quarter-year
+                                                        :target [:dimension [:template-tag :date]]
+                                                        :value  "Q1-2014"}]))))))))
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/test-helpers-set-global-values!
@@ -534,11 +777,12 @@
         (binding [client/*url-prefix* ""]
           (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
-                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                       :parameters (json/encode [{:id     "_DATE_"
-                                                                  :type   :date/quarter-year
-                                                                  :target [:dimension [:template-tag :date]]
-                                                                  :value  "Q1-2014"}]))))))))))
+                   (u/strip-bom
+                    (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                        :parameters (json/encode [{:id     "_DATE_"
+                                                                   :type   :date/quarter-year
+                                                                   :target [:dimension [:template-tag :date]]
+                                                                   :value  "Q1-2014"}])))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
@@ -658,6 +902,33 @@
           (is (= {:name true, :dashcards 2, :tabs 2}
                  (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
+(deftest get-public-dashboard-exposes-auto-apply-filters-test
+  (testing "GET /api/public/dashboard/:uuid round-trips the dashboard's auto_apply_filters value"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash]
+        (t2/update! :model/Dashboard (:id dash) {:auto_apply_filters false})
+        (is (false? (:auto_apply_filters (client/client :get 200 (str "public/dashboard/" (:public_uuid dash))))))))))
+
+(deftest public-dashboard-with-nested-card-and-parameter-test
+  (testing "GET /api/public/dashboard/:uuid resolves a nested (source-card) query with a mapped parameter (#20393)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card source-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (let [nested-query (lib/query mp (lib.metadata/card mp (:id source-card)))]
+            (mt/with-temp [:model/Card nested-card {:dataset_query nested-query}
+                           :model/Dashboard dash {:public_uuid (str (random-uuid))
+                                                  :parameters   [{:name "Date" :slug "date" :id "d1" :type "date/all-options"}]}
+                           :model/DashboardCard _ {:dashboard_id       (:id dash)
+                                                   :card_id            (:id nested-card)
+                                                   :parameter_mappings [{:parameter_id "d1"
+                                                                         :card_id      (:id nested-card)
+                                                                         :target       [:dimension [:field "CREATED_AT" {:base-type :type/DateTime}]]}]}]
+              (is (=? {:parameters [{:id "d1" :slug "date" :type "date/all-options"}]
+                       :dashcards  [{:card_id            (:id nested-card)
+                                     :parameter_mappings [{:parameter_id "d1"
+                                                           :card_id      (:id nested-card)}]}]}
+                      (client/client :get 200 (str "public/dashboard/" (:public_uuid dash))))))))))))
+
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -680,10 +951,11 @@
                 (testing "Dashcard should only have id and name params"
                   (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
-                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
+                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))
+                      values-path  (format "public/dashboard/%s/dashcard/%s/execute/values" dashboard-uuid (:id dashcard))]
                   (testing "Prefetch should only return non-hidden fields"
                     (is (= {:id 1 :name "Red Medicine"} ; price is hidden
-                           (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
+                           (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}}))))
                   (testing "Update should not allow hidden fields to be updated"
                     (is (= {:rows-updated 1}
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
@@ -691,7 +963,7 @@
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
 (deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
-  (testing "GET prefill should validate that the dashcard belongs to the dashboard"
+  (testing "prefill should validate that the dashcard belongs to the dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (mt/with-actions-test-data-tables #{"venues" "categories"}
@@ -708,10 +980,10 @@
                                                                     :card_id      card-id}]
                   (testing "dashcard from a different dashboard should 404"
                     (is (= "Not found."
-                           (client/client :get 404
-                                          (format "public/dashboard/%s/dashcard/%s/execute"
+                           (client/client :post 404
+                                          (format "public/dashboard/%s/dashcard/%s/execute/values"
                                                   public-uuid (:id other-dashcard))
-                                          :parameters (json/encode {:id 1}))))))))))))))
+                                          {:parameters {"id" 1}})))))))))))))
 
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"
@@ -826,6 +1098,27 @@
                                                                         :target ["dimension" ["template-tag" "venue_id"]]
                                                                         :value  nil
                                                                         :id     "_VENUE_ID_"}]))))))))))))
+
+(deftest public-dashboard-visualizer-series-card-test
+  (testing "GET /api/public/dashboard/:uuid exposes visualizer viz-settings and authorizes series-card queries"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash]
+        (let [mp (mt/metadata-provider)
+              q  (fn [] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                            (lib/aggregate (lib/count))))]
+          (mt/with-temp [:model/Card card-1 {:dataset_query (q)}
+                         :model/Card card-2 {:dataset_query (q)}]
+            (let [dashcard (add-card-to-dashboard!
+                            card-1 dash
+                            {:visualization_settings
+                             {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (u/the-id card-2))}]}}}})]
+              (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard) :card_id (u/the-id card-2)}]
+                (testing "public dashboard response exposes the visualizer viz-settings unchanged"
+                  (is (=? {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (u/the-id card-2))}]}}
+                          (-> (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))
+                              :dashcards first :visualization_settings :visualization))))
+                (testing "dashcard-query endpoint authorizes the series card via a real DashboardCardSeries row"
+                  (is (= 202 (:status (client/client-full-response :get (dashcard-url dash card-2 dashcard))))))))))))))
 
 (deftest execute-public-dashcard-as-user-without-perms-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -1557,9 +1850,9 @@
                                                                  :card_id model-id}]
             (is (partial= {:id 1 :name "African"}
                           (client/client
-                           :get 200
-                           (format "public/dashboard/%s/dashcard/%s/execute" (:public_uuid dash) dashcard-id)
-                           :parameters (json/encode {:id 1}))))))))))
+                           :post 200
+                           (format "public/dashboard/%s/dashcard/%s/execute/values" (:public_uuid dash) dashcard-id)
+                           {:parameters {"id" 1}})))))))))
 
 ;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
 
@@ -1629,6 +1922,20 @@
                             :user-id nil}
                            (last (snowplow-test/pop-event-data-and-user-id!))))))))))))))
 
+(deftest execute-public-action-implicit-row-update-test
+  (testing "POST /api/public/action/:uuid/execute works for an implicit row/update action"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (let [mp          (mt/metadata-provider)
+                action-opts (assoc (shared-obj) :type :implicit :kind "row/update")]
+            (mt/with-actions [_ {:type :model, :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                              {} action-opts]
+              (is (=? {:rows-updated 1}
+                      (client/client :post 200
+                                     (format "public/action/%s/execute" (:public_uuid action-opts))
+                                     {:parameters {:id 1 :name "Bouncy Bears"}}))))))))))
+
 (deftest format-export-middleware-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
@@ -1660,18 +1967,18 @@
                        :model/DashboardCard {dashcard-id :id} {:card_id      card-id
                                                                :dashboard_id dashboard-id}]
           (testing "CSV export"
-            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                                   uuid
-                                                                   dashcard-id
-                                                                   card-id))
+            (is (str/starts-with? (u/strip-bom (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                                uuid
+                                                                                dashcard-id
+                                                                                card-id)))
                                   "ID,State,Latitude,Longitude\n")))
           (testing "urlencoded requests"
-            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                                   uuid
-                                                                   dashcard-id
-                                                                   card-id)
-                                                 {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
-                                                 {:format_rows true})
+            (is (str/starts-with? (u/strip-bom (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                                uuid
+                                                                                dashcard-id
+                                                                                card-id)
+                                                              {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
+                                                              {:format_rows true}))
                                   "ID,State,Latitude,Longitude\n")))
           (testing "Invalid id throws 404"
             (client/client :post 404 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
@@ -1749,6 +2056,30 @@
             (is (png? (client/client :get 200 url
                                      :latField lat-field
                                      :lonField lon-field)))))))))
+
+(deftest card-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card _card {:dataset_query (tiles.api-test/implicit-join-query)
+                                          :public_uuid uuid}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/card/" uuid "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
+
+(deftest dashcard-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card          {card-id :id}      {:dataset_query (tiles.api-test/implicit-join-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 

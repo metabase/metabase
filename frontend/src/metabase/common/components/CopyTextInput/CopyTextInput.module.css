@@ -6,5 +6,5 @@
     var(--mantine-spacing-md);
   border: none;
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }

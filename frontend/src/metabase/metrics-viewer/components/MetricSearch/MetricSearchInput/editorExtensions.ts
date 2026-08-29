@@ -8,6 +8,7 @@ import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import { errorHighlight } from "./errorHighlight";
 import { metricTokenHighlight } from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
+import { trustedDocChangesOnly } from "./trustedDocChangesOnly";
 
 type EditorExtensionRefs = {
   handleRunRef: { current: () => void };
@@ -19,6 +20,7 @@ export function buildEditorExtensions(
   refs: EditorExtensionRefs,
 ): Extension[] {
   return [
+    trustedDocChangesOnly,
     history(),
     operatorHighlight,
     errorHighlight,

@@ -123,11 +123,25 @@
     (when (string? d)
       d)))
 
-(defn- format-config-name
-  "Formats the configuration file name for an environment variable."
+(defn settable-in-config-file?
+  "Can this setting be set via the `settings:` section of a configuration file?
+   Settings with `:setter` `:none` are read-only: the config file calls the same `setting/set!` path as
+   the Admin settings, so it will always reject them."
   [env-var]
-  (if (= (:visibility env-var) :internal)
+  (not= :none (:setter env-var)))
+
+(defn- format-config-name
+  "Formats the configuration file name for an environment variable, or notes that the setting is
+  read-only and can only be set with an environment variable."
+  [env-var]
+  (cond
+    (not (settable-in-config-file? env-var))
+    "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
+
+    (= (:visibility env-var) :internal)
     ""
+
+    :else
     (str "[Configuration file name](./config-file.md): `" (:munged-name env-var) "`")))
 
 (defn- list-item
@@ -175,7 +189,7 @@
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
-  "Used to remove settings that lack a setter (`:setter :none`).
+  "Used to remove undocumented settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
   [env-var]
   ;; If the `defsetting` has a `:doc` key with a string, we should document it.

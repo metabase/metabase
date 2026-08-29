@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import {
   Box,
   Button,
@@ -62,10 +66,12 @@ export const BugReportModal = ({
         {(formik) => (
           <Form>
             <Text py="md">{t`Could you provide us with a little context?`}</Text>
-            <FormTextArea
+            <FormTextarea
               name="description"
-              autoFocus
+              data-autofocus
               placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+              minRows={5}
+              mb="md"
             />
             <Box
               bg={"accent-gray-light"}

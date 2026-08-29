@@ -46,7 +46,7 @@ const TimelineEmptyState = ({
             : t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
         </Text>
       </Box>
-      {canWrite && (
+      {canWrite && onNewEvent != null && (
         <Button variant="filled" w="12.5rem" onClick={onNewEvent}>
           {t`Create event`}
         </Button>

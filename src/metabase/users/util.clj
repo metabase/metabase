@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -59,12 +60,14 @@
   [{:keys [email
            user-group-memberships
            source
-           tenant-id]
+           tenant-id
+           invite-target]
     :as   attributes} :- [:map
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
-  (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-              "email" (tru "Email address already in use."))
+  (api/check-400 (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+                 {:errors     {:email (tru "Email address already in use.")}
+                  :error_code "email-already-in-use"})
   (api/checkp (not (and tenant-id
                         (not (setting/get :use-tenants))))
               "tenant_id"
@@ -81,7 +84,10 @@
                                                 :login-attributes       :login_attributes
                                                 :tenant-id              :tenant_id}))
                           @api/*current-user*
-                          (= source :setup))))]
+                          (= source :setup)
+                          invite-target)))]
+      (when-let [password (:password attributes)]
+        (auth-identity/set-password! new-user-id password))
       (maybe-set-user-group-memberships! new-user-id user-group-memberships)
       (when (= source :setup)
         (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))

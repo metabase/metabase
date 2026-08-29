@@ -3,16 +3,16 @@ import type { Draft } from "immer";
 import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
   copyColumn,
-  createDataSourceNameRef,
   createVisualizerColumnReference,
   extractReferencedColumns,
-  isDraggedColumnItem,
-} from "metabase/visualizer/utils";
+} from "metabase/visualizer/utils/column";
+import { createDataSourceNameRef } from "metabase/visualizer/utils/data-source";
+import { isDraggedColumnItem } from "metabase/visualizer/utils/drag-and-drop";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,
@@ -194,7 +194,6 @@ export function addColumnToFunnel(
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,

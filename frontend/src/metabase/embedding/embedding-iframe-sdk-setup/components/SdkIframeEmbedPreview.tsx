@@ -10,7 +10,6 @@ import { match } from "ts-pattern";
 
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
-import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
 // by appending the script
@@ -18,6 +17,7 @@ import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embe
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Card } from "metabase/ui";
 import { colors as defaultMetabaseColors } from "metabase/ui/colors";
 
@@ -53,7 +53,30 @@ const SdkIframeEmbedPreviewInner = () => {
     skip: !isSimpleEmbedFeatureAvailable || !settings.theme?.id,
   });
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const embedElementRef = useRef<HTMLElement | null>(null);
+
+  const handleEmbedReady = useCallback(() => setIsLoading(false), []);
+
+  // Attach the "ready" listener through a ref callback so it re-arms every time
+  // the embed element is recreated. The container remounts whenever chart colors
+  // change (see the `key` on the Card below), and a listener registered in an
+  // effect keyed on `componentName` would stay bound to the discarded element,
+  // leaving the loading overlay stuck forever.
+  const setEmbedElementRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (embedElementRef.current) {
+        embedElementRef.current.removeEventListener("ready", handleEmbedReady);
+      }
+
+      embedElementRef.current = node;
+
+      if (node) {
+        setIsLoading(true);
+        node.addEventListener("ready", handleEmbedReady);
+      }
+    },
+    [handleEmbedReady],
+  );
 
   const defineMetabaseConfig = useCallback(
     (metabaseConfig: SdkIframeEmbedBaseSettings) => {
@@ -109,8 +132,16 @@ const SdkIframeEmbedPreviewInner = () => {
       theme,
       useExistingUserSession: true,
       isGuest: settings.isGuest,
+      allowedCustomVisualizations: settings.isGuest
+        ? undefined
+        : settings.allowedCustomVisualizations,
     }),
-    [instanceUrl, theme, settings.isGuest],
+    [
+      instanceUrl,
+      theme,
+      settings.isGuest,
+      settings.allowedCustomVisualizations,
+    ],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -129,24 +160,6 @@ const SdkIframeEmbedPreviewInner = () => {
     [cleanupMetabaseConfig],
   );
 
-  // Show a "fake" loading indicator when componentName changes.
-  // Embed JS has its own loading indicator, but it shows up after the iframe loads.
-  useEffect(() => {
-    if (containerRef.current) {
-      const embed = containerRef.current.querySelector(settings.componentName);
-      const handleReady = () => setIsLoading(false);
-
-      if (embed) {
-        setIsLoading(true);
-        embed.addEventListener("ready", handleReady);
-
-        return () => {
-          embed.removeEventListener("ready", handleReady);
-        };
-      }
-    }
-  }, [settings.componentName]);
-
   const attributes = buildEmbedAttributes({
     experience,
     settings,
@@ -154,13 +167,17 @@ const SdkIframeEmbedPreviewInner = () => {
     wrapWithQuotes: false,
   });
 
+  // The embed's own loading indicator only appears after the iframe loads, so we
+  // show a "fake" loader (cleared by the "ready" event) to avoid a white flash.
+  // The ref callback wires up that listener — see `setEmbedElementRef` above.
+  const embedAttributes = { ...attributes, ref: setEmbedElementRef };
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
       style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
-      ref={containerRef}
       pos="relative"
       // `key` forces a remount when chart colors change. The embed runtime
       // propagates other theme keys via CSS variables, but chart colors are
@@ -171,19 +188,19 @@ const SdkIframeEmbedPreviewInner = () => {
       {match(settings)
         .with(
           { componentName: "metabase-question", template: "exploration" },
-          () => createElement("metabase-question", attributes),
+          () => createElement("metabase-question", embedAttributes),
         )
         .with({ componentName: "metabase-question" }, () =>
-          createElement("metabase-question", attributes),
+          createElement("metabase-question", embedAttributes),
         )
         .with({ componentName: "metabase-dashboard" }, () =>
-          createElement("metabase-dashboard", attributes),
+          createElement("metabase-dashboard", embedAttributes),
         )
         .with({ componentName: "metabase-browser" }, () =>
-          createElement("metabase-browser", attributes),
+          createElement("metabase-browser", embedAttributes),
         )
         .with({ componentName: "metabase-metabot" }, () =>
-          createElement("metabase-metabot", attributes),
+          createElement("metabase-metabot", embedAttributes),
         )
         .exhaustive()}
 

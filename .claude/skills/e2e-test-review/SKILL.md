@@ -22,10 +22,11 @@ Before starting, determine which mode to use:
 3. **(Conditional)** If after reading the spec a specific assertion or selector is **ambiguous** — you can't tell if it's the right anchor, or whether the test actually verifies what its title claims — briefly grep the related component for the test ID / role / text. **Don't read components by default.** Only do this when there's a real signal of confusion in the spec.
 4. Scan against the checklist + pattern table below.
 5. Number all issues sequentially. Skip nits — only flag what's worth fixing.
+6. **Always** finish with the honest e2e-vs-unit breakdown (see the section of that name below). It's part of every report, not an optional add-on.
 
 ### When to hand off instead of review
 
-If the spec references an issue (`metabase#NNNNN`) and the user wants to **fix** flakiness or assess whether the test still reproduces the original bug, that's outside the review skill's scope. Point them at `/fix-flakey-test` (or the dedicated flake-fixing workflow), which knows to fetch the issue and the resolving PR's diff. The review skill stays focused on "is this test well-written and conformant" — it doesn't fetch external issue context by default.
+If the spec references an issue (`metabase#NNNNN`) and the user wants to **fix** flakiness or assess whether the test still reproduces the original bug, that's outside the review skill's scope. Point them at the dedicated flake-fixing workflow, which knows to fetch the issue and the resolving PR's diff. The review skill stays focused on "is this test well-written and conformant" — it doesn't fetch external issue context by default.
 
 ## Review checklist
 
@@ -194,8 +195,41 @@ Use the pending review workflow:
 
 Each comment body starts with `**Issue N: [Brief title]**`.
 
+## Honest e2e-vs-unit breakdown (always include)
+
+Every report ends with this section. The numbered issues above are about whether the test is *well-written*; this section is about whether it should be an **e2e test at all**. They're orthogonal — a flawless spec can still be paying e2e prices for component-test value, and that's worth saying out loud.
+
+The bar is simple: **an `it()` earns its place in e2e only if it exercises a layer you cannot fake without gutting the test's value.** In this codebase that means one or more of:
+
+- a **real backend query against seeded data** (the assertion depends on the server actually filtering/sorting/bucketing rows, not on a mocked response);
+- **real rendering you then interact with** — clicking a charted ECharts SVG element at computed coordinates, drag/hit-testing, drill-through;
+- **routing across screens** — navigation, URL param round-trips that the backend then honors, browser back/forward;
+- **cross-screen traversal** — list → detail → back, where the value is the seam between screens.
+
+Conversely, a test belongs in **Jest + RTL** (the cheaper layer this repo already uses for component/unit coverage) when its real subject is frontend-only:
+
+- **pure frontend logic** — a bucketing/formatting/derivation decision (e.g. "single-day range → bucket by hour") that has one right answer independent of the backend;
+- **render assertions** — "the page mounts N titled cards and an SVG exists." A mocked dataset response + RTL verifies the titles; that an ECharts SVG renders is library behavior, not your logic;
+- **state/wiring** — tab → `aria-selected` → active-state, or select → querystring mapping. The *URL gets the param* half is component-level; only the *backend honors the param* half needs e2e.
+
+Write the breakdown in three honest buckets. Ground each call in **which layers the test actually touches**, not in how the test is named:
+
+1. **Genuinely must-be-e2e (keep)** — load-bearing. Name the layer(s) only a browser + backend can verify together.
+2. **Defensible-but-narrowable e2e** — justified as integration, but over-split or doing more boots than the coverage requires. Say what to merge.
+3. **Should be unit / component tests** — where the real savings are. Name the cheaper layer and what it would assert (often *more precisely* than the e2e test does indirectly).
+
+Then a one-paragraph **bottom line**: what to keep as e2e, what to push down, and — if you pulled CI timing from `e2e/support/timings.json` for the Performance check — roughly how much of that wall time is *earned* by the must-be-e2e set versus paid by the rest.
+
+Rules of engagement so this stays honest, not performative:
+
+- **Don't inflate the keep bucket to look balanced.** If most of the spec is component-test value paying e2e prices, say exactly that. If every test is load-bearing, say that too — a spec where all 12 tests must be e2e is a legitimate outcome, not a failure to find candidates.
+- **Be specific.** Cite the `it()` titles and line ranges. "Several tests could be unit tests" is useless; "tests 1/17/18 assert only that N titled cards mount — RTL with a mocked dataset" is actionable.
+- **This is advice to the author, not a blocking issue.** It's a recommendation, separate from the numbered issues. Don't renumber it into the issue list.
+- **Stay rooted in what exists.** The cheaper layer here is Jest + RTL component/unit tests. Don't invent infrastructure the repo doesn't have, and don't recommend deleting backend-dependent coverage just because part of the test is frontend-only — split it, keep the integration half.
+
 ## Final check
 
 1. Trim issues that won't materially help the author.
 2. Verify sequential numbering with no gaps.
 3. In PR mode, verify each issue was posted as a separate review comment.
+4. Verify the honest e2e-vs-unit breakdown is present — it's required in every report, even when the answer is "all of these need to be e2e."

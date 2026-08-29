@@ -102,6 +102,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
 
     return (
       <TabList
+        // Unjustified type cast. FIXME
         onChange={onChange as (value: unknown) => void}
         onScroll={(event) => setScrollPosition(event.currentTarget.scrollLeft)}
         ref={mergedRef}
@@ -137,6 +138,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
   },
 );
 
+// Unjustified type cast. FIXME
 export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
   props: TabRowProps<T>,
 ) => ReactNode;

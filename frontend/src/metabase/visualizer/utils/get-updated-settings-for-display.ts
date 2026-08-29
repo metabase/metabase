@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import {
-  getMaxDimensionsSupported,
-  isCartesianChart,
-} from "metabase/visualizations";
+import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
 import type {
   DatasetColumn,
   VisualizationDisplay,
@@ -137,8 +134,8 @@ const pieToFunnel = (
       ...otherSettings,
       "funnel.metric": metric,
       "funnel.dimension": dimension,
-      "graph.metrics": [metric].filter(isNotNull) as string[],
-      "graph.dimensions": [dimension].filter(isNotNull) as string[],
+      "graph.metrics": [metric].filter(isNotNull),
+      "graph.dimensions": [dimension].filter(isNotNull),
     },
   };
 };

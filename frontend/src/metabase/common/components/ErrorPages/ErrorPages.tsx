@@ -9,8 +9,8 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import {
   ErrorDiagnosticModalTrigger,
@@ -137,7 +137,7 @@ export const SmallGenericError = forwardRef<
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const isEmbeddingIframe = getIsEmbeddingIframe();
+  const isEmbeddingIframe = isWithinIframe();
 
   const tooltipMessage = isEmbeddingIframe
     ? message
@@ -156,11 +156,11 @@ export const SmallGenericError = forwardRef<
     >
       <Tooltip label={tooltipMessage}>
         {isEmbeddingIframe ? (
-          <Icon name="warning" size={32} c="text-tertiary" />
+          <Icon name="warning" size={32} c="text-disabled" />
         ) : (
           <Button
-            leftSection={<Icon name="warning" size={32} c="text-tertiary" />}
-            color="text-tertiary"
+            leftSection={<Icon name="warning" size={32} c="text-disabled" />}
+            color="text-disabled"
             onClick={openModal}
             variant="subtle"
           />

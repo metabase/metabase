@@ -242,11 +242,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
 
       // we shouldn't be making 20 requests here
-      cy.wait(new Array(20).fill("@updateCard"));
+      // their staggered tail can land past cy.wait's default 5s under CPU load, so allow more time
+      cy.wait(new Array(20).fill("@updateCard"), { timeout: 30000 });
 
       H.undoToast().findByText("Moved 20 questions");
 
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      // 20+ dashcard queries stagger behind the concurrency limit; allow their tail past the 5s default
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
 
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
@@ -269,12 +271,14 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.wait(["@updateCard", "@updateCard"]);
       cy.findByTestId("error-boundary").should("not.exist");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
       H.dashboardCards().findByText("Orders");
       H.dashboardCards().findByText("Orders, Count");
     });
 
     it("should tell users which dashboards will be affected when doing bulk question moves", () => {
+      cy.intercept("PUT", "/api/card/*").as("moveQuestion");
+
       H.createQuestionAndDashboard({
         questionDetails: {
           name: "Sample Question",
@@ -310,11 +314,17 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Move it").should("exist").click();
       });
 
+      // Wait for the move to land before navigating: otherwise Test Dashboard
+      // can load while its dashcard is still present, so the empty state never
+      // renders and the assertion below times out.
+      cy.wait("@moveQuestion");
+      H.modal().should("not.exist");
+
       H.collectionTable().findByText("Test Dashboard").click();
 
       cy.findByTestId("dashboard-empty-state")
         .findByText("This dashboard is empty")
-        .should("exist");
+        .should("be.visible");
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Sample Question").should("exist");

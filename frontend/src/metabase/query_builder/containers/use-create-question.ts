@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 
 import type { ScheduleCallback } from "metabase/common/hooks/use-callback-effect";
-import { apiCreateQuestion } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 
+import { apiCreateQuestion } from "../actions";
 import { updateUrl } from "../actions/url";
 
 export type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
@@ -22,10 +22,8 @@ export const useCreateQuestion = ({
 
   return useCallback(
     async (newQuestion: Question, options?: OnCreateOptions) => {
-      const shouldBePinned =
-        newQuestion.type() === "model" || newQuestion.type() === "metric";
       const createdQuestion = await dispatch(
-        apiCreateQuestion(newQuestion.setPinned(shouldBePinned), options),
+        apiCreateQuestion(newQuestion.setPinned(false), options),
       );
       await dispatch(setUIControls({ isModifiedFromNotebook: false }));
 

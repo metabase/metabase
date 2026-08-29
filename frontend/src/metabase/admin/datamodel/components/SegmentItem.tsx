@@ -1,5 +1,4 @@
-import { Link } from "react-router";
-
+import { Link } from "metabase/common/components/Link";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";

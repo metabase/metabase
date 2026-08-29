@@ -87,7 +87,7 @@ export interface Collection {
 
   // Assigned on FE
   originalName?: string;
-  path?: CollectionId[];
+  path?: CollectionId[] | null;
 }
 
 export const COLLECTION_ITEM_MODELS = [
@@ -102,6 +102,7 @@ export const COLLECTION_ITEM_MODELS = [
   "table",
   "transform",
   "measure",
+  "exploration",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -134,7 +135,6 @@ export interface CollectionItem {
   can_restore?: boolean;
   can_delete?: boolean;
   is_library_root?: boolean;
-  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string | null;
   effective_location?: string;
@@ -169,19 +169,22 @@ export type ListCollectionItemsSortColumn =
 
 export type ListCollectionItemsRequest = {
   id: CollectionId;
-  models?: CollectionItemModel[];
+  models?: (CollectionItemModel | "no_models")[];
+  q?: string;
+  include_available_models?: boolean;
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;
   collection_type?: CollectionType;
-  include_can_run_adhoc_query?: boolean;
   show_dashboard_questions?: boolean;
+  include_library?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
+  available_models?: string[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {
@@ -204,14 +207,14 @@ export interface CreateCollectionRequest {
   is_shared_tenant_collection?: boolean;
 }
 
-export interface ListCollectionsRequest {
+export type ListCollectionsRequest = {
   archived?: boolean;
   namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
-}
-export interface ListCollectionsTreeRequest {
+};
+export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
@@ -221,7 +224,7 @@ export interface ListCollectionsTreeRequest {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
-}
+};
 
 export interface DeleteCollectionRequest {
   id: RegularCollectionId;

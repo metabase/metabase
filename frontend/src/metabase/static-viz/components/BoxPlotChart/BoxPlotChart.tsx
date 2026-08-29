@@ -3,14 +3,14 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
 import {
   getBoxPlotLayoutModel,
   getBoxPlotModel,
   getBoxPlotOption,
-} from "metabase/visualizations/echarts/boxplot";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+  getChartLayout,
+  getLegendItems,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
@@ -72,8 +72,6 @@ export function BoxPlotChart({
   const option = getBoxPlotOption(
     chartModel,
     layoutModel,
-    null,
-    [],
     settings,
     false,
     renderingContext,
@@ -81,6 +79,7 @@ export function BoxPlotChart({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>

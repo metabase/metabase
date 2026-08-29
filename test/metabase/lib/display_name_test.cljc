@@ -1,9 +1,15 @@
 (ns metabase.lib.display-name-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.core :as lib]
    [metabase.lib.display-name :as lib.display-name]
-   [metabase.lib.filter :as lib.filter]))
+   [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel parse-column-display-name-parts-plain-column-test
   (testing "Plain column names should be translatable"
@@ -211,3 +217,12 @@
     (testing "Plain column name is unchanged when filter patterns are present"
       (is (= [{:type :translatable, :value "Total"}]
              (lib.display-name/parse-column-display-name-parts "Total" agg-patterns filter-patterns))))))
+
+(deftest ^:parallel source-card-date-column-display-name-no-default-period-test
+  (testing "#36631 a Date column inherited from a source card keeps its plain name with no 'Default period' suffix"
+    (let [mp    (lib.tu/metadata-provider-with-card-from-query
+                 1 (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query (lib/query mp (lib.metadata/card mp 1))
+          col   (m/find-first #(= (:name %) "CREATED_AT") (lib/visible-columns query))]
+      (is (= "Created At" (lib/display-name query col)))
+      (is (not (str/includes? (lib/display-name query col) "Default period"))))))

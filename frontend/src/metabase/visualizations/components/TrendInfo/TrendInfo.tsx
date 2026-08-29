@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Text, Title } from "metabase/ui";
-import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { PreviousPeriodChange } from "metabase/viz-core";
 
 import S from "./TrendInfo.module.css";
 
@@ -39,7 +39,7 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
         )}
         {change != null && change.percent === 0 && (
           <Flex align="center" gap={4}>
-            <Text c="text-tertiary" fw={700}>
+            <Text c="text-disabled" fw={700}>
               {t`No change`}
             </Text>
             <Text c="text-secondary">{change.description}</Text>

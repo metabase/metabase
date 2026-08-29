@@ -148,6 +148,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (internal-stats/metabot-stats)
+                                         (internal-stats/data-app-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
@@ -228,7 +229,7 @@
                         :content-type :json
                         :throw-exceptions false})
             (catch Throwable e
-              (log/error e "Error sending metering events"))))))))
+              (log/errorf "Error sending metering events: %s" (ex-message e)))))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -406,7 +407,7 @@
     (try
       (premium-features.settings/locked-meters! (extract-locks (:meters result)))
       (catch Throwable t
-        (log/warn t "Failed to mirror :locked-meters from token-check response")))))
+        (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
@@ -463,7 +464,7 @@
                           (try
                             (do-refresh! token token-hash)
                             (catch Exception e
-                              (log/error e "Background premium features refresh failed"))
+                              (log/errorf "Background premium features refresh failed: %s" (ex-message e)))
                             (finally
                               (reset! refresh-in-progress? false)
                               (when-let [after *testing-only-call-after-refresh*]
@@ -566,7 +567,7 @@
   ([checker token]
    (-check-token checker token)))
 
-(derive :event/set-premium-embedding-token :metabase/event)
+(events/derive! :event/set-premium-embedding-token :metabase/event)
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
@@ -593,7 +594,7 @@
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
-      (log/error e "Error setting premium features token")
+      (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
       (throw (ex-info (.getMessage e) (merge
                                        {:message (.getMessage e), :status-code 400}
@@ -607,8 +608,7 @@
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
                      (fn [_token e]
-                       (log/error "Error validating token:" (ex-message e))
-                       (log/debug e "Error validating token"))
+                       (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
@@ -715,16 +715,18 @@
 (defn query-transforms-enabled?
   "Whether query (native/MBQL) transforms are available on this instance. Available on any non-hosted
   instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
-  `:transforms-basic` feature."
+  `:transforms-basic` feature. Also requires the :transforms-enabled setting to be true."
   []
-  (or (not (premium-features.settings/is-hosted?))
-      (has-feature? :transforms-basic)))
+  (and (setting/get :transforms-enabled)
+       (or (not (premium-features.settings/is-hosted?))
+           (has-feature? :transforms-basic))))
 
 (defn python-transforms-enabled?
   "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
-  and `:transforms-python`."
+  and `:transforms-python`. Also requires the :transforms-enabled setting to be true."
   []
-  (and (has-feature? :transforms-basic)
+  (and (setting/get :transforms-enabled)
+       (has-feature? :transforms-basic)
        (has-feature? :transforms-python)))
 
 (defn any-transforms-enabled?

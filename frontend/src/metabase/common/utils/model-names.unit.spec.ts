@@ -6,5 +6,6 @@ describe("common/utils/model-names", () => {
     expect(getTranslatedEntityName("card")).toBe("Question");
     expect(getTranslatedEntityName("dataset")).toBe("Model");
     expect(getTranslatedEntityName("indexed-entity")).toBe("Indexed record");
+    expect(getTranslatedEntityName("exploration")).toBe("Research");
   });
 });

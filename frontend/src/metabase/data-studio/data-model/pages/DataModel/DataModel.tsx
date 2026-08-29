@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,10 +9,10 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
@@ -25,6 +25,7 @@ import {
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -48,20 +49,16 @@ import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
-  children?: ReactNode;
-  params: RouteParams;
-}
-
-export const DataModel = ({ children, params }: Props) => {
+export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent params={params}>{children}</DataModelContent>
+      <DataModelContent />
     </SelectionProvider>
   );
 };
 
-function DataModelContent({ params }: Props) {
+function DataModelContent() {
+  const params = useParams<RouteParams>();
   const {
     hasSelectedItems,
     hasOnlyOneTableSelected,
@@ -172,7 +169,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
@@ -246,7 +243,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="table-section-header"
               py="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
               px="lg"
             >
@@ -313,7 +310,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="field-section-header"
               p="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>

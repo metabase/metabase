@@ -49,6 +49,7 @@ const SuggestionsList = ({
 }) => (
   <Box component="ol" my="sm">
     {_.keys(suggestions).map((s, index) => {
+      // Unjustified type cast. FIXME
       const suggestionKey = s as keyof RelatedDashboardXRays;
       const suggestionItem = suggestions[suggestionKey];
       return (
@@ -79,7 +80,7 @@ const SuggestionsList = ({
                         <Tooltip label={item.description}>
                           <Icon
                             name="info_outline"
-                            c="background-tertiary-inverse"
+                            c="background_page-tertiary-inverse"
                           />
                         </Tooltip>
                       </Box>

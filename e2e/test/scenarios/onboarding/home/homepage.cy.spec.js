@@ -16,7 +16,6 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/activity/recents?*").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-    cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
   describe("after setup", () => {
@@ -187,18 +186,16 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Here are some explorations of the/);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public");
+      cy.findByTestId("xray-schema-name").should("have.text", "public");
       cy.findAllByRole("link").contains("sqlite");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People").should("not.exist");
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("public").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("private").click();
+      cy.findByTestId("xray-schema-name").click();
+      cy.findByRole("option", { name: "private" }).click();
+      cy.findByTestId("xray-schema-name").should("have.text", "private");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -295,7 +292,6 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getCollectionItems");
       pinItem("Orders, Count");
       cy.wait("@getCollectionItems");
-      cy.wait("@getQuestionQuery");
 
       cy.visit("/");
       cy.wait("@getRecentItems");
@@ -360,6 +356,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByRole("radio", { name: "Dashboard" }).click();
       });
       cy.wait("@putSettings");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting")
         .findByRole("button")
@@ -369,6 +366,7 @@ describe("scenarios > home > custom homepage", () => {
       H.entityPickerModal().findByText("Orders in a dashboard").click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -658,6 +656,7 @@ describe("scenarios > setup", () => {
       .findByRole("radio", { name: "Dashboard" })
       .click();
     cy.wait("@putSettings");
+    H.undoToast().icon("close").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")

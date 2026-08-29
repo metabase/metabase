@@ -15,7 +15,7 @@ export const CollectionIcon = ({
   const getIcon = useGetIcon();
   const icon = getIcon(item);
 
-  icon.color = icon.color ? icon.color : "text-tertiary";
+  icon.color = icon.color ? icon.color : "text-disabled";
 
   return (
     <Icon

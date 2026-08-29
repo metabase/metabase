@@ -58,7 +58,7 @@ export const SdkUsageProblemBanner = ({
           data-testid="sdk-usage-problem-indicator"
           i-should-be-flex="true"
         >
-          <Flex bg="white" px="sm" className={S.Logo} align="center">
+          <Flex bg="core-white" px="sm" className={S.Logo} align="center">
             <DefaultLogoIcon height={24} />
           </Flex>
 

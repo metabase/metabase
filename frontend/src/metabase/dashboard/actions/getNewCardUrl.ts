@@ -1,9 +1,9 @@
 import _ from "underscore";
 
+import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import { getStructuredQuestionUrlWithParameters } from "metabase/visualizations/click-actions/lib/question-url";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -74,6 +74,7 @@ export const getNewCardUrl = ({
   try {
     const { isNative } = Lib.queryDisplayInfo(nextQuestion.query());
     if (isNative) {
+      // Unjustified type cast. FIXME
       const nativeQuery = nextQuestion.legacyNativeQuery() as NativeQuery;
       return Urls.question(nextQuestion, {
         query: remapParameterValuesToTemplateTags(

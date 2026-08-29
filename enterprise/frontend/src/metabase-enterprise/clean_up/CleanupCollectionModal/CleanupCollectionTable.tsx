@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
@@ -56,7 +56,7 @@ export const CleanupCollectionTable = ({
           {/* Select */}
           <Columns.Select.Col />
           {/* Name */}
-          <Columns.Name.Col isInDragLayer={false} />
+          <Columns.Name.Col />
           {/* Collection */}
           <TableColumn width="280px" />
           {/* Last used at */}

@@ -1,11 +1,14 @@
 import { screen, waitFor } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { getFetchedTimelines, getVisibleTimelineEventIds } from "../selectors";
+import {
+  getFetchedTimelines,
+  getVisibleTimelineEventIds,
+} from "../store/selectors";
 
 import { TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD, setup } from "./test-utils";
 

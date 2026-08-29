@@ -516,15 +516,37 @@ Response:
   "name": "Revenue Dashboard",
   "collection_id": 7,
   "description": "...",
-  "dashcard_ids": [101, 102]
+  "dashcard_ids": [101, 102],
+  "tabs": []
 }
 ```
 
 ### PUT /v1/dashboard/{id}
 
-Update a dashboard's metadata. Patch semantics. Setting `collection_id`
-moves the dashboard (and its cards). Setting `archived: true` archives the
-dashboard and cascades to its cards.
+Update a dashboard's metadata and cards. Patch semantics. Setting
+`collection_id` moves the dashboard (and its cards). Setting `archived: true`
+archives the dashboard and cascades to its cards.
+
+Dashcard mutations go under `dashcards` and are applied in order:
+
+- `add` adds a saved question by `card_id` (optional `display_size`:
+  `"wide"`, `"tall"`, or `"full"`)
+- `add_heading` adds a full-width section heading from `text`
+- `add_text` adds a Markdown text card from `text` (optional `display_size`:
+  `"wide"`, `"tall"`, or `"full"`)
+- `update_text` replaces the text of an existing heading or text card
+  (`dashcard_id` and `text`), keeping its position and size
+- `remove` removes a dashcard by `dashcard_id`
+- `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
+
+The add actions also take an optional `tab_id` (a tab on this dashboard);
+omitted, new cards land on the dashboard's first tab. The response `tabs`
+lists the dashboard's tabs in display order.
+
+New cards are auto-placed into the first free grid slot, scanning
+left-to-right then top-to-bottom, so two half-width cards can end up side by
+side. A full-width heading always starts its own row — lead each section with
+`add_heading` to build a sectioned, top-to-bottom layout.
 
 Request:
 
@@ -533,19 +555,29 @@ Request:
   "name": "Renamed Dashboard",
   "description": "...",
   "collection_id": 7,
-  "archived": false
+  "archived": false,
+  "dashcards": [
+    { "action": "add_heading", "text": "Revenue" },
+    { "action": "add", "card_id": 42 },
+    { "action": "add_text", "text": "Orders *grew 12%* this quarter." },
+    { "action": "remove", "dashcard_id": 101 }
+  ]
 }
 ```
 
-Response:
+Response (`dashcard_ids` lists all dashcards on the dashboard after the
+mutations, in row/col order — new headings and text cards included):
 
 ```json
 {
   "id": 7,
   "name": "Renamed Dashboard",
   "collection_id": 7,
+  "collection_path": "Our analytics / Finance",
   "description": "...",
-  "archived": false
+  "archived": false,
+  "dashcard_ids": [103, 102, 104],
+  "tabs": [{ "id": 9, "name": "Overview" }, { "id": 10, "name": "Detail" }]
 }
 ```
 

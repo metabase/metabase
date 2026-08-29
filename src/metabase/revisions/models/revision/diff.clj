@@ -1,9 +1,17 @@
 (ns metabase.revisions.models.revision.diff
   (:require
    [clojure.data :as data]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
+
+(defn- readable-name
+  [model id]
+  (when id
+    (when-let [instance (t2/select-one model :id id)]
+      (when (mi/can-read? instance)
+        (:name instance)))))
 
 (defn- match-1 [k v1 v2 identifier]
   (match/match-one [k v1 v2]
@@ -58,17 +66,17 @@
 
     [:collection_id nil coll-id]
     (deferred-tru "moved {0} to {1}" identifier (if coll-id
-                                                  (or (t2/select-one-fn :name 'Collection coll-id)
+                                                  (or (readable-name :model/Collection coll-id)
                                                       (str "#" coll-id))
                                                   (deferred-tru "Our analytics")))
 
     [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
                   identifier
-                  (or (t2/select-one-fn :name 'Collection prev-coll-id)
+                  (or (readable-name :model/Collection prev-coll-id)
                       (str "#" prev-coll-id))
                   (if coll-id
-                    (or (t2/select-one-fn :name 'Collection coll-id)
+                    (or (readable-name :model/Collection coll-id)
                         (str "#" coll-id))
                     (deferred-tru "Our analytics")))
 
@@ -103,12 +111,12 @@
     [:dashboard_id v1 v2]
     (cond
       (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
-                                (t2/select-one-fn :name :model/Dashboard :id v1)
-                                (t2/select-one-fn :name :model/Dashboard :id v2))
+                                (readable-name :model/Dashboard v1)
+                                (readable-name :model/Dashboard v2))
       (nil? v1) (deferred-tru "moved this question into {0}"
-                              (t2/select-one-fn :name :model/Dashboard :id v2))
+                              (readable-name :model/Dashboard v2))
       (nil? v2) (deferred-tru "moved this question from {0}"
-                              (t2/select-one-fn :name :model/Dashboard :id v1)))
+                              (readable-name :model/Dashboard v1)))
 
     [:width v1 v2]
     (if (and v1 v2)

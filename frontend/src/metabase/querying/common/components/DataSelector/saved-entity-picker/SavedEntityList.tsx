@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
@@ -16,8 +16,8 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: CardType;
-  selectedId: string;
-  databaseId: DatabaseId;
+  selectedId?: string;
+  databaseId?: DatabaseId | null;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }

@@ -1,14 +1,14 @@
 .row {
   position: relative;
   white-space: nowrap;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 
   &:last-child {
     border-bottom: none;
   }
 
   &[data-clickable]:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-clickable] .icon,
@@ -43,8 +43,8 @@
   width: 0.675rem;
   height: 0.675rem;
   border-radius: 50%;
-  background: var(--mb-color-white);
-  border: 1px solid var(--node-border-color, var(--mb-color-border));
+  background: var(--mb-color-core-white);
+  border: 1px solid var(--node-border-color, var(--mb-color-border-neutral));
   pointer-events: none;
   z-index: 1;
 }

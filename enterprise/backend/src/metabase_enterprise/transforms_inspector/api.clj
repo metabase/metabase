@@ -9,6 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -87,7 +88,7 @@
   [{:keys [id lens-id]} :- [:map
                             [:id ms/PositiveInt]
                             [:lens-id ms/NonBlankString]]
-   params :- [:map-of :keyword :any]]
+   params :- ::inspector.schema/lens-params]
   (let [transform (api/read-check :model/Transform id)
         _         (transforms.core/check-feature-enabled! transform)
         result    (tracing/with-span :transforms "transforms.inspector.lens"
@@ -121,8 +122,8 @@
    _query-params
    {query :query, lens-params :lens_params}
    :- [:map
-       [:query [:map [:database {:optional true} [:maybe :int]]]]
-       [:lens_params {:optional true} [:maybe [:map-of :keyword :any]]]]]
+       [:query ::lib-be.schema/maybe-legacy-query]
+       [:lens_params {:optional true} [:maybe ::inspector.schema/lens-params]]]]
   (let [transform (api/read-check :model/Transform id)]
     (transforms.core/check-feature-enabled! transform)
     (let [info {:executed-by  api/*current-user-id*

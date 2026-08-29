@@ -1,12 +1,37 @@
 import json
+import logging
 import re
 
 import sqlglot
+
+# sqlglot's parser warnings quote raw chunks of the SQL being parsed ("... contains unsupported
+# syntax. Falling back to parsing as a 'Command'."); silence them so customer SQL never reaches
+# stderr/server logs.
+logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
+from sqlglot.dialects.clickhouse import ClickHouse
 from sqlglot.errors import OptimizeError, ParseError
+from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
+
+# sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
+# syntax `{name: Type}`, so a positional JDBC placeholder `?` (a nameless Placeholder)
+# round-trips to `{?: }`, which ClickHouse rejects with "Expected substitution name"
+# (Code 62). Compiled queries we rewrite can carry prepared-statement params — e.g.
+# workspace table remapping of an incremental transform's checkpoint filter — so keep
+# positional placeholders as `?`; named query parameters still take the upstream path.
+_clickhouse_placeholder_sql = ClickHouse.Generator.placeholder_sql
+
+
+def _placeholder_sql_keep_positional(self, expression: exp.Placeholder) -> str:
+    if not expression.this:
+        return "?"
+    return _clickhouse_placeholder_sql(self, expression)
+
+
+ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
 
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
@@ -378,29 +403,79 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
+def _wrap_base_table(table, alias):
+    """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
+    property inherited from it (see `add_into_clause`)."""
+    bare_table = table.copy()
+    bare_table.set("alias", None)
+    self_union = exp.union(
+        exp.select("*").from_(bare_table.copy()),
+        exp.select("*").from_(bare_table.copy()).where("1 = 0"),
+        distinct=False,
+    )
+    return self_union.subquery(alias=alias)
+
 def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
-    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
+    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
+    base-table reference into a self-UNION subquery so the new table doesn't inherit a source
+    column's IDENTITY property.
 
     Transforms: SELECT * FROM products
-    Into:       SELECT * INTO "new_table" FROM products
+    Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
 
-    Used by SQL Server transforms which require SELECT INTO syntax
-    instead of CREATE TABLE AS SELECT.
+    Used by SQL Server transforms which require SELECT INTO syntax instead of CREATE TABLE AS SELECT.
+    A plain `SELECT ... INTO` copies a directly-projected source IDENTITY column onto the new table,
+    which later breaks an incremental append (`INSERT INTO <target> SELECT ...`) with SQL Server error
+    8101. Wrapping each base table in a self-UNION breaks that IDENTITY lineage -- the UNION's second
+    branch is always empty and gets elided by SQL Server's contradiction detection, so each table is
+    still scanned once -- without touching filters, ORDER BY, TOP, or query params. CTEs, derived
+    tables, and table-valued functions are left untouched.
+
+    A table with no explicit alias is wrapped under an alias equal to its bare name, and any column
+    in the same scope that referenced it via a schema/catalog-qualified name (e.g. `dbo.products.id`,
+    legal only against a real table) has that now-invalid qualifier stripped, since a derived table can
+    only be referenced by its single-part alias.
 
     :param sql: The SELECT SQL query string
     :param table_name: The target table name (already formatted/quoted)
     :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
-    :return: Modified SQL string with INTO clause
+    :return: Modified SQL string with INTO clause and base tables wrapped
 
     Examples:
         add_into_clause("SELECT * FROM products", '"PRODUCTS_COPY"', "tsql")
-        => 'SELECT * INTO "PRODUCTS_COPY" FROM products'
+        => 'SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
     if not isinstance(ast, exp.Select):
         raise ValueError("SQL must be a SELECT statement")
+
+    cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
+    seen_ids = set()
+
+    for scope in optimizer.build_scope(ast).traverse():
+        scope_replacements = []
+        for alias, source in scope.sources.items():
+            if not isinstance(source, exp.Table):
+                continue
+            table_name_only = source.name
+            if not table_name_only or table_name_only in cte_names or alias in cte_names:
+                continue
+            if id(source) in seen_ids:
+                continue
+            seen_ids.add(id(source))
+            scope_replacements.append((source, alias))
+
+        for table, alias in scope_replacements:
+            # Columns in this scope may reference the table via a schema/catalog-qualified name
+            # (e.g. `dbo.products.id`), which only resolves against a real table. Once the table
+            # becomes a derived table it's only reachable by its single-part alias, so strip the
+            # now-invalid qualifiers.
+            for column in scope.source_columns(alias):
+                column.set("db", None)
+                column.set("catalog", None)
+            table.replace(_wrap_base_table(table, alias))
 
     # Create the Into expression with the table identifier
     # The table_name is pre-formatted, so parse it to preserve quotes
@@ -1574,18 +1649,81 @@ def has_metabase_templates(sql: str) -> bool:
     """
     return bool(_METABASE_TEMPLATE_RE.search(sql))
 
-# Dialects that require identifier quoting due to case sensitivity.
-# These dialects fold unquoted identifiers to uppercase or lowercase,
-# which can cause issues when the LLM generates mixed-case identifiers.
-CASE_SENSITIVE_DIALECTS: set[str] = {
-    "snowflake",  # Folds unquoted to UPPERCASE
-    "oracle",  # Folds unquoted to UPPERCASE
-    "redshift",  # PostgreSQL-based, folds to lowercase
-    "postgres",  # Folds unquoted to lowercase
+# Reserved words that cannot appear as bare identifiers in the target dialect, for the
+# dialects whose sqlglot generator ships an empty RESERVED_KEYWORDS set. Sourced from the
+# vendors' reserved-word documentation. Dialects absent here fall back to sqlglot's own
+# per-dialect generator set; where that is empty too (e.g. SQLite, whose double-quote
+# quirk turns an unresolved quoted identifier into a string literal), identifiers pass
+# through untouched and the warehouse reports its own error.
+_DIALECT_RESERVED = {
+    'postgres': frozenset("""
+        all analyse analyze and any array as asc asymmetric authorization binary both case
+        cast check collate collation column concurrently constraint create cross
+        current_catalog current_date current_role current_schema current_time
+        current_timestamp current_user default deferrable desc distinct do else end except
+        false fetch for foreign freeze from full grant group having ilike in initially
+        inner intersect into is isnull join lateral leading left like limit localtime
+        localtimestamp natural not notnull null offset on only or order outer overlaps
+        placing primary references returning right select session_user similar some
+        symmetric system_user table tablesample then to trailing true union unique user
+        using variadic verbose when where window with
+    """.split()),
+    'snowflake': frozenset("""
+        account all alter and any as between by case cast check column connect connection
+        constraint create cross current current_date current_time current_timestamp
+        current_user database delete distinct drop else exists false following for from
+        full grant group gscluster having ilike in increment inner insert intersect into
+        is issue join lateral left like localtime localtimestamp minus natural not null
+        of on or order organization qualify regexp revoke right rlike row rows sample
+        schema select set some start table tablesample then to trigger true try_cast
+        union unique update using values view when whenever where with
+    """.split()),
+    'oracle': frozenset("""
+        access add all alter and any as asc audit between by char check cluster column
+        column_value comment compress connect create current date decimal default delete
+        desc distinct drop else exclusive exists file float for from grant group having
+        identified immediate in increment index initial insert integer intersect into is
+        level like lock long maxextents minus mlslabel mode modify nested_table_id noaudit
+        nocompress not nowait null number of offline on online option or order pctfree
+        prior public raw rename resource revoke row rowid rownum rows select session set
+        share size smallint start successful synonym sysdate table then to trigger uid
+        union unique update user validate values varchar varchar2 view whenever where with
+    """.split()),
 }
+
+def _quote_reserved_identifiers(expression, dialect):
+    """Quote identifiers that collide with the target dialect's reserved words.
+
+    The identifier is folded first, the way the server would have folded the bare name,
+    so the quoting never changes what it resolves to; it only stops the server from
+    reading it as a keyword. Only words reserved in the specific target dialect are
+    touched: a generic list would misfire, e.g. quoting `user` on SQLite, where USER is
+    not a keyword and the quoted form of a nonexistent column silently becomes a string
+    literal instead of an error.
+    """
+    # `dialect` may carry options (`postgres, normalization_strategy=lowercase`), so key off the class.
+    reserved = (dialect.generator_class.RESERVED_KEYWORDS
+                | _DIALECT_RESERVED.get(type(dialect).__name__.lower(), frozenset()))
+    if reserved:
+        for ident in expression.find_all(exp.Identifier):
+            if not ident.quoted and ident.name.lower() in reserved:
+                normalize_identifiers(ident, dialect=dialect)
+                ident.set('quoted', True)
+    return expression
 
 def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.
+
+    Identifiers keep the quoting they were written with: an unquoted identifier stays
+    unquoted, so the database folds it exactly as it would have folded the input.
+    Quoting everything (identify=True) would instead freeze the written casing, which
+    breaks on dialects that fold unquoted identifiers (Snowflake uppercases, Postgres
+    lowercases). The tradeoff runs the other way for objects created with quoted
+    mixed-case names (ORMs emit CREATE TABLE "Orders"): those only resolve when the
+    model also writes them quoted, since the bare name folds away from the stored one.
+    The one exception to pass-through is an identifier that collides with the target
+    dialect's reserved words: it is quoted, folded first so the quoting cannot change
+    what it resolves to.
 
     Args:
         sql: SQL query string
@@ -1593,8 +1731,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         to_dialect: target sql dialect
 
     Returns:
-        JSON string with keys transpiled and use_identify on success.
-        On failure the object contains keys is_valid and error_message.
+        JSON string with keys transpiled_sql and status on success.
+        On failure the object contains keys status and error_message.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1607,22 +1745,15 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         result['reason'] = 'missing_dialect'
     else:
         try:
-            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
-                            or to_dialect in CASE_SENSITIVE_DIALECTS)
+            write = sqlglot.Dialect.get_or_raise(to_dialect)
+            expressions = sqlglot.parse(sql, read=from_dialect)
 
-            transpiled = sqlglot.transpile(
-                sql,
-                read=from_dialect,
-                write=to_dialect,
-                pretty=True,
-                identify=use_identify,
-            )
-
-            if len(transpiled) > 1:
+            if len(expressions) > 1:
                 result['status'] = 'error'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
-                result['transpiled_sql'] = transpiled[0]
+                ast = _quote_reserved_identifiers(expressions[0], write)
+                result['transpiled_sql'] = write.generate(ast, copy=False, pretty=True)
                 result['status'] = 'success'
         except Exception as e:
             result['status'] = 'error'

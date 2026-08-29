@@ -1,23 +1,27 @@
-import type { LoginData } from "metabase/redux/auth";
-import { loadSettings } from "metabase/redux/settings";
-import {
-  isValidColorScheme,
-  setUserColorSchemeAfterUpdate,
-} from "metabase/utils/color-scheme";
-import MetabaseSettings from "metabase/utils/settings";
 import type {
-  EnterpriseSettings,
+  LoginData,
+  MfaMethod,
   PasswordResetTokenStatus,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { handleQueryFulfilled } from "./utils/lifecycle";
-
-export const sessionPropertiesPath = "/api/session/properties";
 
 export interface SessionResponse {
   id: string;
 }
+
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  methods: MfaMethod[];
+  challenge_token: string;
+}
+
+export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+
+export const isMfaChallenge = (
+  response: CreateSessionResponse,
+): response is MfaChallengeResponse =>
+  "mfa_required" in response && response.mfa_required === true;
 
 export interface GoogleAuthData {
   token: string;
@@ -35,7 +39,7 @@ export interface SsoLogoutResponse {
 
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    createSession: builder.mutation<SessionResponse, LoginData>({
+    createSession: builder.mutation<CreateSessionResponse, LoginData>({
       query: (body) => ({
         method: "POST",
         url: "/api/session",
@@ -95,27 +99,6 @@ export const sessionApi = Api.injectEndpoints({
         body,
       }),
     }),
-    getSessionProperties: builder.query<EnterpriseSettings, void>({
-      query: () => ({
-        method: "GET",
-        url: sessionPropertiesPath,
-      }),
-      providesTags: ["session-properties"],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) => {
-          dispatch(loadSettings(data));
-          // compatibility layer for legacy settings on the window object
-          MetabaseSettings.setAll(data);
-
-          // Sync color-scheme setting to window.MetabaseUserColorScheme
-          if (
-            data["color-scheme"] &&
-            isValidColorScheme(data["color-scheme"])
-          ) {
-            setUserColorSchemeAfterUpdate(data["color-scheme"]);
-          }
-        }),
-    }),
   }),
 });
 
@@ -128,8 +111,4 @@ export const {
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
   useCheckPasswordMutation,
-  useGetSessionPropertiesQuery,
 } = sessionApi;
-
-// alias for easier use
-export const useGetSettingsQuery = useGetSessionPropertiesQuery;

@@ -1,14 +1,15 @@
 import type { HTMLAttributes } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { getParentEntity } from "metabase/query_builder/selectors";
+import { Link } from "metabase/common/components/Link";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionItemModel, DashboardId } from "metabase-types/api";
+
+import { navigateBackToDashboard } from "../../../../../store/actions";
+import { getParentEntity } from "../../../../../store/selectors";
 
 import S from "./QueryBuilderBackButton.module.css";
 
@@ -45,6 +46,7 @@ export function QueryBuilderBackButton({
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const url = Urls.modelToUrl(parent as Urls.UrlableModel);
   if (!url) {
     return null;
@@ -59,7 +61,7 @@ export function QueryBuilderBackButton({
         variant="outline"
         radius="xl"
         size="2.625rem"
-        color="border"
+        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}

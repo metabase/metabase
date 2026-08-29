@@ -35,12 +35,12 @@ export function DashboardSettingsSidebar() {
   if (currentModal === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
+        // Unjustified type cast. FIXME
         item={dashboard as CacheableDashboard}
         model="dashboard"
         isOpen={state.caching}
         onClose={closeSidebar}
         onBack={() => close("caching")}
-        pt="md"
       />
     );
   }

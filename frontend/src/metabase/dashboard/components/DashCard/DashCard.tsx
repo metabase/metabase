@@ -25,15 +25,16 @@ import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/vi
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
-import { getVisualizationRaw } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
-  isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
+import {
+  extendCardWithDashcardSettings,
+  getVisualizationRaw,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -42,11 +43,13 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -135,11 +138,12 @@ function DashCardInner({
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
+  });
 
-    if (autoScroll) {
-      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      reportAutoScrolledToDashcard?.();
-    }
+  useAutoScrollIntoView({
+    ref: cardRootRef,
+    enabled: Boolean(autoScroll),
+    onScrolled: () => reportAutoScrolledToDashcard?.(),
   });
 
   useUpdateEffect(() => {

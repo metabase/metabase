@@ -12,6 +12,10 @@ import {
   tableApi,
   transformApi,
 } from "metabase/api";
+import {
+  allCollectionModels,
+  getCollectionItemsOptions,
+} from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
@@ -31,10 +35,8 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { getCollectionItemsOptions, validCollectionModels } from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
-const allCollectionModels = Array.from(validCollectionModels);
 
 const getDefaultPath = async ({
   options,
@@ -319,7 +321,7 @@ const getNamespace = (
   }
 
   if ("namespace" in item) {
-    return item.namespace as CollectionNamespace;
+    return item.namespace;
   }
   if (
     "collection" in item &&
@@ -327,10 +329,11 @@ const getNamespace = (
     !!item.collection &&
     "namespace" in item.collection
   ) {
-    return item.collection?.namespace as CollectionNamespace;
+    return item.collection?.namespace;
   }
 
   if ("collection_namespace" in item) {
+    // Unjustified type cast. FIXME
     return item.collection_namespace as CollectionNamespace;
   }
   return undefined;

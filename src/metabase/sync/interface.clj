@@ -27,7 +27,8 @@
 
 (mr/def ::DatabaseMetadata
   [:map
-   [:tables [:set DatabaseMetadataTable]]
+   [:tables [:fn {:error/message "a set, sequential, or reducible collection of tables"}
+             (fn [x] (or (set? x) (sequential? x) (instance? clojure.lang.IReduceInit x)))]]
    [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def DatabaseMetadata

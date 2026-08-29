@@ -8,7 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
@@ -37,6 +37,13 @@
   [_usage-map :- usage-map-schema]
   nil)
 
+(defenterprise valid-usage-profile-id
+  "Return `profile-id` when usage logging accepts it, otherwise nil.
+  OSS accepts every profile because usage logging is disabled."
+  metabase-enterprise.metabot.usage
+  [profile-id]
+  profile-id)
+
 (defenterprise check-usage-limits!
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,
   or a user-friendly error message string if any limit is exceeded.
@@ -53,7 +60,7 @@
 (defn- default-metabase-meter-key
   []
   (some-> metabot.settings/default-metabase-llm-metabot-provider
-          provider-util/strip-metabase-prefix
+          llm.provider/strip-managed-prefix
           u/qualified-name
           (str/replace-first "/" ":")
           (str ":tokens")))
@@ -66,7 +73,7 @@
 
 (defn managed-free-limit-reached?
   "True when the configured managed Metabase provider is locked for free-tier usage."
-  ([] (and (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+  ([] (and (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
            (some-> (premium-features/token-status) managed-free-limit-reached?)))
   ([token-status]
    (some-> (meter-entry token-status)

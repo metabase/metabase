@@ -80,8 +80,9 @@
                                 (formatter/TextWrapper? res)    (:text-str res)
                                 :else                          res)))
                           @ordered-formatters cleaned-row)))
-             writer {})
-            (.flush writer))))
+             writer {}))))
+      ;; no flush per row: it would sync-flush the GZIP response per row (one native Deflater call each, TCP packet
+      ;; overhead per #34795); the BufferedWriter pushes rows through as it fills, like the CSV writer
 
       (finish! [_ _]
         (.write writer "\n]")

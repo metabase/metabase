@@ -1,11 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import ModelSVG from "img/model-illustration.svg?component";
 import { ModalContent } from "metabase/common/components/ModalContent";
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
-import { turnQuestionIntoModel } from "metabase/query_builder/actions";
+import { useUserAcknowledgement } from "metabase/current-user";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
+
+import { turnQuestionIntoModel } from "../../actions";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";
 
@@ -36,7 +38,9 @@ export function NewDatasetModal({ onClose }: { onClose: () => void }) {
       ]}
     >
       <Box p="2rem 1rem 0">
-        <Box component="img" pt="md" src="app/img/model-illustration.svg" />
+        <Box pt="md">
+          <ModelSVG />
+        </Box>
         <Text component="h2" mt="2rem" mb="md">{t`Models`}</Text>
         <ul>
           <li className={NewDatasetModalS.DatasetValueProp}>

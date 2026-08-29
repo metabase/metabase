@@ -13,11 +13,11 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Center } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualization } from "metabase/viz-core";
 
 import { PaletteContainer } from "./Palette";
 import { recents, search } from "./test_data.json";
@@ -28,15 +28,12 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(SmartScalar);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ComboChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {

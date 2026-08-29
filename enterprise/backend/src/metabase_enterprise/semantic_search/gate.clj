@@ -22,6 +22,7 @@
    [buddy.core.hash :as buddy-hash]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -122,6 +123,7 @@
                                                 (peek updates)))
                                          seq)]
       (let [{:keys [gate-table-name]} index-metadata
+            gate-col   (fn [column] (semantic.util/conflict-target-column gate-table-name column))
             upsert-q   {:insert-into   (keyword gate-table-name)
                         ;; sort to ensure locks are acquired predictably
                         :values        (sort-by :id gate-document-batch)
@@ -134,18 +136,18 @@
                                                  :gated_at      [:clock_timestamp]}
                                         :where  [:and
                                                  ;; in the case of an updated_at collision, simulate old behaviour, later transactions on the gate win.
-                                                 [:<= (keyword gate-table-name "updated_at") :excluded.updated_at]
+                                                 [:<= (gate-col "updated_at") :excluded.updated_at]
                                                  ;; content diff
                                                  [:case
                                                   ;; now deleted, delete if was not previously
                                                   [:= nil :excluded.document_hash]
-                                                  [:!= nil (keyword gate-table-name "document_hash")]
+                                                  [:!= nil (gate-col "document_hash")]
                                                   ;; was deleted (now has a value) - update
-                                                  [:= nil (keyword gate-table-name "document_hash")]
+                                                  [:= nil (gate-col "document_hash")]
                                                   true
                                                   ;; update if new value is different
                                                   :else
-                                                  [:!= (keyword gate-table-name "document_hash") :excluded.document_hash]]]}}
+                                                  [:!= (gate-col "document_hash") :excluded.document_hash]]]}}
             upsert-sql (sql/format upsert-q :quoted true)]
         (jdbc/execute! tx [(format "SET LOCAL statement_timeout = %d" (.toMillis gate-write-timeout))]) ; note pg cannot accept a parameter here
         (let [stmt-start (u/start-timer)]

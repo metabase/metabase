@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
+import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import type { Notification } from "metabase-types/api";
 import {
   createMockNotification,

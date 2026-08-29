@@ -1,15 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
+import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";
-import { getEngines } from "metabase/databases/selectors";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const { url: fullDocsUrl, showMetabaseLinks } = useDocsUrl(
     `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
   );
@@ -56,7 +56,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
       display="flex"
       flex={{ sm: "1 0 20rem", md: "1 0 26.5rem", base: "1 0 100%" }}
       h="100%"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       <Box p="xl" w="100%">
         <Flex align="baseline" justify="space-between" mb="md">

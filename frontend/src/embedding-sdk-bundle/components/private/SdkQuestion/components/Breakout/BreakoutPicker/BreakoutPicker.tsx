@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
-} from "metabase/query_builder/hooks";
+} from "metabase/query_builder";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Button, Divider, Icon, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -53,7 +53,6 @@ export const BreakoutPickerInner = ({
           breakoutItem?.updateBreakout(column)
         }
         onClose={() => onClose?.()}
-        isMetric={false}
       />
     </Stack>
   );

@@ -5,8 +5,10 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  DEFAULT_VISUALIZATION_THEME,
+  type RenderingContext,
+} from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
@@ -38,6 +40,7 @@ const renderingContext: RenderingContext = {
 export const SingleCategory = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.singleCategory as any,
     renderingContext,
   },
@@ -46,6 +49,7 @@ export const SingleCategory = {
 export const ManyCategories = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.manyCategories as any,
     renderingContext,
   },
@@ -54,6 +58,7 @@ export const ManyCategories = {
 export const LabelOverflow = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.labelOverflow as any,
     renderingContext,
   },
@@ -62,6 +67,7 @@ export const LabelOverflow = {
 export const OutlierOverflow = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.outlierOverflow as any,
     renderingContext,
   },
@@ -70,6 +76,7 @@ export const OutlierOverflow = {
 export const PositiveNegativeCrossZeroYAxisAuto = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.positiveNegativeCrossZeroYAxisAuto as any,
     renderingContext,
   },
@@ -78,6 +85,7 @@ export const PositiveNegativeCrossZeroYAxisAuto = {
 export const TopBottomMixedOutliers = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.topBottomMixedOutliers as any,
     renderingContext,
   },
@@ -86,6 +94,7 @@ export const TopBottomMixedOutliers = {
 export const ScaleExtremes = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.scaleExtremes as any,
     renderingContext,
   },
@@ -94,6 +103,7 @@ export const ScaleExtremes = {
 export const DistributionShapes = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.distributionShapes as any,
     renderingContext,
   },
@@ -102,6 +112,7 @@ export const DistributionShapes = {
 export const LogScale = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.logScale as any,
     renderingContext,
   },
@@ -110,6 +121,7 @@ export const LogScale = {
 export const LogScaleEdgeCases = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.logScaleEdgeCases as any,
     renderingContext,
   },
@@ -118,6 +130,7 @@ export const LogScaleEdgeCases = {
 export const LabelFormatting = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.labelFormatting as any,
     renderingContext,
   },
@@ -126,6 +139,7 @@ export const LabelFormatting = {
 export const MinMaxNoOutliers = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.minMaxNoOutliers as any,
     renderingContext,
   },
@@ -134,6 +148,7 @@ export const MinMaxNoOutliers = {
 export const PowScale = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.powScale as any,
     renderingContext,
   },
@@ -142,6 +157,7 @@ export const PowScale = {
 export const MediumDenseTemporalData = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.mediumDenseTemporalData as any,
     renderingContext,
   },
@@ -150,6 +166,7 @@ export const MediumDenseTemporalData = {
 export const DenseTemporalData = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.denseTemporalData as any,
     renderingContext,
   },
@@ -158,6 +175,7 @@ export const DenseTemporalData = {
 export const NumericDimensionTukey = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.numericDimensionTukey as any,
     renderingContext,
   },
@@ -166,6 +184,7 @@ export const NumericDimensionTukey = {
 export const NumericDimensionMinMax = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.numericDimensionMinMax as any,
     renderingContext,
   },
@@ -174,6 +193,7 @@ export const NumericDimensionMinMax = {
 export const NumericMinMaxAllPoints = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.numericMinMaxAllPoints as any,
     renderingContext,
   },
@@ -182,6 +202,7 @@ export const NumericMinMaxAllPoints = {
 export const BoxPlotCustomization = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.boxPlotCustomization as any,
     renderingContext,
   },
@@ -190,6 +211,7 @@ export const BoxPlotCustomization = {
 export const MultiSeriesBreakoutWithHiddenSortFormatting = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.multiSeriesBreakoutWithHiddenSortFormatting as any,
     renderingContext,
   },
@@ -198,6 +220,7 @@ export const MultiSeriesBreakoutWithHiddenSortFormatting = {
 export const MultiSeriesTwoMetricsWithAxisSplitFormatting = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.multiSeriesTwoMetricsWithAxisSplitFormatting as any,
     renderingContext,
   },

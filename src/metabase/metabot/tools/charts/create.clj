@@ -9,7 +9,7 @@
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :area :combo :row :pivot
+  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
 
@@ -70,8 +70,7 @@
                       :query-id query-id
                       :chart-type chart-type}]
       (log/info "Created chart" {:chart-id chart-id
-                                 :chart-type chart-type
-                                 :results-url results-url})
+                                 :chart-type chart-type})
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 
 import { Box, Flex, Icon, Image } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
 import { ColumnValue } from "./ColumnValue";
@@ -59,6 +59,7 @@ export function ListViewItem({
             flexShrink: 0,
             backgroundColor: getIconBackground(entityIconColor),
           }}
+          // Unjustified type cast. FIXME
         >
           {/* @ts-expect-error viz components may be passed arbitrary color values */}
           <Icon name={entityIcon as IconName} c={entityIconColor} />
@@ -85,7 +86,7 @@ export function ListViewItem({
             cols={cols}
             column={titleColumn}
             settings={settings}
-            rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
+            rawValue={row[cols.indexOf(titleColumn)]}
           />
         )}
       </Flex>

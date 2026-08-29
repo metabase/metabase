@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -14,6 +15,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -107,10 +109,13 @@
 
 (deftest ^:parallel variable-value-test-10
   (testing "BigInteger value"
-    (is (= 9223372036854775808
-           (value-for-tag
-            {:name "id", :id test-uuid, :display-name "ID", :type :number}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+    (let [v (value-for-tag
+             {:name "id", :id test-uuid, :display-name "ID", :type :number}
+             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
+      (is (= 9223372036854775808 v))
+      ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      ;; Unimportant to the product that it's a BigInteger, but if not this test isn't testing what was intended:
+      (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"
@@ -431,6 +436,7 @@
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
         ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from
@@ -438,6 +444,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
@@ -610,6 +617,31 @@
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
+(deftest snippet-read-permissions-test
+  (let [mp       (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets [{:id      1
+                                            :name    "expensive_venues"
+                                            :content "venues WHERE price = 4"}]})
+        expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+        query    (native-query-with-snippet mp :snippet-id 1)
+        resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
+    (testing "Snippet resolves when the current user can read it"
+      (binding [api/*current-user-id* 1]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
+          (is (= expected (resolve!))))))
+    (testing "Snippet does not resolve when the current user cannot read it"
+      (binding [api/*current-user-id* 1]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Snippet [\d,]+ \"expensive_venues\" not found\."
+               (resolve!))))))
+    (testing "Snippet resolves when there is no current user, e.g. subscriptions"
+      (binding [api/*current-user-id* nil]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+          (is (= expected (resolve!))))))))
+
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
     (let [mp    (lib.tu/mock-metadata-provider
@@ -619,13 +651,13 @@
                                            :content "venues WHERE price = 4"}]})
           query (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
                     ;; force unnormalized snippet names
-                    (lib/update-query-stage 0 assoc :template-tags {"snippet:expensive_venues" {:type         :snippet
-                                                                                                :name         "snippet:expensive_venues"
-                                                                                                :display-name "Expensive Venues"
-                                                                                                :snippet-name "expensive_venues"
-                                                                                                :snippet-id   1}}))]
-      (is (=  {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-              (params.values/stage->params-map query (lib/query-stage query -1)))))))
+                    (lib/update-query-stage 0 assoc :template-tags [{:type         :snippet
+                                                                     :name         "snippet:expensive_venues"
+                                                                     :display-name "Expensive Venues"
+                                                                     :snippet-name "expensive_venues"
+                                                                     :snippet-id   1}]))]
+      (is (= {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+             (params.values/stage->params-map query (lib/query-stage query -1)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"

@@ -24,7 +24,7 @@ export function useTableEditingToastController() {
       showErrorToast(error: unknown, onDismiss?: () => void) {
         dispatch(
           addUndo({
-            toastColor: "background-primary-inverse",
+            toastColor: "background_page-primary-inverse",
             icon: null,
             renderChildren: () => <ErrorUpdateToast error={error} />,
             timeout: null, // removes automatic toast hide

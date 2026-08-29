@@ -43,5 +43,5 @@
              #"Error registering fonts: Metabase will not be able to send Pulses"
              (#'style/register-fonts!)))
         (testing "Should log the Exception"
-          (is (=? {:level :error, :e Throwable, :message #"^Error registering fonts: .*"}
+          (is (=? {:level :error, :e nil, :message #"^Error registering fonts: .*Oops!"}
                   (first (messages)))))))))

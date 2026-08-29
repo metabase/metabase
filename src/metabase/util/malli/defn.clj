@@ -54,6 +54,7 @@
                                                      (:arities arities-value)))
                                       ")"))
           "\n  Return: " (str/replace (with-out-str
+                                        ;; renders the schema into the generated docstring via with-out-str
                                         #_{:clj-kondo/ignore [:discouraged-var]}
                                         (pp/pprint (:schema (:values return) :any)
                                                    {:max-width 120}))
@@ -104,7 +105,7 @@
   {:style/indent [:defn]}
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
-        cosmetic-name    (gensym (munge (str fn-name)))
+        cosmetic-name    (symbol (munge (str fn-name "&")))
         {attr-map :meta} (:values parsed)
         docstring        (annotated-docstring parsed)
         attr-map         (merge

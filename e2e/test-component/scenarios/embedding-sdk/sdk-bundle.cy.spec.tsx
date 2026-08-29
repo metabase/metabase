@@ -27,6 +27,7 @@ const sdkBundleCleanup = () => {
 // helper to assert the post-unmount shape.
 const assertPropsStoreReset = () => {
   cy.window().should((win) => {
+    // Unjustified type cast. FIXME
     const store = (win as any).METABASE_PROVIDER_PROPS_STORE;
     expect(store, "store singleton persists").to.exist;
     const state = store.getState();

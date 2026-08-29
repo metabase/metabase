@@ -690,7 +690,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
       (rule) => rule instanceof CSSStyleRule,
-    ) as CSSStyleRule[];
+    );
 
     return cssRules.filter((rule) => element.matches(rule.selectorText));
   });

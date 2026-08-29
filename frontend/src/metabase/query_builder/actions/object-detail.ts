@@ -3,7 +3,6 @@ import _ from "underscore";
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import { RESET_ROW_ZOOM } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -13,6 +12,11 @@ import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
 
 import {
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  RESET_ROW_ZOOM,
+} from "../store/actions";
+import {
   getCanZoomNextRow,
   getCanZoomPreviousRow,
   getCard,
@@ -20,7 +24,7 @@ import {
   getNextRowPKValue,
   getPreviousRowPKValue,
   getTableForeignKeys,
-} from "../selectors";
+} from "../store/selectors";
 
 import { setCardAndRun } from "./core/core";
 import { updateUrl } from "./url";
@@ -102,8 +106,6 @@ interface FKInfo {
   value: string | number | null;
 }
 
-export const LOAD_OBJECT_DETAIL_FK_REFERENCES =
-  "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ({ objectId }) => {
@@ -142,6 +144,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(
           aggregatedQuery,
+          // Unjustified type cast. FIXME
           fk.origin.getPlainObject() as Field,
           objectId,
         );
@@ -202,9 +205,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
     };
   },
 );
-
-export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
-  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
 export const viewNextObjectDetail = () => {
   return (dispatch: Dispatch, getState: GetState) => {

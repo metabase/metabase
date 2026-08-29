@@ -74,7 +74,7 @@
               :dimension
               lib/field-ref-id)
       (do
-        (log/tracef "Could not find matching Field ID for target: %s" (pr-str template-tag-name))
+        (log/trace "Could not find matching Field ID for target template tag")
         nil)))
 
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]

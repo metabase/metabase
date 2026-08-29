@@ -4,6 +4,7 @@ import { Center, Popover } from "metabase/ui";
 
 import { SummarizePicker } from "../SummarizePicker";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

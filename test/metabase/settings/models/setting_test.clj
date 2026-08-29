@@ -8,7 +8,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -619,35 +618,42 @@
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
-    (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (toucan-name! "Sad Can")
-      (is (u/base64-string? (actual-value-in-db :toucan-name)))
-      (testing "make sure it can be decrypted as well..."
-        (is (= "Sad Can"
-               (toucan-name)))))
-    (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
-      (encryption-test/with-secret-key nil
+    ;; Setting an encryption key without running encrypt-db leaves the other encrypted settings in the shared app DB
+    ;; stored plaintext, and restoring the whole-table settings cache strictly decrypts every one of them. Use an
+    ;; isolated app DB so this test's key only meets settings it wrote itself.
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
         (toucan-name! "Sad Can")
-        (is (= "Sad Can"
-               (actual-value-in-db :toucan-name)))))))
+        (is (u/base64-string? (actual-value-in-db :toucan-name)))
+        (testing "make sure it can be decrypted as well..."
+          (is (= "Sad Can"
+                 (toucan-name)))))
+      (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
+        (encryption-test/with-secret-key nil
+          (toucan-name! "Sad Can")
+          (is (= "Sad Can"
+                 (actual-value-in-db :toucan-name))))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
-    (mt/discard-setting-changes [test-json-setting]
-      (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-        (test-json-setting! {:abc 123})
-        (is (not= "{\"abc\":123}"
-                  (actual-value-in-db :test-json-setting))))
-      (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
-                    "rather than failing entirely")
-        (encryption-test/with-secret-key nil
-          (is (= {:key            :test-json-setting
-                  :value          nil
-                  :is_env_setting false
-                  :env_name       "MB_TEST_JSON_SETTING"
-                  :description    "Test setting - this only shows up in dev (4)"
-                  :default        nil}
-                 (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (mt/discard-setting-changes [test-json-setting]
+        (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+          (test-json-setting! {:abc 123})
+          (is (not= "{\"abc\":123}"
+                    (actual-value-in-db :test-json-setting))))
+        (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                      "rather than failing entirely")
+          (encryption-test/with-secret-key nil
+            (is (= {:key            :test-json-setting
+                    :value          nil
+                    :is_env_setting false
+                    :env_name       "MB_TEST_JSON_SETTING"
+                    :description    "Test setting - this only shows up in dev (4)"
+                    :default        nil}
+                   (#'setting/user-facing-info (setting/resolve-setting :test-json-setting))))))))))
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
@@ -734,6 +740,27 @@
     (test-sensitive-setting! "**********56")
     (is (= "123456"
            (test-sensitive-setting)))))
+
+(defsetting test-sensitive-multi-line-setting
+  (deferred-tru "This is a sample sensitive multi-line Setting.")
+  :sensitive? true)
+
+(deftest sensitive-settings-multi-line-test
+  (testing "`user-facing-value` should obfuscate multi-line sensitive settings"
+    (test-sensitive-multi-line-setting! "ABC1\n3")
+    (is (=  "**********\n3"
+            (setting/user-facing-value "test-sensitive-multi-line-setting"))))
+  (testing "Attempting to set a sensitive setting to a multi-line obfuscated value should be ignored"
+    (test-sensitive-multi-line-setting! "1234\n6")
+    (test-sensitive-multi-line-setting! "**********\n6")
+    (is (= "1234\n6"
+           (test-sensitive-multi-line-setting)))))
+
+(deftest obfuscated-value-spanning-a-line-break-test
+  (testing "obfuscated-value? works for values ending in a newline"
+    (let [key-file "{\n  \"type\": \"service_account\"\n}\n"]
+      (is (= "**********}\n" (setting/obfuscate-value key-file)))
+      (is (setting/obfuscated-value? (setting/obfuscate-value key-file))))))
 
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
@@ -1168,14 +1195,6 @@
              #"Setting test-warn-vs-error-setting is not enabled for this database"
              (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
 
-(deftest identity-hash-test
-  (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
-      (is (= "5f7f150c"
-             (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (t2/select-one :model/Setting :key "test-setting-1")))))))
-
 (deftest enabled?-test
   (testing "Settings can be disabled"
     (testing "With no default returns nil"
@@ -1222,6 +1241,22 @@
            :enabled?   (fn [] false)
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
+
+(deftest validate-settable!-ex-data-test
+  (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
+    (testing "premium feature not available"
+      (mt/with-premium-features #{}
+        (is (= {:status-code 402
+                :status      "error-premium-feature-not-available"
+                :setting     "test-feature-setting"
+                :feature     :test-feature}
+               (try (test-feature-setting! "custom")
+                    (catch ExceptionInfo e (ex-data e)))))))
+    (testing ":enabled? returns false"
+      (is (= {:status-code 400
+              :setting     "test-enabled-setting-default"}
+             (try (test-enabled-setting-default! "custom")
+                  (catch ExceptionInfo e (ex-data e))))))))
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 

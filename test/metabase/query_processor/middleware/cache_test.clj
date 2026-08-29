@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -24,6 +25,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -43,6 +45,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
@@ -96,6 +99,12 @@
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge))
 
+      (delete-entry! [this query-hash]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
+          (swap! store dissoc hex-hash)
+          (swap! leases dissoc hex-hash)
+          (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this))))
+
       (try-acquire-refresh-lease! [_this query-hash lease-ms]
         (let [hex-hash (codecs/bytes->hex query-hash)
               now      (t/instant)
@@ -141,7 +150,7 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)
@@ -235,6 +244,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -245,6 +255,97 @@
         (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
       (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
         (is (true? (backend.db/try-acquire-refresh-lease! query-hash -1)))))))
+
+(deftest refresh-lease-does-not-bump-updated-at-test
+  (testing (str "try-acquire-refresh-lease! must not touch updated_at (regression for #76856). "
+                "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
+                "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
+                "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
+      (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                                 :results    (byte-array [0])
+                                                                 :updated_at original-updated-at}]
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
+        (let [{:keys [updated_at refresh_started_at]}
+              (t2/select-one :model/QueryCache :query_hash query-hash)]
+          (testing "the lease was claimed"
+            (is (some? refresh_started_at)))
+          (testing "updated_at was left alone -- results have not actually been rewritten yet"
+            (is (= (t/instant original-updated-at) (t/instant updated_at)))))))))
+
+(deftest delete-entry-test
+  (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                               :results    (byte-array [0])
+                                                               :updated_at (t/offset-date-time)}]
+      (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
+      (backend.db/delete-entry! query-hash)
+      (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
+
+(deftest failed-refresh-deletes-outdated-entry-test
+  (testing "a refresh that fails to save (e.g. results exceed query-caching-max-kb) deletes the outdated entry
+            instead of leaving it to be served to later requests"
+    (with-mock-cache! [save-chan]
+      (run-query)
+      (mt/wait-for-result save-chan)
+      (is (= :cached
+             (run-query)))
+      (mt/with-temporary-setting-values [query-caching-max-kb 0]
+        (run-query :middleware {:ignore-cached-results? true})
+        (mt/wait-for-result save-chan))
+      (testing "the still-fresh-but-outdated entry is gone, so a normal load recomputes"
+        (is (= :not-cached
+               (run-query)))))))
+
+(deftest failed-refresh-releases-refresh-lease-test
+  (testing "when the lease winner's refresh fails to save, the expired entry is deleted so other processes recompute
+            instead of serving it stale for the rest of the lease window"
+    (with-mock-cache! [save-chan]
+      (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
+        (run-query :cache-strategy strategy)
+        (mt/wait-for-result save-chan)
+        (Thread/sleep 200)
+        (mt/with-temporary-setting-values [query-caching-max-kb 0]
+          (testing "this run wins the refresh lease, recomputes, and fails to save"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy))))
+          (mt/wait-for-result save-chan)
+          (testing "the next request recomputes rather than being served the stale entry"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy)))))))))
+
+(deftest cancellation-mid-flight-does-not-throw-assertion-test
+  (testing (str "a cache-miss query canceled between the driver's respond callback and the reducer "
+                "returns nil silently #66655.")
+    (with-mock-cache! []
+      (let [qp (cache/maybe-return-cached-results qp.pipeline/*run*)]
+        (binding [driver.settings/*query-timeout-ms* 2000
+                  qp.pipeline/*canceled-chan*        (a/promise-chan)
+                  qp.pipeline/*execute*              (fn [_driver _query respond]
+                                                       (a/>!! qp.pipeline/*canceled-chan* ::test-cancel)
+                                                       (respond {} [[:toucan 1]]))]
+          (driver/with-driver :h2
+            (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
+
+(deftest not-eligible-refresh-deletes-outdated-entry-test
+  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min_duration_ms), the expired entry
+            is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
+    (with-mock-cache! [save-chan]
+      (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
+      (mt/wait-for-result save-chan)
+      (Thread/sleep 200)
+      (binding [*query-caching-min-ttl* 1000]
+        (let [strategy (assoc (ttl-strategy) :multiplier 0.1)]
+          (testing "this run wins the refresh lease, recomputes, and doesn't save (query is now too fast)"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy))))
+          (testing "the next request recomputes rather than being served the stale entry"
+            (is (= :not-cached
+                   (run-query :cache-strategy strategy)))))))))
 
 (deftest stale-while-revalidate-test
   (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
@@ -258,6 +359,92 @@
         (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
+
+(deftest early-refresh-test
+  ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds, so the default 10% ratio puts the
+  ;; refresh zone in the last 6 seconds
+  (let [t0 #t "2026-01-01T00:00:00Z[UTC]"]
+    (testing "an entry with most of its window left is served, not refreshed"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 30))
+          (is (= :cached
+                 (run-query))))))
+    (testing "an entry inside the last tenth of its window is refreshed before it can expire"
+      (with-mock-cache! [save-chan]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (mt/with-clock (t/plus t0 (t/seconds 57))
+          (is (= :not-cached
+                 (run-query))
+              "the request that wins the lease recomputes rather than serving an entry about to expire")
+          (mt/wait-for-result save-chan))))
+    (testing "a request that loses the early-refresh lease is still served the (fresh) entry"
+      (with-mock-cache! [save-chan]
+        (let [query-hash (qp.util/query-hash (test-query nil))]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "only the lease winner pays for the early refresh")))))
+    (testing "an entry written just after an explicit invalidation has its whole window left, not the sliver since
+              the invalidation"
+      (with-mock-cache! [save-chan]
+        (let [strategy (assoc (ttl-strategy) :invalidated-at (t/offset-date-time t0))]
+          (mt/with-clock (t/plus t0 (t/seconds 1))
+            (run-query :cache-strategy strategy)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 31))
+            (is (= :cached
+                   (run-query :cache-strategy strategy)))))))
+    (testing "early refreshing is off when the ratio is 0"
+      (with-mock-cache! [save-chan]
+        (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]
+          (mt/with-clock t0
+            (run-query)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 57))
+            (is (= :cached
+                   (run-query)))))))))
+
+(deftest stale-while-revalidate-staleness-is-bounded-test
+  (testing "a lease loser is not served an entry that expired long before the refresh holding the lease started; past
+            that bound it recomputes instead (#78339)"
+    (with-mock-cache! [save-chan]
+      ;; (ttl-strategy) TTL = :multiplier 60 * :avg-execution-ms 1000 = 60 seconds
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 30 days ago and another process just claimed the refresh lease"
+          (mt/with-clock (t/plus t0 (t/days 30))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :not-cached
+                   (run-query))
+                "a 30-day-old entry is too stale to serve to the lease loser")))))))
+
+(deftest stale-while-revalidate-within-lease-window-test
+  (testing "a lease loser is still served an entry that only just expired, so concurrent requests don't stampede the
+            warehouse while a refresh is in flight"
+    (with-mock-cache! [save-chan]
+      (let [t0         #t "2026-01-01T00:00:00Z[UTC]"
+            query-hash (qp.util/query-hash (test-query nil))]
+        (mt/with-clock t0
+          (run-query)
+          (mt/wait-for-result save-chan))
+        (testing "the entry expired 1 second ago and another process holds the refresh lease"
+          (mt/with-clock (t/plus t0 (t/seconds 61))
+            (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash (u/minutes->ms 5))))
+            (is (= :cached
+                   (run-query))
+                "just-expired results are fine to serve while the refresh is in flight")))))))
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
@@ -330,6 +517,25 @@
         (is (= :cached
                (run-query)))))))
 
+(deftest min-duration-honored-from-stored-config-test
+  (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
+                "(regression for #78340)")
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (cache-config/store! (mt/user->id :crowberto)
+                           {:model    "root"
+                            :model_id 0
+                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (with-mock-cache! [save-chan]
+        (let [strategy (-> (cache-config/root-strategy)
+                           cache-config/row->config
+                           :strategy
+                           (assoc :avg-execution-ms 1000))]
+          (run-query :cache-strategy strategy)
+          (is (= :metabase.test.util.async/timed-out
+                 (mt/wait-for-result save-chan)))
+          (is (= :not-cached
+                 (run-query :cache-strategy strategy))))))))
+
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
     (with-mock-cache! [save-chan]
@@ -355,14 +561,15 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :cache-hash some?}
+                                   :hash some?}
                    :row_count     8
                    :status        :completed}
                   result)))))))
 
 (deftest array-query-can-be-cached-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
+                         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                          :sqlite) ;; Disabling until issue #57301 is resolved
     (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [enable-query-caching true]
@@ -391,6 +598,7 @@
                    (dissoc cached-result :cache/details)))))))))
 
 (deftest postgres-domain-can-be-cached-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (mt/dataset (mt/dataset-definition
@@ -449,9 +657,7 @@
                     cached-result   (qp/process-query query)]
                 (is (=? {:cache/details  {:cached     true
                                           :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                          :hash       some?
-                                          ;; TODO: this check is not working if the key is not present in the data
-                                          :cache-hash some?}
+                                          :hash       some?}
                          :row_count 5
                          :status    :completed}
                         (dissoc cached-result :data))
@@ -471,6 +677,7 @@
           save-query-update-avg-time-original (mt/original-fn #'query/save-queries-and-update-average-execution-times!)]
       ;; save-execution-metadata!* and save-queries-and-update-average-execution-times! are invoked from
       ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
                                                                                 (swap! save-execution-metadata-count inc)
@@ -557,10 +764,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                   :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the
-                                                   ;; data
-                                                   :cache-hash some?}
+                                                   :hash       some?}
                                    :row_count     5
                                    :status        :completed}
                                   (dissoc cached-results :data))))
@@ -582,9 +786,7 @@
                   (testing "\n\nOuter queries are cached *separately*"
                     (is (=? {:cache/details {:cached     true
                                              :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                             :hash       some?
-                                             ;; TODO: this check is not working if the key is not present in the data
-                                             :cache-hash some?}
+                                             :hash       some?}
                              :row_count     5
                              :status        :completed}
                             (dissoc rerun-outer1 :data))
@@ -654,10 +856,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                    :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the
-                                                    ;; data
-                                                    :cache-hash some?}
+                                                    :hash       some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
@@ -749,20 +948,29 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
+(def stub-no-op-cache-backend
+  (reify i/CacheBackend
+    (cached-results [_ _ respond] (respond nil nil))
+    (save-results! [_ _ _])
+    (purge-old-entries! [_ _])
+    (delete-entry! [_ _])
+    (try-acquire-refresh-lease! [_ _ _] true)))
+
 (deftest ^:parallel caching-big-resultsets
-  (testing "Make sure we can save large result sets without tripping over internal async buffers"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we don't block somewhere if we decide not to save results"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
-      (is (= max-bytes (count (transduce identity
-                                         (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                         (repeat max-bytes [1]))))))))
+  (binding [cache/*backend* stub-no-op-cache-backend]
+    (testing "Make sure we can save large result sets without tripping over internal async buffers"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we don't block somewhere if we decide not to save results"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+      (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
+        (is (= max-bytes (count (transduce identity
+                                           (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                           (repeat max-bytes [1])))))))))
 
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"
@@ -790,7 +998,7 @@
                 (request/with-current-user (mt/user->id :crowberto)
                   (is (=? {:cache/details {:cached     true
                                            :updated_at some?
-                                           :cache-hash some?}}
+                                           :hash some?}}
                           (run-forbidden-query)))))
               (testing "Run query as regular user, should get perms Exception even though result is cached"
                 (is (thrown-with-msg?

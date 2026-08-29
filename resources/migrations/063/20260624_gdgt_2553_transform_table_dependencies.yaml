@@ -1,0 +1,23 @@
+## Precompute transform table dependencies into a column so the ordering read paths
+## (job details, cycle detection) don't have to invoke the SQL parser on every read.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.q8x2kf
+      author: bronsa
+      comment: Add table_dependencies column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: table_dependencies
+                  type: ${text.type}
+                  remarks: Precomputed table dependencies (JSON) used for execution ordering and cycle detection. Null means not yet computed.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: table_dependencies

@@ -10,7 +10,7 @@
 }
 
 .ContentTable thead {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .PageHeader {
@@ -38,7 +38,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .ContentTable tr:hover .TableActions {
@@ -47,12 +47,12 @@
 }
 
 .AdminList {
-  background-color: var(--mb-color-background-secondary);
-  border: var(--border-size) var(--border-style) var(--mb-color-border);
+  background-color: var(--mb-color-background_page-secondary);
+  border: var(--border-size) var(--border-style) var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
-  box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
+  box-shadow: inset -1px -1px 3px var(--mb-color-shadow-default);
   padding-bottom: 0.75em;
 }
 
@@ -66,7 +66,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .AdminListSearch .AdminInput {
@@ -76,7 +76,7 @@
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .AdminListItem {
@@ -92,20 +92,20 @@
 
 .AdminListItem.selected,
 .AdminListItem:hover {
-  background-color: var(--mb-color-background-primary);
-  border-color: var(--mb-color-border);
+  background-color: var(--mb-color-background_page-primary);
+  border-color: var(--mb-color-border-neutral);
   margin-left: -0.5em;
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px var(--mb-color-shadow);
+  box-shadow: 0 1px 2px var(--mb-color-shadow-default);
 }
 
 .AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */
@@ -114,7 +114,7 @@
 .AdminInput {
   color: var(--mb-color-text-primary);
   padding: var(--padding-1);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border: 1px solid transparent;
 }
 
@@ -158,7 +158,8 @@
 }
 
 .AdminTable thead {
-  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .AdminTable tbody tr:first-child td {

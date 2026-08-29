@@ -12,6 +12,6 @@
 .dragHandle {
   width: 100px;
   height: 5px;
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-border-neutral);
   border-radius: 4px;
 }

@@ -2,9 +2,8 @@ import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getPlan, getSetting, isProPlan } from "metabase/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -73,9 +72,10 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
-                      icon={<Icon name="warning" size={16} />}
+                      icon={<Icon name="warning" />}
                       title={t`No compatible database connection`}
                     >
                       {jt`None of your connected databases can be used with transforms. ${(
@@ -128,7 +128,7 @@ const SimpleCard = ({
   title: string;
   description: string;
 }) => (
-  <Card bg="background-secondary" shadow="none">
+  <Card bg="background_page-secondary" shadow="none">
     <Group wrap="nowrap" align="start" gap="sm">
       <Icon name={icon} c="core-brand" size={16} flex="0 0 1rem" />
       <Stack gap="xs">

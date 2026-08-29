@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/settings";
 import { Stack, Text, TextInput } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 
@@ -34,6 +34,7 @@ export function LandingPageUrlField() {
 
     if (result.error) {
       const message =
+        // Unjustified type cast. FIXME
         (result.error as { data: GenericErrorResponse })?.data?.message ||
         t`Something went wrong`;
       setError(message);

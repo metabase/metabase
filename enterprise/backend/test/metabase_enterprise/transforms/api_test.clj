@@ -89,7 +89,7 @@
 
 (deftest list-transforms-excludes-python-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {query-id :id} {}
                        :model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
@@ -107,7 +107,7 @@
 
 (deftest get-python-transform-200-with-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
           (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%d" python-id))]
@@ -115,7 +115,7 @@
 
 (deftest create-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -131,7 +131,7 @@
 
 (deftest update-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (mt/with-temp [:model/Database _destination {:engine driver/*driver*
@@ -147,59 +147,65 @@
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (let [search-term (str "transform-search-" (u/generate-nano-id))
-            query-name  (str search-term "-query")
-            python-name (str search-term "-python")]
-        (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                              :name query-name)
-                       :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
-                                                               :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
-            (testing "no hosting feature"
-              (mt/with-premium-features #{}
-                (is (= #{query-id} (search-transform-ids search-term)))))
-            (testing "no transforms feature"
-              (mt/with-premium-features #{:hosting}
-                (is (empty? (search-transform-ids search-term)))))
-            (testing "transforms only"
-              (mt/with-premium-features #{:transforms-basic :hosting}
-                (is (= #{query-id} (search-transform-ids search-term)))))
-            (testing "transforms and transforms-python"
-              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-                (is (= #{query-id python-id} (search-transform-ids search-term)))))))))))
+      ;; the temp index table is created here, before `with-temp` opens its transaction: creating (and
+      ;; especially dropping) it inside would run DDL on the ambient connection, which on H2/MySQL
+      ;; implicitly commits the transaction, so its rollback could not take the rows back and the
+      ;; Transforms would leak to every later test that counts them. The index scope nested inside
+      ;; `with-appdb-search-and-legacy-search` reuses this one rather than creating its own. The
+      ;; `-if-supported` variant keeps the legacy-search leg running on app dbs that cannot hold an index.
+      (search.tu/with-temp-index-table-if-supported
+        (let [search-term (str "transform-search-" (u/generate-nano-id))
+              query-name  (str search-term "-query")
+              python-name (str search-term "-python")]
+          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                :name query-name)
+                         :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
+                                                                 :name python-name)]
+            (search.tu/with-appdb-search-and-legacy-search
+              (testing "no transforms feature"
+                (mt/with-premium-features #{}
+                  (is (empty? (search-transform-ids search-term)))))
+              (testing "transforms only"
+                (mt/with-premium-features #{:transforms-basic :hosting}
+                  (is (= #{query-id} (search-transform-ids search-term)))))
+              (testing "transforms and transforms-python"
+                (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+                  (is (= #{query-id python-id} (search-transform-ids search-term))))))))))))
 
 (deftest search-filtering-updates-with-feature-flips-without-reindex-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (let [search-term (str "transform-search-" (u/generate-nano-id))
-            query-name  (str search-term "-query")
-            python-name (str search-term "-python")]
-        (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                              :name query-name)
-                       :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
-                                                               :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
-            (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-              (is (= #{query-id python-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:transforms-basic :hosting}
-              (is (= #{query-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:hosting}
-              (is (empty? (search-transform-ids search-term))))
-            (mt/with-premium-features #{}
-              (is (= #{query-id} (search-transform-ids search-term))))))))))
+      ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
+      (search.tu/with-temp-index-table-if-supported
+        (let [search-term (str "transform-search-" (u/generate-nano-id))
+              query-name  (str search-term "-query")
+              python-name (str search-term "-python")]
+          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                :name query-name)
+                         :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
+                                                                 :name python-name)]
+            (search.tu/with-appdb-search-and-legacy-search
+              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+                (is (= #{query-id python-id} (search-transform-ids search-term))))
+              (mt/with-premium-features #{:transforms-basic :hosting}
+                (is (= #{query-id} (search-transform-ids search-term))))
+              (mt/with-premium-features #{}
+                (is (empty? (search-transform-ids search-term)))))))))))
 
 (deftest search-api-transform-models-empty-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
-        (let [search-term (str "transform-search-" (u/generate-nano-id))
-              query-name  (str search-term "-query")]
-          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                                :name query-name)]
-            (search.tu/with-new-search-and-legacy-search
-              (let [ids (search-api-transform-ids :crowberto search-term)]
-                (is (empty? ids))
-                (is (not (contains? ids query-id)))))))))))
+        ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
+        (search.tu/with-temp-index-table-if-supported
+          (let [search-term (str "transform-search-" (u/generate-nano-id))
+                query-name  (str search-term "-query")]
+            (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                  :name query-name)]
+              (search.tu/with-appdb-search-and-legacy-search
+                (let [ids (search-api-transform-ids :crowberto search-term)]
+                  (is (empty? ids))
+                  (is (not (contains? ids query-id))))))))))))
 
 ;;; ------------------------------------------------------------
 ;;; Run List Sorting - TODO [OSS] - move this to OSS
@@ -346,45 +352,34 @@
       ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
       (mt/with-temp [:model/TransformTag {tag-daily-id :id}
                      {:name "daily" :built_in_type "daily"}
-
                      :model/TransformTag {tag-hourly-id :id}
                      {:name "hourly" :built_in_type "hourly"}
-
                      :model/TransformTag {tag-monthly-id :id}
                      {:name "monthly" :built_in_type "monthly"}
-
                      :model/TransformTag {tag-weekly-id :id}
                      {:name "weekly" :built_in_type "weekly"}
-
                      :model/Transform {transform-daily-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-daily-id
                                                      :tag_id       tag-daily-id
                                                      :position     0}
-
                      :model/Transform {transform-hourly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-hourly-id
                                                      :tag_id       tag-hourly-id
                                                      :position     0}
-
                      :model/Transform {transform-monthly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-monthly-id
                                                      :tag_id       tag-monthly-id
                                                      :position     0}
-
                      :model/Transform {transform-weekly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-weekly-id
                                                      :tag_id       tag-weekly-id
                                                      :position     0}
-
                      :model/TransformRun {daily-run-id :id}
                      {:transform_id transform-daily-id}
-
                      :model/TransformRun {hourly-run-id :id}
                      {:transform_id transform-hourly-id}
-
                      :model/TransformRun {monthly-run-id :id}
                      {:transform_id transform-monthly-id}
-
                      :model/TransformRun {weekly-run-id :id}
                      {:transform_id transform-weekly-id}]
         (doseq [sort-direction [:asc :desc]]

@@ -55,6 +55,7 @@ const useGetDbItemListData = (
     .with({ model: "database" }, () => Number(parentItem.id))
     .with(
       { model: "schema" },
+      // Unjustified type cast. FIXME
       () => (parentItem as OmniPickerSchemaItem).database_id,
     )
     .otherwise(() => undefined);

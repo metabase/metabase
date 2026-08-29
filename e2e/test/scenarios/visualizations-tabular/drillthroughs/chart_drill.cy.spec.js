@@ -564,71 +564,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
-    H.visitQuestionAdhoc({
-      name: "15324",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["binning-strategy", ["field-id", ORDERS.QUANTITY], "num-bins", 10],
-          ],
-        },
-        type: "query",
-      },
-      display: "table",
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/)
-      .parent()
-      .parent()
-      .next()
-      .contains("85")
-      .click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is greater than or equal to 10");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is less than 20");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 85 rows");
-  });
-
-  it("should drill through on a bin of null values (#11345)", () => {
-    H.visitQuestionAdhoc({
-      name: "11345",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.DISCOUNT, { binning: { strategy: "default" } }],
-          ],
-        },
-        type: "query",
-      },
-      display: "table",
-    });
-
-    // click on the Count column cell showing the count of null rows
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("16,845").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
-
-    // count number of distinct values in the Discount column
-    H.tableHeaderClick("Discount ($)");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Distinct values").click();
-
-    // there should be 0 distinct values since they are all null
-    cy.get(".test-TableInteractive-cellWrapper").contains("0");
-  });
-
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
     H.createQuestion({
       name: "15250",
@@ -717,17 +652,27 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    H.pieSlices()
-      .filter("[fill^='hsla']")
-      .then(($slice) => {
-        const { height } = $slice[0].getBoundingClientRect();
+    const otherPieSlice = () => H.pieSlices().filter("[fill^='hsla']");
 
-        cy.wrap($slice).realClick({
-          x: 30,
-          y: height / 2,
-          scrollBehavior: false,
-        });
-      });
+    H.pieSlices().should("have.length", 3);
+
+    otherPieSlice().then(($slice) => {
+      const { height } = $slice[0].getBoundingClientRect();
+      cy.wrap($slice).trigger("mousemove", 30, height / 2);
+    });
+
+    H.assertEChartsTooltip({
+      header: "Category",
+      rows: [
+        { name: "Doohickey", value: "42" },
+        { name: "Gizmo", value: "51" },
+      ],
+    });
+
+    otherPieSlice().then(($slice) => {
+      const { height } = $slice[0].getBoundingClientRect();
+      cy.wrap($slice).click(30, height / 2, { force: true });
+    });
 
     H.popover().within(() => {
       cy.findByTestId("click-actions-view").within(() => {

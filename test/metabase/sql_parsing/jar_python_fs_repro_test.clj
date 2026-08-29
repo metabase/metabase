@@ -4,11 +4,11 @@
   GraalVM's bundled polyglot `FileSystem` wrapper routes `newByteChannel` through
   `provider.newFileChannel`, which forces JDK ZipFileSystem to extract deflated entries to a temp file
   beside the jar — fails when that directory isn't writable (non-root in a Kubernetes pod).
-  The fix in `metabase.sql-parsing.pool/nio-polyglot-fs` overrides `newByteChannel` to call
+  The fix in `metabase.sql-parsing.graal/nio-polyglot-fs` overrides `newByteChannel` to call
   `Files/newByteChannel`, which returns an in-memory `ByteArrayChannel` for compressed entries."
   (:require
    [clojure.test :refer :all]
-   [metabase.sql-parsing.pool :as pool]
+   [metabase.sql-parsing.graal :as graal]
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
@@ -37,7 +37,7 @@
             (.write zos (.getBytes "print('hello')\n" "UTF-8"))
             (.closeEntry zos)))
         (with-open [^java.nio.file.FileSystem nio-fs (u.files/nio-fs (str zip-file))]
-          (let [^FileSystem polyfs (#'pool/read-only-polyglot-fs nio-fs)
+          (let [^FileSystem polyfs (#'graal/read-only-polyglot-fs nio-fs)
                 path               (.parsePath polyfs "/python-sources/sql_tools.py")]
             (with-open [ch (.newByteChannel polyfs path
                                             (EnumSet/of StandardOpenOption/READ)

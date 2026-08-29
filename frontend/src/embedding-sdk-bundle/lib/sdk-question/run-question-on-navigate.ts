@@ -4,11 +4,11 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
 import { cardIsEquivalent } from "metabase/common/utils/card";
-import { loadCard } from "metabase/query_builder/actions/core/card";
+import { loadCard } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -47,10 +47,15 @@ export const runQuestionOnNavigateSdk =
 
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
-      nextCard = await loadCard(
-        { cardId: nextCard.id },
-        { dispatch, getState },
-      );
+      // Reload the canonical card only for saved questions. Ad-hoc questions
+      // have no id, so keep the card as-is rather than firing
+      // `GET /api/card/undefined`.
+      if (nextCard.id !== null && nextCard.id !== undefined) {
+        nextCard = await loadCard(
+          { cardId: nextCard.id },
+          { dispatch, getState },
+        );
+      }
     } else {
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
       onClearQueryResults();
@@ -71,5 +76,5 @@ export const runQuestionOnNavigateSdk =
       dispatch,
     });
 
-    return state as SdkQuestionState;
+    return state;
   };

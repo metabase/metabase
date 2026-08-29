@@ -17,6 +17,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 ;; SQL
+(api-scope/defscope agent-sql-construct "agent:sql:construct"
+  (deferred-tru "Construct SQL queries"))
 (api-scope/defscope agent-sql-create "agent:sql:create"
   (deferred-tru "Create SQL queries"))
 (api-scope/defscope agent-sql-edit "agent:sql:edit"
@@ -39,6 +41,14 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-execute "agent:question:execute"
+  (deferred-tru "Run saved questions"))
+
+;; Metric (saved metric cards via Agent API)
+(api-scope/defscope agent-metric-create "agent:metric:create"
+  (deferred-tru "Create metrics"))
+(api-scope/defscope agent-metric-update "agent:metric:update"
+  (deferred-tru "Update metrics"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -49,6 +59,16 @@
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
+
+;; Timelines
+(api-scope/defscope agent-timelines-read "agent:timelines:read"
+  (deferred-tru "View timelines and timeline events"))
+
+;; Explorations (Research mode)
+(api-scope/defscope agent-explorations-read "agent:explorations:read"
+  (deferred-tru "View exploration research candidates"))
+(api-scope/defscope agent-explorations-write "agent:explorations:write"
+  (deferred-tru "Edit an exploration research plan"))
 
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
@@ -167,9 +187,14 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*"}
+   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+   ;; them silently scope-filtered away.
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:metric:*"
+                                        "agent:question:*" "agent:timelines:*" "agent:explorations:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:collection:*"}})
+                                        "agent:timelines:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
@@ -204,6 +229,16 @@
   metabase-enterprise.metabot.permissions
   [_user-id]
   all-yes-permissions)
+
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.

@@ -36,6 +36,9 @@
      ;; Definitely thread safe
      metabase.test.util.dynamic-redefs/patch-vars!
 
+     ;; test-only cleanup of in-memory throttle state (atom resets)
+     metabase.session.api/reset-throttlers-for-testing!
+
      ;; TODO: most of these symbols shouldn't be here, we should go through them and
      ;; find the functions/macros that use them and make sure their names end with !
      ;; best way to do this is try remove each of these and rely on kondo output to find places where it's used
@@ -55,6 +58,7 @@
      metabase.app-db.core/finish-db-setup!
      metabase.app-db.core/migrate!
      metabase.app-db.core/setup-db!
+     metabase.app-db.encryption-test-util/do-with-encrypted-app-db!
      metabase.app-db.schema-migrations-test.impl/run-migrations-in-range!
      metabase.app-db.setup/migrate!
      metabase.app-db.setup/setup-db!

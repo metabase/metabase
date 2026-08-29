@@ -29,6 +29,7 @@ export async function createPluginSandbox(
 
   const env = await createVirtualEnvironment(window, {
     ...(iframeSrc ? { iframeSrc } : {}),
+    keepAlive: false,
     distortionCallback: makeDistortionCallback(pluginId),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
@@ -39,6 +40,7 @@ export async function createPluginSandbox(
         capturedFactory = value;
       },
       __METABASE_VIZ_API__: window.__METABASE_VIZ_API__,
+      frameElement: null,
     }),
   });
 
@@ -50,6 +52,7 @@ export async function createPluginSandbox(
         // unwrap membrane-proxied Error
         let message: string;
         try {
+          // Unjustified type cast. FIXME
           message = String((e as { message?: unknown })?.message ?? e);
         } catch {
           message = "Unknown error inside plugin sandbox";

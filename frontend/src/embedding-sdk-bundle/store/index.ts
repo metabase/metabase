@@ -2,7 +2,7 @@ import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
 import * as pulse from "metabase/notifications/pulse/reducers";
-import * as qb from "metabase/query_builder/reducers";
+import { queryBuilderReducer } from "metabase/query_builder";
 import { commonReducers } from "metabase/reducers-common";
 import { metabaseReduxContext, useDispatch, useStore } from "metabase/redux";
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
@@ -13,18 +13,19 @@ import { sdkListenerMiddleware } from "./listener-middleware";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
+// Unjustified type cast. FIXME
 export const sdkReducers = {
   ...commonReducers,
   pulse: combineReducers(pulse),
-  qb: combineReducers(qb),
+  qb: queryBuilderReducer,
   visualizer,
   sdk,
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>
+  // Unjustified type cast. FIXME
   getStore(
     sdkReducers,
-    null,
     {
       embed: {
         options: {
@@ -41,12 +42,14 @@ export const getSdkStore = () =>
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useDispatch() as SdkDispatch;
 };
 
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useStore() as SdkStore;
 };
 

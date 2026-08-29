@@ -1,8 +1,8 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,
-} from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
+} from "metabase/query_builder";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 

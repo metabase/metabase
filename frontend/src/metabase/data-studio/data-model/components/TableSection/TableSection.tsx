@@ -1,5 +1,4 @@
 import { memo, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,7 +7,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -23,7 +22,8 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -97,26 +97,24 @@ const TableSectionBase = ({
     });
   };
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleTabChange = useCallback(
-    (tab: string | null) => {
-      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+    (tab: DataStudioTableMetadataTab | null) => {
+      if (tab == null) {
         return;
       }
 
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            tab,
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId: table.db_id,
+          schemaName: table.schema,
+          tableId: table.id,
+          tab,
+        }),
       );
     },
-    [dispatch, table.db_id, table.schema, table.id],
+    [table.db_id, table.schema, table.id, navigate],
   );
 
   const handleNameChange = async (name: string) => {
@@ -309,9 +307,7 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="md">
               <Group gap="md" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && (
-                  <Loader data-testid="loading-indicator" size="xs" />
-                )}
+                {isUpdatingSorting && <Loader size="xs" />}
 
                 {!isSorting && hasFields && (
                   <ResponsiveButton

@@ -45,6 +45,11 @@ export type BaseGroupInfo = {
   is_tenant_group?: boolean;
 };
 
+export type ListInviteGroupIdsRequest = {
+  type: "dashboard" | "question";
+  id: number;
+};
+
 export type ListUserMembershipsResponse = Record<UserId, Membership[]>;
 
 export type CreateMembershipRequest = {

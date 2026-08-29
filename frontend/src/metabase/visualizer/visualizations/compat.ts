@@ -1,8 +1,10 @@
 import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import { isCartesianChart } from "metabase/visualizations";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type {
   Dataset,
   DatasetColumn,
@@ -82,11 +84,14 @@ export function groupColumnsBySuitableVizSettings(
           state,
           settings,
           datasets,
+          // Unjustified type cast. FIXME
           dataSourceColumns: columns as DatasetColumn[],
+          // Unjustified type cast. FIXME
           column: column as DatasetColumn,
         }),
       }))
       .filter((mapping) => !!mapping.slot);
+    // Unjustified type cast. FIXME
     const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);
     return _.mapObject(groupedMappings, (mappings) =>
       mappings.map((m) => m.column),

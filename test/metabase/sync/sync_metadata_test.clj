@@ -9,8 +9,12 @@
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
-   [metabase.test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once #'cache-normal-sync-steps-fixture)
 
 (deftest survive-metadata-errors
   (testing "Make sure we survive metadata sync failing"
@@ -26,7 +30,7 @@
 
 (deftest survive-table-errors
   (testing "Make sure we survive table sync failing"
-    (sync-survives-crash?! sync-tables/create-or-reactivate-tables!)
+    (sync-survives-crash?! sync-tables/create-tables!)
     (sync-survives-crash?! sync-tables/retire-tables!)
     (sync-survives-crash?! sync-tables/update-tables-metadata-if-needed!)))
 
@@ -43,3 +47,18 @@
                        (#'sync-metadata/sync-db-metadata!* db))))
         (is (= "aborted"
                (t2/select-one-fn :initial_sync_status :model/Database (:id db))))))))
+
+(deftest field-sync-failure-aborts-initial-sync-test
+  (testing "When an essential sync step fails non-transiently mid-initial-sync (e.g. MariaDB <10.2 whose"
+    (testing "information_schema lacks generation_expression, so describe-fields throws, GHY-3943),"
+      (testing "the initial sync status is marked aborted instead of falsely reporting \"complete\""
+        (mt/with-temp-copy-of-db
+          (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
+          (with-redefs [fetch-metadata/fields-metadata
+                        (fn [& _]
+                          (throw (doto (java.sql.SQLSyntaxErrorException.
+                                        "Unknown column 'generation_expression' in 'field list'")
+                                   (.setStackTrace (into-array StackTraceElement [])))))]
+            (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
+          (is (= "aborted"
+                 (t2/select-one-fn :initial_sync_status :model/Database (mt/id)))))))))

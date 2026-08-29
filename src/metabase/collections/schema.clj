@@ -25,6 +25,7 @@
                                "indexed-entity"
                                "indexed-entity"
                                "document"
+                               "exploration"
                                "table"])
 
 (mr/def ::Collection

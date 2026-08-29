@@ -4,8 +4,8 @@ import { t } from "ttag";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
+import { getIconForVisualizationType, visualizations } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { useQuestionVisualization } from "../../hooks/use-question-visualization";
@@ -97,11 +97,13 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       return null;
     }
 
+    const icon = getIconForVisualizationType(visualizationType);
+
     return {
       value: visualizationType,
       label: visualization.getUiName(),
-      iconName: visualization.iconName,
-      iconUrl: visualization.iconUrl,
+      iconName: icon.name,
+      iconUrl: icon.iconUrl,
     };
   };
 
@@ -128,6 +130,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       store={combobox}
       position="bottom-start"
       onOptionSubmit={(value) => {
+        // Unjustified type cast. FIXME
         updateQuestionVisualization(value as CardDisplayType);
         combobox.closeDropdown();
       }}
@@ -158,7 +161,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
             />
           ))}
           <Text
-            c="text-tertiary"
+            c="text-disabled"
             size="sm"
             py="xs"
             px="sm"

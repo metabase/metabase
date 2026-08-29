@@ -3,11 +3,14 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
+import {
+  getChartLayout,
+  getLegendItems,
+  getScatterPlotModel,
+  getScatterPlotOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
@@ -27,9 +30,8 @@ export function ScatterPlot({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) {
-  const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
-
   const chartModel = getScatterPlotModel(
     rawSeries,
     settings,
@@ -46,18 +48,28 @@ export function ScatterPlot({
       verticalPadding: LEGEND_PADDING,
     });
 
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
   const option = getScatterPlotOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
@@ -68,12 +80,13 @@ export function ScatterPlot({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={width}
-      height={height + legendHeight}
+      height={fitWithinBounds ? height : height + legendHeight}
     >
       <Legend items={legendLayoutItems} />
       <Group top={legendHeight}>

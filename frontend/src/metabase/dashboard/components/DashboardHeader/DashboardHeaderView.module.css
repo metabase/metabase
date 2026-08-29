@@ -21,11 +21,8 @@
 
 .HeaderContainer {
   &.isFixedWidth.offsetSidebar {
-    margin-right: var(--sidebar-width);
-  }
-
-  @container dashboard-header (max-width: 40rem) {
-    margin-right: 0;
+    /* Shrink the offset instead of dropping it at 40rem, so the header never jumps. Must match the stacking breakpoint below. */
+    margin-right: clamp(0px, calc(100cqw - 40rem), var(--sidebar-width));
   }
 }
 
@@ -43,7 +40,7 @@
     padding-top: 0.375rem;
     padding-left: 1rem;
     padding-right: 1rem;
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
   }
 }
 

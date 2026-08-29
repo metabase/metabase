@@ -21,7 +21,7 @@ on:
 jobs:
   detect-changed-stories:
     name: Detect changed stories
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       story_files: ${{ steps.detect.outputs.story_files }}
@@ -53,8 +53,8 @@ jobs:
             if ! validate_paths "$FILES"; then
               exit 1
             fi
-            echo "story_files=$FILES" >> $GITHUB_OUTPUT
-            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -70,7 +70,7 @@ jobs:
 
           if [[ -z "$FILES" ]]; then
             echo "No changed story files found"
-            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -79,8 +79,8 @@ jobs:
           fi
 
           echo "Changed story files: $FILES"
-          echo "story_files=$FILES" >> $GITHUB_OUTPUT
-          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
 
   workflow-summary:
     name: Summary
@@ -99,22 +99,24 @@ jobs:
           PR_ACTOR: ${{ github.event.pull_request.user.login }}
           ACTOR: ${{ github.actor }}
         run: |
-          echo '## Loki Stress Test' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '**Story files:**' >> $GITHUB_STEP_SUMMARY
-          echo "${STORY_FILES}" | tr ',' '\n' | while read -r file; do
-            echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
-          done
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo "**Burn-in:** ${BURN_IN} runs" >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
-            echo "Triggered by PR #${PR_NUMBER} from @${PR_ACTOR}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Triggered manually by @${ACTOR}" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo '## Loki Stress Test'
+            echo ''
+            echo "**Branch:** \`${BRANCH_NAME}\`"
+            echo ''
+            echo '**Story files:**'
+            echo "${STORY_FILES}" | tr ',' '\n' | while read -r file; do
+              echo "- \`$file\`"
+            done
+            echo ''
+            echo "**Burn-in:** ${BURN_IN} runs"
+            echo ''
+            if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+              echo "Triggered by PR #${PR_NUMBER} from @${PR_ACTOR}"
+            else
+              echo "Triggered manually by @${ACTOR}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   stress-test-loki:
     needs: detect-changed-stories
@@ -154,6 +156,9 @@ jobs:
 
       - name: Stress-test Loki
         run: |
+          # Loki's output is piped through tee below, and a pipeline normally reports the exit status of its last command.
+          # Without this a failed loki run would look like a pass, because tee itself succeeded.
+          set -o pipefail
           BURN_IN=${{ inputs.burn_in || '10' }}
           STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
 
@@ -169,14 +174,17 @@ jobs:
 
             if bun run test-visual:loki \
               --reactUri file:./storybook-static \
-              --verboseRenderer; then
+              --verboseRenderer 2>&1 | tee .loki-run.log; then
               echo "✅ Run $i passed"
+            elif grep -q 'No stories were found' .loki-run.log; then
+              echo "::notice::Every story in the changed files is loki-skipped, nothing to stress test"
+              exit 0
             else
               echo "❌ Run $i FAILED"
               FAILED=$((FAILED + 1))
 
-              mkdir -p .loki/failures/run-$i
-              cp -r .loki/difference/* .loki/failures/run-$i/ 2>/dev/null || true
+              mkdir -p ".loki/failures/run-$i"
+              cp -r .loki/difference/* ".loki/failures/run-$i/" 2>/dev/null || true
             fi
             echo ""
           done

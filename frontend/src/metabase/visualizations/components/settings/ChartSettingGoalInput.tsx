@@ -2,8 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Group, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
+import type { ChartSettingGoalInputProps } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
 
 import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
 
@@ -20,14 +20,6 @@ const inputStyles = {
     backgroundColor: "unset",
     zIndex: "initial",
   },
-};
-
-export type ChartSettingGoalInputProps = {
-  id: string;
-  value: number | string;
-  onChange: (value: number | string) => void;
-  columns?: DatasetColumn[];
-  valueField?: string;
 };
 
 export const ChartSettingGoalInput = ({
@@ -106,7 +98,7 @@ export const ChartSettingGoalInput = ({
 
   if (isColumnReference) {
     return (
-      <Group className={S.root} bg="background-primary" align="center">
+      <Group className={S.root} bg="background_page-primary" align="center">
         <TextInput
           id={id}
           value={selectedColumn?.label || value}
@@ -123,7 +115,7 @@ export const ChartSettingGoalInput = ({
   }
 
   return (
-    <Group className={S.root} bg="background-primary" align="center">
+    <Group className={S.root} bg="background_page-primary" align="center">
       <NumberInput
         ref={numberInputRef}
         id={id}

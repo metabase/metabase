@@ -6,9 +6,8 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import CS from "metabase/css/core/index.css";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
-import type { Channel } from "metabase-types/api";
+import type { Channel, DraftDashboardSubscription } from "metabase-types/api";
 
 function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
   const { scheduleOptionNames } = getScheduleStrings();
@@ -81,7 +80,7 @@ export function DeleteSubscriptionAction({
   return (
     <>
       <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
-        <Button variant="subtle" c="text-tertiary" onClick={openModal}>
+        <Button variant="subtle" c="text-disabled" onClick={openModal}>
           {t`Delete this subscription`}
         </Button>
       </Flex>
@@ -121,7 +120,7 @@ export function DeleteSubscriptionAction({
           <Flex justify="flex-end" gap="sm">
             <Button onClick={closeModal}>{t`Cancel`}</Button>
             <Button
-              color={confirmed ? "danger" : undefined}
+              color={confirmed ? "feedback-negative" : undefined}
               variant="filled"
               onClick={handleDelete}
               disabled={!confirmed}

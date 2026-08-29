@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks/dataset";
 
@@ -9,6 +9,7 @@ function makeSettings(overrides: Partial<ComputedVisualizationSettings> = {}) {
   const base: ComputedVisualizationSettings = {
     column: () => ({}),
   };
+  // Unjustified type cast. FIXME
   return { ...base, ...overrides } as ComputedVisualizationSettings;
 }
 

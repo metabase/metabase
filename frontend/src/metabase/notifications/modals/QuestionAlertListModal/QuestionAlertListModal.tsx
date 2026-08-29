@@ -96,7 +96,7 @@ export const QuestionAlertListModal = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
       return;
@@ -119,7 +119,7 @@ export const QuestionAlertListModal = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
       return;

@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, within } from "__support__/ui";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
-import {
-  ChartSettingSegmentsEditor,
-  type ChartSettingSegmentsEditorProps,
-} from "./ChartSettingSegmentsEditor";
+import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
@@ -35,6 +33,7 @@ it("Should render a segment editor", () => {
   // Add a row for the header
   expect(screen.getAllByRole("row")).toHaveLength(3);
 
+  // Unjustified type cast. FIXME
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
   expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
@@ -64,6 +63,7 @@ it("Should allow you to remove a segment", async () => {
   const { onChange } = setup();
 
   await userEvent.click(
+    // Unjustified type cast. FIXME
     (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
   );
 
@@ -87,6 +87,7 @@ it("Should allow you to remove all segments if canRemoveAll is passed", async ()
   expect(await screen.findAllByRole("img", { name: /trash/ })).toHaveLength(1);
 
   await userEvent.click(
+    // Unjustified type cast. FIXME
     (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
   );
 

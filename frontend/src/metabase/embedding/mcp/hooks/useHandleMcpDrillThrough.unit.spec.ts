@@ -16,9 +16,10 @@ const NEXT_CARD = createMockCard({
 
 describe("useHandleMcpDrillThrough", () => {
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     (window as any).metabaseConfig = {
       instanceUrl: "https://metabase.example",
-      sessionToken: "session-token",
+      uiCredential: "ui-credential",
       mcpSessionId: "mcp-session-id",
     };
 
@@ -26,6 +27,7 @@ describe("useHandleMcpDrillThrough", () => {
   });
 
   afterEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any).metabaseConfig;
   });
 
@@ -37,6 +39,7 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
+    // Unjustified type cast. FIXME
     const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
 
     await result.current(
@@ -65,6 +68,7 @@ describe("useHandleMcpDrillThrough", () => {
     };
 
     const defaultNavigate = jest.fn();
+    // Unjustified type cast. FIXME
     const { result } = renderHook(() => useHandleMcpDrillThrough(app as any));
 
     await result.current(

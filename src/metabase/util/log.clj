@@ -2,18 +2,21 @@
   "Common logging interface that wraps clojure.tools.logging in JVM Clojure and Glogi in CLJS.
 
   The interface is the same as [[clojure.tools.logging]]."
+  ;; kondo mis-tracks unquote nesting in the doubly syntax-quoted log macros below
   {:clj-kondo/ignore [:unquote-not-syntax-quoted]}
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   ;; this ns is the facade over tools.logging; it has to require the real thing
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
+   [metabase.util.log.throttle]
    [metabase.util.performance :as perf]
    [net.cgrand.macrovich :as macros])
   (:import
@@ -267,6 +270,7 @@
   [& args]
   `(logf :error ~@args))
 
+;; part of the public log API; its callers live in test and EE code outside this lint's view
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro fatal
   "Log one or more args at the `:fatal` level."
@@ -290,6 +294,7 @@
      :cljs (glogi-spy (str *ns*) level expr
                       #(str/trim-newline
                         (with-out-str
+                          ;; spy's own formatter: pprint goes into with-out-str, nothing is printed
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/with-pprint-dispatch pprint/code-dispatch
                             (pprint/pprint '~expr)
@@ -297,6 +302,7 @@
                             (pprint/pprint %)))))
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
+;; legacy REPL/debug API with no in-tree callers; retained pending a compatibility/removal audit
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf
   "Evaluates an expression, and may write both the form and its formatted result to the log.
@@ -313,6 +319,23 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
+
+(defmacro throttle
+  "Evaluate `body` at most once per `interval-ms`, throttled per call site.
+
+  Intended to wrap a log call on a hot path so it can't flood the logs:
+
+    (log/throttle (* 60 1000)
+      (log/errorf e \"Couldn't do the thing: %s\" (ex-message e)))
+
+  When throttled, `body` is skipped *entirely* — including the underlying logger lookup.
+  Returns the value of `body`, or `nil` when throttled."
+  {:arglists '([interval-ms & body])}
+  [interval-ms & body]
+  (let [m (meta &form)
+        k (keyword (str *ns*) (str (:line m) \- (:column m)))]
+    `(when (metabase.util.log.throttle/allow? ~k ~interval-ms)
+       ~@body)))
 
 (defn- copy-ex-info
   "Copies an ExceptionInfo into a new ExceptionInfo with different ex-data & cause, but all other data the same"

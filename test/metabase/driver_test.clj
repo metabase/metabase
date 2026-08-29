@@ -89,10 +89,12 @@
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
         (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
                         :tables
+                        (into [])
                         (some :schema)))))
       (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
+                       (into [])
                        (some :schema))))))))
 
 (defn- basic-db-definition [database-name]
@@ -151,9 +153,8 @@
                                       (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
                                       (some?
                                        (some
-                                        (fn [{:keys [level e message]}]
+                                        (fn [{:keys [level message]}]
                                           (and (= level :warn)
-                                               (instance? clojure.lang.ExceptionInfo e)
                                                (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
                                         (messages)))))]
             (testing "sense checks before deleting the database"

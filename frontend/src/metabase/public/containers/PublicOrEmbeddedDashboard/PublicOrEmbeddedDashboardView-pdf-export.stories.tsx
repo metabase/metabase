@@ -20,8 +20,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
-import { registerVisualization } from "metabase/visualizations";
 import { Map } from "metabase/visualizations/visualizations/Map";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -33,7 +33,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Map);
 
 // Initialize MetabaseSettings with required values for map rendering
@@ -63,6 +62,7 @@ const DASHCARD_MAP_ID = getNextId();
 const CARD_MAP_ID = getNextId();
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
     currentUser: null,

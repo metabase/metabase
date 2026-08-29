@@ -57,14 +57,14 @@
 
   Because each driver and dataset has its own lock, various datasets can be loaded in parallel, but this will prevent
   the same dataset from being loaded multiple times."
-  {:arglists '(^java.util.concurrent.locks.ReadWriteLock [driver dataset-name])}
+  {:arglists '(^java.util.concurrent.locks.ReadWriteLock [driver dataset])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod dataset-lock :default
-  [driver dataset-name]
-  {:pre [(keyword? driver) (string? dataset-name)]}
-  (let [key-path [driver dataset-name]]
+  [driver {:keys [database-name] :as _dbdef}]
+  {:pre [(keyword? driver) (string? database-name)]}
+  (let [key-path [driver database-name]]
     (or
      (get-in @dataset-locks key-path)
      (locking dataset-locks
@@ -77,8 +77,8 @@
           (swap! dataset-locks assoc-in key-path lock)
           lock))))))
 
-(defn- get-existing-database-with-read-lock [driver {:keys [database-name], :as dbdef}]
-  (let [lock (dataset-lock driver database-name)]
+(defn- get-existing-database-with-read-lock [driver dbdef]
+  (let [lock (dataset-lock driver dbdef)]
     (try
       (.. lock readLock lock)
       (tx/metabase-instance dbdef driver)
@@ -298,11 +298,11 @@
                                (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
               ;;
-              ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-              ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-              ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-              ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+              ;; `*log-exceptions-and-continue?*` is true in production; pinning it false here makes one bad table fail
+              ;; the whole test database setup, which is what we want for drivers whose table listing is authoritative.
+              ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
+              ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
+              (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
                 (sync/sync-database! db {:scan scan}))
               ;; add extra metadata for fields
               (try
@@ -445,8 +445,14 @@
     (load-dataset-data-if-needed! driver database-definition)
     (create-and-sync-Database! driver database-definition)
     (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
+      ;; Destroying the DB when there's a failure loading and syncing is fine
+      ;; for most DBs, but for cloud databases it makes things worse.
+      (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        ;; test-harness console notice; stays visible even when log output is captured
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "create-database! failed; destroying database"
+                 driver (pr-str database-name))
+        (tx/destroy-db! driver database-definition))
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
@@ -464,8 +470,8 @@
        thunk)
       (thunk))))
 
-(defn- create-and-sync-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
-  (let [lock (dataset-lock driver database-name)]
+(defn- create-and-sync-database-with-write-lock! [driver dbdef]
+  (let [lock (dataset-lock driver dbdef)]
     (try
       (.. lock writeLock lock)
       (or
@@ -485,7 +491,7 @@
     (log/infof "Test data for %s %s was loaded by previous session, checking to see if data needs to be reloaded..."
                driver
                (pr-str database-name))
-    (let [lock (dataset-lock driver database-name)]
+    (let [lock (dataset-lock driver dbdef)]
       (try
         (.. lock writeLock lock)
         ;; once we acquire the write lock, check that the value of `created_at` hasn't been updated by another thread

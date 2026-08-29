@@ -44,7 +44,13 @@ export const MarkdownPreview = ({
       position="bottom"
       disabled={!isTruncated}
       label={
-        <Markdown dark disallowHeading unstyleLinks lineClamp={lineClamp}>
+        <Markdown
+          dark
+          compact
+          disallowHeading
+          unstyleLinks
+          lineClamp={lineClamp}
+        >
           {children}
         </Markdown>
       }

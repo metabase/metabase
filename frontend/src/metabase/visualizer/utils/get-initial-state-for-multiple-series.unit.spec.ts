@@ -1,5 +1,5 @@
-import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
@@ -9,7 +9,6 @@ import {
 
 import { getInitialStateForMultipleSeries } from "./get-initial-state-for-multiple-series";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
 
 describe("getInitialVisualizerStateForMultipleSeries", () => {

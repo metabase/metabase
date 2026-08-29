@@ -14,7 +14,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   display: flex;
   min-height: 100%;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 `;
 
 export const LayoutBody = styled.div`
@@ -41,8 +41,8 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: var(--mb-color-background-primary);
-  box-shadow: 0 1px 15px var(--mb-color-shadow);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 1px 15px var(--mb-color-shadow-default);
   border-radius: 6px;
   min-height: 20rem;
   min-width: 35rem;

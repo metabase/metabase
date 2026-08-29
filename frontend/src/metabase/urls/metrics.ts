@@ -71,6 +71,10 @@ export function metricQuery(cardId: CardId): string {
   return `/metric/${cardId}/query`;
 }
 
+export function metricDimensions(cardId: CardId): string {
+  return `/metric/${cardId}/dimensions`;
+}
+
 export function metricDependencies(cardId: CardId): string {
   return `/metric/${cardId}/dependencies`;
 }

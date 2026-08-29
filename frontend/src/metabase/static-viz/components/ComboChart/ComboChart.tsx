@@ -4,12 +4,15 @@ import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
 import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
+import {
+  getCartesianChartModel,
+  getCartesianChartOption,
+  getChartLayout,
+  getLegendItems,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
@@ -34,14 +37,8 @@ export const ComboChart = ({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chart = init(null, null, {
-    renderer: "svg",
-    ssr: true,
-    width,
-    height,
-  });
-
   const chartModel = getCartesianChartModel(
     rawSeries,
     settings,
@@ -60,18 +57,28 @@ export const ComboChart = ({
       isReversed,
     });
 
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
   const option = getCartesianChartOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
@@ -83,12 +90,13 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
+
   const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
     chartModel,
     settings,
   );
-
-  const totalHeight = height + legendHeight;
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
     <>
@@ -117,8 +125,8 @@ export const ComboChart = ({
             <rect
               x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
               y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
-              fill={renderingContext.getColor("background-primary")}
-              stroke={renderingContext.getColor("border")}
+              fill={renderingContext.getColor("background_page-primary")}
+              stroke={renderingContext.getColor("border-neutral")}
               strokeWidth="1"
               width={DATA_OUT_OF_RANGE_RECT.width}
               height={DATA_OUT_OF_RANGE_RECT.height}

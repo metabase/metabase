@@ -66,7 +66,7 @@ export function DimensionPillBar({
   return (
     <Flex
       className={S.container}
-      bg="background-primary"
+      bg="background_page-primary"
       w="100%"
       align="center"
       justify="center"

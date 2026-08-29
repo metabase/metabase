@@ -83,6 +83,7 @@ function hasVisibleContent(element: HTMLElement): boolean {
   }
 
   return children.some((child) => {
+    // Unjustified type cast. FIXME
     const el = child as HTMLElement;
 
     if (el.hidden || el.style?.display === "none") {

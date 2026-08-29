@@ -5,13 +5,13 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   getVisualizerTransformedSeries,
 } from "metabase/visualizer/selectors";
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
+import { getSettingsWidgetsForSeries } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 const HIDDEN_SETTING_WIDGETS = ["card.title"];
@@ -49,6 +49,7 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         error: null,
       };
     } catch (error) {
+      // Unjustified type cast. FIXME
       return { widgets: [], error: error as Error };
     }
   }, [transformedSeries, handleChangeSettings]);

@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.computed :as lib.computed]
@@ -396,7 +397,7 @@
   (let [query                (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
                                  (lib/join (lib/join-clause (meta/table-metadata :products)))
                                  (lib/join (lib/join-clause (meta/table-metadata :orders))))
-        original             (lib.metadata/field meta/metadata-provider (meta/id :people :latitude))
+        original             (meta/field-metadata :people :latitude)
         {latitude "LATITUDE"} (m/index-by :name (lib/visible-columns query))]
     (is (some? original))
     (is (some? latitude))))
@@ -1217,3 +1218,57 @@
                  (lib.metadata.calculation/primary-source card-query)))))
       (testing "returns nil for a query based on a table"
         (is (nil? (lib.metadata.calculation/primary-source-card table-query)))))))
+
+(deftest ^:parallel multi-join-display-names-survive-nesting-test
+  (testing "#40635 multi-join column display names are preserved after wrapping as a nested (card) query"
+    (let [base   (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    (lib/suggested-join-conditions q (meta/table-metadata :products)))
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)])))
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :user-id)
+                                                            (meta/field-metadata :products :id))])
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)]))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 base)
+          nested (lib/query mp (lib.metadata/card mp 1))
+          nnames (set (map #(lib/display-name nested %) (lib/returned-columns nested)))]
+      (testing "the two joined Product ID columns get distinct disambiguated display names in the nested query"
+        (is (contains? nnames "Products → ID"))
+        (is (contains? nnames "Products - User → ID"))
+        (is (= 2 (count (filter #(str/includes? % "→ ID") nnames))))))))
+
+#?(:clj
+   (defmethod lib.metadata.calculation/display-name-method ::throws
+     [_query _stage-number x _style]
+     (throw (:throwable x))))
+
+#?(:clj
+   (deftest ^:synchronized suggested-name-vm-error-test
+     (testing "a VM Error thrown while describing the query propagates out of suggested-name"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (Error. "boom")))]
+         (is (thrown? Error
+                      (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))
+     (testing "an Exception thrown while describing the query yields nil"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (ex-info "boom" {})))]
+         (is (nil? (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))))
+
+#?(:clj
+   (deftest ^:parallel display-name-vm-error-test
+     (testing "a VM Error thrown while computing a display name propagates unwrapped"
+       (let [e (Error. "boom")]
+         (is (identical? e
+                         (try
+                           (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                  {:lib/type ::throws, :throwable e})
+                           nil
+                           (catch Error actual actual))))))
+     (testing "an Exception thrown while computing a display name is wrapped with context"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (ex-info "boom" {})}))))
+     (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (AssertionError. "boom")}))))))
