@@ -6,9 +6,9 @@ import {
 } from "metabase/plugins";
 import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualization, visualizations } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Visualization } from "metabase/visualizations/types/visualization";
+import { registerVisualization, visualizations } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizDisplayType,

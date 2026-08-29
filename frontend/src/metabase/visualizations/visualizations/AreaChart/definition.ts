@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
 import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import {
   COMBO_CHARTS_SETTINGS_DEFINITIONS,
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/definition";
-
-import type { VisualizationDefinition } from "../../types";
+import {
+  type VisualizationDefinition,
+  getDefaultSize,
+  getMinSize,
+} from "metabase/viz-core";
 
 const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
   {

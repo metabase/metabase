@@ -5,20 +5,16 @@ import {
 } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import {
+  type ComputedVisualizationSettings,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type {
-  Datum,
-  DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesBrushSelectedEvent,
-  EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockDatetimeColumn,

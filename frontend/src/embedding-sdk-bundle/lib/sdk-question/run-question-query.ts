@@ -3,8 +3,7 @@ import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
-import { visualizations } from "metabase/visualizations";
-import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetData,

@@ -9,9 +9,9 @@ import {
 } from "metabase/rich_text_editing/tiptap/EditorHost";
 import type {
   ClickActionsMode,
-  HighlightedObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 
 import { navigateToCardFromDocument } from "../../actions";

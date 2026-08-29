@@ -8,11 +8,11 @@ import { createQuery } from "metabase/explorations/test-utils";
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { ClickObject } from "metabase/visualizations/types";
 import type {
-  ClickObject,
   ComputedVisualizationSettings,
   HighlightedObject,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type {
   Dataset,
   ExplorationQuery,
