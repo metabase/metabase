@@ -619,7 +619,7 @@
       now)))
 
 (defmethod sql.qp/->honeysql [:postgres :relative-datetime]
-  [driver [_ _opts amount unit]]
+  [driver [_ amount unit]]
   (let [now (current-datetime-in-parent-lhs-timezone driver)]
     (sql.qp/date driver unit (if (zero? amount)
                                now
