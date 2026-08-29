@@ -25,12 +25,12 @@ on:
   workflow_dispatch:
     inputs:
       tests:
-        description: "Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg's usual set."
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg''s usual set.'
         type: string
         required: false
-        default: ""
+        default: ''
       profile:
-        description: "Profile the test run and attach a flamegraph to the job. Adds sampling overhead."
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
         type: boolean
         required: false
         default: false
@@ -55,7 +55,7 @@ env:
 
 jobs:
   project-backend-checks:
-    name: "Project tests: Backend checks"
+    name: 'Project tests: Backend checks'
     if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -67,7 +67,7 @@ jobs:
         run: ./bin/mage project-tests backend-checks
 
   project-migration-checks:
-    name: "Project tests: Migration checks"
+    name: 'Project tests: Migration checks'
     if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -283,7 +283,7 @@ jobs:
     env:
       # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
-      __ADDITIONAL_EXCLUDED_TAG__: ":mb/old-migrations-test"
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
