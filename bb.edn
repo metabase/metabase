@@ -322,7 +322,7 @@
                 merged        (dev.kondo-ratchet/merge-ratchets base ours (read-ratchets theirs-path))]
             (spit output-path (if (true? (:disabled merged))
                                 (slurp ours-path)
-                                (dev.kondo-ratchet/render-merged-ratchets merged)))
+                                (dev.kondo-ratchet/render merged)))
             (println (str "merged ratchets into " output-path))))}
 
   check-kondo-ratchets

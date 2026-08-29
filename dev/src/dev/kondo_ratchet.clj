@@ -592,7 +592,7 @@
                                   (throw (ex-info (format "delete/modify conflict for %s in %s" linter field)
                                                   {:field field, :linter linter}))
 
-                                  (and (= field :limits)
+                                  (and (= field :ignore-counts)
                                        (or (= ours-value :unlimited)
                                            (= theirs-value :unlimited)))
                                   (throw (ex-info (format "bounded/unlimited conflict for %s in %s" linter field)
@@ -618,9 +618,20 @@
                       :else             ours?))))
         (into (set base) (concat ours theirs))))
 
+(def ^:private merge-fields
+  #{:ignore-counts :config-counts :comment-exempt})
+
+(defn- validate-merge-shape
+  [ratchets]
+  (let [unexpected (apply dissoc ratchets :disabled merge-fields)]
+    (when (seq unexpected)
+      (throw (ex-info (str "unsupported ratchet fields: " (pr-str (set (keys unexpected))))
+                      {:fields (set (keys unexpected))}))))
+  ratchets)
+
 (defn merge-ratchets
   "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
-  Supports both the current `:ignore-counts` shape and the later `:limits` policy shape.
+  Normal ratchets use `:ignore-counts`, `:config-counts`, and `:comment-exempt`.
   When the target explicitly disables ratchets it stays disabled; an incoming disabled form is ignored."
   [base ours theirs]
   (cond
@@ -631,72 +642,20 @@
     ours
 
     :else
-    (let [maps          [base ours theirs]
-          schemas       (into #{}
-                              (keep (fn [ratchets]
-                                      (let [old? (contains? ratchets :ignore-counts)
-                                            new? (contains? ratchets :limits)]
-                                        (cond
-                                          (and old? new?) :mixed
-                                          old?            :ignore-counts
-                                          new?            :limits))))
-                              maps)
-          _             (when (or (contains? schemas :mixed) (< 1 (count schemas)))
-                          (throw (ex-info (str "cannot automatically merge mixed ratchet schemas: "
-                                               (pr-str schemas))
-                                          {:schemas schemas})))
-          present?      (fn [field] (some #(contains? % field) maps))
-          count-fields  (filter present? [:ignore-counts :config-counts])
-          merged-counts (into {}
-                              (for [field count-fields]
-                                [field (merge-counts field
-                                                     (get base field {})
-                                                     (get ours field {})
-                                                     (get theirs field {}))]))
-          merged        (cond-> merged-counts
-                          (present? :limits)
-                          (assoc :limits (merge-counts :limits
-                                                       (:limits base {})
-                                                       (:limits ours {})
-                                                       (:limits theirs {})))
-
-                          (present? :comment-exempt)
-                          (assoc :comment-exempt (merge-set (:comment-exempt base #{})
-                                                            (:comment-exempt ours #{})
-                                                            (:comment-exempt theirs #{}))))]
-      merged)))
-
-(def ^:private policy-header
-  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:limits),\n"
-       ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
-       ";; entries). CI rejects bounded inline counts above :limits; local tests require an exact match.\n"
-       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
-       ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
-       ";; widening the exemptions is a hand edit to defend in your PR.\n"
-       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
-       ";; A :limits value of :unlimited marks a low-severity linter whose ignore count is intentionally\n"
-       ";; unbounded.\n"))
-
-(defn render-merged-ratchets
-  "Render a merged map in the canonical format for either supported ratchet schema."
-  [{:keys [limits config-counts comment-exempt] :as ratchets}]
-  (if-not (contains? ratchets :limits)
-    (render ratchets)
-    (let [limits-indent (apply str (repeat (count "{:limits {") \space))
-          config-indent (apply str (repeat (count " :config-counts  {") \space))
-          exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
-      (str policy-header
-           "{:limits " (render-counts limits limits-indent)
-           "\n :config-counts  " (render-counts config-counts config-indent)
-           "\n :comment-exempt "
-           (if (empty? comment-exempt)
-             "#{}\n"
-             (str "#{"
-                  (str/join (str "\n" exempt-indent)
-                            (sort-by str comment-exempt))
-                  "}"))
-           "}\n"))))
+    (let [base   (validate-merge-shape base)
+          ours   (validate-merge-shape ours)
+          theirs (validate-merge-shape theirs)]
+      {:ignore-counts  (merge-counts :ignore-counts
+                                     (:ignore-counts base {})
+                                     (:ignore-counts ours {})
+                                     (:ignore-counts theirs {}))
+       :config-counts  (merge-counts :config-counts
+                                     (:config-counts base {})
+                                     (:config-counts ours {})
+                                     (:config-counts theirs {}))
+       :comment-exempt (merge-set (:comment-exempt base #{})
+                                  (:comment-exempt ours #{})
+                                  (:comment-exempt theirs #{}))})))
 
 (defn lowered-counts
   "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
