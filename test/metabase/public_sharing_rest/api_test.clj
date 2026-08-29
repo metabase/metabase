@@ -9,6 +9,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,7 +30,6 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -93,6 +93,9 @@
 
 (def ^:private encryption-test-secret-key "public-uuid-encryption-test-key")
 
+(use-fixtures :once
+  (encryption-tu/with-encrypted-app-db-fixture (encryption/secret-key->hash encryption-test-secret-key)))
+
 (defn- raw-public-uuid
   "Read the `public_uuid` column straight from the DB (raw ciphertext), bypassing the model's decrypting transform."
   [model id]
@@ -123,7 +126,7 @@
     (testing "sharing encrypts the uuid at rest and derives the prefix"
       (t2/update! model id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
-        (is (encryption/possibly-encrypted-string? raw) "public_uuid is stored as ciphertext")
+        (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
         (is (= uuid (encryption/maybe-decrypt raw)) "and decrypts back to the uuid"))
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
@@ -142,26 +145,26 @@
       (is (nil? (raw-public-uuid-prefix model id)))
       (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
 
-(deftest card-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized card-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {id :id} {}]
         (assert-public-uuid-lifecycle! :model/Card id)))))
 
-(deftest dashboard-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized dashboard-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (assert-public-uuid-lifecycle! :model/Dashboard id)))))
 
-(deftest document-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized document-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document {id :id} {:name "Signature Doc"}]
         (assert-public-uuid-lifecycle! :model/Document id)))))
 
-(deftest action-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized action-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-actions [{action-id :action-id} {}]
@@ -169,9 +172,9 @@
           (t2/update! :model/Action action-id {:public_uuid nil})
           (assert-public-uuid-lifecycle! :model/Action action-id))))))
 
-(deftest public-uuid-resolves-via-endpoint-test
+(deftest ^:synchronized public-uuid-resolves-via-endpoint-test
   (testing "GET /api/public/... resolves a shared entity by its uuid through the prefix lookup"
-    (encryption-test/with-secret-key encryption-test-secret-key
+    (encryption-tu/with-encrypted-app-db
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-card [{uuid :public_uuid, card-id :id}]
           (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid))))))
@@ -189,8 +192,8 @@
           "a plaintext public_uuid forged via raw SQL fails the strict read instead of resolving")
       (set-raw-public-uuid! model id nil))))
 
-(deftest forged-plaintext-public-uuid-does-not-resolve-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized forged-plaintext-public-uuid-does-not-resolve-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {card-id :id} {}]
         (assert-forged-plaintext-does-not-resolve! :model/Card card-id))
