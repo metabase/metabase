@@ -193,7 +193,7 @@
   "Convert a TableDefinition to a map of {:table-name, :table-row, :field-rows}.
    This is a pure function - no database insertion."
   [driver db-id database-name {:keys [table-name table-comment field-definitions] :as _table-def}]
-  (let [schema          (tx/fake-sync-schema driver)
+  (let [schema          (tx/fake-sync-schema driver database-name)
         sync-table-name (tx/fake-sync-table-name driver database-name table-name)
         has-custom-pk? (some :pk? field-definitions)
         table-row      {:db_id               db-id

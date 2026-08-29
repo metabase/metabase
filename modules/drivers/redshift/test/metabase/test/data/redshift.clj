@@ -63,8 +63,30 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
-(defn unique-session-schema []
+(defn unique-session-schema
+  "This run's scratch schema. Not where datasets live -- upload and transform tests create tables
+  here, and [[metabase.test.data.sql/session-schema]] hands it to them."
+  []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+
+(defn dataset-schema
+  "Schema holding one dataset's tables, one per dataset rather than one for the whole run.
+
+  A schema each lets a Database's `:schema-filters-patterns` name exactly the schema it needs, which
+  Redshift pushes into the catalog query instead of listing every schema and discarding most of
+  them, and it makes dropping a dataset a single `DROP SCHEMA ... CASCADE`.
+
+  Keeps [[metabase.driver.sql.test-util.unique-prefix/unique-prefix]] on the front so these names
+  still match `old-dataset-name?`, and the existing age-based reaper keeps collecting them with no
+  changes of its own."
+  [database-name]
+  (str (sql.tu.unique-prefix/unique-prefix)
+       (-> database-name u/lower-case-en (str/replace #"-" "_"))))
+
+(defn- run-schema-prefix
+  "Every schema this run owns starts with this."
+  []
+  (sql.tu.unique-prefix/unique-prefix))
 
 ;;; `MB_REDSHIFT_TEST_HOSTS`
 ;;;
@@ -107,20 +129,40 @@
     (assoc @db-connection-details :db (tx/db-test-env-var :redshift :db-routing "dev"))))
 
 (defmethod tx/dbdef->connection-details :redshift
-  [& _]
-  (if tx/*use-routing-details*
-    @db-routing-connection-details
-    @db-connection-details))
+  ;; Called as [driver] or [driver context dbdef]; only the latter names a dataset.
+  [& args]
+  (let [details (if tx/*use-routing-details*
+                  @db-routing-connection-details
+                  @db-connection-details)
+        db-name (when (<= 3 (count args)) (:database-name (nth args 2)))]
+    (cond-> details
+      ;; Every name here is literal, so Redshift can push the filter into the catalog query rather
+      ;; than enumerating schemas and discarding most of them.
+      db-name (assoc :schema-filters-patterns
+                     (str "spectrum," (unique-session-schema) "," (dataset-schema db-name))))))
 
-(defmethod sql.tx/create-db-sql :redshift [& _] nil)
-(defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
+(defmethod sql.tx/create-db-sql :redshift
+  [_driver {:keys [database-name]}]
+  (format "CREATE SCHEMA IF NOT EXISTS \"%s\";" (dataset-schema database-name)))
+
+(defmethod sql.tx/drop-db-if-exists-sql :redshift
+  [_driver {:keys [database-name]}]
+  (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (dataset-schema database-name)))
 
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
 
 (defmethod sql.tx/session-schema :redshift [_driver] (unique-session-schema))
 
-(defmethod sql.tx/qualified-name-components :redshift [& args]
-  (apply tx/single-db-qualified-name-components (unique-session-schema) args))
+;; Not `single-db-qualified-name-components`: that helper encodes one schema for the whole run.
+;; Table names stay db-qualified even though the schema now makes that redundant -- plenty of tests
+;; build expected names with `db-qualified-table-name`.
+(defmethod sql.tx/qualified-name-components :redshift
+  ([_driver db-name]
+   [db-name])
+  ([_driver db-name table-name]
+   [(dataset-schema db-name) (tx/db-qualified-table-name db-name table-name)])
+  ([_driver db-name table-name field-name]
+   [(dataset-schema db-name) (tx/db-qualified-table-name db-name table-name) field-name]))
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
@@ -370,13 +412,22 @@
      (delete-old-schemas! conn)
      (create-session-schema! conn))))
 
-(defn- delete-session-schema!
-  "Delete our session schema when the test suite has finished running (CLI only)."
+(defn- delete-run-schemas!
+  "Drop every schema this run created -- its scratch schema, and one per dataset it loaded.
+
+  Dropping them here is the normal path; the age-based reaper in [[delete-old-schemas!]] is only a
+  backstop for runs that die before reaching this point. Per-entry try/catch so one failure does not
+  strand the rest."
   [^java.sql.Connection conn]
-  (with-open [stmt (.createStatement conn)]
-    (let [sql (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))]
-      (log/info (u/format-color 'blue "[redshift] %s" sql))
-      (.execute stmt sql))))
+  (let [prefix (run-schema-prefix)
+        mine   (into [] (filter #(str/starts-with? % prefix)) (fetch-schemas conn))]
+    (with-open [stmt (.createStatement conn)]
+      (doseq [schema mine]
+        (log/info (u/format-color 'blue "[redshift] dropping %s" schema))
+        (try
+          (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))
+          (catch Throwable e
+            (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))))))))
 
 (defmethod tx/after-run :redshift
   [driver]
@@ -384,12 +435,12 @@
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
-   delete-session-schema!)
+   delete-run-schemas!)
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
    {:write? true}
-   delete-session-schema!))
+   delete-run-schemas!))
 
 (def ^:dynamic *override-describe-database-to-filter-by-db-name?*
   "Whether to override the production implementation for `describe-database` with a special one that only syncs
@@ -449,7 +500,7 @@
    (empty? (:table-definitions dbdef))
    ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
    ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
-   (let [session-schema (unique-session-schema)
+   (let [session-schema (dataset-schema (:database-name dbdef))
          tabledef       (first (:table-definitions dbdef))
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
          jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
@@ -484,8 +535,8 @@
   (not (tx/on-master-or-release-branch?)))
 
 (defmethod tx/fake-sync-schema :redshift
-  [_driver]
-  (unique-session-schema))
+  [_driver database-name]
+  (dataset-schema database-name))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
@@ -496,16 +547,26 @@
                            (format "CREATE USER %s WITH PASSWORD '%s';" role-name (:password details))]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
+(defn- run-schemas
+  "Schemas this run owns. Datasets no longer share one schema, so anything granting access to a
+  dataset's tables has to cover all of them."
+  [spec]
+  (mapv :nspname
+        (jdbc/query spec ["SELECT nspname FROM pg_namespace WHERE nspname LIKE ?"
+                          (str (run-schema-prefix) "%")])))
+
 (defn grant-table-perms-to-roles!
   [driver details roles]
-  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
-        schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
+  (let [spec    (sql-jdbc.conn/connection-details->spec driver details)
+        schemas (mapv #(sql.tx/qualify-and-quote driver %) (run-schemas spec))]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [schema schemas]
+          (jdbc/execute! spec [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)]
+                         {:transaction? false}))
         (doseq [[table-name _perms] table-perms]
-          (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
-                             (format "GRANT SELECT ON %s TO %s" table-name role-name)]]
-            (jdbc/execute! spec [statement] {:transaction? false})))))))
+          (jdbc/execute! spec [(format "GRANT SELECT ON %s TO %s" table-name role-name)]
+                         {:transaction? false}))))))
 
 (defmethod tx/create-and-grant-roles! :redshift
   [driver details roles _user-name _default-role]
@@ -514,13 +575,14 @@
 
 (defmethod tx/drop-roles! :redshift
   [driver details roles _user-name]
-  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
-        schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
+  (let [spec    (sql-jdbc.conn/connection-details->spec driver details)
+        schemas (mapv #(sql.tx/qualify-and-quote driver %) (run-schemas spec))]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s" schema role-name)
-                           (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
-                           (format "DROP USER IF EXISTS %s" role-name)]]
-          (jdbc/execute! spec [statement] {:transaction? false}))))))
+        (doseq [schema schemas]
+          (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s" schema role-name)
+                             (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)]]
+            (jdbc/execute! spec [statement] {:transaction? false})))
+        (jdbc/execute! spec [(format "DROP USER IF EXISTS %s" role-name)] {:transaction? false})))))
 
 (defmethod sql.tx/generated-column-sql :redshift [_ _] nil)

@@ -527,7 +527,7 @@
   [_driver _feature _database] false)
 
 (defmethod tx/fake-sync-schema :snowflake
-  [_driver]
+  [_driver _database-name]
   "PUBLIC")
 
 (defmethod tx/fake-sync-table-name :snowflake
