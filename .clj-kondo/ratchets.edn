@@ -25,12 +25,12 @@
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                   :metabase/modules                                                    10
                   :metabase/namespace-name                                             4
-                  :metabase/prefer-with-dynamic-fn-redefs                              28
+                  :metabase/prefer-with-dynamic-fn-redefs                              29
                   :metabase/test-helpers-use-non-thread-safe-functions                 18
                   :metabase/validate-defendpoint-has-response-schema                   439
                   :metabase/validate-defendpoint-query-params-use-kebab-case           50
                   :metabase/validate-defendpoint-route-uses-kebab-case                 44
-                  :metabase/validate-deftest                                           10
+                  :metabase/validate-deftest                                           11
                   :missing-docstring                                                   12
                   :missing-protocol-method                                             3
                   :non-arg-vec-return-type-hint                                        1
