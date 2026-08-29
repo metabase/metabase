@@ -70,6 +70,20 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
+(defn group-names->strings
+  "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.
+  Non-string entries are ignored."
+  [group-names]
+  (into [] (filter string?) (cond-> group-names (string? group-names) vector)))
+
+(defn group-names->ids
+  "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
+  [group-names group-mappings]
+  (->> (group-names->strings group-names)
+       (map keyword)
+       (mapcat group-mappings)
+       set))
+
 (defn stringify-valid-attributes
   "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.
   Multi-value attributes (vectors, lists, lazy seqs — produced by SAML/JWT for repeated attributes) are joined into a

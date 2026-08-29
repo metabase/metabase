@@ -7,7 +7,7 @@
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header''s value, instead of its remote address.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default "X-Forwarded-For"
   :export? true
   :audit   :getter
@@ -104,7 +104,7 @@
   ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes"
   ;; or "hours". The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :default    nil
   :getter     #'-session-timeout
