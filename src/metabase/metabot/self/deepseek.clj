@@ -258,4 +258,4 @@
   "Call the DeepSeek Anthropic Messages API, return AISDK stream."
   [& args]
   (let [raw (apply deepseek-raw args)]
-    (eduction (deepseek->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (deepseek->aisdk-chunks-xf) raw)))
