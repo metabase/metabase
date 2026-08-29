@@ -134,6 +134,7 @@ backend_all: &backend_all
 # suite follows only the files that can affect its result.
 project_tests_infra: &project_tests_infra
   - ".github/file-paths.yaml"
+  - ".github/workflows/backend.yml"
   - ".github/workflows/run-tests.yml"
   - "bb.edn"
   - "bin/mage"

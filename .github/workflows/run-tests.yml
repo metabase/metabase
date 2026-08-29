@@ -90,108 +90,6 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
-  project-clojure-invariants:
-    name: "Project tests: Backend checks"
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() && needs.should-run.result == 'success' &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-       (needs.files-changed.result == 'success' &&
-        (needs.files-changed.outputs.project_tests_infra == 'true' ||
-         needs.files-changed.outputs.project_clojure_invariants == 'true')))
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Run backend checks
-        run: ./bin/mage project-tests invariants
-
-  project-migration-linter:
-    name: "Project tests: Migration linter"
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() && needs.should-run.result == 'success' &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-       (needs.files-changed.result == 'success' &&
-        (needs.files-changed.outputs.project_tests_infra == 'true' ||
-         needs.files-changed.outputs.project_migration_linter == 'true')))
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Run migration linter tests
-        run: ./bin/mage project-tests migrations
-
-  project-tests:
-    name: Project tests
-    needs:
-      - should-run
-      - files-changed
-      - project-clojure-invariants
-      - project-migration-linter
-    if: ${{ always() && !cancelled() }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
-    steps:
-      - name: Check Project tests status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
-        with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            if (jobs.every(job => job.result === 'skipped' || job.result === 'success')) {
-              console.log('');
-              console.log('          |>>>             |>>>             |>>>');
-              console.log('          |                |                |');
-              console.log('      _  _|_  _        _  _|_  _        _  _|_  _');
-              console.log('     | |_| |_| |______| |_| |_| |______| |_| |_| |');
-              console.log('     |         |      |         |      |         |');
-              console.log('     | []   [] |      | []   [] |      | []   [] |');
-              console.log('     |         |______|         |______|         |');
-              console.log('     |                    ___                    |');
-              console.log('     |___________________|   |___________________|');
-              console.log('                         |___|');
-              console.log('');
-              console.log('Everything is up to code and structurally sound.');
-              process.exit(0);
-            }
-
-            console.log('');
-            console.log('              .-===========-.____');
-            console.log('             /_______________\\   \\____');
-            console.log('            |  .-----------.  |        \\___');
-            console.log('            |  |  x     x  |  |            \\__');
-            console.log('            |  |     ~     |  |              _\\_');
-            console.log("            |  `-----------'  |             /___\\");
-            console.log('            |    o     o      |');
-            console.log("            `-----------------'");
-            console.log('              /=============\\');
-            console.log('             / O O O O O O O \\');
-            console.log('             \\_______________/');
-            console.log('');
-            console.log('One or more invariants are off the blueprint. Hard hats required.');
-
-            jobs.forEach((job) => {
-              if (job.result !== 'success' && job.result !== 'skipped') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-
-            process.exit(1);
-
   create-test-plan:
     needs: files-changed
     name: Create test plan
@@ -320,6 +218,14 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' &&
         needs.static-viz-files-changed.outputs.static_viz != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      run-project-clojure-invariants: >-
+        ${{ needs.should-run.outputs.verdict == 'force-run' ||
+        needs.files-changed.outputs.project_tests_infra == 'true' ||
+        needs.files-changed.outputs.project_clojure_invariants == 'true' }}
+      run-project-migration-linter: >-
+        ${{ needs.should-run.outputs.verdict == 'force-run' ||
+        needs.files-changed.outputs.project_tests_infra == 'true' ||
+        needs.files-changed.outputs.project_migration_linter == 'true' }}
 
   semantic-search-tests:
     if: |
