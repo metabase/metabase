@@ -47,19 +47,19 @@
 
 (defsetting ldap-user-base
   (deferred-tru "Search base for users. (Will be searched recursively)")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-user-filter
   (deferred-tru "User lookup filter. The placeholder '''{login}''' will be replaced by the user supplied login.")
   :default    "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default    "mail"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email)))
   :audit      :getter)
 
@@ -67,12 +67,12 @@
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default    "givenName"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "sn"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname)))
   :audit      :getter)
@@ -86,13 +86,13 @@
 (defsetting ldap-group-base
   (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)")
   :audit      :getter
-  :encryption :no)
+  :encryption :when-encryption-key-set)
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
   :default    {}
