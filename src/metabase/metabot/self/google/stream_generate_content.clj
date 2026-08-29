@@ -358,8 +358,9 @@
          ;; This is deliberately an exclusive branch. If the source failed before its first event there
          ;; is no usage to flush and, critically, no provider output that should suppress a retry.
          (if (= event core/interrupted-stream-event)
+           ;; The open text block is deliberately left open: closing it would present a truncated answer as
+           ;; a complete one. Provisional tools are still discarded, and the last reported usage flushed.
            (-> result
-               close-text!
                (resolve-tools! false)
                (cond-> @usage-acc (emit-rf! (usage-part))))
            (let [{:keys [candidates usageMetadata responseId modelVersion promptFeedback error]} event]
