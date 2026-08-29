@@ -5,11 +5,15 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { useHelpUrl } from "metabase/embedding/setup-guide/hooks";
+import {
+  useHelpUrl,
+  useSetupGuideReturnPath,
+} from "metabase/embedding/setup-guide/hooks";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
 export const TestJwtStep = () => {
+  const returnPath = useSetupGuideReturnPath();
   const [sendToast] = useToast();
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -46,7 +50,12 @@ export const TestJwtStep = () => {
           {t`No, I couldn't log in`}
         </Button>
 
-        <Button component={Link} to=".." variant="filled" onClick={onDone}>
+        <Button
+          component={Link}
+          to={returnPath}
+          variant="filled"
+          onClick={onDone}
+        >
           {t`Log in works, I'm done`}
         </Button>
       </Group>
@@ -56,6 +65,7 @@ export const TestJwtStep = () => {
 
 const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
   const helpUrl = useHelpUrl();
+  const returnPath = useSetupGuideReturnPath();
 
   return (
     <Stack gap="xl">
@@ -112,8 +122,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
 
         <Button
           component={Link}
-          // Relative so the wizard returns to whichever host mounted it.
-          to=".."
+          to={returnPath}
           variant="filled"
           onClick={onDone}
         >
