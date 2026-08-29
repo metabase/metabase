@@ -2818,13 +2818,17 @@
 (deftest encrypt-settings-test
   ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
   (when config/ee-available?
-    (testing "the v58 migration list is exactly the registered settings that are encrypted at rest and stored in the DB"
-      (is (= (into (sorted-set)
-                   (for [[k definition] @setting/registered-settings
-                         :when (and (not= :no (:encryption definition))
-                                    (not= :none (:setter definition)))]
-                     (name k)))
-             (into (sorted-set) @#'custom-migrations/encrypted-settings-v58)))))
+    ;; subset rather than equality: the registry only holds the settings whose namespaces are loaded in this JVM, and
+    ;; a full test run also registers test-only settings that must not be in a migration list
+    (testing "every loaded production setting that is encrypted at rest and stored in the DB is in the migration list"
+      (is (empty? (set/difference
+                   (into (sorted-set)
+                         (for [[k definition] @setting/registered-settings
+                               :when (and (not= :no (:encryption definition))
+                                          (not= :none (:setter definition))
+                                          (not (str/ends-with? (str (:namespace definition)) "-test")))]
+                           (name k)))
+                   (set @#'custom-migrations/encrypted-settings-v58))))))
   (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
