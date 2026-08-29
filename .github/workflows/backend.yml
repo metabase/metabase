@@ -10,12 +10,12 @@ on:
         description: Run the full suite regardless of the diff (master / release branches).
         type: boolean
         default: false
-      run-project-clojure-invariants:
-        description: Run repository-level Clojure invariant tests.
+      run-project-backend-checks:
+        description: Run project-level backend checks.
         type: boolean
         default: false
-      run-project-migration-linter:
-        description: Run repository-level migration linter tests.
+      run-project-migration-checks:
+        description: Run project-level migration checks.
         type: boolean
         default: false
 
@@ -54,9 +54,9 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
-  project-clojure-invariants:
+  project-backend-checks:
     name: "Project tests: Backend checks"
-    if: ${{ inputs.force-run || inputs.run-project-clojure-invariants }}
+    if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -64,25 +64,25 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run backend checks
-        run: ./bin/mage project-tests invariants
+        run: ./bin/mage project-tests backend-checks
 
-  project-migration-linter:
-    name: "Project tests: Migration linter"
-    if: ${{ inputs.force-run || inputs.run-project-migration-linter }}
+  project-migration-checks:
+    name: "Project tests: Migration checks"
+    if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Run migration linter tests
-        run: ./bin/mage project-tests migrations
+      - name: Run migration checks
+        run: ./bin/mage project-tests migration-checks
 
   project-tests:
     name: Project tests
     needs:
-      - project-clojure-invariants
-      - project-migration-linter
+      - project-backend-checks
+      - project-migration-checks
     if: ${{ always() && !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -132,7 +132,7 @@ jobs:
             console.log('             / O O O O O O O \\');
             console.log('             \\_______________/');
             console.log('');
-            console.log('One or more invariants are off the blueprint. Hard hats required.');
+            console.log('One or more project checks are off the blueprint. Hard hats required.');
 
             jobs.forEach((job) => {
               if (job.result !== 'success' && job.result !== 'skipped') {

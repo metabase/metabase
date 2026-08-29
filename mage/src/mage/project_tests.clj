@@ -6,30 +6,30 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-namespaces
-  "Repository-invariant test namespaces run by [[run!]]."
+(def ^:private backend-check-namespaces
+  "Backend check namespaces run by [[run!]]."
   '[dev.modules-config-test
     metabase.core.modules-test
     metabase.core.kondo-ratchet-test])
 
-(defn- run-migration-tests! []
-  (println "Running migration linter tests")
+(defn- run-migration-checks! []
+  (println "Running migration checks")
   (shell/sh {:dir (str u/project-root-directory "/bin/lint-migrations-file")}
             "clojure" "-M:test"))
 
-(defn- run-invariant-tests! []
+(defn- run-backend-checks! []
   (println "Running backend checks")
   (shell/sh "clojure"
             "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci"
             ":only"
-            (pr-str test-namespaces)))
+            (pr-str backend-check-namespaces)))
 
 (defn run!
-  "Run repository-invariant tests that do not belong to the build or database matrices."
+  "Run the project-level backend and migration checks."
   ([]
-   (run-migration-tests!)
-   (run-invariant-tests!))
+   (run-migration-checks!)
+   (run-backend-checks!))
   ([suite]
    (case suite
-     "invariants" (run-invariant-tests!)
-     "migrations" (run-migration-tests!))))
+     "backend-checks"   (run-backend-checks!)
+     "migration-checks" (run-migration-checks!))))

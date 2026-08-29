@@ -66,8 +66,8 @@ jobs:
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
       project_tests_infra: ${{ steps.changes.outputs.project_tests_infra }}
-      project_clojure_invariants: ${{ steps.changes.outputs.project_clojure_invariants }}
-      project_migration_linter: ${{ steps.changes.outputs.project_migration_linter }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
       no_source_code_changes: >-
         ${{ steps.changes.outputs.documentation == 'true'
         && steps.changes.outputs.backend_all == 'false'
@@ -218,14 +218,14 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' &&
         needs.static-viz-files-changed.outputs.static_viz != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      run-project-clojure-invariants: >-
+      run-project-backend-checks: >-
         ${{ needs.should-run.outputs.verdict == 'force-run' ||
         needs.files-changed.outputs.project_tests_infra == 'true' ||
-        needs.files-changed.outputs.project_clojure_invariants == 'true' }}
-      run-project-migration-linter: >-
+        needs.files-changed.outputs.project_backend_checks == 'true' }}
+      run-project-migration-checks: >-
         ${{ needs.should-run.outputs.verdict == 'force-run' ||
         needs.files-changed.outputs.project_tests_infra == 'true' ||
-        needs.files-changed.outputs.project_migration_linter == 'true' }}
+        needs.files-changed.outputs.project_migration_checks == 'true' }}
 
   semantic-search-tests:
     if: |
