@@ -74,8 +74,8 @@
                   (bit-and (aget network whole-byte-count) mask)))))))
 
 (def ^:private globally-reachable-special-prefixes
-  ;; More-specific exceptions inside the broad non-global prefixes below. Keep this aligned with the IANA IPv4 and
-  ;; IPv6 Special-Purpose Address Registries' "Globally Reachable" column.
+  ;; These are globally reachable exceptions nested inside broader non-global prefixes below. Keep them aligned with
+  ;; the "Globally Reachable" column in the IANA IPv4 and IPv6 Special-Purpose Address Registries.
   ;; https://www.iana.org/assignments/iana-ipv4-special-registry
   ;; https://www.iana.org/assignments/iana-ipv6-special-registry
   [(address-prefix "192.0.0.9" 32)       ; PCP anycast
@@ -89,9 +89,9 @@
    (address-prefix "2001:30::" 28)])     ; Drone Remote ID protocol entity tags
 
 (def ^:private non-global-special-prefixes
-  ;; Additional IANA special-purpose blocks that are not globally reachable and are not already handled by
-  ;; `InetAddress` or the checks in [[public-address?]]. Entries whose registry value is N/A or blank are also refused:
-  ;; they do not carry the external-reachability guarantee required by `:external-only`.
+  ;; IANA special-purpose blocks that are not globally reachable and are not already covered by `InetAddress` or the
+  ;; explicit checks in [[public-address?]]. Also reject entries whose registry value is N/A or blank because they do
+  ;; not provide the external-reachability guarantee required by `:external-only`.
   [(address-prefix "192.0.0.0" 24)       ; IETF protocol assignments
    (address-prefix "192.0.2.0" 24)       ; TEST-NET-1
    (address-prefix "192.88.99.0" 24)     ; deprecated 6to4 relay anycast
@@ -110,9 +110,8 @@
 (defn public-address?
   "True only for globally reachable unicast IP addresses.
 
-  In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
-  IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
-  entries."
+  Reject address classes recognized as non-public by `java.net.InetAddress` and non-global blocks from the IANA IPv4
+  and IPv6 Special-Purpose Address Registries. Preserve the registries' more-specific globally reachable exceptions."
   [^InetAddress addr]
   (let [b     (.getAddress addr)
         ipv4? (= 4 (alength b))
@@ -149,7 +148,7 @@
 
   `:external-only` allows only globally reachable public addresses.
   `:allow-private` adds private, unique-local and carrier-grade NAT addresses.
-  `:loopback-and-private` allows *only* loopback plus those same private ranges
+  `:loopback-and-private` allows *only* loopback plus those same private ranges.
   `:allow-all` imposes no address restriction."
   [policy ^InetAddress addr]
   (case policy

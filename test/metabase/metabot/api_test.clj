@@ -253,15 +253,15 @@
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            ;; the fake LLM server is on localhost, which the network policy refuses on a hosted instance
+            ;; Hosted instances block localhost by default, but this test's fake LLM server listens there.
             (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
               (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
                                                  metabot.settings/llm-metabot-provider test-provider]
                 (let [real-llm-request self.core/request]
                   (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
                                 conversation-title/ensure-title!             (constantly {:status :missing})
-                                ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
-                                ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
+                                ;; The fake server gzips responses when the caller allows it, and clj-http wraps the
+                                ;; body in a GZIPInputStream. Closing that stream mid-response produces ZLIB errors.
                                 self.core/request                            (fn [auth req]
                                                                                (real-llm-request auth (assoc req :decompress-body false)))
                                 metabot.context/create-context               (fn [ctx & _] ctx)
@@ -285,10 +285,9 @@
                                          :conversation_id conversation-id
                                          :state           {}})]
                           (.read ^java.io.InputStream (:body response)) ;; start the handler
-                          ;; Close the underlying client, not the body stream: closing the body would
-                          ;; make clj-http drain the (now chunked) response to completion, which looks
-                          ;; like a normal finish rather than a disconnect. Closing the client aborts
-                          ;; the connection, which is what the server's cancel loop detects.
+                          ;; Close the HTTP client rather than the body stream. Closing the body makes clj-http drain
+                          ;; the chunked response, which appears to finish normally; closing the client aborts the
+                          ;; connection so the server's cancellation loop detects the disconnect.
                           (.close ^java.io.Closeable (:http-client response))
                           (u/poll {:thunk       #(deref stored-parts)
                                    :done?       some?

@@ -381,8 +381,8 @@
               (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
 (deftest embedding-endpoints-honor-llm-allowed-networks-test
-  ;; IP literals throughout: the resolver goes through real DNS. `capture` stands in for clj-http far enough to
-  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  ;; Use IP literals to avoid real DNS. `capture` emulates enough of clj-http to invoke the request's DNS resolver,
+  ;; where the network policy is enforced.
   (let [mock-response {:data  [{:object    "embedding"
                                 :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])
                                 :index     0}]

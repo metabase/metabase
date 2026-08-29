@@ -33,7 +33,7 @@ process.env.MB_SAMPLE_DATABASE_ENGINE = "h2";
 // add or sync a test database. Set here rather than in the `:e2e` deps.edn alias because CI runs the uberjar and
 // never reads that alias. A spec that wants the policy on can set it through the settings API.
 process.env.MB_WAREHOUSE_ALLOWED_NETWORKS = "allow-all";
-// Same story for the LLM provider network policy: the mock LLM server the Metabot specs use is on localhost.
+// Metabot specs use a mock LLM server on localhost, so E2E runs must allow loopback LLM endpoints.
 process.env.MB_LLM_ALLOWED_NETWORKS = "allow-all";
 
 if (!process.env.CI) {

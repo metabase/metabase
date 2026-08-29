@@ -1026,12 +1026,11 @@
             :error-code :api-key-missing}))
 
 (defn resolve-auth
-  "Pick the right auth map for an LLM request.
+  "Return the appropriate authentication map for an LLM request.
 
-  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Its deployment-controlled URL
-    carries a `:network-policy-floor` of `:allow-private`, so private cluster addresses remain reachable under
-    the default policy; see [[metabase.llm.settings/network-policy]].
-  - Otherwise uses the provider's BYOK `auth`."
+  When `ai-proxy?` is true, use the Metabase Cloud proxy and fail if it is not configured. Because the proxy URL is
+  deployment-controlled, its `:network-policy-floor` allows private cluster addresses under the default policy; see
+  [[metabase.llm.settings/network-policy]]. Otherwise, return the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      {:url                     (str (str/replace base #"/+$" "") "/" provider-slug)
@@ -1047,19 +1046,16 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
-  Forces a connection + socket timeout on every request so a hung upstream can
-  never block the caller forever. The timeouts default to the operator-tunable
-  [[metabase.llm.settings/llm-connection-timeout-ms]] and
-  [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
-  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
-  override either timeout per request by passing `:connection-timeout` /
-  `:socket-timeout` in `req`.
+  "Perform an LLM HTTP request using an auth map containing `:url`, `:headers`, and optionally
+  `:network-policy-floor`.
 
-  The connection resolves DNS through a resolver that enforces
-  [[metabase.llm.settings/llm-allowed-networks]] on the addresses it actually
-  opens; see [[metabase.llm.settings/llm-request-opts]]. Auth returned by
-  [[resolve-auth]] may supply `:network-policy-floor` for a
+  Every request has connection and socket timeouts so a stalled upstream cannot block the caller indefinitely. The
+  defaults come from [[metabase.llm.settings/llm-connection-timeout-ms]] and
+  [[metabase.llm.settings/llm-request-timeout-ms]] at call time. `req` may override them with `:connection-timeout`
+  and `:socket-timeout`.
+
+  The connection resolves DNS through a resolver that enforces [[metabase.llm.settings/llm-allowed-networks]] on the
+  address it opens; see [[metabase.llm.settings/llm-request-opts]]. [[resolve-auth]] may provide a policy floor for a
   deployment-controlled service."
   [{:keys [url headers network-policy-floor]} req]
   (llm/assert-llm-host-allowed! url)

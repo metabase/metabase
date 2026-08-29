@@ -313,9 +313,9 @@
                      :type        :text
                      :required?   true
                      :placeholder "https://vllm.example.com/v1"
-                     :help        (deferred-tru (str "Your server''s OpenAI-compatible API. It should end in /v1. "
-                                                     "Metabase must be able to reach it: self-hosted, a server on your "
-                                                     "private network or on this machine needs MB_LLM_ALLOWED_NETWORKS."))}
+                     :help        (deferred-tru (str "Your server''s OpenAI-compatible API. The URL should end in /v1. "
+                                                     "For a self-hosted Metabase that connects over a private network "
+                                                     "or loopback, configure MB_LLM_ALLOWED_NETWORKS."))}
                     {:key      :api-key
                      :label    (deferred-tru "API key")
                      :type     :password
