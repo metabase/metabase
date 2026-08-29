@@ -459,17 +459,16 @@
   "Call an OpenAI-compatible /v1/embeddings endpoint. The breaker guards only the remote request and
   response decoding; analytics and token persistence happen after it returns.
 
-  `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
-  `:endpoint`        — full URL including /v1/embeddings
-  `:api-key`         — Bearer token. If empty ai service proxying is assumed and premium-embedding-token is
-                       used for authentication
-  `:model-name`      — model identifier sent in the request body
-  `:vector-dimensions` — expected dimensions of each returned vector
-  `:texts`           — collection of input strings
-  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
-  `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
-  `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
-  `:type`            — optional; forwarded to the token-tracking row
+  `:provider`          - label for analytics (e.g. \"ai-service\", \"openai\")
+  `:endpoint`          - full URL including /v1/embeddings
+  `:api-key`           - Bearer token. For `ai-service`, an empty value uses `premium-embedding-token`.
+  `:model-name`        - model identifier sent in the request body
+  `:vector-dimensions` - expected dimensions of each returned vector
+  `:texts`             - collection of input strings
+  `:record-tokens?`    - true writes a `semantic_search_token_tracking` row, false skips it.
+  `:snowplow?`         - optional; when true fires a Snowplow `token_usage` event
+  `:extra-body`        - optional; merged into the request body (e.g. `{:dimensions 1024}`)
+  `:type`              - optional; forwarded to the token-tracking row
 
   `:network-policy-floor` optionally sets the minimum network access for a deployment-controlled endpoint; see
   [[metabase.llm.settings/network-policy]]."
