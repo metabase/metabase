@@ -41,7 +41,7 @@
 
 (defsetting locked-meters
   (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :visibility :internal
   :audit      :never
