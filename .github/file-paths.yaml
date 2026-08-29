@@ -129,7 +129,7 @@ backend_all: &backend_all
   - *backend_sources
   - *backend_specs
 
-# Repository-invariant suites have narrower triggers than the backend matrix.
+# Project checks have narrower triggers than the backend matrix.
 # Changes to their shared CI entry points exercise every suite; otherwise each
 # suite follows only the files that can affect its result.
 project_tests_infra: &project_tests_infra
@@ -145,7 +145,7 @@ project_tests_infra: &project_tests_infra
   - "mage/src/mage/shell.clj"
   - "mage/src/mage/util.clj"
 
-project_clojure_invariants:
+project_backend_checks:
   - *project_tests_infra
   - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
   - "modules/**/*.clj"
@@ -158,7 +158,7 @@ project_clojure_invariants:
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
 
-project_migration_linter:
+project_migration_checks:
   - *project_tests_infra
   - "bin/lint-migrations-file/**"
   - "resources/migrations/**/*.{yaml,yml}"

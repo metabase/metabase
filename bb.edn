@@ -277,13 +277,13 @@
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
   project-tests
-  {:doc "Run repository-invariant tests outside the build and database test matrices."
-   :examples [["./bin/mage project-tests" "Check module configuration, Kondo ratchets, and migrations"]
-              ["./bin/mage project-tests invariants" "Check module configuration and Kondo ratchets"]
-              ["./bin/mage project-tests migrations" "Check migration linting"]]
+  {:doc "Run project-level backend and migration checks."
+   :examples [["./bin/mage project-tests" "Run backend and migration checks"]
+              ["./bin/mage project-tests backend-checks" "Run backend checks"]
+              ["./bin/mage project-tests migration-checks" "Run migration checks"]]
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum {:name "suite"} "invariants" "migrations"]]]
+                [:tuple [:enum {:name "suite"} "backend-checks" "migration-checks"]]]
    :requires [[mage.project-tests :as project-tests]]
    :task (task! (if-let [suite (first (:arguments parsed))]
                   (project-tests/run! suite)
