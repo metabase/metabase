@@ -27,6 +27,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -2072,16 +2073,28 @@
                 "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (when (search/supports-index?)
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
-  (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                          :data count)
-          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                           :data count)]
-      (is (>= total-count result-count))
-      (is (= 1 result-count)))))
+  (mt/with-model-cleanup [:model/Card]
+    (testing "Multiple `limit` query args should be handled correctly (#45345)"
+      ;; Durable rows (no surrounding transaction), so the real server threads below can see them; a real HTTP
+      ;; request is the point of this test -- duplicate limit args must survive the real ring param parsing.
+      (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
+        (t2/insert! :model/Card (for [n ["one" "two"]]
+                                  {:name                   (str q " " n)
+                                   :creator_id             (mt/user->id :crowberto)
+                                   :database_id            (mt/id)
+                                   :dataset_query          {}
+                                   :display                :table
+                                   :visualization_settings {}}))
+        (when (search/supports-index?)
+          (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
+        ;; Wait for the (asynchronous) index to catch up before comparing counts.
+        (tu/poll-until 30000 (seq (:data (mt/user-real-request :crowberto :get 200 (str "search?q=" q)))))
+        (let [total-count  (-> (mt/user-real-request :crowberto :get 200 (str "search?q=" q))
+                               :data count)
+              result-count (-> (mt/user-real-request :crowberto :get 200 (str "search?q=" q "&limit=1&limit=3"))
+                               :data count)]
+          (is (>= total-count result-count))
+          (is (= 1 result-count)))))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
