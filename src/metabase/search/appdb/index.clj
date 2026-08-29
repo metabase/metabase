@@ -125,7 +125,8 @@
 (defn- drop-table! [table]
   (boolean
    (when table
-     (t2/query (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
+     (search.lease/do-with-ddl-connection
+      #(t2/query % (sql.helpers/drop-table :if-exists (keyword (table-name table))))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -201,9 +202,9 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  ;; PostgreSQL needs the post-create indexes committed before returning, so this runs as its own transaction unless
-  ;; the lease was acquired inside a caller's transaction.
-  (search.lease/do-with-mutation-connection
+  ;; Always a separate transaction: PostgreSQL needs the post-create indexes committed before returning, and DDL
+  ;; must never run on a caller's ambient transaction (it would implicitly commit it on H2 and MySQL).
+  (search.lease/do-with-ddl-connection
    (fn [conn]
      (t2/query conn
                (-> (sql.helpers/create-table table-name)

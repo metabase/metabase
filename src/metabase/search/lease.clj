@@ -303,6 +303,17 @@
      (assert-current-in-transaction! conn)
      (thunk conn))))
 
+(defn do-with-ddl-connection
+  "Run DDL `thunk` on its own fenced connection, never on a caller's ambient transaction.
+
+  DDL commits implicitly on H2 and MySQL, which would durably commit a rollback-only test transaction the
+  caller owns. Unlike row mutations, DDL on a freshly generated or unreferenced table contends with nothing
+  the ambient transaction holds, so the deadlock that makes [[do-with-mutation-connection]] join the caller
+  does not apply."
+  [thunk]
+  (t2/with-connection [conn (mdb/app-db)]
+    (do-in-fenced-transaction! conn thunk)))
+
 (defn do-with-mutation-connection
   "Run `thunk` with the connection a protected index mutation must use.
 
