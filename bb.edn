@@ -279,11 +279,17 @@
   project-tests
   {:doc "Run project-level backend and migration checks."
    :examples [["./bin/mage project-tests" "Run backend and migration checks"]
-              ["./bin/mage project-tests backend-checks" "Run backend checks"]
-              ["./bin/mage project-tests migration-checks" "Run migration checks"]]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Run ratchet checks"]]
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum {:name "suite"} "backend-checks" "migration-checks"]]]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
    :requires [[mage.project-tests :as project-tests]]
    :task (task! (if-let [suite (first (:arguments parsed))]
                   (project-tests/run! suite)

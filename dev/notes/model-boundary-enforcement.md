@@ -145,7 +145,7 @@ Use sparingly. Prefer explicit sets where feasible.
 ### Verifying changes
 
 ```bash
-./bin/mage project-tests backend-checks
+./bin/mage project-tests modules
 ```
 
 Or at the REPL:

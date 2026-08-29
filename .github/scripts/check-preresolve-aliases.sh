@@ -70,7 +70,7 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
 found="$( {
   scan ee
   scan oss
-  scan_project_tests run-backend-checks! .
+  scan_project_tests run-clojure-checks! .
   scan_project_tests run-migration-checks! bin/lint-migrations-file
   # build-scripts.yml runs this classpath from its own dependency root.
   printf '%s\n' 'bin/load-namespaces|:test'

@@ -198,6 +198,6 @@ Use the `clojure-eval` skill (preferred) or `clj-nrepl-eval` to drive the dev to
 (dev.module-score/scores (dev.module-score/deps) (dev.module-score/config))
 ```
 
-For tests of the config itself, use `./bin/mage project-tests backend-checks`. After editing Clojure files, run `clj-paren-repair`. After editing `config.edn`, re-run the modules-test.
+For tests of the config itself, use `./bin/mage project-tests modules`. After editing Clojure files, run `clj-paren-repair`. After editing `config.edn`, re-run the modules-test.
 
 **Update your agent memory** as you discover idioms: which modules use `:friends` and why, which models are most-imported (suggesting they belong in their own module), which settings are accessed cross-module via `(setting/get …)` instead of `:uses` deps, and which refactors the team is actively running.

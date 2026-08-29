@@ -64,7 +64,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run backend checks
-        run: ./bin/mage project-tests backend-checks
+        run: ./bin/mage project-tests backend
 
   project-migration-checks:
     name: 'Project tests: Migration checks'
@@ -76,7 +76,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run migration checks
-        run: ./bin/mage project-tests migration-checks
+        run: ./bin/mage project-tests migrations
 
   project-tests:
     name: Project tests
