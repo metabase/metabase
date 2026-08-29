@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Fails when a `clojure` invocation under .github/ uses an alias combination that cache-warm does not
-# pre-resolve.
+# Fails when a `clojure` invocation used by CI has an alias combination that cache-warm does not pre-resolve.
 #
 # tools.deps selects dependency versions globally per classpath, so two alias combinations can resolve
 # the same transitive library to different versions. A combination the warm job never resolved is
@@ -52,7 +51,14 @@ scan() { # scan <edition>: alias strings used by clojure invocations, with expre
     | sed 's/:$//'
 }
 
-found="$( { scan ee; scan oss; } | sort -u )"
+scan_project_tests() {
+  tr '\n' ' ' < mage/src/mage/project_tests.clj \
+    | grep -oE '"clojure"[[:space:]]+("-P"[[:space:]]+)?"-[XMATP]?:[A-Za-z0-9:_./-]+' \
+    | grep -oE ':[A-Za-z0-9:_./-]+' \
+    | sed 's/:$//'
+}
+
+found="$( { scan ee; scan oss; scan_project_tests; } | sort -u )"
 
 covered="$(printf '%s\n%s\n' "$declared" "$WAIVED" | sort -u)"
 missing="$(comm -23 <(printf '%s\n' "$found") <(printf '%s\n' "$covered") || true)"
@@ -66,4 +72,4 @@ if [ -n "$missing" ]; then
   exit 1
 fi
 
-echo "All $(printf '%s\n' "$found" | grep -c .) clojure alias combinations under .github/ are pre-resolved."
+echo "All $(printf '%s\n' "$found" | grep -c .) clojure alias combinations used by CI are pre-resolved."

@@ -133,6 +133,7 @@ backend_all: &backend_all
 # Changes to their shared CI entry points exercise every suite; otherwise each
 # suite follows only the files that can affect its result.
 project_tests_infra: &project_tests_infra
+  - ".github/actions/prepare-backend/**"
   - ".github/file-paths.yaml"
   - ".github/workflows/backend.yml"
   - ".github/workflows/run-tests.yml"
