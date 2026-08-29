@@ -18,6 +18,7 @@
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.http :as u.http]
@@ -469,12 +470,23 @@
 
 (deftest embedding-service-base-url-normalizes-whitespace-test
   (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
-    (semantic.settings/ee-embedding-service-base-url! "  \t ")
-    (is (nil? (semantic.settings/ee-embedding-service-base-url))
-        "whitespace clears the setting instead of leaving it looking configured")
-    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-      (semantic.settings/ee-embedding-service-base-url! "  https://embed.example.com/v1  ")
-      (is (= "https://embed.example.com/v1" (semantic.settings/ee-embedding-service-base-url))))))
+    (testing "new writes"
+      (semantic.settings/ee-embedding-service-base-url! "  \t ")
+      (is (nil? (semantic.settings/ee-embedding-service-base-url))
+          "whitespace clears the setting instead of leaving it looking configured")
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (semantic.settings/ee-embedding-service-base-url! "  https://embed.example.com/v1  ")
+        (is (= "https://embed.example.com/v1" (semantic.settings/ee-embedding-service-base-url)))))
+    (testing "a whitespace-only row written by an older version"
+      (setting/set-value-of-type! :string :ee-embedding-service-base-url "  \t ")
+      (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "https://ai.example.com")]
+        (is (= "https://ai.example.com/v1/embeddings"
+               (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))
+    (testing "a whitespace-only environment value"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "  \t "]
+        (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "https://ai.example.com")]
+          (is (= "https://ai.example.com/v1/embeddings"
+                 (embedding/embedder-circuit-endpoint {:provider "ai-service"}))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
