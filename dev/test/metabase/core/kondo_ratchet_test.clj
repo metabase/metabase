@@ -321,6 +321,27 @@
                (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
+(deftest ^:synchronized seed-unlimited-linter-test
+  (let [dir        (.toFile (java.nio.file.Files/createTempDirectory
+                             "kondo-ratchet-test"
+                             (make-array java.nio.file.attribute.FileAttribute 0)))
+        ratchets   {:limits {}, :unlimited #{:free :empty}, :config-counts {}, :comment-exempt #{}}
+        budgets    (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        occurrences [{:file "f.clj", :line 1, :linters [:free]}
+                     {:file "f.clj", :line 2, :linters [:free]}]]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/scan                (constantly occurrences)
+                    kondo-ratchet/config-suppressions (constantly {})]
+        (is (= ["seeded :free at 2"
+                "WARNING: :empty is unlimited but has no inline ignores -- remove it from :unlimited unless intentional"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
+      (is (= {:limits         {:free 2}
+              :unlimited      #{:empty}
+              :config-counts  {}
+              :comment-exempt #{}}
+             (kondo-ratchet/read-ratchets))))))
+
 (deftest ^:parallel missing-ratchets-file-fails-test
   (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                           "kondo-ratchet-test"
