@@ -39,6 +39,7 @@
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 
 (def ^:private llm-provider-fixture-schema
+  ;; Keep the outer map closed; config keys are allowlisted below before persistence.
   [:map {:closed true}
    [:key ms/NonBlankString]
    [:type ms/NonBlankString]
