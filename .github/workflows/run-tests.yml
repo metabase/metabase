@@ -154,10 +154,10 @@ jobs:
 
             if (jobs.every(job => job.result === 'skipped' || job.result === 'success')) {
               console.log('');
-              console.log('            ~|~                         ~|~');
-              console.log('             |            /\\            |');
-              console.log('            / \\          /  \\          / \\');
-              console.log('           /___\\        /____\\        /___\\');
+              console.log('            ~|~                          ~|~');
+              console.log('             |             /\\             |');
+              console.log('            / \\           /  \\           / \\');
+              console.log('           /___\\         /____\\         /___\\');
               console.log('        ___|[_]|___    __|[()]|__    ___|[_]|___');
               console.log('       |  _     _  |  |  _    _  |  |  _     _  |');
               console.log('       | | |   | | |__| | |  | | |__| | |   | | |');
@@ -171,19 +171,17 @@ jobs:
             }
 
             console.log('');
-            console.log('                              <==========>');
-            console.log('                                   \\\\');
-            console.log('                .-===========-.     \\\\');
-            console.log('               /_______________\\     ||');
-            console.log('              |  .-----------.  |_____||');
-            console.log('              |  |  x     x  |  |     ||');
-            console.log('              |  |     ~     |  |');
-            console.log("              |  `-----------'  |");
-            console.log('              |    o     o      |');
-            console.log("              `-----------------'");
-            console.log('                  /|       |\\');
-            console.log('             ____/ |_______| \\____');
-            console.log('            /                     \\');
+            console.log('              .-===========-.____');
+            console.log('             /_______________\\   \\____');
+            console.log('            |  .-----------.  |        \\___');
+            console.log('            |  |  x     x  |  |            \\__');
+            console.log('            |  |     ~     |  |              _\\_');
+            console.log("            |  `-----------'  |             /___\\");
+            console.log('            |    o     o      |');
+            console.log("            `-----------------'");
+            console.log('              /=============\\');
+            console.log('             / O O O O O O O \\');
+            console.log('             \\_______________/');
             console.log('');
             console.log('One or more invariants are off the blueprint. Hard hats required.');
 
