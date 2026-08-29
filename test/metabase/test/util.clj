@@ -32,6 +32,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
@@ -986,9 +987,13 @@
                                                       :where where-clause})]]
                                   (if (and (search-relevant? model) (number? deleted)) deleted 0)))]
           ;; The raw DELETEs above skip t2 hooks, so the search index never hears about them. A full reindex purges
-          ;; the stale entries, but only when a search-relevant model actually lost rows.
+          ;; the stale entries, but only when a search-relevant model actually lost rows. Run it synchronously and
+          ;; unleased: callers may sit inside a test transaction and need the purge visible immediately (e.g.
+          ;; [[with-verified!]] between assertions), with the writes riding the ambient connection so they roll back
+          ;; with everything else.
           (when (pos? deleted-searched)
-            (reindex-search-index!)))))))
+            (binding [search.ingestion/*force-sync* true]
+              (reindex-search-index!))))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.

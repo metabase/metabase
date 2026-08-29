@@ -118,11 +118,16 @@
 
 (defn- with-engine-lease
   [engine operation thunk]
-  (let [{:keys [acquired?] :as outcome}
-        (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
-    (when-not acquired?
-      (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
-    outcome))
+  ;; A forced-synchronous run is a single-process test scenario: there is no other node to coordinate with, and the
+  ;; index writes should stay on the caller's connection (and roll back with a test's transaction). Leases refuse to
+  ;; be acquired inside a transaction, so skipping acquisition here is what lets those tests exist at all.
+  (if search.ingestion/*force-sync*
+    {:acquired? true, :result (thunk)}
+    (let [{:keys [acquired?] :as outcome}
+          (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
+      (when-not acquired?
+        (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
+      outcome)))
 
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been

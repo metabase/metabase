@@ -19,6 +19,15 @@
   `(binding [metabase.search.ingestion/*force-sync* true]
      ~@body))
 
+(defn sync-reindex!
+  "Run a full in-place reindex synchronously and unleased, on the caller's thread and connection.
+
+  Safe inside a test transaction: forced-sync runs skip the lease, and the index writes ride the ambient
+  connection, so they stay visible to the test and roll back with it."
+  []
+  (with-sync-search-indexing
+    (search/reindex! {:async? false :in-place? true})))
+
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body.
 
