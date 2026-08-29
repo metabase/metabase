@@ -755,54 +755,6 @@ describe("scenarios > admin > datamodel", () => {
 
           H.queryBuilderHeader().findByText("View-only").should("be.visible");
         });
-
-        it("question with joins (metabase#15947-2)", { tags: "@skip" }, () => {
-          H.createQuestion({
-            name: "15947",
-            query: {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  fields: "all",
-                  "source-table": PRODUCTS_ID,
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                  ],
-                  alias: "Products",
-                },
-              ],
-              filter: [
-                "and",
-                ["=", ["field", ORDERS.QUANTITY, null], 1],
-                [
-                  ">",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                  3,
-                ],
-              ],
-              aggregation: [
-                ["sum", ["field", ORDERS.TOTAL, null]],
-                [
-                  "sum",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                ],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-              ],
-            },
-          }).then(({ body: { id: QUESTION_ID } }) => {
-            turnTableVisibilityOff(PRODUCTS_ID);
-            cy.visit(`/question/${QUESTION_ID}/notebook`);
-            cy.findByText("Products");
-            cy.findByText("Quantity is equal to 1");
-            cy.findByText("Rating is greater than 3");
-            H.queryBuilderHeader().findByText("View-only").should("be.visible");
-          });
-        });
       });
     });
   });

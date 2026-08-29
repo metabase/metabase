@@ -88,125 +88,8 @@ describe("scenarios > question > offset", () => {
     });
 
     // Skipped because we want to disable offset() in custom columns for now
-    it("suggests and allows using offset()", { tags: "@skip" }, () => {
-      const expression = "Offset([Total], -1)";
-      const prefixLength = 3;
-      const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
-        limit: 5,
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
-      H.openNotebook();
-      cy.button("Custom column").click();
-      H.enterCustomColumnDetails({ formula: prefix });
-
-      cy.log("suggests offset() in custom column expressions");
-      cy.findByTestId("expression-suggestions-list-item")
-        .should("exist")
-        .and("have.text", "Offset");
-
-      H.enterCustomColumnDetails({ formula: expression });
-      cy.realPress("Tab");
-
-      H.popover().within(() => {
-        cy.findByText("OFFSET in a custom expression requires a sort order");
-        cy.button("Done").should("be.disabled");
-        cy.button("Cancel").click();
-      });
-
-      cy.button("Sort").click();
-      H.popover().findByText("ID").click();
-      H.getNotebookStep("expression").icon("add").click();
-      H.enterCustomColumnDetails({ formula: expression });
-      cy.realPress("Tab");
-
-      H.popover().within(() => {
-        cy.button("Done").should("be.disabled");
-
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .type("My expression")
-          .blur();
-
-        cy.button("Done").should("be.enabled").click();
-      });
-
-      cy.log("preview availability");
-      H.getNotebookStep("data").icon("play").should("be.visible");
-      H.getNotebookStep("expression").icon("play").should("not.be.visible");
-      H.getNotebookStep("sort").icon("play").should("be.visible");
-      H.getNotebookStep("limit").icon("play").should("be.visible");
-
-      H.visualize();
-      verifyTableContent([
-        ["1", "39.72", ""],
-        ["2", "117.03", "39.72"],
-        ["3", "49.21", "117.03"],
-      ]);
-    });
 
     // Skipped because we want to disable offset() in custom columns for now
-    it(
-      "does not allow to use offset-based column in other clauses (metabase#42764)",
-      { tags: "@skip" },
-      () => {
-        const offsettedColumnName = "xyz";
-        const expression = `Offset([${offsettedColumnName}], -1)`;
-        const prefixLength = "Offset([x".length;
-        const prefix = expression.substring(0, prefixLength);
-        const query: StructuredQuery = {
-          "source-table": ORDERS_ID,
-          expressions: {
-            [offsettedColumnName]: [
-              "offset",
-              createOffsetOptions(offsettedColumnName),
-              ORDERS_TOTAL_FIELD_REF,
-              -1,
-            ],
-          },
-          "order-by": [["asc", ORDERS_ID_FIELD_REF]],
-          limit: 5,
-        };
-
-        H.createQuestion({ query }, { visitQuestion: true });
-
-        cy.log("custom column drills");
-        const rowIndex = 1;
-        const columnIndex = 9;
-        const columnsCount = 10;
-        const cellIndex = rowIndex * columnsCount + columnIndex;
-        // eslint-disable-next-line no-unsafe-element-filtering
-        cy.findAllByRole("gridcell").eq(cellIndex).click();
-        cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
-        H.openNotebook();
-
-        cy.log("custom column expressions");
-        H.getNotebookStep("expression").icon("add").click();
-        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-        H.popover().button("Cancel").click();
-
-        cy.log("custom filter expressions");
-        cy.icon("filter").click();
-        H.popover().findByText("Custom Expression").click();
-        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-        H.popover().button("Cancel").click();
-        cy.realPress("Escape");
-
-        cy.log("custom aggregation expressions");
-        cy.icon("sum").click();
-        H.popover().findByText("Custom Expression").click();
-        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-        H.popover().button("Cancel").click();
-        cy.realPress("Escape");
-
-        cy.log("sort clause");
-        H.getNotebookStep("sort").icon("add").click();
-        H.popover().should("not.contain", offsettedColumnName);
-      },
-    );
   });
 
   describe("filters", () => {
@@ -290,32 +173,6 @@ describe("scenarios > question > offset", () => {
         "Window function requires either breakouts or order by in the query",
       );
     });
-
-    it(
-      "does not preview sql without a breakout (metabase#47819)",
-      { tags: "@skip" },
-      () => {
-        cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
-
-        const query: StructuredQuery = {
-          "source-table": ORDERS_ID,
-          aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-          limit: 5,
-        };
-
-        H.createQuestion({ query }, { visitQuestion: true });
-
-        H.openNotebook();
-
-        cy.findByLabelText("View SQL").click();
-        cy.wait("@sqlPreview");
-
-        cy.findByTestId("native-query-preview-sidebar").should(
-          "not.contain",
-          "Error generating the query.",
-        );
-      },
-    );
 
     it("works with a single breakout", () => {
       const query: StructuredQuery = {
@@ -1380,22 +1237,6 @@ function verifyNoQuestionError() {
   cy.findByTestId("query-builder-main").within(() => {
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.findByText("Show error details").should("not.exist");
-  });
-}
-
-function verifyInvalidColumnName(
-  columnName: string,
-  prefix: string,
-  expression: string,
-) {
-  H.enterCustomColumnDetails({ formula: prefix });
-  cy.findByTestId("expression-suggestions-list-item").should("not.exist");
-
-  H.enterCustomColumnDetails({ formula: expression });
-  cy.realPress("Tab");
-  H.popover().within(() => {
-    cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
-    cy.button("Done").should("be.disabled");
   });
 }
 

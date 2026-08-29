@@ -4,9 +4,12 @@
   (:refer-clojure :exclude [get-in some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.audit-app.core :as audit-app]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -46,6 +49,49 @@
   {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
+
+(def ^:private spec-structural-keys
+  "Keys that describe how to reach the JDBC driver rather than what to say to it."
+  [:connection-uri :subname :subprotocol :classname :datasource :datasource-class])
+
+(defn- spec-to-inspect
+  "The connection spec `details` would produce, or nil when they do not make one. Used to read where a connection would
+  go, never to open it.
+
+  A `:write_data_details` or `:admin_details` overlay reaches us as a partial map that may not make a whole spec.
+  Details that cannot produce a spec cannot open a connection either, so nil is a safe answer rather than a blind
+  spot."
+  [driver details]
+  (try
+    (connection-details->spec driver details)
+    (catch Throwable e
+      (log/debug e "Could not build a connection spec to check where it would connect")
+      nil)))
+
+(defn- spec-connection-string [spec]
+  (or (:connection-uri spec) (:subname spec)))
+
+(defmethod driver/connection-hosts :sql-jdbc
+  [driver details]
+  ;; Read from the connection string as well as the details, because the two disagree in both directions: a client
+  ;; substitutes `localhost` for a host detail that is missing or blank, so the string names a host the details do
+  ;; not; and a driver that builds its URL somewhere this cannot see (`:datasource`) leaves the details as the only
+  ;; account of where it goes.
+  (into (vec (driver/hosts-from-details details driver/default-host-detail-keys))
+        (some-> (spec-to-inspect driver details)
+                spec-connection-string
+                sql-jdbc.common/connection-string-hosts)))
+
+(defmethod driver/connection-parameter-hosts :sql-jdbc
+  [driver details]
+  ;; The parameters are read off the finished spec rather than off `:additional-options`, so that whatever the driver
+  ;; folds in on its way there is covered too -- several drivers pass any detail key they do not recognize straight
+  ;; through as a connection property.
+  (if-let [spec (spec-to-inspect driver details)]
+    (sql-jdbc.common/connection-parameter-hosts (spec-connection-string spec)
+                                                (apply dissoc spec spec-structural-keys)
+                                                (driver/host-carrying-parameters driver))
+    []))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Creating Connection Pools                                            |
@@ -186,6 +232,10 @@
   [{:keys [id details], driver :engine, :as database}]
   {:pre [(map? database)]}
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s ..." driver id))
+  ;; before the tunnel is set up, since incorporating it rewrites `:host` to the local tunnel entrance. Checking
+  ;; here as well as at connection-test time narrows the DNS-rebinding window and covers databases that never
+  ;; went through a connection test (serialization import, config files).
+  (driver.u/validate-connection-hosts! driver details)
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -281,8 +331,17 @@
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
-                            (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+                            (or (:is-audit db)
+                                (and (audit-app/analytics-dev-mode)
+                                     (get-in db [:details :is-audit-dev])))
                             {:datasource (driver-api/data-source)}
+
+                            ;; An analytics-dev db is only a valid handle onto the app-db while analytics dev mode is
+                            ;; on; reaching here with the mode off is an invariant violation, so fail loudly rather than
+                            ;; silently building a credential-less pool against the wrong host.
+                            (get-in db [:details :is-audit-dev])
+                            (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
+                                            {:database-id (:id db)}))
 
                             (= ::not-found details)
                             nil
@@ -375,9 +434,16 @@
   "Default implementation of [[driver/can-connect?]] for SQL JDBC drivers. Checks whether we can perform a simple
   `SELECT 1` query."
   [driver details]
-  (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (or (:is-audit-dev details)
-        (can-connect-with-spec? jdbc-spec))))
+  ;; An `:is-audit-dev` database is a handle onto the app-db (see [[db->pooled-connection-spec]]); it has no real
+  ;; connection to test. That is only a valid state while analytics dev mode is on — otherwise reaching here is an
+  ;; invariant violation, so throw rather than reporting the database as connectable.
+  (if (:is-audit-dev details)
+    (if (audit-app/analytics-dev-mode)
+      true
+      (throw (ex-info (tru "Cannot connect to an analytics-dev database unless analytics dev mode is enabled.")
+                      {})))
+    (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+      (can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))

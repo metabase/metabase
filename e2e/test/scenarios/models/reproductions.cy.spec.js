@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -12,10 +12,7 @@ import {
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-import {
-  openDetailsSidebar,
-  turnIntoModel,
-} from "./helpers/e2e-models-helpers";
+import { turnIntoModel } from "./helpers/e2e-models-helpers";
 
 const {
   ORDERS_ID,
@@ -256,45 +253,6 @@ describe("issue 20517", () => {
   });
 });
 
-describe("issue 20624", { tags: "@skip" }, () => {
-  const renamedColumn = "TITLE renamed";
-
-  const questionDetails = {
-    name: "20624",
-    type: "model",
-    native: { query: "select * from PRODUCTS limit 2" },
-    visualization_settings: {
-      column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("models metadata should override previously defined column settings (metabase#20624)", () => {
-    openDetailsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Customize metadata").click();
-
-    // Open settings for this column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(renamedColumn).click();
-    // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
-
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
-
-    cy.get("[data-testid=cell-data]").should("contain", "Foo");
-  });
-});
-
 describe("issue 20963", () => {
   const snippetName = "string 'test'";
   const questionName = "Converting questions with snippets to models";
@@ -344,71 +302,6 @@ describe("issue 20963", () => {
   });
 });
 
-describe("issue 22517", () => {
-  function renameColumn(column, newName) {
-    cy.findByDisplayValue(column).clear().type(newName).blur();
-  }
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("PUT", "/api/card/*").as("updateMetadata");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(
-      {
-        name: "22517",
-        native: { query: "select * from orders" },
-        type: "model",
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit metadata").click();
-
-    renameColumn("ID", "Foo");
-
-    cy.button("Save changes").click();
-    cy.wait("@updateMetadata");
-  });
-
-  it(
-    "adding or removing a column should not drop previously edited metadata (metabase#22517)",
-    { tags: "@skip" },
-    () => {
-      H.openQuestionActions();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit query definition").click();
-
-      // Make sure previous metadata changes are reflected in the UI
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-
-      // This will edit the original query and add the `SIZE` column
-      // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-      H.NativeEditor.focus().type(
-        "{leftarrow}".repeat(" from orders".length) +
-          ", case when quantity > 4 then 'large' else 'small' end size ",
-      );
-
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@dataset");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save changes").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
-    },
-  );
-});
-
 describe("issue 22518", () => {
   beforeEach(() => {
     H.restore();
@@ -446,48 +339,6 @@ describe("issue 22518", () => {
       .should("contain", "ID")
       .and("contain", "FOO")
       .and("contain", "BAR");
-  });
-});
-
-describe("issue 22519", { tags: "@skip" }, () => {
-  const questionDetails = {
-    query: {
-      "source-table": REVIEWS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
-      tableId: REVIEWS_ID,
-      fieldId: REVIEWS.REVIEWS,
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Don't cast").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("UNIX seconds → Datetime").click();
-    cy.wait("@updateField");
-  });
-
-  it("model query should not fail when data model is using casting (metabase#22519)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("xavier");
-
-    turnIntoModel();
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("xavier");
   });
 });
 

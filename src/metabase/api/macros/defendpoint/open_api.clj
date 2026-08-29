@@ -5,13 +5,11 @@
   into [[metabase.api.macros/defendpoint]]."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.json-schema :as mjs]
    [medley.core :as m]
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private ^:dynamic *definitions* nil)
@@ -113,15 +111,6 @@
                :schema      (dissoc schema :optional :description)}
         (:description schema) (assoc :description (str (:description schema)))))))
 
-(mu/defn- multipart-schema [form :- :metabase.api.macros/parsed-args]
-  (when-let [request-schema (get-in form [:params :request :schema])]
-    (let [schema (-> request-schema mr/resolve-schema mc/schema)]
-      (when (= (mc/type schema) :map)
-        (some (fn [[k _opts schema]]
-                (when (= k :multipart-params)
-                  schema))
-              (mc/children schema))))))
-
 (def ^:private default-response-schema
   "Default response schema for OpenAPI endpoints. This is used when the endpoint does not specify a response schema."
   {"2XX" {:description "Successful response"}
@@ -165,9 +154,7 @@
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")
-          body-schema     (some-> (if (= ctype "multipart/form-data")
-                                    (multipart-schema form)
-                                    (get-in form [:params :body :schema]))
+          body-schema     (some-> (get-in form [:params :body :schema])
                                   mjs-collect-definitions
                                   fix-json-schema)
           response-schema (:response-schema form)

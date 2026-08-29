@@ -739,58 +739,6 @@ describe("issue 40064", () => {
   });
 });
 
-describe("issue 10493", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.signInAsAdmin();
-  });
-
-  it("should not reset chart axes after adding a new query stage (metabase#10493)", () => {
-    H.visitQuestionAdhoc({
-      display: "bar",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.QUANTITY,
-              { "base-type": "type/Integer", binning: { strategy: "default" } },
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-    });
-
-    H.filter();
-    H.modal().within(() => {
-      cy.findByText("Summaries").click();
-      cy.findByTestId("filter-column-Count").within(() => {
-        cy.findByPlaceholderText("Min").type("0");
-        cy.findByPlaceholderText("Max").type("30000");
-      });
-      cy.button("Apply filters").click();
-    });
-    cy.wait("@dataset");
-
-    H.echartsContainer().within(() => {
-      // y axis
-      cy.findByText("Count").should("exist");
-      cy.findByText("21,000").should("exist");
-      cy.findByText("3,000").should("exist");
-
-      // x axis
-      cy.findByText("Quantity").should("exist");
-      cy.findByText("25").should("exist");
-      cy.findByText("75").should("exist");
-    });
-  });
-});
-
 describe("issue 32020", () => {
   const question1Details = {
     name: "Q1",
@@ -1989,41 +1937,6 @@ describe("issue 41464", () => {
       cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByText("No results!", { timeout: 500 }).should("not.exist");
     });
-  });
-});
-
-describe("issue 45359", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
-      "font-regular",
-    );
-    cy.intercept("/app/fonts/Lato/lato-v16-latin-700.woff2").as("font-bold");
-    cy.signInAsAdmin();
-  });
-
-  it("loads app fonts correctly (metabase#45359)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.getNotebookStep("data")
-      .findByText("Orders")
-      .should("have.css", "font-family", "Lato, sans-serif");
-
-    cy.get("@font-regular.all").should("have.length", 1);
-    cy.get("@font-regular").should(({ response }) => {
-      expect(response).to.include({ statusCode: 200 });
-    });
-
-    cy.get("@font-bold.all").should("have.length", 1);
-    cy.get("@font-bold").should(({ response }) => {
-      expect(response).to.include({ statusCode: 200 });
-    });
-
-    cy.document()
-      .then((document) => document.fonts.ready)
-      .then((fonts) => {
-        cy.wrap(fonts).invoke("check", "16px Lato").should("be.true");
-      });
   });
 });
 
