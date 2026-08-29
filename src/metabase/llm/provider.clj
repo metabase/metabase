@@ -692,7 +692,7 @@
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -873,13 +873,18 @@
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
         (when (and (= field :base-url) (request.current/current-request))
+          (when (contains? (:env-fields live) field)
+            ;; Persisting an inert value underneath the environment overlay would make it live if the operator later
+            ;; removed that variable, carrying any stored credentials to a URL the API caller planted earlier.
+            (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                            {:status-code 400
+                             :api-error   true
+                             :error-code  :llm-base-url-is-env-managed
+                             :field       :base-url})))
           (let [current-config (or (:config live) {})
-                ;; An env-owned base URL still wins after this inert DB write, so it has not effectively moved.
-                new-config     (if (contains? (:env-fields live) field)
-                                 current-config
-                                 (if value
-                                   (assoc current-config field value)
-                                   (dissoc current-config field)))]
+                new-config     (if value
+                                 (assoc current-config field value)
+                                 (dissoc current-config field))]
             (assert-base-url-change-authorized! group-type current-config new-config {field value}
                                                 (:env-fields live) {:legacy-setting? true})))
         (when value

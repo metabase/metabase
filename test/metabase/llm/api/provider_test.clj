@@ -673,6 +673,17 @@
                                       {:config {:api-key  "sk-ant-attempted-override"
                                                 :base-url "https://new.example.com"}})))))))
 
+(deftest generic-setting-api-cannot-write-provider-connections-test
+  (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (doseq [[endpoint body] [["setting/llm-providers" {:value planted}]
+                                 ["setting"               {:llm-providers planted}]]]
+          (is (=? {:message "Manage LLM provider connections through the provider connection settings."}
+                  (mt/user-http-request :crowberto :put 400 endpoint body))))
+        (is (= [] (llm.provider/stored-connections))
+            "neither generic settings endpoint may plant a URL that later receives the environment key")))))
+
 (deftest legacy-base-url-setting-refuses-to-move-a-stored-secret-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                 {:api-key  "sk-ant-stored"
@@ -686,7 +697,17 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
         (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
-                                      {:value "https://new.example.com"})))))))
+                                      {:value "https://new.example.com"}))))))
+  (testing "and never plants a dormant value underneath an environment-owned base URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? {:message "This connection's base URL comes from an environment variable. Change it there."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://attacker.example.com"}))))
+      (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
+          "removing the environment overlay leaves the original stored URL, not the rejected one"))))
 
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
