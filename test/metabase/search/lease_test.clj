@@ -434,15 +434,20 @@
         (is (apply = @coordinates))))))
 
 (deftest ambient-transaction-refused-outside-test-mode-test
-  (let [coordinate (coordinate)]
-    (mt/with-dynamic-fn-redefs [lease/ambient-transactions-allowed? (constantly false)]
+  (let [coordinate (coordinate)
+        events     (atom [])]
+    (mt/with-dynamic-fn-redefs [lease/ambient-transactions-allowed? (constantly false)
+                                analytics/inc! (fn [metric labels & _] (swap! events conj [metric labels]))]
       (is (thrown-with-msg?
            Exception
            #"cannot be acquired inside an app-db transaction"
            (t2/with-transaction [_conn]
              (lease/do-with-lease coordinate (fn [] (throw (Exception. "must not run")))))))
       (is (nil? (t2/select-one :search_index_lease :engine (:engine coordinate) :version (:version coordinate)))
-          "nothing was acquired"))))
+          "nothing was acquired")
+      (is (=? [[:metabase-search/reindex-lease-events {:engine "appdb", :event :refused-in-transaction}]]
+              @events)
+          "the refusal is visible in the lease-events metric"))))
 
 (deftest successful-fence-advances-heartbeat-deadline-test
   (let [coordinate (coordinate)

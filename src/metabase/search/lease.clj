@@ -411,7 +411,9 @@
    (do-with-lease coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
    (when (and (mdb/in-transaction?) (not (ambient-transactions-allowed?)))
-     (throw (ex-info "Search reindex leases cannot be acquired inside an app-db transaction"
+     (record-event! (where-coordinate coordinate) :refused-in-transaction)
+     (throw (ex-info (str "Search reindex leases cannot be acquired inside an app-db transaction."
+                          " Schedule the reindex with mdb/do-after-commit, or move it outside the transaction.")
                      {:type ::ambient-transaction, :coordinate (where-coordinate coordinate)})))
    (if-let [claim (wait-for-claim coordinate wait?)]
      (let [stopped               (promise)

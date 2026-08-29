@@ -78,7 +78,8 @@
 (defmethod analytics.core/known-labels :metabase-search/reindex-lease-events
   [_]
   (for [engine (map name (search.engine/known-engines))
-        event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error]]
+        event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error
+                :refused-in-transaction]]
     {:engine engine, :event event}))
 
 (defmethod analytics.core/known-labels :metabase-search/engine-default
