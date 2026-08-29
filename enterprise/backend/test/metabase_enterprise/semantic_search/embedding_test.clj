@@ -467,6 +467,15 @@
           (is (= "http://127.0.0.1:9/v1/embeddings" (:url @captured)))
           (is (not (contains? @captured :dns-resolver))))))))
 
+(deftest embedding-service-base-url-normalizes-whitespace-test
+  (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
+    (semantic.settings/ee-embedding-service-base-url! "  \t ")
+    (is (nil? (semantic.settings/ee-embedding-service-base-url))
+        "whitespace clears the setting instead of leaving it looking configured")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (semantic.settings/ee-embedding-service-base-url! "  https://embed.example.com/v1  ")
+      (is (= "https://embed.example.com/v1" (semantic.settings/ee-embedding-service-base-url))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
