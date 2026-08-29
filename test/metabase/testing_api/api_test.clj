@@ -136,4 +136,12 @@
                         :name   "Anthropic"
                         :config {:api-key "sk-ant-test-key"}}]]
       (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value connections})))
-      (is (= connections (vec (llm.settings/llm-providers)))))))
+      (is (= connections (vec (llm.settings/llm-providers))))
+      (testing "unknown connection fields cannot reach storage"
+        (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers"
+                                        {:value [(assoc (first connections) :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "unknown provider config fields are rejected"
+        (is (some? (mt/user-http-request :rasta :put 400 "testing/llm-providers"
+                                         {:value [(update (first connections) :config assoc :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers))))))))
