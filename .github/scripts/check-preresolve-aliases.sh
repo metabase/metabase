@@ -72,6 +72,8 @@ found="$( {
   scan oss
   scan_project_tests run-backend-checks! .
   scan_project_tests run-migration-checks! bin/lint-migrations-file
+  # build-scripts.yml runs this classpath from its own dependency root.
+  printf '%s\n' 'bin/load-namespaces|:test'
 } | sort -u )"
 
 covered="$( {
