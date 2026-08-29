@@ -18,6 +18,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.snowflake :as snowflake.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.util.timezone :as test.tz]
    [metabase.util.log :as log])
   (:import
    (java.time Instant)))
@@ -137,6 +138,16 @@
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))
 
+(defn- materialize!
+  "Write `dbdef`'s tables into the database named by `dataset-id`.
+
+  Data must be written as UTC or tests break; owned here so no caller has to remember it. The JVM's
+  zone and Snowflake's session zone are separate settings and both matter."
+  [dataset-id dbdef]
+  (snowflake.tx/set-current-user-timezone! "UTC")
+  (test.tz/with-system-timezone-id! "UTC"
+    (load-data/create-db! :snowflake (assoc dbdef :database-name dataset-id))))
+
 ;;; ------------------------------------------------ Store ------------------------------------------------
 
 (defrecord SnowflakeDatasetStore [spec tracking-db lease-seconds setup]
@@ -154,8 +165,7 @@
           ;; A claim may have been stolen from a caller that died partway through writing, so start
           ;; from nothing rather than trusting whatever it left behind. `create-db!` for this driver
           ;; opens with DROP DATABASE IF EXISTS.
-          (snowflake.tx/set-current-user-timezone! "UTC")
-          (load-data/create-db! :snowflake (assoc dbdef :database-name dataset-id))
+          (materialize! dataset-id dbdef)
           (if (mark-ready! spec tracking-db dataset-id)
             :created
             ;; Lease stolen mid-load: another caller owns this dataset now, so do not claim credit
@@ -170,6 +180,17 @@
             (drop-database! spec dataset-id)
             (release-claim! spec tracking-db dataset-id)
             (throw e))))))
+
+  (create-temp-isolated-dataset! [_this dbdef]
+    @setup
+    (let [dataset-id (dataset-store/temp-dataset-id dbdef)]
+      ;; The claim always succeeds -- the id was just minted, so no other caller can hold it. Taking
+      ;; it anyway is what puts the row in the tracking table, which is how a sweeper finds this
+      ;; dataset if its owner dies before deleting it. Snowflake cannot expire a database on its own.
+      (claim-for-create! spec tracking-db lease-seconds dataset-id)
+      (materialize! dataset-id dbdef)
+      (mark-ready! spec tracking-db dataset-id)
+      dataset-id))
 
   (delete-dataset! [_this dataset-id]
     @setup

@@ -54,12 +54,15 @@
            (str/starts-with? database-name dataset-store/id-prefix))))
 
 (defn qualified-db-name
-  "Isolate db name so we don't stomp on any other jobs running at the same time."
+  "Physical database holding a dataset's tables.
+
+  Content-addressed and identical in CI and locally: coordination between concurrent jobs is the
+  store's business, so there is no longer a reason to give each job a private database and rebuild
+  the same data in every one."
   [{:keys [database-name] :as db-def}]
-  (cond (already-qualified? database-name) database-name
-        ;; isolate if we are in a CI job
-        (System/getenv "GITHUB_REF_NAME") (str "isolate_" dataset-prefix database-name)
-        :else (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+  (if (already-qualified? database-name)
+    database-name
+    (dataset-store/default-dataset-id db-def)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]

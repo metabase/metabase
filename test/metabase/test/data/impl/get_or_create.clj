@@ -12,6 +12,8 @@
    [metabase.sync.analyze :as sync.analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
+   [metabase.test.data.dataset-store :as dataset-store]
+   [metabase.test.data.dataset-store.registry :as dataset-store.registry]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
@@ -406,19 +408,28 @@
      driver
      (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data))"
   [driver {:keys [database-name], :as dbdef}]
-  (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
-  ;; there's locking around this stuff elsewhere.
-  (if (tx/dataset-already-loaded? driver dbdef)
-    (log/infof "test dataset %s already loaded for driver %s; not reloading data."
-               (pr-str database-name)
-               driver)
+  (if-let [store (dataset-store.registry/store-for driver)]
+    ;; `:database-name` is already the dataset id -- see `default-get-or-create-database!`.
+    (let [dataset-id database-name]
+      (log/infof "Creating test dataset %s for %s if needed..." (pr-str dataset-id) driver)
+      ;; Loading as UTC is each store's own business -- see their `create-dataset!`.
+      (dataset-store/create-dataset-and-wait! store dataset-id dbdef
+                                              {:timeout-ms create-database-timeout-ms})
+      (dataset-store/touch-dataset! store dataset-id))
     (do
-      (log/info "Data has not been loaded yet. Loading...")
-      (u/with-timeout create-database-timeout-ms
-        ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
-        (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef)))))
-  (tx/track-dataset driver dbdef))
+      (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
+      ;; there's locking around this stuff elsewhere.
+      (if (tx/dataset-already-loaded? driver dbdef)
+        (log/infof "test dataset %s already loaded for driver %s; not reloading data."
+                   (pr-str database-name)
+                   driver)
+        (do
+          (log/info "Data has not been loaded yet. Loading...")
+          (u/with-timeout create-database-timeout-ms
+            ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
+            (test.tz/with-system-timezone-id! "UTC"
+              (tx/create-db! driver dbdef)))))
+      (tx/track-dataset driver dbdef))))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
@@ -510,7 +521,14 @@
   "Default implementation of [[metabase.test.data.impl/get-or-create-database!]]."
   [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
-  (let [dbdef (tx/get-dataset-definition dbdef)]
+  (let [dbdef (tx/get-dataset-definition dbdef)
+        ;; Rename once, here, before anything derives a physical name from the definition. Every
+        ;; name a driver builds -- database, schema, table -- descends from `:database-name`, so
+        ;; putting the dataset id there is what carries the content hash into all of them, and is
+        ;; why name resolution never has to reach for the definition again.
+        dbdef (if (dataset-store.registry/store-for driver)
+                (dataset-store/dataset-id-dbdef dbdef)
+                dbdef)]
     (or
      (when-let [existing-database (get-existing-database-with-read-lock driver dbdef)]
        (reload-data-if-needed! driver dbdef existing-database)

@@ -76,6 +76,14 @@
               (swap! state (fn [m] (cond-> m (own-claim? m dataset-id owner) (dissoc dataset-id))))
               (throw e)))))))
 
+  (create-temp-isolated-dataset! [_this dbdef]
+    (let [dataset-id (dataset-store/temp-dataset-id dbdef)]
+      ;; Always wins: the id was just minted, so nobody else can hold it.
+      (swap! state claim-for-create dataset-id owner (now-fn) lease-seconds)
+      (load-fn dataset-id dbdef)
+      (swap! state update dataset-id assoc :state :ready :claim-owner nil :claimed-at nil)
+      dataset-id))
+
   (delete-dataset! [_this dataset-id]
     (let [[before after] (swap-vals! state claim-for-delete dataset-id owner (now-fn) lease-seconds)]
       (cond
@@ -230,3 +238,118 @@
   (testing "definitions with differing content never do"
     (is (not= (dataset-store/default-dataset-id (dbdef "venues"))
               (dataset-store/default-dataset-id (dbdef "checkins"))))))
+
+(deftest dataset-id-dbdef-test
+  (let [original (dbdef "test-data")
+        renamed  (dataset-store/dataset-id-dbdef original)]
+    (testing "the definition's own name becomes its dataset id"
+      (is (= (dataset-store/default-dataset-id original) (:database-name renamed)))
+      (is (str/starts-with? (:database-name renamed) dataset-store/id-prefix)))
+    (testing "renaming an already-renamed definition changes nothing"
+      (is (= renamed (dataset-store/dataset-id-dbdef renamed))))
+    (testing "table names derived from the renamed definition carry the content hash"
+      ;; `db-qualified-table-name` normalizes `-` to `_`, so the table name carries the hash but is
+      ;; not literally prefixed by the database name.
+      (let [table-name (tx/db-qualified-table-name (:database-name renamed) "venues")]
+        (is (str/starts-with? table-name (str dataset-store/id-prefix (tx/hash-dataset original))))
+        (is (str/ends-with? table-name "_venues"))))
+    (testing "definitions differing in content give tables differing names"
+      (is (not= (tx/db-qualified-table-name
+                 (:database-name (dataset-store/dataset-id-dbdef (dbdef "test-data"))) "venues")
+                (tx/db-qualified-table-name
+                 (:database-name (dataset-store/dataset-id-dbdef (dbdef "other-data"))) "venues"))))))
+
+(deftest create-dataset-and-wait-test
+  (testing "waits out the caller holding the claim, then reports what it found"
+    (let [{:keys [store]} (test-world)
+          entered         (promise)
+          release         (promise)
+          a               (store {:owner "a" :load-fn (fn [_ _] (deliver entered true) @release)})
+          b               (store {:owner "b"})
+          loading         (future (dataset-store/create-dataset! a "mbds_a" (dbdef "a")))]
+      (is (true? (deref entered 5000 false)))
+      (let [waiting (future (dataset-store/create-dataset-and-wait!
+                             b "mbds_a" (dbdef "a") {:timeout-ms 20000 :poll-ms 50}))]
+        (deliver release true)
+        (is (= :created (deref loading 5000 :timeout)))
+        (is (= :exists (deref waiting 10000 :timeout))))))
+  (testing "throws rather than hanging when the claim is never released"
+    (let [{:keys [store]} (test-world)
+          entered         (promise)
+          release         (promise)
+          a               (store {:owner "a" :load-fn (fn [_ _] (deliver entered true) @release)})
+          b               (store {:owner "b"})]
+      (future (dataset-store/create-dataset! a "mbds_a" (dbdef "a")))
+      (is (true? (deref entered 5000 false)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Timed out"
+                            (dataset-store/create-dataset-and-wait!
+                             b "mbds_a" (dbdef "a") {:timeout-ms 300 :poll-ms 50})))
+      (deliver release true))))
+
+(deftest caching-dataset-store-test
+  (testing "a dataset this process has already seen costs no further round trip"
+    (let [{:keys [store]} (test-world)
+          calls           (atom 0)
+          counting        (reify dataset-store/DatasetStore
+                            (create-dataset! [_ id dbdef]
+                              (swap! calls inc)
+                              (dataset-store/create-dataset! (store {}) id dbdef))
+                            (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
+                            (delete-dataset! [_ _] :deleted)
+                            (describe-dataset [_ _] nil)
+                            (list-datasets [_ _] [])
+                            (touch-dataset! [_ _] nil))
+          cached          (dataset-store/caching-dataset-store counting {})]
+      (is (= :created (dataset-store/create-dataset! cached "mbds_a" (dbdef "a"))))
+      (is (= :created (dataset-store/create-dataset! cached "mbds_a" (dbdef "a"))))
+      (is (= 1 @calls) "the second call was answered from memory")
+      (testing "a different dataset is still asked about"
+        (dataset-store/create-dataset! cached "mbds_b" (dbdef "b"))
+        (is (= 2 @calls)))
+      (testing "deleting forgets, so a later create asks again"
+        (dataset-store/delete-dataset! cached "mbds_a")
+        (dataset-store/create-dataset! cached "mbds_a" (dbdef "a"))
+        (is (= 3 @calls)))))
+  (testing ":in-progress is never remembered -- it is by definition about to change"
+    (let [calls   (atom 0)
+          busy    (reify dataset-store/DatasetStore
+                    (create-dataset! [_ _ _] (swap! calls inc) :in-progress)
+                    (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
+                    (delete-dataset! [_ _] :absent)
+                    (describe-dataset [_ _] nil)
+                    (list-datasets [_ _] [])
+                    (touch-dataset! [_ _] nil))
+          cached  (dataset-store/caching-dataset-store busy {})]
+      (dotimes [_ 3] (dataset-store/create-dataset! cached "mbds_a" (dbdef "a")))
+      (is (= 3 @calls)))))
+
+(deftest temp-isolated-datasets-are-never-shared-test
+  (let [{:keys [store]} (test-world)
+        s               (store {})
+        a               (dataset-store/create-temp-isolated-dataset! s (dbdef "test-data"))
+        b               (dataset-store/create-temp-isolated-dataset! s (dbdef "test-data"))]
+    (testing "two calls with identical content still give two datasets"
+      (is (not= a b)))
+    (testing "ids carry the temp prefix, so a sweeper can find them without touching shared ones"
+      (is (str/starts-with? a dataset-store/temp-id-prefix))
+      (is (str/starts-with? a dataset-store/id-prefix)))
+    (testing "both are ready immediately -- there is no claim to wait on"
+      (is (= :ready (:state (dataset-store/describe-dataset s a))))
+      (is (= :ready (:state (dataset-store/describe-dataset s b)))))))
+
+(deftest with-temp-dataset-deletes-on-the-way-out-test
+  (let [{:keys [store]} (test-world)
+        s               (store {})]
+    (testing "the dataset exists inside the body and is gone after it"
+      (let [seen (atom nil)]
+        (dataset-store/with-temp-dataset [id [s (dbdef "test-data")]]
+          (reset! seen id)
+          (is (= :ready (:state (dataset-store/describe-dataset s id)))))
+        (is (nil? (dataset-store/describe-dataset s @seen)))))
+    (testing "and is deleted even when the body throws"
+      (let [seen (atom nil)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                              (dataset-store/with-temp-dataset [id [s (dbdef "test-data")]]
+                                (reset! seen id)
+                                (throw (ex-info "boom" {})))))
+        (is (nil? (dataset-store/describe-dataset s @seen)))))))

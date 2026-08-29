@@ -65,6 +65,14 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
+(def dataset-schema
+  "One stable schema holding every store-managed dataset's tables.
+
+  Table names carry their dataset's content hash, so datasets are told apart without a schema each.
+  That is what lets name resolution work from a table name alone, and it lets datasets outlive the
+  run that built them -- unlike [[unique-session-schema]], which is per-run by design."
+  "metabase_datasets")
+
 ;;; `MB_REDSHIFT_TEST_HOSTS`
 ;;;
 ;;; We've had lots of problems with Redshift timing out because of too much CPU load on our single cluster in the past;
@@ -99,7 +107,9 @@
           :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
-          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+          ;; `dataset-schema` holds test datasets; `unique-session-schema` is this run's scratch space,
+          ;; which upload and transform tests write into.
+          :schema-filters-patterns (str "spectrum," dataset-schema "," (unique-session-schema))}))
 
 (def db-routing-connection-details
   (delay
@@ -116,10 +126,12 @@
 
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
 
+;; Not `dataset-schema`: callers of `session-schema` (upload and transform tests) want a schema they
+;; may create tables in, which is a per-run scratch space rather than somewhere datasets live.
 (defmethod sql.tx/session-schema :redshift [_driver] (unique-session-schema))
 
 (defmethod sql.tx/qualified-name-components :redshift [& args]
-  (apply tx/single-db-qualified-name-components (unique-session-schema) args))
+  (apply tx/single-db-qualified-name-components dataset-schema args))
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
@@ -396,7 +408,7 @@
 
 (defmethod tx/fake-sync-schema :redshift
   [_driver]
-  (unique-session-schema))
+  dataset-schema)
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
