@@ -18,58 +18,31 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 test_root=$(mktemp -d)
 
+active_ratchets='{:ignore-counts {:example 1}}'
 disabled_ratchets=';; Kondo ignore ratchets apply only to master; this release branch opts out.
 ;; The test and fixer recognize this explicit opt-out.
 {:disabled true}'
 
-fail() {
-  echo "FAIL: $*" >&2
-  exit 1
-}
+# Coverage:
+#
+# Target state       Incoming change       Other conflict   Expected result
+# -----------------  --------------------  ---------------  ------------------------------------------
+# active ratchets    unrelated file        none             leave ratchets unchanged
+# active ratchets    ratchets              none             install the release opt-out
+# disabled ratchets  ratchets              none             keep the opt-out; finish with an empty commit
+# divergent ratchets ratchets              none             resolve ratchets and finish the cherry-pick
+# divergent ratchets ratchets (on a pty)   none             finish without opening an editor
+# active ratchets    unrelated file        app.txt          leave the conflict for manual resolution
+# divergent ratchets ratchets + app.txt    app.txt          resolve only ratchets
+# release cut        ratchets              none             cut and backport commit the same opt-out
+# n/a                cut-release workflow  n/a              the workflow calls the shared producer
+# any                invalid commit        n/a              propagate the cherry-pick failure
+# divergent ratchets generated backport.sh app.txt          resolve only ratchets through the manual script
+#
+# Known gaps: an older target with no ratchets file, and an incoming commit that
+# deletes the ratchets file.
 
-assert_eq() {
-  local expected=$1
-  local actual=$2
-  local message=$3
-  [ "$expected" = "$actual" ] || fail "$message (expected '$expected', got '$actual')"
-}
-
-init_repo() {
-  local repo=$1
-  git init -q -b release "$repo"
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name "Backport test"
-  printf 'base\n' > "$repo/app.txt"
-  mkdir -p "$repo/.clj-kondo"
-  printf '{:ignore-counts {:example 1}}\n' > "$repo/.clj-kondo/ratchets.edn"
-  git -C "$repo" add .
-  git -C "$repo" commit -qm "Base"
-}
-
-feature_commit() {
-  local repo=$1
-  shift
-  git -C "$repo" checkout -qb feature
-  "$@" "$repo"
-  git -C "$repo" add .
-  git -C "$repo" commit -qm "Feature"
-  git -C "$repo" rev-parse HEAD
-}
-
-change_app() {
-  printf 'feature\n' > "$1/app.txt"
-}
-
-change_ratchets() {
-  printf '{:ignore-counts {:example 2}}\n' > "$1/.clj-kondo/ratchets.edn"
-}
-
-change_app_and_ratchets() {
-  change_app "$1"
-  change_ratchets "$1"
-}
-
-test_unrelated_commit() (
+test_unrelated_backport_preserves_target_ratchets() (
   local repo="$test_root/unrelated"
   init_repo "$repo"
   local commit
@@ -79,12 +52,12 @@ test_unrelated_commit() (
   cd "$repo"
   cherry_pick_backport "$commit"
 
-  assert_eq '{:ignore-counts {:example 1}}' "$(cat .clj-kondo/ratchets.edn)" \
-    "an unrelated backport changed the ratchets"
-  [ -z "$(git status --porcelain)" ] || fail "an unrelated backport left changes"
+  assert_ratchets "$active_ratchets"
+  assert_cherry_pick_completed
+  assert_worktree_clean
 )
 
-test_clean_ratchet_commit() (
+test_clean_ratchet_backport_installs_release_opt_out() (
   local repo="$test_root/clean-ratchet"
   init_repo "$repo"
   local commit
@@ -94,23 +67,29 @@ test_clean_ratchet_commit() (
   cd "$repo"
   cherry_pick_backport "$commit"
 
-  assert_eq "$disabled_ratchets" "$(cat .clj-kondo/ratchets.edn)" \
-    "a clean ratchet backport did not install the release opt-out"
-  [ -z "$(git status --porcelain)" ] || fail "a clean ratchet backport left changes"
+  assert_ratchets_disabled
+  assert_cherry_pick_completed
+  assert_worktree_clean
 )
 
-# Sets up a release branch whose ratchets conflict with the feature commit, and prints that commit.
-conflicting_ratchet_commit() {
-  local repo=$1
+test_disabled_release_absorbs_ratchet_only_backport() (
+  local repo="$test_root/disabled-release"
+  init_repo "$repo"
   local commit
   commit=$(feature_commit "$repo" change_ratchets)
   git -C "$repo" checkout -q release
-  printf '{:ignore-counts {:release 1}}\n' > "$repo/.clj-kondo/ratchets.edn"
-  git -C "$repo" commit -qam "Release change"
-  echo "$commit"
-}
+  commit_release_change "$repo" disable_release_ratchets "Disable release ratchets"
 
-test_ratchet_only_conflict() (
+  cd "$repo"
+  cherry_pick_backport "$commit"
+
+  assert_ratchets_disabled
+  assert_cherry_pick_completed
+  assert_empty_commit
+  assert_worktree_clean
+)
+
+test_ratchet_only_conflict_is_resolved() (
   local repo="$test_root/ratchet-conflict"
   init_repo "$repo"
   local commit
@@ -119,10 +98,9 @@ test_ratchet_only_conflict() (
   cd "$repo"
   cherry_pick_backport "$commit"
 
-  assert_eq "$disabled_ratchets" "$(cat .clj-kondo/ratchets.edn)" \
-    "a ratchet-only conflict did not install the release opt-out"
-  ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick was not completed"
-  [ -z "$(git status --porcelain)" ] || fail "a resolved ratchet-only conflict left changes"
+  assert_ratchets_disabled
+  assert_cherry_pick_completed
+  assert_worktree_clean
 )
 
 test_continuation_never_opens_an_editor() (
@@ -140,32 +118,43 @@ test_continuation_never_opens_an_editor() (
     bash -c 'source "$1/kondo-ratchets.sh" && cherry_pick_backport "$2"' bash "$action_dir" "$commit" >/dev/null ||
     fail "the cherry-pick continuation opened an editor"
 
-  assert_eq "$disabled_ratchets" "$(cat .clj-kondo/ratchets.edn)" \
-    "the continuation did not install the release opt-out"
-  ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick was not completed"
+  assert_ratchets_disabled
+  assert_cherry_pick_completed
 )
 
-test_other_conflict_remains_manual() (
-  local repo="$test_root/other-conflict"
+test_non_ratchet_conflict_remains_manual() (
+  local repo="$test_root/non-ratchet-conflict"
   init_repo "$repo"
   local commit
-  commit=$(feature_commit "$repo" change_app_and_ratchets)
+  commit=$(feature_commit "$repo" change_app)
   git -C "$repo" checkout -q release
-  printf 'release\n' > "$repo/app.txt"
-  printf '{:ignore-counts {:release 1}}\n' > "$repo/.clj-kondo/ratchets.edn"
-  git -C "$repo" commit -qam "Release changes"
+  commit_release_change "$repo" change_release_app "Change release app"
 
   cd "$repo"
   cherry_pick_backport "$commit"
 
-  assert_eq "$disabled_ratchets" "$(cat .clj-kondo/ratchets.edn)" \
-    "a mixed conflict did not resolve the ratchets"
-  assert_eq 'app.txt' "$(git ls-files -u | awk '{print $4}' | sort -u)" \
-    "the wrong conflicts remained unresolved"
-  git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the manual cherry-pick state was lost"
+  assert_ratchets "$active_ratchets"
+  assert_only_conflicts app.txt
+  assert_cherry_pick_pending
 )
 
-test_release_cut_matches_backport() (
+test_mixed_conflict_resolves_only_ratchets() (
+  local repo="$test_root/mixed-conflict"
+  init_repo "$repo"
+  local commit
+  commit=$(feature_commit "$repo" change_app_and_ratchets)
+  git -C "$repo" checkout -q release
+  commit_release_change "$repo" change_release_app_and_ratchets "Change release app and ratchets"
+
+  cd "$repo"
+  cherry_pick_backport "$commit"
+
+  assert_ratchets_disabled
+  assert_only_conflicts app.txt
+  assert_cherry_pick_pending
+)
+
+test_release_cut_and_backport_commit_the_same_opt_out() (
   local cut_repo="$test_root/release-cut"
   init_repo "$cut_repo"
   cd "$cut_repo"
@@ -199,7 +188,7 @@ test_cut_release_workflow_uses_the_producer() (
     fail "the cut-release workflow carries its own copy of the opt-out"
 )
 
-test_invalid_commit_fails() (
+test_invalid_commit_failure_is_propagated() (
   local repo="$test_root/invalid"
   init_repo "$repo"
   cd "$repo"
@@ -209,31 +198,172 @@ test_invalid_commit_fails() (
   fi
 )
 
-test_manual_script_is_self_contained() (
-  local repo="$test_root/manual-script"
+test_generated_script_resolves_ratchets_end_to_end() (
+  local repo="$test_root/generated-script"
   init_repo "$repo"
-  cd "$repo"
+  local commit
+  commit=$(feature_commit "$repo" change_app_and_ratchets)
+  git -C "$repo" checkout -q release
+  commit_release_change "$repo" change_release_app_and_ratchets "Change release app and ratchets"
 
-  write_backport_script abc123
+  cd "$repo"
+  cherry_pick_backport "$commit"
+  git cherry-pick --abort
+
+  write_backport_script "$commit"
+  chmod +x backport.sh
+  git add backport.sh
+  git commit -qm "Add manual backport script"
 
   bash -n backport.sh
-  grep -Fq 'write_disabled_ratchets ()' backport.sh || fail "manual script omitted write_disabled_ratchets"
-  grep -Fq 'disable_ratchets ()' backport.sh || fail "manual script omitted disable_ratchets"
-  grep -Fq 'cherry_pick_backport ()' backport.sh || fail "manual script omitted cherry_pick_backport"
-  grep -Fq 'cherry_pick_backport abc123' backport.sh || fail "manual script omitted the commit"
+  grep -Fq 'write_disabled_ratchets ()' backport.sh || fail "the generated script omitted the opt-out producer"
+  ./backport.sh
+
+  assert_ratchets_disabled
+  assert_only_conflicts app.txt
+  assert_cherry_pick_pending
+  [ ! -e backport.sh ] || fail "the generated script did not remove itself"
 )
 
-tests=(test_unrelated_commit
-       test_clean_ratchet_commit
-       test_ratchet_only_conflict
-       test_continuation_never_opens_an_editor
-       test_other_conflict_remains_manual
-       test_release_cut_matches_backport
-       test_cut_release_workflow_uses_the_producer
-       test_invalid_commit_fails
-       test_manual_script_is_self_contained)
+# Test harness
 
-for test in "${tests[@]}"; do
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_eq() {
+  local expected=$1
+  local actual=$2
+  local message=$3
+  [ "$expected" = "$actual" ] || fail "$message (expected '$expected', got '$actual')"
+}
+
+assert_ratchets() {
+  assert_eq "$1" "$(cat .clj-kondo/ratchets.edn)" "unexpected ratchet state"
+}
+
+assert_ratchets_disabled() {
+  assert_ratchets "$disabled_ratchets"
+}
+
+assert_cherry_pick_completed() {
+  ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick is still pending"
+}
+
+assert_cherry_pick_pending() {
+  git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick state was lost"
+}
+
+assert_only_conflicts() {
+  local expected
+  local actual
+  expected=$(printf '%s\n' "$@" | sort)
+  actual=$(git diff --name-only --diff-filter=U | sort)
+  assert_eq "$expected" "$actual" "unexpected unresolved files"
+}
+
+assert_empty_commit() {
+  git diff --quiet HEAD^ HEAD || fail "the backport commit was not empty"
+}
+
+assert_worktree_clean() {
+  [ -z "$(git status --porcelain)" ] || fail "the backport left worktree changes"
+}
+
+init_repo() {
+  local repo=$1
+  git init -q -b release "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name "Backport test"
+  printf 'base\n' > "$repo/app.txt"
+  mkdir -p "$repo/.clj-kondo"
+  printf '%s\n' "$active_ratchets" > "$repo/.clj-kondo/ratchets.edn"
+  git -C "$repo" add .
+  git -C "$repo" commit -qm "Base"
+}
+
+feature_commit() {
+  local repo=$1
+  shift
+  git -C "$repo" checkout -qb feature
+  "$@" "$repo"
+  git -C "$repo" add .
+  git -C "$repo" commit -qm "Feature"
+  git -C "$repo" rev-parse HEAD
+}
+
+# Sets up a release branch whose ratchets conflict with the feature commit, and prints that commit.
+conflicting_ratchet_commit() {
+  local repo=$1
+  local commit
+  commit=$(feature_commit "$repo" change_ratchets)
+  git -C "$repo" checkout -q release
+  commit_release_change "$repo" change_release_ratchets "Change release ratchets"
+  echo "$commit"
+}
+
+change_app() {
+  printf 'feature\n' > "$1/app.txt"
+}
+
+change_ratchets() {
+  printf '{:ignore-counts {:example 2}}\n' > "$1/.clj-kondo/ratchets.edn"
+}
+
+change_app_and_ratchets() {
+  change_app "$1"
+  change_ratchets "$1"
+}
+
+change_release_app() {
+  printf 'release\n' > "$1/app.txt"
+}
+
+change_release_ratchets() {
+  printf '{:ignore-counts {:release 1}}\n' > "$1/.clj-kondo/ratchets.edn"
+}
+
+change_release_app_and_ratchets() {
+  change_release_app "$1"
+  change_release_ratchets "$1"
+}
+
+# The release opt-out comes from the shared producer, never from a copy in the tests.
+disable_release_ratchets() {
+  (cd "$1" && write_disabled_ratchets)
+}
+
+commit_release_change() {
+  local repo=$1
+  local change=$2
+  local message=$3
+  "$change" "$repo"
+  git -C "$repo" add .
+  git -C "$repo" commit -qm "$message"
+}
+
+run_test() {
+  local description=$1
+  local test=${description// /_}
+  test=${test//-/_}
+  test="test_$test"
+
+  declare -F "$test" >/dev/null || fail "missing test function: $test"
+
+  printf 'TEST: %s\n' "$description"
   "$test"
-  echo "PASS: $test"
-done
+  printf 'PASS: %s\n' "$description"
+}
+
+run_test "unrelated backport preserves target ratchets"
+run_test "clean ratchet backport installs release opt-out"
+run_test "disabled release absorbs ratchet-only backport"
+run_test "ratchet-only conflict is resolved"
+run_test "continuation never opens an editor"
+run_test "non-ratchet conflict remains manual"
+run_test "mixed conflict resolves only ratchets"
+run_test "release cut and backport commit the same opt-out"
+run_test "cut-release workflow uses the producer"
+run_test "invalid commit failure is propagated"
+run_test "generated script resolves ratchets end-to-end"
