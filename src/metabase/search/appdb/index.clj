@@ -149,12 +149,14 @@
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
+  (search.lease/do-with-ddl-connection
+   #(search-index-metadata/delete-obsolete! % (search.spec/index-version-hash)))
   ;; Drop any indexes that are no longer referenced.
   (let [dropped (volatile! [])]
     (doseq [table (orphan-indexes)]
       (try
-        (t2/query (sql.helpers/drop-table table))
+        (search.lease/do-with-ddl-connection
+         #(t2/query % (sql.helpers/drop-table table)))
         (vswap! dropped conj table)
         ;; Deletion could fail if it races with other instances
         (catch Exception e
@@ -220,7 +222,7 @@
     (try
       ;; Reserve the name before creating the table, so orphan cleanup can never see a newly created leased table as
       ;; unreferenced. If creation fails, the next owner atomically replaces this pending reservation.
-      (search.lease/do-with-mutation-connection
+      (search.lease/do-with-ddl-connection
        #(search-index-metadata/replace-pending-on-current-connection!
          % :appdb (search.spec/index-version-hash) table-name))
       (create-table! table-name)
@@ -258,7 +260,8 @@
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
               ;; We may fail to insert a new metadata row if we lose a race with another instance.
-              (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
+              (when (search.lease/do-with-ddl-connection
+                     #(search-index-metadata/create-pending! % :appdb (search.spec/index-version-hash) table-name))
                 (try
                   (create-table! table-name)
                   (catch Exception e
@@ -300,7 +303,7 @@
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
-          (let [active (search.lease/do-with-mutation-connection
+          (let [active (search.lease/do-with-ddl-connection
                         #(some-> (search-index-metadata/active-pending-on-current-connection!
                                   % :appdb (search.spec/index-version-hash) pending)
                                  keyword))]
@@ -524,7 +527,8 @@
             ;; pre-delete a replacement owner's metadata or clear the process-wide tracking atom.
             (when-let [table-name (and (not (search.lease/leased?)) (pending-table))]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-pending-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search.lease/do-with-ddl-connection
+                               #(search-index-metadata/delete-pending-index! % :appdb (search.spec/index-version-hash) table-name))]
                   (when (pos? deleted)
                     (log/infof "Deleted %d pending indices" deleted))))
               (swap! *indexes* assoc :pending nil))

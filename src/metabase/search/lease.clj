@@ -304,12 +304,15 @@
      (thunk conn))))
 
 (defn do-with-ddl-connection
-  "Run DDL `thunk` on its own fenced connection, never on a caller's ambient transaction.
+  "Run an index-structure `thunk` -- DDL, or the metadata lifecycle rows that track it -- on its own fenced
+  connection, never on a caller's ambient transaction.
 
   DDL commits implicitly on H2 and MySQL, which would durably commit a rollback-only test transaction the
-  caller owns. Unlike row mutations, DDL on a freshly generated or unreferenced table contends with nothing
-  the ambient transaction holds, so the deadlock that makes [[do-with-mutation-connection]] join the caller
-  does not apply."
+  caller owns; and because tables created this way are always durable, the metadata rows tracking them must
+  be equally durable or the index's structure ends up straddling two lifetimes (a table without its
+  metadata after a test rollback). Index structure contends with nothing the ambient transaction holds, so
+  the deadlock that makes [[do-with-mutation-connection]] join the caller does not apply. Index CONTENT is
+  the opposite: it follows [[do-with-mutation-connection]] so test writes roll back with their fixtures."
   [thunk]
   (t2/with-connection [conn (mdb/app-db)]
     (do-in-fenced-transaction! conn thunk)))

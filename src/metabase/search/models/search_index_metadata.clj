@@ -51,41 +51,46 @@
   (indexes* conn engine version))
 
 (defn create-pending!
-  "Create a 'pending' entry, unless one already exists. Return whether it was created."
-  [engine version index-name]
-  ;; Clear out any expired records
-  (t2/delete! :model/SearchIndexMetadata
-              {:where [:and
-                       [:= :lang_code (i18n/site-locale-string)]
-                       [:= :status "pending"]
-                       [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
-  (boolean
-   (when-not (t2/exists? :model/SearchIndexMetadata
-                         :engine engine
-                         :version version
-                         :lang_code (i18n/site-locale-string)
-                         :status :pending)
-     (try
-       (t2/insert! :model/SearchIndexMetadata {:engine     engine
-                                               :version    version
-                                               :lang_code (i18n/site-locale-string)
-                                               :status     :pending
-                                               :index_name (name index-name)})
-       (log/infof "Inserted new pending table %s" index-name)
-       true
-       (catch Exception _
-         ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)
-         false)))))
+  "Create a 'pending' entry, unless one already exists. Return whether it was created.
+  Writes on `conn` when given, so index structure can outlive a caller's transaction."
+  ([engine version index-name]
+   (create-pending! nil engine version index-name))
+  ([conn engine version index-name]
+   ;; Clear out any expired records
+   (t2/delete! :conn conn :model/SearchIndexMetadata
+               {:where [:and
+                        [:= :lang_code (i18n/site-locale-string)]
+                        [:= :status "pending"]
+                        [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
+   (boolean
+    (when-not (t2/exists? :conn conn :model/SearchIndexMetadata
+                          :engine engine
+                          :version version
+                          :lang_code (i18n/site-locale-string)
+                          :status :pending)
+      (try
+        (t2/insert! :conn conn :model/SearchIndexMetadata {:engine     engine
+                                                           :version    version
+                                                           :lang_code (i18n/site-locale-string)
+                                                           :status     :pending
+                                                           :index_name (name index-name)})
+        (log/infof "Inserted new pending table %s" index-name)
+        true
+        (catch Exception _
+          ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)
+          false))))))
 
 (defn delete-pending-index!
-  "Delete the given index if it is still pending."
-  [engine version index-name]
-  (t2/delete! :model/SearchIndexMetadata
-              :engine engine
-              :version version
-              :lang_code (i18n/site-locale-string)
-              :index_name (name index-name)
-              :status :pending))
+  "Delete the given index if it is still pending. Writes on `conn` when given."
+  ([engine version index-name]
+   (delete-pending-index! nil engine version index-name))
+  ([conn engine version index-name]
+   (t2/delete! :conn conn :model/SearchIndexMetadata
+               :engine engine
+               :version version
+               :lang_code (i18n/site-locale-string)
+               :index_name (name index-name)
+               :status :pending)))
 
 (defn replace-pending-on-current-connection!
   "Replace any pending metadata for this coordinate with `index-name`, writing on `conn`."
@@ -123,19 +128,22 @@
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.
   It is up to the relevant engine to delete the actual indexes themselves."
-  [our-version]
-  ;; If there are no recent versions, then there is nothing to delete.
-  (when-let [most-recent (seq (map :version (t2/query {:select   [:version]
-                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
-                                                       :group-by [:version]
-                                                       ;; use pk as a tie-breaker
-                                                       :order-by [[[:max :updated_at] :desc]
-                                                                  [[:max :id] :desc]]
-                                                       :limit    3})))]
-    (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                   :where       [:or
-                                 [:not-in :version most-recent]
-                                 ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
-                                 [:and
-                                  [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))
+  ([our-version]
+   (delete-obsolete! nil our-version))
+  ([conn our-version]
+   ;; If there are no recent versions, then there is nothing to delete.
+   (let [query* (fn [q] (if conn (t2/query conn q) (t2/query q)))]
+     (when-let [most-recent (seq (map :version (query* {:select   [:version]
+                                                        :from     [(t2/table-name :model/SearchIndexMetadata)]
+                                                        :group-by [:version]
+                                                        ;; use pk as a tie-breaker
+                                                        :order-by [[[:max :updated_at] :desc]
+                                                                   [[:max :id] :desc]]
+                                                        :limit    3})))]
+       (query* {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
+                :where       [:or
+                              [:not-in :version most-recent]
+                              ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
+                              [:and
+                               [:not-in :version (filter some? [our-version (first most-recent)])]
+                               [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))))
