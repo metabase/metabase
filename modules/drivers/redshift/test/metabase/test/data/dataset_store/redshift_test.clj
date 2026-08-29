@@ -66,35 +66,28 @@
         (is (str/includes? (nth mutations 2) "SET claim_owner = ?, claimed_at = GETDATE()"))
         (is (str/includes? (nth mutations 2) "claimed_at < DATEADD(second, ?, GETDATE())"))
         (is (str/includes? (nth mutations 3) "WHERE NOT EXISTS")))
-      (testing "the dataset's tables live in one shared schema, told apart by their hashed names"
-        (is (= "CREATE SCHEMA IF NOT EXISTS \"metabase_datasets\"" (nth mutations 4))))
+      (testing "the dataset gets a schema of its own, emptied first in case a dead loader left it behind"
+        (is (= (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" dataset-id) (nth mutations 4)))
+        (is (= (format "CREATE SCHEMA \"%s\"" dataset-id) (nth mutations 5))))
       (testing "publishing is guarded by claim ownership"
-        (is (str/starts-with? (nth mutations 5) "UPDATE \"metabase_dataset_store\".datasets SET state = 'ready'"))
-        (is (str/ends-with? (nth mutations 5) "WHERE id = ? AND claim_owner = ?")))
-      (is (= 6 (count mutations))))))
+        (is (str/starts-with? (nth mutations 6) "UPDATE \"metabase_dataset_store\".datasets SET state = 'ready'"))
+        (is (str/ends-with? (nth mutations 6) "WHERE id = ? AND claim_owner = ?")))
+      (is (= 7 (count mutations))))))
 
-(deftest delete-dataset-drops-only-its-own-tables-test
-  (testing "deleting drops this dataset's tables, never the shared schema"
+(deftest delete-dataset-drops-the-datasets-own-schema-test
+  (testing "deleting drops one schema, which belongs to this dataset alone"
     (let [{:keys [result sql]}
-          (record-sql! {:query-fn (fn [s]
-                                    (if (str/includes? s "information_schema.tables")
-                                      [{:table_name (str dataset-id "_venues")}
-                                       {:table_name (str dataset-id "_checkins")}]
-                                      [{:id dataset-id :state "ready"}]))}
+          (record-sql! {:query-fn (constantly [{:id dataset-id :state "ready"}])}
                        #(dataset-store/delete-dataset! (store) dataset-id))
           after-setup (drop 2 (filterv mutating? sql))]
       (is (= :deleted result))
       (testing "claim first, so nothing can recreate the dataset mid-drop"
         (is (str/includes? (nth after-setup 0) "SET state = 'loading', claim_owner = ?"))
         (is (str/includes? (nth after-setup 0) "(state = 'ready' OR claimed_at < DATEADD(second, ?, GETDATE()))")))
-      (testing "then one DROP TABLE per table belonging to this dataset"
-        (is (= (format "DROP TABLE IF EXISTS \"%s\".\"%s_venues\" CASCADE"
-                       redshift.tx/dataset-schema dataset-id)
-               (nth after-setup 1)))
-        (is (= (format "DROP TABLE IF EXISTS \"%s\".\"%s_checkins\" CASCADE"
-                       redshift.tx/dataset-schema dataset-id)
-               (nth after-setup 2))))
+      (testing "one statement drops the dataset, with no table enumeration"
+        (is (= (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" (redshift.tx/dataset-schema dataset-id))
+               (nth after-setup 1))))
       (testing "and finally the tracking row"
         (is (= "DELETE FROM \"metabase_dataset_store\".datasets WHERE id = ? AND claim_owner = ?"
-               (nth after-setup 3))))
-      (is (= 4 (count after-setup))))))
+               (nth after-setup 2))))
+      (is (= 3 (count after-setup))))))

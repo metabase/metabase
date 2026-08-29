@@ -1,9 +1,10 @@
 (ns metabase.test.data.dataset-store.redshift
   "Redshift implementation of [[metabase.test.data.dataset-store/DatasetStore]].
 
-  Redshift gives every test run one shared database, and every store-managed dataset lives in one
-  shared schema within it. A dataset is therefore a *set of tables* whose names carry its content
-  hash, not a schema of its own -- which is what lets a table name alone identify its dataset. Claims and use timestamps live in a table in a schema of its own,
+  Redshift gives every test run one shared database, so a dataset here is a SCHEMA within it named
+  by its dataset id. A schema each means a Database's `:schema-filters-patterns` can name exactly
+  one, which Redshift pushes into the catalog query, and it makes deletion a single
+  `DROP SCHEMA ... CASCADE`. Claims and use timestamps live in a table in a schema of its own,
   visible to every process reaching the cluster.
 
   Atomicity rests on Redshift running transactions at SERIALIZABLE isolation. Redshift enforces no
@@ -137,21 +138,18 @@
                                (table-name tracking-schema))
                        dataset-id claim-owner]))
 
-(defn- ensure-dataset-schema! [spec]
-  (jdbc/execute! spec [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" redshift.tx/dataset-schema)]))
-
-(defn- dataset-table-names [spec dataset-id]
-  (mapv :table_name
-        (jdbc/query spec [(str "SELECT table_name FROM information_schema.tables"
-                               " WHERE table_schema = ? AND POSITION(? IN table_name) = 1")
-                          redshift.tx/dataset-schema dataset-id])))
-
-(defn- drop-dataset-tables!
-  "Drop only this dataset's tables. Dropping the schema would take every other dataset with it."
+(defn- recreate-dataset-schema!
+  "Give `dataset-id` an empty schema of its own, discarding anything a dead loader left behind."
   [spec dataset-id]
-  (doseq [table (dataset-table-names spec dataset-id)]
-    (jdbc/execute! spec [(format "DROP TABLE IF EXISTS \"%s\".\"%s\" CASCADE"
-                                 redshift.tx/dataset-schema table)])))
+  (let [schema (redshift.tx/dataset-schema dataset-id)]
+    (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)])
+    (jdbc/execute! spec [(format "CREATE SCHEMA \"%s\"" schema)])))
+
+(defn- drop-dataset-schema!
+  "Drop the whole schema. A dataset owns its schema outright, so this takes nothing else with it."
+  [spec dataset-id]
+  (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE"
+                               (redshift.tx/dataset-schema dataset-id))]))
 
 (defn- criteria->where [{:keys [id-prefix state created-before last-used-before]}]
   (let [clauses (cond-> []
@@ -176,9 +174,8 @@
           :exists
           :in-progress)
         (try
-          ;; A stolen claim may leave half this dataset's tables behind, so start from nothing.
-          (ensure-dataset-schema! spec)
-          (drop-dataset-tables! spec dataset-id)
+          ;; A stolen claim may leave a half-written schema behind, so start from nothing.
+          (recreate-dataset-schema! spec dataset-id)
           ;; Data must be written as UTC or tests break; owned here so no caller has to remember it.
           (test.tz/with-system-timezone-id! "UTC"
             (load-dataset! dataset-id dbdef))
@@ -189,7 +186,7 @@
               :in-progress))
           (catch Throwable e
             (log/warnf "[redshift] failed to materialize %s: %s" dataset-id (ex-message e))
-            (drop-dataset-tables! spec dataset-id)
+            (drop-dataset-schema! spec dataset-id)
             (release-claim! spec tracking-schema dataset-id)
             (throw e))))))
 
@@ -200,7 +197,7 @@
       ;; in the tracking table, which is how a sweeper finds this dataset if its owner dies before
       ;; deleting it. Redshift cannot expire a schema or table on its own.
       (claim-for-create! spec tracking-schema lease-seconds dataset-id)
-      (ensure-dataset-schema! spec)
+      (recreate-dataset-schema! spec dataset-id)
       (test.tz/with-system-timezone-id! "UTC"
         (load-dataset! dataset-id dbdef))
       (mark-ready! spec tracking-schema dataset-id)
@@ -210,7 +207,7 @@
     @setup
     (if (claim-for-delete! spec tracking-schema lease-seconds dataset-id)
       (do
-        (drop-dataset-tables! spec dataset-id)
+        (drop-dataset-schema! spec dataset-id)
         (release-claim! spec tracking-schema dataset-id)
         :deleted)
       (if (select-row spec tracking-schema dataset-id)

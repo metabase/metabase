@@ -65,13 +65,18 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
-(def dataset-schema
-  "One stable schema holding every store-managed dataset's tables.
+(defn dataset-schema
+  "Schema holding one dataset's tables, derived from the dataset's own name.
 
-  Table names carry their dataset's content hash, so datasets are told apart without a schema each.
-  That is what lets name resolution work from a table name alone, and it lets datasets outlive the
-  run that built them -- unlike [[unique-session-schema]], which is per-run by design."
-  "metabase_datasets")
+  A schema each rather than one shared one, so a Database's `:schema-filters-patterns` can name
+  exactly the schema it needs. Redshift pushes an exactly-named inclusion filter into the catalog
+  query, so sync then scans one dataset's tables instead of every dataset ever loaded. It also makes
+  deleting a dataset a single `DROP SCHEMA ... CASCADE`.
+
+  Distinct from [[unique-session-schema]], which is this run's scratch space and belongs to no
+  dataset."
+  [database-name]
+  (-> database-name u/lower-case-en (str/replace #"-" "_")))
 
 ;;; `MB_REDSHIFT_TEST_HOSTS`
 ;;;
@@ -107,19 +112,27 @@
           :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
-          ;; `dataset-schema` holds test datasets; `unique-session-schema` is this run's scratch space,
-          ;; which upload and transform tests write into.
-          :schema-filters-patterns (str "spectrum," dataset-schema "," (unique-session-schema))}))
+          ;; Narrowed per dataset by `dbdef->connection-details` below; this is the fallback for
+          ;; connections made without one. `unique-session-schema` is this run's scratch space, which
+          ;; upload and transform tests write into.
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (def db-routing-connection-details
   (delay
     (assoc @db-connection-details :db (tx/db-test-env-var :redshift :db-routing "dev"))))
 
 (defmethod tx/dbdef->connection-details :redshift
-  [& _]
-  (if tx/*use-routing-details*
-    @db-routing-connection-details
-    @db-connection-details))
+  ;; Called as [driver] or [driver context dbdef]; only the latter names a dataset.
+  [& args]
+  (let [details (if tx/*use-routing-details*
+                  @db-routing-connection-details
+                  @db-connection-details)
+        db-name (when (<= 3 (count args)) (:database-name (nth args 2)))]
+    (cond-> details
+      ;; Every name here is literal, which is what lets Redshift push the filter into the catalog
+      ;; query rather than listing every schema and discarding most of them.
+      db-name (assoc :schema-filters-patterns
+                     (str "spectrum," (unique-session-schema) "," (dataset-schema db-name))))))
 
 (defmethod sql.tx/create-db-sql :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -130,8 +143,13 @@
 ;; may create tables in, which is a per-run scratch space rather than somewhere datasets live.
 (defmethod sql.tx/session-schema :redshift [_driver] (unique-session-schema))
 
-(defmethod sql.tx/qualified-name-components :redshift [& args]
-  (apply tx/single-db-qualified-name-components dataset-schema args))
+(defmethod sql.tx/qualified-name-components :redshift
+  ([_driver db-name]                       [db-name])
+  ([_driver db-name table-name]            [(dataset-schema db-name)
+                                            (tx/db-qualified-table-name db-name table-name)])
+  ([_driver db-name table-name field-name] [(dataset-schema db-name)
+                                            (tx/db-qualified-table-name db-name table-name)
+                                            field-name]))
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
@@ -407,8 +425,8 @@
   (not (tx/on-master-or-release-branch?)))
 
 (defmethod tx/fake-sync-schema :redshift
-  [_driver]
-  dataset-schema)
+  [_driver database-name]
+  (dataset-schema database-name))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]

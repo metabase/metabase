@@ -527,13 +527,14 @@
 (defmulti fake-sync-schema
   "Return the schema name to use for fake sync Table rows. Returns nil by default.
    Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
-   their session schema name."
-  {:arglists '([driver]), :added "0.56.0"}
+   the schema holding `database-name`'s tables. Takes the database name because a driver may give
+   each dataset a schema of its own rather than sharing one."
+  {:arglists '([driver database-name]), :added "0.56.0"}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod fake-sync-schema ::test-extensions
-  [_driver]
+  [_driver _database-name]
   nil)
 
 (defmulti fake-sync-table-name
