@@ -19,6 +19,7 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -809,6 +810,46 @@
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
 
+(defn assert-base-url-change-authorized!
+  "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
+
+  `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
+  registry defaults and normalization are applied here before comparing their base URLs. `submitted-config` is the
+  unmerged client input, so an omitted secret or one echoed back masked does not count as fresh. `env-fields` names
+  values the client cannot re-supply and gets a more actionable error. `legacy-setting?` says the caller is a
+  one-setting-at-a-time API that cannot submit the URL and credentials together."
+  ([type-name old-config new-config submitted-config env-fields]
+   (assert-base-url-change-authorized! type-name old-config new-config submitted-config env-fields nil))
+  ([type-name old-config new-config submitted-config env-fields {:keys [legacy-setting?]}]
+   (let [old-config      (with-field-defaults type-name old-config)
+         new-config      (with-field-defaults type-name new-config)
+         secret-keys     (secret-field-keys type-name)
+         carried-secrets (filter #(u/trimmed-string (get new-config %)) secret-keys)
+         env-fields      (set env-fields)
+         fresh-secret?   (fn [field]
+                           (let [value (u/trimmed-string (get submitted-config field))]
+                             (and (not (contains? env-fields field))
+                                  value
+                                  (not (setting/obfuscated-value? value)))))
+         missing-secrets (remove fresh-secret? carried-secrets)]
+     (when (and (not= (:base-url old-config) (:base-url new-config))
+                (seq missing-secrets))
+       (let [env-secret? (some env-fields missing-secrets)]
+         (throw (ex-info (cond
+                           env-secret?
+                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+
+                           legacy-setting?
+                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
+
+                           :else
+                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                         {:status-code 400
+                          :api-error   true
+                          :error-code  :llm-base-url-change-requires-credentials
+                          :field       :base-url
+                          :secrets     (mapv name missing-secrets)})))))))
+
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
   configures, creating the connection when a non-blank value arrives for one that does not exist yet; blank clears
@@ -821,7 +862,8 @@
         group-type       (:type (get single-provider-settings conn-key))
         value            (u/trimmed-string new-value)
         stored           (stored-connections)
-        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
+        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))
+        live             (connection conn-key)]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
     ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
     ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
@@ -830,6 +872,16 @@
             (setting/obfuscated-value? value))
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
+        (when (and (= field :base-url) (request.current/current-request))
+          (let [current-config (or (:config live) {})
+                ;; An env-owned base URL still wins after this inert DB write, so it has not effectively moved.
+                new-config     (if (contains? (:env-fields live) field)
+                                 current-config
+                                 (if value
+                                   (assoc current-config field value)
+                                   (dissoc current-config field)))]
+            (assert-base-url-change-authorized! group-type current-config new-config {field value}
+                                                (:env-fields live) {:legacy-setting? true})))
         (when value
           (validate-config-field! group-type field {field value}))
         (cond
