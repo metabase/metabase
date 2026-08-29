@@ -37,12 +37,12 @@
         "an unbudgeted linter counts as over a budget of 0")))
 
 (deftest ^:parallel unlimited-test
-  (let [ratchets {:limits {:bounded 1}, :unlimited #{:free}}]
+  (let [ratchets {:limits {:bounded 1, :free :unlimited, :empty :unlimited}}]
     (is (= []
            (report-lines ratchets
                          (occurrences {:bounded 1, :free 2})
                          (kondo-ratchet/render ratchets)))
-        "unlimited linters do not fail the CI report")))
+        "unlimited linters do not fail the CI report, even when their actual count reaches zero")))
 
 (deftest ^:parallel stale-test
   (let [ratchets {:limits {:a 5, :gone 2}}]

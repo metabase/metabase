@@ -6,53 +6,52 @@
 ;; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or
 ;; widening the exemptions is a hand edit to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
-;; :unlimited lists low-severity linters whose ignore count is intentionally unbounded.
-{:limits {:case-symbol-test                                          1
-          :clojure-lsp/unused-public-var                             9
-          :consistent-alias                                          2
-          :def-fn                                                    1
-          :deprecated-namespace                                      95
-          :deprecated-var                                            86
-          :discouraged-java-method                                   4
-          :discouraged-namespace                                     81
-          :discouraged-var                                           130
-          :duplicate-require                                         1
-          :equals-true                                               1
-          :main-without-gen-class                                    1
-          :metabase/defsetting-namespace                             2
-          :metabase/disallow-hardcoded-driver-names-in-tests         34
-          :metabase/discourage-millis-duration                       1
-          :metabase/modules                                          10
-          :metabase/namespace-name                                   4
-          :metabase/prefer-with-dynamic-fn-redefs                    28
-          :metabase/test-helpers-use-non-thread-safe-functions       18
-          :metabase/validate-defendpoint-has-response-schema         439
-          :metabase/validate-defendpoint-query-params-use-kebab-case 50
-          :metabase/validate-defendpoint-route-uses-kebab-case       44
-          :metabase/validate-deftest                                 10
-          :missing-protocol-method                                   3
-          :non-arg-vec-return-type-hint                              1
-          :reduce-without-init                                       3
-          :redundant-do                                              1
-          :syntax                                                    2
-          :type-mismatch                                             8
-          :uninitialized-var                                         1
-          :unquote-not-syntax-quoted                                 1
-          :unresolved-namespace                                      3
-          :unresolved-require                                        1
-          :unresolved-symbol                                         11
-          :unused-binding                                            9
-          :unused-value                                              1}
- :unlimited #{
-            :aliased-namespace-symbol
-            :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
-            :missing-docstring
-            :unsorted-required-namespaces
-            :unused-alias
-            :unused-excluded-var
-            :unused-namespace
-            :unused-private-var
-           }
+;; A :limits value of :unlimited marks a low-severity linter whose ignore count is intentionally
+;; unbounded.
+{:limits {:aliased-namespace-symbol                                            :unlimited
+          :case-symbol-test                                                    1
+          :clojure-lsp/unused-public-var                                       9
+          :consistent-alias                                                    2
+          :def-fn                                                              1
+          :deprecated-namespace                                                95
+          :deprecated-var                                                      86
+          :discouraged-java-method                                             4
+          :discouraged-namespace                                               81
+          :discouraged-var                                                     130
+          :duplicate-require                                                   1
+          :equals-true                                                         1
+          :main-without-gen-class                                              1
+          :metabase/defsetting-namespace                                       2
+          :metabase/disallow-hardcoded-driver-names-in-tests                   34
+          :metabase/discourage-millis-duration                                 1
+          :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests :unlimited
+          :metabase/modules                                                    10
+          :metabase/namespace-name                                             4
+          :metabase/prefer-with-dynamic-fn-redefs                              28
+          :metabase/test-helpers-use-non-thread-safe-functions                 18
+          :metabase/validate-defendpoint-has-response-schema                   439
+          :metabase/validate-defendpoint-query-params-use-kebab-case           50
+          :metabase/validate-defendpoint-route-uses-kebab-case                 44
+          :metabase/validate-deftest                                           10
+          :missing-docstring                                                   :unlimited
+          :missing-protocol-method                                             3
+          :non-arg-vec-return-type-hint                                        1
+          :reduce-without-init                                                 3
+          :redundant-do                                                        1
+          :syntax                                                              2
+          :type-mismatch                                                       8
+          :uninitialized-var                                                   1
+          :unquote-not-syntax-quoted                                           1
+          :unresolved-namespace                                                3
+          :unresolved-require                                                  1
+          :unresolved-symbol                                                   11
+          :unsorted-required-namespaces                                        :unlimited
+          :unused-alias                                                        :unlimited
+          :unused-binding                                                      9
+          :unused-excluded-var                                                 :unlimited
+          :unused-namespace                                                    :unlimited
+          :unused-private-var                                                  :unlimited
+          :unused-value                                                        1}
  :config-counts  {:constant-condition                      1
                   :deprecated-namespace                    7
                   :deprecated-var                          16
