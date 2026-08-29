@@ -144,6 +144,7 @@ jobs:
 
           nested_combos=(
             "bin/lint-migrations-file|:test" # project migration checks
+            "bin/load-namespaces|:test"      # build-scripts.yml
           )
           for spec in "${nested_combos[@]}"; do
             project=${spec%%|*}
