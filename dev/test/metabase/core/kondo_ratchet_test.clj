@@ -26,10 +26,10 @@
   (not (kondo-ratchet/disabled?)))
 
 (defn- budget-drift
-  [ci? limits occurrences]
+  [ci? policies occurrences]
   (if ci?
-    (kondo-ratchet/over-budget limits occurrences)
-    (kondo-ratchet/drift limits occurrences)))
+    (kondo-ratchet/over-budget policies occurrences)
+    (kondo-ratchet/drift policies occurrences)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The master shrinker performs this bookkeeping asynchronously after merge.
@@ -54,9 +54,9 @@
                   "Budget too high: run `./bin/mage fix-kondo-ratchets`; the master shrinker\n"
                   "records improvements asynchronously after merge. Too high in a local run means\n"
                   "`fix!` itself is broken, since the test fixture just ran it.")
-      (let [{:keys [limits]} (kondo-ratchet/read-ratchets)]
+      (let [{:keys [ignore-counts]} (kondo-ratchet/read-ratchets)]
         (is (= {}
-               (budget-drift (System/getenv "CI") limits (tree-scan))))))))
+               (budget-drift (System/getenv "CI") ignore-counts (tree-scan))))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (when (ratchets-enabled?)
@@ -236,7 +236,7 @@
 
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
-    (let [ratchets {:limits         {:all              1
+    (let [ratchets {:ignore-counts  {:all              1
                                      :discouraged-var  3
                                      :metabase/modules 2
                                      :unused-alias     :unlimited}
@@ -244,10 +244,10 @@
                                      :unresolved-symbol 18}
                     :comment-exempt #{:metabase/modules :discouraged-var}}
           text     (kondo-ratchet/render ratchets)]
-      (is (str/ends-with? text (str "{:limits {:all              1\n"
-                                    "          :discouraged-var  3\n"
-                                    "          :metabase/modules 2\n"
-                                    "          :unused-alias     :unlimited}\n"
+      (is (str/ends-with? text (str "{:ignore-counts  {:all              1\n"
+                                    "                  :discouraged-var  3\n"
+                                    "                  :metabase/modules 2\n"
+                                    "                  :unused-alias     :unlimited}\n"
                                     " :config-counts  {:inline-def        1\n"
                                     "                  :unresolved-symbol 18}\n"
                                     " :comment-exempt #{:discouraged-var\n"
@@ -255,24 +255,24 @@
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:limits {}, :config-counts {}, :comment-exempt #{}})
-                        "{:limits {}\n :config-counts  {}\n :comment-exempt #{}\n}\n"))))
+    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+                        "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
 
 (deftest read-ratchets-policy-values-test
   (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
-               (spit (pr-str {:limits {:bounded 4, :free :unlimited}})))]
+               (spit (pr-str {:ignore-counts {:bounded 4, :free :unlimited}})))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
-      (is (= {:limits         {:bounded 4, :free :unlimited}
+      (is (= {:ignore-counts  {:bounded 4, :free :unlimited}
               :config-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
 
-(deftest read-ratchets-validates-limits-test
+(deftest read-ratchets-validates-policies-test
   (doseq [[value message] [[-1 #"non-negative integer or :unlimited"]
                            [:other #"non-negative integer or :unlimited"]
                            ["1" #"non-negative integer or :unlimited"]]]
     (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
-                 (spit (pr-str {:limits {:a value}})))]
+                 (spit (pr-str {:ignore-counts {:a value}})))]
       (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo message
                               (kondo-ratchet/read-ratchets)))))))
@@ -324,13 +324,13 @@
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
 (deftest ^:parallel budget-drift-test
-  (let [limits      {:bounded 2, :free :unlimited, :empty :unlimited}
+  (let [policies    {:bounded 2, :free :unlimited, :empty :unlimited}
         occurrences [{:file "f.clj", :line 1, :linters [:bounded :free]}]]
     (is (= {:bounded {:recorded 2, :actual 1}}
-           (budget-drift nil limits occurrences))
+           (budget-drift nil policies occurrences))
         "local checks require bounded counts to match exactly, but ignore unlimited linters")
     (is (= {}
-           (budget-drift "true" limits occurrences))
+           (budget-drift "true" policies occurrences))
         "CI allows bounded improvements and unlimited policies, including stale ones")))
 
 (deftest ^:synchronized fix-when-disabled-test
@@ -349,7 +349,7 @@
   (let [dir        (.toFile (java.nio.file.Files/createTempDirectory
                              "kondo-ratchet-test"
                              (make-array java.nio.file.attribute.FileAttribute 0)))
-        ratchets   {:limits {:free :unlimited}, :config-counts {}, :comment-exempt #{}}
+        ratchets   {:ignore-counts {:free :unlimited}, :config-counts {}, :comment-exempt #{}}
         budgets    (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}
                      {:file "f.clj", :line 2, :linters [:free]}]]
@@ -359,7 +359,7 @@
         (is (= ["seeded :free at 2"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
-      (is (= {:limits         {:free 2}
+      (is (= {:ignore-counts  {:free 2}
               :config-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
@@ -368,8 +368,8 @@
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
                               (make-array java.nio.file.attribute.FileAttribute 0)))
-        ratchets    {:limits {:free :unlimited, :empty :unlimited}
-                     :config-counts {}
+        ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited}
+                     :config-counts  {}
                      :comment-exempt #{}}
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]]
@@ -379,7 +379,7 @@
         (is (= ["dropped :empty (no ignores left)"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix!))))))
-      (is (= {:limits         {:free :unlimited}
+      (is (= {:ignore-counts  {:free :unlimited}
               :config-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
@@ -467,7 +467,7 @@
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "unexempted :polite (all its ignores are justified now)"]
-           (kondo-ratchet/change-report {:limits         {:empty  :unlimited
+           (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
                                                           :free   :unlimited
                                                           :gone   5
                                                           :lower  5

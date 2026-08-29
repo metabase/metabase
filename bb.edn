@@ -304,8 +304,8 @@
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
 
   check-kondo-ratchets
-  {:doc "Fail when inline ignores exceed their limits or the ratchets file isn't normalized (babashka only, no JVM)."
-   :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when limits are exceeded, the file is missing, or its formatting is not normalized"]]
+  {:doc "Fail when inline ignores exceed a bounded policy or the ratchets file isn't normalized (babashka only, no JVM)."
+   :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
 

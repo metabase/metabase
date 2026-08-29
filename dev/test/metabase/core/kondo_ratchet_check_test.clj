@@ -20,12 +20,12 @@
   (vec (kondo-ratchet/check-report ratchets occurrences text)))
 
 (deftest ^:parallel clean-test
-  (let [ratchets {:limits {:a 2, :b 1}}]
+  (let [ratchets {:ignore-counts {:a 2, :b 1}}]
     (is (= []
            (report-lines ratchets (occurrences {:a 2, :b 1}) (kondo-ratchet/render ratchets))))))
 
 (deftest ^:parallel over-budget-test
-  (let [ratchets {:limits {:a 1}}]
+  (let [ratchets {:ignore-counts {:a 1}}]
     (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
             "  :a: 1 recorded, 3 actual"
             "    f.clj:1"
@@ -37,7 +37,7 @@
         "an unbudgeted linter counts as over a budget of 0")))
 
 (deftest ^:parallel unlimited-test
-  (let [ratchets {:limits {:bounded 1, :free :unlimited, :empty :unlimited}}]
+  (let [ratchets {:ignore-counts {:bounded 1, :free :unlimited, :empty :unlimited}}]
     (is (= []
            (report-lines ratchets
                          (occurrences {:bounded 1, :free 2})
@@ -45,12 +45,12 @@
         "unlimited linters do not fail the CI report, even when their actual count reaches zero")))
 
 (deftest ^:parallel stale-test
-  (let [ratchets {:limits {:a 5, :gone 2}}]
+  (let [ratchets {:ignore-counts {:a 5, :gone 2}}]
     (is (= []
            (report-lines ratchets (occurrences {:a 3}) (kondo-ratchet/render ratchets))))))
 
 (deftest ^:parallel not-normalized-test
-  (let [ratchets {:limits {:a 1}}
+  (let [ratchets {:ignore-counts {:a 1}}
         text     (kondo-ratchet/render ratchets)]
     (is (= [(str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
                  " to fix the formatting")]
@@ -59,14 +59,14 @@
 
 (deftest ^:parallel combined-test
   (testing "over-budget and formatting problems are reported together"
-    (let [ratchets {:limits {:over 1, :stale 2}}]
+    (let [ratchets {:ignore-counts {:over 1, :stale 2}}]
       (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
               "  :over: 1 recorded, 2 actual"
               "    f.clj:1"
               "    f.clj:2"
               (str kondo-ratchet/*ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
                    " to fix the formatting")]
-             (report-lines ratchets (occurrences {:over 2, :stale 1}) "{:limits {}}\n"))))))
+             (report-lines ratchets (occurrences {:over 2, :stale 1}) "{:ignore-counts {}}\n"))))))
 
 (deftest check-disabled-test
   (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
