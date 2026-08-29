@@ -156,17 +156,19 @@
              (host-not-allowed-message host)))))))
 
 (defn llm-request-opts
-  "clj-http options that put the network policy on a request to `url`: a `:dns-resolver` that refuses any address the
-  policy does not permit, or none under `:allow-all`. Throws the same 400 as a set-time refusal when `url` fails
-  [[llm-url-syntax-problem]]. `floor` is for a deployment-controlled endpoint, see [[network-policy]].
-  Pair with [[rethrow-if-llm-network-policy-error!]] around the request."
+  "clj-http options that put the network policy on a request to `url`: redirects are never followed, and a
+  `:dns-resolver` refuses any address the policy does not permit (omitted under `:allow-all`). Throws the same 400 as
+  a set-time refusal when `url` fails [[llm-url-syntax-problem]]. `floor` is for a deployment-controlled endpoint,
+  see [[network-policy]]. Pair with [[rethrow-if-llm-network-policy-error!]] around the request."
   ([url]
    (llm-request-opts nil url))
   ([floor url]
    (when-let [problem (llm-url-syntax-problem url)]
      (throw (url-not-allowed-ex problem (u.http/->hostname url))))
-   ;; nil under :allow-all, which leaves clj-http on its default resolver
-   (u/assoc-dissoc {} :dns-resolver (u.http/network-policy-dns-resolver (network-policy floor)))))
+   ;; nil under :allow-all, which leaves clj-http on its default resolver. Redirects stay disabled under every policy:
+   ;; the resolver would stop an internal target, but credentials could otherwise follow a redirect to a public host.
+   (u/assoc-dissoc {:redirect-strategy :none}
+                   :dns-resolver (u.http/network-policy-dns-resolver (network-policy floor)))))
 
 (defn llm-network-policy-error?
   "Whether `e` or one of its causes is a connection-time refusal from the policy DNS resolver."

@@ -281,6 +281,10 @@
 (deftest llm-request-opts-test
   ;; IP literals throughout: the resolver goes through real DNS
   (let [resolver (fn [& args] (:dns-resolver (apply llm.settings/llm-request-opts args)))]
+    (testing "redirects are disabled under every network policy"
+      (doseq [policy ["external-only" "allow-private" "allow-all"]]
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks policy]
+          (is (= :none (:redirect-strategy (llm.settings/llm-request-opts "https://8.8.8.8/v1")))))))
     (testing "under :external-only the request gets the policy resolver; no lookup happens here"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
         (is (instance? org.apache.http.conn.DnsResolver (resolver "http://127.0.0.1:8000/v1")))
@@ -295,9 +299,10 @@
           (is (= 1 (alength ^"[Ljava.net.InetAddress;"
                     (.resolve ^org.apache.http.conn.DnsResolver (resolver :allow-private "http://10.0.0.1/v1")
                               "10.0.0.1")))))))
-    (testing "under :allow-all there is nothing to add"
+    (testing "under :allow-all there is no policy resolver"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-        (is (= {} (llm.settings/llm-request-opts "http://127.0.0.1:8000/v1")))))
+        (is (= {:redirect-strategy :none}
+               (llm.settings/llm-request-opts "http://127.0.0.1:8000/v1")))))
     (testing "a URL that is not usable at all is refused up front, naming the host but not what else it carried"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
         (doseq [url ["https://svc:s3cret@8.8.8.8/v1" "8.8.8.8/v1"]]
