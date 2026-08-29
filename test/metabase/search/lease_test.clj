@@ -482,4 +482,7 @@
       (finally
         (when (.isWriteLockedByCurrentThread lock)
           (.. lock writeLock unlock))
+        ;; Make sure a timed-out attempt cannot acquire after the cleanup below deletes the row.
+        (future-cancel attempt)
+        (try (deref attempt 1000 nil) (catch Exception _))
         (delete-coordinate! coordinate)))))
