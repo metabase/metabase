@@ -1,1 +1,0 @@
-export { EmbeddingSettingsCard } from "./EmbeddingSettingsCard";
