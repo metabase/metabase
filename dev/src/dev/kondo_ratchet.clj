@@ -584,7 +584,8 @@
 
 (defn fix!
   "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
-  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
+  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it,
+  and moves an unlimited linter to the bounded limits.
   Prints the [[change-report]], or `unchanged` on a no-op.
   Does nothing, including seeding, when the file sets `:disabled` to `true`."
   ([]
@@ -596,9 +597,10 @@
        (let [occurrences   (scan)
              seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
              actual        (actual-counts occurrences)
+             seeded-limits (filter #(pos? (get actual % 0)) seeded)
              config-actual (config-suppressions)
              text          (render {:limits         (lowered-counts limits actual seeded)
-                                    :unlimited      unlimited
+                                    :unlimited      (apply disj unlimited seeded-limits)
                                     :config-counts  (lowered-counts config-counts config-actual [])
                                     :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
              file          (io/file *ratchets-file*)
