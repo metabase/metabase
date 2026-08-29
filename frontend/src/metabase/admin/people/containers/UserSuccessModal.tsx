@@ -15,6 +15,7 @@ import { useNavigate } from "metabase/router";
 import { isSsoEnabled } from "metabase/selectors/settings";
 import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
@@ -100,7 +101,7 @@ const EmailSuccess = ({
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
           key="link"
-          to={`/admin/people/${user.id}/reset`}
+          to={Urls.resetPassword(user)}
           className={CS.link}
         >{t`reset their password.`}</Link>
       )}`}</div>
