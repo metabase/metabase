@@ -1069,7 +1069,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
