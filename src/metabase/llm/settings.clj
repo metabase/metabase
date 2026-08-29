@@ -44,7 +44,7 @@
                          :llm-url     url}))))))
 
 (def ^:private network-policies
-  "The [[llm-allowed-networks]] policies, ordered from most to least restrictive."
+  "The `llm-allowed-networks` policies, loosest last."
   [:external-only :allow-private :allow-all])
 
 (def ^:private network-policy-rank
@@ -55,30 +55,30 @@
 
 (defsetting llm-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
-                     "Set it only through MB_LLM_ALLOWED_NETWORKS; Metabase Cloud always uses the default.\n"
+                     "Set through the environment only; on Metabase Cloud the default applies.\n"
                      "Options:\n"
-                     "- external-only (default): globally reachable public addresses only\n"
-                     "- allow-private: public and private addresses, but not loopback or link-local addresses\n"
-                     "- allow-all: no network restrictions.\n"
-                     "Deployment-controlled Metabase AI service and LLM proxy endpoints may also use "
+                     "- external-only (default; only globally reachable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "The Metabase AI service and LLM proxy are deployment configuration and may always use "
                      "private addresses."))
   :type       :keyword
-  ;; This policy constrains destinations available to settings managers, so only deployment operators may change it.
-  ;; In particular, allowing a Cloud admin to loosen it could expose Metabase infrastructure. Ignore database values
-  ;; so neither an API call nor a direct database write can change the effective policy.
+  ;; Environment only. A settings manager is who this policy defends against, and on Cloud a customer admin
+  ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API, and a value
+  ;; that reached the app DB some other way is ignored rather than trusted.
   :visibility :internal
   :setter     :none
   :default    :external-only
   :export?    false
-  :doc        (str "For self-hosted deployments, use allow-private for an LLM server on a private network or "
-                   "allow-all for one on the Metabase host. This setting has no admin UI and ignores values stored "
-                   "in the application database.")
+  :doc        (str "Set this when a self-hosted vLLM server is on your private network (allow-private) or on this "
+                   "machine (allow-all). There is no admin UI for it, and a value stored in the application "
+                   "database is ignored.")
   :getter     (fn []
                 (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
                   (cond
                     (nil? value)                          :external-only
                     (contains? network-policy-rank value) value
-                    ;; Fail closed on an invalid value, but log it only once instead of on every request.
+                    ;; fail closed on a typo, and say so once rather than on every request
                     :else
                     (do (when-not (contains? @warned-network-policy-values value)
                           (swap! warned-network-policy-values conj value)
@@ -87,10 +87,9 @@
                         :external-only)))))
 
 (defn network-policy
-  "Return the effective network policy for an LLM request.
-
-  For a deployment-controlled endpoint such as the Metabase AI service, `floor` specifies the minimum network access
-  it needs. The less restrictive of `floor` and [[llm-allowed-networks]] applies."
+  "The network policy for an LLM request.
+  `floor`, for a deployment-controlled endpoint such as the AI service, can only loosen [[llm-allowed-networks]]:
+  the looser of the two applies."
   ([]
    (llm-allowed-networks))
   ([floor]
@@ -100,19 +99,17 @@
        configured))))
 
 (defn- host-not-allowed-message
-  "Return a user-facing explanation of why `host` is blocked and, when self-hosted, how to allow it.
-
-  Metabase Cloud cannot reach private networks, and customers cannot change its network policy."
+  "Why a base URL on `host` is refused, and what to do about it.
+  On Cloud there is nothing to do: private networks are out of reach, and the policy is not the customer's to change."
   [host]
   (if (premium-features/is-hosted?)
     (tru "The base URL host {0} is on a private network. Metabase Cloud can only connect to LLM providers on the public internet." host)
     (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, or allow-all for one on this machine." host)))
 
 (defn- url-not-allowed-ex
-  "Create the HTTP 400 used for network-policy refusals at both validation and connection time.
-
-  Include `:status` as well as `:status-code` because the semantic-search dead-letter queue categorizes errors by
-  `:status`. A blocked endpoint is a permanent configuration error, not a transient failure to retry quickly."
+  "The 400 every policy refusal is thrown as, at set time and at connection time alike.
+  `:status` sits beside `:status-code` because the semantic-search dead-letter queue files errors by `:status`, and a
+  refused endpoint is a permanent failure, not one to retry on the fast schedule."
   ([message host]
    (url-not-allowed-ex message host nil))
   ([message host cause]
@@ -125,10 +122,10 @@
             cause)))
 
 (defn llm-url-syntax-problem
-  "Return why `url` is not a valid LLM provider base URL, or nil when it is valid.
-
-  A valid URL uses HTTP or HTTPS, names a host, and contains no username or password. This check performs no DNS
-  lookup, so it is safe to run for every request. Blank URLs are left to the usual not-configured handling."
+  "Why `url` cannot be an LLM provider base URL under any policy, or nil when it can: it must be an `http` or
+  `https` URL that names a host and carries no username or password.
+  Nothing here resolves the host, so it is cheap enough to run on every request.
+  A blank `url` is not a problem here: the not-configured handling covers it."
   [url]
   (when-not (str/blank? url)
     (let [^URL parsed (try
@@ -138,18 +135,17 @@
         (not (and parsed (#{"http" "https"} (.getProtocol parsed)) (not-empty (.getHost parsed))))
         (tru "Invalid base URL: it must start with http:// or https://.")
 
-        ;; Reject user info so credentials cannot leak through error messages or exception data.
+        ;; it would otherwise ride along into error messages and ex-data
         (some? (.getUserInfo parsed))
         (tru "Invalid base URL: it must not contain a username or password.")))))
 
 (defn llm-url-problem
-  "Return why `url` cannot be used as an LLM provider base URL, or nil when it can.
-
-  The URL must pass [[llm-url-syntax-problem]], and every address its host resolves to must satisfy the supplied
-  network policy. The one-argument form uses [[llm-allowed-networks]].
-
-  This validation-time check resolves the host once. At request time, the DNS resolver from [[llm-request-opts]]
-  applies the same policy to the address the connection opens, preventing DNS rebinding after the URL is saved."
+  "Why `url` may not be used as an LLM provider base URL, or nil when it may: [[llm-url-syntax-problem]], and every
+  address the host resolves to must be permitted by the network policy. The one-argument form uses
+  [[llm-allowed-networks]].
+  This is the set-time check. It resolves the host, so it is not run per request: the `:dns-resolver` from
+  [[llm-request-opts]] makes the same decision about the addresses the connection actually opens, which also
+  covers a host that rebinds after it was saved."
   ([url]
    (llm-url-problem (llm-allowed-networks) url))
   ([network-policy url]
@@ -160,20 +156,17 @@
              (host-not-allowed-message host)))))))
 
 (defn llm-request-opts
-  "Return clj-http options that enforce the network policy for `url`.
-
-  Redirects are disabled. Unless the effective policy is `:allow-all`, a `:dns-resolver` rejects disallowed addresses
-  when the connection resolves them. Invalid URL syntax produces the same HTTP 400 as validation-time policy checks.
-
-  Use `floor` for a deployment-controlled endpoint; see [[network-policy]]. Wrap the request with
-  [[rethrow-if-llm-network-policy-error!]] to translate resolver failures into the public API error."
+  "clj-http options that put the network policy on a request to `url`: redirects are never followed, and a
+  `:dns-resolver` refuses any address the policy does not permit (omitted under `:allow-all`). Throws the same 400 as
+  a set-time refusal when `url` fails [[llm-url-syntax-problem]]. `floor` is for a deployment-controlled endpoint,
+  see [[network-policy]]. Pair with [[rethrow-if-llm-network-policy-error!]] around the request."
   ([url]
    (llm-request-opts nil url))
   ([floor url]
    (when-let [problem (llm-url-syntax-problem url)]
      (throw (url-not-allowed-ex problem (u.http/->hostname url))))
-   ;; Under :allow-all the resolver is nil, so clj-http uses its default. Redirects remain disabled under every policy:
-   ;; even when DNS blocks internal targets, a public endpoint could redirect credentials to another public host.
+   ;; nil under :allow-all, which leaves clj-http on its default resolver. Redirects stay disabled under every policy:
+   ;; the resolver would stop an internal target, but credentials could otherwise follow a redirect to a public host.
    (u/assoc-dissoc {:redirect-strategy :none}
                    :dns-resolver (u.http/network-policy-dns-resolver (network-policy floor)))))
 
@@ -183,10 +176,8 @@
   (boolean (:ssrf (u/all-ex-data e))))
 
 (defn rethrow-if-llm-network-policy-error!
-  "Translate a policy DNS resolver failure in `e` into the HTTP 400 used by validation-time refusals.
-
-  Return nil when `e` is unrelated. Log a refusal before throwing because it may be the only trace left by a host that
-  changed its DNS response after validation."
+  "Translate a connection-time refusal from the policy DNS resolver in `e` to the 400 a set-time refusal gets.
+  Returns nil when `e` is unrelated. Logs the refusal: it is the only trace a host that rebinds leaves."
   [e url]
   (when (llm-network-policy-error? e)
     (let [host (u.http/->hostname url)]

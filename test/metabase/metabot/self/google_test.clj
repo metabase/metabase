@@ -31,7 +31,7 @@
            "\n-----END PRIVATE KEY-----\n"))))
 
 (defn- test-service-account-json
-  "Return structurally valid service account JSON for `project-id`, using Google's token URI unless overridden."
+  "A structurally valid service account key JSON for `project-id`; Google's `token_uri` unless given one."
   ([project-id]
    (test-service-account-json project-id "https://oauth2.googleapis.com/token"))
   ([project-id token-uri]

@@ -96,8 +96,8 @@
                     :messages messages}
         start-time (u/start-timer)
         url        (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")]
-    ;; Validate before entering the provider error handler. E2E guard failures and malformed URLs are local
-    ;; configuration errors, not Anthropic API failures (matching [[metabase.metabot.self.core/request]]).
+    ;; Outside the try so the e2e guard and a malformed URL fail loudly instead of being
+    ;; routed through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
     (llm.settings/assert-llm-host-allowed! url)
     (let [policy-opts (llm.settings/llm-request-opts url)]
       (try

@@ -53,7 +53,7 @@
                     "http://[::]"                              false
                     "http://100.64.0.1"                        false
                     "http://[fc00::1]"                         false
-                    ;; IANA special-purpose addresses that are not globally reachable
+                    ;; Special-purpose addresses that are not globally reachable
                     "http://192.0.2.0"                         false
                     "http://198.18.0.1"                        false
                     "http://[2001:db8::1]"                     false

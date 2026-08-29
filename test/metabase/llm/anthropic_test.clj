@@ -120,7 +120,7 @@
     (let [mock-response {:body {:content [{:type "tool_use" :name "generate_sql" :input {:sql "SELECT 1"}}]
                                 :usage   {:input_tokens 1 :output_tokens 1}}}]
       (with-redefs [config/is-e2e? true]
-        ;; The E2E runner also allows all networks because its mock LLM server listens on localhost.
+        ;; the e2e runner pins the network policy the same way, since the mock LLM server is on localhost
         (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
           (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-test-key"
                                              llm-anthropic-api-base-url "http://localhost:6123"]
@@ -130,8 +130,8 @@
 
 (deftest chat-completion-network-policy-test
   (testing "a base URL on a network llm-allowed-networks forbids is refused when the connection resolves it"
-    ;; Redefine the URL to represent one saved before the network policy was tightened. The mock emulates enough of
-    ;; clj-http to invoke the request's DNS resolver for that host.
+    ;; the URL is redefined rather than set, the way one saved before the policy was tightened would be stored;
+    ;; the mock stands in for clj-http far enough to run the request's `:dns-resolver` on the host
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key      (constantly "sk-ant-test-key")
                                   llm.settings/llm-anthropic-api-base-url (constantly "http://127.0.0.1:9")
