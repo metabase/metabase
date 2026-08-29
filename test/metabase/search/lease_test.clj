@@ -465,11 +465,15 @@
         locked     (CountDownLatch. 1)
         ;; Enter the transaction (and check out its main-pool connection) BEFORE the write lock is taken, so the
         ;; only thing left to block on is the coordination pool's own gate.
+        done       (CountDownLatch. 1)
         attempt    (future
-                     (t2/with-transaction [_conn]
-                       (.countDown in-txn)
-                       (.await locked 5 TimeUnit/SECONDS)
-                       (lease/try-acquire! coordinate)))]
+                     (try
+                       (t2/with-transaction [_conn]
+                         (.countDown in-txn)
+                         (.await locked 5 TimeUnit/SECONDS)
+                         (lease/try-acquire! coordinate))
+                       (finally
+                         (.countDown done))))]
     (is (.await in-txn 5 TimeUnit/SECONDS))
     (.. lock writeLock lock)
     (.countDown locked)
@@ -482,7 +486,7 @@
       (finally
         (when (.isWriteLockedByCurrentThread lock)
           (.. lock writeLock unlock))
-        ;; Make sure a timed-out attempt cannot acquire after the cleanup below deletes the row.
-        (future-cancel attempt)
-        (try (deref attempt 1000 nil) (catch Exception _))
+        ;; The worker cannot be interrupted while blocked on the non-interruptible gate, so wait for it to
+        ;; actually finish before deleting the row it may still acquire.
+        (.await done 10 TimeUnit/SECONDS)
         (delete-coordinate! coordinate)))))
