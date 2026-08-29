@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
+   [metabase.llm.settings :as llm.settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.session.api :as session.api]
@@ -127,3 +128,12 @@
         (is (empty? @(:attempts throttler))))
       (finally
         (reset! (:attempts throttler) nil)))))
+
+(deftest replace-llm-providers-test
+  (mt/with-temporary-setting-values [llm.settings/llm-providers []]
+    (let [connections [{:key    "anthropic"
+                        :type   "anthropic"
+                        :name   "Anthropic"
+                        :config {:api-key "sk-ant-test-key"}}]]
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value connections})))
+      (is (= connections (vec (llm.settings/llm-providers)))))))

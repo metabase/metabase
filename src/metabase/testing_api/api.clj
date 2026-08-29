@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -252,6 +253,15 @@
   (session.api/reset-throttlers-for-testing!)
   (reset-mfa-throttlers-for-testing!)
   {:success true})
+
+(api.macros/defendpoint :put "/llm-providers" :- :nil
+  "Replace the stored LLM provider connections without probing their credentials. E2E tests use fake credentials and
+  mock provider responses, so they cannot seed their fixtures through the production provider API."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map [:value [:sequential ms/Map]]]]
+  (llm.settings/set-llm-providers! (vec value))
+  nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
