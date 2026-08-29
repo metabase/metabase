@@ -303,6 +303,9 @@
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "vllm"
     :label         (deferred-tru "vLLM")
+    ;; The connection probe records whether the served model emits reasoning. This is stored in :config but is not an
+    ;; admin-entered field, so consumers validating complete stored configs need it alongside :fields.
+    :stored-config-fields [:model-reasoning]
     ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
     ;; new connection starts on comes from the catalog that connecting fetches (see
     ;; [[metabase.metabot.self.vllm/list-models]]).
