@@ -153,7 +153,13 @@
       sql-format-quoted))
 
 (defn- model-identity
-  "The part of the meta row that identifies what the vectors table was built for."
+  "The meta-row map identifying what the vectors table was built for.
+
+  Providers retraining or re-exporting behind an unchanged model name are deliberately undetected.
+  This is rare because hosted providers version models by name.
+  No rebuild occurs: stored vectors stay in the old space while queries use the new.
+  Only a manual version bump fixes it.
+  Ollama tags mutate in place, so the benchmark verifies Ollama separately."
   [embedding-model]
   {:provider          (:provider embedding-model)
    :model_name        (:model-name embedding-model)
