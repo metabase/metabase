@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { EmbeddingThemeListingApp } from "metabase/embedding/themes/components/ThemeListing";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { Card, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
