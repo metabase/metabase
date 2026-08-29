@@ -16,3 +16,7 @@ jobs:
         run: ./bin/mage -h
       - name: Run mage tests
         run: ./bin/mage -test
+      - name: Lint create-backport scripts
+        run: shellcheck .github/actions/create-backport/{kondo-ratchets,create-backport-test}.sh
+      - name: Run create-backport tests
+        run: ./.github/actions/create-backport/create-backport-test.sh

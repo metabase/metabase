@@ -25,64 +25,13 @@ runs:
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
       run: | # bash
+        # shellcheck source=.github/actions/create-backport/kondo-ratchets.sh
+        source "${{ github.action_path }}/kondo-ratchets.sh"
+
         git config --global user.email "metabase-bot@metabase.com"
         git config --global user.name "Metabase bot"
 
         BACKPORT_BRANCH="backport-$TARGET_VERSION-$COMMIT"
-
-        # Kondo ignore ratchets apply only to trunk development. If a backported commit touches the
-        # ratchet file, leave the release branch explicitly opted out whether the cherry-pick applies
-        # cleanly or conflicts. Older releases have no ratchet enforcement, so the marker is inert there.
-        disable_ratchets() {
-          local commit=$1
-          local f=.clj-kondo/ratchets.edn
-          [ -n "$(git diff-tree --root --no-commit-id --name-only -r "$commit" -- "$f")" ] || return 0
-
-          echo "$f: disabling kondo ratchets on the release branch"
-          mkdir -p .clj-kondo
-          printf '%s\n' \
-            ';; Kondo ignore ratchets apply only to master; this release branch opts out.' \
-            ';; The test and fixer recognize this explicit opt-out.' \
-            '{:disabled true}' \
-            > "$f"
-          git add -- "$f"
-
-          if ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null; then
-            # A clean cherry-pick is already committed. Amend it only when enforcing the marker
-            # changed the result.
-            if ! git diff --cached --quiet HEAD; then
-              git commit --amend --no-edit
-            fi
-            return 0
-          fi
-
-          if [ -z "$(git ls-files -u)" ]; then
-            echo "$f was the only conflict, finishing the cherry-pick"
-            if git diff --cached --quiet HEAD; then
-              echo "nothing left to apply, committing the backport empty"
-              git commit --allow-empty --no-edit
-            else
-              git -c core.editor=true cherry-pick --continue
-            fi
-          fi
-        }
-
-        cherry_pick_backport() {
-          local commit=$1
-          local status=0
-          git cherry-pick "$commit" || status=$?
-          if [ "$status" -ne 0 ] && ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null; then
-            echo "cherry-pick failed without entering a resolvable conflict state" >&2
-            return "$status"
-          fi
-          disable_ratchets "$commit"
-          if [ "$status" -ne 0 ] &&
-             git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null &&
-             [ -z "$(git ls-files -u)" ]; then
-            echo "cherry-pick stopped without a file conflict to resolve" >&2
-            return "$status"
-          fi
-        }
 
         # Checkout the target branch and create a new backport branch
         git checkout ${TARGET_BRANCH}
@@ -100,15 +49,7 @@ runs:
           echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
-          {
-            echo "#!/usr/bin/env bash"
-            echo "set -euo pipefail"
-            echo "git reset HEAD~1"
-            echo "rm ./backport.sh"
-            declare -f disable_ratchets cherry_pick_backport
-            echo "cherry_pick_backport ${COMMIT}"
-            echo "echo -e 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'"
-          } > ./backport.sh
+          write_backport_script "${COMMIT}"
           chmod +x ./backport.sh
           git add ./backport.sh
           git commit -m "Add backport resolution script"
