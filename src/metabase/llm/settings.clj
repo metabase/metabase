@@ -617,7 +617,8 @@
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
 
 (defn set-llm-providers!
-  "Trusted writer for the dedicated provider API. Other HTTP paths must not persist the backing setting directly."
+  "Trusted writer for the dedicated provider API and testing-routes-only fixture setup. Other HTTP paths must not
+  persist the backing setting directly."
   [providers]
   (binding [*allow-llm-provider-write* true]
     (llm-providers! providers)))
