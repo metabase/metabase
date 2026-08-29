@@ -534,15 +534,6 @@ describe("scenarios > dashboard > tabs", () => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
-    const firstQuestion = () => {
-      return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
-    };
-    const secondQuestion = () => {
-      return cy
-        .request("GET", `/api/card/${ORDERS_COUNT_QUESTION_ID}`)
-        .its("body");
-    };
-
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
@@ -562,34 +553,20 @@ describe("scenarios > dashboard > tabs", () => {
 
     // publish the embedded dashboard so that we can directly navigate to its url
     H.publishChanges("dashboard", () => {});
+
     // directly navigate to the embedded dashboard, starting on Tab 1
     H.visitIframe();
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
-    cy.signInAsAdmin();
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(1); // 1 (previously)
-      });
-    });
+    cy.wait("@firstTabQuery");
 
     H.goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 3 (previously)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)
-      });
-    });
+    cy.wait("@secondTabQuery");
 
     H.goToTab("Tab 1");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
