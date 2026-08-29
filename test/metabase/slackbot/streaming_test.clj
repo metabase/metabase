@@ -1,6 +1,7 @@
 (ns metabase.slackbot.streaming-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
@@ -16,7 +17,9 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -35,14 +38,14 @@
     (is (re-matches #"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                     (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")))))
 
-(deftest thread->history-strips-bot-mentions-test
+(deftest ^:synchronized thread->history-strips-bot-mentions-test
   (testing "User messages have bot mentions stripped"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "<@UBOT123> hello" :user "U123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :user :content "hello"}] result))))))
 
-(deftest thread->history-merges-tool-calls-test
+(deftest ^:synchronized thread->history-merges-tool-calls-test
   (testing "Bot messages include tool call data from DB before text"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history
                                 (constantly {"1709567890.000002"
@@ -55,7 +58,7 @@
         (is (= "tc1" (:tool_call_id (second result))))
         (is (= {:role :assistant :content "The answer is 42"} (last result)))))))
 
-(deftest thread->history-excludes-thinking-test
+(deftest ^:synchronized thread->history-excludes-thinking-test
   (testing "Thinking placeholder messages are excluded from history"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "question" :user "U123"}
@@ -64,7 +67,7 @@
         (is (= 1 (count result)))
         (is (= :user (:role (first result))))))))
 
-(deftest thread->history-excludes-blank-bot-messages-test
+(deftest ^:synchronized thread->history-excludes-blank-bot-messages-test
   (testing "Bot messages with blank text are excluded"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "" :bot_id "B123"}
@@ -73,7 +76,7 @@
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :assistant :content "real"}] result))))))
 
-(deftest thread->history-excludes-soft-deleted-bot-messages-test
+(deftest ^:synchronized thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history  (constantly {})
                                 slackbot.persistence/deleted-message-ids
@@ -86,7 +89,7 @@
         (is (= :user (:role (first result))))
         (is (= "Live bot response" (:content (second result))))))))
 
-(deftest format-viz-title-test
+(deftest ^:synchronized format-viz-title-test
   (testing "format-viz-title builds correct title text"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (testing "title + link"
@@ -109,7 +112,7 @@
         (is (= "Sales & Revenue"
                (#'slackbot.streaming/format-viz-title "Sales & Revenue" nil)))))))
 
-(deftest feedback-blocks-test
+(deftest ^:synchronized feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
     (let [conversation-id     "test-conv-123"
           message-external-id "msg-ext-abc"
@@ -133,7 +136,7 @@
                     :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest streaming-response-includes-feedback-blocks-test
+(deftest ^:synchronized streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -153,7 +156,7 @@
                   (is (= "metabot_feedback" (:block_id (first blocks))))
                   (is (= "feedback_buttons" (:type (first (:elements (first blocks)))))))))))))))
 
-(deftest slackbot-posts-free-trial-limit-error-when-managed-provider-is-locked-test
+(deftest ^:synchronized slackbot-posts-free-trial-limit-error-when-managed-provider-is-locked-test
   (let [posted-message (atom nil)
         event          {:channel "C1" :ts "123.456" :channel_type "im"}]
     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
@@ -174,7 +177,7 @@
                 :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
                @posted-message))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-on-messages-test
   (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
             for metabase/ prefixed provider"
     (tu/with-slackbot-setup
@@ -201,7 +204,7 @@
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
-(deftest slackbot-streaming-persists-failed-conversations-test
+(deftest ^:synchronized slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
             start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
@@ -225,7 +228,7 @@
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
-(deftest slackbot-streaming-never-writes-pii-columns-test
+(deftest ^:synchronized slackbot-streaming-never-writes-pii-columns-test
   (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
     (mt/with-premium-features #{:audit-app}
       (tu/with-slackbot-setup
@@ -254,7 +257,7 @@
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
             for direct BYOK provider"
     (tu/with-slackbot-setup
@@ -300,7 +303,7 @@
         {:cbs          cbs
          :append-calls append-calls}))))
 
-(deftest on-text-respects-batch-size-test
+(deftest ^:synchronized on-text-respects-batch-size-test
   (testing "on-text does not flush until pending text reaches min-text-batch-size"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -319,7 +322,7 @@
       (request-flush! true)
       (await slack-writer))))
 
-(deftest flush-throttle-test
+(deftest ^:synchronized flush-throttle-test
   (testing "rapid flushes are throttled by min-flush-interval-ns"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs

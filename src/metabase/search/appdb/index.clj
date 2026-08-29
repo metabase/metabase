@@ -376,7 +376,10 @@
                             (log/trace "indexed documents for " <>)
                             (when active-updated
                               (try
-                                (analytics/set-gauge! :metabase-search/appdb-index-size (t2/count (name active-updated)))
+                                (analytics/set-gauge! :metabase-search/appdb-index-size
+                                                      ;; nested transaction = savepoint, see [[batch-upsert!]]
+                                                      (t2/with-transaction [_conn]
+                                                        (t2/count (name active-updated))))
                                 (catch Exception e
                                   (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
     (if reindexing?
@@ -410,16 +413,23 @@
     (u/prog1 (->> [(active-table) (pending-table)]
                   (keep (fn [table-name]
                           (when table-name
-                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                               ;; Race conditions with table being deleted, especially in tests.
-                                               (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                            {search-model (try
+                                            ;; the nested transaction becomes a savepoint, so a failed
+                                            ;; DELETE (the tracked table can be dropped by a concurrent
+                                            ;; index swap) cannot poison the caller's transaction
+                                            (t2/with-transaction [_conn]
+                                              (t2/delete! table-name :model search-model :model_id [:in (set ids)]))
+                                            ;; Race conditions with table being deleted, especially in tests.
+                                            (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
                   (apply merge-with +)
                   (into {}))
       (when (active-table)
         (try
-          (analytics/set-gauge! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                         :from   [(active-table)]
-                                                                                         :limit  1})))
+          (analytics/set-gauge! :metabase-search/appdb-index-size
+                                (:count (t2/with-transaction [_conn]
+                                          (t2/query-one {:select [[:%count.* :count]]
+                                                         :from   [(active-table)]
+                                                         :limit  1}))))
           (catch Exception e
             ;; No point tracking the size of the newer index table, since we won't have modified it.
             (when-not (table-not-found-exception? e)

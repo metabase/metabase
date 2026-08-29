@@ -343,8 +343,17 @@
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
 
-(defn- prohibits-encryption? [setting-or-name]
-  (= :no (:encryption (resolve-setting setting-or-name))))
+(defn- maybe-resolve-setting
+  "Like [[resolve-setting]] but returns nil for a setting with no code definition (e.g. one written straight to the DB
+  in a test) instead of throwing."
+  [setting-or-name]
+  (try (resolve-setting setting-or-name)
+       (catch clojure.lang.ExceptionInfo e
+         (when-not (::unknown-setting-error (ex-data e))
+           (throw e)))))
+
+(defn- encrypts? [setting-or-name]
+  (not= :no (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -1727,7 +1736,7 @@
   ;; we can't do anything about it (since we can't decrypt it). If stuff isn't decrypted in the DB, we have nothing to
   ;; do.
   (when (encryption/default-encryption-enabled?)
-    (let [settings (filter prohibits-encryption? (vals @registered-settings))]
+    (let [settings (remove encrypts? (vals @registered-settings))]
       (t2/with-transaction [_conn]
         (doseq [{v :value k :key}
                 (t2/select :setting {:for :update :where [:and
@@ -1744,13 +1753,10 @@
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting-model))
     setting-model
-    (let [resolved (try (resolve-setting (:key setting-model))
-                        (catch clojure.lang.ExceptionInfo e
-                          (when (not (::unknown-setting-error (ex-data e)))
-                            (throw e))))]
+    (let [resolved (maybe-resolve-setting (:key setting-model))]
       (cond-> setting-model
         (or (nil? resolved)
-            (not (prohibits-encryption? resolved)))
+            (encrypts? resolved))
         (update :value encryption/maybe-encrypt)))))
 
 (t2/define-before-update :model/Setting
@@ -1762,18 +1768,23 @@
   (maybe-encrypt setting))
 
 (defn- decrypt-setting-value-on-read
-  "Decrypt a Setting `value` on read, tolerating an undecryptable value by returning it unchanged so a stale row (e.g.
-  left by a botched key change) degrades gracefully at the reader instead of throwing on every read. The strict throw
-  from [[encryption/maybe-decrypt-accepting-plaintext]] still applies where it matters — the key-rotation path, which
-  does not swallow it."
-  [value]
-  (try
-    (encryption/maybe-decrypt-accepting-plaintext value)
-    (catch Throwable _ value)))
+  "Decrypt a Setting's `:value` on read. A setting whose `:encryption` is not `:no` is stored encrypted at rest, so it
+  is read strictly with [[encryption/maybe-decrypt]]: a plaintext value — forged via a direct DB write, or a legacy row
+  from before the setting became encrypted — is rejected rather than trusted. A `:no` setting (or one with no code
+  definition, e.g. in tests) is intentionally plaintext, so it is read leniently with
+  [[encryption/maybe-decrypt-accepting-plaintext]], which returns a plaintext value unchanged."
+  [setting]
+  (let [resolved (maybe-resolve-setting (:key setting))
+        decrypt  (if (or (nil? resolved) (not (encrypts? resolved)))
+                   encryption/maybe-decrypt-accepting-plaintext
+                   encryption/maybe-decrypt)]
+    (update setting :value decrypt)))
 
 (t2/define-after-select :model/Setting
   [setting]
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting))
+  ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve or `:value` to decrypt, and don't do
+  ;; any automatic handling of the "encryption-check" special setting used by mdb.encryption.
+  (if (or (nil? (:key setting))
+          (= "encryption-check" (:key setting)))
     setting
-    (update setting :value decrypt-setting-value-on-read)))
+    (decrypt-setting-value-on-read setting)))
