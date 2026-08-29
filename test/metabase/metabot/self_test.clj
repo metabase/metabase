@@ -182,6 +182,7 @@
           (testing "a public base URL goes out with the policy resolver on the connection"
             (self.core/request {:url "https://8.8.8.8" :headers {}} req)
             (is (= "https://8.8.8.8/v1/models" (:url @captured)))
+            (is (= :none (:redirect-strategy @captured)))
             (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))
           (testing "the managed AI proxy's floor allows private addresses under the default policy"
             (self.core/request {:url "http://10.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)

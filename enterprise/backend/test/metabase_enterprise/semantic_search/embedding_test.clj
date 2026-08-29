@@ -421,6 +421,7 @@
                                     http/post                            capture]
           (embed "openai")
           (is (= "https://8.8.8.8/v1/embeddings" (:url @captured)))
+          (is (= :none (:redirect-strategy @captured)))
           (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
       (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
         (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")

@@ -152,6 +152,7 @@
           (mt/with-dynamic-fn-redefs [http/post (fn [_url opts] (reset! captured opts) mock-response)]
             (is (=? {:result {:sql "SELECT 1"}}
                     (anthropic/chat-completion {:messages [{:role "user" :content "test"}]})))
+            (is (= :none (:redirect-strategy @captured)))
             (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))))
       (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
         (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
