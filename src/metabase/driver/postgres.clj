@@ -656,15 +656,24 @@
       now)))
 
 (defmethod sql.qp/->honeysql [:postgres :relative-datetime]
-  [driver [_ _opts amount unit]]
+  [driver [_ amount unit]]
   (let [now (current-datetime-in-parent-lhs-timezone driver)]
     (sql.qp/date driver unit (if (zero? amount)
                                now
                                (sql.qp/add-interval-honeysql-form driver now amount unit)))))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :relative-datetime]
+  [driver [_ _opts amount unit]]
+  ((get-method sql.qp/->honeysql [:postgres :relative-datetime])
+   driver [:relative-datetime amount unit]))
+
 (defmethod sql.qp/->honeysql [:postgres :now]
   [driver _clause]
   (current-datetime-in-parent-lhs-timezone driver))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :now]
+  [driver _clause]
+  ((get-method sql.qp/->honeysql [:postgres :now]) driver [:now]))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
   [driver [_ _opts arg target-timezone source-timezone]]
