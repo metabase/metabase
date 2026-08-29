@@ -46,7 +46,7 @@ x.com")
   :encryption :when-encryption-key-set
   :default    ""
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :export?    true)
 
 (defsetting csp-img-enabled
