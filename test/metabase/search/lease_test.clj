@@ -459,14 +459,24 @@
 
 (deftest coordination-pool-honours-app-db-restore-gate-test
   (let [coordinate (coordinate)
-        lock       (.lock (mdb/app-db))]
+        lock       (.lock (mdb/app-db))
+        in-txn     (CountDownLatch. 1)
+        locked     (CountDownLatch. 1)
+        ;; Enter the transaction (and check out its main-pool connection) BEFORE the write lock is taken, so the
+        ;; only thing left to block on is the coordination pool's own gate.
+        attempt    (future
+                     (t2/with-transaction [_conn]
+                       (.countDown in-txn)
+                       (.await locked 5 TimeUnit/SECONDS)
+                       (lease/try-acquire! coordinate)))]
+    (is (.await in-txn 5 TimeUnit/SECONDS))
     (.. lock writeLock lock)
+    (.countDown locked)
     (try
-      (let [attempt (future (t2/with-transaction [_conn] (lease/try-acquire! coordinate)))]
-        (is (= ::blocked (deref attempt 300 ::blocked))
-            "a lifecycle operation on the coordination pool waits while the restore write lock is held")
-        (.. lock writeLock unlock)
-        (is (some? (deref attempt 5000 ::blocked)) "and proceeds once it is released"))
+      (is (= ::blocked (deref attempt 300 ::blocked))
+          "a lifecycle operation on the coordination pool waits while the restore write lock is held")
+      (.. lock writeLock unlock)
+      (is (some? (deref attempt 5000 ::blocked)) "and proceeds once it is released")
       (finally
         (when (.isWriteLockedByCurrentThread lock)
           (.. lock writeLock unlock))

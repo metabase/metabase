@@ -315,4 +315,6 @@
                      (fn [] (search.engine/reindex! :search.engine/appdb {})))]
       (if search.ingestion/*force-sync*
         (reindex)
-        (future (reindex))))))
+        ;; The setting-update event fires inside the settings transaction, and a future conveys its dynamic
+        ;; bindings, so schedule after commit to keep the reindex thread free of stale transaction state.
+        (mdb/do-after-commit #(future (reindex)))))))

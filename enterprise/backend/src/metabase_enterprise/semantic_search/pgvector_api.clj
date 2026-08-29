@@ -59,10 +59,11 @@
         index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
     (semantic.index/create-index-table-if-not-exists! tx index)
     (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
-    ;; A deposed lease owner must not flip the active index after its replacement has activated one.
+    ;; A deposed lease owner must not flip the active index after its replacement has activated one. Prove
+    ;; ownership against the app db rather than the local lost flag: a hung heartbeat never sets the flag.
     (when-not active
       (log/infof "Configured model does not match active index, switching to new index %s" (pr-str index))
-      (search.lease/throw-if-lost!)
+      (search.lease/assert-current!)
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 
