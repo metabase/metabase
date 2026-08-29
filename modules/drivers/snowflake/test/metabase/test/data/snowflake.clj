@@ -268,6 +268,14 @@
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
 
+;; Load each chunk without wrapping it in a transaction: on Snowflake `setAutoCommit` and `commit` are each a server
+;; round trip, so the default per-chunk transaction turns one INSERT into three. [[load-data/create-db!]] has already
+;; put this connection in autocommit mode, so the rows still land. No atomicity is lost - every chunk committed
+;; separately anyway, and [[dataset-rows-ok?!]] is what catches a half-loaded dataset and forces a reload.
+(defmethod load-data/do-insert! :snowflake
+  [driver conn table-identifier rows]
+  (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))
+
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
 
@@ -287,6 +295,19 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
+
+(defonce ^:private set-up-tracking-db?
+  (atom false))
+
+(defn- setup-tracking-db-if-needed!
+  "Call [[setup-tracking-db!]], only if we haven't done so already.
+
+  Both of its statements are server round trips, and nothing drops `metabase_test_tracking` while a run is in
+  progress, so once they have succeeded they only need repeating in the next process."
+  [conn driver]
+  (when-not @set-up-tracking-db?
+    (setup-tracking-db! conn driver)
+    (reset! set-up-tracking-db? true)))
 
 (defn- database-exists?!
   [conn driver db-def]
@@ -315,7 +336,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
+     (setup-tracking-db-if-needed! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn

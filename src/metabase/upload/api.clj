@@ -37,22 +37,18 @@
 (api.macros/defendpoint :post "/csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   {:multipart true}
-  ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
   [_route-params
    _query-params
-   _body
-   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
+   {collection-id :collection_id, :keys [file]}
    :- [:map
-       [:multipart-params
-        [:map
-         ["collection_id" [:maybe
-                           {:decode/api (fn [collection-id]
-                                          (when-not (= collection-id "root")
-                                            collection-id))}
-                           pos-int?]]
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+       [:collection_id [:maybe
+                        {:decode/api (fn [collection-id]
+                                       (when-not (= collection-id "root")
+                                         collection-id))}
+                        pos-int?]]
+       [:file [:map
+               [:filename :string]
+               [:tempfile (ms/InstanceOfClass java.io.File)]]]]]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
   (from-csv! {:collection-id collection-id
               :filename      (:filename file)
