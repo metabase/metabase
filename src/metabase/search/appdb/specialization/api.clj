@@ -24,6 +24,11 @@
   {:arglists '([table-name entries])}
   db-type)
 
+(defmulti batch-upsert-on-connection!
+  "Like [[batch-upsert!]], but writes on `conn` rather than the ambient connection."
+  {:arglists '([conn table-name entries])}
+  db-type)
+
 (defmulti extra-entry-fields
   "Populate additional fields only present for this database driver's index table"
   {:arglists '([entity])}

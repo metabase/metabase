@@ -18,6 +18,7 @@
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.search.lease :as search.lease]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
   (:import
@@ -58,8 +59,11 @@
         index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
     (semantic.index/create-index-table-if-not-exists! tx index)
     (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
+    ;; A deposed lease owner must not flip the active index after its replacement has activated one. Prove
+    ;; ownership against the app db rather than the local lost flag: a hung heartbeat never sets the flag.
     (when-not active
       (log/infof "Configured model does not match active index, switching to new index %s" (pr-str index))
+      (search.lease/assert-current!)
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 
@@ -169,6 +173,7 @@
      (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc documents]
+        (search.lease/throw-if-lost!)
         (->> documents
              (mapv #(semantic.gate/search-doc->gate-doc % now))
              (semantic.gate/gate-documents! pgvector index-metadata))
