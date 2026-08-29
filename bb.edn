@@ -330,6 +330,7 @@
    :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]

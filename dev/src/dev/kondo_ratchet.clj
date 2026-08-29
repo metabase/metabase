@@ -572,9 +572,8 @@
          "}\n")))
 
 (defn- merge-counts
-  "Three-way merge a budget map. One-sided changes win; concurrent value changes take the stricter
-  value. A delete/modify conflict needs a human because silently choosing the value would resurrect a
-  deleted budget, while choosing the deletion might leave merged source over budget."
+  "Three-way merge a budget map. One-sided changes win; concurrent integer changes take the stricter
+  value. A concurrent bounded/unlimited policy change or delete/modify conflict needs a human."
   [field base ours theirs]
   (let [absent  (Object.)
         linters (into (set (keys base)) (concat (keys ours) (keys theirs)))]
@@ -591,6 +590,12 @@
                                   (or (identical? absent ours-value)
                                       (identical? absent theirs-value))
                                   (throw (ex-info (format "delete/modify conflict for %s in %s" linter field)
+                                                  {:field field, :linter linter}))
+
+                                  (and (= field :limits)
+                                       (or (= ours-value :unlimited)
+                                           (= theirs-value :unlimited)))
+                                  (throw (ex-info (format "bounded/unlimited conflict for %s in %s" linter field)
                                                   {:field field, :linter linter}))
 
                                   :else
@@ -615,7 +620,7 @@
 
 (defn merge-ratchets
   "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
-  Supports both the current `:ignore-counts` shape and the later `:limits`/`:unlimited` policy shape.
+  Supports both the current `:ignore-counts` shape and the later `:limits` policy shape.
   When the target explicitly disables ratchets it stays disabled; an incoming disabled form is ignored."
   [base ours theirs]
   (cond
@@ -630,8 +635,7 @@
           schemas       (into #{}
                               (keep (fn [ratchets]
                                       (let [old? (contains? ratchets :ignore-counts)
-                                            new? (or (contains? ratchets :limits)
-                                                     (contains? ratchets :unlimited))]
+                                            new? (contains? ratchets :limits)]
                                         (cond
                                           (and old? new?) :mixed
                                           old?            :ignore-counts
@@ -642,7 +646,7 @@
                                                (pr-str schemas))
                                           {:schemas schemas})))
           present?      (fn [field] (some #(contains? % field) maps))
-          count-fields  (filter present? [:ignore-counts :limits :config-counts])
+          count-fields  (filter present? [:ignore-counts :config-counts])
           merged-counts (into {}
                               (for [field count-fields]
                                 [field (merge-counts field
@@ -650,22 +654,16 @@
                                                      (get ours field {})
                                                      (get theirs field {}))]))
           merged        (cond-> merged-counts
-                          (present? :unlimited)
-                          (assoc :unlimited (merge-set (:unlimited base #{})
-                                                       (:unlimited ours #{})
-                                                       (:unlimited theirs #{})))
+                          (present? :limits)
+                          (assoc :limits (merge-counts :limits
+                                                       (:limits base {})
+                                                       (:limits ours {})
+                                                       (:limits theirs {})))
 
                           (present? :comment-exempt)
                           (assoc :comment-exempt (merge-set (:comment-exempt base #{})
                                                             (:comment-exempt ours #{})
-                                                            (:comment-exempt theirs #{}))))
-          overlap       (into (sorted-set-by #(compare (str %1) (str %2)))
-                              (filter (set (keys (:limits merged))))
-                              (:unlimited merged))]
-      (when (seq overlap)
-        (throw (ex-info (str "merged linters cannot appear in both :limits and :unlimited: "
-                             (pr-str overlap))
-                        {:overlap overlap})))
+                                                            (:comment-exempt theirs #{}))))]
       merged)))
 
 (def ^:private policy-header
@@ -677,23 +675,19 @@
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
        ";; widening the exemptions is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
-       ";; :unlimited lists low-severity linters whose ignore count is intentionally unbounded.\n"))
+       ";; A :limits value of :unlimited marks a low-severity linter whose ignore count is intentionally\n"
+       ";; unbounded.\n"))
 
 (defn render-merged-ratchets
   "Render a merged map in the canonical format for either supported ratchet schema."
-  [{:keys [limits unlimited config-counts comment-exempt] :as ratchets}]
+  [{:keys [limits config-counts comment-exempt] :as ratchets}]
   (if-not (contains? ratchets :limits)
     (render ratchets)
     (let [limits-indent (apply str (repeat (count "{:limits {") \space))
           config-indent (apply str (repeat (count " :config-counts  {") \space))
-          exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))
-          unlimited     (sort-by str (or unlimited #{}))]
+          exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
       (str policy-header
            "{:limits " (render-counts limits limits-indent)
-           "\n :unlimited #"
-           (if (empty? unlimited)
-             "{}"
-             (str "{\n            " (str/join "\n            " (map str unlimited)) "\n           }"))
            "\n :config-counts  " (render-counts config-counts config-indent)
            "\n :comment-exempt "
            (if (empty? comment-exempt)

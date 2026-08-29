@@ -645,21 +645,65 @@
          (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
                                      {:same 5, :new 1, :up 3}))))
 
-(deftest ^:parallel merge-ratchets-changes-test
-  (is (= {:ignore-counts  {:both 4, :ours-add 2, :ours-changes 3, :theirs-add 3}
-          :config-counts  {:cfg-add 1}
+(deftest ^:parallel merge-ratchets-one-sided-map-changes-test
+  (is (= {:ignore-counts  {:ours-add 2, :ours-changes 3, :theirs-add 3}
+          :config-counts  {:theirs-add 1}
+          :comment-exempt #{}}
+         (kondo-ratchet/merge-ratchets
+          {:ignore-counts  {:ours-changes 5}
+           :config-counts  {}
+           :comment-exempt #{}}
+          {:ignore-counts  {:ours-add 2, :ours-changes 3}
+           :config-counts  {}
+           :comment-exempt #{}}
+          {:ignore-counts  {:ours-changes 5, :theirs-add 3}
+           :config-counts  {:theirs-add 1}
+           :comment-exempt #{}}))))
+
+(deftest ^:parallel merge-ratchets-concurrent-integer-changes-test
+  (is (= {:ignore-counts  {:a 4}
+          :config-counts  {}
+          :comment-exempt #{}}
+         (kondo-ratchet/merge-ratchets
+          {:ignore-counts  {:a 9}
+           :config-counts  {}
+           :comment-exempt #{}}
+          {:ignore-counts  {:a 6}
+           :config-counts  {}
+           :comment-exempt #{}}
+          {:ignore-counts  {:a 4}
+           :config-counts  {}
+           :comment-exempt #{}}))))
+
+(deftest ^:parallel merge-ratchets-one-sided-deletions-test
+  (is (= {:ignore-counts  {}
+          :config-counts  {}
+          :comment-exempt #{:kept}}
+         (kondo-ratchet/merge-ratchets
+          {:ignore-counts  {:removed 4}
+           :config-counts  {:removed 2}
+           :comment-exempt #{:kept :removed}}
+          {:ignore-counts  {}
+           :config-counts  {}
+           :comment-exempt #{:kept}}
+          {:ignore-counts  {:removed 4}
+           :config-counts  {:removed 2}
+           :comment-exempt #{:kept :removed}}))))
+
+(deftest ^:parallel merge-ratchets-set-additions-test
+  (is (= {:ignore-counts  {}
+          :config-counts  {}
           :comment-exempt #{:kept :ours-add :theirs-add}}
          (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {:removed 4, :both 9, :ours-changes 5}
-           :config-counts  {:cfg-removed 2}
-           :comment-exempt #{:removed :kept}}
-          {:ignore-counts  {:both 6, :ours-changes 3, :ours-add 2}
+          {:ignore-counts  {}
+           :config-counts  {}
+           :comment-exempt #{:kept}}
+          {:ignore-counts  {}
            :config-counts  {}
            :comment-exempt #{:kept :ours-add}}
-          {:ignore-counts  {:removed 4, :both 4, :ours-changes 5, :theirs-add 3}
-           :config-counts  {:cfg-removed 2, :cfg-add 1}
-           :comment-exempt #{:removed :kept :theirs-add}}))
-      "one-sided changes win, concurrent changes use the stricter value, and deletions stay deleted"))
+          {:ignore-counts  {}
+           :config-counts  {}
+           :comment-exempt #{:kept :theirs-add}}))))
 
 (deftest ^:parallel merge-ratchets-delete-modify-conflict-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -671,25 +715,44 @@
 
 (deftest ^:parallel merge-ratchets-bounded-and-unlimited-test
   (let [merged (kondo-ratchet/merge-ratchets
-                {:limits {:a 5}, :unlimited #{:old}, :config-counts {}, :comment-exempt #{}}
-                {:limits {:a 4}, :unlimited #{}, :config-counts {}, :comment-exempt #{}}
-                {:limits {:a 3, :new 2}, :unlimited #{:old :new-unlimited}, :config-counts {}, :comment-exempt #{}})
+                {:limits         {:a         5
+                                  :equal     :unlimited
+                                  :old       :unlimited
+                                  :one-sided 2}
+                 :config-counts  {}
+                 :comment-exempt #{}}
+                {:limits         {:a         4
+                                  :equal     :unlimited
+                                  :one-sided :unlimited}
+                 :config-counts  {}
+                 :comment-exempt #{}}
+                {:limits         {:a             3
+                                  :equal         :unlimited
+                                  :old           :unlimited
+                                  :one-sided     2
+                                  :new           2
+                                  :new-unlimited :unlimited}
+                 :config-counts  {}
+                 :comment-exempt #{}})
         text   (kondo-ratchet/render-merged-ratchets merged)]
-    (is (= {:limits         {:a 3, :new 2}
-            :unlimited      #{:new-unlimited}
+    (is (= {:limits         {:a             3
+                             :equal         :unlimited
+                             :one-sided     :unlimited
+                             :new           2
+                             :new-unlimited :unlimited}
             :config-counts  {}
             :comment-exempt #{}}
            merged))
     (is (= merged (edn/read-string text))
         "serializing the later policy shape preserves bounded and unlimited linters")))
 
-(deftest ^:parallel merge-ratchets-overlapping-policies-test
+(deftest ^:parallel merge-ratchets-bounded-unlimited-conflict-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"both :limits and :unlimited"
+                        #"bounded/unlimited conflict for :a in :limits"
                         (kondo-ratchet/merge-ratchets
-                         {}
-                         {:limits {:a 1}}
-                         {:unlimited #{:a}}))))
+                         {:limits {:a 5}}
+                         {:limits {:a :unlimited}}
+                         {:limits {:a 4}}))))
 
 (deftest ^:parallel merge-ratchets-mixed-schemas-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
