@@ -134,9 +134,9 @@
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
-                    ;; the Setting after-select is lenient: an undecryptable value comes back as-is (the raw ciphertext)
-                    ;; rather than throwing, so the reader degrades gracefully instead of failing on every settings read
-                    (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
+                    ;; reading a value that looks encrypted but can't be decrypted with the current key throws rather
+                    ;; than returning the raw ciphertext, so it can never be mistaken for a real plaintext value
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))

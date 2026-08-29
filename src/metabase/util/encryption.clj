@@ -203,28 +203,58 @@
 (def ^:private ^:const aes256-block-size 16)
 
 (defn possibly-encrypted-bytes?
-  "Returns true if it's likely that `b` is an encrypted byte array.  To compute this, we need the number of bytes in
-  the input, subtract the bytes used by the cipher type tag (`aes256-tag-length`) and what is left should be divisible
-  by the cipher's block size (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or
-  it has been corrupted as it must always have a multiple of the block size or it won't decrypt."
+  "Whether `b` has the shape of an encrypted byte array: at least the length of the shortest ciphertext, and a length
+  that leaves a multiple of the cipher block size (`aes256-block-size`) once the tag (`aes256-tag-length`) is taken off.
+
+  This is a shape check, and its only guarantee is one-sided:
+
+  - `false`: `b` is definitely NOT encrypted (or is corrupted beyond decrypting).
+  - `true`: `b` is encrypted, OR it is plaintext that merely happens to have the right length.
+
+  So it can rule encryption out, never in. Anything that decides whether a value gets encrypted, decrypted, skipped
+  or trusted must use [[decryptable-bytes?]], which actually decrypts."
   [^bytes b]
-  (if (nil? b)
-    false
-    (u/ignore-exceptions
-      (when-let [byte-length (alength b)]
-        (zero? (mod (- byte-length aes256-tag-length)
-                    aes256-block-size))))))
+  (boolean
+   (when b
+     (u/ignore-exceptions
+       (let [byte-length (alength b)]
+         ;; IV + at least one cipher block + tag: anything shorter cannot be ciphertext, and `mod` alone would accept
+         ;; 16- and 32-byte plaintext too
+         (and (>= byte-length (+ (* 2 aes256-block-size) aes256-tag-length))
+              (zero? (mod (- byte-length aes256-tag-length)
+                          aes256-block-size))))))))
 
 (defn possibly-encrypted-string?
-  "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
-  encoded string of the correct length. See docstring for `possibly-encrypted-bytes?` for an explanation of correct
-  length."
+  "Whether `s` has the shape of an encrypted string: non-blank base64 that decodes to something
+  [[possibly-encrypted-bytes?]]. The same one-sided guarantee applies: `false` means definitely not encrypted, `true`
+  means encrypted or plaintext that merely matches the pattern (a 64-character hex digest, for one). Use
+  [[decryptable-string?]] wherever the answer decides what happens to the value."
   [^String s]
-  (u/ignore-exceptions
-    (when-let [b (and (not (str/blank? s))
-                      (u/base64-string? s)
-                      (codec/base64-decode s))]
-      (possibly-encrypted-bytes? b))))
+  (boolean
+   (u/ignore-exceptions
+     (when-let [b (and (not (str/blank? s))
+                       (u/base64-string? s)
+                       (codec/base64-decode s))]
+       (possibly-encrypted-bytes? b)))))
+
+(defn decryptable-bytes?
+  "Whether `b` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. The ciphertext is
+  authenticated, so a wrong key, corruption, and plaintext that merely looks like ciphertext all yield false. Always
+  false when no key is set. Use this, not [[possibly-encrypted-bytes?]], wherever the answer decides whether a value is
+  encrypted, decrypted, or left alone."
+  ([^bytes b] (decryptable-bytes? default-secret-key b))
+  ([secret-key ^bytes b]
+   (boolean (and secret-key
+                 (possibly-encrypted-bytes? b)
+                 (u/ignore-exceptions (decrypt-bytes secret-key b) true)))))
+
+(defn decryptable-string?
+  "Whether `s` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. See [[decryptable-bytes?]]."
+  ([^String s] (decryptable-string? default-secret-key s))
+  ([secret-key ^String s]
+   (boolean (and secret-key
+                 (possibly-encrypted-string? s)
+                 (u/ignore-exceptions (decrypt secret-key s) true)))))
 
 (defn maybe-decrypt-accepting-plaintext
   "Plaintext-tolerant decrypt of a String `s`. If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt it;
