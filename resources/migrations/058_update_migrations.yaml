@@ -1621,6 +1621,19 @@ databaseChangeLog:
             class: metabase.app_db.custom_migrations.EncryptNotificationAndPulseChannelDetails
 
   - changeSet:
+      id: v58.2026-08-28T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext value of the settings this release newly marks
+        :encryption :when-encryption-key-set (they were previously stored plaintext), so the strict decrypting read
+        added for encrypted settings accepts them once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are
+        left untouched. Rollback decrypts them again, so a downgraded version that reads them as :encryption :no
+        still sees the values.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptSettingsV58
+
+  - changeSet:
       id: v58.2026-08-28T14:00:00
       author: ranquild
       comment: >-

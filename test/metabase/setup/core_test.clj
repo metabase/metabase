@@ -148,8 +148,8 @@
                 (is (= 1 (t2/count :model/QueryCache)))
                 (testing "after `enable-encryption` the database is encrypted and starts"
                   (mdb/encrypt-db driver/*driver* (mdb/data-source) nil)
-                  (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
-                  (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
+                  (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+                  (is (encryption/decryptable-string? (:details (t2/select-one "metabase_database"))))
                   (testing "Cache is cleared on encryption"
                     (is (= 0 (t2/count :model/QueryCache))))
                   (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -158,12 +158,12 @@
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
+          (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
+          (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
-            (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
+            (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check")))))
           (testing "A missing sentinel on a database whose content decrypts with the key is written back on startup"
             (t2/delete! :setting :key "encryption-check")
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -203,7 +203,7 @@
               restart!   (fn []
                            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                            (mdb/setup-db! :create-sample-content? false))]
-          (is (encryption/possibly-encrypted-string? (raw-detail)))
+          (is (encryption/decryptable-string? (raw-detail)))
           (t2/update! :metabase_database {:id db-id} {:details plaintext})
           (testing "with the sentinel deleted"
             (set-encryption-check-raw! nil)

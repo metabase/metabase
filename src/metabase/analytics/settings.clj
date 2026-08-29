@@ -56,14 +56,14 @@
 
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :audit      :never
   :doc        false)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    (if config/is-prod?
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
