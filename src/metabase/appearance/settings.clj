@@ -58,7 +58,7 @@
 
 (defsetting landing-page
   (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -98,7 +98,7 @@
 
 (defsetting application-colors
   (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :json
@@ -147,7 +147,7 @@ To change the chart colors:
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :json
@@ -184,7 +184,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -195,7 +195,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -225,7 +225,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -244,7 +244,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -263,7 +263,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after running a question.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -282,7 +282,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string
@@ -324,7 +324,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :type       :string
   :audit      :getter
@@ -362,7 +362,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :export?    true
   :default    {}
