@@ -26,10 +26,10 @@
   (not (kondo-ratchet/disabled?)))
 
 (defn- budget-drift
-  [ci? limits unlimited occurrences]
+  [ci? limits occurrences]
   (if ci?
-    (kondo-ratchet/over-budget limits unlimited occurrences)
-    (apply dissoc (kondo-ratchet/drift limits occurrences) unlimited)))
+    (kondo-ratchet/over-budget limits occurrences)
+    (kondo-ratchet/drift limits occurrences)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The master shrinker performs this bookkeeping asynchronously after merge.
@@ -54,9 +54,9 @@
                   "Budget too high: run `./bin/mage fix-kondo-ratchets`; the master shrinker\n"
                   "records improvements asynchronously after merge. Too high in a local run means\n"
                   "`fix!` itself is broken, since the test fixture just ran it.")
-      (let [{:keys [limits unlimited]} (kondo-ratchet/read-ratchets)]
+      (let [{:keys [limits]} (kondo-ratchet/read-ratchets)]
         (is (= {}
-               (budget-drift (System/getenv "CI") limits unlimited (tree-scan))))))))
+               (budget-drift (System/getenv "CI") limits (tree-scan))))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (when (ratchets-enabled?)
@@ -236,17 +236,18 @@
 
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
-    (let [ratchets {:limits         {:discouraged-var 3, :all 1, :metabase/modules 2}
-                    :unlimited      #{:unused-alias}
-                    :config-counts  {:unresolved-symbol 18, :inline-def 1}
+    (let [ratchets {:limits         {:all              1
+                                     :discouraged-var  3
+                                     :metabase/modules 2
+                                     :unused-alias     :unlimited}
+                    :config-counts  {:inline-def        1
+                                     :unresolved-symbol 18}
                     :comment-exempt #{:metabase/modules :discouraged-var}}
           text     (kondo-ratchet/render ratchets)]
       (is (str/ends-with? text (str "{:limits {:all              1\n"
                                     "          :discouraged-var  3\n"
-                                    "          :metabase/modules 2}\n"
-                                    " :unlimited #{\n"
-                                    "            :unused-alias\n"
-                                    "           }\n"
+                                    "          :metabase/modules 2\n"
+                                    "          :unused-alias     :unlimited}\n"
                                     " :config-counts  {:inline-def        1\n"
                                     "                  :unresolved-symbol 18}\n"
                                     " :comment-exempt #{:discouraged-var\n"
@@ -254,24 +255,44 @@
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:limits {}, :unlimited #{}, :config-counts {}, :comment-exempt #{}})
-                        "{:limits {}\n :unlimited #{}\n :config-counts  {}\n :comment-exempt #{}\n}\n"))))
+    (is (str/ends-with? (kondo-ratchet/render {:limits {}, :config-counts {}, :comment-exempt #{}})
+                        "{:limits {}\n :config-counts  {}\n :comment-exempt #{}\n}\n"))))
 
-(deftest read-ratchets-rejects-overlap-test
+(deftest read-ratchets-policy-values-test
   (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
-               (spit "{:limits {:a 1}, :unlimited #{:a}}\n"))]
+               (spit (pr-str {:limits {:bounded 4, :free :unlimited}})))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"both :limits and :unlimited"
-                            (kondo-ratchet/read-ratchets))))))
+      (is (= {:limits         {:bounded 4, :free :unlimited}
+              :config-counts  {}
+              :comment-exempt #{}}
+             (kondo-ratchet/read-ratchets))))))
+
+(deftest read-ratchets-validates-limits-test
+  (doseq [[value message] [[-1 #"non-negative integer or :unlimited"]
+                           [:other #"non-negative integer or :unlimited"]
+                           ["1" #"non-negative integer or :unlimited"]]]
+    (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+                 (spit (pr-str {:limits {:a value}})))]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                              (kondo-ratchet/read-ratchets)))))))
 
 (deftest ^:parallel lowered-counts-test
-  (is (= {:lower 3, :over-budget 5}
-         (kondo-ratchet/lowered-counts {:lower 5, :over-budget 5, :gone 5}
-                                       {:lower 3, :over-budget 7, :new-linter 9}
+  (is (= {:lower       3
+          :over-budget 5
+          :unbounded   :unlimited}
+         (kondo-ratchet/lowered-counts {:empty-unbounded :unlimited
+                                        :gone            5
+                                        :lower           5
+                                        :over-budget     5
+                                        :unbounded       :unlimited}
+                                       {:lower       3
+                                        :new-linter  9
+                                        :over-budget 7
+                                        :unbounded   4}
                                        []))
       "budgets only ever move down: :lower shrinks to actual, :over-budget stays (the test's business),
-       :gone is dropped, :new-linter is not added")
+       :gone and the empty unlimited policy are dropped, :new-linter is not added")
   (testing "seeding is the escape hatch: sets the budget to actual, adding or raising"
     (is (= {:new-linter 9, :raised 7}
            (kondo-ratchet/lowered-counts {:raised 5}
@@ -293,21 +314,24 @@
         ":a and :b are over budget (with examples); :c and :gone are stale (without)"))
   (testing "a matching budget doesn't appear"
     (is (= {} (kondo-ratchet/drift {:a 1} [{:file "f.clj", :line 1, :linters [:a]}]))))
+  (testing "unlimited policies never drift, including when their actual count reaches zero"
+    (is (= {}
+           (kondo-ratchet/drift {:free :unlimited, :empty :unlimited}
+                                [{:file "f.clj", :line 1, :linters [:free]}]))))
   (testing "examples are capped at 5"
     (let [occurrences (for [line (range 1 10)]
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
 (deftest ^:parallel budget-drift-test
-  (let [limits      {:bounded 2}
-        unlimited   #{:free}
+  (let [limits      {:bounded 2, :free :unlimited, :empty :unlimited}
         occurrences [{:file "f.clj", :line 1, :linters [:bounded :free]}]]
     (is (= {:bounded {:recorded 2, :actual 1}}
-           (budget-drift nil limits unlimited occurrences))
+           (budget-drift nil limits occurrences))
         "local checks require bounded counts to match exactly, but ignore unlimited linters")
     (is (= {}
-           (budget-drift "true" limits unlimited occurrences))
-        "CI allows bounded improvements and ignores unlimited linters")))
+           (budget-drift "true" limits occurrences))
+        "CI allows bounded improvements and unlimited policies, including stale ones")))
 
 (deftest ^:synchronized fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
@@ -325,7 +349,7 @@
   (let [dir        (.toFile (java.nio.file.Files/createTempDirectory
                              "kondo-ratchet-test"
                              (make-array java.nio.file.attribute.FileAttribute 0)))
-        ratchets   {:limits {}, :unlimited #{:free :empty}, :config-counts {}, :comment-exempt #{}}
+        ratchets   {:limits {:free :unlimited}, :config-counts {}, :comment-exempt #{}}
         budgets    (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}
                      {:file "f.clj", :line 2, :linters [:free]}]]
@@ -333,11 +357,29 @@
       (with-redefs [kondo-ratchet/scan                (constantly occurrences)
                     kondo-ratchet/config-suppressions (constantly {})]
         (is (= ["seeded :free at 2"
-                "WARNING: :empty is unlimited but has no inline ignores -- remove it from :unlimited unless intentional"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
       (is (= {:limits         {:free 2}
-              :unlimited      #{:empty}
+              :config-counts  {}
+              :comment-exempt #{}}
+             (kondo-ratchet/read-ratchets))))))
+
+(deftest ^:synchronized fix-drops-stale-unlimited-linter-test
+  (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
+                              "kondo-ratchet-test"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))
+        ratchets    {:limits {:free :unlimited, :empty :unlimited}
+                     :config-counts {}
+                     :comment-exempt #{}}
+        budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        occurrences [{:file "f.clj", :line 1, :linters [:free]}]]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/scan                (constantly occurrences)
+                    kondo-ratchet/config-suppressions (constantly {})]
+        (is (= ["dropped :empty (no ignores left)"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix!))))))
+      (is (= {:limits         {:free :unlimited}
               :config-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
@@ -411,12 +453,13 @@
                                      {:same 5, :new 1, :up 3}))))
 
 (deftest ^:parallel change-report-test
-  (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4}
+  (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4, :free 2}
                                   i          (range n)]
                               {:file "f.clj", :line (inc i), :linters [linter], :justified? false})
                             [{:file "g.clj", :line 1, :linters [:polite], :justified? true}])]
     (is (= ["seeded :new at 9"
             "WARNING: :void has no inline ignores -- nothing to seed"
+            "dropped :empty (no ignores left)"
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
@@ -424,9 +467,17 @@
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "unexempted :polite (all its ignores are justified now)"]
-           (kondo-ratchet/change-report {:limits         {:lower 5, :over 5, :gone 5, :same 4, :polite 1}
-                                         :unlimited      #{}
-                                         :config-counts  {:cfg-lower 4, :cfg-over 1, :cfg-gone 2, :cfg-same 6}
+           (kondo-ratchet/change-report {:limits         {:empty  :unlimited
+                                                          :free   :unlimited
+                                                          :gone   5
+                                                          :lower  5
+                                                          :over   5
+                                                          :polite 1
+                                                          :same   4}
+                                         :config-counts  {:cfg-gone  2
+                                                          :cfg-lower 4
+                                                          :cfg-over  1
+                                                          :cfg-same  6}
                                          :comment-exempt #{:lower :polite}}
                                         occurrences
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
