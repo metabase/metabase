@@ -154,17 +154,16 @@ jobs:
 
             if (jobs.every(job => job.result === 'skipped' || job.result === 'success')) {
               console.log('');
-              console.log('            ~|~                          ~|~');
-              console.log('             |             /\\             |');
-              console.log('            / \\           /  \\           / \\');
-              console.log('           /___\\         /____\\         /___\\');
-              console.log('        ___|[_]|___    __|[()]|__    ___|[_]|___');
-              console.log('       |  _     _  |  |  _    _  |  |  _     _  |');
-              console.log('       | | |   | | |__| | |  | | |__| | |   | | |');
-              console.log('       | |_|   |_|      |_|    |_|      |_|   |_| |');
-              console.log('       |                ___    ___                |');
-              console.log('       |_______________|   |__|   |_______________|');
-              console.log('                       |___|  |___|');
+              console.log('          |>>>             |>>>             |>>>');
+              console.log('          |                |                |');
+              console.log('      _  _|_  _        _  _|_  _        _  _|_  _');
+              console.log('     | |_| |_| |______| |_| |_| |______| |_| |_| |');
+              console.log('     |         |      |         |      |         |');
+              console.log('     | []   [] |      | []   [] |      | []   [] |');
+              console.log('     |         |______|         |______|         |');
+              console.log('     |                    ___                    |');
+              console.log('     |___________________|   |___________________|');
+              console.log('                         |___|');
               console.log('');
               console.log('Everything is up to code and structurally sound.');
               process.exit(0);
