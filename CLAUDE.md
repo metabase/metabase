@@ -87,9 +87,9 @@ Run the repository-level module, ratchet, and migration checks with:
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. Review-sensitive linters live under `:limits`; low-severity linters live under
-`:unlimited`. Development enforces `:limits` exactly, while CI rejects new or over-limit ignores. Prefer
-fixing the underlying warning over adding an ignore.
+`.clj-kondo/config.edn`) exist. Each linter under `:limits` maps to either an exact integer budget or
+`:unlimited` for a low-severity linter. Development enforces bounded limits exactly, while CI rejects new
+or over-limit ignores. Prefer fixing the underlying warning over adding an ignore.
 
 The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
 with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
@@ -104,7 +104,7 @@ lands. To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 Budget too low (you added an ignore): the task only raises a `:limits` budget when told to. If the ignore is
 genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the PR.
-For a genuinely low-severity linter, add it to `:unlimited` instead.
+For a genuinely low-severity linter, set its `:limits` value to `:unlimited` instead.
 
 The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
 at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
