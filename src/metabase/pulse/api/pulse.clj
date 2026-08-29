@@ -308,8 +308,11 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (email-channel pulse-updates))))
-                                          (set (map :id (:recipients (email-channel pulse-before-update)))))
+      ;; key recipients the same way pulse-channel does: user recipients by :id, external recipients by
+      ;; :email, so changes to external addresses are part of the diff too
+      (let [recipient-key     (some-fn :id :email)
+            to-add-recipients (difference (set (keep recipient-key (:recipients (email-channel pulse-updates))))
+                                          (set (keep recipient-key (:recipients (email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
