@@ -11,7 +11,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [environ.core :as env]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -66,11 +65,13 @@
    Expected keys: :instanceUrl (JSON-encoded) and :instanceUrlRaw."
   [vars]
   (cond
-    @fallback-template
-    (stencil/render-string @fallback-template vars)
-
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
+
+    ;; Backend-only tests install this stub when the frontend build is absent. A
+    ;; real build must win so tests and shared REPL JVMs exercise production HTML.
+    @fallback-template
+    (stencil/render-string @fallback-template vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
@@ -187,8 +188,16 @@
   [schema]
   (tools-manifest/malli->json-schema schema))
 
-(defn- register-ui-tool-for-resources!
-  [resource-keys tool]
+(mu/defn- register-ui-tool-for-resources!
+  [resource-keys :- [:sequential :keyword]
+   tool          :- [:map
+                     [:name :string]
+                     [:description :string]
+                     [:inputSchema :any]
+                     [:outputSchema {:optional true} :any]
+                     [:annotations {:optional true} :map]
+                     [:visibility {:optional true} [:sequential [:enum "model" "app"]]]
+                     [:response-fn fn?]]]
   (let [resources (mapv (fn [resource-key]
                           (if-let [uri (get-in @registry [:key->uri resource-key])]
                             (get-in @registry [:uri->resource uri])
@@ -208,17 +217,9 @@
     (swap! registry assoc-in [:tools (:name tool)] tool)
     tool))
 
-(mu/defn- register-ui-tool!
+(defn- register-ui-tool!
   "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas (not JSON Schema)."
-  [resource-key :- :keyword
-   tool         :- [:map
-                    [:name :string]
-                    [:description :string]
-                    [:inputSchema  :any]
-                    [:outputSchema {:optional true} :any]
-                    [:annotations  {:optional true} :map]
-                    [:visibility   {:optional true} [:sequential [:enum "model" "app"]]]
-                    [:response-fn fn?]]]
+  [resource-key tool]
   (register-ui-tool-for-resources! [resource-key] tool))
 
 (defn resource-scopes
@@ -327,21 +328,19 @@
 
 (defn- with-ui-credential
   [result session-id]
-  (cond-> result
-    (and session-id api/*current-user-id*)
-    (assoc :_meta {:com.metabase/mcp-apps
-                   {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
-                    :sessionId  session-id}})))
+  (if (and session-id api/*current-user-id*)
+    (assoc result :_meta {:com.metabase/mcp-apps
+                          {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
+                           :sessionId  session-id}})
+    {:content [{:type "text"
+                :text "MCP UI credential refresh requires an authenticated MCP session."}]
+     :isError true}))
 
 (defn redact-ui-credential
-  "Redact MCP UI credentials before values are persisted in traces."
-  [value]
-  (walk/postwalk
-   (fn [item]
-     (if (and (map? item) (map? (:_meta item)))
-       (update item :_meta dissoc :com.metabase/mcp-apps)
-       item))
-   value))
+  "Remove the private MCP UI credential from a tool result before tracing it."
+  [result]
+  (cond-> result
+    (map? (:_meta result)) (update :_meta dissoc :com.metabase/mcp-apps)))
 
 (register-ui-tool-for-resources!
  [:visualize-query :render-drill-through]

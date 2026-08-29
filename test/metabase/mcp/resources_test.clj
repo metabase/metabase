@@ -75,11 +75,36 @@
             (mcp.resources/read-resource "test://nope" #{::scope/unrestricted} {})))))
 
 (deftest redact-ui-credential-test
-  (testing "UI credentials are removed recursively without removing other metadata"
-    (is (= {:result {:_meta {:ui {:resourceUri "ui://metabase/example.html"}}}}
+  (testing "the top-level UI credential is removed without walking or removing other metadata"
+    (is (= {:_meta {:ui {:resourceUri "ui://metabase/example.html"}}}
            (mcp.resources/redact-ui-credential
-            {:result {:_meta {:ui                   {:resourceUri "ui://metabase/example.html"}
-                              :com.metabase/mcp-apps {:credential "secret"}}}})))))
+            {:_meta {:ui                   {:resourceUri "ui://metabase/example.html"}
+                     :com.metabase/mcp-apps {:credential "secret"}}}))))
+  (testing "a result without private metadata is unchanged"
+    (is (= {:content [{:type "text", :text "large result"}]}
+           (mcp.resources/redact-ui-credential
+            {:content [{:type "text", :text "large result"}]})))))
+
+(deftest register-ui-tool-validates-visibility-test
+  (testing "the multi-resource registration path rejects misspelled visibility values"
+    (is (thrown?
+         Exception
+         (#'mcp.resources/register-ui-tool-for-resources!
+          [:visualize-query :render-drill-through]
+          {:name        "invalid_visibility_test"
+           :description "Never registered"
+           :inputSchema [:map]
+           :visibility  ["apps"]
+           :response-fn (constantly {})})))))
+
+(deftest refresh-ui-credential-requires-authenticated-session-test
+  (testing "missing authentication context is returned as a tool error"
+    (is (= {:content [{:type "text"
+                       :text "MCP UI credential refresh requires an authenticated MCP session."}]
+            :isError true}
+           (#'mcp.resources/with-ui-credential
+            {:content [{:type "text", :text "MCP UI credential refreshed."}]}
+            nil)))))
 
 (deftest builtin-construct-query-resource-test
   (testing "the construct-query reference is registered as a public markdown resource"
@@ -171,4 +196,6 @@
                     "frontend_client/mcp_apps_template.html"
                     {:instanceUrl    "\"https://metabase.example.com/sub/path\""
                      :instanceUrlRaw site-url})]
-      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\"")))))
+      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\""))
+      (is (not (str/includes? html "uiCredential")))
+      (is (not (str/includes? html "mcpSessionId"))))))

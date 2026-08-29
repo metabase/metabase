@@ -164,7 +164,11 @@
                                         :mcp/scopes     token-scopes}
                    (let [response (dispatch-method id method params session-id token-scopes request-context)]
                      ;; record the materialized JSON-RPC result/error (the request's output)
-                     (ait/record! {:mcp/response (mcp.resources/redact-ui-credential response)})
+                     (when (ait/capture-active?)
+                       (ait/record! {:mcp/response
+                                     (cond-> response
+                                       (contains? response :result)
+                                       (update :result mcp.resources/redact-ui-credential))}))
                      response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
