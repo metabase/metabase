@@ -140,11 +140,34 @@
 
 (t2/define-before-update :model/OsiAiContext
   [row]
-  (let [changes (-> (t2/changes row) validate-data-source! validate-ai-context!)]
-    ;; `ai_context` is the only column an index doc is derived from, so a write that touches just the
-    ;; generation metadata (a regenerate request, a basis stamp) has nothing to reconcile.
-    (when (contains? changes :ai_context)
-      (nudge-index! (:entity_type row) (:entity_local_id row))))
+  (-> (t2/changes row) validate-data-source! validate-ai-context!)
+  row)
+
+(def ^:private ^:dynamic *update-changes*
+  "The columns an in-flight update is setting, published by the pipeline method below for the
+  after-update hook. Nil outside an update."
+  nil)
+
+;; The nudge cannot be issued from `before-update`: Toucan runs that hook *before* opening its own
+;; transaction, so outside a caller transaction `do-after-commit` fires the thunk immediately and the
+;; reconcile reads the row as it was before the UPDATE. `after-update` runs inside that transaction, but
+;; `t2/changes` there is a lazy row whose `contains?` answers for columns rather than changes — it would
+;; report every column as changed. So the changes map is published here, where it is accurate, and read
+;; from the hook, which has both the committed timing and the affected row.
+(methodical/defmethod t2.pipeline/transduce-query
+  [#_query-type :toucan.query-type/update.* #_model :model/OsiAiContext #_resolved-query :default]
+  [rf query-type model {:keys [changes] :as parsed-args} resolved-query]
+  (binding [*update-changes* changes]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-after-update :model/OsiAiContext
+  [row]
+  ;; `ai_context` is the only column an index doc is derived from, so a write that touches just the
+  ;; generation metadata (a regenerate request, a basis stamp) has nothing to reconcile. In steady state
+  ;; that is most of what the generation job writes, and every skipped nudge is an exclusive index lock
+  ;; not taken — one that would make concurrent library searches return nothing while it was held.
+  (when (contains? *update-changes* :ai_context)
+    (nudge-index! (:entity_type row) (:entity_local_id row)))
   row)
 
 ;;; Every write nudges the targeted index reconcile, rather than leaving each writer to remember. Serdes
@@ -160,15 +183,17 @@
 ;;; split across. (`doc_id` covers the entity and doc type as well as the text, so it dedupes an unchanged
 ;;; document, not the same text appearing on two entities.)
 ;;;
-;;; Updates nudge only when `ai_context` changed (see the before-update hook) — it is the one column an
-;;; index doc is derived from.
+;;; Updates nudge only when `ai_context` changed — it is the one column an index doc is derived from. The
+;;; pipeline method below publishes the changes map and the after-update hook reads it; see the comment
+;;; there for why neither the before-update hook nor `t2/changes` can answer that question.
 (t2/define-after-insert :model/OsiAiContext
   [row]
   (nudge-index! (:entity_type row) (:entity_local_id row))
   row)
 
-;; before-delete, since Toucan has no after-delete; the nudge defers to commit either way, so it never
-;; fires for a delete that rolls back.
+;; before-delete, since Toucan has no after-delete. Safe here, unlike the update path: Toucan opens its
+;; transaction *before* running before-delete hooks, so the nudge defers to commit and never fires for a
+;; delete that rolls back.
 (t2/define-before-delete :model/OsiAiContext
   [row]
   (nudge-index! (:entity_type row) (:entity_local_id row))
