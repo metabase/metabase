@@ -2,11 +2,21 @@
 
 set -euo pipefail
 
-# shellcheck source=.github/actions/create-backport/kondo-ratchets.sh
-source "$(dirname "$0")/kondo-ratchets.sh"
+action_dir=$(cd "$(dirname "$0")" && pwd)
+cut_release_workflow="$action_dir/../../workflows/cut-release-branch.yml"
 
+# shellcheck source=.github/actions/create-backport/kondo-ratchets.sh
+source "$action_dir/kondo-ratchets.sh"
+
+# Any editor launch fails the run, so a continuation that waits on an editor cannot pass.
+export GIT_EDITOR=false
+
+test_root=
+trap '[ -z "$test_root" ] || rm -rf -- "$test_root"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 test_root=$(mktemp -d)
-trap 'rm -rf -- "$test_root"' EXIT
 
 disabled_ratchets=';; Kondo ignore ratchets apply only to master; this release branch opts out.
 ;; The test and fixer recognize this explicit opt-out.
@@ -89,14 +99,22 @@ test_clean_ratchet_commit() (
   [ -z "$(git status --porcelain)" ] || fail "a clean ratchet backport left changes"
 )
 
-test_ratchet_only_conflict() (
-  local repo="$test_root/ratchet-conflict"
-  init_repo "$repo"
+# Sets up a release branch whose ratchets conflict with the feature commit, and prints that commit.
+conflicting_ratchet_commit() {
+  local repo=$1
   local commit
   commit=$(feature_commit "$repo" change_ratchets)
   git -C "$repo" checkout -q release
   printf '{:ignore-counts {:release 1}}\n' > "$repo/.clj-kondo/ratchets.edn"
   git -C "$repo" commit -qam "Release change"
+  echo "$commit"
+}
+
+test_ratchet_only_conflict() (
+  local repo="$test_root/ratchet-conflict"
+  init_repo "$repo"
+  local commit
+  commit=$(conflicting_ratchet_commit "$repo")
 
   cd "$repo"
   cherry_pick_backport "$commit"
@@ -105,6 +123,24 @@ test_ratchet_only_conflict() (
     "a ratchet-only conflict did not install the release opt-out"
   ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick was not completed"
   [ -z "$(git status --porcelain)" ] || fail "a resolved ratchet-only conflict left changes"
+)
+
+test_continuation_never_opens_an_editor() (
+  local repo="$test_root/editor"
+  init_repo "$repo"
+  local commit
+  commit=$(conflicting_ratchet_commit "$repo")
+
+  cd "$repo"
+  # Git only opens an editor for the continuation when stdin is a terminal, so run it on a pty. The
+  # exported GIT_EDITOR=false turns any editor launch into a failure.
+  python3 -c 'import pty, sys; sys.exit(pty.spawn(sys.argv[1:]) >> 8)' \
+    bash -c "source '$action_dir/kondo-ratchets.sh' && cherry_pick_backport '$commit'" >/dev/null ||
+    fail "the cherry-pick continuation opened an editor"
+
+  assert_eq "$disabled_ratchets" "$(cat .clj-kondo/ratchets.edn)" \
+    "the continuation did not install the release opt-out"
+  ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick was not completed"
 )
 
 test_other_conflict_remains_manual() (
@@ -127,6 +163,40 @@ test_other_conflict_remains_manual() (
   git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the manual cherry-pick state was lost"
 )
 
+test_release_cut_matches_backport() (
+  local cut_repo="$test_root/release-cut"
+  init_repo "$cut_repo"
+  cd "$cut_repo"
+  git checkout -qb release-x.99.x
+  write_disabled_ratchets
+  git add --sparse .clj-kondo/ratchets.edn
+  git commit -q --allow-empty --no-verify -m "Cut release-x.99.x branch"
+  git show HEAD:.clj-kondo/ratchets.edn > "$test_root/release-cut.edn"
+
+  local backport_repo="$test_root/release-cut-backport"
+  init_repo "$backport_repo"
+  local commit
+  commit=$(feature_commit "$backport_repo" change_ratchets)
+  git -C "$backport_repo" checkout -q release
+  cd "$backport_repo"
+  cherry_pick_backport "$commit"
+  git show HEAD:.clj-kondo/ratchets.edn > "$test_root/backport.edn"
+
+  cmp -s "$test_root/release-cut.edn" "$test_root/backport.edn" ||
+    fail "the release cut and the backport committed different opt-out files"
+  assert_eq "$disabled_ratchets" "$(cat "$test_root/release-cut.edn")" \
+    "the release cut did not install the expected opt-out"
+)
+
+test_cut_release_workflow_uses_the_producer() (
+  grep -Fq 'source .github/actions/create-backport/kondo-ratchets.sh' "$cut_release_workflow" ||
+    fail "the cut-release workflow does not source kondo-ratchets.sh"
+  grep -Fq 'write_disabled_ratchets' "$cut_release_workflow" ||
+    fail "the cut-release workflow does not call write_disabled_ratchets"
+  ! grep -Fq ':disabled' "$cut_release_workflow" ||
+    fail "the cut-release workflow carries its own copy of the opt-out"
+)
+
 test_invalid_commit_fails() (
   local repo="$test_root/invalid"
   init_repo "$repo"
@@ -145,6 +215,7 @@ test_manual_script_is_self_contained() (
   write_backport_script abc123
 
   bash -n backport.sh
+  grep -Fq 'write_disabled_ratchets ()' backport.sh || fail "manual script omitted write_disabled_ratchets"
   grep -Fq 'disable_ratchets ()' backport.sh || fail "manual script omitted disable_ratchets"
   grep -Fq 'cherry_pick_backport ()' backport.sh || fail "manual script omitted cherry_pick_backport"
   grep -Fq 'cherry_pick_backport abc123' backport.sh || fail "manual script omitted the commit"
@@ -153,7 +224,10 @@ test_manual_script_is_self_contained() (
 tests=(test_unrelated_commit
        test_clean_ratchet_commit
        test_ratchet_only_conflict
+       test_continuation_never_opens_an_editor
        test_other_conflict_remains_manual
+       test_release_cut_matches_backport
+       test_cut_release_workflow_uses_the_producer
        test_invalid_commit_fails
        test_manual_script_is_self_contained)
 
