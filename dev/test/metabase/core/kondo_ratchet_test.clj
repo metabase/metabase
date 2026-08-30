@@ -329,6 +329,17 @@
                               (kondo-ratchet/read-ratchets))
             (str "a config budget is always a plain count, so " (pr-str value) " is rejected"))))))
 
+(deftest read-ratchets-validates-field-shapes-test
+  (doseq [[field message] [[:ignore-counts  #":ignore-counts must be a map"]
+                           [:config-counts  #":config-counts must be a map"]
+                           [:comment-exempt #":comment-exempt must be a set"]]]
+    (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+                 (spit (pr-str {field []})))]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                              (kondo-ratchet/read-ratchets))
+            (str "an empty vector under " field " is not an empty policy map"))))))
+
 (deftest ^:parallel lowered-counts-test
   (is (= {:empty-unbounded :unlimited
           :lower           3
@@ -755,12 +766,25 @@
                                                         {:disabled true})))))
 
 (deftest ^:parallel merge-ratchets-malformed-stage-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"unsupported ratchet fields: #\{:extra\}"
-                        (kondo-ratchet/merge-ratchets
-                         {:ignore-counts {:a 1}}
-                         {:ignore-counts {:a 1}, :extra 1}
-                         {:ignore-counts {:a 1}}))))
+  (testing "an unknown field"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"unsupported ratchet fields: #\{:extra\}"
+                          (kondo-ratchet/merge-ratchets
+                           {:ignore-counts {:a 1}}
+                           {:ignore-counts {:a 1}, :extra 1}
+                           {:ignore-counts {:a 1}}))))
+  (testing "a malformed policy field is an error, never an empty set of policies"
+    (doseq [[stage message] [[{:config-counts []}          #":config-counts must be a map"]
+                             [{:comment-exempt []}         #":comment-exempt must be a set"]
+                             [{:ignore-counts {:a -1}}     #"non-negative integer or :unlimited"]
+                             [{:config-counts {:a :never}} #"expected a non-negative integer"]]
+            :let           [well-formed {:ignore-counts {:a 1}, :config-counts {:a 1}, :comment-exempt #{:a}}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                            (kondo-ratchet/merge-ratchets well-formed well-formed stage))
+          (str (pr-str stage) " as the incoming stage"))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                            (kondo-ratchet/merge-ratchets stage well-formed {:disabled true}))
+          (str (pr-str stage) " as the base, even when the incoming stage is disabled")))))
 
 (deftest ^:parallel change-report-test
   (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4, :free 2}

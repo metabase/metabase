@@ -186,6 +186,14 @@
                          :theirs {ratchets-file "{:ignore-counts {:a :sometimes}}\n"}}]
       (is (leaves-unresolved? dir))
       (is (str/includes? (output dir) ":a has invalid policy :sometimes"))))
+  (testing "a policy field of the wrong shape is not read as an empty set of policies"
+    (doseq [[stage message] [["{:ignore-counts {:a 3}, :config-counts []}\n"  ":config-counts must be a map"]
+                             ["{:ignore-counts {:a 3}, :comment-exempt []}\n" ":comment-exempt must be a set"]]]
+      (with-conflict [dir {:base   {ratchets-file base-ratchets}
+                           :ours   {ratchets-file stage}
+                           :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
+        (is (leaves-unresolved? dir) stage)
+        (is (str/includes? (output dir) message)))))
   (testing "an unknown field, even when the target is disabled"
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file "{:disabled true}\n"}
