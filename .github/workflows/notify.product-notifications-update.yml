@@ -2,11 +2,12 @@ name: Update Product Notifications
 
 on:
   push:
-    branches: # FIXME testing
+    branches:
       - master
     paths:
       - ".github/data/notifications.json"
   workflow_dispatch:
+  pull_request: # FIXME Testing
 
 permissions:
   id-token: write
