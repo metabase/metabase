@@ -52,22 +52,30 @@ jobs:
           java-version: 25
       - name: Shrink ignore limits
         run: ./bin/mage fix-kondo-ratchets
+      # Two independent outputs: `push` says the branch needs a new commit, `pr` names the open automation
+      # PR if there is one. Approval and auto-merge key on `pr` alone, so a run that failed after opening
+      # the PR is repaired by the next run instead of leaving the PR stranded.
       - name: Compare with master and the automation PR
         id: compare
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # `--head` matches by branch name, so a fork carrying a branch of the same name would match
+          # too, and its PR number must never reach the approval and auto-merge steps. Only an open PR
+          # from this repository counts; a branch left behind by a PR closed without merging is
+          # overwritten below and gets a new PR, so a closed one never stops the budgets from being lowered.
+          open_pr=$(gh pr list --head "$AUTOMATION_BRANCH" --base master --state open \
+            --json number,isCrossRepository,headRepositoryOwner \
+            --jq "[.[] | select(.isCrossRepository == false
+                                and .headRepositoryOwner.login == \"$GITHUB_REPOSITORY_OWNER\")][0].number // empty")
+          echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
+
           if git diff --quiet -- "$RATCHETS_FILE"; then
             echo "Ratchets are already tight on master $(git rev-parse --short HEAD)"
-            echo "deliver=false" >> "$GITHUB_OUTPUT"
+            [ -z "$open_pr" ] || echo "The open automation PR #$open_pr is re-approved below"
+            echo "push=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          # Only an open PR counts. A branch left behind by a PR closed without merging is overwritten
-          # below and gets a new PR, so a closed one never stops the budgets from being lowered.
-          open_pr=$(gh pr list --head "$AUTOMATION_BRANCH" --base master --state open \
-            --json number --jq '.[0].number // empty')
-          echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
 
           # The automation branch holds exactly one commit on top of some earlier master. Depth 2 fetches
           # that commit and its master parent, which is all the comparison below needs.
@@ -76,15 +84,15 @@ jobs:
              && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
              && git diff --quiet FETCH_HEAD^ HEAD -- "$RATCHETS_FILE"; then
             echo "The automation PR #$open_pr already carries this result; master has not touched $RATCHETS_FILE since"
-            echo "deliver=false" >> "$GITHUB_OUTPUT"
+            echo "push=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           git diff --stat -- "$RATCHETS_FILE"
-          echo "deliver=true" >> "$GITHUB_OUTPUT"
+          echo "push=true" >> "$GITHUB_OUTPUT"
       - name: Update the automation PR
         id: deliver
-        if: steps.compare.outputs.deliver == 'true'
+        if: steps.compare.outputs.push == 'true'
         # The automation user's token pushes the branch and owns the PR: a branch pushed with
         # GITHUB_TOKEN starts no pull_request workflows, so the PR would never get its checks. The commit
         # identity is the docs generator's, which merges with one approval under the unattributed-changes
@@ -119,17 +127,17 @@ jobs:
           echo "Opened the automation PR $url"
           echo "pr=${url##*/}" >> "$GITHUB_OUTPUT"
       - name: Approve the automation PR
-        if: steps.compare.outputs.deliver == 'true'
+        if: (steps.deliver.outputs.pr || steps.compare.outputs.pr) != ''
         # GITHUB_TOKEN reviews as github-actions[bot], a different identity from the automation user that
         # owns the PR, so the approval counts; a user cannot approve their own PR. Reviews survive a push,
         # so approving an already-open PR again is harmless and keeps a reopened one covered.
         uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
         with:
           github-token: ${{ github.token }}
-          number: ${{ steps.deliver.outputs.pr }}
+          number: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
       - name: Enable auto-merge
-        if: steps.compare.outputs.deliver == 'true'
+        if: (steps.deliver.outputs.pr || steps.compare.outputs.pr) != ''
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          PR_NUMBER: ${{ steps.deliver.outputs.pr }}
+          PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
         run: gh pr merge --squash --auto "$PR_NUMBER"
