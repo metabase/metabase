@@ -333,6 +333,12 @@
   edges appear in neither graph, so the number has to be visible or the bypass hides coupling by
   construction.
 
+  `:driver-test-triggering-namespaces` is how much code forces CI to run driver tests: the namespaces in
+  the modules that trigger after the exemptions apply. The module count of the same set is a ratchet, but
+  it moves when a triggering module is split or nested without a line of code changing hands, so the
+  namespace weighting is the number to track. Nesting the whole `-rest` layer under its parents moves the
+  module count and leaves this flat, which is the correct answer: the same files still trigger.
+
   `:max-file-test-namespaces` and `:max-file-deftests` are the worst-case selective-CI cost of touching
   a single source file — see [[max-test-blast-radius]]. They fall when a cut shrinks some module's
   dependent set, but ordinary test-writing inside the blob pushes them back up.
@@ -359,6 +365,7 @@
          scc-namespaces  (fn [component] (count (filter #(contains? component (:module %)) deps)))
          api-any-nses    (count (filter #(contains? any-modules (:module %)) deps))
          bypass-modules  (count (filter #(= :bypass (:model-imports %)) values))
+         triggering      (driver-test-triggering-modules deps config)
          cycles          (cycle-stats module-graph ns-counts)
          combined-cycles (cycle-stats combined-graph ns-counts)
          ;; components come back largest first, so the biggest cycle is the head of the list
@@ -377,6 +384,7 @@
               :cyclic-modules-with-model-imports         (:module-count combined-cycles)
               :cyclic-namespaces                         (:namespace-count cycles)
               :cyclic-namespaces-with-model-imports      (:namespace-count combined-cycles)
+              :driver-test-triggering-namespaces         (scc-namespaces triggering)
               :largest-api                               (reduce max 0 api-sizes)
               :largest-ns-scc                            (count ns-scc)
               :largest-scc-modules                       (count module-scc)

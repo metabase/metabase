@@ -7,6 +7,7 @@
  :cyclic-modules-with-model-imports 121
  :cyclic-namespaces 1479
  :cyclic-namespaces-with-model-imports 1559
+ :driver-test-triggering-namespaces 696
  :largest-api 31
  :largest-ns-scc 509
  :largest-scc-modules 104
