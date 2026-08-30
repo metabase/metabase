@@ -4,8 +4,7 @@
    [mage.util :as u])
   (:import
    (java.io BufferedReader File InputStreamReader)
-   (java.lang ProcessHandle)
-   (java.util.concurrent TimeUnit)))
+   (java.lang ProcessHandle)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,14 +23,31 @@
       (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
     result))
 
+(defn- wait-for-exit
+  "Wait up to `timeout-ms` for every process in `handles` to exit."
+  [handles timeout-ms]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (when (and (some #(.isAlive ^ProcessHandle %) handles)
+                 (< (System/currentTimeMillis) deadline))
+        (Thread/sleep 50)
+        (recur)))))
+
 (defn- kill-process!
-  "Stop `proc` and every process it started, so a timed-out command cannot keep running behind the caller."
+  "Stop `proc` and every process it started, so a timed-out command cannot keep running behind the caller.
+  The descendants are listed before anything is signalled, and each survivor is force-killed on its own,
+  so a child that ignores the first signal dies even after its parent has gone.
+  A child that had already outlived its parent is not reachable from the root handle."
   [^Process proc]
-  (let [handles (cons (.toHandle proc) (iterator-seq (.iterator (.descendants (.toHandle proc)))))]
+  (let [root    (.toHandle proc)
+        handles (cons root (iterator-seq (.iterator (.descendants root))))]
     (run! #(.destroy ^ProcessHandle %) handles)
-    (when-not (.waitFor proc 5 TimeUnit/SECONDS)
-      (run! #(.destroyForcibly ^ProcessHandle %) handles)
-      (.waitFor proc))))
+    (wait-for-exit handles 5000)
+    (run! (fn [^ProcessHandle handle]
+            (when (.isAlive handle)
+              (.destroyForcibly handle)))
+          handles)
+    (wait-for-exit handles 5000)))
 
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
@@ -100,7 +116,7 @@
   see its documentation for more information.
 
   Returns sequence of output lines."
-  {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)
