@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -12,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.store-api.core :as store-api]
-   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -244,7 +244,7 @@
       (http/put (migration-url external_id "/uploaded"))
       ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
       ;; after finishing the dump to h2 migration
-      (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
+      (app-db.quartz/set-jdbc-backend-properties! (mdb/db-type))
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
       (log/info "Migration finished")

@@ -29,13 +29,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -51,9 +51,9 @@
 ;; Install the queue node-affinity DriverDelegate when Quartz's JDBC properties are set. Registered at
 ;; load time, and here rather than in `metabase.mq.init`, because it is a property of *this* backend —
 ;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `task`,
-;; not the reverse, so `task.bootstrap` calls back into this rather than referencing `mq`.)
+;; not the reverse, so `app-db.quartz` calls back into this rather than referencing `mq`.)
 ;; install-delegate! falls back to the plain per-DB delegate if the affinity subclass can't be loaded.
-(task.bootstrap/register-jdbc-property-setter! quartz-affinity/install-delegate!)
+(app-db.quartz/register-jdbc-property-setter! quartz-affinity/install-delegate!)
 
 (def ^:private job-group
   "Quartz group every queue job/trigger lives in, so they're easy to isolate from the rest of the

@@ -1,4 +1,4 @@
-(ns metabase.server.auth-wrapper
+(ns metabase.sso.auth-wrapper
   (:require
    [metabase.api.util.handlers :as handlers]
    [metabase.config.core :as config]
@@ -18,7 +18,7 @@
     "/api"  {"/saml" not-enabled
              "/ee"   {"/sso" {"/oidc" not-enabled}}}}))
 
-;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api-routes.core/routes]] !!!
+;; This needs to be injected into [[metabase.server.routes/make-routes]] -- not [[metabase.api-routes.core/routes]] !!!
 (def routes
   "Ring routes for auth API endpoints.
    Slack Connect (OSS) is always available. Other SSO routes (SAML, JWT, OIDC) require EE."

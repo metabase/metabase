@@ -2,13 +2,13 @@
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.classloader.core :as classloader]
-   [metabase.task.bootstrap]))
+   [metabase.app-db.quartz]
+   [metabase.classloader.core :as classloader]))
 
 (set! *warn-on-reflection* true)
 
 (defn- set-jdbc-backend-properties! []
-  (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
+  (metabase.app-db.quartz/set-jdbc-backend-properties! (mdb.connection/db-type)))
 
 (def ^:dynamic *allow-temp-scheduling*
   "If true, the scheduler will be started temporarily for migrations that require it. If false, migrations that use `do-with-temp-schedule` will be a no-op."
