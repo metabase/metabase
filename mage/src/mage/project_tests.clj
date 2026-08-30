@@ -43,13 +43,20 @@
    "modules"    "module checks"
    "ratchets"   "ratchet checks"})
 
-(defn- run-suite! [sh suite]
+(defn- run-suite!
+  "Run one suite and return its exit code.
+  A command that cannot be started, or that `sh` times out, counts as a failure rather than aborting the run."
+  [sh suite]
   (println "Running" (suite-labels suite))
-  (:exit (case suite
-           "backend"    (run-clojure-checks! sh backend-check-namespaces)
-           "migrations" (run-migration-checks! sh)
-           "modules"    (run-clojure-checks! sh module-check-namespaces)
-           "ratchets"   (run-clojure-checks! sh ratchet-check-namespaces))))
+  (try
+    (:exit (case suite
+             "backend"    (run-clojure-checks! sh backend-check-namespaces)
+             "migrations" (run-migration-checks! sh)
+             "modules"    (run-clojure-checks! sh module-check-namespaces)
+             "ratchets"   (run-clojure-checks! sh ratchet-check-namespaces)))
+    (catch Exception e
+      (println "Could not run" (suite-labels suite) "--" (ex-message e))
+      1)))
 
 (defn run-suites!
   "Run every suite in `suites` with `sh`, a [[mage.shell/sh*]]-compatible function, and return the names of

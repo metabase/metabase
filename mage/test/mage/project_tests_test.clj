@@ -12,13 +12,16 @@
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in.
   Records each command in `calls`, prints one line for it, and exits with the code in `exits` at that
-  call's position, or 0 past the end."
+  call's position, or 0 past the end. An exception in `exits` is thrown instead, like a command that
+  never started."
   [calls exits]
   (fn [& args]
     (let [args (if (map? (first args)) (rest args) args)
           exit (get exits (count @calls) 0)]
       (swap! calls conj (vec args))
       (println "ran:" (str/join " " args))
+      (when (instance? Exception exit)
+        (throw exit))
       {:exit exit, :out [], :err []})))
 
 (defn- run-suites!
@@ -47,6 +50,16 @@
     (testing "each command's output appears exactly once"
       (is (= 1 (occurrences out "ran: clojure -M:test")))
       (is (= 1 (occurrences out "ran: clojure -X:dev:dev/test"))))))
+
+(deftest first-suite-exception-still-runs-second-suite-test
+  (let [{:keys [failed calls out]} (run-suites! [(ex-info "clojure: command not found" {})]
+                                                ["migrations" "backend"])]
+    (testing "the second suite still runs"
+      (is (= 2 (count calls))))
+    (testing "the suite that could not run is reported once, as a failure"
+      (is (= ["migrations"] failed))
+      (is (= 1 (occurrences out "Could not run migration checks -- clojure: command not found")))
+      (is (str/includes? out "Failed: migration checks")))))
 
 (deftest second-suite-failure-test
   (let [{:keys [failed calls]} (run-suites! [0 1] ["migrations" "backend"])]
