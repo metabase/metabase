@@ -45,6 +45,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: master
+          # The persisted GITHUB_TOKEN header would override the automation token in the push URL and
+          # get the force-push rejected. Nothing here needs it: the repo is public, so the fetch of the
+          # automation branch is anonymous, and every gh call carries its own token.
+          persist-credentials: false
       - name: Set up Java for cold dependency resolution
         uses: actions/setup-java@v5.2.0
         with:
