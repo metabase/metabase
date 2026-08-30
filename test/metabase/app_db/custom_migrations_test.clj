@@ -2886,6 +2886,35 @@
             (is (= "https://already.example" (raw "map-tile-server-url")))
             (is (= "Metabase" (raw "site-name")))))))))
 
+(deftest encrypt-setter-none-settings-test
+  ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
+  (testing "known problematic :setter :none settings are in the migration list"
+    (doseq [k ["enable-query-caching" "enable-nested-queries" "setup-token" "instance-creation" "token-features"]]
+      (testing k
+        (is (some #{k} @#'custom-migrations/encrypted-setter-none-settings-v58)))))
+  (testing "v58.2026-08-30T00:00:00 : plaintext rows of :setter :none settings are encrypted at rest, others untouched"
+    (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
+      (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
+        (let [insert-setting! (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
+              raw-setting     (fn [k] (t2/select-one-fn :value :setting :key k))
+              encrypted-value (encryption/maybe-encrypt "2026-08-30T00:00:00Z")]
+          ;; legacy plaintext rows from when these settings were still admin toggles
+          (insert-setting! "enable-query-caching" "true")
+          (insert-setting! "enable-nested-queries" "false")
+          ;; a programmatically written row is already encrypted
+          (insert-setting! "instance-creation" encrypted-value)
+          ;; a settable setting is not this migration's business
+          (insert-setting! "site-name" "Metabase")
+          (migrate!)
+          (testing "a legacy plaintext row is encrypted and decrypts back"
+            (is (encryption/decryptable-string? (raw-setting "enable-query-caching")))
+            (is (= "true" (encryption/maybe-decrypt (raw-setting "enable-query-caching"))))
+            (is (= "false" (encryption/maybe-decrypt (raw-setting "enable-nested-queries")))))
+          (testing "an already-encrypted row is left unchanged"
+            (is (= encrypted-value (raw-setting "instance-creation"))))
+          (testing "a setting not in the list is left plaintext"
+            (is (= "Metabase" (raw-setting "site-name")))))))))
+
 (deftest fix-clickhouse-upload-db-schema-names-test
   (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
     (encryption-test/with-secret-key "fake-secret-key"
