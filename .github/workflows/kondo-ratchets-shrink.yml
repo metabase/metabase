@@ -16,8 +16,11 @@ on:
       - "bb.edn"
   workflow_dispatch:
 
+# pull-requests: read lets the compare step ask whether the automation PR is still open with the
+# default token; everything that writes uses the automation user's token in the last step.
 permissions:
   contents: read
+  pull-requests: read
 
 # Overlapping master pushes converge: the newest run cancels the older one, recomputes from the master it
 # checked out, and force-updates the automation branch, so the PR always reflects one master commit.
@@ -49,6 +52,8 @@ jobs:
         run: ./bin/mage fix-kondo-ratchets
       - name: Compare with master and the automation PR
         id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet -- "$RATCHETS_FILE"; then
             echo "Ratchets are already tight on master $(git rev-parse --short HEAD)"
@@ -56,12 +61,19 @@ jobs:
             exit 0
           fi
 
+          # Only an open PR counts. A branch left behind by a PR closed without merging is overwritten
+          # below and gets a new PR, so a closed one never stops the budgets from being lowered.
+          open_pr=$(gh pr list --head "$AUTOMATION_BRANCH" --base master --state open \
+            --json number --jq '.[0].number // empty')
+          echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
+
           # The automation branch holds exactly one commit on top of some earlier master. Depth 2 fetches
           # that commit and its master parent, which is all the comparison below needs.
-          if git fetch --quiet --depth=2 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
+          if [ -n "$open_pr" ] \
+             && git fetch --quiet --depth=2 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
              && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
              && git diff --quiet FETCH_HEAD^ HEAD -- "$RATCHETS_FILE"; then
-            echo "The automation PR already carries this result; master has not touched $RATCHETS_FILE since"
+            echo "The automation PR #$open_pr already carries this result; master has not touched $RATCHETS_FILE since"
             echo "deliver=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
