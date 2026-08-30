@@ -38,11 +38,11 @@
           deps))
 
 (defn- canonical-api-namespaces
-  "The conventional API namespaces for `module`, derived from its name."
-  [_config module]
-  (let [prefix (if (= (namespace module) "enterprise")
-                 (str "metabase-enterprise." (name module))
-                 (str "metabase." (name module)))]
+  "The default API namespaces for `module`, derived from its effective `:ns-prefix` so that
+  explicit-prefix modules like `actions.rest` (prefix `metabase.actions-rest`) get
+  `metabase.actions-rest.api` rather than a name-derived guess."
+  [config module]
+  (let [prefix (deps-graph/module-ns-prefix config module)]
     (into (sorted-set)
           (map (fn [suffix]
                  (symbol (str prefix "." suffix))))
@@ -85,6 +85,13 @@
                   (max 0))]
       (nth sorted-values idx))))
 
+(defn- top-level-module?
+  "True if `m` has no parent module. A dotted child (`lib.schema`) and an `enterprise/x` whose OSS `x`
+  is declared both have parents; a standalone `enterprise/x` (no OSS counterpart) is top-level. Uses
+  the same `module-parent` resolution as the ratchet count, so the two agree."
+  [declared-modules m]
+  (nil? (deps-graph/module-parent declared-modules m)))
+
 (defn- file-loc
   "Line count of source `filename`, or 0 if it can't be read (e.g. synthetic filenames in tests)."
   [filename]
@@ -113,7 +120,8 @@
 (defn- build-graph-context
   "Build all shared intermediate data structures needed by both per-module and repo-level metrics."
   [deps config]
-  (let [modules'                 (modules deps config)
+  (let [prefix->mod              (deps-graph/build-prefix->module config)
+        modules'                 (modules deps config)
         direct-deps-graph        (merge (zipmap modules' (repeat (sorted-set)))
                                         (deps-graph/module-dependencies deps))
         module->paths            (into (sorted-map)
@@ -139,12 +147,13 @@
         module->relevant-test-files (into (sorted-map)
                                           (map (fn [module]
                                                  [module (deps-graph/source-filenames->relevant-test-filenames
-                                                          deps (get module->sources module))]))
+                                                          deps config prefix->mod (get module->sources module))]))
                                           modules')
         all-test-files           (into (sorted-set) (mapcat val) module->relevant-test-files)
         sccs                     (deps-graph/strongly-connected-components direct-deps-graph)
         module->scc              (into {} (for [component sccs, m component] [m component]))]
-    {:modules                  modules'
+    {:prefix->mod              prefix->mod
+     :modules                  modules'
      :direct-deps-graph        direct-deps-graph
      :module->paths            module->paths
      :transitive-deps-graph    transitive-deps-graph
@@ -162,7 +171,8 @@
   [deps config {:keys [modules direct-deps-graph module->paths transitive-deps-graph
                        direct-dependents-graph transitive-dependents module->nses module->sources
                        module->relevant-test-files sccs module->scc]}]
-  (let [largest-cycle (largest-cyclic-component direct-deps-graph sccs)]
+  (let [largest-cycle    (largest-cyclic-component direct-deps-graph sccs)
+        declared-modules (set (keys config))]
     (into []
           (map (fn [module]
                  (let [direct-deps               (get direct-deps-graph module)
@@ -195,6 +205,7 @@
                        reachable-namespace-count (reduce + 0 (map #(count (get module->nses %)) transitive-deps))]
                    (ordered-map/ordered-map
                     :module module
+                    :top-level? (top-level-module? declared-modules module)
                     :dependencies
                     (ordered-map/ordered-map
                      :direct-count (count direct-deps)
@@ -241,14 +252,16 @@
 (defn metrics
   "Per-module dependency, cycle, boundary, size, and blast-radius metrics, grouped by concern."
   ([]
-   (metrics (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (metrics (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (metrics* deps config (build-graph-context deps config))))
 
 (defn repo-metrics
   "Repository-wide summaries derived from [[metrics]]."
   ([]
-   (repo-metrics (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (repo-metrics (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (let [ctx                         (build-graph-context deps config)
          module-metrics              (metrics* deps config ctx)
@@ -291,6 +304,7 @@
       :graph
       (ordered-map/ordered-map
        :module-count module-count
+       :top-level-module-count (count (filter :top-level? module-metrics))
        :edge-count edge-count
        :mean-out-degree (safe-ratio edge-count module-count)
        :max-in-degree (reduce max 0 in-degrees)
@@ -339,9 +353,11 @@
 (defn csv
   "Write [[metrics]] as CSV to `*out*`."
   ([]
-   (csv (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (csv (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (let [paths [[:module]
+                [:top-level?]
                 [:dependencies :direct-count]
                 [:dependencies :transitive-count]
                 [:dependencies :reachable-namespace-count]
@@ -381,11 +397,11 @@
   (deps-graph/kondo-config))
 
 (defn deps
-  "Scan source dependencies."
+  "Scan source dependencies using the config's effective namespace prefixes."
   ([]
    (deps (config)))
-  ([_config]
-   (deps-graph/dependencies)))
+  ([config]
+   (deps-graph/dependencies (deps-graph/build-prefix->module config))))
 
 (defn churn-weighted-blast-radius
   "Churn-weighted selective-CI cost: replay the last `days` days of commits (default 90) and, per commit,
@@ -398,7 +414,7 @@
    (let [modules      (modules deps config)
          graph        (merge (zipmap modules (repeat #{}))
                              (deps-graph/module-dependencies deps))
-         module->tests (module-scc/module->test-files modules)
+         module->tests (module-scc/module->test-files config modules)
          file->module (into {} (map (juxt :filename :module)) deps)
          commits      (module-scc/commit-file-lists days)]
      (module-scc/expected-tests-per-commit graph module->tests file->module commits))))

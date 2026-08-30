@@ -220,9 +220,9 @@
 (defn module->test-files
   "Map of module → set of its test files, via the same filesystem mapping the selective-CI helpers use.
   ([[dev.deps-graph/module->test-files]] is private; this is dev tooling, so we go through the var.)"
-  [modules]
+  [config modules]
   (into (sorted-map)
-        (map (fn [m] [m (#'deps-graph/module->test-files m)]))
+        (map (fn [m] [m (#'deps-graph/module->test-files config m)]))
         modules))
 
 ;;;; ------------------------------------------------------------------------------------------------
@@ -384,7 +384,9 @@
            :num-commits-skipped (- (count commits) (count counts)))))
 
 (comment
-  (def deps*    (deps-graph/dependencies))
+  (def config*  (deps-graph/kondo-config))
+  (def prefix*  (deps-graph/build-prefix->module config*))
+  (def deps*    (deps-graph/dependencies prefix*))
   (def graph*   (deps-graph/module-dependencies deps*))
 
   (dissoc (scc-summary graph*) :largest-scc-members)
@@ -392,7 +394,7 @@
   (take 10 (node-cut-impacts graph*))
   (take 10 (edge-cut-impacts graph*))
 
-  (def m->tests* (module->test-files (sort (into (set (keys graph*)) (mapcat val) graph*))))
+  (def m->tests* (module->test-files config* (sort (into (set (keys graph*)) (mapcat val) graph*))))
   ;; sanity check: on the unmodified graph the median should be pegged at ~the full test-file count
   (dissoc (predicted-test-blast-radius graph* m->tests*) :per-module)
   ;; predicted payoff of the best carve candidate

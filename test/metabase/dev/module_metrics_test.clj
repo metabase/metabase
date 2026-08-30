@@ -84,7 +84,7 @@
 
 (deftest ^:parallel metrics-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
-                              (fn [_deps source-filenames]
+                              (fn [_deps _config _prefix->mod source-filenames]
                                 (relevant-test-files source-filenames))]
     (let [metrics           (module-metrics/metrics deps config)
           metrics-by-module (into {} (map (juxt :module identity)) metrics)]
@@ -102,7 +102,8 @@
                (select-keys (get metrics-by-module 'c)
                             [:dependencies :dependents :cycles :blast-radius]))))
       (testing "config and graph metrics stay available alongside the blast radius counts"
-        (is (= {:dependencies {:direct-count                 2
+        (is (= {:top-level?    true
+                :dependencies {:direct-count                 2
                                :transitive-count             2
                                :reachable-namespace-count    2
                                :max-depth                    1}
@@ -119,7 +120,8 @@
                 :blast-radius {:source-file-count            3
                                :test-file-count              2}}
                (select-keys (get metrics-by-module 'a)
-                            [:dependencies
+                            [:top-level?
+                             :dependencies
                              :dependents
                              :size
                              :api
@@ -128,9 +130,10 @@
 
 (deftest ^:parallel repo-metrics-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
-                              (fn [_deps source-filenames]
+                              (fn [_deps _config _prefix->mod source-filenames]
                                 (relevant-test-files source-filenames))]
     (is (= {:graph         {:module-count                            4
+                            :top-level-module-count                  4
                             :edge-count                              5
                             :mean-out-degree                         1.25
                             :max-in-degree                           3
@@ -163,6 +166,7 @@
 (deftest ^:parallel empty-repo-metrics-test
   (let [metrics (module-metrics/repo-metrics [] {})]
     (is (= {:module-count                0
+            :top-level-module-count      0
             :edge-count                  0
             :mean-out-degree             0.0
             :max-in-degree               0
@@ -177,9 +181,25 @@
            (get-in metrics [:size :namespaces-per-module])))
     (is (= 0.0 (get-in metrics [:blast-radius :mean-test-files-per-source-file])))))
 
+(deftest ^:parallel top-level-classification-test
+  (testing "top-level? follows module-parent: dotted children and OSS-parented enterprise modules are
+            nested, but a standalone enterprise module (no OSS counterpart) is top-level"
+    (let [deps   [{:namespace 'metabase.base.core       :filename "src/metabase/base/core.clj"          :module 'base :deps []}
+                  {:namespace 'metabase.base.child.core :filename "src/metabase/base/child/core.clj"    :module 'base.child :deps []}
+                  {:namespace 'metabase-enterprise.base.core :filename "enterprise/backend/src/metabase_enterprise/base/core.clj" :module 'enterprise/base :deps []}
+                  {:namespace 'metabase-enterprise.lonely.core :filename "enterprise/backend/src/metabase_enterprise/lonely/core.clj" :module 'enterprise/lonely :deps []}]
+          config {'base            {:api #{'metabase.base.core} :module-exports #{'base.child}}
+                  'base.child      {:api #{'metabase.base.child.core}}
+                  'enterprise/base {:api #{'metabase-enterprise.base.core}}
+                  'enterprise/lonely {:api #{'metabase-enterprise.lonely.core}}}
+          by-mod (into {} (map (juxt :module :top-level?)) (module-metrics/metrics deps config))]
+      (is (= {'base true, 'base.child false, 'enterprise/base false, 'enterprise/lonely true}
+             by-mod))
+      (is (= 2 (:top-level-module-count (:graph (module-metrics/repo-metrics deps config))))))))
+
 (deftest ^:parallel csv-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
-                              (fn [_deps source-filenames]
+                              (fn [_deps _config _prefix->mod source-filenames]
                                 (relevant-test-files source-filenames))]
     (let [header (first (str/split-lines (with-out-str (module-metrics/csv deps config))))]
       (is (str/includes? header "dependencies.direct-count"))

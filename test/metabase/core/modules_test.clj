@@ -39,13 +39,55 @@
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
 (deftest all-modules-have-teams-test
-  (testing "All modules should have a valid :team owner"
-    (let [teams (teams)]
-      (doseq [[module config] (modules-config)]
+  (testing "All modules should have a valid effective :team owner"
+    (let [teams  (teams)
+          config (dev.deps-graph/expanded-kondo-config (modules-config))]
+      (doseq [[module config] config]
         (testing (format "\n'%s' module" module)
           (is (or (contains? teams (:team config))
                   (contains? teams-to-reassign (:team config)))
               "Should have a valid :team key"))))))
+
+(deftest ^:parallel expanded-kondo-config-test
+  (let [config {'parent               {:team "Parent"}
+                'parent.child         {:ns-prefix "metabase.legacy-child"}
+                'parent.child.leaf    {:team "Leaf"}
+                'enterprise/parent    {}
+                'enterprise/standalone {:team "Enterprise"}}
+        expanded (dev.deps-graph/expanded-kondo-config config)]
+    (testing "children inherit team ownership from the closest configured ancestor"
+      (is (= "Parent" (get-in expanded ['parent.child :team])))
+      (is (= 'parent (dev.deps-graph/module-team-source config 'parent.child))))
+    (testing "an explicit child team overrides its ancestors"
+      (is (= "Leaf" (get-in expanded ['parent.child.leaf :team])))
+      (is (= 'parent.child.leaf (dev.deps-graph/module-team-source config 'parent.child.leaf))))
+    (testing "declared enterprise companions inherit from their OSS parent"
+      (is (= "Parent" (get-in expanded ['enterprise/parent :team])))
+      (is (= 'parent (dev.deps-graph/module-team-source config 'enterprise/parent))))
+    (testing "standalone enterprise modules keep their own ownership"
+      (is (= "Enterprise" (get-in expanded ['enterprise/standalone :team])))
+      (is (= 'enterprise/standalone
+             (dev.deps-graph/module-team-source config 'enterprise/standalone))))
+    (testing "config-only defaults are materialized"
+      (is (= "metabase.legacy-child" (get-in expanded ['parent.child :ns-prefix])))
+      (is (= '#{metabase.legacy-child.api metabase.legacy-child.core metabase.legacy-child.init}
+             (get-in expanded ['parent.child :api])))
+      (is (= #{} (get-in expanded ['parent.child :uses])))
+      (is (= #{} (get-in expanded ['parent.child :friends])))
+      (is (= '#{enterprise/parent} (get-in expanded ['parent :module-exports])))))
+  (testing "wildcards expand to their effective config and source-aware values"
+    (let [config   {'caller        {:uses :any}
+                    'parent        {:module-exports #{'parent.open}}
+                    'parent.hidden {}
+                    'parent.open   {}
+                    'public        {:api :any}}
+          deps     [{:module 'public :namespace 'metabase.public.alpha}
+                    {:module 'public :namespace 'metabase.public.beta}]
+          expanded (dev.deps-graph/expanded-kondo-config config deps)]
+      (is (= '#{parent parent.open public}
+             (get-in expanded ['caller :uses])))
+      (is (= '#{metabase.public.alpha metabase.public.beta}
+             (get-in expanded ['public :api]))))))
 
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
@@ -147,11 +189,16 @@
 (deftest modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
-    (let [deps     (dev.deps-graph/dependencies)
-          actual   (dev.deps-graph/kondo-config)
-          expected (dev.deps-graph/generate-config deps actual)
-          modules  (set/union (set (keys expected))
-                              (set (keys actual)))]
+    ;; Compute dependencies with awareness of the declared modules and their
+    ;; `:ns-prefix`es, so nested modules (e.g. `lib.schema` as a child of
+    ;; `lib`, or `lib.be` with an explicit :ns-prefix "metabase.lib-be")
+    ;; resolve via longest-prefix matching at segment boundaries.
+    (let [actual      (dev.deps-graph/kondo-config)
+          prefix->mod (dev.deps-graph/build-prefix->module actual)
+          deps        (dev.deps-graph/dependencies prefix->mod)
+          expected    (dev.deps-graph/generate-config deps actual)
+          modules     (set/union (set (keys expected))
+                                 (set (keys actual)))]
       (doseq [module modules
               :let   [_ (testing (format "Remove %s" (pr-str module))
                           (is (seq (get expected module))))]
@@ -176,6 +223,191 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
+(defn- declared-modules-set
+  "Set of declared module symbols from the kondo config (the outer keys)."
+  [config]
+  (set (keys config)))
+
+(defn- in-subtree?
+  "True if `m` is `root` or one of its descendants. Honors the `enterprise/X`
+  shorthand when `declared` is provided."
+  [declared root m]
+  (or (= root m)
+      (boolean (some #(= root %) (dev.deps-graph/module-ancestor-chain declared m)))))
+
+(defn- top-level-oss-module?
+  "True if `m` is a top-level OSS module symbol — no namespace part and a
+  name with no dots. Mirror of `hooks.common.modules/top-level-oss-module?`."
+  [m]
+  (and (nil? (namespace m))
+       (not (str/includes? (name m) "."))))
+
+(defn- open-children*
+  "Mirror of `hooks.common.modules/open-children`. Returns the `:module-exports` set
+  for `parent` including the auto-opened `enterprise/X` counterpart when
+  `parent` is a top-level OSS module with a declared EE counterpart."
+  [config parent]
+  (let [explicit (set (get-in config [parent :module-exports]))
+        ee-child (when (top-level-oss-module? parent)
+                   (let [candidate (symbol "enterprise" (name parent))]
+                     (when (contains? config candidate)
+                       candidate)))]
+    (cond-> explicit
+      ee-child (conj ee-child))))
+
+(defn- visibility-root
+  "The module whose subtree `target` is private to, or `nil` if `target` may be
+  named from anywhere. Walk up from `target` to the nearest ancestor that does
+  NOT `:module-exports` the module below it on the path; `nil` means the chain
+  reached top-level unobstructed. Mirror of the `visibility-root` helper in the
+  kondo hook."
+  [config target]
+  (let [declared (declared-modules-set config)]
+    (loop [m target]
+      (when-let [p (dev.deps-graph/module-parent declared m)]
+        (if (contains? (open-children* config p) m)
+          (recur p)
+          p)))))
+
+(defn- externally-referenceable?
+  "True if `target` may be named in the `:uses` of any module at all, wherever
+  it sits in the tree. Equivalent to: every ancestor in the chain from target
+  up to top-level is `:module-exports`ed by its parent (and the top-level
+  ancestor is implicitly externally referenceable) — i.e. `target` has no
+  `visibility-root`. Mirror of the `externally-visible?` helper in the kondo
+  hook."
+  [config target]
+  (nil? (visibility-root config target)))
+
+(defn- can-be-named-by?
+  "True if `caller` is permitted to put `target` in its `:uses` declaration
+  under the strict module model. Permitted iff:
+    - `target` is externally referenceable (top-level OR `:module-exports`ed all
+      the way from the root), OR
+    - `caller` is inside the subtree of `target`'s `visibility-root` — the
+      nearest ancestor that keeps `target` private. Note this is the *nearest*
+      such ancestor, not the top-level one: sharing a top-level ancestor is not
+      on its own enough to name a deeply-private module.
+
+  Uses the declared-modules set (from the config) so that the `enterprise/X`
+  shorthand is honored: `enterprise/X` is treated as a child of the OSS
+  module `X` when `X` is declared.
+
+  Mirror of `namable-from?` in `.clj-kondo/src/hooks/common/modules.clj`; the
+  two are meant to agree."
+  [config caller target]
+  (let [declared (declared-modules-set config)]
+    (or (= caller target)
+        (externally-referenceable? config target)
+        (in-subtree? declared (visibility-root config target) caller))))
+
+(deftest ^:parallel uses-references-must-be-namable-test
+  (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
+                "allowed to name. A nested module is namable from the subtree of the nearest "
+                "ancestor that does not `:module-exports` it; outside that subtree it is namable "
+                "only if it is externally referenceable (top-level OR `:module-exports`ed by "
+                "every ancestor from the root).")
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [[caller cfg] config
+              :let          [uses (:uses cfg)]
+              :when         (set? uses)
+              target        uses
+              ;; Skip references to modules that aren't actually declared
+              ;; (these will be caught by the staleness test as a separate
+              ;; concern; here we only check naming validity for declared
+              ;; targets).
+              :when         (contains? config target)]
+        (testing (format "\n[%s :uses %s]" (pr-str caller) (pr-str target))
+          (is (can-be-named-by? config caller target)
+              (format
+               (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
+                    "%s is private to the %s subtree, and %s is outside it. Either: (a) move %s "
+                    "into that subtree, or (b) widen %s's visibility by adding it to its parent's "
+                    ":module-exports set (and recursively up, as far as it needs to go).")
+               caller target target
+               target (visibility-root config target) caller
+               caller target)))))))
+
+(deftest ^:parallel can-be-named-by?-test
+  (testing (str "Naming scope is the subtree of the nearest ancestor that does not export the "
+                "module below it on the path — not the whole top-level subtree. Mirrors "
+                "`namable-from?` in the kondo hook; the two must agree.")
+    (let [config {'outer        {}
+                  'outer.a      {}
+                  'outer.a.leaf {}
+                  'outer.a.sib  {}
+                  'outer.b      {}
+                  'outer.b.deep {}
+                  'unrelated    {}}]
+      (testing "top-level modules are namable from anywhere"
+        (is (true? (can-be-named-by? config 'unrelated 'outer))))
+      (testing "an unopened leaf is namable only from its nearest non-exporting ancestor's subtree"
+        (is (true?  (can-be-named-by? config 'outer.a 'outer.a.leaf)))
+        (is (true?  (can-be-named-by? config 'outer.a.sib 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'outer 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'outer.b 'outer.a.leaf))
+            "sharing the top-level module `outer` is not enough")
+        (is (false? (can-be-named-by? config 'outer.b.deep 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'unrelated 'outer.a.leaf))))
+      (testing "exporting the leaf widens the scope to the whole `outer` subtree, but no further"
+        (let [config (assoc-in config ['outer.a :module-exports] #{'outer.a.leaf})]
+          (is (true?  (can-be-named-by? config 'outer 'outer.a.leaf)))
+          (is (true?  (can-be-named-by? config 'outer.b.deep 'outer.a.leaf)))
+          (is (false? (can-be-named-by? config 'unrelated 'outer.a.leaf)))))
+      (testing "exporting the whole chain makes the leaf namable from anywhere"
+        (let [config (-> config
+                         (assoc-in ['outer.a :module-exports] #{'outer.a.leaf})
+                         (assoc-in ['outer :module-exports] #{'outer.a}))]
+          (is (true? (can-be-named-by? config 'unrelated 'outer.a.leaf))))))))
+
+(deftest ^:parallel ns-prefix-uniqueness-test
+  (testing (str "Every module has a unique effective :ns-prefix (explicit via :ns-prefix "
+                "config key or derived from the module name). Two modules sharing the same "
+                "prefix would create ambiguity in namespace→module resolution, so this test "
+                "enforces uniqueness across the whole config including implicit defaults.")
+    (let [config           (dev.deps-graph/kondo-config)
+          effective-prefix (fn [m]
+                             (or (get-in config [m :ns-prefix])
+                                 (dev.deps-graph/default-ns-prefix m)))
+          by-prefix        (group-by effective-prefix (keys config))]
+      (doseq [[prefix modules] by-prefix
+              :when            (> (count modules) 1)]
+        (testing (format "\nprefix %s is claimed by multiple modules: %s"
+                         (pr-str prefix)
+                         (pr-str (sort modules)))
+          (is (= 1 (count modules))
+              (format "Modules %s share :ns-prefix %s. Either give them distinct explicit :ns-prefix values, or rename one so its default prefix doesn't collide."
+                      (pr-str (sort modules))
+                      (pr-str prefix))))))))
+
+(deftest ^:parallel nested-modules-have-declared-parents-test
+  (testing "Every syntactically nested module has a declared direct parent"
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)]
+      (doseq [module declared
+              :let   [parent (dev.deps-graph/module-parent declared module)]
+              :when  parent]
+        (testing (format "\n%s is nested under %s" module parent)
+          (is (contains? declared parent)
+              (format "Declare parent module %s before declaring nested module %s."
+                      parent
+                      module)))))))
+
+(deftest ^:parallel module-exports-are-declared-direct-children-test
+  (testing "Every :module-exports entry names a declared direct child"
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)]
+      (doseq [[parent module-config] config
+              child                  (:module-exports module-config)]
+        (testing (format "\n[%s :module-exports %s]" parent child)
+          (is (contains? declared child)
+              (format "Exported child %s is not a declared module." child))
+          (is (= parent (dev.deps-graph/module-parent declared child))
+              (format "%s may only export direct children; %s has parent %s."
+                      parent
+                      child
+                      (dev.deps-graph/module-parent declared child))))))))
+
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys use the values understood by the linter"
     (doseq [[module config] (dev.deps-graph/kondo-config)]
@@ -190,7 +422,13 @@
             ":uses must be omitted, a set, or :any")
         (is (or (nil? (:friends config))
                 (set? (:friends config)))
-            ":friends must be a set when present")))))
+            ":friends must be a set when present")
+        (is (or (nil? (:module-exports config))
+                (set? (:module-exports config)))
+            ":module-exports must be a set when present")
+        (is (or (nil? (:ns-prefix config))
+                (string? (:ns-prefix config)))
+            ":ns-prefix must be a string when present")))))
 
 (deftest ^:parallel module-boundary-debt-matches-ratchets-test
   (testing "Module boundary anti-pattern counts match their exact ratchets"
@@ -215,7 +453,7 @@
   exactly: PR CI checks out the merge preview with master, so scan-derived keys (SCC sizes, namespace
   counts, test blast) legitimately differ from any branch's committed baseline whenever master moves.
   They are still synced into module-stats.edn for PR-diff visibility."
-  [:largest-api :module-count :total-api])
+  [:largest-api :module-count :module-exports :ns-prefix-overrides :parent-team-mismatches :total-api])
 
 (deftest ^:parallel module-boundary-stats-match-committed-test
   (testing (str "Config-derived module surface stats match module-stats.edn. Unlike the ratchets these\n"
@@ -236,7 +474,7 @@
                 "must be dropped — the set is a ratchet (:driver-test-exempt-modules) and may only shrink.")
     (let [config    (dev.deps-graph/kondo-config)
           declared  (set (keys config))
-          deps      (dev.deps-graph/dependencies)
+          deps      (dev.deps-graph/dependencies (dev.deps-graph/build-prefix->module config))
           full      (dev.deps-graph/full-dependencies deps)
           ;; mirrors the trigger set of mage.modules/driver-deps-affected?:
           ;; the union of default-modules-which-trigger-drivers and modules-triggering-cloud-drivers.
@@ -264,13 +502,13 @@
                         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))
 
 (deftest ^:parallel legacy-rest-module-debt-test
-  (testing "-rest module symbols count as debt"
+  (testing "Only deprecated -rest module symbols count as debt; hyphenated namespace prefixes remain valid"
     (is (= 2
            (:legacy-rest-modules
             (dev.deps-graph/module-boundary-debt
              []
              {'actions-rest          {}
-              'actions               {}
+              'actions.rest          {:ns-prefix "metabase.actions-rest"}
               'enterprise/users-rest {}}))))))
 
 ;;;; Classpath / namespace convention
@@ -402,14 +640,18 @@
                     ee-namespace-prefix))))))
 
 (defn- rest-module?
-  "True for deprecated `-rest` module symbols."
+  "True for canonical nested `.rest` modules and deprecated `-rest` compatibility symbols."
   [module]
-  (str/ends-with? (str module) "-rest"))
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-rest")
+        (str/ends-with? module-name ".rest"))))
 
 (defn- routes-module?
   "True for route aggregators, which are allowed to assemble REST routes."
   [module]
-  (str/ends-with? (str module) "-routes"))
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-routes")
+        (str/ends-with? module-name ".routes"))))
 
 (defn- core-module?
   "True for OSS and EE core initializer modules."
@@ -422,9 +664,12 @@
   ((some-fn rest-module? routes-module? core-module?) module))
 
 (deftest ^:parallel rest-module-recognition-test
+  ;; Deprecated symbols must remain recognizable until they are removed, or they would bypass the guard.
   (are [module] (rest-module? module)
     'queries-rest
-    'enterprise/queries-rest)
+    'queries.rest
+    'enterprise/queries-rest
+    'enterprise/queries.rest)
   (is (not (rest-module? 'queries))))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
@@ -437,7 +682,7 @@
                 used-module
                 module
                 used-module
-                (symbol (str/replace (str used-module) #"-rest$" ""))))))
+                (symbol (str/replace (str used-module) #"(?:-rest|\.rest)$" ""))))))
 
 ;;;; Model boundary tests
 
