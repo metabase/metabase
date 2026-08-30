@@ -10,7 +10,8 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,6 +38,17 @@
           (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
                                   linter (pr-str policy))
                           {:linter linter, :policy policy}))))
+      (when-not (map? (:config-counts ratchets))
+        (throw (ex-info ":config-counts must be a map of linter budgets"
+                        {:config-counts (:config-counts ratchets)})))
+      (doseq [[linter budget] (:config-counts ratchets)]
+        (when-not (and (integer? budget) (not (neg? budget)))
+          (throw (ex-info (format "%s has invalid config budget %s; expected a non-negative integer"
+                                  linter (pr-str budget))
+                          {:linter linter, :budget budget}))))
+      (when-not (set? (:comment-exempt ratchets))
+        (throw (ex-info ":comment-exempt must be a set of linters"
+                        {:comment-exempt (:comment-exempt ratchets)})))
       ratchets)))
 
 (defn disabled?
@@ -45,6 +57,117 @@
    (disabled? (read-ratchets)))
   ([ratchets]
    (true? (:disabled ratchets))))
+
+(def ^:private deps-file
+  "deps.edn")
+
+(def ^:private kondo-config-source
+  "Source file of clj-kondo's default config, on the classpath once the clj-kondo jar is."
+  "clj_kondo/impl/config.clj")
+
+(defn- pinned-kondo-version
+  "The clj-kondo version the `:kondo` alias in [[deps-file]] lints with."
+  []
+  (or (get-in (edn/read-string (slurp deps-file))
+              [:aliases :kondo :replace-deps 'clj-kondo/clj-kondo :mvn/version])
+      (throw (ex-info (str "no clj-kondo pin under the :kondo alias in " deps-file) {:file deps-file}))))
+
+(defn- kondo-config-resource
+  "URL of [[kondo-config-source]]. The JVM `:dev` alias already has the jar; babashka adds the pinned
+  version to its classpath on demand, resolving through the same Maven cache the JVM uses."
+  []
+  (or (io/resource kondo-config-source)
+      (when (System/getProperty "babashka.version")
+        ((requiring-resolve 'babashka.deps/add-deps)
+         {:deps {'clj-kondo/clj-kondo {:mvn/version (pinned-kondo-version)}}})
+        (io/resource kondo-config-source))
+      (throw (ex-info (str kondo-config-source " is not on the classpath; add the clj-kondo dependency")
+                      {:resource kondo-config-source}))))
+
+(defn builtin-linters
+  "Names of every linter clj-kondo ships, read from the `default-config` literal in the pinned jar.
+  Reading the source rather than loading the namespace keeps this babashka-compatible."
+  []
+  (binding [*read-eval* false]
+    (with-open [r (java.io.PushbackReader. (io/reader (kondo-config-resource)))]
+      (loop []
+        (let [form (read {:eof ::eof} r)]
+          (cond
+            (= form ::eof)
+            (throw (ex-info (str "default-config not found in " kondo-config-source) {}))
+
+            (and (seq? form) (= 'def (first form)) (= 'default-config (second form)))
+            ;; the value is a quoted literal, so the def reads as (def default-config (quote {...}))
+            (set (keys (:linters (second (nth form 2)))))
+
+            :else
+            (recur)))))))
+
+(def ^:private kondo-config-dir
+  ".clj-kondo")
+
+;; kondo writes these itself; neither is hand-maintained config
+(def ^:private kondo-managed-dirs
+  #{".cache" "inline-configs"})
+
+(defn- linters-map-keys
+  "Keys of every `:linters` map nested anywhere in `config`, so scoped linters under `:config-in-ns`,
+  `:config-in-call`, and library configs count too."
+  [config]
+  (let [found (atom #{})]
+    (walk/prewalk (fn [x]
+                    (when (and (map? x) (map? (:linters x)))
+                      (swap! found into (keys (:linters x))))
+                    x)
+                  config)
+    @found))
+
+(defn repository-linters
+  "Names of every linter configured in an `.edn` file under `dir` (default: `.clj-kondo`), which is how
+  the repository's own hook linters get a level. Kondo-managed directories are skipped."
+  ([]
+   (repository-linters kondo-config-dir))
+  ([dir]
+   (let [managed? (fn [^java.io.File f]
+                    (some kondo-managed-dirs (str/split (.getPath f) #"/")))]
+     (into #{}
+           (comp (filter (fn [^java.io.File f]
+                           (and (.isFile f)
+                                (str/ends-with? (.getName f) ".edn")
+                                (not (managed? f)))))
+                 (mapcat (fn [^java.io.File f]
+                           (linters-map-keys (edn/read-string (slurp f))))))
+           (file-seq (io/file dir))))))
+
+(def external-linters
+  "Diagnostics from tools other than kondo that ignores still name, plus `:all` for the vector-less form."
+  #{:all :clojure-lsp/unused-public-var})
+
+(defn known-linters
+  "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
+  []
+  (into (builtin-linters) cat [(repository-linters) external-linters]))
+
+(defn unknown-linters
+  "Policy keys in `ratchets` that are not in `known`, sorted."
+  [{:keys [ignore-counts config-counts comment-exempt]} known]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (remove known)
+        (concat (keys ignore-counts) (keys config-counts) comment-exempt)))
+
+(defn validate-linters!
+  "Throw one error naming every policy key in `ratchets` that is not a known linter."
+  [ratchets known]
+  (let [unknown (unknown-linters ratchets known)]
+    (when (seq unknown)
+      (throw (ex-info (format "%s names %d unknown linter%s: %s -- policies must name a kondo built-in, a linter configured under %s, or one of %s"
+                              *ratchets-file*
+                              (count unknown)
+                              (if (= 1 (count unknown)) "" "s")
+                              (str/join ", " unknown)
+                              kondo-config-dir
+                              (str/join ", " (sort-by str external-linters)))
+                      {:unknown (vec unknown)})))))
 
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
@@ -452,6 +575,7 @@
 
 (defn fix!
   "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
+  Refuses to touch a file whose policies name an unknown linter; they are never removed automatically.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it,
   and makes an unlimited linter bounded.
   Prints the [[change-report]], or `unchanged` on a no-op.
@@ -462,7 +586,8 @@
    (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
-       (let [occurrences   (scan)
+       (let [_             (validate-linters! ratchets (known-linters))
+             occurrences   (scan)
              seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
              actual        (actual-counts occurrences)
              config-actual (config-suppressions)
@@ -495,8 +620,8 @@
              " to fix the formatting")]))))
 
 (defn check
-  "Fail the babashka task when inline ignores exceed a bounded policy or the ratchets file is not normalized.
-  Only an explicit `{:disabled true}` opts out of enforcement."
+  "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
+  or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement."
   []
   (let [file (io/file *ratchets-file*)]
     (cond
@@ -510,6 +635,13 @@
 
       :else
       (let [ratchets    (read-ratchets)
+            _           (try
+                          (validate-linters! ratchets (known-linters))
+                          (catch clojure.lang.ExceptionInfo e
+                            (println (ex-message e))
+                            (throw (ex-info (ex-message e)
+                                            (assoc (ex-data e) :babashka/exit 1, :mage/quiet true)
+                                            e))))
             occurrences (scan)
             lines       (check-report ratchets occurrences (slurp file))]
         (if (empty? lines)

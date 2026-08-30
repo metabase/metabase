@@ -77,6 +77,22 @@
       (is (= (str (.getPath budgets) " is disabled -- nothing to check\n")
              (with-out-str (kondo-ratchet/check)))))))
 
+(deftest check-unknown-linter-test
+  (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
+                          "kondo-ratchet-check-test"
+                          (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets (doto (io/file dir "ratchets.edn")
+                  (spit (kondo-ratchet/render {:ignore-counts  {:a 1, :bogus 1}
+                                               :config-counts  {}
+                                               :comment-exempt #{}})))]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/known-linters (constantly #{:a})]
+        (let [out (with-out-str
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"names 1 unknown linter: :bogus"
+                                          (kondo-ratchet/check))))]
+          (is (str/includes? out (str (.getPath budgets) " names 1 unknown linter: :bogus -- policies must name"))
+              "the message is printed for the task output, then the task exits nonzero"))))))
+
 (deftest check-missing-file-test
   (binding [kondo-ratchet/*ratchets-file* "target/does-not-exist/ratchets.edn"]
     (is (str/includes?

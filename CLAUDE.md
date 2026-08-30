@@ -89,7 +89,10 @@ Run the repository-level module, ratchet, and migration checks with:
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
 `.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is a policy: either an exact integer budget or
 `:unlimited` for a low-severity linter. Development enforces bounded policies exactly, while CI rejects new
-or over-budget ignores. Prefer fixing the underlying warning over adding an ignore.
+or over-budget ignores. Prefer fixing the underlying warning over adding an ignore. Every policy key must
+name a linter: one of the pinned clj-kondo version's built-ins, a linter configured under `.clj-kondo/`, or
+an external diagnostic such as `:clojure-lsp/unused-public-var`. The test and the fixer refuse unknown
+names rather than dropping them.
 
 The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
 with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still

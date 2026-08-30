@@ -95,6 +95,14 @@
       (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
              (slurp kondo-ratchet/*ratchets-file*))))))
 
+(deftest ^:parallel policies-name-known-linters-test
+  (when (ratchets-enabled?)
+    (testing (str "\nEvery policy key in " kondo-ratchet/*ratchets-file* " must name a linter: a clj-kondo built-in\n"
+                  "in the pinned version, a linter configured under .clj-kondo/, or an external diagnostic\n"
+                  "such as :clojure-lsp/unused-public-var. Unknown names are never removed automatically.")
+      (is (= #{}
+             (kondo-ratchet/unknown-linters (kondo-ratchet/read-ratchets) (kondo-ratchet/known-linters)))))))
+
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
 ;;;; ---------------------------------------------------------------------------
@@ -277,6 +285,15 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo message
                               (kondo-ratchet/read-ratchets)))))))
 
+(deftest read-ratchets-validates-config-counts-test
+  (doseq [value [-1 :unlimited "1"]]
+    (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+                 (spit (pr-str {:config-counts {:a value}})))]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a non-negative integer"
+                              (kondo-ratchet/read-ratchets))
+            (str "a config budget is always a plain count, so " (pr-str value) " is rejected"))))))
+
 (deftest ^:parallel lowered-counts-test
   (is (= {:lower       3
           :over-budget 5
@@ -354,7 +371,8 @@
         occurrences [{:file "f.clj", :line 1, :linters [:free]}
                      {:file "f.clj", :line 2, :linters [:free]}]]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/scan                (constantly occurrences)
+      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free})
+                    kondo-ratchet/scan                (constantly occurrences)
                     kondo-ratchet/config-suppressions (constantly {})]
         (is (= ["seeded :free at 2"
                 (str "wrote " (.getPath budgets))]
@@ -374,7 +392,8 @@
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/scan                (constantly occurrences)
+      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty})
+                    kondo-ratchet/scan                (constantly occurrences)
                     kondo-ratchet/config-suppressions (constantly {})]
         (is (= ["dropped :empty (no ignores left)"
                 (str "wrote " (.getPath budgets))]
@@ -396,6 +415,73 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"ratchets.edn is missing"
                             (kondo-ratchet/disabled?))))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Known-linter unit tests
+;;;; ---------------------------------------------------------------------------
+
+(deftest ^:parallel builtin-linters-test
+  (let [builtin (kondo-ratchet/builtin-linters)]
+    (is (every? builtin [:unused-binding :redundant-ignore :unresolved-namespace])
+        "the pinned jar's default config names kondo's own linters")
+    (is (not-any? builtin [:metabase/modules :unresolved-require])
+        "repository linters and made-up names are not built-ins")))
+
+(deftest ^:parallel repository-linters-test
+  (let [dir (.toFile (java.nio.file.Files/createTempDirectory
+                      "kondo-ratchet-linters-test"
+                      (make-array java.nio.file.attribute.FileAttribute 0)))]
+    (spit (io/file dir "config.edn")
+          (pr-str '{:linters      {:custom/top {:level :warning}}
+                    :config-in-ns {some.ns {:linters {:custom/scoped {:level :off}}}}
+                    :hooks        {:analyze-call {foo/bar hooks.foo/bar}}}))
+    (.mkdirs (io/file dir "some-lib" "some-lib"))
+    (spit (io/file dir "some-lib" "some-lib" "config.edn")
+          (pr-str '{:linters {:custom/lib {:level :error}}}))
+    (spit (io/file dir "not-config.txt") "{:linters {:custom/ignored {}}}")
+    (.mkdirs (io/file dir ".cache" "v1"))
+    (spit (io/file dir ".cache" "v1" "junk.edn") "<not edn>")
+    (.mkdirs (io/file dir "inline-configs" "some.ns.clj"))
+    (spit (io/file dir "inline-configs" "some.ns.clj" "config.edn") "{:linters <vector: []>}")
+    (is (= #{:custom/top :custom/scoped :custom/lib}
+           (kondo-ratchet/repository-linters (.getPath dir)))
+        "top-level and scoped :linters maps count, in nested directories too; kondo-managed directories
+         and non-edn files do not"))
+  (testing "the repository's own hook linters are found"
+    (is (contains? (kondo-ratchet/repository-linters) :metabase/modules))))
+
+(deftest ^:parallel known-linters-test
+  (let [known (kondo-ratchet/known-linters)]
+    (is (every? known [:unused-binding :metabase/modules :clojure-lsp/unused-public-var :all])
+        "built-ins, repository linters, external diagnostics, and the vector-less :all form")
+    (is (not (contains? known :unresolved-require))
+        "a linter that never existed stays unknown")))
+
+(deftest ^:parallel unknown-linters-test
+  (let [known #{:a :b :c}]
+    (is (= #{}
+           (kondo-ratchet/unknown-linters {:ignore-counts  {:a 1, :b :unlimited}
+                                           :config-counts  {:c 2}
+                                           :comment-exempt #{:a}}
+                                          known)))
+    (is (= #{:x/ignored :y-config :z-exempt}
+           (kondo-ratchet/unknown-linters {:ignore-counts  {:a 1, :x/ignored 1}
+                                           :config-counts  {:y-config 2}
+                                           :comment-exempt #{:z-exempt}}
+                                          known))
+        "each policy collection is checked")))
+
+(deftest validate-linters-test
+  (binding [kondo-ratchet/*ratchets-file* "r.edn"]
+    (is (nil? (kondo-ratchet/validate-linters! {:ignore-counts {:a 1}, :config-counts {}, :comment-exempt #{}}
+                                               #{:a})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"^r.edn names 3 unknown linters: :b, :c/d, :e -- policies must name"
+                          (kondo-ratchet/validate-linters! {:ignore-counts  {:e 1, :a 2}
+                                                            :config-counts  {:c/d 1}
+                                                            :comment-exempt #{:b}}
+                                                           #{:a}))
+        "one error lists every unknown name in order")))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Justification bookkeeping unit tests
