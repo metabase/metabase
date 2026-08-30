@@ -615,6 +615,12 @@
     (string? s) (-> (str/trim)
                     (str/replace #"/+$" ""))))
 
+(def ^:dynamic *openai-compatible-routing*
+  "A request-routing map pinned by callers that need a series of OpenAI-compatible embedding calls to
+  stay on one endpoint. The map contains credentials and must never be logged or persisted. Nil makes
+  ordinary production calls resolve the current settings as before."
+  nil)
+
 (defn- embedding-service-resolve-config!
   "Return the embedding endpoint config as `{:endpoint :api-key :instance-token? :network-policy-floor}`.
   Throw an ex-info with an `:error-code` when the settings cannot be used together.
@@ -666,40 +672,6 @@
                          :settings   ["ee-embedding-service-base-url"
                                       "ai-service-base-url"]}))))))
 
-(defmethod embedder-circuit-endpoint "ai-service" [_]
-  (:endpoint (embedding-service-resolve-config!)))
-
-(defn- ai-service-readiness
-  "Return `{:ready? true}` when [[embedding-service-resolve-config!]] accepts the current settings.
-  Otherwise return `{:ready? false}` with the refusal's `:message`, and any `:error-code` as `:reason`."
-  [_]
-  (try
-    (embedding-service-resolve-config!)
-    {:ready? true}
-    (catch clojure.lang.ExceptionInfo e
-      (let [reason (:error-code (ex-data e))]
-        (cond-> {:ready?  false
-                 :message (ex-message e)}
-          reason (assoc :reason reason))))))
-
-(defn- ai-service-get-embeddings-batch
-  [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [{:keys [endpoint api-key network-policy-floor instance-token?]} (embedding-service-resolve-config!)]
-    (openai-compatible-get-embeddings-batch
-     {:provider             "ai-service"
-      :endpoint             endpoint
-      :api-key              api-key
-      :model-name           model-name
-      :vector-dimensions    vector-dimensions
-      :texts                texts
-      :snowplow?            snowplow?
-      :record-tokens?       record-tokens?
-      :type                 type
-      :network-policy-floor network-policy-floor
-      :instance-token?      instance-token?})))
-
-;;;; OpenAI provider
-
 (defn- named-connection-key
   []
   (let [provider (semantic-settings/ee-embedding-provider)]
@@ -725,12 +697,78 @@
                       {:connection conn-key})))
     [(str base-url "/v1/embeddings") api-key]))
 
+(defn resolve-openai-compatible-routing!
+  "Resolve request routing for a built-in embedding provider, including its credential policy."
+  [{:keys [provider]}]
+  (case provider
+    "ai-service" (assoc (embedding-service-resolve-config!) :provider provider)
+    "openai" (let [connection-key (openai-connection-key)
+                    [endpoint api-key] (openai-resolve-config! connection-key)]
+                {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
+    nil))
+
+(defn- active-openai-compatible-routing!
+  ([embedding-model]
+   (active-openai-compatible-routing! embedding-model nil))
+  ([{:keys [provider] :as embedding-model} connection-key]
+   (if (and (= provider (:provider *openai-compatible-routing*))
+            (or (nil? connection-key) (= connection-key (:connection-key *openai-compatible-routing*))))
+     *openai-compatible-routing*
+     (if (and (= provider "openai") connection-key)
+       (let [[endpoint api-key] (openai-resolve-config! connection-key)]
+         {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
+       (resolve-openai-compatible-routing! embedding-model)))))
+
+
+(defmethod embedder-circuit-endpoint "ai-service" [_]
+  (:endpoint (active-openai-compatible-routing! {:provider "ai-service"})))
+
+(defn- ai-service-readiness
+  "Return `{:ready? true}` when [[embedding-service-resolve-config!]] accepts the current settings.
+  Otherwise return `{:ready? false}` with the refusal's `:message`, and any `:error-code` as `:reason`."
+  [_]
+  (try
+    (embedding-service-resolve-config!)
+    {:ready? true}
+    (catch clojure.lang.ExceptionInfo e
+      (let [reason (:error-code (ex-data e))]
+        (cond-> {:ready?  false
+                 :message (ex-message e)}
+          reason (assoc :reason reason))))))
+
+(defn- ai-service-get-embeddings-batch
+  [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
+  (let [{:keys [endpoint api-key network-policy-floor instance-token?]}
+        (active-openai-compatible-routing! {:provider "ai-service"})]
+    (openai-compatible-get-embeddings-batch
+     {:provider             "ai-service"
+      :endpoint             endpoint
+      :api-key              api-key
+      :model-name           model-name
+      :vector-dimensions    vector-dimensions
+      :texts                texts
+      :snowplow?            snowplow?
+      :record-tokens?       record-tokens?
+      :type                 type
+      :network-policy-floor network-policy-floor
+      :instance-token?      instance-token?})))
+
+;;;; OpenAI provider
+
+
+
+
+
+
+
+
+
 (defmethod embedder-circuit-endpoint "openai" [_]
-  (first (openai-resolve-config! (openai-connection-key))))
+  (:endpoint (active-openai-compatible-routing! {:provider "openai"})))
 
 (defn- openai-get-embeddings-batch
   [embedding-model texts {:keys [record-tokens? type connection-key]}]
-  (let [[endpoint api-key] (openai-resolve-config! (or connection-key (openai-connection-key)))]
+  (let [{:keys [endpoint api-key]} (active-openai-compatible-routing! embedding-model connection-key)]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
       :endpoint       endpoint

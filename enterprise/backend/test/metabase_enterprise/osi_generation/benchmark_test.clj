@@ -20,27 +20,60 @@
    [metabase-enterprise.osi-generation.benchmark.runner :as runner]
    [metabase-enterprise.osi-generation.generate :as generate]
    [metabase-enterprise.osi-generation.settings :as osi-generation.settings]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-   [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.search.semantic.embedding :as semantic.embedding]
+   [metabase-enterprise.search.semantic.settings :as semantic-settings]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
-   [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.entity-retrieval.spec :as spec]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.osi.ai-context.api :as osi-api]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(def ^:private endpoint-identity-opts
+  {:endpoint-identity-key "benchmark-test-endpoint-identity-key-0001"})
+
+(def ^:private live-generation-env-var
+  "MB_OSI_GENERATION_BENCHMARK_LIVE")
+
+(def ^:private endpoint-identity-key-env-var
+  "MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY")
+
+(defn- live-generation-opts
+  [getenv]
+  (when (= "true" (getenv live-generation-env-var))
+    (let [endpoint-identity-key (u/trimmed-string (getenv endpoint-identity-key-env-var))]
+      (when-not endpoint-identity-key
+        (throw (ex-info (str endpoint-identity-key-env-var
+                             " must be set when " live-generation-env-var "=true")
+                        {:reason  :missing-endpoint-identity-key
+                         :env-var endpoint-identity-key-env-var})))
+      {:out-dir              (str (System/getProperty "java.io.tmpdir")
+                                  "/osi-generation-benchmark")
+       :endpoint-identity-key endpoint-identity-key})))
+
+(defn- test-generation-connection
+  [model-ref]
+  {:connection-key (llm.provider/model-ref->connection-key model-ref)
+   :type           "anthropic"
+   :model          (llm.provider/model-ref->model model-ref)
+   :ai-proxy?      false
+   :routing        {:base-url (arms/endpoint-identity "https://api.anthropic.com"
+                                                      endpoint-identity-opts)}})
 
 ;;; -------------------------------------------------- Metrics ----------------------------------------------------
 
@@ -279,10 +312,10 @@
       (mt/with-dynamic-fn-redefs [runner/score-arm! (fn [_corpus arm _opts]
                                                       (swap! scored inc)
                                                       {:arm arm})]
-        (doseq [[what doctored] {"a subset of the entities"  (update c :entities (comp vec next))
-                                 "an edited entity"          (assoc-in c [:entities 0 :entity :description] "edited")
-                                 "a dropped query"           (update c :queries (comp vec next))
-                                 "an edited baseline"        (assoc-in c [:baseline :customers] {:synonyms ["x"]})}]
+        (doseq [[what doctored] {"a subset of the entities" (update c :entities (comp vec next))
+                                 "an edited entity"         (assoc-in c [:entities 0 :entity :description] "e")
+                                 "a dropped query"          (update c :queries (comp vec next))
+                                 "an edited baseline"       (assoc-in c [:baseline :customers] {:synonyms ["x"]})}]
           (testing what
             (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"differs from the corpus files"
                                           (runner/run-arm! doctored :none opts)))]
@@ -383,6 +416,40 @@
       #(is (= {:provider "mock" :model-name "m"}
               (#'runner/assert-model-artifact-identity! {:provider "mock" :model-name "m"}))))))
 
+(deftest run-arm-verifies-the-served-model-test
+  (testing "an arm verifies the served artifact itself, on both sides of the scoring"
+    ;; The comparison used to be the only caller that verified, so a standalone run scored whatever the
+    ;; mutable tag pointed at while its manifest reported the declared digest.
+    (let [declared "1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef"
+          other    "359d7dd4bcdab3d86b87d73a3b0a0e0d1c9f9b6a5e4d3c2b1a09f8e7d6c5b4a3"
+          served   (fn [digest] {:model-digest digest :runtime-version "0.11.0"})
+          c        (corpus/load-corpus)
+          opts     {:model (assoc declared-ollama-model :vector-dimensions 1024)}
+          scored   (atom 0)]
+      (mt/with-dynamic-fn-redefs [runner/score-arm! (fn [_corpus arm _opts]
+                                                      (swap! scored inc)
+                                                      {:arm arm})]
+        (testing "a tag repointed before the arm is caught before any scoring"
+          (with-ollama-serving (served other)
+            #(let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                           #"different artifact than the benchmark declared"
+                                           (runner/run-arm! c :none opts)))]
+               (is (= :model-artifact-drift (:reason (ex-data e))))))
+          (is (zero? @scored)))
+        (testing "a tag repointed while the arm ran fails the run instead of manifesting the declared digest"
+          (let [probes (atom 0)]
+            (mt/with-dynamic-fn-redefs [runner/ollama-artifact-identity
+                                        (fn [_] (served (if (= 1 (swap! probes inc)) declared other)))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"different artifact than the benchmark declared"
+                                    (runner/run-arm! c :none opts)))
+              (is (= 1 @scored) "the arm did run — the post-arm probe is what caught the drift")
+              (is (= 2 @probes) "the artifact is probed on both sides of the arm"))))
+        (testing "an artifact that never moved is scored"
+          (with-ollama-serving (served declared)
+            #(is (=? {:arm :none} (runner/run-arm! c :none opts))))
+          (is (= 2 @scored)))))))
+
 (deftest benchmark-query-refuses-unavailable-or-empty-retrieval-test
   (testing "availability is checked before calling the tool"
     (mt/with-dynamic-fn-redefs
@@ -406,10 +473,11 @@
                          (map (fn [{:keys [corpus-key]}] [corpus-key {:synonyms ["s"]}]))
                          (:entities c))
         pam        "prov/model"
-        metadata   {:corpus-hash       (corpus/corpus-hash c)
-                    :model-ref pam
-                    :generator-version  (generate/generator-version pam)
-                    :generation-code-hash (arms/generation-code-hash)}
+        metadata   {:corpus-hash          (corpus/corpus-hash c)
+                    :model-ref            pam
+                    :generator-version    (generate/generator-version pam)
+                    :generation-code-hash (arms/generation-code-hash)
+                    :connection           (test-generation-connection pam)}
         with-meta  (fn [overrides]
                      (assoc c
                             :generated-snapshot snapshot
@@ -418,10 +486,34 @@
       (is (nil? (#'runner/assert-snapshot-matches-corpus! (with-meta {})))))
     (testing "missing or incomplete metadata is rejected instead of silently scoring an unverifiable fixture"
       (doseq [invalid [(assoc c :generated-snapshot snapshot)
-                       (assoc (with-meta {}) :generated-snapshot-metadata (dissoc metadata :generator-version))]]
+                       (assoc (with-meta {}) :generated-snapshot-metadata (dissoc metadata :generator-version))
+                       (assoc (with-meta {}) :generated-snapshot-metadata (dissoc metadata :connection))
+                       (assoc-in (with-meta {}) [:generated-snapshot-metadata :connection :routing] {})
+                       (assoc-in (with-meta {})
+                                 [:generated-snapshot-metadata :connection]
+                                 {:connection-key "prov"
+                                  :type           "google"
+                                  :model          "model"
+                                  :ai-proxy?      false
+                                  :routing        {:base-url (arms/endpoint-identity
+                                                              "https://aiplatform.googleapis.com"
+                                                              endpoint-identity-opts)
+                                                   :location "global"}})]]
         (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"metadata must include"
                                       (#'runner/assert-snapshot-matches-corpus! invalid)))]
           (is (= :invalid-snapshot-metadata (:reason (ex-data e)))))))
+    (testing "plaintext-bearing extra fields are rejected and never copied to a manifest or error"
+      (doseq [injected [(assoc metadata :credentials "snapshot-secret")
+                        (assoc-in metadata [:connection :credentials] {:api-key "connection-secret"})
+                        (assoc-in metadata [:connection :routing :endpoint] "https://routing-secret.example")
+                        (assoc-in metadata [:connection :routing :base-url :credentials] "endpoint-secret")]]
+        (let [invalid (assoc c
+                             :generated-snapshot snapshot
+                             :generated-snapshot-metadata injected)
+              e       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"metadata must include"
+                                            (#'runner/assert-snapshot-matches-corpus! invalid)))]
+          (is (= {:reason :invalid-snapshot-metadata} (ex-data e)))
+          (is (not (str/includes? (pr-str (ex-data e)) "secret"))))))
     (testing "a snapshot captured from a different corpus is rejected by run-arm! before any index work"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"different corpus"
                                     (runner/run-arm! (with-meta {:corpus-hash "0000beef"}) :generated {})))]
@@ -467,8 +559,9 @@
     ;; Derived from the source tree rather than hard-coded: a new adapter has to be classified here
     ;; deliberately, instead of silently falling outside the hash the way `provider_util` once did.
     (let [sources     (set (var-get #'arms/generation-source-resources))
-          ;; Not part of the request path — a change to either cannot alter a captured context.
-          non-adapters #{"metabase/metabot/self/debug.clj"
+          ;; Catalog exposes capabilities to the UI; these files do not affect generation requests.
+          non-adapters #{"metabase/metabot/self/catalog.clj"
+                         "metabase/metabot/self/debug.clj"
                          "metabase/metabot/self/features.clj"}
           ;; Anchored on a known source file: resolving the bare directory can land in the test tree,
           ;; whichever copy the classpath offers first.
@@ -557,6 +650,68 @@
       (is (some? (:embedding-space-id (first @seen-models)))
           "the pinned model is resolved, so the index metadata row's NOT NULL embedding_space_id is satisfied")
       (is (= 1 (count (set @seen-provenance))) "every arm receives the same pre-run provenance"))))
+
+(deftest ^:synchronized comparison-pins-one-embedding-endpoint-test
+  (let [base-url-reads (atom 0)
+        seen-routing   (atom [])
+        provenance    {:corpus-sha {}, :git-state {:sha "abc", :dirty? false}}]
+    (mt/with-dynamic-fn-redefs
+      [semantic.db.datasource/pgvector-configured? (constantly true)
+       semantic-settings/openai-api-key             (constantly "secret-key")
+       semantic-settings/openai-api-base-url        (fn []
+                                                      (if (= 1 (swap! base-url-reads inc))
+                                                        "https://first.openai.example"
+                                                        "https://second.openai.example"))
+       runner/benchmark-provenance                   (constantly provenance)
+       runner/run-arm!                              (fn [_corpus _arm opts]
+                                                      (swap! seen-routing conj (:embedding-routing opts))
+                                                      {:summary {:holdout {:n 0}}})]
+      (runner/run-comparison! {:model {:provider          "openai"
+                                       :model-name        "text-embedding-3-small"
+                                       :vector-dimensions 1536}
+                               :endpoint-identity-key (:endpoint-identity-key endpoint-identity-opts)})
+      (is (= 1 @base-url-reads))
+      (is (= 1 (count (set @seen-routing))))
+      (is (= "https://first.openai.example/v1/embeddings"
+             (:endpoint (first @seen-routing)))))))
+
+(deftest ^:synchronized remote-embedding-endpoint-must-have-a-valid-identity-test
+  (testing "invalid routes and missing identity keys fail before scoring or embedding"
+    (let [corpus          (corpus/load-corpus)
+          scored          (atom 0)
+          embedding-calls (atom 0)
+          provenance      {:corpus-sha {}, :git-state {:sha "abc", :dirty? false}}
+          model           {:provider          "openai"
+                           :model-name        "text-embedding-3-small"
+                           :vector-dimensions 1536}
+          attempt         (fn [base-url opts]
+                            (mt/with-dynamic-fn-redefs
+                              [semantic-settings/openai-api-key      (constantly "secret-key")
+                               semantic-settings/openai-api-base-url (constantly base-url)
+                               semantic.embedding/get-embeddings-batch
+                               (fn [& _]
+                                 (swap! embedding-calls inc)
+                                 (throw (AssertionError. "must not embed")))
+                               runner/benchmark-provenance           (constantly provenance)
+                               runner/score-arm!                     (fn [& _]
+                                                                       (swap! scored inc)
+                                                                       (throw (AssertionError. "must not score")))]
+                              (try
+                                (runner/run-arm! corpus :none (merge {:model model} opts))
+                                nil
+                                (catch Exception e e))))]
+      (testing "an arbitrary URI scheme cannot collapse to <unparseable> and continue"
+        (let [error (attempt "sk-secret://embedding.internal" endpoint-identity-opts)]
+          (is (instance? clojure.lang.ExceptionInfo error))
+          (is (= :invalid-embedding-endpoint-identity (:reason (ex-data error))))
+          (is (= "<unparseable>" (:embedding-endpoint (ex-data error))))
+          (is (not (str/includes? (pr-str (ex-data error)) "sk-secret")))))
+      (testing "a missing or weak HMAC key cannot fall back to an unkeyed identity"
+        (let [error (attempt "https://embedding.internal" {:endpoint-identity-key "too-short"})]
+          (is (instance? clojure.lang.ExceptionInfo error))
+          (is (= :missing-endpoint-identity-key (:reason (ex-data error))))))
+      (is (zero? @scored))
+      (is (zero? @embedding-calls)))))
 
 (deftest ^:synchronized comparison-refuses-mid-run-provenance-drift-test
   (let [checks (atom 0)]
@@ -696,9 +851,16 @@
 
 (deftest ^:synchronized capture-pins-generator-identity-test
   (mt/with-premium-features #{:library :library-retrieval}
-    (let [c       (update (corpus/load-corpus) :entities (comp vec (partial take 2)))
-          out-dir (str (System/getProperty "java.io.tmpdir")
-                       "/osi-generation-benchmark-test-" (System/nanoTime))]
+    (let [c          (update (corpus/load-corpus) :entities (comp vec (partial take 2)))
+          out-dir    (str (System/getProperty "java.io.tmpdir")
+                          "/osi-generation-benchmark-test-" (System/nanoTime))
+          capture-opts (assoc endpoint-identity-opts :out-dir out-dir)
+          connection  (fn [model-ref]
+                        {:connection-key "prov"
+                         :type           "anthropic"
+                         :model          (llm.provider/model-ref->model model-ref)
+                         :credentials    {:api-key "test-key", :base-url "https://api.anthropic.com"}
+                         :ai-proxy?      false})]
       (corpus/with-corpus-library [ids c]
         (testing "the LLM config is resolved once and pinned: a mid-capture settings change cannot mix models"
           (let [seen          (atom [])
@@ -707,63 +869,68 @@
                                 (fn [] {:model-ref (str "prov/model-" (swap! n inc))
                                         :source             :metabot}))]
             (mt/with-dynamic-fn-redefs
-              [osi-generation.settings/llm-call-opts drifting-opts
+              [llm.provider/resolve-model-ref         connection
+               osi-generation.settings/llm-call-opts drifting-opts
                generate/generate-context (fn [_candidate]
                                            (let [pam (:model-ref (osi-generation.settings/llm-call-opts))]
                                              (swap! seen conj pam)
                                              {:ai_context        {:synonyms ["s"]}
                                               :generator-version (generate/generator-version pam)
                                               :usage             {:input-tokens 1, :output-tokens 1}}))]
-              (let [{:keys [metadata coverage]} (arms/capture-generated! c ids {:out-dir out-dir})]
+              (let [{:keys [metadata coverage]} (arms/capture-generated! c ids capture-opts)]
                 (is (= ["prov/model-1" "prov/model-1"] @seen)
                     "both generate calls saw the FIRST resolved config, not a re-resolved one")
-                (is (= {:model-ref "prov/model-1"
-                        :generator-version  (generate/generator-version "prov/model-1")
-                        :generation-code-hash (arms/generation-code-hash)
-                        :corpus-hash        (corpus/corpus-hash c)}
-                       metadata)
+                (is (=? {:model-ref            "prov/model-1"
+                         :generator-version    (generate/generator-version "prov/model-1")
+                         :generation-code-hash (arms/generation-code-hash)
+                         :corpus-hash          (corpus/corpus-hash c)}
+                        metadata)
                     "the artifact metadata is the pinned identity plus the corpus's content hash")
                 (is (:complete? coverage))))))
         (testing "same-day captures use distinct paths and preserve both artifacts"
           (mt/with-dynamic-fn-redefs
-            [osi-generation.settings/llm-call-opts (constantly {:model-ref "prov/model-stable"
-                                                                :source             :metabot})
+            [llm.provider/resolve-model-ref connection
+             osi-generation.settings/llm-call-opts (constantly {:model-ref "prov/model-stable"
+                                                                :source    :metabot})
              generate/generate-context (constantly {:ai_context        {:synonyms ["s"]}
                                                     :generator-version (generate/generator-version
                                                                         "prov/model-stable")
                                                     :usage             {:input-tokens 0, :output-tokens 0}})]
-            (let [first-capture  (arms/capture-generated! c ids {:out-dir out-dir})
-                  second-capture (arms/capture-generated! c ids {:out-dir out-dir})]
+            (let [first-capture  (arms/capture-generated! c ids capture-opts)
+                  second-capture (arms/capture-generated! c ids capture-opts)]
               (is (not= (:path first-capture) (:path second-capture)))
               (is (.exists (io/file (:path first-capture))))
               (is (.exists (io/file (:path second-capture)))))))
         (testing "a bounded REPL printer cannot truncate the snapshot"
           (mt/with-dynamic-fn-redefs
-            [osi-generation.settings/llm-call-opts
+            [llm.provider/resolve-model-ref connection
+             osi-generation.settings/llm-call-opts
              (constantly {:model-ref "prov/model-print-bounds" :source :metabot})
              generate/generate-context
              (constantly {:ai_context        {:synonyms ["first" "second"]}
                           :generator-version (generate/generator-version "prov/model-print-bounds")
                           :usage             {:input-tokens 0, :output-tokens 0}})]
             (let [capture  (binding [*print-length* 1, *print-level* 1]
-                             (arms/capture-generated! c ids {:out-dir out-dir}))
+                             (arms/capture-generated! c ids capture-opts))
                   artifact (edn/read-string (slurp (:path capture)))]
               (is (= (count (:entities c)) (count (:contexts artifact))))
               (is (= {:synonyms ["first" "second"]}
                      (get-in artifact [:contexts (-> c :entities first :corpus-key)]))))))
         (testing "a generator-version drifting mid-capture fails the capture instead of writing a mixed artifact"
           (mt/with-dynamic-fn-redefs
-            [osi-generation.settings/llm-call-opts (constantly {:model-ref "prov/model-x"
-                                                                :source             :metabot})
+            [llm.provider/resolve-model-ref connection
+             osi-generation.settings/llm-call-opts (constantly {:model-ref "prov/model-x"
+                                                                :source    :metabot})
              generate/generate-context (constantly {:ai_context        {:synonyms ["s"]}
                                                     :generator-version "v-drifted"
                                                     :usage             {:input-tokens 0, :output-tokens 0}})]
             (is (thrown-with-msg? Exception #"mid-capture"
-                                  (arms/capture-generated! c ids {:out-dir out-dir})))))
+                                  (arms/capture-generated! c ids capture-opts)))))
         (testing "a wrapped interruption aborts immediately and restores the thread flag"
           (let [calls (atom 0)
                 thrown (mt/with-dynamic-fn-redefs
-                         [osi-generation.settings/llm-call-opts
+                         [llm.provider/resolve-model-ref connection
+                          osi-generation.settings/llm-call-opts
                           (constantly {:model-ref "prov/model-interrupted" :source :metabot})
                           generate/generate-context
                           (fn [_]
@@ -771,7 +938,7 @@
                             (throw (ex-info "wrapped interruption" {}
                                             (InterruptedException. "cancelled"))))]
                          (try
-                           (arms/capture-generated! c ids {:out-dir out-dir})
+                           (arms/capture-generated! c ids capture-opts)
                            nil
                            (catch Exception e e)))
                 interrupted? (.isInterrupted (Thread/currentThread))]
@@ -783,7 +950,8 @@
         (testing "a wrapped fatal JVM error aborts before another paid request"
           (let [calls (atom 0)]
             (mt/with-dynamic-fn-redefs
-              [osi-generation.settings/llm-call-opts
+              [llm.provider/resolve-model-ref connection
+               osi-generation.settings/llm-call-opts
                (constantly {:model-ref "prov/model-fatal" :source :metabot})
                generate/generate-context
                (fn [_]
@@ -791,12 +959,13 @@
                  (throw (ex-info "response validation wrapper" {}
                                  (LinkageError. "fatal"))))]
               (is (thrown-with-msg? LinkageError #"fatal"
-                                    (arms/capture-generated! c ids {:out-dir out-dir})))
+                                    (arms/capture-generated! c ids capture-opts)))
               (is (= 1 @calls)))))
         (testing "generation provenance is pinned before paid work and rechecked before writing"
           (let [hash-calls (atom 0)]
             (mt/with-dynamic-fn-redefs
-              [arms/generation-code-hash
+              [llm.provider/resolve-model-ref connection
+               arms/generation-code-hash
                (fn [] (if (= 1 (swap! hash-calls inc)) "before" "after"))
                osi-generation.settings/llm-call-opts
                (constantly {:model-ref "prov/model-stable" :source :metabot})
@@ -805,7 +974,7 @@
                             :generator-version (generate/generator-version "prov/model-stable")
                             :usage             {:input-tokens 0, :output-tokens 0}})]
               (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"changed during capture"
-                                            (arms/capture-generated! c ids {:out-dir out-dir})))]
+                                            (arms/capture-generated! c ids capture-opts)))]
                 (is (= :capture-provenance-changed (:reason (ex-data e))))))))))))
 
 ;;; ---------------------------------------------- End-to-end smoke -----------------------------------------------
@@ -830,10 +999,11 @@
             generated (runner/run-arm! (assoc c
                                               :generated-snapshot snapshot
                                               :generated-snapshot-metadata
-                                              {:corpus-hash        (corpus/corpus-hash c)
-                                               :model-ref pam
-                                               :generator-version  (generate/generator-version pam)
-                                               :generation-code-hash (arms/generation-code-hash)})
+                                              {:corpus-hash          (corpus/corpus-hash c)
+                                               :model-ref            pam
+                                               :generator-version    (generate/generator-version pam)
+                                               :generation-code-hash (arms/generation-code-hash)
+                                               :connection           (test-generation-connection pam)})
                                        :generated opts)]
         (testing "each arm scores every query and reports its isolated index size"
           (is (=? {:summary {:queries n-queries}, :index {:documents pos?, :entities pos?}} none))
@@ -853,21 +1023,41 @@
 
 (deftest ^:synchronized live-generation-smoke-test
   (testing "capture-generated! runs the production generator end to end over one corpus entity"
-    ;; Real LLM calls, so double-gated: the OSI-generation provider must be configured AND
-    ;; MB_OSI_GENERATION_BENCHMARK_LIVE=true set explicitly — a plain local test run never spends
-    ;; tokens silently. CI never sets either.
-    (when (and (= "true" (System/getenv "MB_OSI_GENERATION_BENCHMARK_LIVE"))
-               (osi-generation.settings/osi-generation-llm-configured?))
-      (mt/with-premium-features #{:library :library-retrieval}
-        (let [c (update (corpus/load-corpus) :entities (comp vec (partial take 1)))]
-          (corpus/with-corpus-library [ids c]
-            (let [{:keys [path coverage errors]}
-                  (arms/capture-generated! c ids
-                                           {:out-dir (str (System/getProperty "java.io.tmpdir")
-                                                          "/osi-generation-benchmark")})]
-              (is (empty? errors))
-              (is (:complete? coverage))
-              (is (.exists (io/file path))))))))))
+    ;; Real LLM calls, so MB_OSI_GENERATION_BENCHMARK_LIVE=true must opt in explicitly. Once opted in,
+    ;; fail clearly unless both the provider and the secret endpoint-identity key are configured. A plain
+    ;; local test run never spends tokens silently, and CI never sets the opt-in.
+    (when-let [capture-opts (live-generation-opts #(System/getenv %))]
+      (is (osi-generation.settings/osi-generation-llm-configured?)
+          (str live-generation-env-var "=true requires a configured OSI-generation provider"))
+      (when (osi-generation.settings/osi-generation-llm-configured?)
+        (mt/with-premium-features #{:library :library-retrieval}
+          (let [c (update (corpus/load-corpus) :entities (comp vec (partial take 1)))]
+            (corpus/with-corpus-library [ids c]
+              (let [{:keys [path coverage errors]}
+                    (arms/capture-generated! c ids capture-opts)]
+                (is (empty? errors))
+                (is (:complete? coverage))
+                (is (.exists (io/file path)))))))))))
+
+(deftest ^:parallel live-generation-gate-test
+  (testing "ordinary test runs skip the paid live capture"
+    (is (nil? (live-generation-opts {}))))
+  (testing "explicit live opt-in requires the operator's endpoint identity key"
+    (let [error (try
+                  (live-generation-opts {live-generation-env-var "true"})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    e))]
+      (is (= {:reason  :missing-endpoint-identity-key
+              :env-var endpoint-identity-key-env-var}
+             (ex-data error)))
+      (is (str/includes? (ex-message error) endpoint-identity-key-env-var))))
+  (testing "the live artifact uses the trimmed operator-supplied secret, never a fixture key"
+    (let [secret "operator-controlled-endpoint-identity-key"
+          opts   (live-generation-opts {live-generation-env-var         "true"
+                                        endpoint-identity-key-env-var "  operator-controlled-endpoint-identity-key  "})]
+      (is (= secret (:endpoint-identity-key opts)))
+      (is (str/ends-with? (:out-dir opts) "/osi-generation-benchmark")))))
 
 (deftest ^:synchronized comparison-pins-the-query-prefix-test
   (let [seen  (atom [])
@@ -894,6 +1084,49 @@
           (runner/run-comparison! {:model {:provider "mock" :model-name "other" :vector-dimensions 4}})
           (is (= [""] (distinct @seen))))))))
 
+(deftest ^:synchronized explicit-query-prefix-still-prepares-model-and-routing-test
+  (testing "an explicit prefix does not bypass model resolution or endpoint pinning"
+    (mt/with-dynamic-fn-redefs
+      [semantic-settings/openai-api-key      (constantly "secret-key")
+       semantic-settings/openai-api-base-url (constantly "https://tenant-secret.openai.example/v2")]
+      (let [opts     (#'runner/prepared-opts {:model                 {:provider          "openai"
+                                                                      :model-name        "text-embedding-3-small"
+                                                                      :vector-dimensions 1536}
+                                              :query-prefix          "custom: "
+                                              :endpoint-identity-key (:endpoint-identity-key endpoint-identity-opts)})
+            opts     (assoc opts :benchmark-provenance {:corpus-sha {}
+                                                        :git-state  {:sha "abc", :dirty? false}})
+            manifest (runner/manifest (:model opts) :none opts (corpus/load-corpus))]
+        (is (= "custom: " (:query-prefix opts)))
+        (is (some? (get-in opts [:model :embedding-space-id])))
+        (is (= "https://tenant-secret.openai.example/v2/v1/embeddings"
+               (get-in opts [:embedding-routing :endpoint])))
+        (is (= (arms/endpoint-identity "https://tenant-secret.openai.example/v2/v1/embeddings"
+                                       endpoint-identity-opts)
+               (:embedding-endpoint opts)))
+        (is (= (:embedding-endpoint opts) (:embedding-endpoint manifest)))
+        (is (not (str/includes? (pr-str manifest) "tenant-secret")))
+        (is (not (str/includes? (pr-str manifest) "secret-key")))
+        (is (not (str/includes? (pr-str manifest) (:endpoint-identity-key endpoint-identity-opts)))
+            "the HMAC key is operational input, never provenance output")))))
+
+(deftest ^:synchronized run-arm-pins-the-query-prefix-test
+  (testing "a standalone arm embeds its queries under the prefix its manifest reports"
+    ;; Only the comparison used to install the binding, so a direct run read the site-wide setting afresh for
+    ;; every query while recording nil.
+    (let [model {:provider "mock" :model-name "pinned" :vector-dimensions 4}
+          seen  (atom nil)]
+      (mt/with-dynamic-fn-redefs
+        [runner/score-arm! (fn [_corpus arm opts]
+                             (reset! seen {:prefixed   (semantic.embedding/prefix-search-query model "revenue")
+                                           :manifested (:query-prefix opts)})
+                             {:arm arm})]
+        (mt/with-temporary-setting-values [ee-embedding-query-prefix "site-wide: "]
+          (runner/run-arm! (corpus/load-corpus) :none {:model model})
+          (is (= {:prefixed "revenue" :manifested ""} @seen)
+              "an instance-wide override describes a model this run did not pin, so it is ignored — and the
+               manifest says so"))))))
+
 (deftest ^:synchronized manifest-records-the-embedding-space-test
   (testing "two models alike in provider, name and dimensions are still told apart by embedding space"
     (let [resolved (semantic.embedding/resolve-model {:provider          "mock"
@@ -916,8 +1149,162 @@
             "a pinned scope answers with the one resolution")
         (is (zero? @calls)
             "nothing re-resolves inside the pin — the underlying resolver is never reached"))
-      (testing "an unresolvable reference is left unpinned rather than failing the capture early"
+      (testing "the helper remains a no-op when there is no connection to pin"
         (is (nil? (#'arms/with-pinned-connection nil (fn [] nil))))))))
+
+(deftest ^:synchronized capture-refuses-an-unresolved-model-reference-test
+  (testing "capture fails before generation or artifact creation when its selected connection does not exist"
+    (let [out-dir          (str (System/getProperty "java.io.tmpdir")
+                                "/osi-generation-benchmark-unresolved-" (System/nanoTime))
+          resolution-calls (atom 0)
+          generation-calls (atom 0)
+          model-ref        "missing/model"
+          error            (mt/with-dynamic-fn-redefs
+                             [osi-generation.settings/llm-call-opts
+                              (constantly {:model-ref model-ref, :source :metabot})
+                              llm.provider/resolve-model-ref (fn [_]
+                                                               (when (< 1 (swap! resolution-calls inc))
+                                                                 {:connection-key "missing"
+                                                                  :type           "anthropic"
+                                                                  :model          "model"
+                                                                  :credentials    {:api-key "appeared-later"}
+                                                                  :ai-proxy?      false}))
+                              generate/generate-context      (fn [_]
+                                                               (swap! generation-calls inc)
+                                                               (throw (ex-info "must not generate" {})))]
+                             (try
+                               (arms/capture-generated! (corpus/load-corpus) {} {:out-dir out-dir})
+                               nil
+                               (catch Exception e e)))]
+      (is (instance? clojure.lang.ExceptionInfo error))
+      (is (= "Cannot capture generated contexts: model reference does not resolve" (ex-message error)))
+      (is (= {:reason :unresolved-model-ref, :model-ref model-ref} (ex-data error)))
+      (is (= 1 @resolution-calls))
+      (is (zero? @generation-calls))
+      (is (not (.exists (io/file out-dir)))))))
+
+(deftest ^:synchronized capture-refuses-an-unkeyed-endpoint-before-generation-test
+  (testing "a capture cannot create an offline verifier for secrets carried in its endpoint URL"
+    (let [out-dir          (str (System/getProperty "java.io.tmpdir")
+                                "/osi-generation-benchmark-unkeyed-" (System/nanoTime))
+          generation-calls (atom 0)
+          error            (mt/with-dynamic-fn-redefs
+                             [osi-generation.settings/llm-call-opts
+                              (constantly {:model-ref "vllm/model", :source :metabot})
+                              llm.provider/resolve-model-ref
+                              (constantly {:connection-key "vllm"
+                                           :type           "vllm"
+                                           :model          "model"
+                                           :ai-proxy?      false
+                                           :credentials    {:base-url "https://secret.internal/v1"}})
+                              generate/generate-context
+                              (fn [_]
+                                (swap! generation-calls inc)
+                                (throw (AssertionError. "must not generate")))]
+                             (try
+                               (arms/capture-generated! (corpus/load-corpus) {}
+                                                        {:out-dir                 out-dir
+                                                         :endpoint-identity-key "too-short"})
+                               nil
+                               (catch Exception e e)))]
+      (is (instance? clojure.lang.ExceptionInfo error))
+      (is (= :missing-endpoint-identity-key (:reason (ex-data error))))
+      (is (zero? @generation-calls))
+      (is (not (.exists (io/file out-dir)))))))
+
+(deftest ^:synchronized capture-refuses-an-invalid-endpoint-before-generation-test
+  (testing "an unparseable routing identity cannot produce a snapshot that scoring would later reject"
+    (let [out-dir          (str (System/getProperty "java.io.tmpdir")
+                                "/osi-generation-benchmark-invalid-endpoint-" (System/nanoTime))
+          generation-calls (atom 0)
+          error            (mt/with-dynamic-fn-redefs
+                             [osi-generation.settings/llm-call-opts
+                              (constantly {:model-ref "vllm/model", :source :metabot})
+                              llm.provider/resolve-model-ref
+                              (constantly {:connection-key "vllm"
+                                           :type           "vllm"
+                                           :model          "model"
+                                           :ai-proxy?      false
+                                           :credentials    {:base-url "sk-secret://host/v1"}})
+                              generate/generate-context
+                              (fn [_]
+                                (swap! generation-calls inc)
+                                (throw (AssertionError. "must not generate")))]
+                             (try
+                               (arms/capture-generated! (corpus/load-corpus) {}
+                                                        (assoc endpoint-identity-opts :out-dir out-dir))
+                               nil
+                               (catch Exception e e)))]
+      (is (instance? clojure.lang.ExceptionInfo error))
+      (is (= :invalid-connection-identity (:reason (ex-data error))))
+      (is (not (str/includes? (pr-str (ex-data error)) "secret")))
+      (is (zero? @generation-calls))
+      (is (not (.exists (io/file out-dir)))))))
+
+(deftest ^:synchronized capture-records-where-the-requests-went-test
+  (testing "a connection key repointed at another endpoint yields a distinguishable artifact"
+    ;; Type and model are the same on both captures, so without the routing fields the two artifacts claim
+    ;; the same generator identity for contexts two different endpoints produced.
+    (mt/with-premium-features #{:library :library-retrieval}
+      (let [c        (update (corpus/load-corpus) :entities (comp vec (partial take 1)))
+            out-dir  (str (System/getProperty "java.io.tmpdir")
+                          "/osi-generation-benchmark-routing-" (System/nanoTime))
+            capture! (fn [base-url]
+                       (mt/with-dynamic-fn-redefs
+                         [llm.provider/resolve-model-ref
+                          (constantly {:connection-key "prov"
+                                       :type           "google"
+                                       :model          "gemini-3-pro"
+                                       :ai-proxy?      false
+                                       :credentials    {:api-key             "super-secret-key"
+                                                        :service-account-key "super-secret-json"
+                                                        :project-id          "benchmark-project"
+                                                        :location            "us-central1"
+                                                        :base-url            base-url}})
+                          osi-generation.settings/llm-call-opts
+                          (constantly {:model-ref "prov/gemini-3-pro" :source :metabot})
+                          generate/generate-context
+                          (constantly {:ai_context        {:synonyms ["s"]}
+                                       :generator-version (generate/generator-version "prov/gemini-3-pro")
+                                       :usage             {:input-tokens 0, :output-tokens 0}})]
+                         (corpus/with-corpus-library [ids c]
+                           (arms/capture-generated! c ids (assoc endpoint-identity-opts :out-dir out-dir)))))
+            us       (capture! "https://us-central1-aiplatform.googleapis.com")
+            eu       (capture! "https://europe-west4-aiplatform.googleapis.com")]
+        (is (= {:connection-key "prov"
+                :type           "google"
+                :model          "gemini-3-pro"
+                :ai-proxy?      false
+                :routing        {:base-url   (arms/endpoint-identity
+                                              "https://us-central1-aiplatform.googleapis.com"
+                                              endpoint-identity-opts)
+                                 :location   "us-central1"
+                                 :project-id "benchmark-project"}}
+               (get-in us [:metadata :connection])))
+        (is (not= (get-in us [:metadata :connection])
+                  (get-in eu [:metadata :connection]))
+            "the endpoint that served the capture is part of the recorded identity")
+        (testing "no credential reaches the committed artifact"
+          (is (not (str/includes? (slurp (:path us)) "super-secret"))))))))
+
+(deftest ^:parallel capture-connection-identity-holds-no-credential-test
+  (testing "whichever provider type serves a capture, no field the registry calls a secret is recorded"
+    (let [config   (into {}
+                         (map (fn [{:keys [key]}] [key (str "value-" (name key))]))
+                         (mapcat :fields (llm.provider/provider-types)))
+          secrets  (into #{}
+                         (mapcat #(llm.provider/secret-field-keys (:type %)))
+                         (llm.provider/provider-types))
+          recorded (:routing (#'arms/connection-identity {:connection-key "prov"
+                                                          :type           "google"
+                                                          :model          "m"
+                                                          :ai-proxy?      false
+                                                          :credentials    config}
+                                                         nil
+                                                         endpoint-identity-opts))]
+      (is (seq secrets) "sanity: the provider registry does declare secret fields")
+      (is (seq recorded) "sanity: routing fields are recorded at all")
+      (is (empty? (set/intersection secrets (set (keys recorded))))))))
 
 (deftest corpus-does-not-reach-the-real-search-index-test
   (testing "materializing the corpus ingests nothing into the instance's own search index"
@@ -929,3 +1316,177 @@
           (corpus/with-corpus-library [ids (corpus/load-corpus)]
             (is (seq ids) "the corpus really did materialize entities")))
         (is (= [] @ingested))))))
+
+(deftest capture-does-not-commit-credentials-carried-in-a-base-url
+  (testing "a base URL is reduced to its endpoint, so a secret anywhere in it cannot be committed"
+    ;; The routing whitelist protects field names; nothing stops an operator putting the secret in the
+    ;; base URL's own value, and a snapshot is written into the repo.
+    (let [identity-of #(#'arms/connection-identity
+                        {:connection-key "prov" :type "vllm" :model "m" :ai-proxy? false
+                         :credentials    {:base-url %}}
+                        nil
+                        endpoint-identity-opts)]
+      (doseq [url ["https://user:sw0rdf1sh@vllm.internal:8000/v1"
+                   "https://vllm.internal/v1?api-key=sw0rdf1sh"
+                   "https://vllm.internal/v1#sw0rdf1sh"
+                   "https://vllm.internal/sw0rdf1sh/v1"
+                   "https://sw0rdf1sh.vllm.internal/v1"]]
+        (testing url
+          (let [recorded (get-in (identity-of url) [:routing :base-url])]
+            (is (=? {:scheme "https", :host-hmac-sha256 string?} recorded)
+                "the endpoint retains a deterministic, non-plaintext identity")
+            (is (not (str/includes? (pr-str recorded) "sw0rdf1sh"))
+                "no part of the secret survives into the artifact"))))
+      (testing "an unparseable URL is reported, not passed through"
+        (is (= "<unparseable>" (get-in (identity-of "not a url at all") [:routing :base-url]))))
+      (testing "an arbitrary scheme cannot carry a secret into the artifact"
+        (let [recorded (get-in (identity-of "sk-sw0rdf1sh://vllm.internal/v1") [:routing :base-url])]
+          (is (= "<unparseable>" recorded))
+          (is (not (str/includes? (pr-str recorded) "sw0rdf1sh")))))
+      (testing "two paths on one host stay distinguishable"
+        (is (not= (get-in (identity-of "https://h/a") [:routing :base-url])
+                  (get-in (identity-of "https://h/b") [:routing :base-url]))))
+      (testing "raw user-info is secret-safe, distinguishable, and validated"
+        (let [tenant-a (get-in (identity-of "https://tenant-a:secret@h/v1") [:routing :base-url])
+              tenant-b (get-in (identity-of "https://tenant-b:secret@h/v1") [:routing :base-url])]
+          (is (not= tenant-a tenant-b))
+          (is (re-matches #"[0-9a-f]{64}" (:user-info-hmac-sha256 tenant-a)))
+          (is (not (str/includes? (pr-str tenant-a) "tenant-a")))
+          (is (not (str/includes? (pr-str tenant-a) "secret")))
+          (is (arms/valid-endpoint-identity? tenant-a))
+          (is (not (arms/valid-endpoint-identity?
+                    (assoc tenant-a :user-info-hmac-sha256 "not-a-full-hmac"))))
+          (is (not (arms/valid-endpoint-identity? (assoc tenant-a :credentials "plaintext"))))))
+      (testing "the raw request path is identified, without decoding percent escapes"
+        (is (not= (get-in (identity-of "https://h/a%2Fb") [:routing :base-url])
+                  (get-in (identity-of "https://h/a/b") [:routing :base-url]))))
+      (testing "the HMAC is stable only for callers retaining the same non-persisted key"
+        (let [url       "https://h/low-entropy-secret"
+              same-key  (arms/endpoint-identity url endpoint-identity-opts)
+              other-key (arms/endpoint-identity
+                         url {:endpoint-identity-key "benchmark-test-endpoint-identity-key-0002"})]
+          (is (= same-key (arms/endpoint-identity url endpoint-identity-opts)))
+          (is (not= same-key other-key))
+          (is (re-matches #"[0-9a-f]{64}" (:path-hmac-sha256 same-key)))))
+      (testing "a weak or missing key is refused instead of falling back to an offline-verifiable digest"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"must be a secret of at least 32 characters"
+                                      (arms/endpoint-identity
+                                       "https://h/secret" {:endpoint-identity-key "too-short"})))]
+          (is (= :missing-endpoint-identity-key (:reason (ex-data e)))))))))
+
+(deftest ^:parallel capture-records-service-account-project-test
+  (testing "Google routing records the project derived from service-account credentials"
+    (let [service-account-key "{\"type\":\"service_account\",\"project_id\":\"derived-project\",\"private_key\":\"secret\"}"
+          identity            (#'arms/connection-identity
+                               {:connection-key "google"
+                                :type           "google"
+                                :model          "google/gemini-3.5-flash"
+                                :ai-proxy?      false
+                                :credentials    {:service-account-key service-account-key}}
+                               nil
+                               endpoint-identity-opts)]
+      (is (= "derived-project" (get-in identity [:routing :project-id])))
+      (is (not (str/includes? (pr-str identity) "private_key")))
+      (is (not (str/includes? (pr-str identity) "secret"))))))
+
+(deftest ^:parallel provider-routing-identities-include-effective-defaults-test
+  (testing "the routing validator accepts the effective defaults supplied by normal model resolution"
+    (let [identity (fn [type model config]
+                     (#'arms/connection-identity
+                      {:connection-key type
+                       :type           type
+                       :model          model
+                       :ai-proxy?      false
+                       :credentials    (llm.provider/with-field-defaults type config)}
+                      nil
+                      endpoint-identity-opts))
+          anthropic (identity "anthropic" "model" {:api-key "key"})
+          azure     (identity "azure" "anthropic/legacy-deployment"
+                              {:api-key "key", :base-url "https://azure.example/openai"})
+          bedrock   (identity "bedrock" "model" {:access-key-id "id", :secret-access-key "key"})
+          google    (identity "google" "google/gemini"
+                              {:service-account-key
+                               "{\"project_id\":\"derived-project\",\"private_key\":\"secret\"}"})]
+      (is (arms/valid-connection-identity? "anthropic/model" anthropic))
+      (is (= {:deployment-name "legacy-deployment", :model-family "anthropic"}
+             (select-keys (:routing azure) [:deployment-name :model-family])))
+      (is (arms/valid-connection-identity? "azure/anthropic/legacy-deployment" azure))
+      (is (= "us-east-1" (get-in bedrock [:routing :region])))
+      (is (arms/valid-connection-identity? "bedrock/model" bedrock))
+      (is (= {:location "global", :project-id "derived-project"}
+             (select-keys (:routing google) [:location :project-id])))
+      (is (arms/valid-connection-identity? "google/google/gemini" google)))))
+
+(deftest ^:parallel google-connection-identity-uses-effective-endpoint-test
+  (testing "provenance hashes the same derived or explicit endpoint that the Google adapter requests"
+    (let [identity    (fn [location base-url]
+                        (#'arms/connection-identity
+                         {:connection-key "google"
+                          :type           "google"
+                          :model          "google/gemini"
+                          :ai-proxy?      false
+                          :credentials    {:project-id "benchmark-project"
+                                           :location   location
+                                           :base-url   base-url}}
+                         nil
+                         endpoint-identity-opts))
+          regional   "https://us-central1-aiplatform.googleapis.com"
+          rep-host   "https://aiplatform.eu.rep.googleapis.com"
+          derived    (identity "us-central1" llm.settings/google-global-api-base-url)
+          explicit   (identity "us-central1" regional)
+          multi      (identity "eu" llm.settings/google-global-api-base-url)]
+      (is (= (arms/endpoint-identity regional endpoint-identity-opts)
+             (get-in derived [:routing :base-url])))
+      (is (= (:routing derived) (:routing explicit))
+          "default-derived and explicitly configured forms identify the same request endpoint")
+      (is (= (arms/endpoint-identity rep-host endpoint-identity-opts)
+             (get-in multi [:routing :base-url])))
+      (is (every? #(arms/valid-connection-identity? "google/google/gemini" %)
+                  [derived explicit multi])))))
+
+(deftest ^:synchronized capture-pins-and-records-managed-proxy-test
+  (testing "every managed generation call uses the proxy endpoint captured before the first call"
+    (mt/with-premium-features #{:library :library-retrieval :metabase-ai-managed}
+      (let [c          (update (corpus/load-corpus) :entities (comp vec (partial take 2)))
+            out-dir    (str (System/getProperty "java.io.tmpdir")
+                            "/osi-generation-benchmark-managed-" (System/nanoTime))
+            proxy-reads (atom 0)
+            seen       (atom [])
+            first-url    "  https://tenant-secret.proxy.example/first///  "
+            normalized   "https://tenant-secret.proxy.example/first"
+            provider-url (str normalized "/anthropic")]
+        (mt/with-dynamic-fn-redefs
+          [llm.provider/resolve-model-ref
+           (constantly {:connection-key "metabase"
+                        :type           "anthropic"
+                        :model          "claude-sonnet"
+                        :credentials    {:base-url   "https://ignored-secret.provider.example"
+                                         :project-id "ignored-project-secret"}
+                        :ai-proxy?      true})
+           llm.settings/llm-proxy-base-url
+           (fn []
+             (if (= 1 (swap! proxy-reads inc))
+               first-url
+               "https://different.proxy.example/second"))
+           osi-generation.settings/llm-call-opts
+           (constantly {:model-ref "metabase/anthropic/claude-sonnet", :source :metabot})
+           generate/generate-context
+           (fn [_]
+             (swap! seen conj (llm.settings/llm-proxy-base-url))
+             {:ai_context        {:synonyms ["s"]}
+              :generator-version (generate/generator-version "metabase/anthropic/claude-sonnet")
+              :usage             {:input-tokens 0, :output-tokens 0}})]
+          (corpus/with-corpus-library [ids c]
+            (let [{:keys [metadata]} (arms/capture-generated!
+                                      c ids (assoc endpoint-identity-opts :out-dir out-dir))]
+              (is (= [normalized normalized] @seen)
+                  "capture binds the same normalized proxy base that request routing consumes")
+              (is (= 1 @proxy-reads) "the mutable setting is read only before capture")
+              (is (= (arms/endpoint-identity provider-url endpoint-identity-opts)
+                     (get-in metadata [:connection :routing :llm-proxy-provider-url])))
+              (is (= #{:llm-proxy-provider-url}
+                     (set (keys (get-in metadata [:connection :routing]))))
+                  "managed provenance excludes ignored provider credential routing")
+              (is (not (str/includes? (pr-str metadata) "tenant-secret")))
+              (is (not (str/includes? (pr-str metadata) "ignored-secret"))))))))))

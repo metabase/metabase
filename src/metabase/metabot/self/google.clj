@@ -27,7 +27,7 @@
   `europe-west2` etc.
 
   The effective endpoint URL depends on the connection's location, but the connection can also name one outright.
-  See [[api-base-url]] for details."
+  See [[effective-api-base-url]] for details."
   (:require
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
@@ -176,7 +176,7 @@
     (format "https://aiplatform.%s.rep.googleapis.com" location)
     (format "https://%s-aiplatform.googleapis.com" location)))
 
-(defn- api-base-url
+(defn effective-api-base-url
   "Returns the base URL for requests in the location of `credentials`.
 
   The API host must agree with the location. The global host serves only `locations/global` and rejects all other
@@ -242,7 +242,7 @@
   (let [credentials (resolve-credentials credentials)]
     (core/resolve-auth slug display-name
                        (when-let [method (auth-method credentials)]
-                         {:url     (api-base-url credentials)
+                         {:url     (effective-api-base-url credentials)
                           :headers (case method
                                      :service-account (fresh-bearer-headers
                                                        (cached-service-account-credentials
@@ -459,7 +459,7 @@
   (let [dns (not-empty (:dedicatedEndpointDns endpoint))]
     (or (admin-base-url credentials)
         (when dns (str "https://" (str/replace-first dns #"^https://" "")))
-        (api-base-url credentials))))
+        (effective-api-base-url credentials))))
 
 (defn- lookup-endpoint-host
   "Reads the endpoint at `endpoint-path` with `credentials` and returns its [[endpoint-host]]."
@@ -501,9 +501,9 @@
   Wraps the descriptor's own message rather than restating it: a status whose message should name the host it was
   sent to (see [[include-endpoint-in-msg?]]) gets the endpoint appended, and the endpoint is known only per
   connection, which is why this cannot live on the descriptor. The message names `host` when given, and
-  [[api-base-url]] otherwise."
+  [[effective-api-base-url]] otherwise."
   [credentials host]
-  (let [endpoint (delay (or host (try (api-base-url credentials) (catch Exception _ nil))))]
+  (let [endpoint (delay (or host (try (effective-api-base-url credentials) (catch Exception _ nil))))]
     (fn [res]
       (cond-> ((:error-msg provider) res)
         (and (include-endpoint-in-msg? (:status res)) @endpoint)
