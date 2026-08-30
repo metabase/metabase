@@ -1543,6 +1543,20 @@ databaseChangeLog:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptRemainingColumns
 
+  - changeSet:
+      id: v58.2026-08-30T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext value of the :setter :none settings. They default to
+        :encryption :when-encryption-key-set whatever their type, so the strict decrypting read applies to them, but
+        some were settable in older versions and stored plaintext back then (e.g. enable-query-caching, once an admin
+        toggle saved as a plaintext boolean); such a row made restoring the settings cache fail at startup.
+        Already-encrypted values are left untouched. No rollback: these settings were always meant to be encrypted,
+        and a downgraded version reads them either way. Without MB_ENCRYPTION_SECRET_KEY this is a no-op.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptSetterNoneSettingsV58
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
