@@ -18,6 +18,10 @@ on:
         description: Run project-level migration checks.
         type: boolean
         default: false
+      run-project-ratchet-checks:
+        description: Run the ratchet check on its own, when the backend checks (which include it) do not run.
+        type: boolean
+        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -78,11 +82,25 @@ jobs:
       - name: Run migration checks
         run: ./bin/mage project-tests migrations
 
+  project-ratchet-checks:
+    name: 'Project tests: Ratchet checks'
+    # The backend checks already run this suite, so it only runs when they do not.
+    if: ${{ inputs.run-project-ratchet-checks && !inputs.force-run && !inputs.run-project-backend-checks }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run ratchet checks
+        run: ./bin/mage project-tests ratchets
+
   project-tests:
     name: Project tests
     needs:
       - project-backend-checks
       - project-migration-checks
+      - project-ratchet-checks
     if: ${{ always() && !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5

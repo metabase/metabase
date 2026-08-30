@@ -154,9 +154,12 @@ project_backend_checks:
   - "**deps.edn"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
-  - ".clj-kondo/ratchets.edn"
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
+
+# Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
+project_ratchet_checks:
+  - ".clj-kondo/ratchets.edn"
 
 project_migration_checks:
   - *project_tests_infra

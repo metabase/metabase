@@ -68,6 +68,7 @@ jobs:
       project_tests_infra: ${{ steps.changes.outputs.project_tests_infra }}
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
       project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
       no_source_code_changes: >-
         ${{ steps.changes.outputs.documentation == 'true'
         && steps.changes.outputs.backend_all == 'false'
@@ -226,6 +227,7 @@ jobs:
         ${{ needs.should-run.outputs.verdict == 'force-run' ||
         needs.files-changed.outputs.project_tests_infra == 'true' ||
         needs.files-changed.outputs.project_migration_checks == 'true' }}
+      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
 
   semantic-search-tests:
     if: |
