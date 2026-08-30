@@ -4,6 +4,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.util :as u]))
@@ -88,12 +89,9 @@
   (slurp (str (fs/path dir ratchets-file))))
 
 (defn- ratchets-policies
-  "The merged file's policy map, without the comment header."
+  "The merged file's policy map; the reader skips its comment header."
   [dir]
-  (->> (str/split-lines (ratchets-text dir))
-       (remove #(str/starts-with? % ";;"))
-       (str/join "\n")
-       read-string))
+  (edn/read-string (ratchets-text dir)))
 
 (defn- ratchets
   "Ratchets file text for the given policies."
@@ -150,33 +148,28 @@
       (is (= #{"UU app.txt"} (status dir))
           "resolved, and identical to the target branch so nothing shows as changed"))))
 
-(defn- output
-  "Everything a run of the script prints; mage reports task exceptions on stdout."
-  [dir]
-  (let [{:keys [out err]} (run dir script)]
+(defn- refused
+  "Everything one refused run prints, having asserted that it exited nonzero and left the conflict exactly
+  as it found it. Mage reports task exceptions on stdout."
+  [dir note]
+  (let [before                 (status dir)
+        {:keys [exit out err]} (run dir script)]
+    (is (pos? exit) note)
+    (is (= before (status dir)) note)
     (str out err)))
-
-(defn- leaves-unresolved?
-  "Whether the script exits nonzero and leaves the ratchets file exactly as the conflict left it."
-  [dir]
-  (let [before         (status dir)
-        {:keys [exit]} (run dir script)]
-    (and (pos? exit)
-         (= before (status dir)))))
 
 (deftest delete-versus-modify-is-left-for-a-human-test
   (testing "deleted on the target branch"
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file nil}
                          :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
-      (is (leaves-unresolved? dir))
-      (is (str/includes? (output dir) "deleted on one side and changed on the other"))
+      (is (str/includes? (refused dir nil) "deleted on one side and changed on the other"))
       (is (contains? (status dir) "DU .clj-kondo/ratchets.edn"))))
   (testing "deleted on the incoming branch"
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file "{:ignore-counts {:a 4}}\n"}
                          :theirs {ratchets-file nil}}]
-      (is (leaves-unresolved? dir))
+      (refused dir nil)
       (is (contains? (status dir) "UD .clj-kondo/ratchets.edn")))))
 
 (deftest malformed-stage-is-left-unresolved-test
@@ -184,31 +177,30 @@
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file "{:ignore-counts {:a 3}}\n"}
                          :theirs {ratchets-file "{:ignore-counts {:a :sometimes}}\n"}}]
-      (is (leaves-unresolved? dir))
-      (is (str/includes? (output dir) ":a has invalid policy :sometimes"))))
+      (is (str/includes? (refused dir nil) ":a has invalid policy :sometimes"))))
   (testing "a policy field of the wrong shape is not read as an empty set of policies"
     (doseq [[stage message] [["{:ignore-counts {:a 3}, :config-counts []}\n"  ":config-counts must be a map"]
-                             ["{:ignore-counts {:a 3}, :comment-exempt []}\n" ":comment-exempt must be a set"]]]
+                             ["{:ignore-counts {:a 3}, :comment-exempt []}\n" ":comment-exempt must be a set"]
+                             ;; the merge keys on (str linter), so "a" would be staged as :a
+                             ["{:ignore-counts {\"a\" 3}}\n"                  "is not a linter name"]]]
       (with-conflict [dir {:base   {ratchets-file base-ratchets}
                            :ours   {ratchets-file stage}
                            :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
-        (is (leaves-unresolved? dir) stage)
-        (is (str/includes? (output dir) message)))))
+        (is (str/includes? (refused dir stage) message) stage))))
   (testing "a stage that is not exactly one map is not read as an empty set of policies"
     (doseq [[stage message] [[""                                                "is empty"]
                              ["{:ignore-counts {:a 1}} {:ignore-counts {:a 2}}\n" "holds more than one form"]
-                             ["[:a 1]\n"                                          "must hold a map of policies"]]]
+                             ["[:a 1]\n"                                          "must hold a map of policies"]
+                             ["#=(java.lang.Runtime/getRuntime)\n"                "No dispatch macro"]]]
       (with-conflict [dir {:base   {ratchets-file base-ratchets}
                            :ours   {ratchets-file stage}
                            :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
-        (is (leaves-unresolved? dir) (pr-str stage))
-        (is (str/includes? (output dir) message) (pr-str stage)))))
+        (is (str/includes? (refused dir (pr-str stage)) message) (pr-str stage)))))
   (testing "an unknown field, even when the target is disabled"
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file "{:disabled true}\n"}
                          :theirs {ratchets-file "{:budgets {:a 3}}\n"}}]
-      (is (leaves-unresolved? dir))
-      (is (str/includes? (output dir) "unsupported ratchet fields: #{:budgets}")))))
+      (is (str/includes? (refused dir nil) "unsupported ratchet fields: #{:budgets}")))))
 
 (deftest refuses-an-unconflicted-file-test
   (with-conflict [dir {:base {ratchets-file base-ratchets}}]
