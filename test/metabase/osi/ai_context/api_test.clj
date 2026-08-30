@@ -341,3 +341,43 @@
              (spying-on-nudges!
               #(mt/user-http-request :crowberto :delete 204 "osi/ai-context/table/1"))))
       (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 1)))))
+
+(deftest nudge-observes-the-committed-ai-context-test
+  (testing "the reconcile a write schedules reads the new `ai_context`, not the row as it stood before"
+    ;; Toucan runs `before-update` outside its own transaction, so a nudge issued from there would fire
+    ;; before the UPDATE and reconcile the old content, with nothing to nudge again afterwards.
+    (t2/insert! :model/OsiAiContext {:entity_type     "table"
+                                     :entity_local_id 4242
+                                     :ai_context      {:synonyms ["before"]}})
+    (try
+      (let [seen (atom ::never-nudged)]
+        (mt/with-dynamic-fn-redefs [mirror/request-entity-sync!
+                                    (fn [entity-type entity-local-id]
+                                      (reset! seen (t2/select-one-fn :ai_context :model/OsiAiContext
+                                                                     :entity_type     entity-type
+                                                                     :entity_local_id entity-local-id))
+                                      nil)]
+          (t2/update! :model/OsiAiContext
+                      {:entity_type "table" :entity_local_id 4242}
+                      {:ai_context {:synonyms ["after"]}}))
+        (is (= {:synonyms ["after"]} @seen)))
+      (finally
+        (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 4242)))))
+
+(deftest nudge-covers-every-row-a-multi-row-update-touches-test
+  (testing "an update matching several entities nudges each of them, not just the first"
+    ;; The changes map is published once around the update; the hook runs per affected row.
+    (doseq [id [7001 7002]]
+      (t2/insert! :model/OsiAiContext {:entity_type     "table"
+                                       :entity_local_id id
+                                       :ai_context      {:synonyms ["before"]}
+                                       :data_source     :human}))
+    (try
+      (is (= #{["table" 7001] ["table" 7002]}
+             (set (spying-on-nudges!
+                   #(t2/update! :model/OsiAiContext
+                                {:entity_type "table" :data_source :human}
+                                {:ai_context {:synonyms ["after"]}})))))
+      (finally
+        (doseq [id [7001 7002]]
+          (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id id))))))
