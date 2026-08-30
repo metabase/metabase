@@ -1461,6 +1461,18 @@
   a policy added there cannot leave this behind."
   (into [:enum] u.http/configurable-network-policies))
 
+(defn normalize-proxy-base-url
+  "Normalize an AI proxy base URL exactly as request routing does, or return nil when it is blank."
+  [base-url]
+  (some-> (u/trimmed-string base-url) (str/replace #"/+$" "")))
+
+(defn proxy-provider-url
+  "The effective request base URL for `provider-slug` through the managed AI proxy, or nil when `base-url` is
+  blank. This is intentionally shared with benchmark provenance so its recorded identity follows exactly the
+  same normalization as live requests."
+  [base-url provider-slug]
+  (some-> (normalize-proxy-base-url base-url) (str "/" provider-slug)))
+
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
@@ -1469,8 +1481,8 @@
     reachable under the default policy; see [[metabase.llm.settings/network-policy]].
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
-  (let [proxy-auth (when-let [base (u/trimmed-string (llm/llm-proxy-base-url))]
-                     (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+  (let [proxy-auth (when-let [url (proxy-provider-url (llm/llm-proxy-base-url) provider-slug)]
+                     (cond-> {:url     url
                               :headers {"x-metabase-instance-token"
                                         (premium-features/premium-embedding-token)}}
                        ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
