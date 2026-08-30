@@ -319,6 +319,38 @@
                (first @increments))
             "the request is counted before I/O, under the ambient source label")))))
 
+(deftest openai-compatible-routing-can-be-pinned-across-batches-test
+  (testing "a caller can resolve routing once so later setting changes cannot mix embedding endpoints"
+    (let [base-url  (atom "https://first.openai.example")
+          api-key   (atom "first-key")
+          requested (atom [])
+          model     {:provider          "openai"
+                     :model-name        "text-embedding-3-small"
+                     :vector-dimensions 4}
+          response  {:status 200
+                     :body   (json/encode
+                              {:data  [{:embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])}]
+                               :usage {:total_tokens 1}})}]
+      (mt/with-dynamic-fn-redefs
+        [semantic.settings/openai-api-base-url (fn [] @base-url)
+         semantic.settings/openai-api-key      (fn [] @api-key)
+         http/post                              (fn [url opts]
+                                                  (swap! requested conj
+                                                         {:url           url
+                                                          :authorization (get-in opts [:headers "Authorization"])})
+                                                  response)]
+        (let [routing (embedding/resolve-openai-compatible-routing! model)]
+          (reset! base-url "https://second.openai.example")
+          (reset! api-key "second-key")
+          (binding [embedding/*openai-compatible-routing* routing]
+            (embedding/get-embeddings-batch model ["first"] {:record-tokens? false})
+            (embedding/get-embeddings-batch model ["second"] {:record-tokens? false})))
+        (is (= [{:url           "https://first.openai.example/v1/embeddings"
+                 :authorization "Bearer first-key"}
+                {:url           "https://first.openai.example/v1/embeddings"
+                 :authorization "Bearer first-key"}]
+               @requested))))))
+
 (deftest test-get-embedding
   (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"
                                      ee-embedding-service-base-url  "http://mock-embedding-service"

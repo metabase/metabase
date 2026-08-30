@@ -588,30 +588,67 @@
     (string? s) (-> (str/trim)
                     (str/replace #"/+$" ""))))
 
+(def ^:dynamic *openai-compatible-routing*
+  "A request-routing map pinned by callers that need a series of OpenAI-compatible embedding calls to
+  stay on one endpoint. The map contains credentials and must never be logged or persisted. Nil makes
+  ordinary production calls resolve the current settings as before."
+  nil)
+
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
+  "Returns a request-routing map. When api key is not set or when service url is not set but
   `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
   is used for authentication. Throws if neither base URL is configured."
   []
-  (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
-         (semantic-settings/ee-embedding-service-api-key)]
+  (let [embedding-service-base-url (semantic-settings/ee-embedding-service-base-url)
+        ai-service-base-url        (llm.settings/ai-service-base-url)]
+    (cond (string? (not-empty embedding-service-base-url))
+          {:provider "ai-service"
+           :endpoint (str (trim-trailing-slashes embedding-service-base-url) "/v1/embeddings")
+           :api-key  (semantic-settings/ee-embedding-service-api-key)}
 
-        (string? (not-empty (llm.settings/ai-service-base-url)))
-        [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         nil]
+          (string? (not-empty ai-service-base-url))
+          {:provider "ai-service"
+           :endpoint (str (trim-trailing-slashes ai-service-base-url) "/v1/embeddings")
+           :api-key  nil}
 
-        :else
-        (throw (ex-info "Embedding service and ai service base URLs are not configured"
-                        {:settings ["ee-embedding-service-base-url"
-                                    "ai-service-base-url"]}))))
+          :else
+          (throw (ex-info "Embedding service and ai service base URLs are not configured"
+                          {:settings ["ee-embedding-service-base-url"
+                                      "ai-service-base-url"]})))))
+
+(defn- openai-resolve-config!
+  "Returns the OpenAI request routing or throws if it is not configured."
+  []
+  (let [api-key (semantic-settings/openai-api-key)]
+    (when-not api-key
+      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
+    {:provider "openai"
+     :endpoint (str (semantic-settings/openai-api-base-url) "/v1/embeddings")
+     :api-key  api-key}))
+
+(defn resolve-openai-compatible-routing!
+  "Resolve the endpoint and authentication used by a built-in OpenAI-compatible embedding provider.
+
+  Returns nil for other providers. The result contains credentials and is intended only for a dynamic
+  [[*openai-compatible-routing*]] binding; callers must persist a separately sanitized endpoint identity."
+  [{:keys [provider]}]
+  (case provider
+    "ai-service" (embedding-service-resolve-config!)
+    "openai"     (openai-resolve-config!)
+    nil))
+
+(defn- active-openai-compatible-routing!
+  [{:keys [provider] :as embedding-model}]
+  (if (= provider (:provider *openai-compatible-routing*))
+    *openai-compatible-routing*
+    (resolve-openai-compatible-routing! embedding-model)))
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
-  (first (embedding-service-resolve-config!)))
+  (:endpoint (active-openai-compatible-routing! {:provider "ai-service"})))
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+  (let [{:keys [endpoint api-key]} (active-openai-compatible-routing! {:provider "ai-service"})]
     (openai-compatible-get-embeddings-batch
      {:provider       "ai-service"
       :endpoint       endpoint
@@ -625,20 +662,12 @@
 
 ;;;; OpenAI provider
 
-(defn- openai-resolve-config!
-  "Returns [endpoint api-key] or throws if not configured."
-  []
-  (let [api-key (semantic-settings/openai-api-key)]
-    (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
-    [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
-
 (defmethod embedder-circuit-endpoint "openai" [_]
-  (first (openai-resolve-config!)))
+  (:endpoint (active-openai-compatible-routing! {:provider "openai"})))
 
 (defn- openai-get-embeddings-batch
   [embedding-model texts {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (openai-resolve-config!)]
+  (let [{:keys [endpoint api-key]} (active-openai-compatible-routing! embedding-model)]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
       :endpoint       endpoint
