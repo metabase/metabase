@@ -1,6 +1,22 @@
 {
   "notifications": [
     {
+       "id": "test-1",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "",
+         "end_date": "",
+         "min_version": "",
+         "max_version": "",
+         "edition": ""
+       },
+       "icon": "warning",
+       "title": "This is really important",
+       "content": "You must visit [this page](https://www.metabase.com/version-support) to learn important information."
+    },
+    {
        "id": "eol-57-2026-09-01",
        "schemaVersion": 1,
        "conditions": {

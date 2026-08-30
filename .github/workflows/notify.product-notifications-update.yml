@@ -2,7 +2,7 @@ name: Update Product Notifications
 
 on:
   push:
-    branches: FIXME testing
+    branches: # FIXME testing
       - master
     paths:
       - ".github/data/notifications.json"
