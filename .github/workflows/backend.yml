@@ -104,8 +104,6 @@ jobs:
     if: ${{ always() && !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
     steps:
       - name: Check Project tests status
         uses: actions/github-script@v9
