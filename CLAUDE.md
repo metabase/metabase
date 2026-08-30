@@ -87,9 +87,10 @@ Run the repository-level module, ratchet, and migration checks with:
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is a policy: either an exact integer budget or
-`:unlimited` for a low-severity linter. Development enforces the file exactly, while CI rejects only
-over-budget suppressions and leaves reductions and stale exemptions for the shrink workflow to record.
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either an exact integer budget or `:unlimited`,
+which has no count ceiling. This count policy is independent of `:comment-exempt`, described below.
+Development enforces the file exactly, while CI rejects only over-budget suppressions and leaves reductions
+and stale exemptions for the shrink workflow to record.
 Prefer fixing the underlying warning over adding an ignore. Every policy key must name a linter: one of the
 pinned clj-kondo version's built-ins, a linter configured under `.clj-kondo/`, or an external diagnostic
 such as `:clojure-lsp/unused-public-var`.
@@ -111,7 +112,8 @@ tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 Budget too low (you added an ignore): the task only raises a `:ignore-counts` budget when told to. If the
 ignore is genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase
-in the PR. For a genuinely low-severity linter, set its `:ignore-counts` value to `:unlimited` instead.
+in the PR. Set a linter's `:ignore-counts` value to `:unlimited` only when increasing its ignore count should
+not require a budget change.
 
 The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
 at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly

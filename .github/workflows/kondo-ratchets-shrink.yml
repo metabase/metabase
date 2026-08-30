@@ -24,8 +24,8 @@ permissions:
   # github-actions[bot]; pushes and the PR itself use the automation user's token
   pull-requests: write
 
-# Overlapping master pushes converge: the newest run cancels the older one, recomputes from the master it
-# checked out, and force-updates the automation branch, so the PR always reflects one master commit.
+# When master is pushed again, the newest run cancels the older one, checks out the latest master it can
+# see, and force-updates the automation branch. The PR therefore contains one commit on top of master.
 concurrency:
   group: kondo-ratchets-shrink
   cancel-in-progress: true
@@ -74,7 +74,7 @@ jobs:
           echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
 
           if git diff --quiet -- "$RATCHETS_FILE"; then
-            echo "Ratchets are already tight on master $(git rev-parse --short HEAD)"
+            echo "Ratchet budgets already match master $(git rev-parse --short HEAD)"
             [ -z "$open_pr" ] || echo "The open automation PR #$open_pr is re-approved below"
             echo "push=false" >> "$GITHUB_OUTPUT"
             exit 0

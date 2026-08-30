@@ -3,7 +3,7 @@
 
   Per-linter policies live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
   need a justification comment. Local tests require bounded counts and the exemption set to match exactly;
-  CI only rejects increases so improvements can land before the master shrinker records them.
+  CI only rejects increases so improvements can land before the post-merge workflow records them.
   `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
@@ -539,7 +539,7 @@
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
        ";; widening the exemptions is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
-       ";; An :unlimited policy marks a low-severity linter whose ignore count is intentionally unbounded.\n"))
+       ";; An :unlimited policy allows that linter's ignore count to grow without changing this file.\n"))
 
 (defn- render-counts
   [counts indent]
@@ -675,7 +675,7 @@
 (defn check-report
   "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
   budgets, or `text` is not normalized.
-  Lower counts are allowed because the master shrinker records improvements asynchronously."
+  Lower counts are allowed because the post-merge workflow records them after the change lands."
   [{:keys [ignore-counts config-counts] :as ratchets} occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
         config-over (config-over-budget config-counts config-actual)
@@ -699,7 +699,7 @@
 (defn check
   "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
   or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement.
-  An `:unlimited` policy nothing uses any more is reported first, and never fails the check."
+  An unused `:unlimited` policy is reported but does not fail the check."
   []
   (let [file (io/file *ratchets-file*)]
     (cond
