@@ -26,6 +26,10 @@
 (defn- ratchets-enabled? []
   (not (kondo-ratchet/disabled?)))
 
+;; Local tooling sets CI=false and CI=, and both are truthy when tested for presence.
+(defn- ci? []
+  (= "true" (System/getenv "CI")))
+
 (defn- budget-drift
   [ci? policies occurrences]
   (if ci?
@@ -49,7 +53,7 @@
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The post-merge workflow performs the same update on master.
 (use-fixtures :once (fn [thunk]
-                      (when-not (System/getenv "CI")
+                      (when-not (ci?)
                         (kondo-ratchet/fix!))
                       (reset! tree-scan-cache (delay (kondo-ratchet/scan)))
                       (try
@@ -71,7 +75,7 @@
                   "`fix!` itself is broken, since the test fixture just ran it.")
       (let [{:keys [ignore-counts]} (kondo-ratchet/read-ratchets)]
         (is (= {}
-               (budget-drift (System/getenv "CI") ignore-counts (tree-scan))))))))
+               (budget-drift (ci?) ignore-counts (tree-scan))))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (when (ratchets-enabled?)
@@ -90,7 +94,7 @@
                   "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`.")
       (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
         (is (= #{}
-               (stale-exemptions (System/getenv "CI") comment-exempt (tree-scan))))))))
+               (stale-exemptions (ci?) comment-exempt (tree-scan))))))))
 
 (deftest ^:parallel config-budgets-match-actual-test
   (when (ratchets-enabled?)
@@ -99,7 +103,7 @@
                   "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
                   "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
       (is (= {}
-             (config-budget-drift (System/getenv "CI")
+             (config-budget-drift (ci?)
                                   (:config-counts (kondo-ratchet/read-ratchets))
                                   (kondo-ratchet/config-suppressions)))))))
 

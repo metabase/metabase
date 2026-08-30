@@ -577,19 +577,20 @@
   linter, not a count. Linters in `seeded` get their budget set to the actual count outright — the
   explicit escape hatch for landing a new linter. Otherwise never raises a budget, never adds one."
   [recorded actual seeded]
-  (into (sorted-by-str
-         (for [linter seeded
-               :when  (pos? (get actual linter 0))]
-           [linter (get actual linter)]))
-        (keep (fn [[linter budget]]
-                (let [n (get actual linter 0)]
-                  (cond
-                    (contains? (set seeded) linter) nil
-                    (= budget :unlimited)           [linter budget]
-                    (zero? n)                       nil
-                    (< n budget)                    [linter n]
-                    :else                           [linter budget]))))
-        recorded))
+  (let [seeded? (set seeded)]
+    (into (sorted-by-str
+           (for [linter seeded
+                 :when  (pos? (get actual linter 0))]
+             [linter (get actual linter)]))
+          (keep (fn [[linter budget]]
+                  (let [n (get actual linter 0)]
+                    (cond
+                      (seeded? linter)      nil
+                      (= budget :unlimited) [linter budget]
+                      (zero? n)             nil
+                      (< n budget)          [linter n]
+                      :else                 [linter budget]))))
+          recorded)))
 
 (defn unexercised-unlimited
   "Linters with an `:unlimited` policy in `ignore-counts` and no ignores in `actual`, sorted."
@@ -617,9 +618,12 @@
     (concat
      (for [linter seeded
            :let   [n (get actual linter 0)]]
-       (if (pos? n)
-         (format "seeded %s at %d" linter n)
-         (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
+       (cond
+         (pos? n)                         (format "seeded %s at %d" linter n)
+         (contains? ignore-counts linter) (format "WARNING: %s has no inline ignores -- dropping its policy"
+                                                  linter)
+         :else                            (format "WARNING: %s has no inline ignores -- nothing to seed"
+                                                  linter)))
      (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
            :let            [n (get actual linter 0)]
            ;; a hand-written 0 with no ignores is dropped too, so it needs a line
@@ -696,36 +700,36 @@
        [(str *ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
              " to fix the formatting")]))))
 
+(defn- fail!
+  "Print `message` and fail the babashka task, without mage's default stack trace."
+  [message]
+  (println message)
+  (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
+
 (defn check
   "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
   or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement.
   An unused `:unlimited` policy is reported but does not fail the check."
   []
-  (let [file (io/file *ratchets-file*)]
-    (cond
-      (not (.exists file))
-      (let [message (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")]
-        (println message)
-        (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
-
-      (disabled?)
-      (println (str *ratchets-file* " is disabled -- nothing to check"))
-
-      :else
-      (let [ratchets    (read-ratchets)
-            _           (try
-                          (validate-linters! ratchets (known-linters))
-                          (catch clojure.lang.ExceptionInfo e
-                            (println (ex-message e))
-                            (throw (ex-info (ex-message e)
-                                            (assoc (ex-data e) :babashka/exit 1, :mage/quiet true)
-                                            e))))
-            occurrences (scan)
-            lines       (check-report ratchets occurrences (config-suppressions) (slurp file))]
-        (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
-        (if (empty? lines)
-          (println (format "ok -- %d ignore forms within %d policies"
-                           (count occurrences) (count (:ignore-counts ratchets))))
-          (do (run! println lines)
-              (throw (ex-info (str *ratchets-file* " drifted from the source tree")
-                              {:babashka/exit 1, :mage/quiet true}))))))))
+  (if-not (.exists (io/file *ratchets-file*))
+    (fail! (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement"))
+    ;; read-ratchets, validate-linters! and scan all throw on malformed input; without this they reach
+    ;; the user as a babashka stack dump.
+    (try
+      (let [ratchets (read-ratchets)]
+        (if (disabled? ratchets)
+          (println (str *ratchets-file* " is disabled -- nothing to check"))
+          (do
+            (validate-linters! ratchets (known-linters))
+            (let [occurrences (scan)
+                  lines       (check-report ratchets occurrences (config-suppressions) (slurp *ratchets-file*))]
+              (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
+              (if (empty? lines)
+                (println (format "ok -- %d ignore forms within %d policies"
+                                 (count occurrences) (count (:ignore-counts ratchets))))
+                (do (run! println lines)
+                    (fail! (str *ratchets-file* " drifted from the source tree"))))))))
+      (catch clojure.lang.ExceptionInfo e
+        (if (:babashka/exit (ex-data e))
+          (throw e)
+          (fail! (ex-message e)))))))
