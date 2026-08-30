@@ -2221,8 +2221,9 @@
   is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
   forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]].
 
-  `setting-keys` must be exactly the settings whose `:encryption` went from `:no` to `:when-encryption-key-set` in the
-  release the migration ships in: only those were stored plaintext by the previous release."
+  `setting-keys` must be exactly the settings whose stored value could be plaintext as of the release the migration
+  ships in: the ones whose `:encryption` went from `:no` to `:when-encryption-key-set` in it, or whose rows predate
+  their encryption (see [[encrypted-setter-none-settings-v58]])."
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
@@ -2252,8 +2253,8 @@
 (def ^:private encrypted-settings-v58
   "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
   `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones, whose rows
-  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are not
-  listed, since they have no row to encrypt; rows for settings that no longer exist are left alone.
+  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are listed
+  separately in [[encrypted-setter-none-settings-v58]]; rows for settings that no longer exist are left alone.
   `encrypt-settings-test` checks this list against the registry."
   ["admin-email" "ai-service-base-url" "allowed-iframe-hosts"
    "api-key" "application-colors" "application-favicon-url"
@@ -2309,6 +2310,64 @@
 (define-reversible-migration EncryptSettingsV58
   (encrypt-settings encrypted-settings-v58)
   (decrypt-settings encrypted-settings-v58))
+
+(def ^:private encrypted-setter-none-settings-v58
+  "Every registered `:setter :none` setting that is encrypted at rest as of v58. A `:setter :none` setting defaults
+  to `:encryption :when-encryption-key-set` whatever its type (that rule precedes the plaintext default for booleans
+  and the like), so it is read strictly -- but some of them were settable in older versions and stored plaintext back
+  then (e.g. `enable-query-caching` and `enable-nested-queries`, once admin toggles saved as plaintext booleans). Such
+  a row failed the strict read and, since the settings cache restores the whole table at once, took every setting
+  down with it. Rows written programmatically (`setup-token`, `instance-creation`, ...) are already encrypted and are
+  left untouched. `encrypt-setter-none-settings-test` checks a few known names are listed."
+  ["active-users-count" "ai-eval-capture" "airgap-enabled"
+   "audit-max-retention-days" "audit-table-truncation-batch-size" "available-fonts"
+   "available-locales" "available-timezones" "bug-reporting-enabled"
+   "can-disable-password-login?" "cloud-custom-smtp?" "cloud-gateway-ips"
+   "custom-viz-plugin-dev-mode-enabled" "database-replication-enabled" "dependency-backfill-batch-size"
+   "dependency-backfill-delay-minutes" "dependency-backfill-variance-minutes" "dependency-entity-check-batch-size"
+   "dependency-entity-check-delay-minutes" "dependency-entity-check-variance-minutes" "development-mode?"
+   "email-configured?" "enable-advanced-permissions?" "enable-ai-controls?"
+   "enable-audit-app?" "enable-basic-transforms?" "enable-cache-granular-controls?"
+   "enable-collection-cleanup?" "enable-config-text-file?" "enable-content-translation?"
+   "enable-content-verification?" "enable-dashboard-subscription-filters?" "enable-data-apps?"
+   "enable-data-complexity-score?" "enable-database-auth-providers?" "enable-database-routing?"
+   "enable-dependencies?" "enable-email-allow-list?" "enable-email-restrict-recipients?"
+   "enable-embedding-hub?" "enable-embedding-sdk-origins?" "enable-embedding-simple-feature?"
+   "enable-etl-connections-pg?" "enable-etl-connections?" "enable-library-retrieval?"
+   "enable-library?" "enable-metabase-ai-managed?" "enable-metabot-v3?"
+   "enable-multi-factor-auth?" "enable-nested-queries" "enable-offer-metabase-ai-managed?"
+   "enable-official-collections?" "enable-preemptive-caching?" "enable-python-transforms?"
+   "enable-query-caching" "enable-query-reference-validation?" "enable-remote-sync?"
+   "enable-sandboxes?" "enable-schema-viewer?" "enable-scim?"
+   "enable-semantic-search?" "enable-serialization?" "enable-session-timeout-config?"
+   "enable-snippet-collections?" "enable-sso-google?" "enable-sso-jwt?"
+   "enable-sso-ldap?" "enable-sso-oidc?" "enable-sso-saml?"
+   "enable-support-users?" "enable-tenants?" "enable-upload-management?"
+   "enable-whitelabeling?" "enable-writable-connection?" "encryption-enabled"
+   "engines" "example-dashboard-id" "google-auth-configured"
+   "has-attached-dwh?" "has-sample-database?" "hide-embed-branding?"
+   "install-analytics-database" "instance-creation" "is-hosted?"
+   "jdbc-data-warehouse-debug-unreturned-connection-stack-traces" "jdbc-data-warehouse-unreturned-connection-timeout-seconds" "jwt-configured"
+   "ldap-configured?" "llm-anthropic-api-key-configured?" "llm-metabot-configured?"
+   "llm-metabot-supports-reasoning?" "load-analytics-content" "mcp-embedding-signing-secret"
+   "new-device-email-rate-limit-cap" "notification-temp-file-size-max-bytes" "oidc-configured"
+   "oidc-enabled" "oidc-login-providers" "other-sso-enabled?"
+   "password-complexity" "remote-sync-enabled" "report-timezone-long"
+   "report-timezone-short" "saml-configured" "scim-base-url"
+   "search-engine" "security-center-disabled" "security-center-enabled?"
+   "send-email-on-first-login-from-new-device" "serialization-skip-schema-validation" "setup-token"
+   "show-google-sheets-integration" "site-uuid-for-premium-features-token-checks" "site-uuid-for-unsubscribing-url"
+   "site-uuid-for-version-info-fetching" "slack-configured?" "slack-connect-configured"
+   "slackbot-event-handler-pool-size" "snowplow-enabled" "support-access-grant-email"
+   "support-access-grant-first-name" "support-access-grant-last-name" "system-timezone"
+   "table-data-editing?" "token-features" "token-status"
+   "tracing-enabled" "tracing-endpoint" "tracing-export-timeout-ms"
+   "tracing-groups" "tracing-log-level" "tracing-max-queue-size"
+   "tracing-schedule-delay-ms" "tracing-service-name" "transforms-meter-locked"
+   "upgrade-threshold" "version"])
+
+(define-migration EncryptSetterNoneSettingsV58
+  (encrypt-settings encrypted-setter-none-settings-v58))
 
 (define-reversible-migration EncryptPublicUuids
   (when (encryption/default-encryption-enabled?)
