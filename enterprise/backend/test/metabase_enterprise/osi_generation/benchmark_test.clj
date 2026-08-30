@@ -1041,3 +1041,26 @@
           (corpus/with-corpus-library [ids (corpus/load-corpus)]
             (is (seq ids) "the corpus really did materialize entities")))
         (is (= [] @ingested))))))
+
+(deftest capture-does-not-commit-credentials-carried-in-a-base-url
+  (testing "a base URL is reduced to its endpoint, so a secret in user-info or a query cannot be committed"
+    ;; The routing whitelist protects field names; nothing stops an operator putting the secret in the
+    ;; base URL's own value, and a snapshot is written into the repo.
+    (let [identity-of #(#'arms/connection-identity
+                        {:connection-key "prov" :type "vllm" :model "m" :ai-proxy? false
+                         :credentials    {:base-url %}})]
+      (doseq [url ["https://user:sw0rdf1sh@vllm.internal:8000/v1"
+                   "https://vllm.internal/v1?api-key=sw0rdf1sh"
+                   "https://vllm.internal/v1#sw0rdf1sh"
+                   "https://vllm.internal/sw0rdf1sh/v1"]]
+        (testing url
+          (let [recorded (get-in (identity-of url) [:routing :base-url])]
+            (is (str/starts-with? recorded "https://vllm.internal")
+                "the endpoint is still identifiable")
+            (is (not (str/includes? (pr-str recorded) "sw0rdf1sh"))
+                "no part of the secret survives into the artifact"))))
+      (testing "an unparseable URL is reported, not passed through"
+        (is (= "<unparseable>" (get-in (identity-of "not a url at all") [:routing :base-url]))))
+      (testing "two paths on one host stay distinguishable"
+        (is (not= (get-in (identity-of "https://h/a") [:routing :base-url])
+                  (get-in (identity-of "https://h/b") [:routing :base-url])))))))
