@@ -69,29 +69,21 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
     | sed -e 's/:$//' -e "s#^#$2|#"
 }
 
-# Check each Mage function separately. If a function is renamed or its alias moves elsewhere, the workflow
-# scan may still find other commands and conceal that this function is no longer being checked.
-require_scan() { # require_scan <function> <result>
+# Check each scan separately. One scan still finding commands would otherwise conceal that another has
+# stopped matching, which silently drops everything it used to cover.
+require_scan() { # require_scan <what> <result>
   [ -n "$2" ] && return
-  echo "::error::check-preresolve-aliases.sh: found no Clojure invocation in $1 (mage/src/mage/project_tests.clj); the scan pattern no longer matches" >&2
+  echo "::error::check-preresolve-aliases.sh: found no Clojure invocation in $1; the scan pattern no longer matches" >&2
   exit 1
 }
+workflow_checks=$( { scan ee; scan oss; } || true)
 clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
 migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
-require_scan run-clojure-checks! "$clojure_checks"
-require_scan run-migration-checks! "$migration_checks"
+require_scan ".github/" "$workflow_checks"
+require_scan "run-clojure-checks! (mage/src/mage/project_tests.clj)" "$clojure_checks"
+require_scan "run-migration-checks! (mage/src/mage/project_tests.clj)" "$migration_checks"
 
-scanned="$( {
-  scan ee
-  scan oss
-  printf '%s\n' "$clojure_checks" "$migration_checks"
-  # Keep the group successful when scans find nothing; the explicit check below reports that case.
-  :
-} | sort -u )"
-if [ -z "$scanned" ]; then
-  echo "::error::check-preresolve-aliases.sh: found no Clojure invocations to check; the scan patterns no longer match" >&2
-  exit 1
-fi
+scanned="$(printf '%s\n' "$workflow_checks" "$clojure_checks" "$migration_checks" | sort -u)"
 
 found="$( {
   printf '%s\n' "$scanned"
