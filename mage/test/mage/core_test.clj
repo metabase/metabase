@@ -15,6 +15,7 @@
    [mage.kondo-ratchet-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.modules-test]
+   [mage.project-tests-test]
    [mage.shell-test]
    [mage.token-scan-test]
    [mage.util :as u]
@@ -27,6 +28,7 @@
   mage.kondo-ratchet-test/keep-me
   mage.util-test/keep-me
   mage.modules-test/keep-me
+   mage.project-tests-test/keep-me
   mage.shell-test/keep-me
   merge-yaml-migrations-test/keep-me
   token-scan-test/keep-me)

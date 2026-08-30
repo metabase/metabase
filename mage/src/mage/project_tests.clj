@@ -1,6 +1,7 @@
 (ns mage.project-tests
   (:refer-clojure :exclude [run!])
   (:require
+   [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
 
@@ -19,35 +20,53 @@
   "Backend check namespaces run by [[run!]]."
   (vec (concat module-check-namespaces ratchet-check-namespaces)))
 
-(defn- run-migration-checks! []
-  (println "Running migration checks")
-  (shell/sh {:dir (str u/project-root-directory "/bin/lint-migrations-file")}
-            "clojure" "-M:test"))
+(def ^:private default-suites
+  "Suites the bare `project-tests` command runs, in order."
+  ["migrations" "backend"])
 
-(defn- run-clojure-checks! [label namespaces]
-  (println "Running" label)
-  (shell/sh "clojure"
-            "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci"
-            ":only"
-            (pr-str namespaces)))
+;; `sh` is a [[mage.shell/sh*]]-compatible function so tests can run the suites without a JVM.
+;; .github/scripts/check-preresolve-aliases.sh reads the alias strings out of these two functions.
 
-(defn- run-backend-checks! []
-  (run-clojure-checks! "backend checks" backend-check-namespaces))
+(defn- run-migration-checks! [sh]
+  (sh {:dir (str u/project-root-directory "/bin/lint-migrations-file")}
+      "clojure" "-M:test"))
 
-(defn- run-module-checks! []
-  (run-clojure-checks! "module checks" module-check-namespaces))
+(defn- run-clojure-checks! [sh namespaces]
+  (sh "clojure"
+      "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci"
+      ":only"
+      (pr-str namespaces)))
 
-(defn- run-ratchet-checks! []
-  (run-clojure-checks! "ratchet checks" ratchet-check-namespaces))
+(def ^:private suite-labels
+  {"backend"    "backend checks"
+   "migrations" "migration checks"
+   "modules"    "module checks"
+   "ratchets"   "ratchet checks"})
+
+(defn- run-suite! [sh suite]
+  (println "Running" (suite-labels suite))
+  (:exit (case suite
+           "backend"    (run-clojure-checks! sh backend-check-namespaces)
+           "migrations" (run-migration-checks! sh)
+           "modules"    (run-clojure-checks! sh module-check-namespaces)
+           "ratchets"   (run-clojure-checks! sh ratchet-check-namespaces))))
+
+(defn run-suites!
+  "Run every suite in `suites` with `sh`, a [[mage.shell/sh*]]-compatible function, and return the names of
+  the suites that failed.
+  A failing suite does not stop the later ones.
+  `sh` streams each command's output as it runs; nothing is printed again afterwards."
+  [sh suites]
+  (let [failed (into [] (remove #(zero? (run-suite! sh %))) suites)]
+    (when (seq failed)
+      (println "Failed:" (str/join ", " (map suite-labels failed))))
+    failed))
 
 (defn run!
-  "Run the project-level backend and migration checks."
+  "Run the project-level checks: every default suite, or just `suite`.
+  Exits nonzero when any suite fails."
   ([]
-   (run-migration-checks!)
-   (run-backend-checks!))
+   (run! nil))
   ([suite]
-   (case suite
-     "backend"    (run-backend-checks!)
-     "migrations" (run-migration-checks!)
-     "modules"    (run-module-checks!)
-     "ratchets"   (run-ratchet-checks!))))
+   (when (seq (run-suites! shell/sh* (if suite [suite] default-suites)))
+     (u/exit 1))))
