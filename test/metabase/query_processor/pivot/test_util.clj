@@ -108,3 +108,25 @@
   [& body]
   `(binding [qp.pivot/*check-pivot-parity?* false]
      ~@body))
+
+(defmacro with-metadata-only-parity
+  "Compare pivot flows on column metadata (name/field_ref/source/base_type) only inside `body`, skipping the
+  row-frequency check. Use for tests whose query intentionally diverges on rows between the multi-query
+  and native paths (e.g. `:limit N` applied per-subquery) but should still agree on the FE-visible column
+  shape."
+  [& body]
+  `(binding [qp.pivot/*pivot-outcome-comparator* qp.pivot/pivot-cols-equivalent?]
+     ~@body))
+
+(defmacro with-multi-query-pivot!
+  "Force `run-pivot-query` to use the multi-query path inside `body` (by toggling
+  `use-native-pivot-tables` off), and disable parity checking. Use for tests that assert multi-query-
+  specific behavior (per-subquery row cap, subquery skipping, etc.) whose semantics don't translate to
+  the single-query paths.
+
+  Not thread-safe — do not use inside `^:parallel` tests; the site-wide setting toggle races other
+  fixtures. The trailing `!` marks this side effect."
+  [& body]
+  `(mt/with-temporary-setting-values [use-native-pivot-tables false]
+     (binding [qp.pivot/*check-pivot-parity?* false]
+       ~@body)))

@@ -635,21 +635,60 @@
       (get-in result [:cache/details :updated_at])))
 
 (defn- pivot-rows-equivalent?
-  "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
-  `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
-
-  When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
-  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`.
-
-  On mismatch — when at least one side was served from the QP cache — logs each side's cache `updated_at` so
-  that mismatches caused by asymmetric cache freshness (control served from a stale multi-path cache while
-  candidate ran fresh, or vice versa) can be distinguished from true code regressions."
+  "Row-frequency equivalence for pivot results. Each cell is normalised via [[round-numeric]] to tolerate
+  float-associativity noise between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`. Falls
+  back to `:row_count` when a caller-supplied rff didn't carry rows through, and to `true` when neither
+  side exposes rows or a row count — the caller's rff (e.g. a bare-count reducer or a streaming HTTP
+  writer) has reduced past what the parity checker can meaningfully compare."
   [r1 r2]
-  (let [equivalent? (cond
-                      (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
-                                             (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
-                      (:row_count r1)     (= (:row_count r1) (:row_count r2))
-                      :else               true)
+  (cond
+    (and (map? r1) (-> r1 :data :rows)
+         (map? r2) (-> r2 :data :rows))
+    (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+       (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+
+    (and (map? r1) (:row_count r1)
+         (map? r2) (:row_count r2))
+    (= (:row_count r1) (:row_count r2))
+
+    :else
+    true))
+
+(defn- ->cols-fingerprint
+  "Extract the field-shape signature the FE contract cares about — `:name`, `:field_ref`, `:source`, and
+  `:base_type` — for each column in `result`'s metadata. Ignores incidental fields (`:fingerprint`,
+  `:lib/*`, `:table_id`, `:id`, `:display_name`, etc.) that legitimately differ between pivot paths, and
+  drops the synthetic `pivot-grouping` column, which the multi-query post-processing middleware splices in
+  fresh (no `:field_ref`) but the SQL native path emits as a real `SELECT` column (with a `:field_ref`)."
+  [result]
+  (into []
+        (comp (remove #(= (:name %) lib.pivot/pivot-grouping-column-name))
+              (map (fn [col] (select-keys col [:name :field_ref :source :base_type]))))
+        (or (get-in result [:data :cols])
+            (get-in result [:data :results_metadata :columns]))))
+
+(defn pivot-cols-equivalent?
+  "Column-metadata equivalence for pivot results — compares the [[->cols-fingerprint]] projection so pivot
+  paths agree on the FE-visible shape (name/field_ref/source/base_type) even when rows legitimately differ
+  (e.g. `:limit N` under multi-query applies per subquery). Exposed so
+  [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]] can bind
+  [[*pivot-outcome-comparator*]] to it."
+  [r1 r2]
+  (= (->cols-fingerprint r1) (->cols-fingerprint r2)))
+
+(def ^:dynamic *pivot-outcome-comparator*
+  "Predicate `(fn [r1 r2])` the parity checker uses to decide whether two pivot-flow outcomes agree. Defaults
+  to [[pivot-rows-equivalent?]] (row-frequency compare). Tests whose paths legitimately diverge on rows but
+  should agree on column metadata can bind this to [[pivot-cols-equivalent?]] via
+  [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]]."
+  pivot-rows-equivalent?)
+
+(defn- outcomes-data-equivalent?
+  "Delegates to [[*pivot-outcome-comparator*]], then logs an asymmetric-cache warning when a mismatch shows
+  the cache freshness diverged between the two sides (helps distinguish stale-cache flakes from real
+  regressions)."
+  [r1 r2]
+  (let [equivalent? (*pivot-outcome-comparator* r1 r2)
         control-cached-at   (cache-updated-at r1)
         candidate-cached-at (cache-updated-at r2)]
     (when (and (not equivalent?)
@@ -716,13 +755,14 @@
 
 (defn- outcomes-match?
   "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
-  throwables with the same signature (see [[throwable-signature]]), or both succeeded with row-equivalent results."
+  throwables with the same signature (see [[throwable-signature]]), or both succeeded with results the
+  active [[*pivot-outcome-comparator*]] considers equivalent."
   [{a-outcome :outcome a-throwable :throwable}
    {b-outcome :outcome b-throwable :throwable}]
   (cond
     (and a-throwable b-throwable) (= (throwable-signature a-throwable) (throwable-signature b-throwable))
     (or  a-throwable b-throwable) false
-    :else                         (pivot-rows-equivalent? a-outcome b-outcome)))
+    :else                         (outcomes-data-equivalent? a-outcome b-outcome)))
 
 (defn- divergent-pivot-pairs
   "Vector of `[flow-a flow-b]` pairs (drawn in [[pivot-flow-comparison-pairs]] order) whose outcomes in

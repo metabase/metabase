@@ -200,49 +200,117 @@
 (defn- compile-union-all-pivot
   "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
   `SELECT * FROM (...) AS __mb_pivot_result`. Used for drivers that lack `:native-pivot-tables` and for queries whose
-  window aggregations GROUPING SETS can't compose meaningfully."
-  [driver honeysql-form {:keys [breakout pivot]}]
-  (let [breakout-hsql  (mapv #(sql.qp/->honeysql driver %) breakout)
-        non-remap-poss (non-remap-positions breakout)
-        non-remap-bos  (mapv breakout non-remap-poss)
-        orig->new      (remap-original->new-field-positions breakout)
-        nr-idx-by-uuid (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
-        rows-idx       (mapv nr-idx-by-uuid (:rows pivot))
-        cols-idx       (mapv nr-idx-by-uuid (:columns pivot))
-        combos         (qp.pivot/breakout-combinations (count non-remap-bos)
-                                                       rows-idx
-                                                       cols-idx
-                                                       (get pivot :show-row-totals    true)
-                                                       (get pivot :show-column-totals true))
-        n-breakouts    (count breakout)
-        typed-null     (fn [i]
-                         (h2x/with-type-info nil (h2x/type-info (nth breakout-hsql i))))
-        branches       (mapv (fn [combo]
-                               (let [kept?         (set (expand-grouping-combo combo non-remap-poss orig->new))
-                                     bitmask       (qp.pivot/group-bitmask (count non-remap-bos) combo)
-                                     breakout-sel  (into []
-                                                         (map-indexed (fn [i entry]
-                                                                        (if (kept? i)
-                                                                          entry
-                                                                          [(typed-null i) (select-entry-alias entry)])))
-                                                         (subvec (:select honeysql-form) 0 n-breakouts))
-                                     branch-select (into breakout-sel
-                                                         cat
-                                                         [[[[:inline bitmask] lib.pivot/pivot-grouping-column-name]]
-                                                          (subvec (:select honeysql-form) n-breakouts)])
-                                     branch-group  (into []
-                                                         (keep-indexed (fn [i entry] (when (kept? i) entry)))
-                                                         (:group-by honeysql-form))]
-                                 (cond-> (-> honeysql-form
-                                             (dissoc :order-by :limit :group-by)
-                                             (assoc :select branch-select))
-                                   (seq branch-group) (assoc :group-by branch-group))))
-                             combos)
-        outer-order-by (when (> (count combos) 1)
-                         (into [[:pivot-grouping :asc]]
-                               (comp (take n-breakouts) ; the first selected values are the breakouts
-                                     (map (fn [entry] [(select-entry-alias entry) :asc])))
-                               (:select honeysql-form)))]
+  window aggregations GROUPING SETS can't compose meaningfully.
+
+  For each combo we recompile `:breakout` + `:aggregation` against a stage variant carrying only the kept
+  breakouts, so the SQL compiler produces branch-appropriate `GROUP BY` and window-fn `OVER` shapes (matching
+  what the multi-query path emits per subquery). Missing breakout columns are null-padded so all branches
+  share a UNION-ALL-compatible column layout."
+  [driver honeysql-form {:keys [breakout pivot] :as stage}]
+  (let [breakout-hsql            (mapv #(sql.qp/->honeysql driver %) breakout)
+        non-remap-poss           (non-remap-positions breakout)
+        non-remap-bos            (mapv breakout non-remap-poss)
+        orig->new                (remap-original->new-field-positions breakout)
+        nr-idx-by-uuid           (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
+        rows-idx                 (mapv nr-idx-by-uuid (:rows pivot))
+        cols-idx                 (mapv nr-idx-by-uuid (:columns pivot))
+        combos                   (qp.pivot/breakout-combinations (count non-remap-bos)
+                                                                 rows-idx
+                                                                 cols-idx
+                                                                 (get pivot :show-row-totals    true)
+                                                                 (get pivot :show-column-totals true))
+        n-breakouts              (count breakout)
+        orig-breakout-select     (subvec (:select honeysql-form) 0 n-breakouts)
+        orig-agg-select          (subvec (:select honeysql-form) n-breakouts)
+        ;; Only take aggregation-referencing order-bys from the stage — implicit breakout-based order-bys
+        ;; added by middleware are re-derived below (canonicalized), so keeping them would double-insert.
+        user-order-bys           (into []
+                                       (filter (fn [[_ _ ref]]
+                                                 (and (vector? ref) (= (first ref) :aggregation))))
+                                       (:order-by stage))
+        typed-null               (fn [i]
+                                   (if-let [info (h2x/type-info (nth breakout-hsql i))]
+                                     (h2x/with-type-info nil info)
+                                     nil))
+        ;; Shared prefix (source, joins, filter, CTEs) — everything except the per-branch shape.
+        shared-base              (dissoc honeysql-form :select :select-distinct :group-by :order-by :limit)
+        alias-of                 select-entry-alias
+        ;; Reorder `bos` so any temporal breakout with the finest granularity sits last — matches the sort
+        ;; ordering the multi-query path emits per subquery (via
+        ;; `nest_breakouts/add-implicit-breakout-order-bys`) so UA-branch offsets and outer row ordering line
+        ;; up with multi-query row-for-row.
+        canonicalize-breakouts   (fn [bos]
+                                   (if-let [fti (driver-api/finest-temporal-breakout-index bos 1)]
+                                     (into (vec (concat (subvec (vec bos) 0 fti)
+                                                        (subvec (vec bos) (inc fti))))
+                                           [(nth bos fti)])
+                                     (vec bos)))
+        compile-branch           (fn [combo]
+                                   (let [kept-full-idx (vec (expand-grouping-combo combo non-remap-poss orig->new))
+                                         kept-breakout (mapv (partial nth breakout) kept-full-idx)
+                                         bitmask       (qp.pivot/group-bitmask (count non-remap-bos) combo)
+                                         ;; Strip :pivot to avoid recursing into this method. Set :order-by to
+                                         ;; the user's explicit order-bys followed by canonical breakouts
+                                         ;; (finest-temporal last) — window-fn aggregations read this from
+                                         ;; `*inner-query*` to build their `OVER (ORDER BY ...)`, and multi-query's
+                                         ;; subqueries sort the same way so branch row ordering lines up. Strip
+                                         ;; :limit — the outer wrapper owns any row caps.
+                                         canonical-bo  (canonicalize-breakouts kept-breakout)
+                                         branch-obs    (into user-order-bys
+                                                             (mapv (fn [b] [:asc {} b]) canonical-bo))
+                                         branch-stage  (-> stage
+                                                           (dissoc :pivot :limit)
+                                                           (assoc :breakout kept-breakout)
+                                                           (cond->
+                                                            (seq branch-obs) (assoc :order-by branch-obs)
+                                                            (empty? branch-obs) (dissoc :order-by)))
+                                         branch-form   (binding [sql.qp/*inner-query* branch-stage]
+                                                         (cond-> shared-base
+                                                           (seq kept-breakout)
+                                                           (as-> $ (sql.qp/apply-top-level-clause driver :breakout $ branch-stage))
+                                                           :always
+                                                           (as-> $ (sql.qp/apply-top-level-clause driver :aggregation $ branch-stage))))
+                                         n-kept        (count kept-breakout)
+                                         branch-select (:select branch-form)
+                                         kept-sel      (subvec branch-select 0 n-kept)
+                                         aggs-sel      (subvec branch-select n-kept)
+                                         kept-by-alias (into {} (map (juxt alias-of identity)) kept-sel)
+                                         padded-bo-sel (mapv (fn [orig-entry i]
+                                                               (or (kept-by-alias (alias-of orig-entry))
+                                                                   [(typed-null i) (alias-of orig-entry)]))
+                                                             orig-breakout-select
+                                                             (range n-breakouts))
+                                         full-select   (-> padded-bo-sel
+                                                           (conj [[:inline bitmask] lib.pivot/pivot-grouping-column-name])
+                                                           (into aggs-sel))]
+                                     (assoc branch-form :select full-select)))
+        branches                 (mapv compile-branch combos)
+        ;; Outer sort: pivot-grouping first (so branches stay grouped), then user's explicit order-bys
+        ;; (referenced by their aggregation aliases so each pivot-grouping's rows are ordered like a
+        ;; multi-query subquery would order them), then canonical breakouts as a final tiebreak.
+        canonical-orig-bo-aliases (mapv (fn [b]
+                                          (alias-of (nth orig-breakout-select
+                                                         (.indexOf ^java.util.List (vec breakout) b))))
+                                        (canonicalize-breakouts breakout))
+        ;; Map aggregation UUID → position, so we can resolve MBQL 5 `[:aggregation opts <uuid-str>]`
+        ;; references from the user's :order-by to the corresponding aggregation alias in
+        ;; `orig-agg-select`.
+        agg-uuid->idx            (into {}
+                                       (map-indexed (fn [i agg] [(lib.options/uuid agg) i]))
+                                       (:aggregation stage))
+        user-order-by-outer      (into []
+                                       (keep (fn [[dir _opts ref]]
+                                               (when (and (vector? ref) (= (first ref) :aggregation))
+                                                 (let [target (nth ref 2 nil)
+                                                       agg-idx (get agg-uuid->idx target)]
+                                                   (when-let [entry (and agg-idx (nth orig-agg-select agg-idx nil))]
+                                                     [(alias-of entry) dir])))))
+                                       user-order-bys)
+        outer-order-by           (when (> (count combos) 1)
+                                   (into [[:pivot-grouping :asc]]
+                                         cat
+                                         [user-order-by-outer
+                                          (map (fn [alias] [alias :asc]) canonical-orig-bo-aliases)]))]
     (cond-> {:select [:*]
              :from   [[{:union-all branches} :__mb_pivot_result]]}
       outer-order-by (assoc :order-by outer-order-by))))
