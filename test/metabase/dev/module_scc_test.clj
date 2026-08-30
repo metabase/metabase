@@ -31,6 +31,57 @@
 (deftest ^:parallel largest-scc-test
   (is (= '#{a b c} (deps-graph/largest-scc cyclic-graph))))
 
+;; the 3-cycle above plus a disjoint 2-cycle, so the totals cover more than the largest component
+(def ^:private two-cluster-graph
+  (assoc cyclic-graph 'g '#{h}, 'h '#{g}))
+
+(deftest ^:parallel cyclic-components-test
+  (testing "only nontrivial components, largest first"
+    (is (= ['#{a b c} '#{g h}] (deps-graph/cyclic-components two-cluster-graph))))
+  (testing "equal-sized components order on their alphabetically first member, so runs are reproducible"
+    (is (= ['#{g h} '#{y z}]
+           (deps-graph/cyclic-components '{y #{z}, z #{y}, g #{h}, h #{g}}))))
+  (testing "an acyclic graph has none"
+    (is (= [] (deps-graph/cyclic-components '{a #{b}, b #{c}, c #{}})))))
+
+(deftest ^:parallel cycle-stats-test
+  (let [ns-counts '{a 4, b 3, c 2, d 9, e 9, f 9, g 1, h 1}
+        stats     (deps-graph/cycle-stats two-cluster-graph ns-counts)]
+    (testing "totals span every cyclic component, not just the largest"
+      (is (= {:component-count 2
+              :module-count    5
+              :namespace-count 11
+              :edge-count      5}
+             (dissoc stats :components))))
+    (testing "each component carries its own counts and members"
+      ;; c -> d leaves the component and is not counted; a -> b -> c -> a are the three that stay inside
+      (is (= [{:module-count 3, :namespace-count 9, :edge-count 3, :members '#{a b c}}
+              {:module-count 2, :namespace-count 2, :edge-count 2, :members '#{g h}}]
+             (:components stats)))))
+  (testing "namespace counts default to zero for unweighted nodes"
+    (is (= 0 (:namespace-count (deps-graph/cycle-stats two-cluster-graph {})))))
+  (testing "an acyclic graph has nothing trapped"
+    (is (= {:component-count 0, :module-count 0, :namespace-count 0, :edge-count 0, :components []}
+           (deps-graph/cycle-stats '{a #{b}, b #{}} '{a 1, b 1})))))
+
+(deftest ^:parallel model-import-dependencies-test
+  (let [config '{collections {:model-exports #{:model/Collection}
+                              :model-imports #{:model/Collection :model/Card}}
+                 queries     {:model-exports #{:model/Card}
+                              :model-imports #{:model/Database}}
+                 serdes      {:model-imports :bypass}
+                 warehouses  {:model-exports #{:model/Database}}}]
+    (testing "an import becomes an edge to whichever module exports the model"
+      (is (= '{collections #{queries}
+               queries     #{warehouses}
+               serdes      #{}
+               warehouses  #{}}
+             (deps-graph/model-import-dependencies config))))
+    (testing "a module importing its own model is not made to depend on itself"
+      (is (= #{'queries} (get (deps-graph/model-import-dependencies config) 'collections))))
+    (testing "a bypass module declares no imports, so it contributes no edges"
+      (is (= #{} (get (deps-graph/model-import-dependencies config) 'serdes))))))
+
 (deftest ^:parallel empty-graph-scc-test
   (testing "a graph with no nodes has no SCC — largest-scc is empty rather than throwing"
     (is (= #{} (deps-graph/largest-scc {})))
@@ -39,8 +90,17 @@
     ;; a node-cut of the sole node leaves an empty graph, so the internal `(apply max-key count sccs)`
     ;; must tolerate an empty SCC list rather than blowing up mid-analysis
     (is (= 0 (:largest-scc-size (module-scc/scc-summary {}))))
+    (is (= 0 (:cyclic-edge-count (module-scc/scc-summary {}))))
     (is (= [] (module-scc/edge-cut-impacts {})))
     (is (seq (module-scc/node-cut-impacts '{a #{}})))))
+
+(deftest ^:parallel scc-summary-cycle-totals-test
+  (let [summary (module-scc/scc-summary two-cluster-graph '{a 4, b 3, c 2, g 1, h 1})]
+    (testing "the largest component sizes only the worst blob"
+      (is (= 3 (:largest-scc-size summary))))
+    (testing "the cyclic totals cover the small cluster the largest-component numbers miss"
+      (is (= {:cyclic-module-count 5, :cyclic-namespace-count 11, :cyclic-edge-count 5}
+             (select-keys summary [:cyclic-module-count :cyclic-namespace-count :cyclic-edge-count]))))))
 
 (deftest ^:parallel condensation-test
   (let [sccs (deps-graph/strongly-connected-components cyclic-graph)

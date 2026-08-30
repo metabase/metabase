@@ -144,6 +144,71 @@
   (let [component (largest-scc graph)]
     (if (> (count component) 1) component #{})))
 
+(defn cyclic-components
+  "Nontrivial SCCs of `graph`, largest first. Ties break on the alphabetically first member, so the order
+  is reproducible across runs and the committed numbers derived from it diff cleanly."
+  ([graph]
+   (cyclic-components graph (strongly-connected-components graph)))
+  ([_graph sccs]
+   (->> sccs
+        (filter #(> (count %) 1))
+        (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+        vec)))
+
+(defn- intra-component-edge-count
+  "Directed edges of `graph` with both endpoints inside `component`."
+  [graph component]
+  (transduce (map (fn [node] (count (filter component (get graph node))))) + 0 component))
+
+(defn cycle-stats
+  "How much of `graph` is trapped in mutual dependency, and in how many separate clusters. `:module-count`
+  and `:namespace-count` are the modules and namespaces inside some cyclic component; `:edge-count` is the
+  dependency edges with both endpoints in the same component — the requires that would have to be inverted
+  to break every cycle in the graph.
+
+  Namespace weighting via `node->namespace-count` is the honest measure: splitting a cyclic module in the
+  config raises the module count without moving a namespace out of the cycle.
+
+  `:components` carries every cyclic cluster with its own counts and members, largest first, so a report
+  can lead with the few clusters worth cutting."
+  ([graph node->namespace-count]
+   (cycle-stats graph (strongly-connected-components graph) node->namespace-count))
+  ([graph sccs node->namespace-count]
+   (let [components (mapv (fn [component]
+                            {:module-count    (count component)
+                             :namespace-count (transduce (map #(get node->namespace-count % 0))
+                                                         + 0 component)
+                             :edge-count      (intra-component-edge-count graph component)
+                             :members         component})
+                          (cyclic-components graph sccs))]
+     {:component-count (count components)
+      :module-count    (transduce (map :module-count) + 0 components)
+      :namespace-count (transduce (map :namespace-count) + 0 components)
+      :edge-count      (transduce (map :edge-count) + 0 components)
+      :components      components})))
+
+(defn model-import-dependencies
+  "Module => the modules whose models it imports, read off the `:model-exports`/`:model-imports` boundaries
+  in `config`. These are real coupling that the `:uses` graph does not carry: a module can depend on another
+  module's row shapes without requiring any of its namespaces, so cycles that only exist through models are
+  invisible in the require graph.
+
+  A module whose `:model-imports` is `:bypass` contributes no edges — the config records no imports for it
+  at all — so [[module-boundary-stats]] counts those modules separately rather than letting them read as
+  model-free."
+  [config]
+  (let [owner (into {}
+                    (for [[module {:keys [model-exports]}] config
+                          :when                            (set? model-exports)
+                          model                            model-exports]
+                      [model module]))]
+    (into (sorted-map)
+          (map (fn [[module {:keys [model-imports]}]]
+                 [module (if (set? model-imports)
+                           (into (sorted-set) (comp (keep owner) (remove #{module})) model-imports)
+                           (sorted-set))]))
+          config)))
+
 (defn module-boundary-debt
   "Current module-boundary anti-pattern counts. One-way ratchets: each may only go down.
   Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit."
@@ -216,6 +281,19 @@
   static requires form a DAG, so the component is pure dynamic edges (`requiring-resolve` and friends)
   and is the floor no module re-partitioning can get under.
 
+  The `:cyclic-*` family covers everything the largest component leaves out — how many separate cyclic
+  clusters there are, and how many modules, namespaces and dependency edges they hold between them. A cut
+  that frees a small cluster moves these while leaving `:largest-scc-*` flat, so the two families together
+  say both how big the worst blob is and how much of the repo is tangled at all.
+
+  Every cycle stat is reported twice: once for the ordinary require graph, and once for that graph plus the
+  model-import edges of [[model-import-dependencies]], suffixed `-with-model-imports`. A module that reads
+  another module's models is coupled to it whether or not it requires one of its namespaces, so the
+  combined graph is the one that predicts what a carve actually has to untangle.
+  `:model-import-bypass-modules` counts the modules exempted from model boundaries entirely: their model
+  edges appear in neither graph, so the number has to be visible or the bypass hides coupling by
+  construction.
+
   `:max-file-test-namespaces` and `:max-file-deftests` are the worst-case selective-CI cost of touching
   a single source file — see [[max-test-blast-radius]]. They fall when a cut shrinks some module's
   dependent set, but ordinary test-writing inside the blob pushes them back up.
@@ -229,24 +307,46 @@
   ([deps config]
    (module-boundary-stats deps config nil))
   ([deps config {:keys [fast?]}]
-   (let [values      (vals config)
-         api-sizes   (keep (fn [{:keys [api]}]
-                             (when (set? api)
-                               (count api)))
-                           values)
-         any-modules (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)
-         module-scc  (largest-cyclic-scc (module-dependencies deps))
-         ns-scc      (largest-cyclic-scc (into {}
-                                               (map (fn [{ns-sym :namespace, required :deps}]
-                                                      [ns-sym (into #{} (map :namespace) required)]))
-                                               deps))]
-     (cond-> {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
-              :largest-api        (reduce max 0 api-sizes)
-              :largest-ns-scc     (count ns-scc)
-              :largest-scc-modules (count module-scc)
-              :largest-scc-namespaces (count (filter #(contains? module-scc (:module %)) deps))
-              :module-count       (count config)
-              :total-api          (reduce + 0 api-sizes)}
+   (let [values          (vals config)
+         api-sizes       (keep (fn [{:keys [api]}]
+                                 (when (set? api)
+                                   (count api)))
+                               values)
+         any-modules     (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)
+         module-graph    (module-dependencies deps)
+         combined-graph  (merge-with into module-graph (model-import-dependencies config))
+         ns-counts       (frequencies (keep :module deps))
+         ;; namespaces (one per scanned dep row) belonging to a module in `component`
+         scc-namespaces  (fn [component] (count (filter #(contains? component (:module %)) deps)))
+         api-any-nses    (count (filter #(contains? any-modules (:module %)) deps))
+         bypass-modules  (count (filter #(= :bypass (:model-imports %)) values))
+         cycles          (cycle-stats module-graph ns-counts)
+         combined-cycles (cycle-stats combined-graph ns-counts)
+         ;; components come back largest first, so the biggest cycle is the head of the list
+         module-scc      (:members (first (:components cycles)) #{})
+         combined-scc    (:members (first (:components combined-cycles)) #{})
+         ns-scc          (largest-cyclic-scc (into {}
+                                                   (map (fn [{ns-sym :namespace, required :deps}]
+                                                          [ns-sym (into #{} (map :namespace) required)]))
+                                                   deps))]
+     (cond-> {:api-any-namespaces                        api-any-nses
+              :cyclic-components                         (:component-count cycles)
+              :cyclic-components-with-model-imports      (:component-count combined-cycles)
+              :cyclic-edges                              (:edge-count cycles)
+              :cyclic-edges-with-model-imports           (:edge-count combined-cycles)
+              :cyclic-modules                            (:module-count cycles)
+              :cyclic-modules-with-model-imports         (:module-count combined-cycles)
+              :cyclic-namespaces                         (:namespace-count cycles)
+              :cyclic-namespaces-with-model-imports      (:namespace-count combined-cycles)
+              :largest-api                               (reduce max 0 api-sizes)
+              :largest-ns-scc                            (count ns-scc)
+              :largest-scc-modules                       (count module-scc)
+              :largest-scc-modules-with-model-imports    (count combined-scc)
+              :largest-scc-namespaces                    (scc-namespaces module-scc)
+              :largest-scc-namespaces-with-model-imports (scc-namespaces combined-scc)
+              :model-import-bypass-modules               bypass-modules
+              :module-count                              (count config)
+              :total-api                                 (reduce + 0 api-sizes)}
        (not fast?) (merge (let [test-blast (max-test-blast-radius deps)]
                             {:max-file-deftests        (:deftests test-blast)
                              :max-file-test-namespaces (:test-namespaces test-blast)}))))))
