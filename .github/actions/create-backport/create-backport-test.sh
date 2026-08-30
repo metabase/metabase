@@ -35,7 +35,7 @@ disabled_ratchets=';; Kondo ignore ratchets apply only to master; this release b
 # active ratchets    unrelated file        app.txt          leave the conflict for manual resolution
 # divergent ratchets ratchets + app.txt    app.txt          resolve only ratchets
 # release cut        ratchets              none             cut and backport commit the same opt-out
-# n/a                cut-release workflow  n/a              the workflow calls the shared producer
+# n/a                cut-release workflow  n/a              the workflow calls the shared writer
 # any                invalid commit        n/a              propagate the cherry-pick failure
 # divergent ratchets generated backport.sh app.txt          resolve only ratchets through the manual script
 #
@@ -52,6 +52,7 @@ test_unrelated_backport_preserves_target_ratchets() (
   cd "$repo"
   cherry_pick_backport "$commit"
 
+  assert_eq feature "$(cat app.txt)" "the unrelated change was not cherry-picked"
   assert_ratchets "$active_ratchets"
   assert_cherry_pick_completed
   assert_worktree_clean
@@ -179,7 +180,7 @@ test_release_cut_and_backport_commit_the_same_opt_out() (
     "the release cut did not install the expected opt-out"
 )
 
-test_cut_release_workflow_uses_the_producer() (
+test_cut_release_workflow_uses_the_shared_writer() (
   grep -Fq 'source .github/actions/create-backport/kondo-ratchets.sh' "$cut_release_workflow" ||
     fail "the cut-release workflow does not source kondo-ratchets.sh"
   grep -Fq 'write_disabled_ratchets' "$cut_release_workflow" ||
@@ -210,19 +211,24 @@ test_generated_script_resolves_ratchets_end_to_end() (
   cherry_pick_backport "$commit"
   git cherry-pick --abort
 
+  local release_commit
+  release_commit=$(git rev-parse HEAD)
   write_backport_script "$commit"
   chmod +x backport.sh
   git add backport.sh
   git commit -qm "Add manual backport script"
 
   bash -n backport.sh
-  grep -Fq 'write_disabled_ratchets ()' backport.sh || fail "the generated script omitted the opt-out producer"
+  grep -Fq 'write_disabled_ratchets ()' backport.sh || fail "the generated script omitted write_disabled_ratchets"
   ./backport.sh
 
   assert_ratchets_disabled
   assert_only_conflicts app.txt
   assert_cherry_pick_pending
+  assert_eq "$release_commit" "$(git rev-parse HEAD)" "the generated script did not return HEAD to the release commit"
   [ ! -e backport.sh ] || fail "the generated script did not remove itself"
+  ! git ls-files --error-unmatch backport.sh >/dev/null 2>&1 || fail "the generated script is still tracked"
+  ! git status --porcelain | grep -q backport.sh || fail "the generated script left a status entry"
 )
 
 # Test harness
@@ -329,7 +335,7 @@ change_release_app_and_ratchets() {
   change_release_ratchets "$1"
 }
 
-# The release opt-out comes from the shared producer, never from a copy in the tests.
+# The release opt-out comes from the shared writer, never from a copy in the tests.
 disable_release_ratchets() {
   (cd "$1" && write_disabled_ratchets)
 }
@@ -364,6 +370,6 @@ run_test "continuation never opens an editor"
 run_test "non-ratchet conflict remains manual"
 run_test "mixed conflict resolves only ratchets"
 run_test "release cut and backport commit the same opt-out"
-run_test "cut-release workflow uses the producer"
+run_test "cut-release workflow uses the shared writer"
 run_test "invalid commit failure is propagated"
 run_test "generated script resolves ratchets end-to-end"
