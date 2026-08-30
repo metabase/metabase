@@ -260,6 +260,20 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
+  modules-validate
+  {:doc "Validate module config, ownership, visibility, API, and model boundaries"
+   :examples [["./bin/mage modules-validate" "Run every module-config validation"]
+              ["./bin/mage modules-validate --update-ratchets" "Rewrite any lower module-debt ratchets, then validate"]]
+   :options [["-u" "--update-ratchets" "Lower module-debt ratchets to current values; refuses increases"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-validate-config! parsed))}
+
+  modules-tree
+  {:doc "Print the declared modules, one per line, enterprise modules last"
+   :examples [["./bin/mage modules-tree" "Print every declared module"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-print-module-tree parsed))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]

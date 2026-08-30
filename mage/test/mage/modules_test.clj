@@ -279,7 +279,7 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
+(defn- modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
@@ -325,3 +325,12 @@
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+(deftest module-tree-sorts-enterprise-last
+  (testing "siblings are alphabetical, except enterprise modules sort after everything else"
+    (let [config {'queries {} 'enterprise/audit {} 'actions {} 'enterprise/sso {} 'util {}}
+          tree   (#'mage.modules/module-display-tree config)
+          lines  (#'mage.modules/tree-node-lines [] tree)]
+      ;; the root node renders an empty line, so drop it
+      (is (= ["actions" "queries" "util" "enterprise/audit" "enterprise/sso"]
+             (rest lines))))))
