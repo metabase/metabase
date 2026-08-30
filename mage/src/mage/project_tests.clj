@@ -8,16 +8,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private module-check-namespaces
-  "Module check namespaces run by [[run!]]."
   '[dev.modules-config-test
     metabase.core.modules-test])
 
 (def ^:private ratchet-check-namespaces
-  "Ratchet check namespaces run by [[run!]]."
   '[metabase.core.kondo-ratchet-test])
 
 (def ^:private backend-check-namespaces
-  "Backend check namespaces run by [[run!]]."
   (vec (concat module-check-namespaces ratchet-check-namespaces)))
 
 (def ^:private default-suites
