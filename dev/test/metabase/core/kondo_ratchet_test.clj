@@ -32,6 +32,20 @@
     (kondo-ratchet/over-budget policies occurrences)
     (kondo-ratchet/drift policies occurrences)))
 
+(defn- config-budget-drift
+  [ci? budgets counts]
+  (if ci?
+    (kondo-ratchet/config-over-budget budgets counts)
+    (kondo-ratchet/config-drift budgets counts)))
+
+;; Stale exemptions fail local runs only; the master shrinker drops them after merge, so a CI run whose
+;; sibling PR already justified the last ignore must not fail.
+(defn- stale-exemptions
+  [ci? exempt occurrences]
+  (if ci?
+    #{}
+    (kondo-ratchet/stale-exemptions exempt occurrences)))
+
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The master shrinker performs this bookkeeping asynchronously after merge.
 (use-fixtures :once (fn [thunk]
@@ -76,7 +90,7 @@
                   "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`.")
       (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
         (is (= #{}
-               (kondo-ratchet/stale-exemptions comment-exempt (tree-scan))))))))
+               (stale-exemptions (System/getenv "CI") comment-exempt (tree-scan))))))))
 
 (deftest ^:parallel config-budgets-match-actual-test
   (when (ratchets-enabled?)
@@ -85,8 +99,24 @@
                   "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
                   "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
       (is (= {}
-             (kondo-ratchet/config-drift (:config-counts (kondo-ratchet/read-ratchets))
-                                         (kondo-ratchet/config-suppressions)))))))
+             (config-budget-drift (System/getenv "CI")
+                                  (:config-counts (kondo-ratchet/read-ratchets))
+                                  (kondo-ratchet/config-suppressions)))))))
+
+(deftest ^:parallel ci-tolerates-reductions-test
+  (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
+                     {:file "g.clj", :line 1, :linters [:b], :justified? true}]]
+    (testing "inline budgets"
+      (is (= {} (budget-drift true {:a 3, :b 1} occurrences)))
+      (is (= {:a {:recorded 3, :actual 1}} (budget-drift false {:a 3, :b 1} occurrences)))
+      (is (= {:a {:recorded 0, :actual 1, :examples ["f.clj:1"]}} (budget-drift true {:b 1} occurrences))))
+    (testing "config budgets"
+      (is (= {} (config-budget-drift true {:cfg 3} {:cfg 1})))
+      (is (= {:cfg {:recorded 3, :actual 1}} (config-budget-drift false {:cfg 3} {:cfg 1})))
+      (is (= {:cfg {:recorded 1, :actual 2}} (config-budget-drift true {:cfg 1} {:cfg 2}))))
+    (testing "stale exemptions"
+      (is (= #{} (stale-exemptions true #{:a :b} occurrences)))
+      (is (= #{:b} (stale-exemptions false #{:a :b} occurrences))))))
 
 (deftest ^:parallel ratchets-file-normalized-test
   (when (ratchets-enabled?)

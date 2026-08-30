@@ -2,8 +2,8 @@
   "Ratchet on inline kondo ignore forms.
 
   Per-linter policies live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
-  need a justification comment. Local tests require bounded counts to match exactly; CI only rejects
-  increases so improvements can land before the master shrinker records them.
+  need a justification comment. Local tests require bounded counts and the exemption set to match exactly;
+  CI only rejects increases so improvements can land before the master shrinker records them.
   `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
@@ -521,11 +521,19 @@
          :when  (not= budget n)]
      [linter {:recorded budget, :actual n}])))
 
+(defn config-over-budget
+  "Linters whose config-suppression count exceeds its budget."
+  [budgets counts]
+  (sorted-by-str
+   (for [[linter {:keys [recorded actual] :as entry}] (config-drift budgets counts)
+         :when (> actual recorded)]
+     [linter entry])))
+
 (def ^:private header
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
        ";; entries). Each :ignore-counts value is a non-negative integer budget or :unlimited.\n"
-       ";; CI rejects bounded inline counts above their budgets; local tests require an exact match.\n"
+       ";; CI rejects inline and config counts above their budgets; local tests require an exact match.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
@@ -665,10 +673,12 @@
                (println (str "wrote " *ratchets-file*)))))))))
 
 (defn check-report
-  "The lines [[check]] prints when `text` has over-limit inline ignores or is not normalized.
+  "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
+  budgets, or `text` is not normalized.
   Lower counts are allowed because the master shrinker records improvements asynchronously."
-  [{:keys [ignore-counts] :as ratchets} occurrences text]
+  [{:keys [ignore-counts config-counts] :as ratchets} occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
+        config-over (config-over-budget config-counts config-actual)
         linter-line (fn [[linter {:keys [recorded actual]}]]
                       (format "  %s: %d recorded, %d actual" linter recorded actual))]
     (concat
@@ -678,6 +688,10 @@
              (mapcat (fn [[_ {:keys [examples]} :as entry]]
                        (cons (linter-line entry) (map #(str "    " %) examples)))
                      over)))
+     (when (seq config-over)
+       (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
+                  ", or raise the budget by hand and defend it in the PR:")
+             (map linter-line config-over)))
      (when (not= text (render ratchets))
        [(str *ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
              " to fix the formatting")]))))
@@ -707,7 +721,7 @@
                                             (assoc (ex-data e) :babashka/exit 1, :mage/quiet true)
                                             e))))
             occurrences (scan)
-            lines       (check-report ratchets occurrences (slurp file))]
+            lines       (check-report ratchets occurrences (config-suppressions) (slurp file))]
         (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
         (if (empty? lines)
           (println (format "ok -- %d ignore forms within %d policies"

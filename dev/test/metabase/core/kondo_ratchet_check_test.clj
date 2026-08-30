@@ -16,8 +16,10 @@
     {:file "f.clj", :line (inc i), :linters [linter]}))
 
 (defn- report-lines
-  [ratchets occurrences text]
-  (vec (kondo-ratchet/check-report ratchets occurrences text)))
+  ([ratchets occurrences text]
+   (report-lines ratchets occurrences {} text))
+  ([ratchets occurrences config-actual text]
+   (vec (kondo-ratchet/check-report ratchets occurrences config-actual text))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
@@ -44,6 +46,14 @@
                          (kondo-ratchet/render ratchets)))
         "unlimited linters do not fail the CI report, even when their actual count reaches zero")))
 
+(deftest ^:parallel config-over-budget-test
+  (let [ratchets {:ignore-counts {}, :config-counts {:a 1, :b 2}}]
+    (is (= ["config suppressions over budget -- remove the entry from .clj-kondo/config.edn, or raise the budget by hand and defend it in the PR:"
+            "  :a: 1 recorded, 2 actual"
+            "  :new: 0 recorded, 1 actual"]
+           (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
+        "a lowered config count passes; growth and new entries are reported")))
+
 (defn- check-with!
   "Output lines of [[kondo-ratchet/check]] against `ratchets` written to a temp file, with `occurrences`
   standing in for the tree scan; `:thrown?` says whether it failed."
@@ -56,6 +66,7 @@
         thrown? (atom false)]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
       (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
+                    kondo-ratchet/config-suppressions (constantly {})
                     kondo-ratchet/scan          (constantly occurrences)]
         {:lines   (str/split-lines
                    (with-out-str
