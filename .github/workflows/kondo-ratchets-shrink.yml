@@ -1,4 +1,9 @@
-name: Kondo Ratchets Shrink
+name: Shrink ratchets
+
+# Lowers the budgets in .clj-kondo/ratchets.edn to match master and delivers the result through one
+# automation PR, because the rulesets require a pull request for every change to master. A merge of that
+# PR touches only ratchets.edn, which matches `.clj-kondo/**` below, so it triggers one more run that
+# finds nothing to lower and stops: a single no-op, not a loop.
 
 on:
   push:
@@ -9,13 +14,20 @@ on:
       - "**.cljs"
       - ".clj-kondo/**"
       - "bb.edn"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
+# Overlapping master pushes converge: the newest run cancels the older one, recomputes from the master it
+# checked out, and force-updates the automation branch, so the PR always reflects one master commit.
 concurrency:
   group: kondo-ratchets-shrink
   cancel-in-progress: true
+
+env:
+  AUTOMATION_BRANCH: automation/shrink-ratchets
+  RATCHETS_FILE: .clj-kondo/ratchets.edn
 
 jobs:
   shrink:
@@ -23,7 +35,11 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
+      # `ref: master` checks out the branch head at checkout time rather than the pushed commit, so a run
+      # that queued behind another one starts from the newest master it can see.
       - uses: actions/checkout@v6
+        with:
+          ref: master
       - name: Set up Java for cold dependency resolution
         uses: actions/setup-java@v5.2.0
         with:
@@ -31,29 +47,56 @@ jobs:
           java-version: 25
       - name: Shrink ignore limits
         run: ./bin/mage fix-kondo-ratchets
-      - name: Commit lowered limits
+      - name: Compare with master and the automation PR
+        id: compare
         run: |
-          for attempt in 1 2 3; do
-            if git diff --quiet -- .clj-kondo/ratchets.edn; then
-              echo "Ratchets are already tight"
-              exit 0
-            fi
+          if git diff --quiet -- "$RATCHETS_FILE"; then
+            echo "Ratchets are already tight on master $(git rev-parse --short HEAD)"
+            echo "deliver=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-            git config user.name "Metabase Automation"
-            git config user.email "github-automation@metabase.com"
-            git add .clj-kondo/ratchets.edn
-            git commit -m "Shrink Kondo ratchet limits"
+          # The automation branch holds exactly one commit on top of some earlier master. Depth 2 fetches
+          # that commit and its master parent, which is all the comparison below needs.
+          if git fetch --quiet --depth=2 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
+             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
+             && git diff --quiet FETCH_HEAD^ HEAD -- "$RATCHETS_FILE"; then
+            echo "The automation PR already carries this result; master has not touched $RATCHETS_FILE since"
+            echo "deliver=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-            if git push origin HEAD:master; then
-              exit 0
-            fi
+          git diff --stat -- "$RATCHETS_FILE"
+          echo "deliver=true" >> "$GITHUB_OUTPUT"
+      - name: Update the automation PR
+        if: steps.compare.outputs.deliver == 'true'
+        # The automation user's token is needed here and only here: a branch pushed with GITHUB_TOKEN
+        # starts no pull_request workflows, so the PR would never get its checks, and the PR is opened as
+        # that user. Nothing raises a budget and nothing bypasses review; the PR merges like any other.
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          git config user.name "Metabase Automation"
+          git config user.email "github-automation@metabase.com"
+          git add -- "$RATCHETS_FILE"
+          git commit --quiet -m "Tighten ratchets"
+          git push --force --quiet \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/$AUTOMATION_BRANCH"
 
-            if [ "$attempt" -eq 3 ]; then
-              echo "Could not update master after three attempts" >&2
-              exit 1
-            fi
+          existing=$(gh pr list --head "$AUTOMATION_BRANCH" --base master --state open \
+            --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "Updated the automation PR #$existing"
+            exit 0
+          fi
 
-            git fetch origin master
-            git reset --hard origin/master
-            ./bin/mage fix-kondo-ratchets
-          done
+          gh pr create \
+            --base master \
+            --head "$AUTOMATION_BRANCH" \
+            --title "Tighten ratchets" \
+            --label "no-backport" \
+            --body "\`./bin/mage fix-kondo-ratchets\` lowered \`$RATCHETS_FILE\` to match master.
+          The shrink workflow force-updates this branch from master whenever the result changes, so the
+          diff is always one commit on top of a recent master. Merge it to land the lower budgets; nothing
+          is raised."
