@@ -125,6 +125,3 @@ breakage keeps happening, *that* is the signal a comment was warranted.
   or `:model/X` reference, or a new module), run `./bin/mage fix-modules-config` to regenerate
   `.clj-kondo/config/modules/config.edn`, then run `./bin/mage project-tests modules`. The fixer is a no-op when
   nothing drifted; see "Module Boundaries" in the project `CLAUDE.md`.
-- If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
-  `./bin/merge-kondo-ratchets`. It stages the conservative result or stops when the conflict needs a human
-  decision.
