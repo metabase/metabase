@@ -144,68 +144,76 @@
         (is (re-find #"no active buffers" result))))))
 
 (deftest format-viewing-context-test-2
-  (testing "formats table entity"
-    (let [context {:user_is_viewing [{:type "table"
-                                      :id 123
-                                      :name "users"
-                                      :description "User accounts"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"table" result))
-      (is (re-find #"users" result))
-      (is (re-find #"User accounts" result))))
-  (testing "formats model entity"
-    (let [context {:user_is_viewing [{:type "model"
-                                      :id 456
-                                      :name "Revenue Model"
-                                      :description "Daily revenue metrics"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"model" result))
-      (is (re-find #"Revenue Model" result))))
-  (testing "formats question entity"
-    (let [context {:user_is_viewing [{:type "question"
-                                      :id 789
-                                      :name "Top Customers"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"question" result))
-      (is (re-find #"Top Customers" result))))
-  (testing "formats metric entity"
-    (let [context {:user_is_viewing [{:type "metric"
-                                      :id 111
-                                      :name "Total Revenue"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"metric" result))
-      (is (re-find #"Total Revenue" result))))
-  (testing "formats dashboard entity"
-    (let [context {:user_is_viewing [{:type "dashboard"
-                                      :id 222
-                                      :name "Executive Dashboard"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"dashboard" result))
-      (is (re-find #"Executive Dashboard" result))))
-  (testing "handles keyword types in viewing context"
-    (let [context {:user_is_viewing [{:type :table
-                                      :id 321
-                                      :name "orders"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"table" result))
-      (is (re-find #"orders" result))))
-  (testing "handles empty viewing context"
-    (let [context {}
-          result (user-context/format-viewing-context context)]
-      (is (= "" result))))
-  (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
-                                     {:type "question" :id 2 :name "Top Users"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"users" result))
-      (is (re-find #"Top Users" result)))))
+  ;; Stub every entity-details fetcher so the test doesn't depend on whether the fake IDs happen
+  ;; to correspond to real rows in the app DB. When a fetcher throws 403 (id exists but the
+  ;; current test user can't read it), `fetch-and-format` returns nil and `format-viewing-context`
+  ;; collapses to "".
+  (mt/with-dynamic-fn-redefs [entity-details/get-table-details     (constantly nil)
+                              entity-details/get-report-details    (constantly nil)
+                              entity-details/get-metric-details    (constantly nil)
+                              entity-details/get-dashboard-details (constantly nil)]
+    (testing "formats table entity"
+      (let [context {:user_is_viewing [{:type "table"
+                                        :id 123
+                                        :name "users"
+                                        :description "User accounts"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"table" result))
+        (is (re-find #"users" result))
+        (is (re-find #"User accounts" result))))
+    (testing "formats model entity"
+      (let [context {:user_is_viewing [{:type "model"
+                                        :id 456
+                                        :name "Revenue Model"
+                                        :description "Daily revenue metrics"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"model" result))
+        (is (re-find #"Revenue Model" result))))
+    (testing "formats question entity"
+      (let [context {:user_is_viewing [{:type "question"
+                                        :id 789
+                                        :name "Top Customers"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"question" result))
+        (is (re-find #"Top Customers" result))))
+    (testing "formats metric entity"
+      (let [context {:user_is_viewing [{:type "metric"
+                                        :id 111
+                                        :name "Total Revenue"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"metric" result))
+        (is (re-find #"Total Revenue" result))))
+    (testing "formats dashboard entity"
+      (let [context {:user_is_viewing [{:type "dashboard"
+                                        :id 222
+                                        :name "Executive Dashboard"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"dashboard" result))
+        (is (re-find #"Executive Dashboard" result))))
+    (testing "handles keyword types in viewing context"
+      (let [context {:user_is_viewing [{:type :table
+                                        :id 321
+                                        :name "orders"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"table" result))
+        (is (re-find #"orders" result))))
+    (testing "handles empty viewing context"
+      (let [context {}
+            result (user-context/format-viewing-context context)]
+        (is (= "" result))))
+    (testing "handles multiple viewing items"
+      (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
+                                       {:type "question" :id 2 :name "Top Users"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"users" result))
+        (is (re-find #"Top Users" result))))))
 
 (deftest format-recent-views-test
   (testing "formats recent views"
