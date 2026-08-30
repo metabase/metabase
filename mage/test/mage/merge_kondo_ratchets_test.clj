@@ -194,6 +194,15 @@
                            :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
         (is (leaves-unresolved? dir) stage)
         (is (str/includes? (output dir) message)))))
+  (testing "a stage that is not exactly one map is not read as an empty set of policies"
+    (doseq [[stage message] [[""                                                "is empty"]
+                             ["{:ignore-counts {:a 1}} {:ignore-counts {:a 2}}\n" "holds more than one form"]
+                             ["[:a 1]\n"                                          "must hold a map of policies"]]]
+      (with-conflict [dir {:base   {ratchets-file base-ratchets}
+                           :ours   {ratchets-file stage}
+                           :theirs {ratchets-file "{:ignore-counts {:a 4}}\n"}}]
+        (is (leaves-unresolved? dir) (pr-str stage))
+        (is (str/includes? (output dir) message) (pr-str stage)))))
   (testing "an unknown field, even when the target is disabled"
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
                          :ours   {ratchets-file "{:disabled true}\n"}
