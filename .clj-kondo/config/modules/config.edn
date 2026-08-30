@@ -3533,6 +3533,14 @@
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
 
+  enterprise/osi-generation
+  {:team "Metabot"
+   :uses #{llm
+           metabot
+           settings
+           util}
+   :api #{metabase-enterprise.osi-generation.init}}
+
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}

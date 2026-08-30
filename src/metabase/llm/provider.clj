@@ -344,7 +344,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (boolean (u/trimmed-string (llm.settings/llm-proxy-base-url)))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -480,7 +480,7 @@
   proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (boolean (u/trimmed-string (llm.settings/llm-proxy-base-url)))
     (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
@@ -847,3 +847,24 @@
               (assoc field-key (get existing field-key))))
           (merge existing config)
           (secret-or-unknown-field-keys type-name existing)))
+
+;;; ------------------------------------------- Model-reference settings -------------------------------------------
+
+(defonce ^:private followed-model-ref-settings
+  ;; Settings outside this module that hold a `connection-key/model` reference. An atom rather than a fixed list
+  ;; because enterprise modules add their own and cannot be named from here.
+  (atom #{}))
+
+(defn register-model-ref-setting!
+  "Register `setting-key` as holding a `connection-key/model` reference that must follow an edited connection.
+
+  A reference stores the model as a string, not a live lookup, so renaming an Azure deployment leaves every
+  reference naming the old one. The connection still reports usable, so nothing gates, and the next request
+  fails at the provider. Register at init; only an explicitly stored value is rewritten, never a derived one."
+  [setting-key]
+  (swap! followed-model-ref-settings conj setting-key))
+
+(defn followed-model-ref-setting-keys
+  "Every registered setting key holding a model reference that should follow a connection edit."
+  []
+  @followed-model-ref-settings)

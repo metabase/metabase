@@ -1031,7 +1031,7 @@
   - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
    - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
-  (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
+  (let [proxy-auth (when-let [base (u/trimmed-string (llm/llm-proxy-base-url))]
                      {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
                       :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
     (if ai-proxy?

@@ -696,6 +696,15 @@
       (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
       (is (= [1 2 3] @acc)))))
 
+(deftest ^:parallel trimmed-string-test
+  (are [value expected] (= expected (u/trimmed-string value))
+    nil               nil
+    42                nil
+    ""                nil
+    " \t\n"           nil
+    "already-trimmed" "already-trimmed"
+    "  trim me  "     "trim me"))
+
 (deftest ^:parallel safe-min-test
   (testing "safe min behaves like clojure.core/min"
     (is (= nil (u/safe-min nil)))

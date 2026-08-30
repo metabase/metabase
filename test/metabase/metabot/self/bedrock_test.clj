@@ -243,11 +243,18 @@
       (is (not (contains? body :include))))))
 
 (deftest unsupported-model-throws-test
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo
-       #"Unsupported Bedrock model deepseek.v3.2. Only anthropic.\* and openai.\* models are supported."
-       (captured-raw-request! {:model "deepseek.v3.2"
-                               :input [{:role :user :content "hi"}]}))))
+  (testing "a vendor without a mantle request route is rejected"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Unsupported Bedrock model deepseek.v3.2. Supported model IDs use the anthropic.\* or openai.\* prefix; openai.gpt-oss\* is not supported."
+         (captured-raw-request! {:model "deepseek.v3.2"
+                                 :input [{:role :user :content "hi"}]}))))
+  (testing "GPT-OSS is cataloged under OpenAI but is not invokable through mantle's Responses route"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Unsupported Bedrock model openai.gpt-oss-120b.*openai.gpt-oss\* is not supported."
+         (captured-raw-request! {:model "openai.gpt-oss-120b"
+                                 :input [{:role :user :content "hi"}]})))))
 
 (deftest ^:parallel mantle-anthropic-body-test
   (testing "drops only the top-level cache_control, preserving content-block-level markers"

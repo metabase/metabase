@@ -330,6 +330,32 @@
                          (connection-model-ref conn))]
     (repoint-metabot! model-ref)))
 
+(defn- prospective-connection-model-refs
+  "The model references involved in saving `conn`.
+
+  `:requested-ref` is the model the API was explicitly asked to verify, whether or not a dependent setting follows
+  it. `:candidate-ref` is the exact reference selected for Metabot; `:composed-ref` is also kept because explicit
+  mini and registered model-reference settings follow only models composed from connection config, not an admin's
+  pick from a fixed catalog."
+  [{conn-key :key :keys [type config]} requested-model]
+  (let [composed-model (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+        composed-ref   (when composed-model (str conn-key "/" composed-model))
+        requested-ref  (when (not-empty requested-model) (str conn-key "/" requested-model))
+        picked-ref     (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
+                         requested-ref)]
+    {:requested-ref requested-ref
+     :candidate-ref (or composed-ref picked-ref)
+     :composed-ref  composed-ref}))
+
+(defn- validate-prospective-connection-model-refs!
+  "Validate explicit and generated references before the connection is persisted. A requested model matters even
+  when no dependent setting follows it: provider listing may accept a catalog entry that the runtime adapter cannot
+  invoke, as Bedrock does for GPT-OSS."
+  [{:keys [type] :as conn} requested-model]
+  (let [{:keys [requested-ref candidate-ref]} (prospective-connection-model-refs conn requested-model)]
+    (doseq [model-ref (distinct (keep identity [requested-ref candidate-ref]))]
+      (metabot.settings/validate-model-ref! model-ref type))))
+
 (defn- follow-edited-connection-model!
   "Keep the model-reference settings on the model an edited connection actually serves.
 
@@ -342,21 +368,26 @@
   An explicitly pinned mini model moves with a composed model the same way — its reference goes just as stale —
   but not with a pick, which changes what the admin prefers rather than what the connection can serve. A derived
   mini model needs no help, since it follows the Metabot selection on its own."
-  [{conn-key :key :keys [type config] :as conn} requested-model]
-  (let [composed-ref (when (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (connection-model-ref conn))
-        picked-ref   (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
-                       (str conn-key "/" requested-model))
-        metabot-ref  (metabot.settings/llm-metabot-provider)
-        mini-ref     (metabot.settings/explicit-mini-model)]
-    (when-let [model-ref (or composed-ref picked-ref)]
-      (when (and (= conn-key (llm.provider/model-ref->connection-key metabot-ref))
-                 (not= model-ref metabot-ref))
-        (repoint-metabot! model-ref)))
+  [{conn-key :key :as conn} requested-model]
+  (let [{:keys [candidate-ref composed-ref]} (prospective-connection-model-refs conn requested-model)
+        metabot-ref                           (metabot.settings/llm-metabot-provider)
+        mini-ref                              (metabot.settings/explicit-mini-model)]
+    (when (and candidate-ref
+               (= conn-key (llm.provider/model-ref->connection-key metabot-ref))
+               (not= candidate-ref metabot-ref))
+      (repoint-metabot! candidate-ref))
     (when (and composed-ref
                (= conn-key (llm.provider/model-ref->connection-key mini-ref))
                (not= composed-ref mini-ref))
-      (repoint! :llm-mini-model composed-ref))))
+      (repoint! :llm-mini-model composed-ref))
+    ;; Same rule for references owned by other modules: a composed model going stale breaks them identically,
+    ;; and only a stored value moves — a derived one already follows whatever it derives from.
+    (when composed-ref
+      (doseq [setting-key (llm.provider/followed-model-ref-setting-keys)
+              :let [stored-ref (setting/get-value-of-type :string setting-key)]]
+        (when (and (= conn-key (llm.provider/model-ref->connection-key stored-ref))
+                   (not= composed-ref stored-ref))
+          (repoint! setting-key composed-ref))))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -425,11 +456,16 @@
       (let [{:keys [learned-config] :as listed} (verify-credentials! conn config model)
             conn              (update conn :config merge learned-config)
             had-usable-model? (metabot-has-a-usable-model?)]
+        (validate-prospective-connection-model-refs! conn model)
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
           ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
           ;; the probe exercised, so connecting one leaves the instance working rather than model-less
           (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
+        ;; A reference may name a connection that did not exist yet — `validate-model-ref!` allows that, since
+        ;; an env var, config file or serdes import can land in either order. Once the connection appears, a
+        ;; composed model it does not serve is stale in exactly the way an edit makes it stale.
+        (follow-edited-connection-model! conn model)
         (seed-models-cache! conn listed)
         (connection-response (assoc conn :source :db))))))
 
@@ -466,10 +502,14 @@
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
           merged                   (update merged :config merge learned-config)
-          effective                (merge effective learned-config)]
+          effective                (merge effective learned-config)
+          edited                   (assoc merged :config effective)]
+      ;; These setters run the same validation after the save; doing it here first keeps a rejected edit atomic
+      ;; instead of leaving the provider on its new config and its references on the old one.
+      (validate-prospective-connection-model-refs! edited model)
       (llm.provider/set-connections! (assoc stored idx merged))
-      (follow-edited-connection-model! (assoc merged :config effective) model)
-      (seed-models-cache! (assoc merged :config effective) listed)
+      (follow-edited-connection-model! edited model)
+      (seed-models-cache! edited listed)
       (connection-response (assoc (merge live merged) :config effective)))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
@@ -490,7 +530,14 @@
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-mini-model)))
         (setting/set! :llm-mini-model nil))
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
-        (repoint-metabot! (fallback-model-ref)))))
+        (repoint-metabot! (fallback-model-ref)))
+      ;; Same for references owned by other modules. A reference to a deleted connection is dead: clearing
+      ;; it lets the setting fall back to whatever it derives from, which is its documented unset
+      ;; behaviour. Leaving it in place would read as unconfigured instead.
+      (doseq [setting-key (llm.provider/followed-model-ref-setting-keys)
+              :when (= conn-key (llm.provider/model-ref->connection-key
+                                 (setting/get-value-of-type :string setting-key)))]
+        (repoint! setting-key nil))))
   nil)
 
 (api.macros/defendpoint :get "/models"

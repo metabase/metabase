@@ -237,7 +237,7 @@
                 (#'metabot.self/parse-provider-model (metabot.settings/llm-metabot-provider))))))))
 
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
-;; The validator is private; exercise it through the setting setter.
+;; Exercised through the setting setters, which is the path that has to reject bad input.
 
 (deftest validate-metabot-provider-rejects-non-string-test
   (testing "rejects non-string input"
@@ -287,6 +287,21 @@
       (testing (str "accepts " model-ref)
         (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
           (is (= model-ref (metabot.settings/llm-metabot-provider))))))))
+
+(deftest validate-metabot-provider-bedrock-invokability-test
+  (with-connections [configured-anthropic
+                     (connection "bedrock" "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "test-secret"})]
+    (testing "accepts models served by each mantle request route"
+      (doseq [model-ref ["bedrock/anthropic.claude-opus-4-8"
+                         "bedrock/openai.gpt-5.5"]]
+        (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
+          (is (= model-ref (metabot.settings/llm-metabot-provider))))))
+    (testing "rejects catalog models mantle cannot invoke through those routes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid Bedrock model .*openai\.gpt-oss\* is not supported\."
+           (metabot.settings/llm-metabot-provider! "bedrock/openai.gpt-oss-120b"))))))
 
 (deftest validate-metabot-provider-accepts-a-second-connection-of-the-same-type-test
   (testing "a model can be selected on a second connection of a type the instance already has"
@@ -348,6 +363,20 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Google model \"google/anthropic/a/b\""
            (metabot.settings/llm-metabot-provider! "google/anthropic/a/b"))))))
+
+(deftest validate-metabot-provider-google-model-path-segment-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects characters the adapter cannot place in a model resource path"
+      (doseq [model-ref ["google/google/gemini 3.5 flash"
+                         "google/google/gemini-3.5-flash?alt=json"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Invalid Google model"
+             (metabot.settings/llm-metabot-provider! model-ref)))))
+    (testing "rejects a model resource path segment longer than 128 characters"
+      (let [model-ref (str "google/google/" (apply str (repeat 129 "a")))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Invalid Google model"
+             (metabot.settings/llm-metabot-provider! model-ref)))))))
 
 (deftest validate-metabot-provider-managed-model-allow-list-test
   (mt/with-premium-features #{:metabase-ai-managed}
@@ -413,6 +442,31 @@
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/explicit-mini-model))))))))
+
+(deftest model-ref-setters-normalize-test
+  (testing "a padded reference is stored trimmed, on every model-reference setting"
+    (doseq [[setting-name set!*] [["llm-metabot-provider" metabot.settings/llm-metabot-provider!]
+                                  ["llm-mini-model" metabot.settings/llm-mini-model!]]]
+      (testing setting-name
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (set!* "  anthropic/claude-sonnet-4-6  ")
+          (is (= "anthropic/claude-sonnet-4-6"
+                 (setting/get-value-of-type :string (keyword setting-name)))))))))
+
+(deftest model-ref-setters-clear-on-blank-test
+  (testing "blank clears the stored reference instead of failing validation — an admin form clears by sending \"\""
+    (doseq [blank [nil "" "   "]]
+      (testing (pr-str blank)
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "anthropic/claude-haiku-4-5")
+          (metabot.settings/llm-metabot-provider! blank)
+          (is (= metabot.settings/default-llm-metabot-provider
+                 (metabot.settings/llm-metabot-provider))
+              "the metabot model falls back to its default")
+          (metabot.settings/llm-mini-model! "anthropic/claude-haiku-4-5")
+          (metabot.settings/llm-mini-model! blank)
+          (is (nil? (metabot.settings/explicit-mini-model))
+              "the mini model goes back to being derived from the metabot model"))))))
 
 (deftest llm-mini-model-is-validated-like-the-metabot-model-test
   (with-connections [configured-anthropic

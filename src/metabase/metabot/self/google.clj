@@ -262,6 +262,15 @@
   "The publishers whose models this adapter serves."
   (set (keys model-families)))
 
+(defn valid-model?
+  "Whether `model` is a publisher-qualified model ID that can safely become the two model-resource path segments."
+  [model]
+  (let [publisher (model-publisher model)
+        model-id  (model-id model)]
+    (boolean (and (contains? model-publishers publisher)
+                  (valid-model-segment? publisher-pattern publisher)
+                  (valid-model-segment? model-id-pattern model-id)))))
+
 (defn- unqualified-model-ex
   "The error for a `model` that does not name both a publisher and a model."
   [model]
@@ -337,8 +346,7 @@
         model-id  (model-id model)]
     (when (str/blank? model-id)
       (throw (unqualified-model-ex model)))
-    (when-not (and (valid-model-segment? publisher-pattern publisher)
-                   (valid-model-segment? model-id-pattern model-id))
+    (when-not (valid-model? model)
       (throw (ex-info (tru (str "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, "
                                 "and the characters \".\", \"_\", \"-\" and \"@\"")
                            (pr-str model))
