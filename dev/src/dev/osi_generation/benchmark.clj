@@ -65,7 +65,9 @@
   `{:arms _ :deltas _ :regression-gate _}`.
   Opts: `:dir` (corpus dir), `:model` (embedding model map), `:model-digest` and `:runtime-version`
   (required with the default [[reference-embedding-model]]; obtain them from `ollama list` and
-  `ollama --version`), `:tool-limit`, `:snapshot` / `:snapshot-data` (the generated arm's captured snapshot).
+  `ollama --version`), `:tool-limit`, `:snapshot` / `:snapshot-data` (the generated arm's captured snapshot),
+  and the secret `:endpoint-identity-key` (or `MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY`) when a remote
+  embedding endpoint must be recorded.
   Needs a configured pgvector store and a running ollama (or an explicit `:model`) — a mock model cannot
   support a quality claim."
   [& {:as opts}]
@@ -80,7 +82,9 @@
   entity with the instance's configured OSI-generation LLM, and write the snapshot EDN. Returns
   `{:path _ :coverage _ :errors _ :usage _}` — pass `:snapshot` = `:path` to [[compare!]].
   The only entry point that calls an LLM; needs the `osi-generation` provider credentials configured.
-  Opts: `:dir` (corpus dir), `:out-dir` (snapshot dir)."
+  Opts: `:dir` (corpus dir), `:out-dir` (snapshot dir), and a secret `:endpoint-identity-key` (or set
+  `MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY`) retained by the operator to keep sanitized endpoint
+  identities comparable across runs."
   [& {:as opts}]
   (let [corpus (bench.corpus/load-corpus (or (:dir opts) bench.corpus/default-dir))]
     (bench.corpus/with-corpus-library [ids corpus]

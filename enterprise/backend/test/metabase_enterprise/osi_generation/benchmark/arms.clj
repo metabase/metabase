@@ -13,10 +13,13 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [buddy.core.mac :as mac]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
+   [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase-enterprise.osi-generation.benchmark.corpus :as corpus]
    [metabase-enterprise.osi-generation.generate :as generate]
@@ -24,8 +27,12 @@
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.spec :as spec]
    [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self.core :as metabot.core]
+   [metabase.metabot.self.google :as metabot.google]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -237,15 +244,23 @@
   "test_resources/osi_generation/benchmark/generated")
 
 (defn- with-pinned-connection
-  "Run `f` with every model-reference resolution answering `connection`, or plainly when it is nil.
+  "Run `f` with every model-reference resolution answering `connection`, or plainly when it is nil. For
+  a managed connection, also pin the proxy base URL even when it was nil at capture start.
 
   A capture makes generation calls only, so pinning all of them to one connection is the intent: one
   connection serves the whole artifact, and editing it mid-capture cannot move the provider underneath."
-  [connection f]
-  (if connection
-    (mt/with-dynamic-fn-redefs [llm.provider/resolve-model-ref (constantly connection)]
-      (f))
-    (f)))
+  ([connection f]
+   (with-pinned-connection connection nil f))
+  ([connection proxy-base-url f]
+   (let [f (if connection
+             (fn []
+               (mt/with-dynamic-fn-redefs [llm.provider/resolve-model-ref (constantly connection)]
+                 (f)))
+             f)]
+     (if (:ai-proxy? connection)
+       (mt/with-dynamic-fn-redefs [llm.settings/llm-proxy-base-url (constantly proxy-base-url)]
+         (f))
+       (f)))))
 
 (def ^:private routing-config-keys
   "The connection config keys a capture records: the ones that decide which endpoint served the requests.
@@ -254,26 +269,105 @@
   registry later can never start appearing in a committed snapshot."
   [:base-url :project-id :location :region :model-family :deployment-name])
 
-(defn- sanitized-endpoint
-  "`url` reduced to what identifies an endpoint without carrying its secrets: scheme, host and port
-  verbatim, and the path as a short digest.
+(def ^:private endpoint-identity-key-env-var
+  "MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY")
+
+(defn- endpoint-identity-key
+  [opts]
+  (let [key (u/trimmed-string (or (:endpoint-identity-key opts)
+                                  (env/env :mb-osi-generation-benchmark-endpoint-identity-key)))]
+    (when-not (and key (<= 32 (count key)))
+      (throw (ex-info (str endpoint-identity-key-env-var
+                           " must be a secret of at least 32 characters before an endpoint identity can be recorded")
+                      {:reason  :missing-endpoint-identity-key
+                       :env-var endpoint-identity-key-env-var})))
+    key))
+
+(defn- keyed-digest
+  [key value]
+  (codecs/bytes->hex
+   (mac/hash (.getBytes ^String value StandardCharsets/UTF_8)
+             {:key (.getBytes ^String key StandardCharsets/UTF_8)
+              :alg :hmac+sha256})))
+
+(def ^:private endpoint-identity-keys
+  #{:scheme
+    :host-hmac-sha256
+    :port
+    :user-info-hmac-sha256
+    :path-hmac-sha256
+    :query-hmac-sha256
+    :fragment-hmac-sha256})
+
+(defn endpoint-identity
+  "`url` reduced to a deterministic endpoint identity without carrying its secrets: an allowlisted scheme,
+  port, and keyed HMACs of the host and request-target components.
 
   The whitelist above protects field *names*; a base URL can carry the secret in its *value*, and the
   provider registry forbids none of the places it can hide — user-info, a query parameter, a fragment, or a
-  path segment (`https://proxy.internal/<token>/v1`). A snapshot is committed, so only scheme/host/port
-  survive as text. The path still distinguishes two endpoints on one host, so it is kept as a digest rather
-  than dropped. An unparseable URL is reported as such rather than passed through."
-  [url]
+  path segment, or even a DNS label (`https://<token>.proxy.internal/v1`). A snapshot is committed, so the
+  hostname, raw user-info, path, query, and fragment survive only as full HMAC-SHA256 values. The HMAC key
+  must be supplied in `opts` as `:endpoint-identity-key`, or through
+  `MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY`; it is never persisted. Cross-run comparison assumes
+  the same key. Non-HTTP(S) and unparseable URLs are reported as such rather than passed through."
+  ([url]
+   (endpoint-identity url {}))
+  ([url opts]
+   (try
+     (let [uri       (URI. url)
+           scheme    (some-> (.getScheme uri) u/lower-case-en u/trimmed-string)
+           host      (some-> (.getHost uri) u/lower-case-en u/trimmed-string)
+           user-info (u/trimmed-string (.getRawUserInfo uri))
+           path      (u/trimmed-string (.getRawPath uri))
+           query     (u/trimmed-string (.getRawQuery uri))
+           fragment  (u/trimmed-string (.getRawFragment uri))]
+       (if (or (not (#{"http" "https"} scheme)) (nil? host))
+         "<unparseable>"
+         (let [key (endpoint-identity-key opts)]
+           (cond-> {:scheme           scheme
+                    :host-hmac-sha256 (keyed-digest key host)}
+             (pos? (.getPort uri)) (assoc :port (.getPort uri))
+             user-info             (assoc :user-info-hmac-sha256 (keyed-digest key user-info))
+             path                  (assoc :path-hmac-sha256 (keyed-digest key path))
+             query                 (assoc :query-hmac-sha256 (keyed-digest key query))
+             fragment              (assoc :fragment-hmac-sha256 (keyed-digest key fragment))))))
+     (catch clojure.lang.ExceptionInfo e
+       (throw e))
+     (catch Exception _ "<unparseable>"))))
+
+(defn valid-endpoint-identity?
+  "Whether `identity` is a complete sanitized identity emitted by [[endpoint-identity]]."
+  [identity]
+  (let [digest? #(and (string? %) (boolean (re-matches #"[0-9a-f]{64}" %)))]
+    (and (map? identity)
+         (set/subset? (set (keys identity)) endpoint-identity-keys)
+         (#{"http" "https"} (:scheme identity))
+         (digest? (:host-hmac-sha256 identity))
+         (or (nil? (:port identity))
+             (and (int? (:port identity)) (<= 1 (:port identity) 65535)))
+         (every? (fn [k] (or (nil? (get identity k)) (digest? (get identity k))))
+                 [:user-info-hmac-sha256 :path-hmac-sha256 :query-hmac-sha256 :fragment-hmac-sha256]))))
+
+(def ^:private connection-identity-keys
+  #{:connection-key :type :model :ai-proxy? :routing})
+
+(defn- allowed-routing-keys
+  [type ai-proxy? base-url-type?]
+  (if ai-proxy?
+    #{:llm-proxy-provider-url}
+    (case type
+      "google"  #{:base-url :project-id :location}
+      "azure"   #{:base-url :model-family :deployment-name}
+      "bedrock" #{:region}
+      (if base-url-type? #{:base-url} #{}))))
+
+(defn- service-account-project-id
+  "Extract only the effective Google project identity from a service-account JSON credential. Invalid JSON
+  is left for the provider adapter to report when capture starts; no credential content escapes this seam."
+  [service-account-key]
   (try
-    (let [uri  (URI. url)
-          path (u/trimmed-string (.getPath uri))]
-      (if (nil? (u/trimmed-string (.getHost uri)))
-        "<unparseable>"
-        (str (.getScheme uri) "://" (.getHost uri)
-             (when (pos? (.getPort uri)) (str ":" (.getPort uri)))
-             (when path
-               (str "/#" (subs (codecs/bytes->hex (buddy-hash/sha256 path)) 0 12))))))
-    (catch Exception _ "<unparseable>")))
+    (some-> service-account-key (json/decode true) :project_id u/trimmed-string)
+    (catch Exception _ nil)))
 
 (defn- connection-identity
   "The non-secret identity of the connection a capture ran against, or nil when the reference resolved to
@@ -282,15 +376,76 @@
   Type and model alone cannot tell two captures apart when the same connection key was repointed at another
   endpoint between them, so the routing fields ([[routing-config-keys]]) are recorded alongside. API keys and
   every other credential are excluded — a snapshot is committed."
-  [connection]
-  (when connection
-    (let [routing (into (sorted-map)
-                        (keep (fn [k]
-                                (when-let [value (u/trimmed-string (get (:credentials connection) k))]
-                                  [k (cond-> value (= k :base-url) sanitized-endpoint)])))
-                        routing-config-keys)]
-      (cond-> (select-keys connection [:connection-key :type :model :ai-proxy?])
-        (seq routing) (assoc :routing routing)))))
+  ([connection]
+   (connection-identity connection nil {}))
+  ([connection proxy-base-url]
+   (connection-identity connection proxy-base-url {}))
+  ([connection proxy-base-url opts]
+   (when connection
+     (let [credentials (:credentials connection)
+           credentials (cond-> credentials
+                         (and (= "google" (:type connection))
+                              (nil? (u/trimmed-string (:project-id credentials))))
+                         (assoc :project-id (service-account-project-id (:service-account-key credentials)))
+
+                         (and (= "google" (:type connection))
+                              (nil? (u/trimmed-string (:location credentials))))
+                         (assoc :location "global")
+
+                         (= "azure" (:type connection))
+                         (merge (let [[model-family deployment-name]
+                                      (str/split (str (:model connection)) #"/" 2)]
+                                  {:model-family    model-family
+                                   :deployment-name deployment-name})))
+           credentials (cond-> credentials
+                         (= "google" (:type connection))
+                         (assoc :base-url (metabot.google/effective-api-base-url credentials)))
+           routing     (if (:ai-proxy? connection)
+                         (sorted-map
+                          :llm-proxy-provider-url
+                          (some-> (metabot.core/proxy-provider-url proxy-base-url (:type connection))
+                                  (endpoint-identity opts)))
+                         (into (sorted-map)
+                               (keep (fn [k]
+                                       (when-let [value (u/trimmed-string (get credentials k))]
+                                         [k (cond-> value
+                                              (= k :base-url) (endpoint-identity opts))])))
+                               routing-config-keys))]
+       (cond-> (select-keys connection [:connection-key :type :model :ai-proxy?])
+         (seq routing) (assoc :routing routing))))))
+
+(defn valid-connection-identity?
+  "Whether `connection` identifies the model and every provider-specific routing dimension needed to
+  reproduce a generated snapshot."
+  [model-ref {:keys [connection-key type model ai-proxy? routing] :as connection}]
+  (let [nonblank?       #(and (string? %) (not (str/blank? %)))
+        provider-type   (llm.provider/provider-type type)
+        base-url-type?  (some #(= :base-url (:key %)) (:fields provider-type))
+        expected-model  (if ai-proxy? (str type "/" model) model)
+        routing-keys    (allowed-routing-keys type ai-proxy? base-url-type?)
+        valid-base-url? (valid-endpoint-identity? (:base-url routing))]
+    (and (map? connection)
+         (= connection-identity-keys (set (keys connection)))
+         (map? routing)
+         (seq routing)
+         (set/subset? (set (keys routing)) routing-keys)
+         (nonblank? connection-key)
+         (nonblank? type)
+         (nonblank? model)
+         (boolean? ai-proxy?)
+         provider-type
+         (= connection-key (llm.provider/model-ref->connection-key model-ref))
+         (= expected-model (llm.provider/model-ref->model model-ref))
+         (if ai-proxy?
+           (valid-endpoint-identity? (:llm-proxy-provider-url routing))
+           (and (if base-url-type? valid-base-url? true)
+                (case type
+                  "google"  (and (nonblank? (:project-id routing))
+                                 (nonblank? (:location routing)))
+                  "azure"   (and (nonblank? (:model-family routing))
+                                 (nonblank? (:deployment-name routing)))
+                  "bedrock" (nonblank? (:region routing))
+                  true))))))
 
 (defn- snapshot-path [out-dir model-ref]
   (str out-dir "/" (t/local-date) "-" (u/slugify model-ref) "-" (random-uuid) ".edn"))
@@ -347,6 +502,8 @@
   call otherwise re-resolves the LLM settings itself, so a mid-capture provider/model change would
   yield a snapshot of mixed models labelled as one. Every returned `generator-version` is verified
   against the pinned identity before the artifact is written — a mismatch fails the capture. The
+  selected model reference must resolve before the first generation call; an unresolved reference is
+  refused rather than left able to appear or change underneath the capture. The
   metadata also records the generation-code and corpus hashes pinned before the first paid call. Both
   identities are checked again before the artifact is written, so a mid-capture edit aborts rather
   than labelling earlier outputs with the final source state.
@@ -354,18 +511,33 @@
   Must run inside `with-corpus-library`. A per-entity failure is recorded under `:errors` and left out
   of the snapshot — a coverage gap for the runner, not a run failure. An empty `ai_context` is
   the generator's answer, so it is kept (that entity scores at the `:none` floor on its own merits).
-  Opts: `:out-dir` (default [[default-snapshot-dir]])."
+  Opts: `:out-dir` (default [[default-snapshot-dir]]) and the non-persisted
+  `:endpoint-identity-key` (or `MB_OSI_GENERATION_BENCHMARK_ENDPOINT_IDENTITY_KEY`) used to make endpoint
+  HMACs stable across runs."
   [{:keys [entities] :as corpus} ids opts]
   (let [{:keys [model-ref] :as call-opts} (settings/llm-call-opts)
         ;; Resolve the connection once. Every request would otherwise re-resolve the same key against
         ;; `llm-providers`, so editing that connection mid-capture would move provider, endpoint or model
-        ;; under the capture while every row kept one generator version. An unresolvable reference is left
-        ;; unpinned: the generation call reports it far better than a second check here could.
-        pinned-connection  (llm.provider/resolve-model-ref model-ref)
-        pinned-version     (generate/generator-version model-ref)
-        pinned-code-hash   (generation-code-hash)
-        pinned-corpus-hash (corpus/corpus-hash corpus)
-        results  (with-pinned-connection pinned-connection
+        ;; under the capture while every row kept one generator version. Refuse an unresolved reference now:
+        ;; letting generation re-resolve it would allow a connection created mid-capture to produce an
+        ;; unpinned artifact.
+        pinned-connection     (or (llm.provider/resolve-model-ref model-ref)
+                                  (throw (ex-info "Cannot capture generated contexts: model reference does not resolve"
+                                                  {:reason    :unresolved-model-ref
+                                                   :model-ref model-ref})))
+        pinned-proxy-base-url (when (:ai-proxy? pinned-connection)
+                                (metabot.core/normalize-proxy-base-url (llm.settings/llm-proxy-base-url)))
+        pinned-connection-id  (connection-identity pinned-connection pinned-proxy-base-url opts)
+        _                     (when-not (valid-connection-identity? model-ref pinned-connection-id)
+                                (throw (ex-info (str "Cannot capture generated contexts: connection lacks a valid "
+                                                     "provider routing identity")
+                                                {:reason     :invalid-connection-identity
+                                                 :model-ref  model-ref
+                                                 :connection pinned-connection-id})))
+        pinned-version        (generate/generator-version model-ref)
+        pinned-code-hash      (generation-code-hash)
+        pinned-corpus-hash    (corpus/corpus-hash corpus)
+        results  (with-pinned-connection pinned-connection pinned-proxy-base-url
                    #(mt/with-dynamic-fn-redefs [settings/llm-call-opts (constantly call-opts)]
                       (mapv (fn [{:keys [corpus-key]}]
                               (try
@@ -409,8 +581,8 @@
                           :generation-code-hash pinned-code-hash
                           :corpus-hash          pinned-corpus-hash}
                    ;; Absent when the reference resolved to nothing, rather than recorded as an empty map.
-                   pinned-connection
-                   (assoc :connection (connection-identity pinned-connection)))
+                   pinned-connection-id
+                   (assoc :connection pinned-connection-id))
         artifact {:metadata metadata :contexts snapshot}
         path     (snapshot-path (or (:out-dir opts) default-snapshot-dir) model-ref)
         content  (snapshot-content artifact)]

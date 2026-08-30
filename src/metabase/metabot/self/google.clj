@@ -24,7 +24,7 @@
   `europe-west2` etc.
 
   The effective endpoint URL depends on the connection's location, but the connection can also name one outright.
-  See [[api-base-url]] for details."
+  See [[effective-api-base-url]] for details."
   (:require
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
@@ -151,7 +151,7 @@
     (format "https://aiplatform.%s.rep.googleapis.com" location)
     (format "https://%s-aiplatform.googleapis.com" location)))
 
-(defn- api-base-url
+(defn effective-api-base-url
   "Returns the base URL for requests in the location of `credentials`.
 
   The API host must agree with the location. The global host serves only `locations/global` and rejects all other
@@ -197,7 +197,7 @@
                        :error-code  :project-id-required})))
     {:auth        (core/resolve-auth "google" "Google"
                                      (when auth-method
-                                       {:url     (api-base-url creds)
+                                       {:url     (effective-api-base-url creds)
                                         :headers (case auth-method
                                                    :service-account (fresh-bearer-headers sa-creds)
                                                    :oauth-token     (oauth-bearer-headers oauth-access-token))})
@@ -386,7 +386,7 @@
 (defn- google-res->msg
   "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]]."
   [credentials]
-  (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
+  (let [endpoint (delay (try (effective-api-base-url credentials) (catch Exception _ nil)))]
     (fn [res]
       (cond-> (google-error-msg res)
         (and (include-endpoint-in-msg? (:status res)) @endpoint)

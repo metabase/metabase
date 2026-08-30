@@ -279,22 +279,23 @@
     ;; The provider SPI's resolved descriptor is closed, so these are exactly its identity fields.
     ;; `embedding-space-id` is the one that matters: two spaces can share a provider, model name and
     ;; dimension count and still produce incomparable vectors, which would make two runs look alike.
-    {:embedding-model (select-keys model [:provider :model-name :vector-dimensions
-                                          :model-revision :embedding-space-id :embedding-spi-version
-                                          :model-digest :runtime-version])
-     :query-prefix    (:query-prefix opts)
-     :schema-version  index-table/schema-version
-     :corpus-sha      corpus-sha
-     :snapshot        (when (= :generated arm)
-                        (let [artifact {:metadata (:generated-snapshot-metadata corpus)
-                                        :contexts (:generated-snapshot corpus)}]
-                          {:path       (:snapshot opts)
-                           :sha256     (snapshot-sha artifact)
-                           :generation (:metadata artifact)}))
-     :tool-limit      (:tool-limit opts)
-     :git-sha         (:sha git-state)
-     :git-dirty?      (:dirty? git-state)
-     :git-diff-sha    (:tracked-diff-sha git-state)}))
+    {:embedding-model    (select-keys model [:provider :model-name :vector-dimensions
+                                             :model-revision :embedding-space-id :embedding-spi-version
+                                             :model-digest :runtime-version])
+     :query-prefix       (:query-prefix opts)
+     :embedding-endpoint (:embedding-endpoint opts)
+     :schema-version     index-table/schema-version
+     :corpus-sha         corpus-sha
+     :snapshot           (when (= :generated arm)
+                           (let [artifact {:metadata (:generated-snapshot-metadata corpus)
+                                           :contexts (:generated-snapshot corpus)}]
+                             {:path       (:snapshot opts)
+                              :sha256     (snapshot-sha artifact)
+                              :generation (:metadata artifact)}))
+     :tool-limit         (:tool-limit opts)
+     :git-sha            (:sha git-state)
+     :git-dirty?         (:dirty? git-state)
+     :git-diff-sha       (:tracked-diff-sha git-state)}))
 
 ;;; -------------------------------------------------- Scoring ----------------------------------------------------
 
@@ -359,9 +360,11 @@
   corpus content, provider/model, and generator version. This catches snapshots captured before a corpus,
   prompt, or generator change even when their entity keys still provide full coverage."
   [corpus]
-  (let [{:keys [corpus-hash model-ref generator-version generation-code-hash] :as metadata}
+  (let [{:keys [corpus-hash model-ref generator-version generation-code-hash connection] :as metadata}
         (:generated-snapshot-metadata corpus)]
     (when-not (and (map? metadata)
+                   (= #{:corpus-hash :model-ref :generator-version :generation-code-hash :connection}
+                      (set (keys metadata)))
                    (string? corpus-hash)
                    (not (str/blank? corpus-hash))
                    (string? model-ref)
@@ -369,11 +372,12 @@
                    (string? generator-version)
                    (not (str/blank? generator-version))
                    (string? generation-code-hash)
-                   (not (str/blank? generation-code-hash)))
+                   (not (str/blank? generation-code-hash))
+                   (arms/valid-connection-identity? model-ref connection))
       (throw (ex-info (str "Generated snapshot metadata must include nonblank :corpus-hash, "
-                           ":model-ref, :generator-version, and :generation-code-hash values")
-                      {:reason   :invalid-snapshot-metadata
-                       :metadata metadata})))
+                           ":model-ref, :generator-version, and :generation-code-hash values, plus a valid "
+                           ":connection with provider-appropriate routing identity")
+                      {:reason :invalid-snapshot-metadata})))
     (let [actual-corpus-hash (corpus/corpus-hash corpus)
           current-version    (generate/generator-version model-ref)
           current-code-hash  (arms/generation-code-hash)]
@@ -423,54 +427,66 @@
   true)
 
 (defn- prepared-opts
-  "`opts` with the run's two pieces of shared state resolved: `:model`, the embedding model to index and
-  query under, and `:query-prefix`, what the tool prepends to every benchmark query.
+  "`opts` with the run's shared state resolved: `:model`, the embedding model to index and query under;
+  `:query-prefix`, what the tool prepends to every benchmark query; and OpenAI-compatible endpoint routing.
 
-  Idempotent, keyed on `:query-prefix`: [[run-comparison!]] prepares once so its arms share one model and one
-  prefix, a standalone [[run-arm!]] prepares for itself, and neither recomputes the other's. Recomputing
-  would be wrong rather than wasteful — a prefix the comparison resolved for the *configured* model would
-  come back as one resolved for a *pinned* one, since by then `:model` is set either way."
+  Idempotent via a private marker: [[run-comparison!]] prepares once so its arms share one model, prefix, and
+  endpoint, while a standalone [[run-arm!]] prepares for itself. An explicit `:query-prefix` is input, not
+  evidence that the model and endpoint were already resolved."
   [opts]
-  (if (contains? opts :query-prefix)
+  (if (::prepared? opts)
     opts
     (let [pinned-model? (some? (:model opts))
           model         (resolved-benchmark-model
-                         (or (:model opts) (semantic.embedding/get-configured-model)))]
+                         (or (:model opts) (semantic.embedding/get-configured-model)))
+          routing       (semantic.embedding/resolve-openai-compatible-routing! model)
+          endpoint      (some-> routing :endpoint (arms/endpoint-identity opts))
+          _             (when (and routing (not (arms/valid-endpoint-identity? endpoint)))
+                          (throw (ex-info "Cannot run benchmark: remote embedding endpoint has no valid identity"
+                                          {:reason             :invalid-embedding-endpoint-identity
+                                           :provider           (:provider routing)
+                                           :embedding-endpoint endpoint})))]
       (assoc opts
-             :model        model
-             :query-prefix (effective-query-prefix model pinned-model?)))))
+             ::prepared?        true
+             :model             model
+             :query-prefix      (if (contains? opts :query-prefix)
+                                  (:query-prefix opts)
+                                  (effective-query-prefix model pinned-model?))
+             :embedding-routing routing
+             :embedding-endpoint endpoint))))
 
 (defn- score-arm!
   [corpus arm opts]
-  (with-isolated-index [ds]
-    (mt/with-premium-features #{:library :library-retrieval}
-      ;; `with-corpus-library` already suppresses the nudge its own writes and deletes fire. This is the
-      ;; outer belt: a stray targeted sync from anywhere else in the run would reconcile the REAL index
-      ;; with the REAL model on a background thread where none of this run's bindings apply.
-      (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [& _] nil)]
-        (corpus/with-corpus-library [ids corpus]
-          ;; [[run-arm!]] resolved this model ([[prepared-opts]]) and verified what the server serves it
-          ;; from, so the index metadata row gets the `embedding_space_id` it requires and every arm of a
-          ;; comparison indexes and queries in one embedding space.
-          (let [model (:model opts)]
-            ;; The tool's query path resolves the model itself; pin it to this run's model so query
-            ;; embeddings always match the index the arm just built.
-            (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly model)]
-              (arms/apply-arm! arm corpus ids)
-              (let [expected (expected-index-doc-ids)
-                    diff     (reconcile/reconcile! ds (constantly model))
-                    _        (assert-index-coverage! expected (actual-index-doc-ids ds))
-                    scored (mt/with-test-user :crowberto
-                             (mapv (fn [query]
-                                     (metrics/score-query
-                                      (assoc query :judged (judged-entity-keys query ids))
-                                      (run-query query opts)))
-                                   (:queries corpus)))]
-                {:arm       arm
-                 :summary   (metrics/summarize scored)
-                 :per-query scored
-                 :index     (select-keys diff [:documents :entities])
-                 :manifest  (manifest model arm opts corpus)}))))))))
+  (binding [semantic.embedding/*openai-compatible-routing* (:embedding-routing opts)]
+    (with-isolated-index [ds]
+      (mt/with-premium-features #{:library :library-retrieval}
+        ;; `with-corpus-library` already suppresses the nudge its own writes and deletes fire. This is the
+        ;; outer belt: a stray targeted sync from anywhere else in the run would reconcile the REAL index
+        ;; with the REAL model on a background thread where none of this run's bindings apply.
+        (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [& _] nil)]
+          (corpus/with-corpus-library [ids corpus]
+            ;; [[run-arm!]] resolved this model ([[prepared-opts]]) and verified what the server serves it
+            ;; from, so the index metadata row gets the `embedding_space_id` it requires and every arm of a
+            ;; comparison indexes and queries in one embedding space.
+            (let [model (:model opts)]
+              ;; The tool's query path resolves the model itself; pin it to this run's model so query
+              ;; embeddings always match the index the arm just built.
+              (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly model)]
+                (arms/apply-arm! arm corpus ids)
+                (let [expected (expected-index-doc-ids)
+                      diff     (reconcile/reconcile! ds (constantly model))
+                      _        (assert-index-coverage! expected (actual-index-doc-ids ds))
+                      scored (mt/with-test-user :crowberto
+                               (mapv (fn [query]
+                                       (metrics/score-query
+                                        (assoc query :judged (judged-entity-keys query ids))
+                                        (run-query query opts)))
+                                     (:queries corpus)))]
+                  {:arm       arm
+                   :summary   (metrics/summarize scored)
+                   :per-query scored
+                   :index     (select-keys diff [:documents :entities])
+                   :manifest  (manifest model arm opts corpus)})))))))))
 
 (defn run-arm!
   "Materialize `corpus`, apply `arm`, reconcile an isolated index, run every query through the
@@ -489,20 +505,21 @@
   ([[assert-model-artifact-identity!]]) on both sides of the scoring, so a standalone run is pinned exactly
   as tightly as a comparison's."
   [corpus arm opts]
-  (let [opts              (prepared-opts (normalize-opts opts))
+  (let [opts              (normalize-opts opts)
         pinned-provenance (or (:benchmark-provenance opts) (benchmark-provenance opts))
         opts              (assoc opts :benchmark-provenance pinned-provenance)
         _                 (assert-benchmark-provenance-unchanged! pinned-provenance opts)
-        _                 (assert-corpus-matches-resources! corpus opts)
-        ;; Before and after, because a mutable tag or an upgraded runtime can be repointed while the arm
-        ;; runs: the scores would then come from an artifact the manifest never names.
-        _                 (assert-model-artifact-identity! (:model opts))]
+        _                 (assert-corpus-matches-resources! corpus opts)]
     (when (= :generated arm)
       (assert-generated-coverage! corpus)
       (assert-snapshot-matches-corpus! corpus))
-    ;; Redefined per thread rather than written to the setting: `ee-embedding-query-prefix` is site-wide, so
-    ;; a run would otherwise reach into concurrent retrieval requests and race anything else changing it.
-    (let [result (mt/with-dynamic-fn-redefs [semantic.embedding/prefix-search-query
+    (let [opts (prepared-opts opts)
+          ;; Before and after, because a mutable tag or an upgraded runtime can be repointed while the arm
+          ;; runs: the scores would then come from an artifact the manifest never names.
+          _    (assert-model-artifact-identity! (:model opts))
+          ;; Redefined per thread rather than written to the setting: `ee-embedding-query-prefix` is site-wide, so
+          ;; a run would otherwise reach into concurrent retrieval requests and race anything else changing it.
+          result (mt/with-dynamic-fn-redefs [semantic.embedding/prefix-search-query
                                              (fn [_model s] (str (:query-prefix opts) s))]
                    (score-arm! corpus arm opts))]
       (assert-benchmark-provenance-unchanged! pinned-provenance opts)
