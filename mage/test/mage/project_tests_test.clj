@@ -42,7 +42,7 @@
     (testing "both suites run, in order"
       (is (= [["clojure" "-M:test"]
               ["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-               "[dev.modules-config-test metabase.core.modules-test metabase.core.kondo-ratchet-test]"]]
+               "[dev.modules-config-test metabase.core.modules-test metabase.core.kondo-ratchet-test metabase.core.kondo-ratchet-check-test]"]]
              calls)))
     (testing "the failed suite is reported"
       (is (= ["migrations"] failed))
@@ -82,5 +82,5 @@
              "[dev.modules-config-test metabase.core.modules-test]"]]
            (:calls (run-suites! [] ["modules"]))))
     (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-             "[metabase.core.kondo-ratchet-test]"]]
+             "[metabase.core.kondo-ratchet-test metabase.core.kondo-ratchet-check-test]"]]
            (:calls (run-suites! [] ["ratchets"]))))))
