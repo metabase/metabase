@@ -5,6 +5,7 @@ import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   canBrush,
+  getAdjustedBrushEndEvent,
   getBrushClickObject,
   getBrushData,
   getGoalLineHoverData,
@@ -18,6 +19,7 @@ import {
   type EChartsOption,
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesBrushEvent,
+  type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
   type EChartsType,
   GOAL_LINE_SERIES_ID,
@@ -131,6 +133,9 @@ export const useChartEvents = (
 
   const optionRef = useLatest(option);
 
+  const brushSelectedEventRef = useRef<EChartsSeriesBrushSelectedEvent | null>(
+    null,
+  );
   const keepBrushForClickActionsRef = useRef(false);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
@@ -205,8 +210,24 @@ export const useChartEvents = (
         },
       },
       {
+        eventName: "brushSelected",
+        handler: (event: EChartsSeriesBrushSelectedEvent) => {
+          brushSelectedEventRef.current = event;
+        },
+      },
+      {
         eventName: "brushEnd",
-        handler: (event: EChartsSeriesBrushEndEvent) => {
+        handler: (brushEndEvent: EChartsSeriesBrushEndEvent) => {
+          const adjustedBrushEndEvent = getAdjustedBrushEndEvent(
+            brushEndEvent,
+            brushSelectedEventRef.current,
+            chartModel,
+          );
+          brushSelectedEventRef.current = null;
+          if (!adjustedBrushEndEvent) {
+            return;
+          }
+
           let openedClickActions = false;
 
           if (onBrush) {
@@ -214,7 +235,7 @@ export const useChartEvents = (
             if (chartElement) {
               const clickObject = getBrushClickObject(
                 chartModel,
-                event,
+                adjustedBrushEndEvent,
                 chartElement,
                 settings,
               );
@@ -237,7 +258,7 @@ export const useChartEvents = (
               isVisualizerCard ? visualizerRawSeries : rawSeries,
               metadata,
               chartModel,
-              event,
+              adjustedBrushEndEvent,
             );
             if (eventData) {
               onChangeCardAndRun?.(eventData);

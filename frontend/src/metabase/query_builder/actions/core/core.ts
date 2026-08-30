@@ -17,16 +17,8 @@ import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { createQuestionCard, updateQuestionCard } from "metabase/redux/cards";
 import {
-  API_CREATE_QUESTION,
-  API_UPDATE_QUESTION,
-  RELOAD_CARD,
   REVERT_CARD_TO_REVISION,
-  SET_CARD_AND_RUN,
-  SOFT_RELOAD_CARD,
-  clearQueryResult,
-  onCloseSidebars,
-  resetQB,
-  setParameterValue,
+  questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -47,6 +39,16 @@ import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 import { trackNewQuestionSaved } from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
+  API_CREATE_QUESTION,
+  RELOAD_CARD,
+  SET_CARD_AND_RUN,
+  SOFT_RELOAD_CARD,
+  clearQueryResult,
+  onCloseSidebars,
+  resetQB,
+  setParameterValue,
+} from "../../store/actions";
+import {
   getCard,
   getIsResultDirty,
   getIsShowingRawTable,
@@ -55,7 +57,7 @@ import {
   getQuestion,
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
-} from "../../selectors";
+} from "../../store/selectors";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -279,7 +281,6 @@ export const apiCreateQuestion = (
   };
 };
 
-export { API_UPDATE_QUESTION };
 export const apiUpdateQuestion = (
   question: Question,
   { rerunQuery }: { rerunQuery?: boolean } = {},
@@ -319,10 +320,7 @@ export const apiUpdateQuestion = (
     // (some of the old alerts might be removed during update)
     dispatch(invalidateNotificationsApiCache());
 
-    await dispatch({
-      type: API_UPDATE_QUESTION,
-      payload: updatedQuestion.card(),
-    });
+    await dispatch(questionUpdated(updatedQuestion.card()));
 
     if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type

@@ -7,6 +7,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
+   ;; this backend's whole job is reading and writing app-db QueryCache rows
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

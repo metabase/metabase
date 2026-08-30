@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 
-import { updateQuestion as updateQuestionAction } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
 import {
@@ -12,6 +11,8 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { IconName, RawSeries, Series } from "metabase-types/api";
+
+import { updateQuestion as updateQuestionAction } from "../../actions";
 
 export function getComputedVisualizationSettings(
   series: Series | null,

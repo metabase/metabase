@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -53,6 +54,7 @@
 
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
+   :public_uuid            (mi/transform-encrypted-text "action.public_uuid")
    :parameter_mappings     parameters/transform-parameter-mappings
    :parameters             parameters/transform-parameters
    :visualization_settings transform-action-visualization-settings})
@@ -89,12 +91,12 @@
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 action
+  (u/prog1 (public-sharing/add-public-uuid-prefix action)
     (check-model-is-not-a-saved-question model-id)))
 
 (t2/define-before-update :model/Action
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
-  (u/prog1 changes
+  (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed changes)
     (if archived?
       (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))
@@ -108,7 +110,7 @@
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+   :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
 (mu/defn- type->model
   "Returns the model from an action type.
@@ -464,7 +466,8 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :description :entity_id :name :public_uuid]
-   :skip      []
+   :skip      [;; always re-derived from public_uuid on import
+               :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)

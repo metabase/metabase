@@ -1,5 +1,4 @@
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
-import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
@@ -15,6 +14,8 @@ import type {
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
+
+import { getHighlightedNativeQueryLineNumbers } from "../../../../store/selectors";
 
 import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 

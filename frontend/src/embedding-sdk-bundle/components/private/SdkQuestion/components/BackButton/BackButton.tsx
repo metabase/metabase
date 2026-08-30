@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { QueryBuilderBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
+import { QueryBuilderBackButton } from "metabase/query_builder";
 import type { ActionIconProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";

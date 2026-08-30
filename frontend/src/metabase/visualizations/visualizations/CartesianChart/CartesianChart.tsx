@@ -7,6 +7,7 @@ import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -32,6 +33,8 @@ import {
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
+  const { timelineEvents } = useTimelineEvents(props);
+
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -97,6 +100,7 @@ function CartesianChartInner(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      timelineEvents,
     },
     containerRef,
   );

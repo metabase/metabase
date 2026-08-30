@@ -9,6 +9,7 @@ import {
   GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
   SPLIT_PANELS_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
   type VisualizationDefinition,
   getDefaultSize,
@@ -35,6 +36,7 @@ const ScatterViz: Omit<
     ...GRAPH_DATA_SETTINGS,
     ...SPLIT_PANELS_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

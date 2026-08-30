@@ -6,15 +6,6 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
-import {
-  CANCEL_QUERY,
-  QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
-  QUERY_ERRORED as QUERY_ERRORED_TYPE,
-  RUN_QUERY as RUN_QUERY_TYPE,
-  SET_DOCUMENT_TITLE,
-  SET_DOCUMENT_TITLE_TIMEOUT_ID,
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-} from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { getSensibleDisplays, visualizations } from "metabase/viz-core";
@@ -23,6 +14,15 @@ import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Dataset } from "metabase-types/api";
 
+import {
+  CANCEL_QUERY,
+  QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
+  QUERY_ERRORED as QUERY_ERRORED_TYPE,
+  RUN_QUERY as RUN_QUERY_TYPE,
+  SET_DOCUMENT_TITLE,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+} from "../store/actions";
 import {
   getAllNativeEditorSelectedText,
   getCard,
@@ -34,7 +34,7 @@ import {
   getQueryResults,
   getQuestion,
   getTimeoutId,
-} from "../selectors";
+} from "../store/selectors";
 
 import { updateUrl } from "./url";
 

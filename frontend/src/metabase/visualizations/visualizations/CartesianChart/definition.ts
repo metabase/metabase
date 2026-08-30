@@ -12,6 +12,7 @@ import {
   SERIES_SETTING_KEY,
   SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
   type VisualizationDefinition,
   type VisualizationSettingsDefinitions,
@@ -123,4 +124,5 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
     ...LEGEND_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   };

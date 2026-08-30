@@ -1,4 +1,4 @@
-import mergeRefs from "merge-refs";
+import { mergeRefs } from "@mantine/hooks";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
