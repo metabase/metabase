@@ -323,6 +323,23 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest e2e-api-key-user-attributes-ignored-test
+  (testing (str "login_attributes stored on an API-key pseudo-user are not used for sandboxing (UXW-4240); the "
+                "query should fail with a missing-attribute error rather than using the stored attributes")
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+      ;; `:attributes` writes `login_attributes` straight to the app DB; attributes on API-key users can't be set
+      ;; via the API but may exist in the wild
+      (met/with-gtaps-for-user! api-key-user-id {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                                 :attributes {"cat" 50}}
+        (is (= {"cat" "50"}
+               (t2/select-one-fn :login_attributes :model/User :id api-key-user-id))
+            "sanity check: the attributes really are stored on the API-key user's row")
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Query requires user attribute `cat`"
+             (run-venues-count-query)))))))
+
 (deftest e2e-test-3
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When processing a query that requires a user attribute and that user attribute isn't there, throw an "

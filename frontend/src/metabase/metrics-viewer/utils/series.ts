@@ -13,10 +13,10 @@ import type {
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isNotNull } from "metabase/utils/types";
 import {
+  MAX_SERIES,
   formatBreakoutValue,
   getBreakoutSeriesName,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+} from "metabase/viz-core";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
