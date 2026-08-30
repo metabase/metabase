@@ -113,6 +113,9 @@ backend_sources: &backend_sources
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
   - ".clj-kondo/**"
+  # only the ratchet check reads the budgets (see project_backend_checks), so the automation PR that
+  # lowers them runs the Project tests job alone
+  - "!.clj-kondo/ratchets.edn"
 
 backend_specs: &backend_specs
   - *shared_specs

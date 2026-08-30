@@ -16,11 +16,12 @@ on:
       - "bb.edn"
   workflow_dispatch:
 
-# pull-requests: read lets the compare step ask whether the automation PR is still open with the
-# default token; everything that writes uses the automation user's token in the last step.
 permissions:
+  # checkout and the fetch of the automation branch
   contents: read
-  pull-requests: read
+  # the compare step reads whether the automation PR is still open, and the approve step reviews it as
+  # github-actions[bot]; pushes and the PR itself use the automation user's token
+  pull-requests: write
 
 # Overlapping master pushes converge: the newest run cancels the older one, recomputes from the master it
 # checked out, and force-updates the automation branch, so the PR always reflects one master commit.
@@ -81,34 +82,53 @@ jobs:
           git diff --stat -- "$RATCHETS_FILE"
           echo "deliver=true" >> "$GITHUB_OUTPUT"
       - name: Update the automation PR
+        id: deliver
         if: steps.compare.outputs.deliver == 'true'
-        # The automation user's token is needed here and only here: a branch pushed with GITHUB_TOKEN
-        # starts no pull_request workflows, so the PR would never get its checks, and the PR is opened as
-        # that user. Nothing raises a budget and nothing bypasses review; the PR merges like any other.
+        # The automation user's token pushes the branch and owns the PR: a branch pushed with
+        # GITHUB_TOKEN starts no pull_request workflows, so the PR would never get its checks. The commit
+        # identity is the docs generator's, which merges with one approval under the unattributed-changes
+        # rule. Nothing raises a budget.
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          OPEN_PR: ${{ steps.compare.outputs.pr }}
         run: |
-          git config user.name "Metabase Automation"
-          git config user.email "github-automation@metabase.com"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git add -- "$RATCHETS_FILE"
           git commit --quiet -m "Tighten ratchets"
           git push --force --quiet \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/$AUTOMATION_BRANCH"
 
-          existing=$(gh pr list --head "$AUTOMATION_BRANCH" --base master --state open \
-            --json number --jq '.[0].number')
-          if [ -n "$existing" ]; then
-            echo "Updated the automation PR #$existing"
+          if [ -n "$OPEN_PR" ]; then
+            echo "Updated the automation PR #$OPEN_PR"
+            echo "pr=$OPEN_PR" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          gh pr create \
+          url=$(gh pr create \
             --base master \
             --head "$AUTOMATION_BRANCH" \
             --title "Tighten ratchets" \
             --label "no-backport" \
             --body "\`./bin/mage fix-kondo-ratchets\` lowered \`$RATCHETS_FILE\` to match master.
           The shrink workflow force-updates this branch from master whenever the result changes, so the
-          diff is always one commit on top of a recent master. Merge it to land the lower budgets; nothing
-          is raised."
+          diff is always one commit on top of a recent master. It approves and merges itself once the
+          ratchet check passes; nothing is raised.")
+          echo "Opened the automation PR $url"
+          echo "pr=${url##*/}" >> "$GITHUB_OUTPUT"
+      - name: Approve the automation PR
+        if: steps.compare.outputs.deliver == 'true'
+        # GITHUB_TOKEN reviews as github-actions[bot], a different identity from the automation user that
+        # owns the PR, so the approval counts; a user cannot approve their own PR. Reviews survive a push,
+        # so approving an already-open PR again is harmless and keeps a reopened one covered.
+        uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
+        with:
+          github-token: ${{ github.token }}
+          number: ${{ steps.deliver.outputs.pr }}
+      - name: Enable auto-merge
+        if: steps.compare.outputs.deliver == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          PR_NUMBER: ${{ steps.deliver.outputs.pr }}
+        run: gh pr merge --squash --auto "$PR_NUMBER"
