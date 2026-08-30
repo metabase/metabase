@@ -704,7 +704,7 @@
                 metabase.sql-tools.macaw.references-test
                 ;; Method too large for Eastwood's analyzer
                 metabase.sql-tools.sqlglot.references-test
-                ;; dev/test namespaces whose requires no longer resolve; nothing runs them
+                ;; dev/test namespaces that no longer load; nothing runs them
                 dev.deps-graph-test
                 dev.migrate-test
                 dev.model-tracking-test]}}
