@@ -75,6 +75,10 @@ found="$( {
   # build-scripts.yml runs this classpath from its own dependency root.
   printf '%s\n' 'bin/load-namespaces|:test'
 } | sort -u )"
+if [ -z "$found" ]; then
+  echo "::error::check-preresolve-aliases.sh: found no Clojure invocations to check; the scan patterns no longer match" >&2
+  exit 1
+fi
 
 covered="$( {
   printf '%s\n' "$declared"
