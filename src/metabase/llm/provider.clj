@@ -344,7 +344,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (boolean (u/trimmed-string (llm.settings/llm-proxy-base-url)))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -480,7 +480,7 @@
   proxy is configured."
   [type-name config]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (boolean (u/trimmed-string (llm.settings/llm-proxy-base-url)))
     (credentials-complete? type-name config)))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------

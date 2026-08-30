@@ -229,17 +229,28 @@
   {"anthropic." :anthropic
    "openai."    :openai})
 
+(defn invokable-model?
+  "Whether `model` names a model family the mantle request routes can invoke.
+  Bedrock catalogs GPT-OSS models, but mantle does not serve them through its OpenAI Responses route."
+  [model]
+  (boolean
+   (some (fn [[prefix _family]]
+           (and (str/starts-with? (str model) prefix)
+                (not (str/blank? (subs (str model) (count prefix))))
+                (not (str/starts-with? (str model) "openai.gpt-oss"))))
+         model-vendor-prefixes)))
+
 (defn- model->family
   "Which mantle API family serves `model`, by vendor prefix: `:anthropic` or `:openai`."
   [model]
-  (cond
-    (str/starts-with? model "anthropic.") :anthropic
-    (str/starts-with? model "openai.")    :openai
-    :else
-    (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
-                    {:api-error  true
-                     :error-code :unsupported-model
-                     :model      model}))))
+  (or (when (invokable-model? model)
+        (some (fn [[prefix family]]
+                (when (str/starts-with? model prefix) family))
+              model-vendor-prefixes))
+      (throw (ex-info (tru "Unsupported Bedrock model {0}. Supported model IDs use the anthropic.* or openai.* prefix; openai.gpt-oss* is not supported." model)
+                      {:api-error  true
+                       :error-code :unsupported-model
+                       :model      model}))))
 
 (defn ->mantle-anthropic-body
   "Adapt a canonical Anthropic Messages request body for the mantle endpoint.

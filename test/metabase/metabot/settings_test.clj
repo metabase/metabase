@@ -288,6 +288,21 @@
         (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
           (is (= model-ref (metabot.settings/llm-metabot-provider))))))))
 
+(deftest validate-metabot-provider-bedrock-invokability-test
+  (with-connections [configured-anthropic
+                     (connection "bedrock" "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "test-secret"})]
+    (testing "accepts models served by each mantle request route"
+      (doseq [model-ref ["bedrock/anthropic.claude-opus-4-8"
+                         "bedrock/openai.gpt-5.5"]]
+        (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
+          (is (= model-ref (metabot.settings/llm-metabot-provider))))))
+    (testing "rejects catalog models mantle cannot invoke through those routes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid Bedrock model .*openai\.gpt-oss\* is not supported\."
+           (metabot.settings/llm-metabot-provider! "bedrock/openai.gpt-oss-120b"))))))
+
 (deftest validate-metabot-provider-accepts-a-second-connection-of-the-same-type-test
   (testing "a model can be selected on a second connection of a type the instance already has"
     (with-connections [configured-anthropic
@@ -348,6 +363,20 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Google model \"google/anthropic/a/b\""
            (metabot.settings/llm-metabot-provider! "google/anthropic/a/b"))))))
+
+(deftest validate-metabot-provider-google-model-path-segment-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects characters the adapter cannot place in a model resource path"
+      (doseq [model-ref ["google/google/gemini 3.5 flash"
+                         "google/google/gemini-3.5-flash?alt=json"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Invalid Google model"
+             (metabot.settings/llm-metabot-provider! model-ref)))))
+    (testing "rejects a model resource path segment longer than 128 characters"
+      (let [model-ref (str "google/google/" (apply str (repeat 129 "a")))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Invalid Google model"
+             (metabot.settings/llm-metabot-provider! model-ref)))))))
 
 (deftest validate-metabot-provider-managed-model-allow-list-test
   (mt/with-premium-features #{:metabase-ai-managed}

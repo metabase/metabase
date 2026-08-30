@@ -435,6 +435,41 @@
                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
       (is (= [] (llm.provider/connections))))))
 
+(deftest create-does-not-save-when-generated-model-ref-is-rejected-test
+  (testing "a rejected generated reference leaves both the connection list and waiting dependent settings unchanged"
+    (let [original (connection "anthropic" "anthropic" {:api-key "sk-ant-existing"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [original]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                                 llm-mini-model       "azure/openai/old-deployment"]
+            (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                  {:type   "azure"
+                                   :config {:api-key         "azure-key"
+                                            :base-url        "https://r.services.ai.azure.com/openai"
+                                            :deployment-name "invalid/deployment"}})
+            (is (= [original] (llm.provider/stored-connections)))
+            (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))
+            (is (= "azure/openai/old-deployment" (metabot.settings/explicit-mini-model)))))))))
+
+(deftest create-does-not-save-an-uninvokable-requested-bedrock-model-test
+  (testing "a requested model is validated even when it is not a generated or fixed-catalog reference"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
+                                               llm-mini-model       "waiting/mini"]
+          (is (=? {:message (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
+                                 "Supported model IDs use the anthropic.* or openai.* prefix; "
+                                 "openai.gpt-oss* is not supported.")}
+                  (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                        {:type   "bedrock"
+                                         :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                  :secret-access-key "test-secret"
+                                                  :region            "us-east-1"}
+                                         :model  "openai.gpt-oss-120b"})))
+          (is (= [] (llm.provider/stored-connections)))
+          (is (nil? (setting/db-stored-value :llm-metabot-provider)))
+          (is (= "waiting/mini" (metabot.settings/explicit-mini-model))))))))
+
 (deftest create-rejects-invalid-config-before-calling-the-provider-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
@@ -657,6 +692,55 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
                                 {:config {:deployment-name "gpt-4.1"}})
           (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest update-rejects-an-invalid-composed-model-before-saving-test
+  (testing (str "a rejected Azure deployment edit relying on the default model family leaves both the connection "
+                "and its followed model reference unchanged")
+    (let [original-config {:api-key         "azure-key"
+                           :base-url        "https://r.services.ai.azure.com/openai"
+                           :deployment-name "gpt-4.1-mini"}]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure" original-config)]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+            (mt/user-http-request :crowberto :put 400 "llm/providers/azure"
+                                  {:config {:deployment-name "invalid/deployment"}})
+            (is (= original-config (stored-config "azure")))
+            (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest update-rejects-an-invalid-fixed-catalog-pick-before-saving-test
+  (testing "a rejected Google model pick leaves both the connection and its followed model reference unchanged"
+    (let [original (connection "google" "google" {:oauth-access-token "ya29.original"
+                                                  :project-id         "my-project"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [original]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :put 400 "llm/providers/google"
+                                  {:name   "Changed"
+                                   :config {:oauth-access-token "ya29.changed"}
+                                   :model  "google/gemini invalid"})
+            (is (= [original] (llm.provider/stored-connections)))
+            (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest update-does-not-save-an-uninvokable-requested-bedrock-model-test
+  (testing "a rejected requested model leaves the connection and dependent settings unchanged"
+    (let [original (connection "bedrock" "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                    :secret-access-key "test-secret"
+                                                    :region            "us-east-1"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [original]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "bedrock/anthropic.claude-opus-4-8"
+                                                 llm-mini-model       "bedrock/anthropic.claude-haiku-4-5"]
+            (is (=? {:message (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
+                                   "Supported model IDs use the anthropic.* or openai.* prefix; "
+                                   "openai.gpt-oss* is not supported.")}
+                    (mt/user-http-request :crowberto :put 400 "llm/providers/bedrock"
+                                          {:name   "Changed"
+                                           :config {:region "eu-west-1"}
+                                           :model  "openai.gpt-oss-120b"})))
+            (is (= [original] (llm.provider/stored-connections)))
+            (is (= "bedrock/anthropic.claude-opus-4-8" (metabot.settings/llm-metabot-provider)))
+            (is (= "bedrock/anthropic.claude-haiku-4-5"
+                   (metabot.settings/explicit-mini-model)))))))))
 
 (deftest update-follows-the-model-picked-for-a-fixed-catalog-connection-test
   (testing (str "Google's edit form carries a model pick rather than a probe input, so saving with a different "

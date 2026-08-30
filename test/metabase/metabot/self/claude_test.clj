@@ -400,7 +400,7 @@
 (deftest claude-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "  https://proxy.example/  "]
         (testing "Prefers the connection's own credentials over the ai proxy"
           (with-redefs [self.core/sse-reducible             identity
                         self.core/reducible-with-api-errors (fn [r _ _] r)
@@ -412,7 +412,7 @@
                      :body    string?}
                     (claude/claude-raw {:input       [{:role :user :content "hi"}]
                                         :credentials byok-credentials})))))
-        (testing "Uses ai proxy when explicitly requested"
+        (testing "Uses ai proxy when explicitly requested, trimming surrounding whitespace and trailing slashes"
           (with-redefs [self.core/sse-reducible             identity
                         self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)

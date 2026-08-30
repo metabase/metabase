@@ -132,35 +132,25 @@
                        :value       value})))))
 
 (defn- validate-bedrock-model!
-  "Validate the model segment of a bedrock connection's model: a vendor prefix the mantle routes serve.
-  The adapter picks its API family from that prefix and throws without one, so a reference missing it is
-  rejected here rather than at the first call. Throws on invalid input."
+  "Validate the model segment of a bedrock connection's model against the mantle routes the adapter can invoke.
+  Throws on invalid input."
   [value model]
-  (when-not (some (fn [prefix]
-                    (and (str/starts-with? (str model) prefix)
-                         ;; the prefix alone names no model
-                         (not (str/blank? (subs (str model) (count prefix))))))
-                  (keys bedrock/model-vendor-prefixes))
-    (throw (ex-info (tru "Invalid Bedrock model {0}. Model ids must start with one of: {1}"
-                         (pr-str value)
-                         (str/join ", " (sort (keys bedrock/model-vendor-prefixes))))
+  (when-not (bedrock/invokable-model? model)
+    (throw (ex-info (tru "Invalid Bedrock model {0}. Supported model IDs use the anthropic.* or openai.* prefix; openai.gpt-oss* is not supported."
+                         (pr-str value))
                     {:status-code 400
                      :value       value}))))
 
 (defn- validate-google-model!
   "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
-  A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
-  request URL).  Throws on invalid input."
+  Both parts must satisfy the adapter's model-resource path segment rules. Throws on invalid input."
   [value model]
-  (let [[publisher model-id] (str/split (str model) #"/" 2)]
-    (when-not (and (contains? google/model-publishers publisher)
-                   (not (str/blank? model-id))
-                   (not (str/includes? model-id "/")))
-      (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
-                           (pr-str value)
-                           (str/join ", " (sort google/model-publishers)))
-                      {:status-code 400
-                       :value       value})))))
+  (when-not (google/valid-model? model)
+    (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+                         (pr-str value)
+                         (str/join ", " (sort google/model-publishers)))
+                    {:status-code 400
+                     :value       value}))))
 
 (defn- validate-managed-model!
   "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
@@ -174,7 +164,8 @@
 
 (defn validate-model-ref!
   "Validate that `value` is a `connection-key/model` string with a non-blank model, plus whatever extra rules the
-  named connection's provider type imposes on its models.
+  named connection's provider type imposes on its models. The two-argument arity validates against an explicit
+  `provider-type`, for a prospective connection that has not been persisted yet.
 
   Deliberately does *not* require the connection to exist. A model-reference setting can legitimately be written
   before the connection it names — an env var, a config file, or a serdes import can land in either order — and a
@@ -182,20 +173,24 @@
   false, and resolving it for a request throws a 400 that names the connection.
 
   Throws an exception with `:status-code 400` on invalid input."
-  [value]
-  (when-not (string? value)
-    (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
-                    {:status-code 400})))
-  (let [model (llm.provider/model-ref->model value)]
-    (when (str/blank? model)
-      (throw (ex-info (tru "Model name is required. Expected format: connection/model, e.g. \"anthropic/claude-haiku-4-5\"")
-                      {:status-code 400 :value value})))
-    (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
-      "azure"    (validate-azure-model! value model)
-      "bedrock"  (validate-bedrock-model! value model)
-      "google"   (validate-google-model! value model)
-      "metabase" (validate-managed-model! model)
-      nil)))
+  ([value]
+   (validate-model-ref! value
+                        (when (string? value)
+                          (:type (llm.provider/connection (llm.provider/model-ref->connection-key value))))))
+  ([value provider-type]
+   (when-not (string? value)
+     (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
+                     {:status-code 400})))
+   (let [model (llm.provider/model-ref->model value)]
+     (when (str/blank? model)
+       (throw (ex-info (tru "Model name is required. Expected format: connection/model, e.g. \"anthropic/claude-haiku-4-5\"")
+                       {:status-code 400 :value value})))
+     (case provider-type
+       "azure"    (validate-azure-model! value model)
+       "bedrock"  (validate-bedrock-model! value model)
+       "google"   (validate-google-model! value model)
+       "metabase" (validate-managed-model! model)
+       nil))))
 
 (defn normalize-model-ref
   "The value a model-reference setting should persist: nil when `value` is nil or blank, meaning the setting is
