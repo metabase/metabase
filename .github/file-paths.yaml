@@ -117,6 +117,7 @@ backend_sources: &backend_sources
 backend_specs: &backend_specs
   - *shared_specs
   - "test/**"
+  - "dev/test/**"
   - "enterprise/backend/test/**"
   - "test_modules/**"
   - "modules/drivers/*/test/**"
