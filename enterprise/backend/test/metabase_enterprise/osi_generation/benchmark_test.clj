@@ -27,11 +27,11 @@
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.llm.provider :as llm.provider]
-   [metabase.search.core :as search]
    [metabase.entity-retrieval.spec :as spec]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.osi.ai-context.api :as osi-api]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
@@ -270,6 +270,27 @@
                             (runner/run-arm! (assoc c :generated-snapshot {:customers {:synonyms ["s"]}})
                                              :generated
                                              {}))))))
+
+(deftest run-arm-refuses-a-corpus-the-manifest-would-misreport-test
+  (testing "only the corpus the files hold is scored — the manifest reports their SHAs"
+    (let [c      (corpus/load-corpus)
+          opts   {:model semantic.tu/mock-embedding-model}
+          scored (atom 0)]
+      (mt/with-dynamic-fn-redefs [runner/score-arm! (fn [_corpus arm _opts]
+                                                      (swap! scored inc)
+                                                      {:arm arm})]
+        (doseq [[what doctored] {"a subset of the entities"  (update c :entities (comp vec next))
+                                 "an edited entity"          (assoc-in c [:entities 0 :entity :description] "edited")
+                                 "a dropped query"           (update c :queries (comp vec next))
+                                 "an edited baseline"        (assoc-in c [:baseline :customers] {:synonyms ["x"]})}]
+          (testing what
+            (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"differs from the corpus files"
+                                          (runner/run-arm! doctored :none opts)))]
+              (is (= :corpus-not-from-resources (:reason (ex-data e)))))))
+        (is (zero? @scored) "the refusal lands before any scoring, not in the report")
+        (testing "the loaded corpus, snapshot keys and all, is still scored"
+          (is (=? {:arm :none} (runner/run-arm! (assoc c :generated-snapshot {}) :none opts)))
+          (is (= 1 @scored)))))))
 
 (deftest ^:parallel regression-gate-test
   (let [column  (fn [ndcg recall] {:summary {:holdout {:n 3, :ndcg-at-10 ndcg, :recall-at-10 recall}}})
