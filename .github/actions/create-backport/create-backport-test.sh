@@ -335,7 +335,7 @@ change_release_app_and_ratchets() {
   change_release_ratchets "$1"
 }
 
-# The release opt-out comes from the shared writer, never from a copy in the tests.
+# Setup writes the opt-out through the shared writer; the only copy is the expected text at the top.
 disable_release_ratchets() {
   (cd "$1" && write_disabled_ratchets)
 }
