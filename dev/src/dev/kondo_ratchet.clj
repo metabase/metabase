@@ -106,9 +106,18 @@
 (def ^:private kondo-config-dir
   ".clj-kondo")
 
-;; kondo writes these itself; neither is hand-maintained config
-(def ^:private kondo-managed-dirs
-  #{".cache" "inline-configs"})
+(defn- tracked-files
+  "The git-tracked files under `dir`. The dependency configs `mage kondo` copies in are gitignored and a
+  clean checkout has none of them, so only tracked files keep validation the same everywhere."
+  [dir]
+  (let [^java.util.List command ["git" "ls-files" "-z"]
+        process (.start (doto (ProcessBuilder. command)
+                          (.directory ^java.io.File (io/file dir))
+                          (.redirectErrorStream true)))
+        out     (slurp (.getInputStream process))]
+    (when-not (zero? (.waitFor process))
+      (throw (ex-info (str "git ls-files failed in " dir ": " (str/trim out)) {:dir dir})))
+    (map #(io/file dir %) (remove str/blank? (str/split out #"\x00")))))
 
 (defn- linters-map-keys
   "Keys of every `:linters` map nested anywhere in `config`, so scoped linters under `:config-in-ns`,
@@ -123,21 +132,17 @@
     @found))
 
 (defn repository-linters
-  "Names of every linter configured in an `.edn` file under `dir` (default: `.clj-kondo`), which is how
-  the repository's own hook linters get a level. Kondo-managed directories are skipped."
+  "Names of every linter configured in a tracked `.edn` file under `dir` (default: `.clj-kondo`), which is
+  how the repository's own hook linters get a level."
   ([]
    (repository-linters kondo-config-dir))
   ([dir]
-   (let [managed? (fn [^java.io.File f]
-                    (some kondo-managed-dirs (str/split (.getPath f) #"/")))]
-     (into #{}
-           (comp (filter (fn [^java.io.File f]
-                           (and (.isFile f)
-                                (str/ends-with? (.getName f) ".edn")
-                                (not (managed? f)))))
-                 (mapcat (fn [^java.io.File f]
-                           (linters-map-keys (edn/read-string (slurp f))))))
-           (file-seq (io/file dir))))))
+   (into #{}
+         (comp (filter (fn [^java.io.File f]
+                         (str/ends-with? (.getName f) ".edn")))
+               (mapcat (fn [^java.io.File f]
+                         (linters-map-keys (edn/read-string (slurp f))))))
+         (tracked-files dir))))
 
 (def external-linters
   "Diagnostics from tools other than kondo that ignores still name, plus `:all` for the vector-less form."
@@ -155,19 +160,32 @@
         (remove known)
         (concat (keys ignore-counts) (keys config-counts) comment-exempt)))
 
+(defn- known-linter-hint []
+  (format "policies must name a kondo built-in, a linter configured under %s, or one of %s"
+          kondo-config-dir
+          (str/join ", " (sort-by str external-linters))))
+
 (defn validate-linters!
   "Throw one error naming every policy key in `ratchets` that is not a known linter."
   [ratchets known]
   (let [unknown (unknown-linters ratchets known)]
     (when (seq unknown)
-      (throw (ex-info (format "%s names %d unknown linter%s: %s -- policies must name a kondo built-in, a linter configured under %s, or one of %s"
+      (throw (ex-info (format "%s names %d unknown linter%s: %s -- %s"
                               *ratchets-file*
                               (count unknown)
                               (if (= 1 (count unknown)) "" "s")
                               (str/join ", " unknown)
-                              kondo-config-dir
-                              (str/join ", " (sort-by str external-linters)))
+                              (known-linter-hint))
                       {:unknown (vec unknown)})))))
+
+(defn validate-seed!
+  "Throw when a linter in `seeded` is not known, so `--seed` never writes a policy the check rejects."
+  [seeded known]
+  (when-let [unknown (seq (remove known seeded))]
+    (throw (ex-info (format "cannot seed %s: not a known linter -- %s"
+                            (str/join ", " unknown)
+                            (known-linter-hint))
+                    {:unknown (vec unknown)}))))
 
 (def ^:private source-roots
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
@@ -573,7 +591,8 @@
          (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
      (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
            :let            [n (get actual linter 0)]
-           :when           (and (integer? budget) (not= n budget))]
+           ;; a hand-written 0 with no ignores is dropped too, so it needs a line
+           :when           (and (integer? budget) (or (not= n budget) (zero? budget)))]
        (cond
          (zero? n)    (format "dropped %s (no ignores left)" linter)
          (< n budget) (format "lowered %s %d -> %d" linter budget n)
@@ -596,7 +615,7 @@
   "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
   Refuses to touch a file whose policies name an unknown linter; they are never removed automatically.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it,
-  and makes an unlimited linter bounded.
+  and makes an unlimited linter bounded. Seeding an unknown linter is refused the same way.
   Prints the [[change-report]], or `unchanged` on a no-op.
   Does nothing, including seeding, when the file sets `:disabled` to `true`."
   ([]
@@ -605,9 +624,11 @@
    (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
-       (let [_             (validate-linters! ratchets (known-linters))
-             occurrences   (scan)
+       (let [known         (known-linters)
+             _             (validate-linters! ratchets known)
              seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+             _             (validate-seed! seeded known)
+             occurrences   (scan)
              actual        (actual-counts occurrences)
              config-actual (config-suppressions)
              text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)

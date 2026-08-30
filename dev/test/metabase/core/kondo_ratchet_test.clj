@@ -5,6 +5,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.kondo-ratchet :as kondo-ratchet]))
@@ -396,25 +397,41 @@
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
 
+(deftest ^:synchronized seed-unknown-linter-test
+  (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
+                          "kondo-ratchet-test"
+                          (make-array java.nio.file.attribute.FileAttribute 0)))
+        text    (kondo-ratchet/render {:ignore-counts {:free :unlimited}, :config-counts {}, :comment-exempt #{}})
+        budgets (doto (io/file dir "ratchets.edn") (spit text))]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/known-linters (constantly #{:free})
+                    kondo-ratchet/scan          (fn [] (throw (AssertionError. "scanned before validating the seed")))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"^cannot seed :bogus: not a known linter -- policies must name"
+                              (kondo-ratchet/fix! {:seed ":bogus"})))
+        (is (= text (slurp budgets))
+            "nothing is written")))))
+
 (deftest ^:synchronized fix-keeps-empty-unlimited-linter-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
                               (make-array java.nio.file.attribute.FileAttribute 0)))
-        ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited, :gone 2}
+        ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited, :gone 2, :zero 0}
                      :config-counts  {}
                      :comment-exempt #{}}
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]
         run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty :gone})
+      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty :gone :zero})
                     kondo-ratchet/scan                (constantly occurrences)
                     kondo-ratchet/config-suppressions (constantly {})]
         (is (= ["dropped :gone (no ignores left)"
+                "dropped :zero (no ignores left)"
                 "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
                 (str "wrote " (.getPath budgets))]
                (run!))
-            "the bounded zero goes; the unlimited zero stays and is reported")
+            "the bounded zeros go, a hand-written 0 included; the unlimited zero stays and is reported")
         (is (= {:ignore-counts  {:free :unlimited, :empty :unlimited}
                 :config-counts  {}
                 :comment-exempt #{}}
@@ -448,10 +465,17 @@
     (is (not-any? builtin [:metabase/modules :unresolved-require])
         "repository linters and made-up names are not built-ins")))
 
+(defn- git-in
+  "Run git in `dir`, failing the test on a nonzero exit."
+  [dir & args]
+  (let [{:keys [exit err]} (apply sh/sh "git" (concat args [:dir dir]))]
+    (is (zero? exit) (str "git " (str/join " " args) ": " err))))
+
 (deftest ^:parallel repository-linters-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
                       "kondo-ratchet-linters-test"
                       (make-array java.nio.file.attribute.FileAttribute 0)))]
+    (git-in dir "init" "-q")
     (spit (io/file dir "config.edn")
           (pr-str '{:linters      {:custom/top {:level :warning}}
                     :config-in-ns {some.ns {:linters {:custom/scoped {:level :off}}}}
@@ -460,14 +484,16 @@
     (spit (io/file dir "some-lib" "some-lib" "config.edn")
           (pr-str '{:linters {:custom/lib {:level :error}}}))
     (spit (io/file dir "not-config.txt") "{:linters {:custom/ignored {}}}")
+    (git-in dir "add" "config.edn" "some-lib" "not-config.txt")
+    (.mkdirs (io/file dir "copied-lib" "copied-lib"))
+    (spit (io/file dir "copied-lib" "copied-lib" "config.edn")
+          (pr-str '{:linters {:custom/untracked {:level :error}}}))
     (.mkdirs (io/file dir ".cache" "v1"))
     (spit (io/file dir ".cache" "v1" "junk.edn") "<not edn>")
-    (.mkdirs (io/file dir "inline-configs" "some.ns.clj"))
-    (spit (io/file dir "inline-configs" "some.ns.clj" "config.edn") "{:linters <vector: []>}")
     (is (= #{:custom/top :custom/scoped :custom/lib}
            (kondo-ratchet/repository-linters (.getPath dir)))
-        "top-level and scoped :linters maps count, in nested directories too; kondo-managed directories
-         and non-edn files do not"))
+        "top-level and scoped :linters maps count, in nested directories too; untracked files (the configs
+         kondo copies in for dependencies, its cache) and non-edn files do not"))
   (testing "the repository's own hook linters are found"
     (is (contains? (kondo-ratchet/repository-linters) :metabase/modules))))
 
@@ -573,6 +599,7 @@
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
+            "dropped :zero (no ignores left)"
             "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
@@ -584,7 +611,8 @@
                                                           :lower  5
                                                           :over   5
                                                           :polite 1
-                                                          :same   4}
+                                                          :same   4
+                                                          :zero   0}
                                          :config-counts  {:cfg-gone  2
                                                           :cfg-lower 4
                                                           :cfg-over  1
@@ -594,4 +622,5 @@
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         [:new :void]))
         "untouched budgets (:same, :cfg-same), a used unlimited policy (:free), and a still-needed
-         exemption (:lower) earn no line; the empty unlimited policy (:empty) is kept and warned about")))
+         exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
+         ignores left; the empty unlimited policy (:empty) is kept and warned about")))
