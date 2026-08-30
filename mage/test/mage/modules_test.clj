@@ -3,6 +3,7 @@
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [clojure.edn :as edn]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.color]
    [mage.modules]))
@@ -199,8 +200,7 @@
         (is (= "ci:run-all-cloud-drivers label" (:reason result)))))))
 
 (deftest modules-can-trigger-cloud-drivers
-  (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+  (doseq [module @mage.modules/modules-triggering-cloud-drivers
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
