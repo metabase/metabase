@@ -81,7 +81,7 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 Two committed tracking files sit next to the config:
 
 - `ratchets.edn` — anti-pattern counts that may only go down (friend edges and reaches, `:any` escapes,
-  driver-test exemptions, legacy `-rest` modules). `./bin/mage modules-validate --update-ratchets`
+  driver-test exemptions, standalone `-rest` modules). `./bin/mage modules-validate --update-ratchets`
   blesses decreases; an increase needs a hand edit justified in the commit message.
 - `module-stats.edn` — surface and coupling sizes expected to move in both directions (total/largest
   `:api`, module count, `:api :any` namespace exposure, largest-SCC sizes at module and namespace

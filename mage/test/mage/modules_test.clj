@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.edn :as edn]
    [clojure.test :refer [deftest is testing]]
    [mage.modules]))
 
@@ -287,30 +288,21 @@
 (deftest module-graph-may-not-become-more-connected
   (testing "The number of modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
+            Add it to :exempt-modules in driver-test-overrides.edn if it shouldn't trigger driver tests."
+    ;; A module that transitively depends on driver code makes a change to it run ALL driver tests, which
+    ;; is expensive. The budget lives in ratchets.edn next to :driver-test-exempt-modules, because the two
+    ;; move against each other: exempting a module lowers this count and raises the exemption count, and
+    ;; dropping an exemption does the reverse. Reading either alone is how you talk yourself into paying
+    ;; for CI you did not mean to. Raising it needs a hand edit there, with the reason in the commit.
     (let [modules-triggering-drivers (modules-affecting-drivers)
-          ;; This is a ratchet: it prevents accidental expansion of which modules
-          ;; trigger driver tests. When a module transitively depends on driver code,
-          ;; changes to that module cause ALL driver tests to run in CI, which is
-          ;; expensive. If this test fails, either:
-          ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
-          ;;   2. Your module is infrastructure/gating, not driver logic
-          ;;      -- add it to driver-affecting-overrides in mage.modules
-          ;;
-          ;; History:
-          ;; 2026-02-06 Initial count: 37
-          ;; 2026-02-10 Bumped to 38 for sql-tools + sql-parsing
-          ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
-          ;;            Added premium-features to driver-affecting-overrides (#69561)
-          ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
-          ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
-          ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
-          max-allowed-count 44]
+          max-allowed-count          (:driver-test-triggering-modules
+                                      (edn/read-string (slurp ".clj-kondo/config/modules/ratchets.edn")))]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
-                   If this is intentional, update max-allowed-count.
-                   Otherwise, add the new module(s) to driver-affecting-overrides."
+                   If this is intentional, raise :driver-test-triggering-modules in
+                   .clj-kondo/config/modules/ratchets.edn and say why in the commit message.
+                   Otherwise, add the new module(s) to :exempt-modules in driver-test-overrides.edn."
                   max-allowed-count
                   (count modules-triggering-drivers)
                   (pr-str (sort modules-triggering-drivers)))))))
