@@ -1,7 +1,7 @@
 (ns metabase.driver.sql.pivot
   "HoneySQL formatters and SQL compilation hooks for the MBQL 5 native pivot path. Used by any driver that derives from
   `:sql` and opts into `:native-pivot-tables`."
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [empty? mapv some])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -17,7 +17,9 @@
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.performance :refer [mapv some]]))
+   [metabase.util.performance :refer [empty? mapv some]]))
+
+(set! *warn-on-reflection* true)
 
 (defn- stage-has-window-fn-aggregation?
   "True iff any aggregation on the compiled `stage` is a window-function aggregation, or transitively contains one."
