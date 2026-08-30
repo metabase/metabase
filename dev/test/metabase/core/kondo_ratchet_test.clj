@@ -441,6 +441,25 @@
                (run!))
             "a second run changes nothing and still reports")))))
 
+(deftest read-ratchets-requires-one-map-test
+  (doseq [[content message] [[""                       #"is empty; expected one map"]
+                             ["  \n;; only a comment\n" #"is empty; expected one map"]
+                             ["[:not :a :map]"          #"must hold a map of policies, not \[:not :a :map\]"]
+                             ["{:ignore-counts {}} {}"  #"holds more than one form"]]]
+    (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+                 (spit content))]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                              (kondo-ratchet/read-ratchets))
+            (str (pr-str content) " must not read as an empty policy set")))))
+  (doseq [content ["{:disabled true}"
+                   ";; leading comment\n{:ignore-counts {:a 1}} ;; trailing comment\n"]]
+    (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
+                 (spit content))]
+      (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
+        (is (map? (kondo-ratchet/read-ratchets))
+            (str (pr-str content) " is one map, with or without comments around it"))))))
+
 (deftest ^:parallel missing-ratchets-file-fails-test
   (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                           "kondo-ratchet-test"
@@ -484,7 +503,9 @@
     (spit (io/file dir "some-lib" "some-lib" "config.edn")
           (pr-str '{:linters {:custom/lib {:level :error}}}))
     (spit (io/file dir "not-config.txt") "{:linters {:custom/ignored {}}}")
-    (git-in dir "add" "config.edn" "some-lib" "not-config.txt")
+    (spit (io/file dir "deleted.edn") (pr-str '{:linters {:custom/deleted {:level :error}}}))
+    (git-in dir "add" "config.edn" "some-lib" "not-config.txt" "deleted.edn")
+    (.delete (io/file dir "deleted.edn"))
     (.mkdirs (io/file dir "copied-lib" "copied-lib"))
     (spit (io/file dir "copied-lib" "copied-lib" "config.edn")
           (pr-str '{:linters {:custom/untracked {:level :error}}}))
@@ -493,7 +514,8 @@
     (is (= #{:custom/top :custom/scoped :custom/lib}
            (kondo-ratchet/repository-linters (.getPath dir)))
         "top-level and scoped :linters maps count, in nested directories too; untracked files (the configs
-         kondo copies in for dependencies, its cache) and non-edn files do not"))
+         kondo copies in for dependencies, its cache), non-edn files, and tracked files deleted from the
+         worktree do not"))
   (testing "the repository's own hook linters are found"
     (is (contains? (kondo-ratchet/repository-linters) :metabase/modules))))
 

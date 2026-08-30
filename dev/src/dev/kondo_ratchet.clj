@@ -19,6 +19,25 @@
   "The budgets file, relative to the repo root."
   ".clj-kondo/ratchets.edn")
 
+(defn- read-ratchets-form
+  "The one EDN map in `file`.
+  An empty file, a non-map, or a second form is an error rather than an empty policy set, so a damaged
+  file can never read as \"no budgets\"."
+  [^java.io.File file]
+  (with-open [reader (java.io.PushbackReader. (io/reader file))]
+    (let [eof  (Object.)
+          form (edn/read {:eof eof} reader)]
+      (when (identical? eof form)
+        (throw (ex-info (str *ratchets-file* " is empty; expected one map of policies")
+                        {:file *ratchets-file*})))
+      (when-not (map? form)
+        (throw (ex-info (str *ratchets-file* " must hold a map of policies, not " (pr-str form))
+                        {:file *ratchets-file*, :form form})))
+      (when-not (identical? eof (edn/read {:eof eof} reader))
+        (throw (ex-info (str *ratchets-file* " holds more than one form; expected one map of policies")
+                        {:file *ratchets-file*})))
+      form)))
+
 (defn read-ratchets
   "Parsed contents of [[*ratchets-file*]], with empty defaults for omitted keys.
   Throws when the file is missing; only an explicit `{:disabled true}` opts out of enforcement."
@@ -28,7 +47,7 @@
       (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
                       {:file *ratchets-file*})))
     (let [ratchets (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
-                          (edn/read-string (slurp file)))]
+                          (read-ratchets-form file))]
       (when-not (map? (:ignore-counts ratchets))
         (throw (ex-info ":ignore-counts must be a map of linter policies"
                         {:ignore-counts (:ignore-counts ratchets)})))
@@ -107,8 +126,9 @@
   ".clj-kondo")
 
 (defn- tracked-files
-  "The git-tracked files under `dir`. The dependency configs `mage kondo` copies in are gitignored and a
-  clean checkout has none of them, so only tracked files keep validation the same everywhere."
+  "The git-tracked files under `dir` that are present on disk. The dependency configs `mage kondo` copies
+  in are gitignored and a clean checkout has none of them, so only tracked files keep validation the same
+  everywhere; a tracked file deleted but not yet staged, or outside a sparse checkout, is skipped."
   [dir]
   (let [^java.util.List command ["git" "ls-files" "-z"]
         process (.start (doto (ProcessBuilder. command)
@@ -117,7 +137,10 @@
         out     (slurp (.getInputStream process))]
     (when-not (zero? (.waitFor process))
       (throw (ex-info (str "git ls-files failed in " dir ": " (str/trim out)) {:dir dir})))
-    (map #(io/file dir %) (remove str/blank? (str/split out #"\x00")))))
+    (->> (str/split out #"\x00")
+         (remove str/blank?)
+         (map #(io/file dir %))
+         (filter #(.isFile ^java.io.File %)))))
 
 (defn- linters-map-keys
   "Keys of every `:linters` map nested anywhere in `config`, so scoped linters under `:config-in-ns`,
