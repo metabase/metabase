@@ -1,12 +1,3 @@
- :cyclic-components 3
- :cyclic-components-with-model-imports 2
- :cyclic-edges 1076
- :cyclic-edges-with-model-imports 1488
- :cyclic-modules 112
- :cyclic-modules-with-model-imports 124
- :cyclic-namespaces 1479
- :cyclic-namespaces-with-model-imports 1559
- :driver-test-triggering-namespaces 696
 {:api-any-namespaces 78
  :cyclic-components 3
  :cyclic-components-with-model-imports 3
@@ -16,6 +7,7 @@
  :cyclic-modules-with-model-imports 117
  :cyclic-namespaces 1349
  :cyclic-namespaces-with-model-imports 1431
+ :driver-test-triggering-namespaces 697
  :largest-api 32
  :largest-ns-scc 388
  :largest-scc-modules 97
