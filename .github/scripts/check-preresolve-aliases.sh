@@ -67,18 +67,22 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
     | sed -e 's/:$//' -e "s#^#$2|#"
 }
 
-found="$( {
+scanned="$( {
   scan ee
   scan oss
   scan_project_tests run-clojure-checks! .
   scan_project_tests run-migration-checks! bin/lint-migrations-file
-  # build-scripts.yml runs this classpath from its own dependency root.
-  printf '%s\n' 'bin/load-namespaces|:test'
 } | sort -u )"
-if [ -z "$found" ]; then
+if [ -z "$scanned" ]; then
   echo "::error::check-preresolve-aliases.sh: found no Clojure invocations to check; the scan patterns no longer match" >&2
   exit 1
 fi
+
+found="$( {
+  printf '%s\n' "$scanned"
+  # build-scripts.yml runs this classpath from its own dependency root.
+  printf '%s\n' 'bin/load-namespaces|:test'
+} | sort -u )"
 
 covered="$( {
   printf '%s\n' "$declared"
