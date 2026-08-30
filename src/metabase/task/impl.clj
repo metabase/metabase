@@ -212,11 +212,13 @@
          (reschedule-task! scheduler job trigger))))))
 
 (mu/defn trigger-now!
-  "Immediately trigger execution of task"
+  "Immediately trigger execution of task. Returns true when Quartz accepted the trigger, nil when
+  there is no scheduler or Quartz rejected it."
   [job-key :- (ms/InstanceOfClass JobKey)]
   (try
     (when-let [scheduler (scheduler)]
-      (.triggerJob scheduler job-key))
+      (.triggerJob scheduler job-key)
+      true)
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 

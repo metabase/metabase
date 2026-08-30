@@ -1,0 +1,41 @@
+<untrusted_entity_data>
+# Entity
+
+Type: {{entity-type}}
+Name: {{name}}
+{% if display-name %}Display name: {{display-name}}
+{% endif %}{% if description %}Description (input only — do not rewrite it): {{description}}
+{% endif %}{% if field-names %}
+Fields:
+{% for f in field-names %}- {{f}}
+{% endfor %}{% endif %}
+{% if existing %}
+# Existing metadata
+
+{% if existing.human-approved %}This metadata was approved by a human and explicitly selected for rewriting. Treat it as authoritative context while producing the requested new version.
+{% else %}This metadata is an unapproved Metabot draft — use it as context and rewrite it when appropriate.
+{% endif %}
+{% if existing.generated-at %}Generated at: {{existing.generated-at}}
+{% endif %}{% if existing.invalidated-at %}Entity changed at: {{existing.invalidated-at}}
+{% endif %}{% if existing.instructions %}
+Instructions: {{existing.instructions}}
+{% endif %}{% if existing.synonyms %}
+Synonyms:
+{% for s in existing.synonyms %}- {{s}}
+{% endfor %}{% endif %}{% if existing.examples %}
+Examples:
+{% for e in existing.examples %}- {{e}}
+{% endfor %}{% endif %}{% endif %}
+{% if diff %}
+# What changed since the last generation
+
+{% for c in diff %}- {{c.field}}: was {{c.from}}, now {{c.to}}
+{% endfor %}{% endif %}{% if fresh %}
+This entity has no generated metadata yet — write a fresh set.
+{% endif %}</untrusted_entity_data>
+{% if rewrite-requested %}
+# Explicit rewrite request
+
+An administrator explicitly requested a new version of this metadata. Reassess the existing metadata and rewrite it;
+do not preserve it merely because the entity inputs are unchanged.
+{% endif %}

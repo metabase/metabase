@@ -14,9 +14,11 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
@@ -33,6 +35,142 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:parallel buffered-tool-release-preserves-downstream-cancellation-test
+  (let [cases {:claude
+               [(self.claude/claude->aisdk-chunks-xf)
+                [{:type "message_start" :message {:id "m1"}}
+                 {:type "content_block_start" :index 0
+                  :content_block {:type "tool_use" :id "call-1" :name "search"}}
+                 {:type "content_block_delta" :index 0
+                  :delta {:type "input_json_delta" :partial_json "{}"}}
+                 {:type "content_block_stop" :index 0}
+                 {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                 {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "later"}}
+                 {:type "content_block_stop" :index 1}
+                 {:type "message_delta" :delta {:stop_reason "tool_use"}}]]
+
+               :openai-responses
+               [(openai/openai->aisdk-chunks-xf)
+                [{:type "response.created" :response {:id "r1"}}
+                 {:type "response.output_item.added"
+                  :item {:type "function_call" :call_id "call-1" :name "search"}}
+                 {:type "response.function_call_arguments.delta" :delta "{}"}
+                 {:type "response.output_item.done"
+                  :item {:type "function_call" :call_id "call-1" :name "search"}}
+                 {:type "response.output_item.added" :item {:type "message" :id "item-2"}}
+                 {:type "response.output_text.delta" :item_id "item-2" :delta "later"}
+                 {:type "response.output_item.done" :item {:type "message" :id "item-2"}}
+                 {:type "response.completed" :response {:id "r1"}}]]
+
+               :chat-completions
+               [(chat-completions/chat-completions->aisdk-chunks-xf)
+                [{:id "c1" :choices [{:delta {}}]}
+                 {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                   :function {:name "search" :arguments "{}"}}]}}]}
+                 {:choices [{:delta {:content "later"}}]}
+                 {:choices [{:delta {} :finish_reason "tool_calls"}]}]]
+
+               :google
+               [(stream-generate-content/->aisdk-chunks-xf)
+                [{:responseId "g1"
+                  :candidates [{:content {:parts [{:functionCall {:name "search" :args {}}}
+                                                  {:text "later"}]}
+                                :finishReason "STOP"}]}]]}]
+    (doseq [[provider [xf events]] cases]
+      (testing (name provider)
+        (let [seen (atom [])]
+          (transduce xf
+                     (fn
+                       ([] nil)
+                       ([result] result)
+                       ([result chunk]
+                        (swap! seen conj (:type chunk))
+                        (if (= :tool-input-start (:type chunk))
+                          (reduced result)
+                          result)))
+                     nil
+                     events)
+          (is (= [:start :tool-input-start] @seen)
+              "no buffered delta/text is emitted after downstream cancellation"))))))
+
+(deftest interrupted-openai-and-chat-streams-flush-safe-text-test
+  (let [throwing-raw (fn [events]
+                       (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (reduce rf init events)
+                           (throw (ex-info "stream interrupted after text" {})))))
+        cases        {:openai-responses
+                      [(fn [raw]
+                         (with-redefs-fn {#'openai/openai-raw (constantly raw)}
+                           #(openai/openai {})))
+                       [{:type "response.created" :response {:id "r1"}}
+                        {:type "response.output_item.added"
+                         :item {:type "function_call" :call_id "call-1" :name "search"}}
+                        {:type "response.function_call_arguments.delta" :delta "{}"}
+                        {:type "response.output_item.done"
+                         :item {:type "function_call" :call_id "call-1" :name "search"}}
+                        {:type "response.output_item.added" :item {:type "message" :id "item-2"}}
+                        {:type "response.output_text.delta" :item_id "item-2" :delta "safe text"}]]
+
+                      :chat-completions
+                      [(fn [raw]
+                         (with-redefs-fn {#'openrouter/openrouter-raw (constantly raw)}
+                           #(openrouter/openrouter {})))
+                       [{:id "c1" :choices [{:delta {}}]}
+                        {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                          :function {:name "search" :arguments "{}"}}]}}]}
+                        {:choices [{:delta {:content "safe text"}}]}]]}]
+    (doseq [[provider [stream-for events]] cases]
+      (testing (name provider)
+        (let [parts  (atom [])
+              stream (->> (throwing-raw events)
+                          stream-for
+                          (eduction (self.core/lite-aisdk-xf)))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted after text"
+                                (reduce (fn [result part]
+                                          (swap! parts conj part)
+                                          result)
+                                        nil
+                                        stream)))
+          (is (some #(and (= :text (:type %)) (= "safe text" (:text %))) @parts))
+          (is (not-any? #(= :tool-input (:type %)) @parts)))))))
+
+(deftest ^:parallel completion-safe-eduction-does-not-flush-after-downstream-error-test
+  (doseq [[label source]
+          [["direct source" [::value]]
+           ["source inside the provider API-error wrapper"
+            (self.core/reducible-with-api-errors [::value] "Test provider" (constantly nil))]]]
+    (testing label
+      (let [expected (ex-info "consumer failed" {})
+            seen     (atom [])
+            thrown   (try
+                       (reduce (fn [result input]
+                                 (swap! seen conj input)
+                                 (if (= ::value input)
+                                   (throw expected)
+                                   result))
+                               nil
+                               (self.core/completion-safe-eduction (map identity) source))
+                       (catch Throwable e e))]
+        (is (identical? expected thrown) "the downstream exception escapes unchanged")
+        (is (= [::value] @seen)
+            "an interrupted-stream event is not sent through the reducer after a consumer failure")))))
+
+(deftest ^:parallel completion-safe-eduction-unwraps-completion-time-cancellation-test
+  (let [flush-xf (fn [rf]
+                   (fn
+                     ([] (rf))
+                     ([result] (rf result ::flush))
+                     ([result _input] result)))
+        seen     (atom [])]
+    (is (= ::stopped
+           (reduce (fn [_result input]
+                     (swap! seen conj input)
+                     (reduced ::stopped))
+                   nil
+                   (self.core/completion-safe-eduction flush-xf []))))
+    (is (= [::flush] @seen))))
 
 ;;; provider resolution tests
 
@@ -328,6 +466,14 @@
                   {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]]
       (is (= [{:type :start :id "msg-1"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "does not materialize tool input until the provider marks it available"
+    (let [chunks [{:type :start :messageId "msg-1"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\":"}
+                  {:type :usage :usage {:promptTokens 10 :completionTokens 0}}]]
+      (is (= [{:type :start :id "msg-1"}
+              {:type :usage :usage {:promptTokens 10 :completionTokens 0}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
   (testing "converts tool-output-available to tool-output"
     (let [chunks [{:type                   :tool-output-available
@@ -1186,7 +1332,8 @@
       (reduce rf init [{:type :start :messageId "m1"}
                        {:type :tool-input-start :toolCallId "c1" :toolName "json"}
                        {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
-                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}]))))
+                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}
+                       {:type :usage :usage {:promptTokens 11 :completionTokens 7}}]))))
 
 (deftest call-llm-structured-rejects-malformed-json-test
   (llm.tu/with-default-connections
@@ -1202,7 +1349,8 @@
                     (catch clojure.lang.ExceptionInfo e e))]
             (is (instance? clojure.lang.ExceptionInfo e)
                 "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
-            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))))
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))
+            (is (= {:input-tokens 11, :output-tokens 7} (:usage (ex-data e))))))))))
 
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
@@ -1210,7 +1358,8 @@
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
                                   openrouter/openrouter    (constantly
                                                             (test-util/mock-llm-response
-                                                             [{:type :error :errorText "content policy violation"}]))]
+                                                             [{:type :usage :usage {:promptTokens 5 :completionTokens 2}}
+                                                              {:type :error :errorText "content policy violation"}]))]
         (mt/with-log-level [metabase.metabot.self :fatal]
           (let [e (try
                     (self/call-llm-structured "openrouter/test-model"
@@ -1221,7 +1370,8 @@
             (is (instance? clojure.lang.ExceptionInfo e))
             (is (re-find #"content policy violation" (ex-message e))
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
-            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+            (is (= "llm-stream-error" (:error-code (ex-data e))))
+            (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e))))))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
@@ -2024,3 +2174,57 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+;;; structured call usage extraction (the osi-generation seam)
+
+(deftest call-llm-structured+usage-test
+  (let [parts [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
+               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}]]
+    (testing "the streamed usage is returned beside the parsed result"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (constantly (test-util/mock-llm-response parts))]
+        (is (= {:result {:answer "yes"}
+                :usage {:input-tokens 11, :output-tokens 7}}
+               (self/call-llm-structured+usage
+                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))
+    (testing "a provider that omits usage produces explicit zero totals"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (constantly (test-util/mock-llm-response (butlast parts)))]
+        (is (= {:input-tokens 0, :output-tokens 0}
+               (:usage (self/call-llm-structured+usage
+                        "openrouter/test-model" [] {:type "object"} 0.3 1024
+                        {:tag "osi-generation"}))))))))
+
+(deftest call-llm-structured-usage-survives-stream-failure-and-retry-test
+  (testing "usage emitted before a retryable stream failure is accumulated with the successful retry"
+    (let [calls         (atom 0)
+          failed-stream (reify clojure.lang.IReduceInit
+                          (reduce [_ rf init]
+                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
+                            (throw (ex-info "retry me" {:status 429}))))]
+      (mt/with-dynamic-fn-redefs
+        [self/retry-delay-ms (constantly 0)
+         openrouter/openrouter
+         (fn [_]
+           (if (= 1 (swap! calls inc))
+             failed-stream
+             (test-util/mock-llm-response
+              [{:type :tool-input :id "c1" :function "json" :arguments {:answer "yes"}}
+               {:type :usage :usage {:promptTokens 11 :completionTokens 7}}])))]
+        (is (= {:result {:answer "yes"}
+                :usage  {:input-tokens 16, :output-tokens 9}}
+               (self/call-llm-structured+usage
+                "openrouter/test-model" [] {:type "object"} 0.3 1024 {:tag "osi-generation"})))))))
+
+(deftest call-llm-structured-final-error-carries-streamed-usage-test
+  (testing "a final exception retains usage that arrived earlier in the failed stream"
+    (let [failed-stream (reify clojure.lang.IReduceInit
+                          (reduce [_ rf init]
+                            (rf init {:type :usage :usage {:promptTokens 5 :completionTokens 2}})
+                            (throw (ex-info "not retryable" {:status 400}))))]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly failed-stream)]
+        (let [e (is (thrown? clojure.lang.ExceptionInfo
+                             (self/call-llm-structured+usage
+                              "openrouter/test-model" [] {:type "object"} 0.3 1024
+                              {:tag "osi-generation"})))]
+          (is (= {:input-tokens 5, :output-tokens 2} (:usage (ex-data e)))))))))

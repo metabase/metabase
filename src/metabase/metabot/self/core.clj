@@ -230,6 +230,14 @@
                             :error       (:error chunk)
                             :duration-ms (::duration-ms chunk)}))
 
+(defn- complete-aisdk-group?
+  "Whether buffered chunks form a part that is safe to expose downstream. Tool input is complete only
+  after the provider emits `:tool-input-available`; an interruption or malformed stream must not turn
+  partial JSON into a phantom tool call merely because another self-contained chunk follows."
+  [chunks]
+  (or (not= :tool-input-start (:type (first chunks)))
+      (some #(= :tool-input-available (:type %)) chunks)))
+
 (defn aisdk-xf
   "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id)."
   ([] (aisdk-xf nil))
@@ -243,14 +251,17 @@
            getid      #(or (:id %) (:messageId %) (:toolCallId %))
            flush!     (fn [result]
                         (u/prog1 (cond-> result
-                                   (seq @acc) (rf (aisdk-chunks->part @acc)))
+                                   (and (seq @acc) (complete-aisdk-group? @acc))
+                                   (rf (aisdk-chunks->part @acc)))
                           (vreset! current-id nil)
                           (vreset! acc [])))]
        (fn
          ([result]
           (cond-> result
-            (seq @acc) (rf (aisdk-chunks->part @acc))
-            true       rf))
+            (and (seq @acc) (complete-aisdk-group? @acc))
+            (rf (aisdk-chunks->part @acc))
+            true
+            rf))
          ([result chunk]
           (let [chunk-id (getid chunk)]
             (cond
@@ -813,7 +824,9 @@
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
              (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
+                   ;; Include the terminal event so the same aggregation invariant used downstream
+                   ;; can distinguish executable input from an interrupted partial call.
+                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool (conj chunks chunk))))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing
@@ -1013,10 +1026,78 @@
   [reducible provider res->message]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (try
-        (reduce rf init reducible)
-        (catch Exception e
-          (rethrow-api-error! provider res->message e))))))
+      (let [rf-error (volatile! nil)
+            rf*      (fn
+                       ([result]
+                        (try
+                          (rf result)
+                          (catch Throwable e
+                            (vreset! rf-error e)
+                            (throw e))))
+                       ([result input]
+                        (try
+                          (rf result input)
+                          (catch Throwable e
+                            ;; Consumer and transformer failures are not provider API errors. Preserve the
+                            ;; original object so outer stream-safety wrappers can distinguish them too.
+                            (vreset! rf-error e)
+                            (throw e)))))]
+        (try
+          (reduce rf* init reducible)
+          (catch Exception e
+            (if (identical? e @rf-error)
+              (throw e)
+              (rethrow-api-error! provider res->message e))))))))
+
+(def interrupted-stream-event
+  "Internal transducer input used to flush safe buffered output and billing data after exceptional stream termination
+  without making provisional tool calls executable."
+  ::interrupted-stream)
+
+(defn completion-safe-eduction
+  "Apply `xform` to `coll`. If the source throws, feed [[interrupted-stream-event]] through the
+  transducer without invoking normal completion, allowing adapters to discard provisional tools while emitting safe
+  text/reasoning and their last reported usage. The source exception remains primary; a flush error is attached as
+  suppressed."
+  [xform coll]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [last-result (volatile! init)
+            xrf-error   (volatile! nil)
+            rf*         (fn
+                          ([result]
+                           ;; `xrf` owns provider-side completion (including buffered usage), while
+                           ;; the outer reduction owns downstream completion. Keep this arity neutral
+                           ;; so a transient downstream accumulator is never finalized twice.
+                           (vreset! last-result result)
+                           result)
+                          ([result input]
+                           (let [next-result (rf result input)]
+                             (vreset! last-result next-result)
+                             next-result)))
+            xrf         (xform rf*)
+            source-step (fn [result input]
+                          (try
+                            (xrf result input)
+                            (catch Throwable e
+                              ;; The outer reduction cannot otherwise distinguish a source failure from
+                              ;; an exception raised by the transform or downstream reducer. Only the
+                              ;; former is allowed to synthesize an interruption event.
+                              (vreset! xrf-error e)
+                              (throw e))))
+            result      (try
+                          (reduce source-step init coll)
+                          (catch Throwable source-error
+                            (when (identical? source-error @xrf-error)
+                              (throw source-error))
+                            (try
+                              (xrf @last-result interrupted-stream-event)
+                              (catch Throwable flush-error
+                                (.addSuppressed source-error flush-error)))
+                            (throw source-error)))]
+        ;; Completion failures belong to the transform/downstream reducer too, so this deliberately sits
+        ;; outside the source-only catch above.
+        (unreduced (xrf result))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

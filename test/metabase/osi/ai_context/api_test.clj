@@ -147,7 +147,8 @@
 ;;; ------------------------------------------- Generation metadata -------------------------------------------
 
 (deftest put-flips-data-source-to-human-test
-  (testing "any PUT is an approval: the row becomes human-owned and its generation state is untouched"
+  (testing "any PUT is an approval: the row becomes human-owned, clears an older rewrite request, and preserves
+            the rest of its generation history"
     (let [generated-at         (t/offset-date-time "2026-07-20T10:00Z")
           invalidated-at       (t/offset-date-time "2026-07-20T11:00Z")
           basis-invalidated-at (t/offset-date-time "2026-07-20T09:00Z")
@@ -160,9 +161,26 @@
         (is (= "human" (:data_source
                         (mt/user-http-request :crowberto :put 200 "osi/ai-context/table/1"
                                               {:ai_context {:instructions "approved"}}))))
-        (is (= (assoc generation-state :data_source :human)
+        (is (= (assoc generation-state :data_source :human :rewrite_requested_at nil)
                (select-keys (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1)
                             (conj (vec (keys generation-state)) :data_source))))))))
+
+(deftest human-put-and-regenerate-ordering-test
+  (testing "regenerate -> PUT protects the newer approval, while PUT -> regenerate creates a new pending request"
+    (let [generated-at (t/offset-date-time "2026-07-20T10:00Z")]
+      (with-test-entry [_ {:data_source :human :generated_at generated-at}]
+        (mt/user-http-request :crowberto :post 200 "osi/ai-context/table/1/regenerate")
+        (is (t/after? (:rewrite_requested_at
+                       (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1))
+                      generated-at))
+        (mt/user-http-request :crowberto :put 200 "osi/ai-context/table/1"
+                              {:ai_context {:instructions "newly approved"}})
+        (is (nil? (:rewrite_requested_at
+                   (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1))))
+        (mt/user-http-request :crowberto :post 200 "osi/ai-context/table/1/regenerate")
+        (is (t/after? (:rewrite_requested_at
+                       (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1))
+                      generated-at))))))
 
 (deftest put-on-new-row-is-human-test
   (testing "a PUT that creates a row stores human, with no generation state"

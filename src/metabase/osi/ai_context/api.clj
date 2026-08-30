@@ -126,7 +126,8 @@
 
   Any write here is an approval: the row's `data_source` becomes `human`, and generated content is never
   overwritten again without an explicit regenerate.
-  `updated_at` records the human edit; `generated_at` stays unchanged."
+  `updated_at` records the human edit; `generated_at` stays unchanged. A pending regenerate request is
+  cleared because it predates this newly approved content."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
    ;; Accept the object as-is (`ms/Map` is open) so unknown keys reach the handler: the api layer strips keys a
@@ -145,8 +146,9 @@
       (app-db/update-or-insert! :model/OsiAiContext
                                 {:entity_type     stored-type
                                  :entity_local_id entity-local-id}
-                                (constantly {:ai_context  ai-context
-                                             :data_source :human}))
+                                (constantly {:ai_context           ai-context
+                                             :data_source          :human
+                                             :rewrite_requested_at nil}))
       (get-entry entity-type entity-local-id))))
 
 (api.macros/defendpoint :post "/:entity-type/:entity-local-id/regenerate"

@@ -64,6 +64,96 @@
                          :cacheReadTokens     nat-int?}}
                 (last parts)))))))
 
+(deftest ^:parallel openai-clean-eof-discards-open-function-call-test
+  (testing "only response.output_item.done makes a Responses API function call executable"
+    (let [parts (into []
+                      (comp (openai/openai->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                       {:type "response.output_item.added"
+                        :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                       {:type "response.function_call_arguments.delta"
+                        :delta "{\"x\":"}])]
+      (is (not-any? #(= :tool-input (:type %)) parts)))))
+
+(deftest ^:parallel openai-closed-function-call-waits-for-successful-response-test
+  (let [base   [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                {:type "response.output_item.added"
+                 :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                {:type "response.function_call_arguments.delta" :delta "{}"}
+                {:type "response.output_item.done"
+                 :item {:type "function_call" :call_id "call_1" :name "mutate" :arguments "{}"}}]
+        parts  (fn [terminal-events]
+                 (let [invoked? (atom false)
+                       tools    {"mutate" {:fn     (fn [_]
+                                                     (reset! invoked? true)
+                                                     {:output "ok"})
+                                           :doc    "Run only after response.completed"
+                                           :schema [:=> [:cat :map] :any]}}
+                       parts    (into []
+                                      (comp (openai/openai->aisdk-chunks-xf)
+                                            (self.core/tool-executor-xf tools)
+                                            (self.core/aisdk-xf))
+                                      (into base terminal-events))]
+                   [parts @invoked?]))]
+    (testing "response.completed releases the closed call"
+      (let [[parts invoked?] (parts [{:type "response.completed"
+                                      :response {:id "resp_1" :usage {:input_tokens 10 :output_tokens 3}}}])]
+        (is invoked?)
+        (is (some #(= :tool-input (:type %)) parts))))
+    (doseq [[label terminal-events]
+            [["clean EOF" []]
+             ["response.incomplete"
+              [{:type "response.incomplete"
+                :response {:id "resp_1" :incomplete_details {:reason "max_output_tokens"}
+                           :usage {:input_tokens 10 :output_tokens 3}}}]]
+             ["response.failed"
+              [{:type "response.failed"
+                :response {:id "resp_1" :error {:message "failed"}}}]]
+             ["error event"
+              [{:type "error" :error {:message "failed"}}]]]]
+      (testing (str label " discards a syntactically closed function call")
+        (let [[parts invoked?] (parts terminal-events)]
+          (is (false? invoked?))
+          (is (not-any? #(= :tool-input (:type %)) parts)))))))
+
+(deftest ^:parallel openai-item-transition-discards-unfinished-function-call-test
+  (testing "a following output item cannot implicitly certify the previous function call"
+    (let [parts (into []
+                      (comp (openai/openai->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                       {:type "response.output_item.added"
+                        :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                       {:type "response.function_call_arguments.delta" :delta "{}"}
+                       {:type "response.output_item.added"
+                        :item {:type "message" :id "item_2"}}
+                       {:type "response.output_text.delta" :delta "safe" :item_id "item_2"}
+                       {:type "response.output_item.done"
+                        :item {:type "message" :id "item_2"}}])]
+      (is (not-any? #(= :tool-input (:type %)) parts))
+      (is (=? {:type :text :text "safe"}
+              (last parts))))))
+
+(deftest ^:parallel openai-failure-mid-text-after-tool-keeps-text-and-error-test
+  (testing "terminal resolution closes the buffered text block before the self-contained error flushes it"
+    (let [parts (into []
+                      (comp (openai/openai->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                       {:type "response.output_item.added"
+                        :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                       {:type "response.function_call_arguments.delta" :delta "{}"}
+                       {:type "response.output_item.done"
+                        :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                       {:type "response.output_item.added" :item {:type "message" :id "item_2"}}
+                       {:type "response.output_text.delta" :delta "safe partial text" :item_id "item_2"}
+                       {:type "response.failed"
+                        :response {:id "resp_1" :error {:message "failed after partial text"}}}])]
+      (is (= [:start :text :error] (mapv :type parts)))
+      (is (= "safe partial text" (:text (second parts))))
+      (is (= "failed after partial text" (get-in parts [2 :error :message]))))))
+
 (deftest ^:parallel openai-structured-output-conv-test
   (let [raw-chunks (fixture "openai-structured-output"
                             {:input  [{:role :user :content "List the currencies for USA, Canada, and Mexico. Use three-letter country and currency codes."}]
@@ -154,6 +244,43 @@
                {:type      :error
                 :errorText "The server had an error while processing your request. Sorry about that!"}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-response-failed-preserves-usage-test
+  (testing "billed usage on response.failed is emitted before its error"
+    (let [raw [{:type "response.created"
+                :response {:id "resp_1", :model "gpt-5.5"}}
+               {:type "response.failed"
+                :response {:id    "resp_1"
+                           :usage {:input_tokens 21, :output_tokens 4}
+                           :error {:message "failed after billing"}}}]]
+      (is (=? [{:type :start}
+               {:type  :usage
+                :usage {:promptTokens 21, :completionTokens 4}}
+               {:type :error, :errorText "failed after billing"}]
+              (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-interrupted-stream-leaves-content-blocks-incomplete-test
+  (doseq [[label item delta end-type expected-types]
+          [["text"
+            {:type "message", :id "msg_1"}
+            {:type "response.output_text.delta", :item_id "msg_1", :delta "partial"}
+            :text-end
+            [:start :text-start :text-delta]]
+           ["reasoning"
+            {:type "reasoning", :id "rs_1"}
+            {:type "response.reasoning_summary_text.delta", :item_id "rs_1", :delta "partial"}
+            :reasoning-end
+            [:start :reasoning-start :reasoning-delta]]]]
+    (testing (str "an interrupted " label " block has no normal end marker")
+      (let [chunks (into []
+                         (openai/openai->aisdk-chunks-xf)
+                         [{:type "response.created"
+                           :response {:id "resp_1", :model "gpt-5.5"}}
+                          {:type "response.output_item.added", :item item}
+                          delta
+                          self.core/interrupted-stream-event])]
+        (is (= expected-types (mapv :type chunks)))
+        (is (not-any? #(= end-type (:type %)) chunks))))))
 
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"

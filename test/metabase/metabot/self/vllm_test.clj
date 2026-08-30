@@ -12,6 +12,7 @@
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
+   (java.io IOException)
    (java.net ConnectException SocketTimeoutException)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
@@ -1132,3 +1133,28 @@
     (let [models (:models (probe! [{:id "vllm-test" :max_model_len 32768 :parent nil :root "org/Model"}]
                                   tool-calling-message))]
       (is (= [{:id "vllm-test" :display_name "vllm-test"}] models)))))
+
+;;; ------------------------------------------- io-guarded attribution -------------------------------------------
+
+(defn- reducible-of
+  "An `IReduceInit` over `xs`, optionally throwing `boom` once they are exhausted."
+  [xs boom]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [result (reduce rf init xs)]
+        (when boom (throw boom))
+        result))))
+
+(deftest ^:parallel io-guarded-translates-only-source-failures-test
+  (let [guarded #(#'vllm/io-guarded % 1000)]
+    (testing "a transport failure while consuming the stream becomes a vLLM error"
+      (let [e (try (reduce (fn [_ _] nil) nil (guarded (reducible-of [1 2] (IOException. "socket died"))))
+                   (catch Exception e e))]
+        (is (= :vllm-stream-interrupted (:error-code (ex-data e))))))
+    (testing "an IOException the consumer throws is left alone"
+      ;; Relabelling it would hide the real failure and tell `completion-safe-eduction` the source died,
+      ;; making it flush as though the stream had been interrupted.
+      (let [mine (IOException. "consumer exploded")
+            e    (try (reduce (fn [_ _] (throw mine)) nil (guarded (reducible-of [1] nil)))
+                      (catch Exception e e))]
+        (is (identical? mine e))))))

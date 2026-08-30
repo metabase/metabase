@@ -501,6 +501,99 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- call-llm-structured*
+  "Shared streaming implementation behind the structured-output helpers. Forces a `json` tool call,
+  collects the stream, and accumulates token usage across retries.
+
+  Returns `{:result <parsed JSON map from the forced tool call>
+            :parts  [<part>...]
+            :usage  {:input-tokens n :output-tokens n}}` (usage zeros when the provider sent none).
+
+  Does no permission or usage-limit gating — callers that need it gate before calling."
+  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
+  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
+        [system-msg input] (if (= "system" (some-> messages first :role name))
+                             [(:content (first messages)) (vec (rest messages))]
+                             [nil messages])
+        _ (log/info "Calling LLM (structured)" {:provider  provider
+                                                :model     model
+                                                :msg-count (count input)
+                                                :ai-proxy? ai-proxy?})
+        tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+        total-usage    (atom {:input-tokens 0, :output-tokens 0})
+        streaming-opts (cond-> {:model       model
+                                :input       input
+                                :schema      json-schema
+                                :temperature temperature
+                                :max-tokens  max-tokens
+                                :credentials credentials
+                                :ai-proxy?   ai-proxy?}
+                         system-msg                        (assoc :system system-msg)
+                         (contains? tracking-opts :cache?) (assoc :cache? (:cache? tracking-opts))
+                         (:session-id tracking-opts)       (assoc :prompt-cache-key (:session-id tracking-opts)))]
+    (with-span :info {:name      :metabot.agent/call-llm-structured
+                      :model     model
+                      :msg-count (count input)}
+      (try
+        (with-retries
+          tracking-opts
+          (fn []
+            (let [attempt-usage (atom {:input-tokens 0, :output-tokens 0})
+                  parts (into []
+                              (comp (core/aisdk-xf)
+                                    (report-aisdk-errors-xf tracking-opts)
+                                    (report-token-usage-xf tracking-opts)
+                                    ;; Charge usage as it flows so a later stream throw cannot erase a billed
+                                    ;; attempt. Repeated usage parts are cumulative snapshots; charge the delta.
+                                    (map (fn [{:keys [type usage] :as part}]
+                                           (when (= type :usage)
+                                             (let [next-usage {:input-tokens  (:promptTokens usage 0)
+                                                               :output-tokens (:completionTokens usage 0)}
+                                                   delta      (merge-with - next-usage @attempt-usage)]
+                                               (reset! attempt-usage next-usage)
+                                               (swap! total-usage #(merge-with + % delta))))
+                                           part)))
+                              (stream-fn streaming-opts))
+                  result (some (fn [{:keys [type arguments]}]
+                                 (when (= type :tool-input)
+                                   arguments))
+                               parts)
+                  error  (some (fn [{:keys [type error]}]
+                                 (when (= type :error)
+                                   error))
+                               parts)]
+              (cond
+                ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
+                ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
+                ;; bogus map back to the caller as if it were a valid structured result.
+                (and (map? result) (contains? result :_raw_arguments))
+                (throw (ex-info "LLM returned malformed JSON in its structured tool call"
+                                {:parts         parts
+                                 :error-code    "structured-output-invalid"
+                                 :usage         @total-usage
+                                 :raw-arguments (:_raw_arguments result)}))
+
+                result
+                {:result result :parts parts :usage @total-usage}
+
+                ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
+                ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
+                ;; see the real cause rather than a misleading "no tool call".
+                error
+                (throw (ex-info (or (:message error) "LLM stream returned an error")
+                                {:parts parts :error error :error-code "llm-stream-error"
+                                 :usage @total-usage}))
+
+                :else
+                (throw (ex-info "LLM returned no tool call in structured response"
+                                {:parts parts :usage @total-usage}))))))
+        (catch Exception e
+          ;; with-retries surfaces only the final exception. Preserve usage from every attempt, including
+          ;; attempts whose stream failed after emitting usage.
+          (throw (ex-info (ex-message e)
+                          (assoc (ex-data e) :usage @total-usage)
+                          e)))))))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -527,69 +620,26 @@
                      :error-code "ai_usage_limit_reached"
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
-  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
-        [system-msg input] (if (= "system" (some-> messages first :role name))
-                             [(:content (first messages)) (vec (rest messages))]
-                             [nil messages])
-        _ (log/info "Calling LLM (structured-with-trace)" {:provider provider
-                                                           :model     model
-                                                           :msg-count (count input)
-                                                           :ai-proxy? ai-proxy?})
-        tracking-opts  (-> opts
-                           (dissoc :required-permission)
-                           (assoc :model provider-and-model :ai-proxy? ai-proxy?))
-        streaming-opts (cond-> {:model       model
-                                :input       input
-                                :schema      json-schema
-                                :temperature temperature
-                                :max-tokens  max-tokens
-                                :credentials credentials
-                                :ai-proxy?   ai-proxy?}
-                         system-msg                  (assoc :system system-msg)
-                         (contains? opts :cache?)    (assoc :cache? (:cache? opts))
-                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
-    (with-span :info {:name      :metabot.agent/call-llm-structured
-                      :model     model
-                      :msg-count (count input)}
-      (with-retries
-        tracking-opts
-        (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)]
-            (cond
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              (and (map? result) (contains? result :_raw_arguments))
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
+  (let [{:keys [result parts]} (call-llm-structured*
+                                provider-and-model messages json-schema temperature max-tokens
+                                (dissoc opts :required-permission))]
+    {:result result :parts parts}))
 
-              result
-              {:result result :parts parts}
+(defn call-llm-structured+usage
+  "Make an LLM call that returns structured JSON output plus its token usage.
 
-              ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
-              ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
-              ;; see the real cause rather than a misleading "no tool call".
-              error
-              (throw (ex-info (or (:message error) "LLM stream returned an error")
-                              {:parts parts :error error :error-code "llm-stream-error"}))
+  Returns `{:result <parsed JSON map from the forced tool call>
+            :usage  {:input-tokens n :output-tokens n}}`.
+  The usage comes from the stream's `:usage` part, which [[report-token-usage-xf]] already reports to
+  prometheus/snowplow/ai_usage_log; this returns it to the caller too (zeros when the provider sent
+  none), for callers that aggregate spend per run.
 
-              :else
-              (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+  This is the background-generation seam: unlike [[call-llm-structured-with-trace]] it does no
+  interactive permission or usage-limit gating, so a userless job can call it."
+  [provider-and-model messages json-schema temperature max-tokens tracking-opts]
+  (let [{:keys [result usage]} (call-llm-structured*
+                                provider-and-model messages json-schema temperature max-tokens tracking-opts)]
+    {:result result :usage usage}))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

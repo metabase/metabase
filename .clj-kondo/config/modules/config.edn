@@ -3535,11 +3535,20 @@
 
   enterprise/osi-generation
   {:team "Metabot"
-   :uses #{llm
+   :uses #{analytics-interface
+           api
+           app-db
+           entity-retrieval
+           llm
            metabot
+           osi
+           premium-features
            settings
-           util}
-   :api #{metabase-enterprise.osi-generation.init}}
+           task
+           util
+           enterprise/semantic-search}
+   :api #{metabase-enterprise.osi-generation.api metabase-enterprise.osi-generation.init}
+   :model-imports #{:model/OsiAiContext}}
 
   enterprise/permission-debug
   {:team "UX West"

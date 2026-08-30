@@ -254,6 +254,22 @@
             {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
             {:type "message_stop"}]))))
 
+(deftest ^:parallel interrupted-anthropic-stream-flushes-usage-test
+  (let [parts (atom [])
+        raw   (reify clojure.lang.IReduceInit
+                (reduce [_ rf init]
+                  (rf init {:type "message_start"
+                            :message {:id "msg-azure" :model "claude-sonnet-4-5"
+                                      :usage {:input_tokens 11 :output_tokens 0}}})
+                  (throw (ex-info "azure stream interrupted" {}))))]
+    (mt/with-dynamic-fn-redefs [azure/azure-raw (constantly raw)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"azure stream interrupted"
+                            (reduce (fn [acc part] (swap! parts conj part) acc)
+                                    nil
+                                    (azure/azure {:model "anthropic/deployment"}))))
+      (is (=? {:type :usage :usage {:promptTokens 11 :completionTokens 0}}
+              (last @parts))))))
+
 (deftest openai-family-uses-openai-stream-translation-test
   (is (=? [{:type :start :id "resp_1"}
            {:type :text :text "pong"}
@@ -266,6 +282,15 @@
             {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}
             {:type "response.completed"
              :response {:id "resp_1" :usage {:input_tokens 3 :output_tokens 2}}}]))))
+
+(deftest openai-family-discards-function-call-without-output-item-done-test
+  (let [parts (aisdk-parts-for!
+               "openai/gpt-4.1-mini"
+               [{:type "response.created" :response {:id "resp_1" :model "gpt-4.1-mini"}}
+                {:type "response.output_item.added"
+                 :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                {:type "response.function_call_arguments.delta" :delta "{\"x\":"}])]
+    (is (not-any? #(= :tool-input (:type %)) parts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error translation
