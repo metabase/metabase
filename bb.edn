@@ -309,8 +309,8 @@
                "Merge three ratchet-file stages into OUTPUT"]]
    :arg-schema [:tuple
                 [:string {:name "base" :description "Merge base's ratchets file"}]
-                [:string {:name "ours" :description "Current branch's ratchets file"}]
-                [:string {:name "theirs" :description "Incoming branch's ratchets file"}]
+                [:string {:name "ours" :description "Git stage 2: the branch being merged or rebased onto"}]
+                [:string {:name "theirs" :description "Git stage 3: the commits being applied to it"}]
                 [:string {:name "output" :description "Path to write the merged ratchets file"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!

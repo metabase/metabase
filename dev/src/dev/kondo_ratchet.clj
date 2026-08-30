@@ -36,14 +36,15 @@
         (throw (ex-info (str *ratchets-file* " holds more than one form; expected one map of policies")
                         {:file *ratchets-file*})))
       form)))
+
 (def ^:private empty-policies
   {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
 
 (defn validate-policies
   "`ratchets` when each policy field it carries has the right shape: `:ignore-counts` maps linters to a
   non-negative integer or `:unlimited`, `:config-counts` maps linters to a non-negative integer, and
-  `:comment-exempt` is a set. Throws otherwise. Shared by [[read-ratchets]] and [[merge-ratchets]], so a
-  malformed stage can never be read as a set of removals."
+  `:comment-exempt` is a set. Every linter named anywhere must be a keyword. Throws otherwise. Shared by
+  [[read-ratchets]] and [[merge-ratchets]], so a malformed stage can never be read as a set of removals."
   [ratchets]
   (let [{:keys [ignore-counts config-counts comment-exempt]} (merge empty-policies ratchets)]
     (when-not (map? ignore-counts)
@@ -66,6 +67,13 @@
     (when-not (set? comment-exempt)
       (throw (ex-info ":comment-exempt must be a set of linters"
                       {:comment-exempt comment-exempt})))
+    ;; the merge keys on (str linter) and renders the same way, so a non-keyword name would be rewritten
+    ;; as a keyword, collide with one, or produce a file that no longer reads back
+    (doseq [linter (concat (keys ignore-counts) (keys config-counts) comment-exempt)]
+      (when-not (keyword? linter)
+        (throw (ex-info (format "%s is not a linter name; policies and exemptions are keyed by keyword"
+                                (pr-str linter))
+                        {:linter linter}))))
     ratchets))
 
 (defn read-ratchets
