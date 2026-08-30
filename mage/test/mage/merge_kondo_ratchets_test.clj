@@ -152,10 +152,13 @@
   "Everything one refused run prints, having asserted that it exited nonzero and left the conflict exactly
   as it found it. Mage reports task exceptions on stdout."
   [dir note]
-  (let [before                 (status dir)
+  ;; a conflicted path stays UU/DU/UD however its contents are rewritten, so compare those too
+  (let [snapshot               #(let [f (fs/path dir ratchets-file)]
+                                  [(status dir) (when (fs/exists? f) (slurp (str f)))])
+        before                 (snapshot)
         {:keys [exit out err]} (run dir script)]
     (is (pos? exit) note)
-    (is (= before (status dir)) note)
+    (is (= before (snapshot)) note)
     (str out err)))
 
 (deftest delete-versus-modify-is-left-for-a-human-test
