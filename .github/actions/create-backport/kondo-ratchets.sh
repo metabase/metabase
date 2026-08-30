@@ -2,18 +2,24 @@
 
 set -euo pipefail
 
+# The only place that knows what a release branch's opt-out looks like. The cut-release workflow, the
+# backport helper, and the tests all go through this function.
+write_disabled_ratchets() {
+  mkdir -p .clj-kondo
+  printf '%s\n' \
+    ';; Kondo ignore ratchets apply only to master; this release branch opts out.' \
+    ';; The test and fixer recognize this explicit opt-out.' \
+    '{:disabled true}' \
+    > .clj-kondo/ratchets.edn
+}
+
 disable_ratchets() {
   local commit=$1
   local file=.clj-kondo/ratchets.edn
   [ -n "$(git diff-tree --root --no-commit-id --name-only -r "$commit" -- "$file")" ] || return 0
 
   echo "$file: disabling kondo ratchets on the release branch"
-  mkdir -p .clj-kondo
-  printf '%s\n' \
-    ';; Kondo ignore ratchets apply only to master; this release branch opts out.' \
-    ';; The test and fixer recognize this explicit opt-out.' \
-    '{:disabled true}' \
-    > "$file"
+  write_disabled_ratchets
   git add -- "$file"
 
   if ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null; then
@@ -29,7 +35,9 @@ disable_ratchets() {
       echo "nothing left to apply, committing the backport empty"
       git commit --allow-empty --no-edit
     else
-      git -c core.editor=true cherry-pick --continue
+      # GIT_EDITOR outranks core.editor, VISUAL, and EDITOR, so the continuation can never wait on
+      # an editor; the repository's own editor configuration is left alone.
+      GIT_EDITOR=true git cherry-pick --continue
     fi
   fi
 }
@@ -59,7 +67,7 @@ write_backport_script() {
     echo "set -euo pipefail"
     echo "git reset HEAD~1"
     echo "rm ./backport.sh"
-    declare -f disable_ratchets cherry_pick_backport
+    declare -f write_disabled_ratchets disable_ratchets cherry_pick_backport
     printf 'cherry_pick_backport %q\n' "$commit"
     printf '%s\n' "printf 'Resolve conflicts and force push this branch.\\n\\nTo backport translations run: bin/i18n/merge-translations <release-branch>\\n'"
   } > ./backport.sh
