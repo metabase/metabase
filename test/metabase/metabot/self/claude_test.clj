@@ -287,6 +287,38 @@
             (last @parts))
         "completion flushes the billed prompt usage before the stream exception escapes")))
 
+(deftest ^:parallel claude-interrupted-stream-leaves-content-blocks-incomplete-test
+  (doseq [[label block delta end-type expected-types]
+          [["text"
+            {:type "text"}
+            {:type "text_delta", :text "partial"}
+            :text-end
+            [:start :text-start :text-delta :usage]]
+           ["reasoning"
+            {:type "thinking"}
+            {:type "thinking_delta", :thinking "partial"}
+            :reasoning-end
+            [:start :reasoning-start :reasoning-delta :usage]]]]
+    (testing (str "an interrupted " label " block has no normal end marker")
+      (let [chunks (atom [])
+            events [{:type "message_start"
+                     :message {:id    "msg-1"
+                               :model "claude-haiku-4-5"
+                               :usage {:input_tokens 37, :output_tokens 0}}}
+                    {:type "content_block_start", :index 0, :content_block block}
+                    {:type "content_block_delta", :index 0, :delta delta}]
+            raw    (reify clojure.lang.IReduceInit
+                     (reduce [_ rf init]
+                       (reduce rf init events)
+                       (throw (ex-info "stream interrupted" {}))))
+            stream (#'claude/completion-safe-eduction (claude/claude->aisdk-chunks-xf) raw)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted"
+                              (reduce (fn [acc chunk] (swap! chunks conj chunk) acc) nil stream)))
+        (is (= expected-types (mapv :type @chunks)))
+        (is (not-any? #(= end-type (:type %)) @chunks))
+        (is (=? {:type :usage, :usage {:promptTokens 37, :completionTokens 0}}
+                (last @chunks)))))))
+
 (deftest ^:parallel clean-eof-during-tool-input-discards-partial-call-test
   (let [events [{:type "message_start"
                  :message {:id "msg-tool" :model "claude-haiku-4-5"
