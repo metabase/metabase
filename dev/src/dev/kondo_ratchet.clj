@@ -445,10 +445,9 @@
              text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
                                     :config-counts  (lowered-counts config-counts config-actual [])
                                     :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
-             file          (io/file *ratchets-file*)
-             old           (when (.exists file) (slurp file))]
+             old           (slurp *ratchets-file*)]
          (run! println (change-report ratchets occurrences config-actual seeded))
          (if (= old text)
            (println "unchanged")
-           (do (spit file text)
+           (do (spit *ratchets-file* text)
                (println (str "wrote " *ratchets-file*)))))))))
