@@ -700,11 +700,16 @@
        [(str *ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
              " to fix the formatting")]))))
 
+(defn- exit!
+  "Fail the babashka task with `message`, without mage's default stack trace."
+  [message]
+  (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
+
 (defn- fail!
-  "Print `message` and fail the babashka task, without mage's default stack trace."
+  "[[exit!]], for a `message` the run has not already printed."
   [message]
   (println message)
-  (throw (ex-info message {:babashka/exit 1, :mage/quiet true})))
+  (exit! message))
 
 (defn check
   "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
@@ -728,7 +733,7 @@
                 (println (format "ok -- %d ignore forms within %d policies"
                                  (count occurrences) (count (:ignore-counts ratchets))))
                 (do (run! println lines)
-                    (fail! (str *ratchets-file* " drifted from the source tree"))))))))
+                    (exit! (str *ratchets-file* " drifted from the source tree"))))))))
       (catch clojure.lang.ExceptionInfo e
         (if (:babashka/exit (ex-data e))
           (throw e)
