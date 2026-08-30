@@ -68,8 +68,10 @@ jobs:
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
       project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
       project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
       no_source_code_changes: >-
-        ${{ steps.changes.outputs.documentation == 'true'
+        ${{ (steps.changes.outputs.documentation == 'true'
+        || steps.changes.outputs.project_ratchet_checks == 'true')
         && steps.changes.outputs.backend_all == 'false'
         && steps.changes.outputs.frontend_all == 'false'
         && steps.changes.outputs.e2e_all == 'false' }}
