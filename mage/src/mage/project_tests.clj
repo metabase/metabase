@@ -24,7 +24,7 @@
   "Suites the bare `project-tests` command runs, in order."
   ["migrations" "backend"])
 
-;; `sh` is a [[mage.shell/sh*]]-compatible function so tests can run the suites without a JVM.
+;; `sh` is a [[mage.shell/sh*]]-compatible function so unit tests can inspect commands without running them.
 ;; .github/scripts/check-preresolve-aliases.sh reads the alias strings out of these two functions.
 
 (defn- run-migration-checks! [sh]

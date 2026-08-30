@@ -245,7 +245,14 @@ jobs:
             exit 1
           fi
 
-          NS=$(sed -E 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+          # Convert each test path to a Clojure namespace: strip its known test root and
+          # extension, then translate path separators and underscores. Keep these roots
+          # aligned with FILES above and the Eastwood classpath aliases below.
+          NS=$(sed -E \
+                 -e 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##' \
+                 -e 's#\.cljc?$##' \
+                 -e 's#/#.#g' \
+                 -e 's#_#-#g' <<<"$FILES" \
                  | sort -u \
                  | paste -sd' ' -)
           echo "Changed test namespaces: $NS"

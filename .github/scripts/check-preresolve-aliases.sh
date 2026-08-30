@@ -60,6 +60,8 @@ scan() { # scan <edition>: dependency root and aliases used by .github Clojure i
 }
 
 scan_project_tests() { # scan_project_tests <function> <dependency-root>
+  # Mage shell commands are vectors split across lines, so flatten each function body before
+  # extracting its alias.
   sed -n "/(defn- $1 /,/^(defn/p" mage/src/mage/project_tests.clj \
     | tr '\n' ' ' \
     | grep -oE '"clojure"[[:space:]]+("-P"[[:space:]]+)?"-[XMATP]?:[A-Za-z0-9:_./-]+' \
@@ -67,8 +69,8 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
     | sed -e 's/:$//' -e "s#^#$2|#"
 }
 
-# Each Mage scraper must match on its own: a renamed function or a hoisted alias string would otherwise
-# vanish from the check while the workflow scans keep the aggregate nonempty.
+# Check each Mage function separately. If a function is renamed or its alias moves elsewhere, the workflow
+# scan may still find other commands and conceal that this function is no longer being checked.
 require_scan() { # require_scan <function> <result>
   [ -n "$2" ] && return
   echo "::error::check-preresolve-aliases.sh: found no Clojure invocation in $1 (mage/src/mage/project_tests.clj); the scan pattern no longer matches" >&2
@@ -83,7 +85,7 @@ scanned="$( {
   scan ee
   scan oss
   printf '%s\n' "$clojure_checks" "$migration_checks"
-  # a scan that matches nothing exits 1 through pipefail; the emptiness check below is the diagnostic
+  # Keep the group successful when scans find nothing; the explicit check below reports that case.
   :
 } | sort -u )"
 if [ -z "$scanned" ]; then
