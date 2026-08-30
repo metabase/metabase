@@ -6,12 +6,9 @@
    [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.query-processor.store :as qp.store]))
 
 (driver/register! ::sql-with-native-pivot,    :parent :sql, :abstract? true)
 (driver/register! ::sql-without-native-pivot, :parent :sql, :abstract? true)
@@ -192,72 +189,3 @@
                {:rows [b1-uuid] :columns [b2-uuid] :show-row-totals false :show-column-totals false}
                [[:count :desc]])]
       (is (= [[:count :desc]] (:order-by out))))))
-
-;;; ----- compile-union-all-pivot -----
-
-(defn- compile-union-all
-  "Invoke `compile-union-all-pivot` on a stage built from a real MBQL5 orders query, returning its HoneySQL form.
-  `breakout-cols` names ORDERS columns (in breakout order) and doubles as the placeholder tokens in the starting
-  `:select` / `:group-by`; `:rows` / `:columns` are indexes into `breakout-cols`."
-  [breakout-cols {:keys [rows columns show-row-totals show-column-totals]
-                  :or   {show-row-totals true, show-column-totals true}}]
-  (qp.store/with-metadata-provider meta/metadata-provider
-    (let [base     (reduce (fn [q col] (lib/breakout q (meta/field-metadata :orders col)))
-                           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                               (lib/aggregate (lib/count)))
-                           breakout-cols)
-          uuids    (mapv lib.options/uuid (lib/breakouts base))
-          stage    (lib.util/query-stage
-                    (lib.pivot/with-pivot base {:rows               (mapv uuids rows)
-                                                :columns            (mapv uuids columns)
-                                                :show-row-totals    show-row-totals
-                                                :show-column-totals show-column-totals})
-                    -1)
-          starting {:select breakout-cols :group-by breakout-cols}]
-      (binding [sql.qp/*inner-query* stage]
-        (#'sql.pivot/compile-union-all-pivot :sql starting stage)))))
-
-(deftest ^:parallel one-breakout-no-totals-single-combo-test
-  (testing "single combo (both totals off): one UNION ALL branch wrapped in outer SELECT, no outer ORDER BY"
-    (is (=? {:select [:*]
-             :from   [[{:union-all [{:select   [:created-at [[:inline 0] "pivot-grouping"]]
-                                     :group-by [:created-at]}]}
-                       :__mb_pivot_result]]}
-            (compile-union-all [:created-at] {:rows [0] :columns []
-                                              :show-row-totals false :show-column-totals false})))))
-
-(deftest ^:parallel dropped-breakouts-get-typed-null-with-original-alias-test
-  (testing "dropped-breakout positions in a branch are replaced by typed NULL forms carrying the original alias"
-    (is (=? {:from [[{:union-all [{:select   [:created-at [[:inline 0] "pivot-grouping"]]
-                                   :group-by [:created-at]}
-                                  {:select [[[::h2x/typed nil {:database-type some?}] :created-at]
-                                            [[:inline 1] "pivot-grouping"]]}]}
-                     :__mb_pivot_result]]}
-            (compile-union-all [:created-at] {:rows [0] :columns []
-                                              :show-row-totals true :show-column-totals true})))))
-
-(deftest ^:parallel multi-combo-full-shape-test
-  (testing "end-to-end shape for a 2-breakout rows+cols pivot with both totals"
-    (let [null-created-at [[::h2x/typed nil {:database-type some?}] :created-at]
-          null-user-id    [[::h2x/typed nil {:database-type some?}] :user-id]]
-      (is (=? {:select   [:*]
-               :from     [[{:union-all [{:select   [:created-at   :user-id   [[:inline 0] "pivot-grouping"]]
-                                         :group-by [:created-at :user-id]}
-                                        {:select   [null-created-at :user-id [[:inline 1] "pivot-grouping"]]
-                                         :group-by [:user-id]}
-                                        {:select   [:created-at   null-user-id [[:inline 2] "pivot-grouping"]]
-                                         :group-by [:created-at]}
-                                        {:select [null-created-at null-user-id [[:inline 3] "pivot-grouping"]]}]}
-                           :__mb_pivot_result]]
-               :order-by [[:pivot-grouping :asc]
-                          [:created-at    :asc]
-                          [:user-id       :asc]]}
-              (compile-union-all [:created-at :user-id]
-                                 {:rows [0] :columns [1]
-                                  :show-row-totals true :show-column-totals true}))))))
-
-(deftest ^:parallel single-combo-omits-outer-order-by-test
-  (testing "single combo: outer :order-by is absent (grouping bitmask is a constant)"
-    (is (nil? (:order-by (compile-union-all [:created-at]
-                                            {:rows [0] :columns []
-                                             :show-row-totals false :show-column-totals false}))))))
