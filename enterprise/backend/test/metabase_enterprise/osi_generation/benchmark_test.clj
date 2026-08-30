@@ -279,10 +279,10 @@
       (mt/with-dynamic-fn-redefs [runner/score-arm! (fn [_corpus arm _opts]
                                                       (swap! scored inc)
                                                       {:arm arm})]
-        (doseq [[what doctored] {"a subset of the entities"  (update c :entities (comp vec next))
-                                 "an edited entity"          (assoc-in c [:entities 0 :entity :description] "edited")
-                                 "a dropped query"           (update c :queries (comp vec next))
-                                 "an edited baseline"        (assoc-in c [:baseline :customers] {:synonyms ["x"]})}]
+        (doseq [[what doctored] {"a subset of the entities" (update c :entities (comp vec next))
+                                 "an edited entity"         (assoc-in c [:entities 0 :entity :description] "e")
+                                 "a dropped query"          (update c :queries (comp vec next))
+                                 "an edited baseline"       (assoc-in c [:baseline :customers] {:synonyms ["x"]})}]
           (testing what
             (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"differs from the corpus files"
                                           (runner/run-arm! doctored :none opts)))]
@@ -382,6 +382,40 @@
     (with-ollama-serving (ex-info "must not be called" {})
       #(is (= {:provider "mock" :model-name "m"}
               (#'runner/assert-model-artifact-identity! {:provider "mock" :model-name "m"}))))))
+
+(deftest run-arm-verifies-the-served-model-test
+  (testing "an arm verifies the served artifact itself, on both sides of the scoring"
+    ;; The comparison used to be the only caller that verified, so a standalone run scored whatever the
+    ;; mutable tag pointed at while its manifest reported the declared digest.
+    (let [declared "1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef"
+          other    "359d7dd4bcdab3d86b87d73a3b0a0e0d1c9f9b6a5e4d3c2b1a09f8e7d6c5b4a3"
+          served   (fn [digest] {:model-digest digest :runtime-version "0.11.0"})
+          c        (corpus/load-corpus)
+          opts     {:model (assoc declared-ollama-model :vector-dimensions 1024)}
+          scored   (atom 0)]
+      (mt/with-dynamic-fn-redefs [runner/score-arm! (fn [_corpus arm _opts]
+                                                      (swap! scored inc)
+                                                      {:arm arm})]
+        (testing "a tag repointed before the arm is caught before any scoring"
+          (with-ollama-serving (served other)
+            #(let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                           #"different artifact than the benchmark declared"
+                                           (runner/run-arm! c :none opts)))]
+               (is (= :model-artifact-drift (:reason (ex-data e))))))
+          (is (zero? @scored)))
+        (testing "a tag repointed while the arm ran fails the run instead of manifesting the declared digest"
+          (let [probes (atom 0)]
+            (mt/with-dynamic-fn-redefs [runner/ollama-artifact-identity
+                                        (fn [_] (served (if (= 1 (swap! probes inc)) declared other)))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"different artifact than the benchmark declared"
+                                    (runner/run-arm! c :none opts)))
+              (is (= 1 @scored) "the arm did run — the post-arm probe is what caught the drift")
+              (is (= 2 @probes) "the artifact is probed on both sides of the arm"))))
+        (testing "an artifact that never moved is scored"
+          (with-ollama-serving (served declared)
+            #(is (=? {:arm :none} (runner/run-arm! c :none opts))))
+          (is (= 2 @scored)))))))
 
 (deftest benchmark-query-refuses-unavailable-or-empty-retrieval-test
   (testing "availability is checked before calling the tool"
@@ -893,6 +927,23 @@
         (mt/with-temporary-setting-values [ee-embedding-query-prefix "query: "]
           (runner/run-comparison! {:model {:provider "mock" :model-name "other" :vector-dimensions 4}})
           (is (= [""] (distinct @seen))))))))
+
+(deftest ^:synchronized run-arm-pins-the-query-prefix-test
+  (testing "a standalone arm embeds its queries under the prefix its manifest reports"
+    ;; Only the comparison used to install the binding, so a direct run read the site-wide setting afresh for
+    ;; every query while recording nil.
+    (let [model {:provider "mock" :model-name "pinned" :vector-dimensions 4}
+          seen  (atom nil)]
+      (mt/with-dynamic-fn-redefs
+        [runner/score-arm! (fn [_corpus arm opts]
+                             (reset! seen {:prefixed   (semantic.embedding/prefix-search-query model "revenue")
+                                           :manifested (:query-prefix opts)})
+                             {:arm arm})]
+        (mt/with-temporary-setting-values [ee-embedding-query-prefix "site-wide: "]
+          (runner/run-arm! (corpus/load-corpus) :none {:model model})
+          (is (= {:prefixed "revenue" :manifested ""} @seen)
+              "an instance-wide override describes a model this run did not pin, so it is ignored — and the
+               manifest says so"))))))
 
 (deftest ^:synchronized manifest-records-the-embedding-space-test
   (testing "two models alike in provider, name and dimensions are still told apart by embedding space"

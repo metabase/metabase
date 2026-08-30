@@ -422,6 +422,24 @@
                        :unexpected     unexpected}))))
   true)
 
+(defn- prepared-opts
+  "`opts` with the run's two pieces of shared state resolved: `:model`, the embedding model to index and
+  query under, and `:query-prefix`, what the tool prepends to every benchmark query.
+
+  Idempotent, keyed on `:query-prefix`: [[run-comparison!]] prepares once so its arms share one model and one
+  prefix, a standalone [[run-arm!]] prepares for itself, and neither recomputes the other's. Recomputing
+  would be wrong rather than wasteful — a prefix the comparison resolved for the *configured* model would
+  come back as one resolved for a *pinned* one, since by then `:model` is set either way."
+  [opts]
+  (if (contains? opts :query-prefix)
+    opts
+    (let [pinned-model? (some? (:model opts))
+          model         (resolved-benchmark-model
+                         (or (:model opts) (semantic.embedding/get-configured-model)))]
+      (assoc opts
+             :model        model
+             :query-prefix (effective-query-prefix model pinned-model?)))))
+
 (defn- score-arm!
   [corpus arm opts]
   (with-isolated-index [ds]
@@ -431,11 +449,10 @@
       ;; with the REAL model on a background thread where none of this run's bindings apply.
       (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [& _] nil)]
         (corpus/with-corpus-library [ids corpus]
-          ;; Resolved here as well as in `run-comparison!`: `run-arm!` is callable on its own, and a raw
-          ;; model map would reach the index metadata row without the `embedding_space_id` it requires.
-          ;; Re-resolving an already-resolved descriptor is idempotent, and throws if its space drifted.
-          (let [model (resolved-benchmark-model
-                       (or (:model opts) (semantic.embedding/get-configured-model)))]
+          ;; [[run-arm!]] resolved this model ([[prepared-opts]]) and verified what the server serves it
+          ;; from, so the index metadata row gets the `embedding_space_id` it requires and every arm of a
+          ;; comparison indexes and queries in one embedding space.
+          (let [model (:model opts)]
             ;; The tool's query path resolves the model itself; pin it to this run's model so query
             ;; embeddings always match the index the arm just built.
             (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly model)]
@@ -466,18 +483,30 @@
   snapshot whose required corpus and generator metadata matches the loaded code and corpus
   ([[assert-snapshot-matches-corpus!]]).
   `corpus` must be the corpus `:dir` loads — the manifest reports those files' SHAs, so an in-memory edit or
-  subset is refused rather than scored under their identity."
+  subset is refused rather than scored under their identity.
+  An arm pins the model and query prefix it scores under ([[prepared-opts]]) — its own when called directly,
+  the comparison's when it has one — and verifies the served artifact
+  ([[assert-model-artifact-identity!]]) on both sides of the scoring, so a standalone run is pinned exactly
+  as tightly as a comparison's."
   [corpus arm opts]
-  (let [opts              (normalize-opts opts)
+  (let [opts              (prepared-opts (normalize-opts opts))
         pinned-provenance (or (:benchmark-provenance opts) (benchmark-provenance opts))
         opts              (assoc opts :benchmark-provenance pinned-provenance)
         _                 (assert-benchmark-provenance-unchanged! pinned-provenance opts)
-        _                 (assert-corpus-matches-resources! corpus opts)]
+        _                 (assert-corpus-matches-resources! corpus opts)
+        ;; Before and after, because a mutable tag or an upgraded runtime can be repointed while the arm
+        ;; runs: the scores would then come from an artifact the manifest never names.
+        _                 (assert-model-artifact-identity! (:model opts))]
     (when (= :generated arm)
       (assert-generated-coverage! corpus)
       (assert-snapshot-matches-corpus! corpus))
-    (let [result (score-arm! corpus arm opts)]
+    ;; Redefined per thread rather than written to the setting: `ee-embedding-query-prefix` is site-wide, so
+    ;; a run would otherwise reach into concurrent retrieval requests and race anything else changing it.
+    (let [result (mt/with-dynamic-fn-redefs [semantic.embedding/prefix-search-query
+                                             (fn [_model s] (str (:query-prefix opts) s))]
+                   (score-arm! corpus arm opts))]
       (assert-benchmark-provenance-unchanged! pinned-provenance opts)
+      (assert-model-artifact-identity! (:model opts))
       result)))
 
 ;;; ------------------------------------------------- Comparison --------------------------------------------------
@@ -579,40 +608,31 @@
     (throw (ex-info (str "No pgvector-capable database is available — configure MB_PGVECTOR_DB_URL "
                          "or use a Postgres application database with the vector extension")
                     {})))
-  (let [opts        (normalize-opts opts)
+  ;; The model and the query prefix are prepared once and handed to every arm, so editing the embedding
+  ;; settings or the site-wide prefix mid-run cannot make two arms incomparable: one model, one prefix, and
+  ;; the manifest reports them.
+  (let [opts        (prepared-opts (normalize-opts opts))
         pinned-provenance (benchmark-provenance opts)
         opts        (assoc opts :benchmark-provenance pinned-provenance)
-        pinned-model? (some? (:model opts))
-        model       (resolved-benchmark-model
-                     (assert-model-artifact-identity!
-                      (or (:model opts) (semantic.embedding/get-configured-model))))
-        query-prefix (effective-query-prefix model pinned-model?)
-        opts        (assoc opts :model model :query-prefix query-prefix)
         corpus      (corpus/load-corpus (or (:dir opts) corpus/default-dir))
         artifact    (arms/generated-snapshot-artifact opts)
         snapshot    (:contexts artifact)
         corpus      (cond-> corpus
                       snapshot (assoc :generated-snapshot snapshot
                                       :generated-snapshot-metadata (:metadata artifact)))
-        ;; Pin the resolved prefix for every arm, so editing the setting mid-run cannot make two arms
-        ;; incomparable — the manifest reports one prefix and every query used it. Redefined per thread
-        ;; rather than written to the setting: that is site-wide, so a run would otherwise reach into
-        ;; concurrent retrieval requests and race anything else changing it.
-        arm-results (mt/with-dynamic-fn-redefs
-                      [semantic.embedding/prefix-search-query (fn [_model s] (str query-prefix s))]
-                      (into {}
-                            (map (fn [arm]
-                                   [arm (try
-                                          (run-arm! corpus arm opts)
-                                          (catch ExceptionInfo e
-                                            ;; only the coverage guard's refusals downgrade to a reported
-                                            ;; skip; anything else is a real failure
-                                            (if-let [reason (#{:no-snapshot :incomplete-coverage}
-                                                             (:reason (ex-data e)))]
-                                              (merge {:skipped? true :reason reason}
-                                                     (select-keys (ex-data e) [:coverage]))
-                                              (throw e))))]))
-                            arms/arms))
+        arm-results (into {}
+                          (map (fn [arm]
+                                 [arm (try
+                                        (run-arm! corpus arm opts)
+                                        (catch ExceptionInfo e
+                                          ;; only the coverage guard's refusals downgrade to a reported
+                                          ;; skip; anything else is a real failure
+                                          (if-let [reason (#{:no-snapshot :incomplete-coverage}
+                                                           (:reason (ex-data e)))]
+                                            (merge {:skipped? true :reason reason}
+                                                   (select-keys (ex-data e) [:coverage]))
+                                            (throw e))))]))
+                          arms/arms)
         deltas      (comparison-deltas arm-results)
         result      {:arms            arm-results
                      :deltas          deltas
