@@ -176,7 +176,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+      - run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
@@ -204,13 +204,14 @@ jobs:
           # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
-          # Test roots we lint: core, EE, and each driver module's test tree.
+          # Test roots we lint: core, EE, dev/test, and each driver module's test tree.
           # :eastwood/test derives matching :source-paths from the classpath, so any
           # namespace we name here is reachable. Include renames (R) so a test that
           # was just renamed still gets linted under its new name.
           FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
                        'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'dev/test/**/*.clj' 'dev/test/**/*.cljc' \
                        'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
 
           if [ -z "$FILES" ]; then
@@ -226,7 +227,7 @@ jobs:
             exit 1
           fi
 
-          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+          NS=$(sed -E 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
                  | sort -u \
                  | paste -sd' ' -)
           echo "Changed test namespaces: $NS"
@@ -235,7 +236,7 @@ jobs:
         if: steps.changed.outputs.namespaces != ''
         env:
           NAMESPACES: ${{ steps.changed.outputs.namespaces }}
-        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
+        run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
     if: ${{ !inputs.skip }}
