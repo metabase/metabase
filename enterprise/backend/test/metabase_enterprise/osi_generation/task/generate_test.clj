@@ -7,7 +7,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import
-   (org.quartz CronTrigger)))
+   (org.quartz CronTrigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,7 +91,7 @@
                                   task/existing-triggers (fn [job-key trigger-key]
                                                            (is (= core/generation-job-key job-key))
                                                            (is (= "metabase-enterprise.osi-generation.generate.trigger"
-                                                                  (.getName trigger-key)))
+                                                                  (.getName ^TriggerKey trigger-key)))
                                                            existing)
                                   task/add-job! (fn [job] (reset! added job))
                                   task/schedule-task! (fn [& _]
