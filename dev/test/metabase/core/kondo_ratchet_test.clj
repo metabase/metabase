@@ -645,105 +645,82 @@
          (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
                                      {:same 5, :new 1, :up 3}))))
 
-(deftest ^:parallel merge-ratchets-one-sided-map-changes-test
-  (is (= {:ignore-counts  {:ours-add 2, :ours-changes 3, :theirs-add 3}
-          :config-counts  {:theirs-add 1}
-          :comment-exempt #{}}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {:ours-changes 5}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:ignore-counts  {:ours-add 2, :ours-changes 3}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:ignore-counts  {:ours-changes 5, :theirs-add 3}
-           :config-counts  {:theirs-add 1}
-           :comment-exempt #{}}))))
+(defn- merge-policies
+  "[[kondo-ratchet/merge-ratchets]] over `:ignore-counts` maps alone, so a test reads as the three stages."
+  [base ours theirs]
+  (:ignore-counts (kondo-ratchet/merge-ratchets {:ignore-counts base}
+                                                {:ignore-counts ours}
+                                                {:ignore-counts theirs})))
 
-(deftest ^:parallel merge-ratchets-concurrent-integer-changes-test
-  (is (= {:ignore-counts  {:a 4}
-          :config-counts  {}
-          :comment-exempt #{}}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {:a 9}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:ignore-counts  {:a 6}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:ignore-counts  {:a 4}
-           :config-counts  {}
-           :comment-exempt #{}}))))
+(deftest ^:parallel merge-ratchets-one-sided-changes-test
+  (testing "a change on one side wins over the unchanged base, whether it adds, lowers, or removes a policy"
+    (is (= {:ours-add 2, :ours-lower 3, :theirs-add 3, :theirs-raise 9, :theirs-unlimited :unlimited}
+           (merge-policies {:ours-lower 5, :ours-drop 4, :theirs-raise 5, :theirs-unlimited 1}
+                           {:ours-add 2, :ours-lower 3, :theirs-raise 5, :theirs-unlimited 1}
+                           {:ours-lower       5
+                            :ours-drop        4
+                            :theirs-add       3
+                            :theirs-raise     9
+                            :theirs-unlimited :unlimited}))))
+  (testing "the same change on both sides is not a conflict"
+    (is (= {:both 2}
+           (merge-policies {:both 5, :both-drop 1} {:both 2} {:both 2})))))
+
+(deftest ^:parallel merge-ratchets-concurrent-changes-take-the-stricter-policy-test
+  (testing "concurrent finite budgets resolve to the smaller number"
+    (is (= {:a 4} (merge-policies {:a 9} {:a 6} {:a 4})))
+    (is (= {:a 4} (merge-policies {:a 9} {:a 4} {:a 6}))))
+  (testing "a finite budget is stricter than :unlimited, whichever side chose it"
+    (is (= {:a 4} (merge-policies {:a 9} {:a :unlimited} {:a 4})))
+    (is (= {:a 4} (merge-policies {:a 9} {:a 4} {:a :unlimited})))
+    (is (= {:a 2} (merge-policies {:a :unlimited} {:a 2} {:a 7}))))
+  (testing "a removed policy allows nothing, so it is stricter than any concurrent change"
+    (is (= {} (merge-policies {:a 5} {} {:a 4})))
+    (is (= {} (merge-policies {:a 5} {:a :unlimited} {})))))
+
+(deftest ^:parallel merge-ratchets-config-counts-test
+  (is (= {:config-counts {:lowered 1, :ours-add 2, :theirs-add 3}}
+         (select-keys (kondo-ratchet/merge-ratchets {:config-counts {:lowered 4, :dropped 1}}
+                                                    {:config-counts {:lowered 2, :ours-add 2}}
+                                                    {:config-counts {:lowered 1, :dropped 1, :theirs-add 3}})
+                      [:config-counts]))))
 
 (deftest ^:parallel merge-ratchets-absent-base-test
-  (is (= {:ignore-counts  {:ours 2, :theirs 3}
-          :config-counts  {}
-          :comment-exempt #{}}
-         (kondo-ratchet/merge-ratchets
-          {}
-          {:ignore-counts {:ours 2}}
-          {:ignore-counts {:theirs 3}}))))
+  (testing "with no base stage, each policy is a one-sided addition and shared linters take the stricter"
+    (is (= {:ignore-counts  {:ours 2, :shared 3, :theirs 3}
+            :config-counts  {}
+            :comment-exempt #{:ours :theirs}}
+           (kondo-ratchet/merge-ratchets
+            {}
+            {:ignore-counts {:ours 2, :shared :unlimited}, :comment-exempt #{:ours}}
+            {:ignore-counts {:theirs 3, :shared 3}, :comment-exempt #{:theirs}})))))
 
-(deftest ^:parallel merge-ratchets-one-sided-deletions-test
-  (is (= {:ignore-counts  {}
-          :config-counts  {}
-          :comment-exempt #{:kept}}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {:removed 4}
-           :config-counts  {:removed 2}
-           :comment-exempt #{:kept :removed}}
-          {:ignore-counts  {}
-           :config-counts  {}
-           :comment-exempt #{:kept}}
-          {:ignore-counts  {:removed 4}
-           :config-counts  {:removed 2}
-           :comment-exempt #{:kept :removed}}))))
+(deftest ^:parallel merge-ratchets-comment-exempt-test
+  (testing "exemptions follow the side that changed them"
+    (is (= #{:kept :ours-add :theirs-add}
+           (:comment-exempt (kondo-ratchet/merge-ratchets
+                             {:comment-exempt #{:kept :ours-drop :theirs-drop}}
+                             {:comment-exempt #{:kept :theirs-drop :ours-add}}
+                             {:comment-exempt #{:kept :ours-drop :theirs-add}})))))
+  (testing "exemptions merge independently of the same linter's count policy"
+    (is (= {:ignore-counts  {:a 3}
+            :config-counts  {}
+            :comment-exempt #{:a}}
+           (kondo-ratchet/merge-ratchets
+            {:ignore-counts {:a 5}, :comment-exempt #{}}
+            {:ignore-counts {:a 3}, :comment-exempt #{}}
+            {:ignore-counts {:a :unlimited}, :comment-exempt #{:a}})))))
 
-(deftest ^:parallel merge-ratchets-set-additions-test
-  (is (= {:ignore-counts  {}
-          :config-counts  {}
-          :comment-exempt #{:kept :ours-add :theirs-add}}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {}
-           :config-counts  {}
-           :comment-exempt #{:kept}}
-          {:ignore-counts  {}
-           :config-counts  {}
-           :comment-exempt #{:kept :ours-add}}
-          {:ignore-counts  {}
-           :config-counts  {}
-           :comment-exempt #{:kept :theirs-add}}))))
-
-(deftest ^:parallel merge-ratchets-delete-modify-conflict-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"delete/modify conflict for :a in :ignore-counts"
-                        (kondo-ratchet/merge-ratchets
-                         {:ignore-counts {:a 5}}
-                         {:ignore-counts {}}
-                         {:ignore-counts {:a 4}}))))
-
-(deftest ^:parallel merge-ratchets-bounded-and-unlimited-test
+(deftest ^:parallel merge-ratchets-render-round-trip-test
   (let [merged (kondo-ratchet/merge-ratchets
-                {:ignore-counts  {:a         5
-                                  :equal     :unlimited
-                                  :old       :unlimited
-                                  :one-sided 2}
-                 :config-counts  {}
-                 :comment-exempt #{}}
-                {:ignore-counts  {:a         4
-                                  :equal     :unlimited
-                                  :one-sided :unlimited}
-                 :config-counts  {}
-                 :comment-exempt #{}}
-                {:ignore-counts  {:a             3
-                                  :equal         :unlimited
-                                  :old           :unlimited
-                                  :one-sided     2
-                                  :new           2
-                                  :new-unlimited :unlimited}
-                 :config-counts  {}
-                 :comment-exempt #{}})
-        text   (kondo-ratchet/render merged)]
+                {:ignore-counts {:a 5, :equal :unlimited, :old :unlimited, :one-sided 2}}
+                {:ignore-counts {:a 4, :equal :unlimited, :one-sided :unlimited}}
+                {:ignore-counts {:a             3
+                                 :equal         :unlimited
+                                 :old           :unlimited
+                                 :one-sided     2
+                                 :new           2
+                                 :new-unlimited :unlimited}})]
     (is (= {:ignore-counts  {:a             3
                              :equal         :unlimited
                              :one-sided     :unlimited
@@ -751,37 +728,39 @@
                              :new-unlimited :unlimited}
             :config-counts  {}
             :comment-exempt #{}}
-           merged))
-    (is (= merged (edn/read-string text))
-        "serializing the merged policy preserves bounded and unlimited linters")))
+           merged
+           (edn/read-string (kondo-ratchet/render merged)))
+        "rendering the merged policies preserves bounded and unlimited linters")))
 
-(deftest ^:parallel merge-ratchets-bounded-unlimited-conflict-test
+(deftest ^:parallel merge-ratchets-disabled-stages-test
+  (testing "a target that disables ratchets stays disabled"
+    (is (= {:disabled true}
+           (kondo-ratchet/merge-ratchets {:ignore-counts {:a 1}} {:disabled true} {:ignore-counts {:a 1}}))))
+  (testing "an incoming disabled form leaves the target as it is"
+    (is (= {:ignore-counts {:a 1}, :config-counts {}, :comment-exempt #{}}
+           (kondo-ratchet/merge-ratchets
+            {:ignore-counts {:a 1}}
+            {:ignore-counts {:a 1}, :config-counts {}, :comment-exempt #{}}
+            {:disabled true}))))
+  (testing "every stage is shape-checked before a disabled stage decides the result"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"unsupported ratchet fields: #\{:budgets\}"
+                          (kondo-ratchet/merge-ratchets {:ignore-counts {:a 1}}
+                                                        {:disabled true}
+                                                        {:budgets {:a 1}})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"unsupported ratchet fields: #\{:budgets\}"
+                          (kondo-ratchet/merge-ratchets {:budgets {:a 1}}
+                                                        {:ignore-counts {:a 1}}
+                                                        {:disabled true})))))
+
+(deftest ^:parallel merge-ratchets-malformed-stage-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"bounded/unlimited conflict for :a in :ignore-counts"
+                        #"unsupported ratchet fields: #\{:extra\}"
                         (kondo-ratchet/merge-ratchets
-                         {:ignore-counts {:a 5}}
-                         {:ignore-counts {:a :unlimited}}
-                         {:ignore-counts {:a 4}}))))
-
-(deftest ^:parallel merge-ratchets-disabled-target-test
-  (is (= {:disabled true}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts {:a 1}}
-          {:disabled true}
-          {:ignore-counts {:a 1}}))))
-
-(deftest ^:parallel merge-ratchets-disabled-incoming-test
-  (is (= {:ignore-counts  {:a 1}
-          :config-counts  {}
-          :comment-exempt #{}}
-         (kondo-ratchet/merge-ratchets
-          {:ignore-counts  {:a 1}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:ignore-counts  {:a 1}
-           :config-counts  {}
-           :comment-exempt #{}}
-          {:disabled true}))))
+                         {:ignore-counts {:a 1}}
+                         {:ignore-counts {:a 1}, :extra 1}
+                         {:ignore-counts {:a 1}}))))
 
 (deftest ^:parallel change-report-test
   (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4, :free 2}

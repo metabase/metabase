@@ -571,91 +571,83 @@
                 "}"))
          "}\n")))
 
+(def ^:private absent
+  "Stands in for a policy map entry that a stage doesn't have."
+  ::absent)
+
+(defn- stricter
+  "The policy allowing fewer suppressions: a missing entry allows none, and any integer bound is stricter
+  than `:unlimited`."
+  [a b]
+  (cond
+    (or (= a absent) (= b absent)) absent
+    (= a :unlimited)               b
+    (= b :unlimited)               a
+    :else                          (min a b)))
+
 (defn- merge-counts
-  "Three-way merge a budget map. One-sided changes win; concurrent integer changes take the stricter
-  value. A concurrent bounded/unlimited policy change or delete/modify conflict needs a human."
-  [field base ours theirs]
-  (let [absent  (Object.)
-        linters (into (set (keys base)) (concat (keys ours) (keys theirs)))]
-    (sorted-by-str
-     (keep (fn [linter]
-             (let [base-value   (get base linter absent)
-                   ours-value   (get ours linter absent)
-                   theirs-value (get theirs linter absent)
-                   merged       (cond
-                                  (= ours-value theirs-value) ours-value
-                                  (= ours-value base-value)   theirs-value
-                                  (= theirs-value base-value) ours-value
+  "Three-way merge a policy map. A one-sided change wins over an unchanged base; concurrent changes take
+  the [[stricter]] policy, so budgets can only tighten through a merge."
+  [base ours theirs]
+  (sorted-by-str
+   (for [linter (into (set (keys base)) (concat (keys ours) (keys theirs)))
+         :let   [base-value   (get base linter absent)
+                 ours-value   (get ours linter absent)
+                 theirs-value (get theirs linter absent)
+                 merged       (cond
+                                (= ours-value theirs-value) ours-value
+                                (= ours-value base-value)   theirs-value
+                                (= theirs-value base-value) ours-value
+                                :else                       (stricter ours-value theirs-value))]
+         :when  (not= merged absent)]
+     [linter merged])))
 
-                                  (or (identical? absent ours-value)
-                                      (identical? absent theirs-value))
-                                  (throw (ex-info (format "delete/modify conflict for %s in %s" linter field)
-                                                  {:field field, :linter linter}))
-
-                                  (and (= field :ignore-counts)
-                                       (or (= ours-value :unlimited)
-                                           (= theirs-value :unlimited)))
-                                  (throw (ex-info (format "bounded/unlimited conflict for %s in %s" linter field)
-                                                  {:field field, :linter linter}))
-
-                                  :else
-                                  (min ours-value theirs-value))]
-               (when-not (identical? absent merged)
-                 [linter merged])))
-           linters))))
-
-(defn- merge-set
-  "Three-way merge set membership, preserving additions and removals made on either side."
+(defn- merge-exemptions
+  "Three-way merge the `:comment-exempt` set: the side that changed a linter's membership wins.
+  Independent of the count policies, since a justification exemption says nothing about how many ignores
+  a linter may have."
   [base ours theirs]
   (into #{}
-        (filter (fn [entry]
-                  (let [base?   (contains? base entry)
-                        ours?   (contains? ours entry)
-                        theirs? (contains? theirs entry)]
-                    (cond
-                      (= ours? theirs?) ours?
-                      (= ours? base?)   theirs?
-                      :else             ours?))))
+        (filter (fn [linter]
+                  (let [ours?   (contains? ours linter)
+                        theirs? (contains? theirs linter)]
+                    (if (= ours? theirs?)
+                      ours?
+                      (not (contains? base linter))))))
         (into (set base) (concat ours theirs))))
 
 (def ^:private merge-fields
   #{:ignore-counts :config-counts :comment-exempt})
 
 (defn- validate-merge-shape
+  "`ratchets` when its keys are the policy fields plus `:disabled`; throws otherwise."
   [ratchets]
-  (let [unexpected (apply dissoc ratchets :disabled merge-fields)]
+  (let [unexpected (set (keys (apply dissoc ratchets :disabled merge-fields)))]
     (when (seq unexpected)
-      (throw (ex-info (str "unsupported ratchet fields: " (pr-str (set (keys unexpected))))
-                      {:fields (set (keys unexpected))}))))
+      (throw (ex-info (str "unsupported ratchet fields: " (pr-str unexpected))
+                      {:fields unexpected}))))
   ratchets)
 
 (defn merge-ratchets
   "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
-  Normal ratchets use `:ignore-counts`, `:config-counts`, and `:comment-exempt`.
-  When the target explicitly disables ratchets it stays disabled; an incoming disabled form is ignored."
+  Every stage is shape-checked first, even when a disabled stage decides the result: a target that
+  explicitly disables ratchets stays disabled, and an incoming disabled form leaves `ours` as it is.
+  Otherwise `:ignore-counts` and `:config-counts` merge with [[merge-counts]] and `:comment-exempt`
+  with [[merge-exemptions]]. Stage values must already pass [[read-ratchets]]."
   [base ours theirs]
-  (cond
-    (true? (:disabled ours))
-    {:disabled true}
-
-    (true? (:disabled theirs))
-    ours
-
-    :else
-    (let [base   (validate-merge-shape base)
-          ours   (validate-merge-shape ours)
-          theirs (validate-merge-shape theirs)]
-      {:ignore-counts  (merge-counts :ignore-counts
-                                     (:ignore-counts base {})
-                                     (:ignore-counts ours {})
-                                     (:ignore-counts theirs {}))
-       :config-counts  (merge-counts :config-counts
-                                     (:config-counts base {})
-                                     (:config-counts ours {})
-                                     (:config-counts theirs {}))
-       :comment-exempt (merge-set (:comment-exempt base #{})
-                                  (:comment-exempt ours #{})
-                                  (:comment-exempt theirs #{}))})))
+  (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
+    (cond
+      (disabled? ours)   {:disabled true}
+      (disabled? theirs) ours
+      :else              {:ignore-counts  (merge-counts (:ignore-counts base {})
+                                                        (:ignore-counts ours {})
+                                                        (:ignore-counts theirs {}))
+                          :config-counts  (merge-counts (:config-counts base {})
+                                                        (:config-counts ours {})
+                                                        (:config-counts theirs {}))
+                          :comment-exempt (merge-exemptions (:comment-exempt base #{})
+                                                            (:comment-exempt ours #{})
+                                                            (:comment-exempt theirs #{}))})))
 
 (defn lowered-counts
   "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.

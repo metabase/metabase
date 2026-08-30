@@ -312,15 +312,16 @@
                 [:string {:name "ours" :description "Current branch's ratchets file"}]
                 [:string {:name "theirs" :description "Incoming branch's ratchets file"}]
                 [:string {:name "output" :description "Path to write the merged ratchets file"}]]
-   :requires [[clojure.edn :as edn]
-              [dev.kondo-ratchet]]
+   :requires [[dev.kondo-ratchet]]
    :task (task!
           (let [[base-path ours-path theirs-path output-path] (:arguments parsed)
-                read-ratchets (fn [path] (edn/read-string (slurp path)))
-                base          (read-ratchets base-path)
-                ours          (read-ratchets ours-path)
-                merged        (dev.kondo-ratchet/merge-ratchets base ours (read-ratchets theirs-path))]
-            (spit output-path (if (true? (:disabled merged))
+                ;; Every stage goes through the reader that validates the checked-in file.
+                read-stage         (fn [path]
+                                     (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                       (dev.kondo-ratchet/read-ratchets)))
+                [base ours theirs] (map read-stage [base-path ours-path theirs-path])
+                merged             (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+            (spit output-path (if (dev.kondo-ratchet/disabled? merged)
                                 (slurp ours-path)
                                 (dev.kondo-ratchet/render merged)))
             (println (str "merged ratchets into " output-path))))}
