@@ -630,9 +630,12 @@
   #{:ignore-counts :config-counts :comment-exempt})
 
 (defn- validate-merge-shape
-  "`ratchets` when its keys are the policy fields plus `:disabled` and each field passes
+  "`ratchets` when it contains only the policy fields and `:disabled`, and each policy field passes
   [[validate-policies]]; throws otherwise."
   [ratchets]
+  (when-not (map? ratchets)
+    (throw (ex-info (str "a ratchet stage must be a map of policies, not " (pr-str ratchets))
+                    {:stage ratchets})))
   (let [unexpected (set (keys (apply dissoc ratchets :disabled merge-fields)))]
     (when (seq unexpected)
       (throw (ex-info (str "unsupported ratchet fields: " (pr-str unexpected))
@@ -641,7 +644,7 @@
 
 (defn merge-ratchets
   "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
-  Every stage is shape-checked first, even when a disabled stage decides the result: a target that
+  Every stage is validated first, even when a disabled stage decides the result: a target that
   explicitly disables ratchets stays disabled, and an incoming disabled form leaves `ours` as it is.
   Otherwise `:ignore-counts` and `:config-counts` merge with [[merge-counts]] and `:comment-exempt`
   with [[merge-exemptions]]."

@@ -753,7 +753,7 @@
             {:ignore-counts {:a 1}}
             {:ignore-counts {:a 1}, :config-counts {}, :comment-exempt #{}}
             {:disabled true}))))
-  (testing "every stage is shape-checked before a disabled stage decides the result"
+  (testing "every stage is validated before a disabled stage decides the result"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"unsupported ratchet fields: #\{:budgets\}"
                           (kondo-ratchet/merge-ratchets {:ignore-counts {:a 1}}
@@ -774,7 +774,9 @@
                            {:ignore-counts {:a 1}, :extra 1}
                            {:ignore-counts {:a 1}}))))
   (testing "a malformed policy field is an error, never an empty set of policies"
-    (doseq [[stage message] [[{:config-counts []}          #":config-counts must be a map"]
+    (doseq [[stage message] [[nil                        #"stage must be a map of policies"]
+                             [[:a 1]                     #"stage must be a map of policies"]
+                             [{:config-counts []}          #":config-counts must be a map"]
                              [{:comment-exempt []}         #":comment-exempt must be a set"]
                              [{:ignore-counts {:a -1}}     #"non-negative integer or :unlimited"]
                              [{:config-counts {:a :never}} #"expected a non-negative integer"]]

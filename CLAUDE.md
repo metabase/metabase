@@ -123,10 +123,9 @@ a comment, the fixer drops its exemption.
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
 flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.
 If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
-`./bin/merge-kondo-ratchets`. It stages the conservative result: a change on one side wins over an
-unchanged base, and concurrent changes take the stricter policy (the smaller budget, a finite budget
-over `:unlimited`, a removed entry over any budget). A file deleted on one side and changed on the other
-is left for you to resolve.
+`./bin/merge-kondo-ratchets`. A change on one side wins over an unchanged base. When both sides change
+the same policy, the tool chooses the smaller budget, a numeric budget over `:unlimited`, or a removed
+entry over either. A file deleted on one side and changed on the other is left for you to resolve.
 To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
 full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after
 removing, puts any still-working ignore back exactly as it was, and stamps it with a `[kondo-keep]`
