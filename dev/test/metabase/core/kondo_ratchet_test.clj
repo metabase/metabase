@@ -42,7 +42,7 @@
     (kondo-ratchet/config-over-budget budgets counts)
     (kondo-ratchet/config-drift budgets counts)))
 
-;; Stale exemptions fail local runs only; the post-merge workflow drops them, so CI must not fail when
+;; Stale exemptions fail local runs only; the shrink workflow drops them, so CI must not fail when
 ;; another PR has already justified the last ignore.
 (defn- stale-exemptions
   [ci? exempt occurrences]
@@ -51,7 +51,7 @@
     (kondo-ratchet/stale-exemptions exempt occurrences)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
-;; The post-merge workflow performs the same update on master.
+;; The shrink workflow performs the same update on master.
 (use-fixtures :once (fn [thunk]
                       (when-not (ci?)
                         (kondo-ratchet/fix!))
@@ -70,7 +70,7 @@
     (testing (str "\nBudgets in " kondo-ratchet/*ratchets-file* " must match the actual inline ignore counts in development.\n"
                   "Budget too low: remove an ignore, or seed the budget with\n"
                   "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
-                  "Budget too high: run `./bin/mage fix-kondo-ratchets`; the post-merge workflow records\n"
+                  "Budget too high: run `./bin/mage fix-kondo-ratchets`; the shrink workflow records\n"
                   "lower counts after the change lands. Too high in a local run means\n"
                   "`fix!` itself is broken, since the test fixture just ran it.")
       (let [{:keys [ignore-counts]} (kondo-ratchet/read-ratchets)]

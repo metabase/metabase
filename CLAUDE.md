@@ -110,7 +110,7 @@ tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 ./bin/mage fix-kondo-ratchets
 ```
 
-Budget too low (you added an ignore): the task only raises a `:ignore-counts` budget when told to. If the
+Budget too low (you added an ignore): the task only raises an `:ignore-counts` budget when told to. If the
 ignore is genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase
 in the PR. Set a linter's `:ignore-counts` value to `:unlimited` only when increasing its ignore count should
 not require a budget change.

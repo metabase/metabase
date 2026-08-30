@@ -1,9 +1,8 @@
 (ns dev.kondo-ratchet
   "Ratchet on inline kondo ignore forms.
 
-  Per-linter policies live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
-  need a justification comment. Local tests require bounded counts and the exemption set to match exactly;
-  CI only rejects increases so improvements can land before the post-merge workflow records them.
+  Per-linter policies live in `.clj-kondo/ratchets.edn`, with the linters whose ignores need no comment.
+  Local tests require an exact match; CI rejects only increases and lets the shrink workflow record the rest.
   `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
@@ -92,10 +91,11 @@
       (throw (ex-info (str "no clj-kondo pin under the :kondo alias in " deps-file) {:file deps-file}))))
 
 (defn- kondo-config-resource
-  "URL of [[kondo-config-source]]. The JVM `:dev` alias already has the jar; babashka adds the pinned
-  version to its classpath on demand, resolving through the same Maven cache the JVM uses."
+  "URL of [[kondo-config-source]]. Throws when the clj-kondo jar is not on the classpath and cannot be added."
   []
   (or (io/resource kondo-config-source)
+      ;; the JVM `:dev` alias already has the jar; babashka adds the pinned version on demand, resolving
+      ;; through the same Maven cache the JVM uses
       (when (System/getProperty "babashka.version")
         ((requiring-resolve 'babashka.deps/add-deps)
          {:deps {'clj-kondo/clj-kondo {:mvn/version (pinned-kondo-version)}}})
@@ -104,9 +104,9 @@
                       {:resource kondo-config-source}))))
 
 (defn builtin-linters
-  "Names of every linter clj-kondo ships, read from the `default-config` literal in the pinned jar.
-  Reading the source rather than loading the namespace keeps this babashka-compatible."
+  "Names of every linter clj-kondo ships, read from the `default-config` literal in the pinned jar."
   []
+  ;; reading the source rather than loading the namespace keeps this babashka-compatible
   (binding [*read-eval* false]
     (with-open [r (java.io.PushbackReader. (io/reader (kondo-config-resource)))]
       (loop []
@@ -126,10 +126,11 @@
   ".clj-kondo")
 
 (defn- tracked-files
-  "The git-tracked files under `dir` that are present on disk. The dependency configs `mage kondo` copies
-  in are gitignored and a clean checkout has none of them, so only tracked files keep validation the same
-  everywhere; a tracked file deleted but not yet staged, or outside a sparse checkout, is skipped."
+  "The git-tracked files under `dir` that are present on disk.
+  A file deleted but not yet staged, or outside a sparse checkout, is skipped."
   [dir]
+  ;; only tracked files keep validation the same everywhere: the dependency configs `mage kondo` copies
+  ;; in are gitignored, and a clean checkout has none of them
   (let [^java.util.List command ["git" "ls-files" "-z"]
         process (.start (doto (ProcessBuilder. command)
                           (.directory ^java.io.File (io/file dir))
@@ -532,14 +533,13 @@
 (def ^:private header
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
-       ";; entries). Each :ignore-counts value is a non-negative integer budget or :unlimited.\n"
-       ";; CI rejects inline and config counts above their budgets; local tests require an exact match.\n"
+       ";; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
+       ";; CI rejects counts above a numeric budget; local tests require those counts to match exactly.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
        ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
        ";; widening the exemptions is a hand edit to defend in your PR.\n"
-       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
-       ";; An :unlimited policy allows that linter's ignore count to grow without changing this file.\n"))
+       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn- render-counts
   [counts indent]
@@ -572,10 +572,10 @@
          "}\n")))
 
 (defn lowered-counts
-  "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores left
-  are dropped. An `:unlimited` policy is kept as written, even at zero: it records a decision about the
-  linter, not a count. Linters in `seeded` get their budget set to the actual count outright — the
-  explicit escape hatch for landing a new linter. Otherwise never raises a budget, never adds one."
+  "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
+  An `:unlimited` policy is kept as written, even at zero: it records a decision about the linter, not a count.
+  Linters in `seeded` get their budget set outright — the explicit escape hatch for landing a new linter.
+  Otherwise never raises a budget, never adds one."
   [recorded actual seeded]
   (let [seeded? (set seeded)]
     (into (sorted-by-str
@@ -648,9 +648,8 @@
 
 (defn fix!
   "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
-  Refuses to touch a file whose policies name an unknown linter; they are never removed automatically.
-  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it,
-  and makes an unlimited linter bounded. Seeding an unknown linter is refused the same way.
+  Refuses to touch a file naming an unknown linter, whether seeded or recorded, and never removes one.
+  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count and bounds an unlimited one.
   Prints the [[change-report]], or `unchanged` on a no-op.
   Does nothing, including seeding, when the file sets `:disabled` to `true`."
   ([]
@@ -679,7 +678,7 @@
 (defn check-report
   "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
   budgets, or `text` is not normalized.
-  Lower counts are allowed because the post-merge workflow records them after the change lands."
+  Lower counts are allowed because the shrink workflow records them after the change lands."
   [{:keys [ignore-counts config-counts] :as ratchets} occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
         config-over (config-over-budget config-counts config-actual)
@@ -712,8 +711,9 @@
   (exit! message))
 
 (defn check
-  "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
-  or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement.
+  "Fail the babashka task when the ratchets file is missing, a policy names an unknown linter, inline
+  ignores or config suppressions exceed a bounded budget, or the file is not normalized.
+  Only an explicit `{:disabled true}` opts out of enforcement.
   An unused `:unlimited` policy is reported but does not fail the check."
   []
   (if-not (.exists (io/file *ratchets-file*))
