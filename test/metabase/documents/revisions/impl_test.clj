@@ -100,7 +100,8 @@
       (is (contains? excluded-columns :collection_position))
       (is (contains? excluded-columns :public_uuid))
       (is (contains? excluded-columns :made_public_by_id))
-      (is (= 10 (count excluded-columns)) "Should exclude exactly 10 metadata fields"))))
+      (is (contains? excluded-columns :public_uuid_prefix))
+      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))
 
 (deftest revert-does-not-restore-public-sharing-test
   (testing "reverting a Document cannot resurrect a public link an admin revoked"
