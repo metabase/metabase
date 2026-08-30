@@ -245,6 +245,43 @@
                 :errorText "The server had an error while processing your request. Sorry about that!"}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
 
+(deftest ^:parallel openai-response-failed-preserves-usage-test
+  (testing "billed usage on response.failed is emitted before its error"
+    (let [raw [{:type "response.created"
+                :response {:id "resp_1", :model "gpt-5.5"}}
+               {:type "response.failed"
+                :response {:id    "resp_1"
+                           :usage {:input_tokens 21, :output_tokens 4}
+                           :error {:message "failed after billing"}}}]]
+      (is (=? [{:type :start}
+               {:type  :usage
+                :usage {:promptTokens 21, :completionTokens 4}}
+               {:type :error, :errorText "failed after billing"}]
+              (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-interrupted-stream-leaves-content-blocks-incomplete-test
+  (doseq [[label item delta end-type expected-types]
+          [["text"
+            {:type "message", :id "msg_1"}
+            {:type "response.output_text.delta", :item_id "msg_1", :delta "partial"}
+            :text-end
+            [:start :text-start :text-delta]]
+           ["reasoning"
+            {:type "reasoning", :id "rs_1"}
+            {:type "response.reasoning_summary_text.delta", :item_id "rs_1", :delta "partial"}
+            :reasoning-end
+            [:start :reasoning-start :reasoning-delta]]]]
+    (testing (str "an interrupted " label " block has no normal end marker")
+      (let [chunks (into []
+                         (openai/openai->aisdk-chunks-xf)
+                         [{:type "response.created"
+                           :response {:id "resp_1", :model "gpt-5.5"}}
+                          {:type "response.output_item.added", :item item}
+                          delta
+                          self.core/interrupted-stream-event])]
+        (is (= expected-types (mapv :type chunks)))
+        (is (not-any? #(= end-type (:type %)) chunks))))))
+
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"
     (let [code-only [{:type "response.created" :response {:id "resp_1"}}

@@ -144,7 +144,18 @@
                                               result
                                               @pending-chunks)]
                              (vreset! pending-chunks [])
-                             result))]
+                             result))
+          interrupt!   (fn [result]
+                         ;; Exceptional termination does not prove an open content block completed.
+                         ;; Release safe buffered chunks without an end marker and discard tool chunks.
+                         (let [result (clear! result)
+                               result (u/reduce-preserving-reduced
+                                       (fn [result [tool-chunk? chunk]]
+                                         (if tool-chunk? result (rf result chunk)))
+                                       result
+                                       @pending-chunks)]
+                           (vreset! pending-chunks [])
+                           result))]
       (fn
         ([result]
          (let [result (cond
@@ -169,7 +180,7 @@
            (cond-> result
              ;; Exceptional source termination must preserve billed usage without normal transducer
              ;; completion: completing a partial tool_use block would mark it executable.
-             (= chunk core/interrupted-stream-event) (resolve-tools! false)
+             (= chunk core/interrupted-stream-event) (interrupt!)
              (= chunk core/interrupted-stream-event) (cond-> @last-usage (emit-rf! (usage-part)))
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})

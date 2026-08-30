@@ -119,6 +119,18 @@
                              (vreset! pending-chunks [])
                              (vreset! completed-tool-ids #{})
                              result))
+          interrupt!   (fn [result]
+                         ;; An interrupted block is incomplete, so never synthesize its normal end marker.
+                         ;; Release any safe buffered content while dropping every provisional tool chunk.
+                         (let [result (clear! result)
+                               result (u/reduce-preserving-reduced
+                                       (fn [result [tool-id chunk]]
+                                         (if tool-id result (rf result chunk)))
+                                       result
+                                       @pending-chunks)]
+                           (vreset! pending-chunks [])
+                           (vreset! completed-tool-ids #{})
+                           result))
           close-for-event! (fn [result tool-done?]
                              (if (or (not= :function_call @current-type) tool-done?)
                                (close! result)
@@ -137,7 +149,7 @@
            (if (reduced? result) result (rf result))))
         ([result {t :type :keys [response item delta error] :as chunk}]
          (if (= chunk core/interrupted-stream-event)
-           (resolve-tools! result false)
+           (interrupt! result)
            (let [middle     (second (str/split t #"\."))
                  chunk-type (case middle
                               "output_item"             (case (:type item)
@@ -237,6 +249,11 @@
                ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
                ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
                (= t "response.failed")            (resolve-tools! false)
+               (and (= t "response.failed") (:usage response))
+               (emit-rf! {:type  :usage
+                          :usage (openai-usage->aisdk-usage (:usage response))
+                          :id    (:id response)
+                          :model @model-name})
                (= t "response.failed")            (emit-rf! {:type      :error
                                                              :errorText (or (get-in response [:error :message])
                                                                             (get-in response [:error :code])
