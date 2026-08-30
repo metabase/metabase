@@ -31,7 +31,7 @@ import {
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
 import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
 import type {

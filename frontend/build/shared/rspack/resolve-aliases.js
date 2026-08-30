@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-env node */
 
 const path = require("path");
 

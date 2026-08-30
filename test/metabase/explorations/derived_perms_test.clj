@@ -5,6 +5,7 @@
   the batching that must not merge snapshots requiring different permissions."
   (:require
    [clojure.test :refer :all]
+   [metabase.documents.core :as documents]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -299,3 +300,149 @@
           large   (measure 25)]
       (is (< large (* 2 small))
           (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+
+;;; --------------------------------- Summary-document content gate ---------------------------------
+
+(defn- doc-content-visible? [document user-kw]
+  (request/with-current-user (mt/user->id user-kw)
+    (derived-perms/doc-content-visible-to-current-user? document)))
+
+(deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
+  (testing "a Summary document whose exploration the viewer may not see"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+      (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
+        (testing "is denied when the instance carries :exploration_id"
+          (is (false? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta)))))
+        (testing "is denied on a partial select too — the shape `collection-children-query` produces, which omits :exploration_id"
+          (is (false? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))
+        (testing "is denied for an instance carrying neither :exploration_id nor :id — nothing left to adjudicate on"
+          (is (false? (boolean (doc-content-visible? {:name "Summary"} :rasta)))))))))
+
+(deftest doc-content-gate-leaves-ordinary-documents-alone-test
+  (testing "a document with no owning exploration is visible, on a full or partial select"
+    (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
+      (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
+      (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+
+;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
+
+(defn- card-readable? [card-id user-kw]
+  (request/with-current-user (mt/user->id user-kw)
+    (boolean (mi/can-read? (t2/select-one :model/Card :id card-id)))))
+
+(deftest card-scoped-to-a-gated-document-is-not-readable-test
+  (testing "a Card scoped to an exploration Summary document"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document   {doc-id :id}  {:exploration_id expl
+                                                      :collection_id  coll-id
+                                                      :creator_id     (mt/user->id :lucky)}
+                     ;; The ephemeral Summary card: its name and dataset_query are copied from the
+                     ;; ExplorationQuery, which embeds dimension values discovered under the
+                     ;; creator's lens.
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :document_id   doc-id
+                                                      :name          "Orders for Customer = ACME Corp over time"}
+                     ;; A sibling card in the same collection, owned by no document.
+                     :model/Card       {plain-id :id} {:collection_id coll-id :name "Plain card"}]
+        ;; Collection read must PASS, so that anything denied below is denied by the content gate
+        ;; and not merely by collection permissions.
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (testing "sanity: the owning Summary document is itself gated for this viewer"
+          (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
+                                 (mi/can-read? (t2/select-one :model/Document :id doc-id)))))))
+        (testing "is not readable by a viewer whose data-access lens is incompatible, even though they can read the collection"
+          (is (false? (card-readable? card-id :rasta))))
+        (testing "is still readable by a superuser, matching the gate's standing exemption"
+          (is (true? (card-readable? card-id :crowberto))))
+        (testing "leaves cards that belong to no document alone"
+          (is (true? (card-readable? plain-id :rasta))))))))
+
+(deftest card-scoped-to-an-ordinary-document-is-unaffected-test
+  (testing "a Card scoped to a Document with no owning exploration is readable on collection perms alone"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document   {doc-id :id}  {:collection_id coll-id
+                                                    :creator_id    (mt/user->id :lucky)}
+                   :model/Card       {card-id :id} {:collection_id coll-id :document_id doc-id}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (is (true? (card-readable? card-id :rasta))))))
+
+;;; ------------------------- comment context on a gated exploration -------------------------
+
+(defn- page-id-for-thread [thread-id]
+  (t2/select-one-fn :id :model/ExplorationPage
+                    {:select [:p.id]
+                     :from   [[:exploration_page :p]]
+                     :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
+                     :where  [:= :b.exploration_thread_id thread-id]}))
+
+(defn- comment-contexts [exploration-id user-kw]
+  (->> (mt/user-http-request user-kw :get 200 "comment/"
+                             :target_type "exploration"
+                             :target_id exploration-id)
+       :comments
+       (mapv :context)))
+
+(deftest exploration-comment-context-is-gated-test
+  (testing "a comment anchored to a chart point of an exploration the viewer is gated out of"
+    (let [thread  (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)
+          page-id (page-id-for-thread thread)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        ;; Put the exploration somewhere the viewer can read, so anything withheld below is withheld
+        ;; by the data-access gate rather than by collection permissions.
+        (t2/update! :model/Exploration expl-id {:collection_id coll-id})
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (mt/user-http-request :lucky :post 200 "comment/"
+                              {:target_type     "exploration"
+                               :target_id       expl-id
+                               :child_target_id (str page-id)
+                               :content         {:type "doc" :content []}
+                               :context         {:highlighted     {:columnName "CATEGORY"
+                                                                   :dimensions [{:columnName "CATEGORY"
+                                                                                 :value "ACME Corp"}]}
+                                                 :highlight_label "ACME Corp"}})
+        (testing "keeps its context for a superuser, who is exempt from the gate"
+          (is (=? [{:highlighted     {:columnName "CATEGORY"}
+                    :highlight_label "ACME Corp"}]
+                  (comment-contexts expl-id :crowberto))))
+        (testing "is stripped of its context for a viewer whose data-access lens is incompatible —
+                  the comment itself remains readable, only the warehouse values it carries are withheld"
+          (let [contexts (comment-contexts expl-id :rasta)]
+            (is (= 1 (count contexts)) "the comment is still listed")
+            (is (= [nil] contexts) "but carries no context")))))))
+
+(deftest content-gate-verdict-is-memoized-within-a-scope-test
+  (testing "every Card in a Summary document shares one document, and therefore one verdict. Without
+            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece — so a
+            document's cards cost N times what one costs. Bulk read paths scope the cache
+            themselves; see the callers of `with-content-gate-cache`."
+    (let [thread  (thread-with-snapshots! (repeat 5 {:creator-id (mt/user->id :lucky)
+                                                     :table :venues :token {}}))
+          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document   {doc-id :id} {:exploration_id expl-id
+                                                     :collection_id  coll-id
+                                                     :creator_id     (mt/user->id :lucky)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (let [card-ids (vec (for [_ (range 10)]
+                              (t2/insert-returning-pk! :model/Card
+                                                       {:name "c" :creator_id (mt/user->id :lucky)
+                                                        :database_id (mt/id)
+                                                        :dataset_query (count-query :venues)
+                                                        :display "table" :visualization_settings {}
+                                                        :collection_id coll-id :document_id doc-id})))]
+          (request/with-current-user (mt/user->id :rasta)
+            (let [cards (t2/select :model/Card :id [:in card-ids])
+                  measure (fn [instances]
+                            (documents/with-content-gate-cache
+                              (t2/with-call-count [call-count]
+                                (doseq [card instances] (mi/can-read? card))
+                                (call-count))))
+                  one (measure [(first cards)])
+                  ten (measure cards)]
+              (is (< ten (* 2 one))
+                  (format "one verdict should serve every card (1 card: %d queries, 10 cards: %d)"
+                          one ten)))))))))

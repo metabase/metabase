@@ -261,8 +261,9 @@
              (vals endpoints))
      :components {:schemas @*definitions*}}))
 
-#_:clj-kondo/ignore
 (comment
+  (require '[metabase.api.macros])
+
   (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 
   (metabase.api.macros.defendpoint.open-api/path-item

@@ -1415,7 +1415,8 @@
   ;; no user
   (query-index db index {:search-string "Copper knife"})
 
-  #_:clj-kondo/ignore
+  ;; REPL scratch; metabase.test is off-limits to this module's real code
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))
@@ -1467,13 +1468,15 @@
   ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should
   ;; only be realized in memory once a thread is available.
   (defn process-batch [batch]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows batch progress on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println "Processing batch starting with " (first batch))
     (Thread/sleep 2000)
     {:count (count batch)})
 
   (defn logging-range [n]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows lazy realization on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (map #(do (println "Realizing item" %) %)
          (range n)))
 

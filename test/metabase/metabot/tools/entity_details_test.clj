@@ -578,6 +578,25 @@
             (is (vector? (get-in exported ["stages" 0 "source-table"])))
             (is (not (contains? exported "lib/metadata")))))))))
 
+(deftest card-details-tolerates-a-query-that-will-not-build-test
+  (testing "one Card whose stored query has no stages does not take down the response the others are in"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card broken {:name "Broken", :type :question, :dataset_query {}}
+                       :model/Card good   {:database_id   (mt/id)
+                                           :type          :question
+                                           :name          "Venues by Price"
+                                           :dataset_query (mt/mbql-query venues
+                                                            {:aggregation [[:count]]
+                                                             :breakout    [$price]})}]
+          ;; Exercise `cards-details`, the batch path used by the typed-schemas endpoint. Calling
+          ;; `get-table-details` for each Card would miss a failure that terminates the complete sequence.
+          (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
+                             (into [] (map #(select-keys % [:name :query_json]))))]
+            (is (= ["Broken" "Venues by Price"] (mapv :name details)))
+            (is (nil? (:query_json (first details))))
+            (is (map? (:query_json (second details))))))))))
+
 (deftest card-details-exposes-query-json-native-test
   (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
     (mt/test-driver :h2

@@ -4,8 +4,6 @@ import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import type { Mode } from "metabase/querying/click-actions/Mode";
 import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
@@ -26,6 +24,8 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { useVisualizationResultQBProps } from "../../../../hooks";
+import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 

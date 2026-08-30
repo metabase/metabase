@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { segmentIsValid } from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";

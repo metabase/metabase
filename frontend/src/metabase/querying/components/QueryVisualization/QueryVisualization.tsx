@@ -9,8 +9,8 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import { prefetchVisualizationComponent } from "metabase/visualizations";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
+import { prefetchVisualizationComponent } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 

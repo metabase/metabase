@@ -519,10 +519,14 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
+#_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
 (comment
+  (require
+   '[metabase.test.data.dataset-definitions]
+   '[metabase.test.data.interface])
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
-  (with-open [conn (clojure.java.jdbc/get-connection
+  (with-open [conn (jdbc/get-connection
                     (sql-jdbc.conn/connection-details->spec
                      :athena
                      (metabase.test.data.interface/dbdef->connection-details

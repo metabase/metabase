@@ -36,8 +36,8 @@ import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "met
 import {
   type OnCreateOptions,
   useCreateQuestion,
-} from "metabase/query_builder/containers/use-create-question";
-import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+} from "metabase/query_builder";
+import { useSaveQuestion } from "metabase/query_builder";
 import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
