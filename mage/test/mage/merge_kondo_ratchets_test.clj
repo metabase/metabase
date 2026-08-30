@@ -149,8 +149,8 @@
           "resolved, and identical to the target branch so nothing shows as changed"))))
 
 (defn- refused
-  "Everything one refused run prints, having asserted that it exited nonzero and left the conflict exactly
-  as it found it. Mage reports task exceptions on stdout."
+  "Everything one refused run prints, having first checked that it failed and left the conflict untouched.
+  Both streams, because mage reports task exceptions on stdout."
   [dir note]
   ;; a conflicted path stays UU/DU/UD however its contents are rewritten, so compare those too
   (let [snapshot               #(let [f (fs/path dir ratchets-file)]

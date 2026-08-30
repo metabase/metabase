@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *ratchets-file*
-  "The budgets file, relative to the repo root."
+  "The budgets file, relative to the repo root. Rebind it to read a file elsewhere, such as a merge stage."
   ".clj-kondo/ratchets.edn")
 
 (defn- read-ratchets-form
@@ -43,8 +43,8 @@
 (defn validate-policies
   "`ratchets` when each policy field it carries has the right shape: `:ignore-counts` maps linters to a
   non-negative integer or `:unlimited`, `:config-counts` maps linters to a non-negative integer, and
-  `:comment-exempt` is a set. Every linter named anywhere must be a keyword. Throws otherwise. Shared by
-  [[read-ratchets]] and [[merge-ratchets]], so a malformed stage can never be read as a set of removals."
+  `:comment-exempt` is a set. Every linter named anywhere must be a keyword.
+  Throws otherwise, so a malformed file can never be read as a set of removals."
   [ratchets]
   (let [{:keys [ignore-counts config-counts comment-exempt]} (merge empty-policies ratchets)]
     (when-not (map? ignore-counts)
@@ -604,8 +604,8 @@
     :else                          (min a b)))
 
 (defn- merge-counts
-  "Three-way merge a policy map. A one-sided change wins over an unchanged base; concurrent changes take
-  the [[stricter]] policy, so budgets can only tighten through a merge."
+  "Three-way merge a policy map. A one-sided change wins over an unchanged base.
+  Concurrent changes take the [[stricter]] policy, so budgets can only tighten through a merge."
   [base ours theirs]
   (sorted-by-str
    (for [linter (into (set (keys base)) (concat (keys ours) (keys theirs)))
