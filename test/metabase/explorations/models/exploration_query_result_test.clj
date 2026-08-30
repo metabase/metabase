@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -65,40 +66,49 @@
              (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))
 
 (deftest chart-stats-is-encrypted-at-rest-test
-  (testing "chart_stats embeds verbatim warehouse values (top categories' names), the same material
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "chart_stats embeds verbatim warehouse values (top categories' names), the same material
             as the result blob and the descriptions beside it — both of which are encrypted at rest.
             It must not sit in the clear next to them."
-    (encryption-test/with-secret-key "chart-stats-encryption-test-key"
-      (let [id  (query-result-row! stats-with-warehouse-values)
-            raw (:chart_stats (t2/query-one {:select [:chart_stats]
-                                             :from   [:exploration_query_result]
-                                             :where  [:= :id id]}))]
-        (testing "the stored bytes do not contain the warehouse value"
-          (is (string? raw))
-          (is (not (str/includes? raw "ACME Corp"))
-              "top-category names were stored in plaintext"))
-        (testing "and it still decrypts back to the original stats"
-          (is (= stats-with-warehouse-values
-                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+      (encryption-test/with-secret-key "chart-stats-encryption-test-key"
+        (let [id  (query-result-row! stats-with-warehouse-values)
+              raw (:chart_stats (t2/query-one {:select [:chart_stats]
+                                               :from   [:exploration_query_result]
+                                               :where  [:= :id id]}))]
+          (testing "the stored bytes do not contain the warehouse value"
+            (is (string? raw))
+            (is (not (str/includes? raw "ACME Corp"))
+                "top-category names were stored in plaintext"))
+          (testing "and it still decrypts back to the original stats"
+            (is (= stats-with-warehouse-values
+                   (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))))
 
 (deftest chart-stats-rejects-plaintext-when-key-set-test
-  (testing "with a key set, encrypted chart_stats reads back but a plaintext value written directly via SQL is rejected"
-    (encryption-test/with-secret-key "chart-stats-encryption-test-key"
-      (let [id (query-result-row! stats-with-warehouse-values)]
-        (is (= stats-with-warehouse-values
-               (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
-        (t2/query-one {:update :exploration_query_result
-                       :set    {:chart_stats (pr-str stats-with-warehouse-values)}
-                       :where  [:= :id id]})
-        (is (thrown? clojure.lang.ExceptionInfo
-                     (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "with a key set, encrypted chart_stats reads back but a plaintext value written directly via SQL is rejected"
+      (encryption-test/with-secret-key "chart-stats-encryption-test-key"
+        (let [id (query-result-row! stats-with-warehouse-values)]
+          (is (= stats-with-warehouse-values
+                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
+          (t2/query-one {:update :exploration_query_result
+                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :where  [:= :id id]})
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
 
 (deftest chart-stats-plaintext-allowed-without-key-test
-  (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
-    (encryption-test/with-secret-key nil
-      (let [id (query-result-row! nil)]
-        (t2/query-one {:update :exploration_query_result
-                       :set    {:chart_stats (pr-str stats-with-warehouse-values)}
-                       :where  [:= :id id]})
-        (is (= stats-with-warehouse-values
-               (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
+      (encryption-test/with-secret-key nil
+        (let [id (query-result-row! nil)]
+          (t2/query-one {:update :exploration_query_result
+                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :where  [:= :id id]})
+          (is (= stats-with-warehouse-values
+                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
