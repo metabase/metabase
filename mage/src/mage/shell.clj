@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [mage.util :as u])
   (:import
-   (java.io BufferedReader File InputStreamReader)))
+   (java.io BufferedReader File InputStreamReader)
+   (java.lang ProcessHandle)
+   (java.util.concurrent TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,8 +21,17 @@
 (defn- deref-with-timeout [dereffable timeout-ms]
   (let [result (deref dereffable timeout-ms ::timed-out)]
     (when (= result ::timed-out)
-      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {})))
+      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
     result))
+
+(defn- kill-process!
+  "Stop `proc` and every process it started, so a timed-out command cannot keep running behind the caller."
+  [^Process proc]
+  (let [handles (cons (.toHandle proc) (iterator-seq (.iterator (.descendants (.toHandle proc)))))]
+    (run! #(.destroy ^ProcessHandle %) handles)
+    (when-not (.waitFor proc 5 TimeUnit/SECONDS)
+      (run! #(.destroyForcibly ^ProcessHandle %) handles)
+      (.waitFor proc))))
 
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
@@ -41,8 +52,10 @@
 
   * `quiet?` -- whether to suppress output from this shell command.
 
+  * `timeout-ms` -- how long to wait for the command before killing it and throwing; defaults to 15 minutes.
+
   * If you set MAGE_VERBOSE env var to true , the command will be printed before running it."
-  {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (when (u/env "MAGE_VERBOSE" (constantly nil))
     (println (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
@@ -54,7 +67,8 @@
         opts              (merge
                            {:dir u/project-root-directory}
                            opts)
-        {:keys [env dir]} opts
+        {:keys [env dir timeout-ms]
+         :or   {timeout-ms command-timeout-ms}} opts
         cmd-array         (into-array (map str args))
         env-array         (when env
                             (assert (map? env))
@@ -72,9 +86,14 @@
       (let [exit-code (future (.waitFor proc))
             out       (future (read-lines out-reader opts))
             err       (future (read-lines err-reader opts))]
-        {:exit (deref-with-timeout exit-code command-timeout-ms)
-         :out  (deref-with-timeout out command-timeout-ms)
-         :err  (deref-with-timeout err command-timeout-ms)}))))
+        (try
+          {:exit (deref-with-timeout exit-code timeout-ms)
+           :out  (deref-with-timeout out timeout-ms)
+           :err  (deref-with-timeout err timeout-ms)}
+          (catch clojure.lang.ExceptionInfo e
+            (when (:timed-out? (ex-data e))
+              (kill-process! proc))
+            (throw e)))))))
 
 (defn sh
   "Like [[sh*]], but throws an Exception if the command exits with a non-zero status. Options are the same as `sh*` --
