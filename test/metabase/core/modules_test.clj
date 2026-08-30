@@ -215,7 +215,7 @@
   exactly: PR CI checks out the merge preview with master, so scan-derived keys (SCC sizes, namespace
   counts, test blast) legitimately differ from any branch's committed baseline whenever master moves.
   They are still synced into module-stats.edn for PR-diff visibility."
-  [:largest-api :module-count :total-api])
+  [:largest-api :model-import-bypass-modules :module-count :total-api])
 
 (deftest ^:parallel module-boundary-stats-match-committed-test
   (testing (str "Config-derived module surface stats match module-stats.edn. Unlike the ratchets these\n"

@@ -110,6 +110,42 @@
   (let [component (deps-graph/largest-scc graph sccs)]
     (if (> (count component) 1) component #{})))
 
+(def ^:private reported-cycle-components
+  "How many cyclic clusters the repo report breaks out individually. The first is the Galactic Center — the
+  one component that holds most of the backend — and the handful below it are small enough to read and, in
+  most cases, to cut outright."
+  5)
+
+(def ^:private named-cluster-max-modules
+  "Clusters at or below this size list their members in the report. Above it `:members` is omitted: naming
+  a hundred modules is not a breakdown, and the cut candidates inside the big component come from the
+  `*-cut-impacts` fns in [[dev.module-scc]] instead."
+  10)
+
+(defn- cycle-section
+  "Cycle measurements for one graph: the totals, plus the largest clusters broken out individually so the
+  report says where to cut and not only how bad things are."
+  [graph module->namespace-count total-namespaces]
+  (let [{:keys [component-count module-count namespace-count edge-count components]}
+        (deps-graph/cycle-stats graph module->namespace-count)]
+    (ordered-map/ordered-map
+     :component-count component-count
+     :module-count module-count
+     :namespace-count namespace-count
+     :namespace-ratio (safe-ratio namespace-count total-namespaces)
+     :edge-count edge-count
+     :largest-components
+     (into []
+           (comp (take reported-cycle-components)
+                 (map (fn [component]
+                        (cond-> (ordered-map/ordered-map
+                                 :module-count (:module-count component)
+                                 :namespace-count (:namespace-count component)
+                                 :edge-count (:edge-count component))
+                          (<= (:module-count component) named-cluster-max-modules)
+                          (assoc :members (into (sorted-set) (:members component)))))))
+           components))))
+
 (defn- build-graph-context
   "Build all shared intermediate data structures needed by both per-module and repo-level metrics."
   [deps config]
@@ -142,10 +178,17 @@
                                                           deps (get module->sources module))]))
                                           modules')
         all-test-files           (into (sorted-set) (mapcat val) module->relevant-test-files)
+        ;; The require graph plus the model-import edges the config records. A module that reads another
+        ;; module's models is coupled to it even when it requires none of its namespaces, so cycles that
+        ;; run only through models exist here and nowhere else.
+        combined-deps-graph      (merge-with into
+                                             direct-deps-graph
+                                             (deps-graph/model-import-dependencies config))
         sccs                     (deps-graph/strongly-connected-components direct-deps-graph)
         module->scc              (into {} (for [component sccs, m component] [m component]))]
     {:modules                  modules'
      :direct-deps-graph        direct-deps-graph
+     :combined-deps-graph      combined-deps-graph
      :module->paths            module->paths
      :transitive-deps-graph    transitive-deps-graph
      :direct-dependents-graph  direct-dependents-graph
@@ -273,12 +316,7 @@
          in-degrees                  (sort > (map #(get-in % [:dependents :direct-count]) module-metrics))
          top-decile-n                (long (Math/ceil (/ module-count 10.0)))
          majority-test-threshold     (* 0.5 (count (:all-test-files ctx)))
-         ;; Namespaces living in modules trapped in a nontrivial SCC. Unlike the module-count SCC
-         ;; metrics, this is invariant to config-only node-splitting (splitting a cyclic module keeps
-         ;; its namespaces in the cycle) — so it stays flat under re-bucketing and only drops when a
-         ;; real carve pulls namespaces out of the blob. This is the honest coupling number.
-         cyclic-modules              (into #{} (mapcat identity) (filter #(> (count %) 1) (:sccs ctx)))
-         cyclic-namespace-count      (reduce + 0 (map #(count (get module->nses %)) cyclic-modules))
+         module->namespace-count     (update-vals module->nses count)
          ;; Internal namespaces reachable past a module's public API through a friend grant.
          friend-exposed-count        (reduce + 0 (map #(non-api-namespace-count config module->nses %)
                                                       friend-holding-modules))
@@ -298,12 +336,16 @@
        (safe-ratio (reduce + 0 (take top-decile-n in-degrees)) edge-count))
       :cycles
       (ordered-map/ordered-map
-       :cyclic-module-count (count cyclic-modules)
-       :largest-component-module-count
-       (count (largest-cyclic-component (:direct-deps-graph ctx) (:sccs ctx)))
-       ;; Namespace weighting prevents config-only node splits from looking like real decoupling.
-       :cyclic-namespace-count cyclic-namespace-count
-       :cyclic-namespace-ratio (safe-ratio cyclic-namespace-count total-namespaces))
+       ;; Reported twice: once for the require graph the linter enforces, once for that graph plus the
+       ;; model-import edges. The second is what a carve actually has to untangle, and the gap between
+       ;; them is the coupling the `:uses` declarations never mention.
+       :uses (cycle-section (:direct-deps-graph ctx) module->namespace-count total-namespaces)
+       :uses+model-imports (cycle-section (:combined-deps-graph ctx) module->namespace-count
+                                          total-namespaces)
+       ;; Bypass modules declare no model imports at all, so their model edges are in neither graph.
+       ;; Counting them keeps that exemption from reading as an absence of coupling.
+       :model-import-bypass-module-count
+       (count (filter #(= :bypass (:model-imports %)) (vals config))))
       :encapsulation
       (ordered-map/ordered-map
        :friend-edge-count

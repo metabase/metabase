@@ -63,17 +63,26 @@
   (transduce (map (fn [c] (let [n (count c)] (* n n)))) + 0 sccs))
 
 (defn scc-summary
-  "Repo-level SCC stats for `graph`."
-  [graph]
-  (let [sccs       (deps-graph/strongly-connected-components graph)
-        nontrivial (filter #(> (count %) 1) sccs)
-        giant      (deps-graph/largest-scc graph sccs)]
-    {:num-sccs              (count sccs)
-     :num-nontrivial-sccs   (count nontrivial)
-     :nontrivial-scc-sizes  (sort > (map count nontrivial))
-     :largest-scc-size      (count giant)
-     :largest-scc-members   (into (sorted-set) giant)
-     :sum-squared-scc-sizes (sum-squared-scc-sizes sccs)}))
+  "Repo-level SCC stats for `graph`. `:cyclic-*` totals cover the whole graph rather than only its largest
+  component, so a cut that frees a small cluster shows up here even while `:largest-scc-size` sits still.
+  Pass `module->namespace-count` to weight `:cyclic-namespace-count` by namespaces; without it that count
+  is zero and only the module-level totals are meaningful."
+  ([graph]
+   (scc-summary graph {}))
+  ([graph module->namespace-count]
+   (let [sccs       (deps-graph/strongly-connected-components graph)
+         nontrivial (filter #(> (count %) 1) sccs)
+         giant      (deps-graph/largest-scc graph sccs)
+         cycles     (deps-graph/cycle-stats graph sccs module->namespace-count)]
+     {:num-sccs               (count sccs)
+      :num-nontrivial-sccs    (count nontrivial)
+      :nontrivial-scc-sizes   (sort > (map count nontrivial))
+      :largest-scc-size       (count giant)
+      :largest-scc-members    (into (sorted-set) giant)
+      :sum-squared-scc-sizes  (sum-squared-scc-sizes sccs)
+      :cyclic-module-count    (:module-count cycles)
+      :cyclic-namespace-count (:namespace-count cycles)
+      :cyclic-edge-count      (:edge-count cycles)})))
 
 ;;;; ------------------------------------------------------------------------------------------------
 ;;;; Cut scoring
@@ -388,6 +397,16 @@
   (def graph*   (deps-graph/module-dependencies deps*))
 
   (dissoc (scc-summary graph*) :largest-scc-members)
+
+  ;; the same graph plus the coupling that runs through models rather than requires. Component 0 is the
+  ;; Galactic Center; the rest are small enough to read off and cut one at a time.
+  (def combined*  (merge-with into graph* (deps-graph/model-import-dependencies (deps-graph/kondo-config))))
+  (def ns-counts* (frequencies (keep :module deps*)))
+  (def cycles*    (deps-graph/cycle-stats combined* ns-counts*))
+  (dissoc cycles* :components)
+  (map #(dissoc % :members) (:components cycles*))
+  (:members (second (:components cycles*)))
+
   (take 10 (upstream-cut-impacts graph*))
   (take 10 (node-cut-impacts graph*))
   (take 10 (edge-cut-impacts graph*))

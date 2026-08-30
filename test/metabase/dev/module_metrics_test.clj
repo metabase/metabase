@@ -30,15 +30,21 @@
     :deps      [{:namespace 'metabase.a.api, :module 'a}
                 {:namespace 'metabase.c.api, :module 'c}]}])
 
+;; `c` reads a model owned by `a` without requiring any of its namespaces, closing `a -> b -> c -> a` in the
+;; uses-plus-model-imports graph and in no other. `d` bypasses model boundaries, so it declares no imports
+;; even though it has them.
 (def ^:private config
-  {'a {:api     #{'metabase.a.api}
-       :uses    #{'b 'c}
-       :friends #{'d}}
-   'b {:api     #{'metabase.b.core}
-       :uses    #{'c}}
-   'c {:api     #{'metabase.c.api}}
-   'd {:api     #{}
-       :uses    #{'a 'c}}})
+  {'a {:api           #{'metabase.a.api}
+       :uses          #{'b 'c}
+       :friends       #{'d}
+       :model-exports #{:model/Card}}
+   'b {:api           #{'metabase.b.core}
+       :uses          #{'c}}
+   'c {:api           #{'metabase.c.api}
+       :model-imports #{:model/Card}}
+   'd {:api           #{}
+       :uses          #{'a 'c}
+       :model-imports :bypass}})
 
 (def ^:private module->test-files
   {'a #{"test/metabase/a/a_core_test.clj"}
@@ -135,10 +141,24 @@
                             :mean-out-degree                         1.25
                             :max-in-degree                           3
                             :top-decile-in-degree-share              0.6}
-            :cycles        {:cyclic-module-count                     0
-                            :largest-component-module-count          0
-                            :cyclic-namespace-count                  0
-                            :cyclic-namespace-ratio                  0.0}
+            :cycles        {:uses
+                            {:component-count                       0
+                             :module-count                          0
+                             :namespace-count                       0
+                             :namespace-ratio                       0.0
+                             :edge-count                            0
+                             :largest-components                    []}
+                            :uses+model-imports
+                            {:component-count                       1
+                             :module-count                          3
+                             :namespace-count                       4
+                             :namespace-ratio                       0.8
+                             :edge-count                            4
+                             :largest-components                    [{:module-count    3
+                                                                      :namespace-count 4
+                                                                      :edge-count      4
+                                                                      :members         '#{a b c}}]}
+                            :model-import-bypass-module-count       1}
             :encapsulation {:friend-edge-count                       1
                             :friend-exposed-namespace-count          1
                             :privileged-access-path-count            1
@@ -168,10 +188,19 @@
             :max-in-degree               0
             :top-decile-in-degree-share 0.0}
            (:graph metrics)))
-    (is (= {:cyclic-module-count            0
-            :largest-component-module-count 0
-            :cyclic-namespace-count         0
-            :cyclic-namespace-ratio         0.0}
+    (is (= {:uses                             {:component-count    0
+                                               :module-count       0
+                                               :namespace-count    0
+                                               :namespace-ratio    0.0
+                                               :edge-count         0
+                                               :largest-components []}
+            :uses+model-imports               {:component-count    0
+                                               :module-count       0
+                                               :namespace-count    0
+                                               :namespace-ratio    0.0
+                                               :edge-count         0
+                                               :largest-components []}
+            :model-import-bypass-module-count 0}
            (:cycles metrics)))
     (is (= {:p25 0, :mean 0.0, :median 0, :p90 0, :max 0}
            (get-in metrics [:size :namespaces-per-module])))
