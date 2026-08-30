@@ -1,9 +1,10 @@
 name: Shrink ratchets
 
 # Lowers the budgets in .clj-kondo/ratchets.edn to match master and delivers the result through one
-# automation PR, because the rulesets require a pull request for every change to master. A merge of that
-# PR touches only ratchets.edn, which matches `.clj-kondo/**` below, so it triggers one more run that
-# finds nothing to lower and stops: a single no-op, not a loop.
+# automation PR, because the rulesets require a pull request for every change to master. The PR is
+# approved by github-actions[bot] and merges itself once the ratchet check passes. A merge of that PR
+# touches only ratchets.edn, which matches `.clj-kondo/**` below, so it triggers one more run that finds
+# nothing to lower and stops: a single no-op, not a loop.
 
 on:
   push:

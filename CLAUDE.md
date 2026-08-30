@@ -99,10 +99,10 @@ with `{:disabled true}`. The test and fixer recognize this explicit opt-out, whi
 causes an error on `master`.
 
 Budget too high (you removed ignores): once the change lands on `master`, the shrink workflow lowers the
-budgets and opens or force-updates the `Tighten ratchets` automation PR; merging that PR lands them. A bounded
-budget that reaches zero is dropped; an `:unlimited` entry stays even with no ignores left, and the check and
-fixer print one warning naming such entries so you can delete them by hand. To tighten by hand (babashka, no
-JVM; a no-op prints `unchanged`):
+budgets in the `Tighten ratchets` automation PR, which approves and merges itself once the ratchet check
+passes. A bounded budget that reaches zero is dropped; an `:unlimited` entry stays even with no ignores
+left, and the check and fixer print one warning naming such entries so you can delete them by hand. To
+tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
