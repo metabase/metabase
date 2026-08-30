@@ -72,6 +72,8 @@ scanned="$( {
   scan oss
   scan_project_tests run-clojure-checks! .
   scan_project_tests run-migration-checks! bin/lint-migrations-file
+  # a scan that matches nothing exits 1 through pipefail; the emptiness check below is the diagnostic
+  :
 } | sort -u )"
 if [ -z "$scanned" ]; then
   echo "::error::check-preresolve-aliases.sh: found no Clojure invocations to check; the scan patterns no longer match" >&2
