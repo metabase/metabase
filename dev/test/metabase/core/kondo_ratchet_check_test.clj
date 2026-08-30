@@ -44,6 +44,47 @@
                          (kondo-ratchet/render ratchets)))
         "unlimited linters do not fail the CI report, even when their actual count reaches zero")))
 
+(defn- check-with!
+  "Output lines of [[kondo-ratchet/check]] against `ratchets` written to a temp file, with `occurrences`
+  standing in for the tree scan; `:thrown?` says whether it failed."
+  [ratchets occurrences]
+  (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
+                          "kondo-ratchet-check-test"
+                          (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets (doto (io/file dir "ratchets.edn")
+                  (spit (kondo-ratchet/render (merge {:config-counts {}, :comment-exempt #{}} ratchets))))
+        thrown? (atom false)]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
+                    kondo-ratchet/scan          (constantly occurrences)]
+        {:lines   (str/split-lines
+                   (with-out-str
+                     (try
+                       (kondo-ratchet/check)
+                       (catch clojure.lang.ExceptionInfo _
+                         (reset! thrown? true)))))
+         :thrown? @thrown?}))))
+
+(deftest check-reports-empty-unlimited-test
+  (let [ratchets {:ignore-counts {:z-empty :unlimited, :a-empty :unlimited, :free :unlimited, :over 1}}]
+    (is (= {:lines   ["WARNING: :unlimited policies with no ignores left: :a-empty, :z-empty -- delete an entry by hand once its linter no longer needs one"
+                      "ok -- 2 ignore forms within 4 policies"]
+            :thrown? false}
+           (check-with! ratchets (occurrences {:free 1, :over 1})))
+        "the warning comes first, sorted, and does not fail the check")
+    (is (= {:lines   ["WARNING: :unlimited policies with no ignores left: :a-empty, :z-empty -- delete an entry by hand once its linter no longer needs one"
+                      "over budget -- remove an ignore, or seed the budget with `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:"
+                      "  :over: 1 recorded, 2 actual"
+                      "    f.clj:1"
+                      "    f.clj:2"]
+            :thrown? true}
+           (check-with! ratchets (occurrences {:free 1, :over 2})))
+        "a real failure still fails, after the warning")
+    (is (= {:lines   ["ok -- 4 ignore forms within 4 policies"]
+            :thrown? false}
+           (check-with! ratchets (occurrences {:z-empty 1, :a-empty 1, :free 1, :over 1})))
+        "no warning when every unlimited policy is in use")))
+
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]
     (is (= []

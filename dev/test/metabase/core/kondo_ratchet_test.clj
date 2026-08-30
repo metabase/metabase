@@ -295,9 +295,10 @@
             (str "a config budget is always a plain count, so " (pr-str value) " is rejected"))))))
 
 (deftest ^:parallel lowered-counts-test
-  (is (= {:lower       3
-          :over-budget 5
-          :unbounded   :unlimited}
+  (is (= {:empty-unbounded :unlimited
+          :lower           3
+          :over-budget     5
+          :unbounded       :unlimited}
          (kondo-ratchet/lowered-counts {:empty-unbounded :unlimited
                                         :gone            5
                                         :lower           5
@@ -309,7 +310,7 @@
                                         :unbounded   4}
                                        []))
       "budgets only ever move down: :lower shrinks to actual, :over-budget stays (the test's business),
-       :gone and the empty unlimited policy are dropped, :new-linter is not added")
+       :gone is dropped at zero but an unlimited policy is kept, :new-linter is not added")
   (testing "seeding is the escape hatch: sets the budget to actual, adding or raising"
     (is (= {:new-linter 9, :raised 7}
            (kondo-ratchet/lowered-counts {:raised 5}
@@ -317,7 +318,20 @@
                                          [:new-linter :raised])))
     (is (= {}
            (kondo-ratchet/lowered-counts {} {} [:nothing-to-seed]))
-        "seeding a linter with no ignores adds nothing")))
+        "seeding a linter with no ignores adds nothing")
+    (is (= {}
+           (kondo-ratchet/lowered-counts {:empty :unlimited} {} [:empty]))
+        "seeding an unlimited linter with no ignores converts it to a count, which is zero, so it goes")))
+
+(deftest ^:parallel unexercised-unlimited-test
+  (let [ignore-counts {:z-empty :unlimited, :a-empty :unlimited, :used :unlimited, :bounded-empty 3}]
+    (is (= #{:a-empty :z-empty}
+           (kondo-ratchet/unexercised-unlimited ignore-counts {:used 2}))
+        "only unlimited policies at zero, in name order; a bounded zero is the fixer's business")
+    (is (= "WARNING: :unlimited policies with no ignores left: :a-empty, :z-empty -- delete an entry by hand once its linter no longer needs one"
+           (kondo-ratchet/unexercised-unlimited-warning ignore-counts {:used 2})))
+    (is (nil? (kondo-ratchet/unexercised-unlimited-warning ignore-counts {:used 2, :a-empty 1, :z-empty 1}))
+        "no line when every unlimited policy is in use")))
 
 (deftest ^:parallel drift-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a]}
@@ -382,26 +396,33 @@
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
 
-(deftest ^:synchronized fix-drops-stale-unlimited-linter-test
+(deftest ^:synchronized fix-keeps-empty-unlimited-linter-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
                               (make-array java.nio.file.attribute.FileAttribute 0)))
-        ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited}
+        ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited, :gone 2}
                      :config-counts  {}
                      :comment-exempt #{}}
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
-        occurrences [{:file "f.clj", :line 1, :linters [:free]}]]
+        occurrences [{:file "f.clj", :line 1, :linters [:free]}]
+        run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty})
+      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty :gone})
                     kondo-ratchet/scan                (constantly occurrences)
                     kondo-ratchet/config-suppressions (constantly {})]
-        (is (= ["dropped :empty (no ignores left)"
+        (is (= ["dropped :gone (no ignores left)"
+                "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
                 (str "wrote " (.getPath budgets))]
-               (str/split-lines (with-out-str (kondo-ratchet/fix!))))))
-      (is (= {:ignore-counts  {:free :unlimited}
-              :config-counts  {}
-              :comment-exempt #{}}
-             (kondo-ratchet/read-ratchets))))))
+               (run!))
+            "the bounded zero goes; the unlimited zero stays and is reported")
+        (is (= {:ignore-counts  {:free :unlimited, :empty :unlimited}
+                :config-counts  {}
+                :comment-exempt #{}}
+               (kondo-ratchet/read-ratchets)))
+        (is (= ["WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
+                "unchanged"]
+               (run!))
+            "a second run changes nothing and still reports")))))
 
 (deftest ^:parallel missing-ratchets-file-fails-test
   (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
@@ -495,7 +516,11 @@
     (is (= [2 4]
            (map :line (kondo-ratchet/unjustified #{:a} occurrences)))
         "line 1 is fully exempt, line 2 still owes :b a comment, line 3 is justified,
-         line 4's :all is not exempt")))
+         line 4's :all is not exempt"))
+  (testing "the count policy plays no part: only :comment-exempt waives the comment"
+    (let [occurrence {:file "f.clj", :line 1, :linters [:free], :justified? false}]
+      (is (= [occurrence] (kondo-ratchet/unjustified #{} [occurrence])))
+      (is (= [] (kondo-ratchet/unjustified #{:free} [occurrence]))))))
 
 (deftest ^:parallel stale-exemptions-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
@@ -545,10 +570,10 @@
                             [{:file "g.clj", :line 1, :linters [:polite], :justified? true}])]
     (is (= ["seeded :new at 9"
             "WARNING: :void has no inline ignores -- nothing to seed"
-            "dropped :empty (no ignores left)"
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
+            "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
@@ -568,4 +593,5 @@
                                         occurrences
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         [:new :void]))
-        "untouched budgets (:same, :cfg-same) and a still-needed exemption (:lower) earn no line")))
+        "untouched budgets (:same, :cfg-same), a used unlimited policy (:free), and a still-needed
+         exemption (:lower) earn no line; the empty unlimited policy (:empty) is kept and warned about")))

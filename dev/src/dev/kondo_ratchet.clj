@@ -523,9 +523,10 @@
          "}\n")))
 
 (defn lowered-counts
-  "`recorded` with each budget lowered to its actual count; entries with no ignores left are dropped.
-  Linters in `seeded` get their budget set to the actual count outright — the explicit escape hatch for
-  landing a new linter. Otherwise never raises a budget, never adds one."
+  "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores left
+  are dropped. An `:unlimited` policy is kept as written, even at zero: it records a decision about the
+  linter, not a count. Linters in `seeded` get their budget set to the actual count outright — the
+  explicit escape hatch for landing a new linter. Otherwise never raises a budget, never adds one."
   [recorded actual seeded]
   (into (sorted-by-str
          (for [linter seeded
@@ -535,15 +536,33 @@
                 (let [n (get actual linter 0)]
                   (cond
                     (contains? (set seeded) linter) nil
-                    (zero? n)                       nil
                     (= budget :unlimited)           [linter budget]
+                    (zero? n)                       nil
                     (< n budget)                    [linter n]
                     :else                           [linter budget]))))
         recorded))
 
+(defn unexercised-unlimited
+  "Linters with an `:unlimited` policy in `ignore-counts` and no ignores in `actual`, sorted."
+  [ignore-counts actual]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (for [[linter policy] ignore-counts
+              :when (and (= policy :unlimited)
+                         (zero? (get actual linter 0)))]
+          linter)))
+
+(defn unexercised-unlimited-warning
+  "One informational line naming the [[unexercised-unlimited]] linters, or nil when there are none.
+  The policies stay in place; the line only makes a stale one visible."
+  [ignore-counts actual]
+  (let [linters (unexercised-unlimited ignore-counts actual)]
+    (when (seq linters)
+      (str "WARNING: :unlimited policies with no ignores left: " (str/join ", " linters)
+           " -- delete an entry by hand once its linter no longer needs one"))))
+
 (defn change-report
   "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
-  anything over budget."
+  anything over budget and for `:unlimited` policies nothing uses any more."
   [{:keys [ignore-counts config-counts comment-exempt]} occurrences config-actual seeded]
   (let [actual (actual-counts occurrences)]
     (concat
@@ -554,13 +573,13 @@
          (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
      (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
            :let            [n (get actual linter 0)]
-           :when           (or (zero? n)
-                               (and (integer? budget) (not= n budget)))]
+           :when           (and (integer? budget) (not= n budget))]
        (cond
          (zero? n)    (format "dropped %s (no ignores left)" linter)
          (< n budget) (format "lowered %s %d -> %d" linter budget n)
          :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
                               linter budget n linter)))
+     (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts seeded) actual) vector)
      (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
        (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
                linter n linter))
@@ -621,7 +640,8 @@
 
 (defn check
   "Fail the babashka task when a policy names an unknown linter, inline ignores exceed a bounded policy,
-  or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement."
+  or the ratchets file is not normalized. Only an explicit `{:disabled true}` opts out of enforcement.
+  An `:unlimited` policy nothing uses any more is reported first, and never fails the check."
   []
   (let [file (io/file *ratchets-file*)]
     (cond
@@ -644,6 +664,7 @@
                                             e))))
             occurrences (scan)
             lines       (check-report ratchets occurrences (slurp file))]
+        (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
         (if (empty? lines)
           (println (format "ok -- %d ignore forms within %d policies"
                            (count occurrences) (count (:ignore-counts ratchets))))
