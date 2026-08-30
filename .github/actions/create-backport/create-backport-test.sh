@@ -133,7 +133,9 @@ test_continuation_never_opens_an_editor() (
 
   cd "$repo"
   # Git only opens an editor for the continuation when stdin is a terminal, so run it on a pty. The
-  # exported GIT_EDITOR=false turns any editor launch into a failure.
+  # exported GIT_EDITOR=false turns any editor launch into a failure. The single quotes are deliberate:
+  # $1 and $2 are for the inner bash, not this shell.
+  # shellcheck disable=SC2016
   python3 -c 'import os, pty, sys; sys.exit(os.waitstatus_to_exitcode(pty.spawn(sys.argv[1:])))' \
     bash -c 'source "$1/kondo-ratchets.sh" && cherry_pick_backport "$2"' bash "$action_dir" "$commit" >/dev/null ||
     fail "the cherry-pick continuation opened an editor"
