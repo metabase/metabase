@@ -12,14 +12,22 @@
 
 (def ^:dynamic ^:private *github-output-only?* false)
 
+(def ^:private driver-test-config
+  "The committed driver-test CI config: which modules trigger driver tests, which of those also run the
+  cloud drivers, and which modules are exempted from triggering.
+
+  A `delay` rather than a plain value: reading at namespace-load time would turn a missing file or a
+  non-repo-root working directory into a `mage.modules` load failure, breaking every task that requires
+  the namespace instead of the one that needs the config."
+  (delay (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn"))))
+
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  '#{driver transforms})
+  (delay (:trigger-modules @driver-test-config)))
 
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
-  '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python})
+  (delay (:cloud-trigger-modules @driver-test-config)))
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -93,13 +101,8 @@
 
 (def driver-affecting-overrides
   "Modules that do NOT trigger driver tests when changed, even though the dependency graph says they
-  affect drivers. Read from a committed config file so the set is ratcheted and staleness-checked by
-  `metabase.core.modules-test`.
-
-  A `delay` rather than a plain value: reading at namespace-load time would turn a missing file or a
-  non-repo-root working directory into a `mage.modules` load failure, breaking every task that
-  requires the namespace instead of the one that needs the set."
-  (delay (:exempt-modules (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn")))))
+  affect drivers. Ratcheted and staleness-checked by `metabase.core.modules-test`."
+  (delay (:exempt-modules @driver-test-config)))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -243,8 +246,8 @@
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
+   (driver-deps-affected? deps modules (set/union @default-modules-which-trigger-drivers
+                                                  @modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
    ;; an undeclared trigger is never in the unaffected set, which silently makes EVERY module
    ;; "affect drivers" -- fail loudly instead (renames must update the trigger constants).
@@ -450,7 +453,7 @@
 
     ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
-         (seq (set/intersection updated modules-triggering-cloud-drivers)))
+         (seq (set/intersection updated @modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 

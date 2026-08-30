@@ -417,7 +417,7 @@
               [mage.modules]]
    :usage-fn
    (fn [_current-task]
-     (let [driver-triggers (vec (sort mage.modules/default-modules-which-trigger-drivers))]
+     (let [driver-triggers (vec (sort (deref mage.modules/default-modules-which-trigger-drivers)))]
        (str
         "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
         (with-out-str

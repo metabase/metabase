@@ -59,15 +59,41 @@
   ".clj-kondo/config/modules/driver-test-overrides.edn")
 
 (defn driver-test-overrides
-  "Committed CI override config: `{:exempt-modules #{...}}`, the modules that do NOT trigger driver
-  tests when changed even though the dependency graph says `driver`/`transforms` depend on them (see
-  `mage.modules`, which consumes this file). Every entry is an unverified bet that the coupling is not
-  real; the set should only shrink, and the modules-test staleness check fails entries the graph no
-  longer even justifies."
+  "Committed CI config deciding which changes run driver tests:
+  `{:trigger-modules #{...}, :cloud-trigger-modules #{...}, :exempt-modules #{...}}`.
+
+  A change to a trigger module, or to anything it transitively depends on, runs driver tests; the cloud
+  set additionally runs the drivers that need secrets. `:exempt-modules` are the modules upstream of a
+  trigger that we have decided not to trigger on anyway. Every exemption is an unverified bet that the
+  coupling is not real; the set should only shrink, and the modules-test staleness check fails entries the
+  graph no longer even justifies.
+
+  One file, three readers: `mage.modules` decides, `metabase.core.modules-test` checks, and
+  [[driver-test-triggering-modules]] counts. The trigger sets used to be defs in `mage.modules` with a
+  hand-maintained copy in the test."
   []
   (edn/read-string (slurp driver-test-overrides-path)))
 
-(declare kondo-config external-usages module-dependencies dependencies module->test-files)
+(declare kondo-config external-usages module-dependencies dependencies module->test-files
+         full-dependencies)
+
+(defn driver-test-triggering-modules
+  "The modules that make CI run driver tests when they change: the trigger roots plus everything they
+  transitively depend on, minus the committed exemptions.
+
+  The other half of the `:driver-test-exempt-modules` ratchet, and the reason that one cannot be read
+  alone. Dropping an exemption lowers that ratchet and raises this one, which buys coverage with CI minutes
+  rather than improving anything. Only decoupling lowers both, and their sum is how many modules the graph
+  puts upstream of a trigger at all."
+  [deps config]
+  (let [{:keys [trigger-modules cloud-trigger-modules exempt-modules]} (driver-test-overrides)
+        transitive (full-dependencies deps)
+        triggers   (into (sorted-set) (concat trigger-modules cloud-trigger-modules))
+        upstream   (into triggers (mapcat transitive) triggers)]
+    ;; the scan also sees `connection-pool`, which comes from a library and `kondo-config` drops
+    (into (sorted-set)
+          (comp (filter (set (keys config))) (remove exempt-modules))
+          upstream)))
 
 (defn friend-reach-count
   "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
@@ -211,17 +237,30 @@
 
 (defn module-boundary-debt
   "Current module-boundary anti-pattern counts. One-way ratchets: each may only go down.
-  Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit."
+  Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit.
+
+  A count that never reaches zero still earns its ratchet. `:api-any` and `:uses-any` cover the wiring
+  modules whose whole point is to see everything, and those four or five entries may well be permanent;
+  the ratchet is there to stop a sixth being added without an argument.
+
+  `:standalone-rest-modules` counts `-rest` module symbols. They have to be top-level modules of their own
+  as things stand, so the count is a measure of how much of the API layer sits outside the module it
+  serves, not a backlog.
+
+  `:driver-test-exempt-modules` and `:driver-test-triggering-modules` are two halves of one number and only
+  mean anything together. Dropping an exemption lowers the first and raises the second, so it needs a hand
+  edit here and a reason in the commit — which is the point, since the trade is CI minutes for coverage."
   ([]
    (module-boundary-debt (dependencies) (kondo-config)))
   ([deps config]
    (let [values (vals config)]
-     {:api-any               (count (filter #(= :any (:api %)) values))
-      :friend-edges          (transduce (map (comp count :friends)) + 0 values)
-      :friend-reaches        (friend-reach-count deps config)
-      :driver-test-exempt-modules (count (:exempt-modules (driver-test-overrides)))
-      :legacy-rest-modules   (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
-      :uses-any              (count (filter #(= :any (:uses %)) values))})))
+     {:api-any                        (count (filter #(= :any (:api %)) values))
+      :driver-test-exempt-modules     (count (:exempt-modules (driver-test-overrides)))
+      :driver-test-triggering-modules (count (driver-test-triggering-modules deps config))
+      :friend-edges                   (transduce (map (comp count :friends)) + 0 values)
+      :friend-reaches                 (friend-reach-count deps config)
+      :standalone-rest-modules        (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
+      :uses-any                       (count (filter #(= :any (:uses %)) values))})))
 
 (defn- deftest-form-count
   "Number of `deftest` forms (bare or alias-qualified) in the test file at `filename`."

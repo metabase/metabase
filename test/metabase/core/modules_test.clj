@@ -238,15 +238,17 @@
           declared  (set (keys config))
           deps      (dev.deps-graph/dependencies)
           full      (dev.deps-graph/full-dependencies deps)
-          ;; mirrors the trigger set of mage.modules/driver-deps-affected?:
-          ;; the union of default-modules-which-trigger-drivers and modules-triggering-cloud-drivers.
-          ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
-          ;; changed set before computing what is affected, so it suppresses self-triggering.
-          triggers  '[driver transforms query-processor
-                      enterprise/transforms enterprise/transforms-python]
-          upstream  (into (set triggers) (mapcat #(get full %)) triggers)
-          overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
-      (doseq [m (sort overrides)]
+          ;; A trigger module's own entry is also meaningful: mage strips exemptions from the changed
+          ;; set before computing what is affected, so it suppresses self-triggering.
+          {:keys [trigger-modules cloud-trigger-modules exempt-modules]}
+          (dev.deps-graph/driver-test-overrides)
+          triggers  (into #{} (concat trigger-modules cloud-trigger-modules))
+          upstream  (into triggers (mapcat #(get full %)) triggers)]
+      (doseq [m (sort triggers)]
+        (testing (format "\n%s" m)
+          (is (contains? declared m)
+              "names a driver-test trigger that is not declared in config.edn — rename or drop it")))
+      (doseq [m (sort exempt-modules)]
         (testing (format "\n%s" m)
           (is (contains? declared m)
               "exempts a module that is not declared in config.edn — rename or drop the entry")
@@ -263,10 +265,10 @@
                         #"metrics do not match"
                         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))
 
-(deftest ^:parallel legacy-rest-module-debt-test
-  (testing "-rest module symbols count as debt"
+(deftest ^:parallel standalone-rest-module-debt-test
+  (testing "-rest module symbols are counted, in either the OSS or the enterprise namespace"
     (is (= 2
-           (:legacy-rest-modules
+           (:standalone-rest-modules
             (dev.deps-graph/module-boundary-debt
              []
              {'actions-rest          {}
