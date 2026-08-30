@@ -121,7 +121,7 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/PulseChannel
-  {:details mi/transform-json
+  {:details mi/transform-encrypted-json
    :channel_type mi/transform-keyword
    :schedule_type mi/transform-keyword
    :schedule_frame mi/transform-keyword})

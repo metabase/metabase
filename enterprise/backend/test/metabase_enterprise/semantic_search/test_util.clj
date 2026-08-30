@@ -18,6 +18,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -33,8 +34,12 @@
 
 ;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
 (defn once-fixture
+  "Shared `:once` fixture for semantic-search tests. Skips the namespace when no pgvector URL is configured, and
+  initializes the application DB so tests that read Metabase content (e.g. `collection`) while indexing are
+  self-sufficient rather than depending on a CI partition-mate to have set the app DB up."
   [f]
   (when semantic.db.datasource/db-url
+    (initialize/initialize-if-needed! :db)
     (f)))
 
 (def default-test-db "my_test_db")

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -82,7 +83,8 @@
                            (fetch-values :rasta :name))))
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
-                      (mt/with-temp [:model/User another-user {:password password}]
+                      (mt/with-temp [:model/User another-user]
+                        (auth-identity/set-password! (:id another-user) password)
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
@@ -154,7 +156,8 @@
                              :type :advanced)))))
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
-          (mt/with-temp [:model/User another-user {:password password}]
+          (mt/with-temp [:model/User another-user]
+            (auth-identity/set-password! (:id another-user) password)
             (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                   :query      (mt.tu/restricted-column-query (mt/id))}}
