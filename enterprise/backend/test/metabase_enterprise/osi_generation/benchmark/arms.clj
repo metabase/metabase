@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
+   (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.nio.file FileAlreadyExistsException Files OpenOption StandardOpenOption)))
 
@@ -253,6 +254,27 @@
   registry later can never start appearing in a committed snapshot."
   [:base-url :project-id :location :region :model-family :deployment-name])
 
+(defn- sanitized-endpoint
+  "`url` reduced to what identifies an endpoint without carrying its secrets: scheme, host and port
+  verbatim, and the path as a short digest.
+
+  The whitelist above protects field *names*; a base URL can carry the secret in its *value*, and the
+  provider registry forbids none of the places it can hide — user-info, a query parameter, a fragment, or a
+  path segment (`https://proxy.internal/<token>/v1`). A snapshot is committed, so only scheme/host/port
+  survive as text. The path still distinguishes two endpoints on one host, so it is kept as a digest rather
+  than dropped. An unparseable URL is reported as such rather than passed through."
+  [url]
+  (try
+    (let [uri  (URI. url)
+          path (u/trimmed-string (.getPath uri))]
+      (if (nil? (u/trimmed-string (.getHost uri)))
+        "<unparseable>"
+        (str (.getScheme uri) "://" (.getHost uri)
+             (when (pos? (.getPort uri)) (str ":" (.getPort uri)))
+             (when path
+               (str "/#" (subs (codecs/bytes->hex (buddy-hash/sha256 path)) 0 12))))))
+    (catch Exception _ "<unparseable>")))
+
 (defn- connection-identity
   "The non-secret identity of the connection a capture ran against, or nil when the reference resolved to
   nothing.
@@ -265,7 +287,7 @@
     (let [routing (into (sorted-map)
                         (keep (fn [k]
                                 (when-let [value (u/trimmed-string (get (:credentials connection) k))]
-                                  [k value])))
+                                  [k (cond-> value (= k :base-url) sanitized-endpoint)])))
                         routing-config-keys)]
       (cond-> (select-keys connection [:connection-key :type :model :ai-proxy?])
         (seq routing) (assoc :routing routing)))))
