@@ -237,6 +237,25 @@
                        ["corpus.edn" "queries.edn" "baseline.edn"])
      :git-state  (git-state)}))
 
+(defn- assert-corpus-matches-resources!
+  "Refuse to score a corpus value that is not what the corpus files under `:dir` hold.
+
+  [[benchmark-provenance]] hashes those files, so an altered or subset in-memory corpus would publish its
+  metrics under the shipped corpus's identity — a manifest claiming a corpus that was never scored. The keys
+  the runner adds around a load (the generated snapshot and its metadata) are not part of the comparison."
+  [corpus opts]
+  (let [dir       (or (:dir opts) corpus/default-dir)
+        resources (corpus/load-corpus dir)
+        differing (filterv #(not= (get corpus %) (get resources %)) (sort (keys resources)))]
+    (when (seq differing)
+      (throw (ex-info (str "Scored corpus differs from the corpus files in " dir " ("
+                           (str/join ", " (map name differing))
+                           "); its manifest would claim their SHAs")
+                      {:reason    :corpus-not-from-resources
+                       :dir       dir
+                       :differing differing})))
+    true))
+
 (defn- assert-benchmark-provenance-unchanged!
   [pinned opts]
   (let [current (benchmark-provenance opts)]
@@ -445,12 +464,15 @@
   embedding model — `(:model opts)`, defaulting to the configured one — pinned for reconcile and query
   alike. For `:generated`, requires complete snapshot coverage ([[assert-generated-coverage!]]) and a
   snapshot whose required corpus and generator metadata matches the loaded code and corpus
-  ([[assert-snapshot-matches-corpus!]])."
+  ([[assert-snapshot-matches-corpus!]]).
+  `corpus` must be the corpus `:dir` loads — the manifest reports those files' SHAs, so an in-memory edit or
+  subset is refused rather than scored under their identity."
   [corpus arm opts]
   (let [opts              (normalize-opts opts)
         pinned-provenance (or (:benchmark-provenance opts) (benchmark-provenance opts))
         opts              (assoc opts :benchmark-provenance pinned-provenance)
-        _                 (assert-benchmark-provenance-unchanged! pinned-provenance opts)]
+        _                 (assert-benchmark-provenance-unchanged! pinned-provenance opts)
+        _                 (assert-corpus-matches-resources! corpus opts)]
     (when (= :generated arm)
       (assert-generated-coverage! corpus)
       (assert-snapshot-matches-corpus! corpus))
@@ -579,18 +601,18 @@
         arm-results (mt/with-dynamic-fn-redefs
                       [semantic.embedding/prefix-search-query (fn [_model s] (str query-prefix s))]
                       (into {}
-                          (map (fn [arm]
-                                 [arm (try
-                                        (run-arm! corpus arm opts)
-                                        (catch ExceptionInfo e
-                                          ;; only the coverage guard's refusals downgrade to a reported
-                                          ;; skip; anything else is a real failure
-                                          (if-let [reason (#{:no-snapshot :incomplete-coverage}
-                                                           (:reason (ex-data e)))]
-                                            (merge {:skipped? true :reason reason}
-                                                   (select-keys (ex-data e) [:coverage]))
-                                            (throw e))))]))
-                          arms/arms))
+                            (map (fn [arm]
+                                   [arm (try
+                                          (run-arm! corpus arm opts)
+                                          (catch ExceptionInfo e
+                                            ;; only the coverage guard's refusals downgrade to a reported
+                                            ;; skip; anything else is a real failure
+                                            (if-let [reason (#{:no-snapshot :incomplete-coverage}
+                                                             (:reason (ex-data e)))]
+                                              (merge {:skipped? true :reason reason}
+                                                     (select-keys (ex-data e) [:coverage]))
+                                              (throw e))))]))
+                            arms/arms))
         deltas      (comparison-deltas arm-results)
         result      {:arms            arm-results
                      :deltas          deltas
