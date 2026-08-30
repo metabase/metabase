@@ -67,11 +67,22 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
     | sed -e 's/:$//' -e "s#^#$2|#"
 }
 
+# Each Mage scraper must match on its own: a renamed function or a hoisted alias string would otherwise
+# vanish from the check while the workflow scans keep the aggregate nonempty.
+require_scan() { # require_scan <function> <result>
+  [ -n "$2" ] && return
+  echo "::error::check-preresolve-aliases.sh: found no Clojure invocation in $1 (mage/src/mage/project_tests.clj); the scan pattern no longer matches" >&2
+  exit 1
+}
+clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
+migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
+require_scan run-clojure-checks! "$clojure_checks"
+require_scan run-migration-checks! "$migration_checks"
+
 scanned="$( {
   scan ee
   scan oss
-  scan_project_tests run-clojure-checks! .
-  scan_project_tests run-migration-checks! bin/lint-migrations-file
+  printf '%s\n' "$clojure_checks" "$migration_checks"
   # a scan that matches nothing exits 1 through pipefail; the emptiness check below is the diagnostic
   :
 } | sort -u )"
