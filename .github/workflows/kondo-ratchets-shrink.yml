@@ -37,6 +37,8 @@ env:
 jobs:
   shrink:
     name: Shrink ratchets
+    # A fork with Actions enabled has no automation token, so this would only ever fail at the push.
+    if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -88,6 +90,7 @@ jobs:
              && git diff --quiet FETCH_HEAD^ HEAD -- "$RATCHETS_FILE"; then
             echo "The automation PR #$open_pr already carries this result; master has not touched $RATCHETS_FILE since"
             echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "head=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -111,6 +114,7 @@ jobs:
           git push --force --quiet \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/$AUTOMATION_BRANCH"
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
           if [ -n "$OPEN_PR" ]; then
             echo "Updated the automation PR #$OPEN_PR"
@@ -138,9 +142,13 @@ jobs:
         with:
           github-token: ${{ github.token }}
           number: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
+      # Armed only against the commit this run pushed or compared: the branch name is fixed, and anyone
+      # with push access could otherwise collect this run's approval for their own commit.
       - name: Enable auto-merge
         if: (steps.deliver.outputs.pr || steps.compare.outputs.pr) != ''
+          && (steps.deliver.outputs.head || steps.compare.outputs.head) != ''
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
-        run: gh pr merge --squash --auto "$PR_NUMBER"
+          HEAD_SHA: ${{ steps.deliver.outputs.head || steps.compare.outputs.head }}
+        run: gh pr merge --squash --auto --match-head-commit "$HEAD_SHA" "$PR_NUMBER"
