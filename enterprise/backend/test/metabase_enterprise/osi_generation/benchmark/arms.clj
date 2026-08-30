@@ -246,6 +246,30 @@
       (f))
     (f)))
 
+(def ^:private routing-config-keys
+  "The connection config keys a capture records: the ones that decide which endpoint served the requests.
+
+  A whitelist, not `llm.provider/secret-field-keys` inverted, so a credential field added to the provider
+  registry later can never start appearing in a committed snapshot."
+  [:base-url :project-id :location :region :model-family :deployment-name])
+
+(defn- connection-identity
+  "The non-secret identity of the connection a capture ran against, or nil when the reference resolved to
+  nothing.
+
+  Type and model alone cannot tell two captures apart when the same connection key was repointed at another
+  endpoint between them, so the routing fields ([[routing-config-keys]]) are recorded alongside. API keys and
+  every other credential are excluded — a snapshot is committed."
+  [connection]
+  (when connection
+    (let [routing (into (sorted-map)
+                        (keep (fn [k]
+                                (when-let [value (u/trimmed-string (get (:credentials connection) k))]
+                                  [k value])))
+                        routing-config-keys)]
+      (cond-> (select-keys connection [:connection-key :type :model :ai-proxy?])
+        (seq routing) (assoc :routing routing)))))
+
 (defn- snapshot-path [out-dir model-ref]
   (str out-dir "/" (t/local-date) "-" (u/slugify model-ref) "-" (random-uuid) ".edn"))
 
@@ -322,28 +346,28 @@
         results  (with-pinned-connection pinned-connection
                    #(mt/with-dynamic-fn-redefs [settings/llm-call-opts (constantly call-opts)]
                       (mapv (fn [{:keys [corpus-key]}]
-                           (try
-                             (let [{:keys [ai_context usage] :as result}
-                                   (generate/generate-context (candidate-for corpus ids corpus-key))]
-                               {:corpus-key        corpus-key
-                                :ai-context        ai_context
-                                :generator-version (:generator-version result)
-                                :usage             usage})
-                             (catch Exception e
-                               (cond
-                                 (interrupted-exception? e)
-                                 (do
-                                   (.interrupt (Thread/currentThread))
-                                   (throw e))
+                              (try
+                                (let [{:keys [ai_context usage] :as result}
+                                      (generate/generate-context (candidate-for corpus ids corpus-key))]
+                                  {:corpus-key        corpus-key
+                                   :ai-context        ai_context
+                                   :generator-version (:generator-version result)
+                                   :usage             usage})
+                                (catch Exception e
+                                  (cond
+                                    (interrupted-exception? e)
+                                    (do
+                                      (.interrupt (Thread/currentThread))
+                                      (throw e))
 
-                                 (fatal-error e)
-                                 (throw (fatal-error e))
+                                    (fatal-error e)
+                                    (throw (fatal-error e))
 
-                                 :else
-                                 {:corpus-key corpus-key
-                                  :error      (ex-message e)
-                                  :usage      (:usage (ex-data e))}))))
-                         entities)))
+                                    :else
+                                    {:corpus-key corpus-key
+                                     :error      (ex-message e)
+                                     :usage      (:usage (ex-data e))}))))
+                            entities)))
         drifted  (into {}
                        (keep (fn [{:keys [corpus-key generator-version]}]
                                (when (and generator-version (not= generator-version pinned-version))
@@ -362,12 +386,9 @@
                           :generator-version    pinned-version
                           :generation-code-hash pinned-code-hash
                           :corpus-hash          pinned-corpus-hash}
-                   ;; Non-secret identity of the connection actually used, so a reader can tell two
-                   ;; captures apart when the same key was repointed between them. Absent when the
-                   ;; reference resolved to nothing, rather than recorded as an empty map.
+                   ;; Absent when the reference resolved to nothing, rather than recorded as an empty map.
                    pinned-connection
-                   (assoc :connection (select-keys pinned-connection
-                                                   [:connection-key :type :model :ai-proxy?])))
+                   (assoc :connection (connection-identity pinned-connection)))
         artifact {:metadata metadata :contexts snapshot}
         path     (snapshot-path (or (:out-dir opts) default-snapshot-dir) model-ref)
         content  (snapshot-content artifact)]

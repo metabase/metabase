@@ -919,6 +919,67 @@
       (testing "an unresolvable reference is left unpinned rather than failing the capture early"
         (is (nil? (#'arms/with-pinned-connection nil (fn [] nil))))))))
 
+(deftest ^:synchronized capture-records-where-the-requests-went-test
+  (testing "a connection key repointed at another endpoint yields a distinguishable artifact"
+    ;; Type and model are the same on both captures, so without the routing fields the two artifacts claim
+    ;; the same generator identity for contexts two different endpoints produced.
+    (mt/with-premium-features #{:library :library-retrieval}
+      (let [c        (update (corpus/load-corpus) :entities (comp vec (partial take 1)))
+            out-dir  (str (System/getProperty "java.io.tmpdir")
+                          "/osi-generation-benchmark-routing-" (System/nanoTime))
+            capture! (fn [base-url]
+                       (mt/with-dynamic-fn-redefs
+                         [llm.provider/resolve-model-ref
+                          (constantly {:connection-key "prov"
+                                       :type           "google"
+                                       :model          "gemini-3-pro"
+                                       :ai-proxy?      false
+                                       :credentials    {:api-key             "super-secret-key"
+                                                        :service-account-key "super-secret-json"
+                                                        :project-id          "benchmark-project"
+                                                        :location            "us-central1"
+                                                        :base-url            base-url}})
+                          osi-generation.settings/llm-call-opts
+                          (constantly {:model-ref "prov/gemini-3-pro" :source :metabot})
+                          generate/generate-context
+                          (constantly {:ai_context        {:synonyms ["s"]}
+                                       :generator-version (generate/generator-version "prov/gemini-3-pro")
+                                       :usage             {:input-tokens 0, :output-tokens 0}})]
+                         (corpus/with-corpus-library [ids c]
+                           (arms/capture-generated! c ids {:out-dir out-dir}))))
+            us       (capture! "https://us-central1-aiplatform.googleapis.com")
+            eu       (capture! "https://europe-west4-aiplatform.googleapis.com")]
+        (is (= {:connection-key "prov"
+                :type           "google"
+                :model          "gemini-3-pro"
+                :ai-proxy?      false
+                :routing        {:base-url   "https://us-central1-aiplatform.googleapis.com"
+                                 :location   "us-central1"
+                                 :project-id "benchmark-project"}}
+               (get-in us [:metadata :connection])))
+        (is (not= (get-in us [:metadata :connection])
+                  (get-in eu [:metadata :connection]))
+            "the endpoint that served the capture is part of the recorded identity")
+        (testing "no credential reaches the committed artifact"
+          (is (not (str/includes? (slurp (:path us)) "super-secret"))))))))
+
+(deftest ^:parallel capture-connection-identity-holds-no-credential-test
+  (testing "whichever provider type serves a capture, no field the registry calls a secret is recorded"
+    (let [config   (into {}
+                         (map (fn [{:keys [key]}] [key (str "value-" (name key))]))
+                         (mapcat :fields (llm.provider/provider-types)))
+          secrets  (into #{}
+                         (mapcat #(llm.provider/secret-field-keys (:type %)))
+                         (llm.provider/provider-types))
+          recorded (:routing (#'arms/connection-identity {:connection-key "prov"
+                                                          :type           "google"
+                                                          :model          "m"
+                                                          :ai-proxy?      false
+                                                          :credentials    config}))]
+      (is (seq secrets) "sanity: the provider registry does declare secret fields")
+      (is (seq recorded) "sanity: routing fields are recorded at all")
+      (is (empty? (set/intersection secrets (set (keys recorded))))))))
+
 (deftest corpus-does-not-reach-the-real-search-index-test
   (testing "materializing the corpus ingests nothing into the instance's own search index"
     ;; The corpus commits real Tables, Cards, Measures and Segments; their search hooks would otherwise
