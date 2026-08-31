@@ -9,6 +9,7 @@ import type { ComponentType } from "react";
 import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import type {
+  CustomVizSettingWidgetProps,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
@@ -284,11 +285,15 @@ describe("sanitizePluginSettings", () => {
         getHostDefinition(sanitized, `${PREFIX}customWidget`),
       );
       const container = document.createElement("div");
-      const mountHandle = widget(container, { id: `${PREFIX}customWidget` });
+      const mountHandle = widget(container, {
+        id: `${PREFIX}customWidget`,
+        value: null,
+        onChange: jest.fn(),
+        onChangeSettings: jest.fn(),
+      });
 
-      expect(calls).toEqual([
-        { Component: Widget, container, initialProps: { id: "customWidget" } },
-      ]);
+      expect(calls).toMatchObject([{ Component: Widget, container }]);
+      expect(calls[0].initialProps).toMatchObject({ id: "customWidget" });
 
       mountHandle.unmount();
       expect(handle.unmount).toHaveBeenCalledTimes(1);
@@ -305,7 +310,12 @@ describe("sanitizePluginSettings", () => {
       const widget = getMountWidget(
         getHostDefinition(sanitized, `${PREFIX}customWidget`),
       );
-      widget(document.createElement("div"), { onChangeSettings });
+      widget(document.createElement("div"), {
+        id: `${PREFIX}customWidget`,
+        value: null,
+        onChange: jest.fn(),
+        onChangeSettings,
+      });
       const mountedProps = calls[0].initialProps;
       if (!isObject(mountedProps)) {
         throw new Error("Expected the widget to be mounted with props");
@@ -398,7 +408,7 @@ function getCallback(source: object, name: string) {
 
 function getMountWidget(
   definition: VisualizationSettingDefinition<Series>,
-): WidgetMount {
+): WidgetMount<CustomVizSettingWidgetProps> {
   const { widget } = definition;
   if (typeof widget !== "function" || !isWidgetMount(widget)) {
     throw new Error(`Expected a WidgetMount, got widget "${String(widget)}"`);

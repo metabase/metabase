@@ -1,35 +1,44 @@
-import type { WidgetMount } from "custom-viz";
+import type { BaseWidgetProps, WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
+import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
-import { isFunction, isObject } from "metabase-types/guards";
+import { isObject } from "metabase-types/guards";
 
 import { toHostSettings } from "./plugin-view";
+
+// What the plugin's setting widget receives: the SDK base props + whatever setting definition's `getProps` adds.
+export type PluginWidgetProps = BaseWidgetProps<
+  unknown,
+  Record<string, unknown>
+> &
+  Record<string, unknown>;
 
 /**
  * A host-allocated `WidgetMount` tagged with the plugin it renders.
  */
-type WidgetMountWithPlugin = WidgetMount & {
+type WidgetMountWithPlugin = WidgetMount<CustomVizSettingWidgetProps> & {
   plugin: CustomVizPluginRuntime;
 };
 
-type WidgetProps = Record<string, unknown>;
-
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin.
+ * `WidgetMount` tagged with its plugin. Props are translated on the way in,
+ * so the plugin sees its own setting ids (i.e. non-prefixed ones).
  */
 export function wrapPluginWidget(
-  pluginWidget: WidgetMount,
+  pluginWidget: WidgetMount<PluginWidgetProps>,
   plugin: CustomVizPluginRuntime,
   prefix: string,
 ): WidgetMountWithPlugin {
-  const mount: WidgetMount = (container, initialProps) => {
+  const mount: WidgetMount<CustomVizSettingWidgetProps> = (
+    container,
+    initialProps,
+  ) => {
     const handle = pluginWidget(
       container,
       toPluginWidgetProps(initialProps, prefix),
     );
-
     return {
       update: (props) => handle.update(toPluginWidgetProps(props, prefix)),
       unmount: () => handle.unmount(),
@@ -39,32 +48,33 @@ export function wrapPluginWidget(
   return Object.assign(mount, { plugin });
 }
 
-function toPluginWidgetProps(props: WidgetProps, prefix: string): WidgetProps {
-  const { id, onChange, onChangeSettings } = props;
-  const pluginProps = { ...props };
-
-  if (typeof id === "string" && id.startsWith(prefix)) {
-    pluginProps.id = id.slice(prefix.length);
-  }
-
-  if (isFunction(onChange)) {
-    pluginProps.onChange = (value: unknown) => onChange(value);
-  }
-
-  if (isFunction(onChangeSettings)) {
-    pluginProps.onChangeSettings = (settings: unknown) =>
+function toPluginWidgetProps(
+  {
+    id,
+    value,
+    onChange,
+    onChangeSettings,
+    ...extraProps
+  }: CustomVizSettingWidgetProps,
+  prefix: string,
+): PluginWidgetProps {
+  return {
+    ...extraProps,
+    id: id.startsWith(prefix) ? id.slice(prefix.length) : id,
+    value,
+    onChange: (value) => onChange(value),
+    // The plugin is sandboxed, not trusted: check the payload before namespacing it.
+    onChangeSettings: (settings) =>
       onChangeSettings(
         toHostSettings(isObject(settings) ? settings : {}, prefix),
-      );
-  }
-
-  return pluginProps;
+      ),
+  };
 }
 
 export function isWidgetMount(
   value:
     | string
-    | WidgetMount
+    | WidgetMount<CustomVizSettingWidgetProps>
     | ComponentType<{
         id: string;
       }>,
@@ -77,7 +87,7 @@ export function isWidgetMount(
  * `wrapPluginWidget`.
  */
 export function getWidgetMountPlugin(
-  maybeWidgetMount: WidgetMount,
+  maybeWidgetMount: WidgetMount<CustomVizSettingWidgetProps>,
 ): CustomVizPluginRuntime | undefined {
   if (!isWidgetMount(maybeWidgetMount)) {
     return undefined;

@@ -107,6 +107,7 @@ describe("wrapPluginWidget", () => {
     mountHandle.update({
       id: `${PREFIX}threshold`,
       value: 2,
+      onChange: jest.fn(),
       onChangeSettings,
     });
 

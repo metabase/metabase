@@ -3,10 +3,9 @@ import type { ComponentProps } from "react";
 
 import { renderWithProviders } from "__support__/ui";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-
-type WidgetProps = Record<string, unknown>;
 
 type Props = ComponentProps<typeof ChartSettingsWidget> & {
   question: object;
@@ -21,14 +20,18 @@ interface SetupOpts {
 const { isWidgetMount, CustomVizSettingWidget } = PLUGIN_CUSTOM_VIZ;
 
 const setup = ({ props }: SetupOpts) => {
-  let mountedProps: WidgetProps | undefined;
-
-  function RecordingWidget({ widgetProps }: { widgetProps: WidgetProps }) {
+  let mountedProps: CustomVizSettingWidgetProps | undefined;
+  function RecordingWidget({
+    widgetProps,
+  }: {
+    widgetProps: CustomVizSettingWidgetProps;
+  }) {
     mountedProps = widgetProps;
     return null;
   }
-
-  PLUGIN_CUSTOM_VIZ.isWidgetMount = (value): value is WidgetMount =>
+  PLUGIN_CUSTOM_VIZ.isWidgetMount = (
+    value,
+  ): value is WidgetMount<CustomVizSettingWidgetProps> =>
     typeof value === "function";
 
   PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget = RecordingWidget;

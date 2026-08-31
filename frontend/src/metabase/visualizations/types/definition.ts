@@ -25,6 +25,7 @@ import type {
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderProps,
   ChartSettingTableColumnsProps,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
@@ -69,7 +70,10 @@ export type VisualizationSettingDefinition<
   group?: string;
   index?: number;
   showColumnSetting?: boolean;
-  widget?: string | ComponentType<TProps & { id: string }> | WidgetMount;
+  widget?:
+    | string
+    | ComponentType<TProps & { id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   isValid?: (
     object: T,
     settings: T extends DatasetColumn
@@ -368,7 +372,10 @@ export type Widget = {
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
-  widget?: string | ComponentType<any> | WidgetMount;
+  widget?:
+    | string
+    | ComponentType<any>
+    | WidgetMount<CustomVizSettingWidgetProps>;
 };
 
 export type VisualizationGridSize = {

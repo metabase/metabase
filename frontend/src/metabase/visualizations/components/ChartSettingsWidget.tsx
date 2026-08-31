@@ -1,10 +1,11 @@
 import cx from "classnames";
 import type { CSSProperties, ComponentType } from "react";
-import _ from "underscore";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
+import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
@@ -16,7 +17,10 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  widget?: string | ComponentType<{ id: string }> | WidgetMount;
+  widget?:
+    | string
+    | ComponentType<{ id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   inline?: boolean;
   props?: Record<string, unknown>;
   variant?: ChartSettingsWidgetVariant;
@@ -85,15 +89,11 @@ const ChartSettingsWidget = ({
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
             widgetProps={{
-              ..._.pick(
-                extraWidgetProps,
-                // all attributes of BaseWidgetProps need to be listed below
-                "id",
-                "value",
-                "onChange",
-                "onChangeSettings",
-              ),
-              ...props,
+              ...props, // spread here intentionally, to prevent overriding 4 base props below
+              id: extraWidgetProps.id,
+              value: extraWidgetProps.value,
+              onChange: checkNotNull(extraWidgetProps.onChange),
+              onChangeSettings: checkNotNull(extraWidgetProps.onChangeSettings),
             }}
           />
         ) : (
