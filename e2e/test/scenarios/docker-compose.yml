@@ -32,7 +32,7 @@ services:
   maildev:
     image: maildev/maildev:2.2.1
     ports:
-      ## Defaults must match e2e/runner/constants/maildev-ports.js
+      ## Defaults must match e2e/runner/constants/maildev-ports.ts
       - "${MAILDEV_WEB_PORT:-1080}:1080"
       - "${MAILDEV_SMTP_PORT:-1025}:1025"
 
