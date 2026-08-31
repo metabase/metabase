@@ -107,10 +107,14 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+// rolling tags like v0.56.x or v0.51.2.x aren't valid version strings,
+// but we can still read a major version off of them
+const isDotXTag = (tagName: string) => /^(v0|v1)\.\d+(\.\d+)*\.x$/.test(tagName);
+
 export const getMajorVersionFromRef = (ref: string) => {
   if (ref.startsWith("refs/tags/")) {
     const tagName = ref.replace("refs/tags/", "");
-    if (!isValidVersionString(tagName)) return "";
+    if (!isValidVersionString(tagName) && !isDotXTag(tagName)) return "";
     return getMajorVersion(tagName);
   }
 
