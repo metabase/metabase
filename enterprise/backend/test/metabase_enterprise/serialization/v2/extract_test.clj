@@ -785,6 +785,44 @@
             (is (contains? targets-without-skip ["Card" card-in-active-id]))
             (is (contains? targets-without-skip ["Card" card-in-archived-id]))))))))
 
+(defn- resolve-targets-ex
+  "Returns the ExceptionInfo thrown by `resolve-targets` for `targets`, or nil if it did not throw."
+  [targets]
+  (try
+    (#'extract/resolve-targets {:targets targets} nil)
+    nil
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(deftest resolve-targets-missing-id-test
+  (testing "a target id that does not exist is rejected as client input, not left to fail deep in extraction"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Real Collection"}
+                         :model/Card       {card-id :id} {:name          "Real Card"
+                                                          :collection_id coll-id}]
+        (let [missing-id Integer/MAX_VALUE]
+          (testing "nonexistent Collection id"
+            (let [e (resolve-targets-ex [["Collection" missing-id]])]
+              (is (some? e))
+              (is (re-find #"Could not find Collection with ID" (ex-message e)))
+              (is (re-find (re-pattern (str missing-id)) (ex-message e))
+                  "the offending id is named so the user can correct it")
+              (is (= {:status-code 400 :model "Collection" :id missing-id}
+                     (select-keys (ex-data e) [:status-code :model :id]))
+                  "carries a :status-code so the API layer renders a 4xx instead of a server error")))
+          (testing "nonexistent id of a model other than Collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Could not find Card with ID"
+                                  (#'extract/resolve-targets {:targets [["Card" missing-id]]} nil))))
+          (testing "nil id, which a caller can produce by parsing a non-numeric id"
+            ;; without this check nil reaches `serdes/descendants`, which happily queries
+            ;; `collection_id IS NULL` and exports root-level content instead of failing
+            (let [e (resolve-targets-ex [["Collection" nil]])]
+              (is (some? e))
+              (is (= 400 (:status-code (ex-data e))))))
+          (testing "ids that do exist still resolve"
+            (let [targets (#'extract/resolve-targets {:targets [["Collection" coll-id]]} nil)]
+              (is (contains? targets ["Collection" coll-id]))
+              (is (contains? targets ["Card" card-id])))))))))
+
 (deftest extract-skip-archived-test
   (testing "extract with skip-archived: true excludes archived items from final extraction"
     (mt/with-empty-h2-app-db!
