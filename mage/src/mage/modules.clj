@@ -5,20 +5,29 @@
    [clojure.string :as str]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic ^:private *github-output-only?* false)
 
+(def ^:private driver-test-config
+  "The committed driver-test CI config: which modules trigger driver tests, which of those also run the
+  cloud drivers, and which modules are exempted from triggering.
+
+  A `delay` rather than a plain value: reading at namespace-load time would turn a missing file or a
+  non-repo-root working directory into a `mage.modules` load failure, breaking every task that requires
+  the namespace instead of the one that needs the config."
+  (delay (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn"))))
+
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  '#{driver transforms})
+  (delay (:trigger-modules @driver-test-config)))
 
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
-  '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python})
+  (delay (:cloud-trigger-modules @driver-test-config)))
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -28,6 +37,12 @@
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))))
+
+(defn- read-modules-config
+  []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
 
 (defn- updated-files->updated-modules [updated-files]
   (into (sorted-set)
@@ -47,16 +62,15 @@
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
-  []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
-                   ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
-                   (dissoc 'connection-pool))]
-    (into (sorted-map)
-          (map (fn [[k config]]
-                 [k (:uses config)]))
-          config)))
+  ([] (dependencies (read-modules-config)))
+  ([modules-config]
+   (let [config (-> modules-config
+                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+                    (dissoc 'connection-pool))]
+     (into (sorted-map)
+           (map (fn [[k config]]
+                  [k (:uses config)]))
+           config))))
 
 (defn- direct-dependents
   "Set of modules that directly depend on `module`."
@@ -86,79 +100,9 @@
       new-deps))))
 
 (def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{agent-api
-     analytics
-     analytics-interface
-     api
-     api-scope
-     api-keys
-     appearance
-     audit-app
-     auth-identity
-     auth-provider
-     batch-processing
-     channel
-     classloader
-     collections
-     config
-     content-verification
-     contextual-interestingness
-     custom-viz-plugin
-     dashboards
-     documents
-     eid-translation
-     embedding
-     enterprise/api
-     enterprise/scim
-     enterprise/serialization
-     enterprise/sso
-     enterprise/transforms
-     enterprise/transforms-inspector
-     entity-retrieval
-     events
-     explorations
-     formatter
-     geojson
-     initialization-status
-     interestingness
-     internal-stats
-     llm
-     login-history
-     mcp
-     metabot
-     mq
-     notification
-     oauth-server
-     permissions
-     premium-features
-     public-sharing
-     pulse
-     remote-sync
-     request
-     sample-data
-     search
-     secrets
-     server
-     session
-     settings
-     setup
-     slackbot
-     sso
-     staleness
-     startup
-     system
-     task
-     task-history
-     tiles
-     timeline
-     tracing
-     types
-     users
-     util
-     version
-     view-log
-     warehouse-schema})
+  "Modules that do NOT trigger driver tests when changed, even though the dependency graph says they
+  affect drivers. Ratcheted and staleness-checked by `metabase.core.modules-test`."
+  (delay (:exempt-modules @driver-test-config)))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -211,6 +155,78 @@
     (flush)
     (u/exit 0)))
 
+(defn cli-validate-config!
+  "Optionally lower debt ratchets, then run the authoritative module-config validation tests."
+  [cli-args]
+  (when (get-in cli-args [:options :update-ratchets])
+    (let [{:keys [exit], :or {exit -1}}
+          (shell/sh* "clojure" "-X:dev" "dev.deps-graph/update-module-boundary-ratchets!")]
+      (when-not (zero? exit)
+        (u/exit exit))))
+  (let [{:keys [exit], :or {exit -1}}
+        (shell/sh* "./bin/test-agent" ":only" "[metabase.core.modules-test]")]
+    (u/exit exit)))
+
+;;;; =============================================================================
+;;;; Module tree
+;;;; =============================================================================
+
+(defn- module->tree-path
+  "Path segments a module occupies in the display tree. Every module is its own root."
+  [_modules-config module]
+  [(str module)])
+
+(defn- module-display-tree
+  "Nest all module names into `{:children {segment {:module sym, :children {...}}}}`. Intermediate nodes
+  that are not themselves modules have no `:module`."
+  [modules-config]
+  (reduce (fn [tree module]
+            (update-in tree
+                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path modules-config module))
+                       assoc :module module))
+          {}
+          (keys modules-config)))
+
+(defn- sorted-children
+  "Child entries of a tree node, alphabetical except `enterprise/` modules always sort last among their
+  siblings."
+  [node]
+  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
+                                      (str/starts-with? segment "enterprise/"))
+                                1
+                                0)
+                              segment])
+           (:children node)))
+
+(defn- tree-node-lines
+  "Render a tree node and its descendants as display lines. Depth 1 gets `- `, each further level one
+  more dash. Nodes that only group children (not modules themselves) print dark."
+  [path node]
+  (let [depth   (dec (count path))
+        module  (:module node)
+        display (str/join "." path)
+        line    (str (when (pos? depth)
+                       (str (apply str (repeat depth "-")) " "))
+                     (if module display (c/dark display)))]
+    (into [line]
+          (mapcat (fn [[segment child]]
+                    (tree-node-lines (conj path segment) child)))
+          (sorted-children node))))
+
+(defn cli-print-module-tree
+  "Print the declared modules, one per line, enterprise modules last."
+  [{:keys [_options] :as _parsed}]
+  (let [modules-config (read-modules-config)
+        tree           (module-display-tree modules-config)]
+    (doseq [[segment node] (sorted-children tree)
+            line            (tree-node-lines [segment] node)]
+      (println line))
+    (println)
+    (println (c/dark (str (count modules-config) " modules, "
+                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                          " enterprise")))
+    (u/exit 0)))
+
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests because `updated-files` touches something important like
   `deps.edn`."
@@ -225,14 +241,21 @@
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
+   1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
+   [[modules-triggering-cloud-drivers]]."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
+   (driver-deps-affected? deps modules (set/union @default-modules-which-trigger-drivers
+                                                  @modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
-   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
+   ;; an undeclared trigger is never in the unaffected set, which silently makes EVERY module
+   ;; "affect drivers" -- fail loudly instead (renames must update the trigger constants).
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
+   (let [unaffected (unaffected-modules deps (remove @driver-affecting-overrides modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))
 
@@ -430,7 +453,7 @@
 
     ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
-         (seq (set/intersection updated modules-triggering-cloud-drivers)))
+         (seq (set/intersection updated @modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 

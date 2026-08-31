@@ -1,0 +1,20 @@
+{:api-any-namespaces 81
+ :cyclic-components 3
+ :cyclic-components-with-model-imports 2
+ :cyclic-edges 1016
+ :cyclic-edges-with-model-imports 1422
+ :cyclic-modules 109
+ :cyclic-modules-with-model-imports 121
+ :cyclic-namespaces 1479
+ :cyclic-namespaces-with-model-imports 1559
+ :largest-api 31
+ :largest-ns-scc 509
+ :largest-scc-modules 104
+ :largest-scc-modules-with-model-imports 118
+ :largest-scc-namespaces 1427
+ :largest-scc-namespaces-with-model-imports 1534
+ :max-file-deftests 19405
+ :max-file-test-namespaces 1488
+ :model-import-bypass-modules 2
+ :module-count 204
+ :total-api 561}

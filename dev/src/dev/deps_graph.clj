@@ -49,6 +49,409 @@
                 (run! walk children))))]
     (walk tree)))
 
+(def ^:private module-boundary-ratchets-path
+  ".clj-kondo/config/modules/ratchets.edn")
+
+(def ^:private module-boundary-stats-path
+  ".clj-kondo/config/modules/module-stats.edn")
+
+(def ^:private driver-test-overrides-path
+  ".clj-kondo/config/modules/driver-test-overrides.edn")
+
+(defn driver-test-overrides
+  "Committed CI config deciding which changes run driver tests:
+  `{:trigger-modules #{...}, :cloud-trigger-modules #{...}, :exempt-modules #{...}}`.
+
+  A change to a trigger module, or to anything it transitively depends on, runs driver tests; the cloud
+  set additionally runs the drivers that need secrets. `:exempt-modules` are the modules upstream of a
+  trigger that we have decided not to trigger on anyway. Every exemption is an unverified bet that the
+  coupling is not real; the set should only shrink, and the modules-test staleness check fails entries the
+  graph no longer even justifies.
+
+  One file, three readers: `mage.modules` decides, `metabase.core.modules-test` checks, and
+  [[driver-test-triggering-modules]] counts. The trigger sets used to be defs in `mage.modules` with a
+  hand-maintained copy in the test."
+  []
+  (edn/read-string (slurp driver-test-overrides-path)))
+
+(declare kondo-config external-usages module-dependencies dependencies module->test-files
+         full-dependencies)
+
+(defn driver-test-triggering-modules
+  "The modules that make CI run driver tests when they change: the trigger roots plus everything they
+  transitively depend on, minus the committed exemptions.
+
+  The other half of the `:driver-test-exempt-modules` ratchet, and the reason that one cannot be read
+  alone. Dropping an exemption lowers that ratchet and raises this one, which buys coverage with CI minutes
+  rather than improving anything. Only decoupling lowers both, and their sum is how many modules the graph
+  puts upstream of a trigger at all."
+  [deps config]
+  (let [{:keys [trigger-modules cloud-trigger-modules exempt-modules]} (driver-test-overrides)
+        transitive (full-dependencies deps)
+        triggers   (into (sorted-set) (concat trigger-modules cloud-trigger-modules))
+        upstream   (into triggers (mapcat transitive) triggers)]
+    ;; the scan also sees `connection-pool`, which comes from a library and `kondo-config` drops
+    (into (sorted-set)
+          (comp (filter (set (keys config))) (remove exempt-modules))
+          upstream)))
+
+(defn friend-reach-count
+  "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
+  only legal because of a `:friends` grant. Unlike the grant-surface product in
+  `dev.module-metrics/repo-metrics` (friends × internal namespaces, which grows when the grantor adds
+  any internal namespace), this only moves when a friend adds or removes a require into the grantor's
+  internals — the act the ratchet exists to catch."
+  [deps config]
+  (reduce
+   + 0
+   (for [[grantor cfg] config
+         :when (set? (:friends cfg))
+         :let [api     (let [a (:api cfg)] (if (set? a) a #{}))
+               friends (:friends cfg)]]
+     (count (filter (fn [{:keys [module depends-on-namespace]}]
+                      (and (contains? friends module)
+                           (not (contains? api depends-on-namespace))))
+                    (external-usages deps grantor))))))
+
+;;; Tarjan SCC lives here rather than in `dev.module-scc` (which builds on it) so
+;;; [[module-boundary-stats]] can size the components without a circular require.
+
+(defn- graph-nodes [graph]
+  (into (set (keys graph)) (mapcat val) graph))
+
+(defn strongly-connected-components
+  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`.
+  Returns a vector of sets, one per SCC, including singletons.
+  Recursive; fine for graphs a few thousand nodes deep."
+  [graph]
+  (let [index    (volatile! {})
+        lowlink  (volatile! {})
+        on-stack (volatile! #{})
+        stack    (volatile! [])
+        counter  (volatile! 0)
+        sccs     (volatile! [])]
+    (letfn [(strongconnect [v]
+              (vswap! index assoc v @counter)
+              (vswap! lowlink assoc v @counter)
+              (vswap! counter inc)
+              (vswap! stack conj v)
+              (vswap! on-stack conj v)
+              (doseq [w (get graph v)]
+                (cond
+                  (not (contains? @index w))
+                  (do (strongconnect w)
+                      (vswap! lowlink update v min (get @lowlink w)))
+
+                  (contains? @on-stack w)
+                  (vswap! lowlink update v min (get @index w))))
+              (when (= (get @lowlink v) (get @index v))
+                (loop [component #{}]
+                  (let [w (peek @stack)]
+                    (vswap! stack pop)
+                    (vswap! on-stack disj w)
+                    (let [component (conj component w)]
+                      (if (= w v)
+                        (vswap! sccs conj component)
+                        (recur component)))))))]
+      (doseq [v (sort (graph-nodes graph))]
+        (when-not (contains? @index v)
+          (strongconnect v))))
+    @sccs))
+
+(defn largest-scc
+  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes.
+  With two args, picks from precomputed `sccs`."
+  ([graph] (largest-scc graph (strongly-connected-components graph)))
+  ([_graph sccs] (if (seq sccs) (apply max-key count sccs) #{})))
+
+(defn- largest-cyclic-scc
+  "The largest nontrivial SCC of `graph`, or `#{}` when the graph is acyclic."
+  [graph]
+  (let [component (largest-scc graph)]
+    (if (> (count component) 1) component #{})))
+
+(defn cyclic-components
+  "Nontrivial SCCs of `graph`, largest first. Ties break on the alphabetically first member, so the order
+  is reproducible across runs and the committed numbers derived from it diff cleanly."
+  ([graph]
+   (cyclic-components graph (strongly-connected-components graph)))
+  ([_graph sccs]
+   (->> sccs
+        (filter #(> (count %) 1))
+        (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+        vec)))
+
+(defn- intra-component-edge-count
+  "Directed edges of `graph` with both endpoints inside `component`."
+  [graph component]
+  (transduce (map (fn [node] (count (filter component (get graph node))))) + 0 component))
+
+(defn cycle-stats
+  "How much of `graph` is trapped in mutual dependency, and in how many separate clusters. `:module-count`
+  and `:namespace-count` are the modules and namespaces inside some cyclic component; `:edge-count` is the
+  dependency edges with both endpoints in the same component — the requires that would have to be inverted
+  to break every cycle in the graph.
+
+  Namespace weighting via `node->namespace-count` is the honest measure: splitting a cyclic module in the
+  config raises the module count without moving a namespace out of the cycle.
+
+  `:components` carries every cyclic cluster with its own counts and members, largest first, so a report
+  can lead with the few clusters worth cutting."
+  ([graph node->namespace-count]
+   (cycle-stats graph (strongly-connected-components graph) node->namespace-count))
+  ([graph sccs node->namespace-count]
+   (let [components (mapv (fn [component]
+                            {:module-count    (count component)
+                             :namespace-count (transduce (map #(get node->namespace-count % 0))
+                                                         + 0 component)
+                             :edge-count      (intra-component-edge-count graph component)
+                             :members         component})
+                          (cyclic-components graph sccs))]
+     {:component-count (count components)
+      :module-count    (transduce (map :module-count) + 0 components)
+      :namespace-count (transduce (map :namespace-count) + 0 components)
+      :edge-count      (transduce (map :edge-count) + 0 components)
+      :components      components})))
+
+(defn model-import-dependencies
+  "Module => the modules whose models it imports, read off the `:model-exports`/`:model-imports` boundaries
+  in `config`. These are real coupling that the `:uses` graph does not carry: a module can depend on another
+  module's row shapes without requiring any of its namespaces, so cycles that only exist through models are
+  invisible in the require graph.
+
+  A module whose `:model-imports` is `:bypass` contributes no edges — the config records no imports for it
+  at all — so [[module-boundary-stats]] counts those modules separately rather than letting them read as
+  model-free."
+  [config]
+  (let [owner (into {}
+                    (for [[module {:keys [model-exports]}] config
+                          :when                            (set? model-exports)
+                          model                            model-exports]
+                      [model module]))]
+    (into (sorted-map)
+          (map (fn [[module {:keys [model-imports]}]]
+                 [module (if (set? model-imports)
+                           (into (sorted-set) (comp (keep owner) (remove #{module})) model-imports)
+                           (sorted-set))]))
+          config)))
+
+(defn module-boundary-debt
+  "Current module-boundary anti-pattern counts. One-way ratchets: each may only go down.
+  Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit.
+
+  A count that never reaches zero still earns its ratchet. `:api-any` and `:uses-any` cover the wiring
+  modules whose whole point is to see everything, and those four or five entries may well be permanent;
+  the ratchet is there to stop a sixth being added without an argument.
+
+  `:standalone-rest-modules` counts `-rest` module symbols. They have to be top-level modules of their own
+  as things stand, so the count is a measure of how much of the API layer sits outside the module it
+  serves, not a backlog.
+
+  `:driver-test-exempt-modules` and `:driver-test-triggering-modules` are two halves of one number and only
+  mean anything together. Dropping an exemption lowers the first and raises the second, so it needs a hand
+  edit here and a reason in the commit — which is the point, since the trade is CI minutes for coverage."
+  ([]
+   (module-boundary-debt (dependencies) (kondo-config)))
+  ([deps config]
+   (let [values (vals config)]
+     {:api-any                        (count (filter #(= :any (:api %)) values))
+      :driver-test-exempt-modules     (count (:exempt-modules (driver-test-overrides)))
+      :driver-test-triggering-modules (count (driver-test-triggering-modules deps config))
+      :friend-edges                   (transduce (map (comp count :friends)) + 0 values)
+      :friend-reaches                 (friend-reach-count deps config)
+      :standalone-rest-modules        (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
+      :uses-any                       (count (filter #(= :any (:uses %)) values))})))
+
+(defn- deftest-form-count
+  "Number of `deftest` forms (bare or alias-qualified) in the test file at `filename`."
+  [filename]
+  (count (re-seq #"\((?:[\w.-]+/)?deftest\s" (slurp filename))))
+
+(defn- max-test-blast-radius
+  "Worst-case test blast radius of a single source-file change: the largest test set the
+  module-granularity selection ([[source-filenames->relevant-test-filenames]]) reruns for one file.
+  Selection is module-granular — a file reruns the tests of its module and all transitive dependents —
+  so the per-file maximum is the per-module maximum.
+  Returns `{:test-namespaces _, :deftests _}` — the worst case counted in whole test namespaces and in
+  individual `deftest` forms, each maximized over modules independently."
+  [deps]
+  (let [modules        (into (sorted-set) (keep :module) deps)
+        module->tests  (into {}
+                             (map (juxt identity module->test-files))
+                             modules)
+        file->deftests (into {}
+                             (map (juxt identity deftest-form-count))
+                             (into #{} (mapcat val) module->tests))
+        dependents     (reduce-kv (fn [acc m direct-deps]
+                                    (reduce (fn [acc dep]
+                                              (update acc dep (fnil conj #{}) m))
+                                            acc
+                                            direct-deps))
+                                  {}
+                                  (module-dependencies deps))
+        blast-files    (fn [module]
+                         (loop [queue (vec (get dependents module)), seen #{module}]
+                           (if-let [dependent (peek queue)]
+                             (if (contains? seen dependent)
+                               (recur (pop queue) seen)
+                               (recur (into (pop queue) (get dependents dependent))
+                                      (conj seen dependent)))
+                             (into #{} (mapcat module->tests) seen))))
+        blasts         (mapv blast-files modules)]
+    {:test-namespaces (reduce max 0 (map count blasts))
+     :deftests        (reduce max 0 (map #(transduce (keep file->deftests) + 0 %) blasts))}))
+
+(defn module-boundary-stats
+  "Public-surface size stats. Expected to move in both directions — carving a module out grows
+  `:total-api` while shrinking `:largest-api`, and neither direction is good or bad on its own.
+  Committed to `module-stats.edn` so PR diffs surface the movement for review.
+
+  `:api-any-namespaces` is the hidden surface of `:api :any` modules: every one of their namespaces is
+  effectively public, so it is counted here namespace-weighted (the `:api-any` module count itself is a
+  ratchet).
+
+  The SCC stats size the mutual-dependency blob at both granularities; they grow with ordinary feature
+  work inside the blob, hence stats rather than ratchets.
+  `:largest-scc-modules` and `:largest-scc-namespaces` measure the largest strongly connected component
+  of the module graph.
+  The namespace weighting is the honest number:
+  splitting a blob module in config raises the module count without moving a namespace out of the cycle.
+  `:largest-ns-scc` is the largest SCC of the namespace graph itself:
+  static requires form a DAG, so the component is pure dynamic edges (`requiring-resolve` and friends)
+  and is the floor no module re-partitioning can get under.
+
+  The `:cyclic-*` family covers everything the largest component leaves out — how many separate cyclic
+  clusters there are, and how many modules, namespaces and dependency edges they hold between them. A cut
+  that frees a small cluster moves these while leaving `:largest-scc-*` flat, so the two families together
+  say both how big the worst blob is and how much of the repo is tangled at all.
+
+  Every cycle stat is reported twice: once for the ordinary require graph, and once for that graph plus the
+  model-import edges of [[model-import-dependencies]], suffixed `-with-model-imports`. A module that reads
+  another module's models is coupled to it whether or not it requires one of its namespaces, so the
+  combined graph is the one that predicts what a carve actually has to untangle.
+  `:model-import-bypass-modules` counts the modules exempted from model boundaries entirely: their model
+  edges appear in neither graph, so the number has to be visible or the bypass hides coupling by
+  construction.
+
+  `:max-file-test-namespaces` and `:max-file-deftests` are the worst-case selective-CI cost of touching
+  a single source file — see [[max-test-blast-radius]]. They fall when a cut shrinks some module's
+  dependent set, but ordinary test-writing inside the blob pushes them back up.
+
+  `:fast?` skips the metrics that scan test-file contents (currently the `:max-file-*` pair) — handy at
+  the REPL. `module-stats.edn` always carries the full set; never sync it from a fast run."
+  ([]
+   (module-boundary-stats nil))
+  ([opts]
+   (module-boundary-stats (dependencies) (kondo-config) opts))
+  ([deps config]
+   (module-boundary-stats deps config nil))
+  ([deps config {:keys [fast?]}]
+   (let [values          (vals config)
+         api-sizes       (keep (fn [{:keys [api]}]
+                                 (when (set? api)
+                                   (count api)))
+                               values)
+         any-modules     (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)
+         module-graph    (module-dependencies deps)
+         combined-graph  (merge-with into module-graph (model-import-dependencies config))
+         ns-counts       (frequencies (keep :module deps))
+         ;; namespaces (one per scanned dep row) belonging to a module in `component`
+         scc-namespaces  (fn [component] (count (filter #(contains? component (:module %)) deps)))
+         api-any-nses    (count (filter #(contains? any-modules (:module %)) deps))
+         bypass-modules  (count (filter #(= :bypass (:model-imports %)) values))
+         cycles          (cycle-stats module-graph ns-counts)
+         combined-cycles (cycle-stats combined-graph ns-counts)
+         ;; components come back largest first, so the biggest cycle is the head of the list
+         module-scc      (:members (first (:components cycles)) #{})
+         combined-scc    (:members (first (:components combined-cycles)) #{})
+         ns-scc          (largest-cyclic-scc (into {}
+                                                   (map (fn [{ns-sym :namespace, required :deps}]
+                                                          [ns-sym (into #{} (map :namespace) required)]))
+                                                   deps))]
+     (cond-> {:api-any-namespaces                        api-any-nses
+              :cyclic-components                         (:component-count cycles)
+              :cyclic-components-with-model-imports      (:component-count combined-cycles)
+              :cyclic-edges                              (:edge-count cycles)
+              :cyclic-edges-with-model-imports           (:edge-count combined-cycles)
+              :cyclic-modules                            (:module-count cycles)
+              :cyclic-modules-with-model-imports         (:module-count combined-cycles)
+              :cyclic-namespaces                         (:namespace-count cycles)
+              :cyclic-namespaces-with-model-imports      (:namespace-count combined-cycles)
+              :largest-api                               (reduce max 0 api-sizes)
+              :largest-ns-scc                            (count ns-scc)
+              :largest-scc-modules                       (count module-scc)
+              :largest-scc-modules-with-model-imports    (count combined-scc)
+              :largest-scc-namespaces                    (scc-namespaces module-scc)
+              :largest-scc-namespaces-with-model-imports (scc-namespaces combined-scc)
+              :model-import-bypass-modules               bypass-modules
+              :module-count                              (count config)
+              :total-api                                 (reduce + 0 api-sizes)}
+       (not fast?) (merge (let [test-blast (max-test-blast-radius deps)]
+                            {:max-file-deftests        (:deftests test-blast)
+                             :max-file-test-namespaces (:test-namespaces test-blast)}))))))
+
+(defn module-boundary-ratchets
+  "Committed exact ratchets for [[module-boundary-debt]]."
+  []
+  (edn/read-string (slurp module-boundary-ratchets-path)))
+
+(defn committed-module-boundary-stats
+  "Committed values of [[module-boundary-stats]]."
+  []
+  (edn/read-string (slurp module-boundary-stats-path)))
+
+(defn write-module-boundary-stats!
+  "Sync `module-stats.edn` to `stats` (freshly computed when not given). Unlike the ratchets, stats move
+  freely in both directions; the committed file exists so the movement shows up in PR diffs — one metric
+  per line so each movement diffs on its own."
+  ([]
+   (write-module-boundary-stats! (module-boundary-stats)))
+  ([stats]
+   (spit module-boundary-stats-path
+         (str "{"
+              (str/join "\n " (for [[k v] (into (sorted-map) stats)]
+                                (str k " " v)))
+              "}\n"))))
+
+(defn lowered-module-boundary-ratchets
+  "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
+  [ratchets actual]
+  (when-not (= (set (keys ratchets)) (set (keys actual)))
+    (throw (ex-info "Module-boundary ratchet metrics do not match"
+                    {:ratchets ratchets
+                     :actual actual})))
+  (let [increases (into (sorted-map)
+                        (filter (fn [[metric value]]
+                                  (> value (get ratchets metric -1))))
+                        actual)]
+    (when (seq increases)
+      (throw (ex-info "Refusing to increase module-boundary ratchets"
+                      {:increases increases
+                       :ratchets ratchets
+                       :actual actual})))
+    actual))
+
+(defn update-module-boundary-ratchets!
+  "Lower committed module-boundary ratchets to current values (refuses increases) and sync
+  `module-stats.edn` in whichever direction it moved."
+  [_]
+  (let [ratchets (module-boundary-ratchets)
+        actual   (module-boundary-debt)
+        updated  (lowered-module-boundary-ratchets ratchets actual)]
+    (if (= ratchets updated)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Module-boundary ratchets are already current.")
+      (do
+        (spit module-boundary-ratchets-path
+              (str (pr-str (into (sorted-map) updated)) \newline))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))
+    (let [stats (module-boundary-stats)]
+      (when-not (= (committed-module-boundary-stats) stats)
+        (write-module-boundary-stats! stats)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "Synced module-boundary stats in" module-boundary-stats-path)))))
+
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
   (.. (java.nio.file.Paths/get (.toURI (io/resource "dev/deps_graph.clj")))
@@ -313,8 +716,6 @@
   [kondo-config module-symb]
   (get-in kondo-config [module-symb :friends]))
 
-(declare kondo-config)
-
 (defn externally-used-namespaces-ignoring-friends
   "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
   ([module-symb]
@@ -397,19 +798,23 @@
   "Like [[dependencies]] but also includes transient dependencies."
   [deps]
   (let [deps-graph  (module-dependencies deps)
+        ;; grow monotonically: dropping the seed set each round loses members whose own deps don't
+        ;; re-reach them, which oscillates forever on cyclic graphs (StackOverflowError).
         expand-deps (fn expand-deps [deps]
-                      (let [deps' (into (sorted-set)
+                      (let [deps' (into (into (sorted-set) deps)
                                         (mapcat deps-graph)
                                         deps)]
                         (if (= deps deps')
                           deps
-                          (expand-deps deps'))))]
+                          (recur deps'))))]
     (into (sorted-map)
           (map (fn [[k v]]
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count [deps]
+(defn module-deps-count
+  "Map each module to the number of modules in its transitive dependency closure."
+  [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
@@ -449,6 +854,7 @@
    diff))
 
 (defn kondo-config-diff
+  "Return the difference between declared module boundaries and dependencies found in source."
   ([]
    (kondo-config-diff (dependencies)))
 
@@ -577,7 +983,7 @@
 (defn- simulate-rename
   "Create a new version of `deps` as they would appear if you renamed namespace(s).
 
-    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
+    (simulate-rename deps '{metabase.users.api metabase.users-rest.api})"
   ([deps old-namespace new-namespace]
    (for [dep deps]
      (-> dep
@@ -625,14 +1031,21 @@
     ;; =>
     metabase-enterprise.advanced-permissions.common"
   [file]
-  (-> file
-      file->path-relative-to-project-root
-      (str/replace #"^enterprise/backend/" "")
-      (str/replace #"^(?:(?:src)|(?:test))/" "")
-      (str/replace #"\.clj[cs]?$" "")
-      (str/replace #"/" ".")
-      (str/replace #"_" "-")
-      symbol))
+  (let [relative-file (file->path-relative-to-project-root file)
+        test-file?    (or (str/starts-with? relative-file "test/")
+                          (str/starts-with? relative-file "enterprise/backend/test/"))]
+    (-> relative-file
+        (str/replace #"^enterprise/backend/" "")
+        (str/replace #"^(?:(?:src)|(?:test))/" "")
+        (str/replace #"\.clj[cs]?$" "")
+        ;; Module-level tests live at e.g. test/metabase/lib/schema_test.cljc and
+        ;; should map back to metabase.lib.schema for reverse lookup.
+        (#(if test-file?
+            (str/replace % #"[_-]test$" "")
+            %))
+        (str/replace #"/" ".")
+        (str/replace #"_" "-")
+        symbol)))
 
 (defn- module->all-deps [deps module]
   (keys (all-module-deps-paths deps module)))
@@ -700,6 +1113,9 @@
 (comment
   (module->dependents (dependencies) 'settings-rest))
 
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
+
 (defn- module->test-directory [module]
   (let [parent-dir (case (namespace module)
                      nil          "test/metabase/"
@@ -707,15 +1123,22 @@
         module-dir (str/replace (name module) #"-" "_")]
     (str parent-dir module-dir)))
 
+(defn- existing-test-file-paths [path-prefix]
+  (into (sorted-set)
+        (keep (fn [extension]
+                (let [file (io/file (str path-prefix "_test" extension))]
+                  (when (.isFile file)
+                    (file->path-relative-to-project-root file)))))
+        test-source-file-extensions))
+
 (mu/defn- module->test-files :- [:set :string]
-  "Return the set of test filenames associated with a `module`."
-  [module :- :symbol]
-  (let [test-dir       (module->test-directory module)
-        test-filenames (ns.find/find-sources-in-dir (io/file test-dir))]
-    (into
-     (sorted-set)
-     (map file->path-relative-to-project-root)
-     test-filenames)))
+  "Return the set of test filenames associated with a `module`: the files under its test directory plus
+  the module-level `<module>_test.*` file next to it when one exists."
+  [module-sym :- :symbol]
+  (let [path-prefix (module->test-directory module-sym)]
+    (into (existing-test-file-paths path-prefix)
+          (map file->path-relative-to-project-root)
+          (ns.find/find-sources-in-dir (io/file path-prefix)))))
 
 (defn source-filenames->relevant-test-filenames
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
@@ -727,6 +1150,7 @@
     (sorted-set)
     (comp (map file->namespace)
           (map module)
+          (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
           (mapcat module->test-files))
