@@ -10,11 +10,10 @@ type SliceAction = { type: string; payload?: any };
 type SliceReducer = Reducer<SliceState>;
 
 /**
- * Slices held under `state.entities.<name>`. These used to be wired up by the
- * (now-removed) entity framework via `createEntity`; the slices themselves
- * still exist because `getMetadata` in `metabase/metadata-store.ts` reads
- * directly from them. `metadataHydrationMiddleware` in `./hydration` is the
- * only writer, and populates them by dispatching `metabase/entities/UPDATE`.
+ * Slices held under `state.entities.<name>`. `getMetadata` reads them directly.
+ *
+ * `metadataHydrationMiddleware` in `./hydration` is the only writer, and fills
+ * them by dispatching `metabase/entities/UPDATE`.
  */
 const ENTITY_SLICE_NAMES = [
   "databases",
