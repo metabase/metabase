@@ -38,8 +38,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       build_matrix: ${{ steps.matrix.outputs.build_matrix }}
-      healthcheck_matrix: ${{ steps.matrix.outputs.healthcheck_matrix }}
-      container_matrix: ${{ steps.matrix.outputs.container_matrix }}
       java_version: ${{ steps.dependencies.outputs.java_version }}
       node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
@@ -63,46 +61,24 @@ jobs:
           fail-on-fetch-miss: false
           download: false
 
-      - name: Create build matrices
+      - name: Create build matrix
         id: matrix
         uses: actions/github-script@v9
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
         with:
           script: | # js
-            const refName = ${{ toJson(github.ref_name) }};
-            const branch = process.env.BRANCH;
-            const containerize = "${{ inputs.containerize }}" === "true";
-            const isTrunk = refName === 'master' || refName.startsWith('release-');
-
             const hit = {
               ee: "${{ steps.check-ee.outputs.fetch-hit }}" === "true",
               oss: "${{ steps.check-oss.outputs.fetch-hit }}" === "true",
             };
 
-            // Don't rebuild the uberjar if it has already been built for this commit.
-            const buildEditions = ['ee', 'oss'].filter((edition) => !hit[edition]);
+            // Don't rebuild an edition whose uberjar already exists for this commit.
+            const editions = ['ee', 'oss'].filter((edition) => !hit[edition]);
 
-            // Only containerize the uberjar if containerize input is set. On master
-            // publish ee and oss versions, otherwise just containerize the ee version.
-            const containerEditions = containerize
-              ? (branch === 'master' ? ['ee', 'oss'] : ['ee'])
-              : [];
+            core.info(`build: ${editions.join(', ') || '(nothing, both artifacts already exist)'}`);
 
-            // Health-check whatever we are about to push. Off the containerize path, keep the
-            // old trunk-only coverage: master and release branches check both editions.
-            const healthcheckEditions = containerize
-              ? containerEditions
-              : (isTrunk ? ['ee', 'oss'] : []);
-
-            const toMatrix = (editions) =>
-              JSON.stringify({ include: editions.map((edition) => ({ edition })) });
-
-            core.setOutput('build_matrix', toMatrix(buildEditions));
-            core.setOutput('healthcheck_matrix', toMatrix(healthcheckEditions));
-            core.setOutput('container_matrix', toMatrix(containerEditions));
-
-            core.info(`build: ${buildEditions} healthcheck: ${healthcheckEditions} containerize: ${containerEditions}`);
+            core.setOutput('build_matrix', JSON.stringify({
+              include: editions.map((edition) => ({ edition })),
+            }));
 
       - name: Prepare release scripts
         if: ${{ contains(github.ref, 'release-x') }}
@@ -132,7 +108,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !inputs.containerize }}  # faster builds for dev
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -177,14 +153,15 @@ jobs:
             ./SHA256.sum
 
   jar-healthcheck:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Is ${{ matrix.edition }} healthy?
     needs: [setup, build]
-    # `build` is skipped when every artifact already exists, which must not skip this job.
-    if: ${{ !failure() && !cancelled() }}
+    # Health-check whatever we are about to containerize, plus every build on master and release.
+    if: ${{ !failure() && !cancelled() && (inputs.containerize || github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
+    name: Is ${{ matrix.edition }} healthy?
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
-      matrix: ${{ fromJson(needs.setup.outputs.healthcheck_matrix) }}
+      matrix:
+        edition: [ee, oss]
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -213,12 +190,11 @@ jobs:
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    needs: [setup, build, jar-healthcheck]
-    # Both upstream jobs legitimately skip (nothing to build; nothing to health-check off
-    # trunk), so gate on "not failed" rather than on `success()`.
-    if: ${{ !failure() && !cancelled() && inputs.containerize }}
+    needs: [build, jar-healthcheck]
+    if: ${{ inputs.containerize && !failure() && !cancelled() }}
     strategy:
-      matrix: ${{ fromJson(needs.setup.outputs.container_matrix) }}
+      matrix:
+        edition: [ee, oss]
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:

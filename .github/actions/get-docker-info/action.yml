@@ -43,11 +43,10 @@ runs:
 
           console.log(`Determining Docker info for branch: ${branch}, edition: ${edition}`);
 
-          let repo, tag, editions;
+          let repo, tag;
 
           if (branch === 'master') {
             // Master builds both editions with specific repos
-            editions = ['ee', 'oss'];
             tag = 'latest';
 
             if (edition === 'ee') {
@@ -56,9 +55,8 @@ runs:
               repo = `${owner}/metabase-head`;
             }
           } else {
-            // All other branches only build EE to metabase-dev
-            editions = ['ee'];
-            tag = branch.replaceAll('/', '-'); // slashes make docker sad
+            // Development branches push to the same repo with different tags
+            tag = `${branch.replaceAll('/', '-')}-${edition}`; // slashes make docker sad
             repo = `${owner}/metabase-dev`;
           }
 
