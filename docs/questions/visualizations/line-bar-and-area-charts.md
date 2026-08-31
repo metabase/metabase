@@ -10,9 +10,9 @@ redirect_from:
 
 Line, bar, and area charts plot values across an x-axis. Pick the type that matches what you want to show:
 
-- **Line chart**: Show how a number changes over time, especially with many x-axis values.
-- **Bar chart**: Compare values across categories, or a smaller number of values over time.
-- **Area chart**: Compare values over time.
+- **Line chart**: Show how a number changes over time. Use a line chart when you have many x-axis values, since lines stay readable where bars become crowded.
+- **Bar chart**: Compare values across categories, or a smaller number of values over time. Bar charts make individual values easier to read and compare than line charts.
+- **Area chart**: Show how much each series contributes to a total over time. Stack the areas to see the total across series as well as the individual series.
 
 You can set the display type separately for each series on a chart. A single chart that mixes types is a [combo chart](#combo-charts).
 
@@ -56,7 +56,7 @@ Metabase sets the x-axis scale to **Histogram** automatically, so the bars sit f
 
 ## Combo charts
 
-Combo charts let you combine bars and lines (or areas) on the same chart.
+Combo charts let you combine bars and lines (or areas) on the same chart. Use a combo chart to plot two metrics with very different ranges, like order count against total revenue.
 
 By default, Metabase displays one series as a line and another as a bar. To set the display type for each series, or set the colors for each series, see [Change the display type for a series](#change-the-display-type-for-a-series).
 
@@ -76,7 +76,7 @@ To use a combo chart, your question must have either:
 
 You can set the display type for each series independently of the chart type. For example, on a bar chart you can display one series as a line.
 
-In the **Data** tab, click the **...** next to a series, then select a **Display type**.
+In the **Data** tab, click the three-dot menu (**...**) next to a series, then select a **Display type**.
 
 ![Setting the display type for a series](../images/series-display-type.png)
 
@@ -98,7 +98,7 @@ In the **Data** tab, you can:
 
 ### Series options
 
-To set options for a series, click the **...** next to it in the **Data** tab.
+To set options for a series, click the three-dot menu (**...**) next to the series in the **Data** tab.
 
 ![Line chart options](../images/line-options.png)
 
@@ -170,7 +170,7 @@ A trend line shows the general direction of a series over time. Metabase picks t
 
 To add a trend line, group your question by a time field and enable the **Trend line** toggle in the **Display** tab.
 
-You can also turn the trend line on or off for individual series. In the **Data** tab, click the **...** next to a series and use the **Show trend line for this series** toggle.
+You can also turn the trend line on or off for individual series. In the **Data** tab, click the three-dot menu (**...**) next to a series and use the **Show trend line for this series** toggle.
 
 Trend lines work with multiple metrics, but they don't work if your question has more than one grouping.
 
@@ -180,7 +180,7 @@ Trend lines work with multiple metrics, but they don't work if your question has
 
 To label points on your chart, enable the **Show values on data points** toggle in the **Display** tab. In **Values to show**, choose either **All** or **Some**. When you choose **Some**, Metabase picks which values to display to keep the chart legible.
 
-When values are on, you can turn them off for individual series. In the **Data** tab, click the **...** next to a series and disable the **Show values for this series** toggle.
+When values are on, you can turn them off for individual series. In the **Data** tab, click the three-dot menu (**...**) next to a series and disable the **Show values for this series** toggle.
 
 ### Autoformatting
 
@@ -192,20 +192,20 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 ### X-axis
 
-- Show label (the label for the axis)
-- Rename the axis
-- Show lines and tick marks: **Hide**, **Show**, **Compact**, **Rotate 45°**, or **Rotate 90°**
+- Show label (the label for the axis).
+- Rename the axis.
+- Show lines and tick marks: **Hide**, **Show**, **Compact**, **Rotate 45°**, or **Rotate 90°**.
 - Scale: **Timeseries**, **Linear**, **Histogram**, or **Ordinal**, depending on what you group by. Ordinal lists every value in the series along the x-axis. Use ordinal when you're plotting steps in a sequence.
 
 ### Y-axis
 
-- Show label (the label for the axis)
-- Rename the axis
-- Split y-axis when necessary
+- Show label (the label for the axis).
+- Rename the axis.
+- Split y-axis when necessary.
 - Auto y-axis range. When not toggled on, you can set the y-axis range (its **Min** and **Max** values).
 - Scale: **Linear**, **Power**, or **Log**. Use a log scale to show the rate of change over time, like when your data grows or shrinks exponentially.
-- Show lines and tick marks: **Hide** or **Show**
-- Number of tick marks
+- Show lines and tick marks: **Hide** or **Show**.
+- Number of tick marks.
 
 ## Chart legend
 
