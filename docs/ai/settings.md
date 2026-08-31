@@ -63,51 +63,56 @@ To connect a provider with your own API key:
 
 If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase will select the matching provider and fill the key in for you. Just check to make sure the provider matches.
 
-Once the connection saves, you can point [Metabot](./metabot.md) at any model it serves. SQL generation is an exception: it always runs on your Anthropic connection, whatever model you pick for Metabot. See [Semantic search and SQL generation don't follow the Model dropdown](#semantic-search-and-sql-generation-dont-follow-the-model-dropdown).
+Once the connection saves, its models show up in the **Models** card, where you pick which model each AI feature runs on. See [Pick the model each AI feature runs on](#pick-the-model-each-ai-feature-runs-on).
 
 ### Connect more than one provider
 
 You can connect as many providers as you want. Once you've added your first one, the card is titled **AI providers** and the button reads **Add another provider**.
 
-You can add more than one connection of the same type, like two Anthropic keys or two Azure deployments. Give each connection its own name so you can tell them apart: click **Advanced settings** in the connect form and fill in **Display name**. That name labels the connection in the **Model** dropdown, so "Anthropic" and "Anthropic (evals)" can sit side by side.
+You can add more than one connection of the same type, like two Anthropic keys or two Azure deployments. Give each connection its own name so you can tell them apart: click **Advanced settings** in the connect form and fill in **Display name**. That name labels the connection in the **Default model** and **Mini model** dropdowns, so "Anthropic" and "Anthropic (evals)" can sit side by side.
 
 The one exception is the [Metabase AI service](#metabase-ai-service), which you can only connect once.
-
-### Pick the model Metabot runs on
-
-The **Model** dropdown below your provider list sets the model Metabot uses by default. It lists the models from each working connection, grouped by connection, so picking a model also picks which connection serves it.
-
-If one connection's credentials stop working, only that connection reports an error. Models from your other connections still list, so you can move Metabot to a different provider without having to fix the broken connection first.
-
-A connection that's missing a required setting shows a warning icon, and Metabot can't use it until you fill the setting in.
-
-### Semantic search and SQL generation don't follow the Model dropdown
-
-Two features read a fixed connection instead of following your **Model** selection:
-
-- **Semantic search**, which ranks search results by meaning as well as by keyword, always runs on your OpenAI connection. Semantic search is only available on [paid plans](https://www.metabase.com/pricing).
-- **SQL generation**, including [inline SQL editing](./metabot.md#inline-sql-editing), always runs on your Anthropic connection.
-
-Neither feature falls back to a second connection of the same type. If you've added two OpenAI connections, semantic search uses the first one, and removing that connection stops semantic search even though the second one is still there. Metabot carries on with whatever model you picked. Metabase tells you which feature you're about to turn off when you confirm the removal.
 
 ### Edit or remove a provider connection
 
 Each connection in the list has a **...** menu:
 
 - **Edit**: change the connection's display name, credentials, or API base URL. You don't have to retype the API key. Metabase keeps the stored key unless you replace it.
-- **Remove**: delete the connection and its saved credentials. If Metabot was running on a model from that connection, Metabot switches to a model from one of your remaining connections, or reports itself as unconfigured if there aren't any.
+- **Remove**: delete the connection and its saved credentials. If your **Default model** came from that connection, Metabase switches it to a model from one of your remaining connections, or reports Metabot as unconfigured if there aren't any. A **Mini model** you'd picked from that connection goes back to being derived from your default model.
 
 The [Metabase AI service](#metabase-ai-service) connection only offers **Remove**, since there are no credentials of your own to edit.
 
 ### Set provider credentials with environment variables
 
-If you're self-hosting, you can configure a provider with [`MB_LLM_*` environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. A provider configured this way shows up in the list as a read-only connection that names the variables that set it, and it has no **...** menu.
+If you're self-hosting, you can configure a provider with [environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. These connections will show up in the list as read-only, along with the variable that set the connection.
 
 An environment variable can also override a single field of a connection you manage in the UI. If you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, for example, the base URL comes from the environment, and the rest of the connection stays editable.
 
-To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting. The **Add a provider** button is still on the page, but saving a connection through it fails.
+To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
+
+## Pick the model each AI feature runs on
+
+_Admin > AI_
+
+The **Models** card sets which model each AI feature runs on. It lists the models from each working connection, grouped by connection and labeled with both the connection and the model, like "Anthropic · Claude Sonnet 4.6".
+
+### Default model
+
+Metabot, [AI explorations](./metabot.md#ai-exploration), and [SQL generation](./metabot.md#inline-sql-editing) all run on the **Default model**.
+
+Embedded Metabot runs on the **Default model** too. There's no separate model setting on the **Embedded** tab, so both Metabots use whatever you pick here.
+
+If one connection's credentials stop working, only that connection reports an error.
+
+A connection that's missing a required setting shows a warning icon, and Metabot can't use the connection until you fill in the setting.
+
+### Mini model
+
+Quick, high-volume tasks run on the **Mini model**, which should be a cheaper, faster model than your default.
+
+You don't have to pick a mini model. By default, Metabase will use the fastest model from the same connection as your **Default model**. Some providers don't offer a smaller model, though. In those cases, the mini model falls back to your default model.
 
 ## Configure Metabot
 
