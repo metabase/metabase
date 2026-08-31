@@ -152,8 +152,10 @@
   "Everything one refused run prints, having first checked that it failed and left the conflict untouched.
   Both streams, because mage reports task exceptions on stdout."
   [dir note]
-  ;; a conflicted path stays UU/DU/UD however its contents are rewritten, so compare those too, and
-  ;; the index stages besides: they carry the blob of each side, which porcelain status does not show
+  ;; git keeps a conflicted path marked unmerged (UU when both sides changed it, DU or UD when one
+  ;; side deleted it) whatever the file ends up holding, so status alone cannot show that a refused run
+  ;; left the conflict alone. Compare the contents too, and the index stages besides: those hold each
+  ;; side's blob and never reach the status line.
   (let [snapshot               #(let [f (fs/path dir ratchets-file)]
                                   [(status dir)
                                    (when (fs/exists? f) (slurp (str f)))
