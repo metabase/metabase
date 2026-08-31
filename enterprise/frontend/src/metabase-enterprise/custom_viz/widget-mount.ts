@@ -76,7 +76,8 @@ export function isWidgetMount(
     | WidgetMount<CustomVizSettingWidgetProps>
     | ComponentType<{
         id: string;
-      }>,
+      }>
+    | undefined,
 ): value is WidgetMountWithPlugin {
   return typeof value === "function" && "plugin" in value;
 }

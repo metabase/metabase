@@ -392,17 +392,21 @@ function getHostDefinition(
   id: string,
 ): VisualizationSettingDefinition<Series> {
   const definition = definitions[id];
+
   if (!isObject(definition)) {
     throw new Error(`Expected a definition for "${id}"`);
   }
+
   return definition;
 }
 
 function getCallback(source: object, name: string) {
   const callback = Reflect.get(source, name);
+
   if (!isFunction(callback)) {
     throw new Error(`Expected "${name}" to be a function`);
   }
+
   return callback;
 }
 
@@ -410,8 +414,10 @@ function getMountWidget(
   definition: VisualizationSettingDefinition<Series>,
 ): WidgetMount<CustomVizSettingWidgetProps> {
   const { widget } = definition;
-  if (typeof widget !== "function" || !isWidgetMount(widget)) {
+
+  if (!isWidgetMount(widget)) {
     throw new Error(`Expected a WidgetMount, got widget "${String(widget)}"`);
   }
+
   return widget;
 }
