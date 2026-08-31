@@ -95,7 +95,7 @@ export type GeneratedCard = {
 
 export type GeneratedDashboard = {
   type: "dashboard";
-  id?: number | string;
+  id?: string;
   title: string;
   url?: string;
 };
