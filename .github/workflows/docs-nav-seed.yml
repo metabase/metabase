@@ -25,37 +25,17 @@ jobs:
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: 'package.json'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - id: build
         env:
           BRANCHES_INPUT: ${{ inputs.branches }}
-        run: |
-          # Each matrix entry maps a metabase branch to the docs.metabase.github.io nav file that
-          # seeds it, and the "/docs/<version>/" URL prefix to strip out of that file's urls.
-          entries="[]"
-          add_entry() {
-            entries=$(jq -c --arg branch "$1" --arg source_file "$2" --arg url_prefix "$3" \
-              '. + [{"branch": $branch, "source_file": $source_file, "url_prefix": $url_prefix}]' <<< "$entries")
-          }
-
-          if [ -n "$BRANCHES_INPUT" ]; then
-            IFS=',' read -ra requested <<< "$BRANCHES_INPUT"
-          else
-            requested=(master)
-            for v in $(seq 44 63); do requested+=("release-x.$v.x"); done
-          fi
-
-          for branch in "${requested[@]}"; do
-            branch="$(echo "$branch" | xargs)" # trim whitespace
-            if [ "$branch" = "master" ]; then
-              add_entry "master" "_data/docs/nav/latest.yml" "/docs/latest/"
-            else
-              version="$(echo "$branch" | sed -E 's/release-x\.([0-9]+)\.x/\1/')"
-              padded="$(printf "%03d" "$version")"
-              add_entry "$branch" "_data/docs/nav/v${padded}.yml" "/docs/v0.${version}/"
-            fi
-          done
-
-          echo "matrix={\"include\":$entries}" >> "$GITHUB_OUTPUT"
+        run: echo "matrix=$(bun .github/scripts/docs-nav-seed-matrix.ts)" >> "$GITHUB_OUTPUT"
 
   seed-nav-file:
     needs: params
@@ -92,16 +72,28 @@ jobs:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           path: docs-site
 
+        # The "Checkout metabase" step above checked out matrix.branch, which may be an old
+        # release branch without .github/scripts/docs-nav-seed-generate.ts. Fetch it from the ref
+        # that triggered this workflow instead, so generation works regardless of target branch.
+      - name: Checkout automation scripts
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          sparse-checkout: .github/scripts
+          path: _automation
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: steps.check.outputs.exists == 'false'
+        with:
+          bun-version-file: 'package.json'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate nav.yml
         if: steps.check.outputs.exists == 'false'
-        run: |
-          mkdir -p docs/_includes/data
-          content="$(cat "docs-site/$SOURCE_FILE")"
-          # Urls in the source point at the versioned docs site (e.g. "/docs/v0.44/..." or
-          # "/docs/latest/..."); strip that prefix since this file's urls should be relative to
-          # the docs root instead.
-          echo "${content//$URL_PREFIX//}" > docs/_includes/data/nav.yml
-          rm -rf docs-site
+        env:
+          SOURCE_FILE: docs-site/${{ matrix.source_file }}
+        run: bun _automation/.github/scripts/docs-nav-seed-generate.ts
 
       - name: Create branch and commit
         id: commit
@@ -122,13 +114,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SEED_BRANCH: ${{ steps.commit.outputs.seed_branch }}
-
-        # FIXME: Should probably add a tag to skip CI so we don't exhaust our runner pool
-
         run: |
           gh pr create \
             --base "$TARGET_BRANCH" \
             --head "$SEED_BRANCH" \
             --title "Add docs/_includes/data/nav.yml for $TARGET_BRANCH" \
             --body "One-off seed of \`docs/_includes/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Once this merges, docs.metabase.github.io will generate its versioned nav file from this branch instead of the other way around." \
-            --label "no-backport"
+            --label "no-backport" \
+            --label "ci:skip"
