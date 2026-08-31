@@ -442,7 +442,6 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
-      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
       ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
       ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.

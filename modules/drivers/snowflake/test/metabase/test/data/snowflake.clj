@@ -2,10 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [com.climate.claypoole :as cp]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -43,22 +43,23 @@
                               :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
-;; in CI use a completely different set of databases for each run and tear down
-;; all of them when the job completes; see after-run below.
-(defonce dataset-prefix (str (rand-int 9999999)))
-
 (defn- already-qualified? [database-name]
   (and (string? database-name)
-       (or (str/starts-with? database-name "isolate_")
+       (or (str/starts-with? database-name "temp_")
            (str/starts-with? database-name "sha_"))))
+
+(def ^:private to-cleanup (atom #{}))
 
 (defn qualified-db-name
   "Isolate db name so we don't stomp on any other jobs running at the same time."
-  [{:keys [database-name] :as db-def}]
+  [{:keys [database-name options] :as db-def}]
   (cond (already-qualified? database-name) database-name
-        ;; isolate if we are in a CI job
-        (System/getenv "GITHUB_REF_NAME") (str "isolate_" dataset-prefix database-name)
-        :else (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+        (:static options) (str "sha_" (tx/hash-dataset (update db-def :options
+                                                               dissoc :static))
+                               "_" database-name)
+        :else (let [name (sql.tu.unique-prefix/unique-prefix database-name)]
+                (swap! to-cleanup conj name)
+                name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -107,43 +108,9 @@
 ;;; --------------------------------- Cleanup ----------------------------------
 
 (defmethod tx/after-run :snowflake [_driver]
-  (let [spec (no-db-connection-spec)
-        query "select name from metabase_test_tracking.PUBLIC.datasets
-                where name like 'isolate_%s%%'"]
-    (doseq [{:keys [name]} (jdbc/query spec [(format query dataset-prefix)])]
-      (jdbc/query spec
-                  ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" name])
+  (let [spec (no-db-connection-spec)]
+    (doseq [name @to-cleanup]
       (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
-
-(defn- old-dataset-names
-  "Names of test databases old enough to delete, oldest first.
-
-  [[qualified-db-name]] gives CI runs an `isolate_` name built from a random int -- per-run, never reused, so they
-  age from `created`. Everything else is a `sha_` name from a local run, content-addressed and reused, so those age
-  from `accessed_at` when the tracking table knows them.
-
-  `accessed_at` is only trustworthy for `sha_`: the tracking table is keyed on dataset hash and its MERGE never
-  updates `name`, so an `isolate_` row keeps the first run's name while later runs keep refreshing its `accessed_at`.
-
-  Compares timestamps directly; `timestampdiff` counts boundary crossings, so an hour bucket calls a 10:59 database
-  two hours old at 12:01."
-  [{:keys [temp-data-hours fixture-hours]}]
-  (into []
-        (map :database_name)
-        (jdbc/query (no-db-connection-spec)
-                    [(format
-                      "select d.database_name
-                       from metabase_test_tracking.information_schema.databases d
-                       left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
-                       where (startswith(d.database_name, 'isolate_')
-                              and d.created < dateadd(hour, -%d, current_timestamp()))
-                          or (startswith(d.database_name, 'sha_')
-                              and coalesce(t.accessed_at, d.created) < dateadd(hour, -%d, current_timestamp()))
-                       order by d.created"
-                      temp-data-hours
-                      fixture-hours)])))
-
-;;; --------------------------------- Destruction ----------------------------------
 
 (defn- with-write-stmt!
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
@@ -158,75 +125,6 @@
      (with-open [stmt (.createStatement conn)]
        (apply f stmt args)))))
 
-(def ^:private drop-workers
-  "Connections used to drop databases at once. Each `DROP DATABASE` is a round trip of roughly half a second and a
-  backlog runs to thousands, which is what overran the job's first real run. Snowflake caps a session at 8 concurrent
-  statements by default, so more workers than this buys queueing, not throughput."
-  8)
-
-(def ^:private untrack-batch-size
-  "Names per `DELETE` when clearing tracking rows. Snowflake locks the whole table for DML, so this is one statement
-  at a time by design -- the win is round trips, not concurrency."
-  500)
-
-(defn- drop-one!
-  [^java.sql.Statement stmt dataset-name]
-  (tx/print-progress! :snowflake "deleting %s" dataset-name)
-  (try
-    (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-    {:name dataset-name, :status :deleted}
-    ;; usually just another job deleting the same dataset at the same time
-    (catch Exception e
-      {:name dataset-name, :status :failed, :error (ex-message e)})))
-
-(defn- drop-chunk!
-  "Drop one worker's share on a connection of its own: a JDBC Statement cannot be shared across threads, and
-  reconnecting per database would cost more than the drop does."
-  [dataset-names]
-  (with-write-stmt!
-    (fn [^java.sql.Statement stmt]
-      (mapv #(drop-one! stmt %) dataset-names))))
-
-(defn- untrack!
-  "Forget these databases. Kept out of the workers: every row lives in one table, and Snowflake serializes DML on a
-  table, so per-database deletes would have undone the parallelism they ran alongside."
-  [dataset-names]
-  (doseq [batch (partition-all untrack-batch-size dataset-names)]
-    (jdbc/execute! (no-db-connection-spec)
-                   (into [(format "delete from metabase_test_tracking.PUBLIC.datasets where name in (%s)"
-                                  (str/join "," (repeat (count batch) "?")))]
-                         batch))))
-
-(defn- drop-datasets!
-  "Un-track each named test database and then drop it, reporting per database whether it went. See [[tx/gc-orphans!]]
-  for the shape.
-
-  Un-tracking comes first so that being killed partway -- the GitHub job hitting its timeout -- leaves recoverable
-  state. A database that is present but untracked is collected again by the next sweep, which ages an untracked
-  `sha_` database from `created`, necessarily older than the `accessed_at` that made it eligible here. Dropping
-  first would instead strand tracking rows for databases that no longer exist, and the sweep enumerates from
-  `information_schema`, so it would never revisit them and the table would grow without bound.
-
-  Each `DROP DATABASE IF EXISTS` is atomic and idempotent on its own, so no individual delete can be torn in half
-  and the parallelism costs nothing in recoverability."
-  [dataset-names]
-  ;; nothing to drop is the common case on a healthy night; don't open a connection to discover that
-  (if (empty? dataset-names)
-    []
-    (if-let [untrack-error (try
-                             (untrack! dataset-names)
-                             nil
-                             (catch Exception e (ex-message e)))]
-      ;; dropping anyway would strand exactly the rows we failed to clear, so drop nothing
-      [{:name   nil
-        :status :failed
-        :error  (format "could not clear tracking rows for %d database(s), so dropped none of them: %s"
-                        (count dataset-names) untrack-error)}]
-      (let [chunks (partition-all (max 1 (long (Math/ceil (/ (count dataset-names) (double drop-workers)))))
-                                  dataset-names)]
-        (cp/with-shutdown! [pool (cp/threadpool (min drop-workers (count chunks)))]
-          (into [] cat (doall (cp/pmap pool drop-chunk! chunks))))))))
-
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
 ;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). This replaces the old in-process cleanup, which
@@ -237,10 +135,56 @@
   []
   (tx/db-test-env-var-or-throw :snowflake :account))
 
+(defn- drop-orphan [conn server dry-run? name]
+  (try
+    (when-not dry-run?
+      (jdbc/execute! conn [(format "DROP DATABASE \"%s\";" name)]))
+    {:server server :name name :status :deleted}
+    (catch Exception e
+      {:server server :name name :status :error :error (ex-message e)})))
+
+(defn- gc-orphans! [conn _stmt {:keys [hours dry-run?]}]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       :snowflake conn
+                                       "SHOW TERSE DATABASES STARTS WITH 'temp_' LIMIT 256"
+                                       [])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (->> (resultset-seq rs)
+         (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
+         (mapv (partial drop-orphan conn (account) dry-run?)))))
+
+(defn- drop-tracked-dataset [conn server dry-run? {:keys [database_name]}]
+  (try
+    (when-not dry-run?
+      (jdbc/execute! conn [(format "DROP DATABASE IF EXISTS \"%s\";" database_name)])
+      (jdbc/execute! conn ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?"
+                           database_name]))
+    {:server server :name name :status :deleted}
+    (catch Exception e
+      {:server server :name name :status :error :error (ex-message e)})))
+
+(defn- gc-tracked-datasets!
+  "Datasets created by CI runs from older versions still use the tracking table. Until
+  we stop supporting version 58 and 64 we'll have to keep GCing these, but we handle them
+  in a separate function so they'll be easier to delete later."
+  [conn _stmt {:keys [hours dry-run?]}]
+  (->> (jdbc/query (no-db-connection-spec)
+                   [(format
+                     "select d.database_name
+                       from metabase_test_tracking.information_schema.databases d
+                       left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
+                       where (startswith(d.database_name, 'isolate_')
+                              and d.created < dateadd(hour, -%d, current_timestamp()))
+                          or (startswith(d.database_name, 'sha_')
+                              and coalesce(t.accessed_at, d.created) < dateadd(hour, -%d, current_timestamp()))
+                       order by d.created"
+                     hours hours)])
+       (mapv (partial drop-tracked-dataset conn (account) dry-run?))))
+
 (defmethod tx/gc-orphans! :snowflake
   [_driver options]
-  (let [server (account)]
-    (mapv #(assoc % :server server) (drop-datasets! (old-dataset-names options)))))
+  (concat (with-write-stmt! gc-orphans! options)
+          (with-write-stmt! gc-tracked-datasets! options)))
 
 (defmethod tx/count-datasets :snowflake
   [_driver]
@@ -279,8 +223,6 @@
     ;; test-harness cleanup output goes to the CI console, not the app log
     #_{:clj-kondo/ignore [:discouraged-var]}
     (println "[Snowflake] destroy database " database-name (:database-name dbdef))
-    (jdbc/query (no-db-connection-spec)
-                ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
     (jdbc/execute! (no-db-connection-spec) [sql])))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
@@ -313,36 +255,6 @@
 
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
-
-(defn- setup-tracking-db!
-  "Idempotently create test tracking database"
-  [conn driver]
-  (with-open [^PreparedStatement setup-1 (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;"
-                                          [])
-              ^PreparedStatement setup-2 (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          "CREATE TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.datasets (hash TEXT, name TEXT, accessed_at TIMESTAMP_TZ, access_note TEXT)"
-                                          [])
-              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
-              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
-    nil))
-
-(defonce ^:private set-up-tracking-db?
-  (atom false))
-
-(defn- setup-tracking-db-if-needed!
-  "Call [[setup-tracking-db!]], only if we haven't done so already.
-
-  Both of its statements are server round trips, and nothing drops `metabase_test_tracking` while a run is in
-  progress, so once they have succeeded they only need repeating in the next process."
-  [conn driver]
-  (when-not @set-up-tracking-db?
-    (setup-tracking-db! conn driver)
-    (reset! set-up-tracking-db? true)))
 
 (defn- database-exists?!
   [conn driver db-def]
@@ -383,27 +295,6 @@
    (fn [^java.sql.Connection conn]
      (and (database-exists?! conn driver db-def)
           (dataset-rows-ok?! conn db-def)))))
-
-(defmethod tx/track-dataset :snowflake
-  [driver db-def]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (setup-tracking-db-if-needed! conn driver)
-     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
-                                               "  USING (select ? as hash, ? as name, current_timestamp() as accessed_at, ? as access_note) as n on d.hash = n.hash"
-                                               "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
-                                          [(tx/hash-dataset db-def)
-                                           (qualified-db-name db-def)
-                                           (tx/tracking-access-note)])
-                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-       (some-> rs resultset-seq doall)))))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
@@ -482,33 +373,7 @@
   (jdbc/query (no-db-connection-spec) ["SELECT query_text, end_time
                                         FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
                                         WHERE query_text LIKE 'DROP DATABASE %'
-                                        ORDER BY end_time DESC limit 64"])
-  ;; preview what the nightly sweep would collect, at its own thresholds
-  (old-dataset-names {:temp-data-hours 2, :fixture-hours 72})
-  (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
-  ;; Tracked databases ordered by age
-  (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age
-         from metabase_test_tracking.PUBLIC.datasets d
-         inner join metabase_test_tracking.information_schema.databases i on i.database_name = d.name
-         order by 5 asc"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :name :diff :age :accessed_at :created))))
-
-  ;; Tracked DBs that are not in snowflake
-  (->> ["select name, accessed_at from metabase_test_tracking.PUBLIC.datasets d
-       where d.name not in (select database_name from metabase_test_tracking.information_schema.databases)
-       order by accessed_at"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :name :accessed_at))))
-
-  ;; DBs in snowflake that are not tracked
-  (->> ["select database_name, created from metabase_test_tracking.information_schema.databases  d
-         where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
-         and d.database_name like 'sha_%'
-         -- and created < dateadd(day, -2, current_timestamp())
-         order by created"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :database_name :created)))))
+                                        ORDER BY end_time DESC limit 64"]))
 
 (defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
 
