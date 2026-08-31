@@ -402,6 +402,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 (defsetting oidc-login-providers
   (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :encryption :no
   :type       :json
   :default    []
   :feature    :sso-oidc
@@ -431,6 +432,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
   (SAML/JWT) for authorization rather than the normal login form or Google Auth button."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured))))
