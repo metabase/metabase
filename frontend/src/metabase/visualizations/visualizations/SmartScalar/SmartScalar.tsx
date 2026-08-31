@@ -41,6 +41,8 @@ function SmartScalarComponent({
   onChangeCardAndRun,
   isVisualizerCard,
   isQueryBuilder,
+  isDashboard,
+  isEditing,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
   const [isInnerTooltipHovered, setIsInnerTooltipHovered] = useState(false);
@@ -115,6 +117,8 @@ function SmartScalarComponent({
   const title = showTitle ? settings["card.title"] : null;
   const showsInlineTitle = Boolean(title) && tier.showsTitle;
   const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
+  const description =
+    isDashboard && isEditing ? null : settings["card.description"];
 
   const canSelectTitle = onChangeCardAndRun != null && !isVisualizerCard;
   const handleSelectTitle = () =>
@@ -142,27 +146,63 @@ function SmartScalarComponent({
     </ScalarValueContainer>
   );
 
+  const symbolElement = symbolDirection != null && (
+    <Box
+      pos="absolute"
+      right="100%"
+      top="50%"
+      mr={tier.symbolGap}
+      style={{ transform: "translateY(-50%)", display: "flex" }}
+    >
+      <TrendSymbol
+        direction={symbolDirection}
+        colorName={primaryComparison?.changeColorName}
+        size={tier.symbolSize}
+      />
+    </Box>
+  );
+
   if (isQueryBuilder) {
+    const hasSingleComparison = comparisons.length === 1;
+
     return (
       <ScalarWrapper xPadding={tier.xPadding}>
         <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
-          {valueElement}
-          {display.date != null && display.date !== "" && (
-            <Text
-              fz="lg"
-              lh="lg"
-              c="text-secondary"
-              ta="center"
-              data-testid="scalar-period"
-            >
-              {display.date}
-            </Text>
+          {hasSingleComparison ? (
+            <Box pos="relative" maw={`${valueMaxWidth}px`}>
+              {valueElement}
+              {symbolElement}
+            </Box>
+          ) : (
+            valueElement
           )}
-          {comparisons.length > 0 && (
-            <TrendComparisonList
-              comparisons={comparisons}
+          {hasSingleComparison ? (
+            <TrendComparisonRow
+              trend={trend}
               formatOptions={formatOptions}
+              size="lg"
+              compactValue={false}
             />
+          ) : (
+            <>
+              {display.date != null && display.date !== "" && (
+                <Text
+                  fz="lg"
+                  lh="lg"
+                  c="text-secondary"
+                  ta="center"
+                  data-testid="scalar-period"
+                >
+                  {display.date}
+                </Text>
+              )}
+              {comparisons.length > 0 && (
+                <TrendComparisonList
+                  comparisons={comparisons}
+                  formatOptions={formatOptions}
+                />
+              )}
+            </>
           )}
         </Stack>
       </ScalarWrapper>
@@ -194,24 +234,11 @@ function SmartScalarComponent({
             {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
           >
             {valueElement}
-            {symbolDirection != null && (
-              <Box
-                pos="absolute"
-                right="100%"
-                top="50%"
-                mr={tier.symbolGap}
-                style={{ transform: "translateY(-50%)", display: "flex" }}
-              >
-                <TrendSymbol
-                  direction={symbolDirection}
-                  colorName={primaryComparison?.changeColorName}
-                  size={tier.symbolSize}
-                />
-              </Box>
-            )}
+            {symbolElement}
           </Box>
           {showsInlineTitle && (
             <ScalarTitle
+              description={description}
               getHref={canSelectTitle ? getHref : undefined}
               onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
             >

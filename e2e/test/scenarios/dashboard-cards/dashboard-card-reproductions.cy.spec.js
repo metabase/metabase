@@ -1017,6 +1017,13 @@ describe("issue 31628", () => {
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
+        cy.log("should show description tooltip on hover");
+        cy.findByTestId("scalar-title").icon("info").realHover();
+
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
+          .should("exist");
+
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "-34.72% MoM")
@@ -1062,6 +1069,13 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
+          .should("exist");
+
+        cy.log("should show description tooltip on hover");
+        cy.findByTestId("scalar-title").icon("info").realHover();
+
+        cy.findByRole("tooltip")
+          .findByText(SMART_SCALAR_QUESTION.description)
           .should("exist");
 
         cy.log("should show previous value in full");

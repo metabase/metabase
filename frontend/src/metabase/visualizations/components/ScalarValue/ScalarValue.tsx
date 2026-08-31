@@ -12,8 +12,18 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { Markdown } from "metabase/common/components/Markdown";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Ellipsified, Flex, useMantineTheme } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Tooltip,
+  useMantineTheme,
+} from "metabase/ui";
 
 import { LegendLabel } from "../legend/LegendLabel";
 
@@ -90,12 +100,14 @@ const TITLE_HREF_PLACEHOLDER = "#";
 
 interface ScalarTitleProps {
   children: ReactNode;
+  description?: string | null;
   getHref?: () => string | undefined;
   onSelectTitle?: () => void;
 }
 
 export const ScalarTitle = ({
   children,
+  description,
   getHref,
   onSelectTitle,
 }: ScalarTitleProps) => {
@@ -108,32 +120,55 @@ export const ScalarTitle = ({
     }
   }, [getHref]);
 
-  const title = <Ellipsified tooltip={children}>{children}</Ellipsified>;
+  const tc = useTranslateContent();
+  const titleText = typeof children === "string" ? tc(children) : children;
+  const title = <Ellipsified tooltip={titleText}>{titleText}</Ellipsified>;
 
   return (
-    <Box
-      fz="md"
-      lh="md"
-      fw={700}
-      c="text-primary"
-      ta="center"
+    <Flex
+      align="center"
+      justify="center"
+      gap="xs"
       maw="100%"
       data-testid="scalar-title"
     >
-      {onSelectTitle ? (
-        <LegendLabel
-          className={S.titleLink}
-          href={href}
-          onClick={onSelectTitle}
-          onFocus={computeHref}
-          onMouseEnter={computeHref}
+      <Box fz="md" lh="md" fw={700} c="text-primary" ta="center" miw={0}>
+        {onSelectTitle ? (
+          <LegendLabel
+            className={S.titleLink}
+            href={href}
+            onClick={onSelectTitle}
+            onFocus={computeHref}
+            onMouseEnter={computeHref}
+          >
+            {title}
+          </LegendLabel>
+        ) : (
+          title
+        )}
+      </Box>
+      {description && (
+        <Tooltip
+          label={
+            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
+              {tc(description)}
+            </Markdown>
+          }
+          maw="22em"
         >
-          {title}
-        </LegendLabel>
-      ) : (
-        title
+          <Box
+            component="span"
+            className={cx(
+              S.descriptionIcon,
+              CS.hoverChild,
+              CS.hoverChildSmooth,
+            )}
+          >
+            <Icon name="info" />
+          </Box>
+        </Tooltip>
       )}
-    </Box>
+    </Flex>
   );
 };
 
