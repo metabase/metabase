@@ -10,7 +10,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-08-26 18:00+0000\n"
+"POT-Creation-Date: 2026-08-26 19:37+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -9285,7 +9285,9 @@ msgstr ""
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr ""
+msgid_plural "tables"
+msgstr[0] ""
+msgstr[1] ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -19932,7 +19934,7 @@ msgstr ""
 #: metabase/lib/temporal_bucket.cljc
 #, fuzzy
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] ""
 "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
@@ -37286,10 +37288,6 @@ msgstr ""
 msgid ""
 "Database was encrypted with a different key than the "
 "MB_ENCRYPTION_SECRET_KEY environment contains"
-msgstr ""
-
-#: metabase/app_db/encryption.clj
-msgid "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY"
 msgstr ""
 
 #: metabase/app_db/liquibase.clj
