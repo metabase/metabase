@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
@@ -22,6 +23,12 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
+
+;; side-effect require: registers the DML build guard exercised by
+;; [[migrate-encrypted-settings!-does-not-depend-on-settings-cache-test]]
+(comment cloud-migration/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -1784,6 +1791,27 @@
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
         (setting/migrate-encrypted-settings!)
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))))
+
+(deftest migrate-encrypted-settings!-does-not-depend-on-settings-cache-test
+  ;; The cloud-migration read-only-mode guard (a `t2.pipeline/build :before` method registered when
+  ;; `metabase.cloud-migration.models.cloud-migration` loads -- required above so this holds in a targeted test run
+  ;; too) runs on every DML statement and reads a setting. On a fresh JVM that read triggers a full strict
+  ;; settings-cache restore, which fails on the very plaintext row this function exists to repair -- so the repair
+  ;; itself must never go through the cache. Regression test for the chicken-and-egg startup crash.
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+      (binding [config/*disable-setting-cache* false]
+        ;; Simulate a fresh JVM. `setting.cache/cache*` is the atom holding this app DB's in-memory settings map; nil
+        ;; means never populated, so the next cached read must do the full (strictly decrypting) restore. And
+        ;; `last-update-check` is the AtomicLong nanotime of the last staleness check: zeroing it defeats the
+        ;; one-minute throttle that otherwise skips the check entirely in a warm test JVM.
+        (reset! (#'setting.cache/cache*) nil)
+        (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0)
+        (setting/migrate-encrypted-settings!))
+      (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
+      (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name)))))))
 
 (deftest migrate-encrypted-settings!-encrypts-strict-settings
   ;; raw :setting (not :model/Setting) throughout: the model's before-insert would encrypt the value, and these tests
