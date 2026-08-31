@@ -2355,17 +2355,18 @@
    "premium-embedding-token" "python-runner-api-token" "python-runner-url"
    "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint" "python-storage-s-3-endpoint"
    "python-storage-s-3-secret-key" "remote-sync-branch" "remote-sync-token"
-   "remote-sync-url" "saml-application-name" "saml-attribute-email"
-   "saml-attribute-firstname" "saml-attribute-group" "saml-attribute-lastname"
-   "saml-attribute-tenant" "saml-group-mappings" "saml-identity-provider-certificate"
-   "saml-identity-provider-issuer" "saml-identity-provider-slo-uri" "saml-identity-provider-uri"
-   "saml-keystore-alias" "saml-keystore-password" "saml-keystore-path"
-   "sdk-encryption-validation-key" "search-language" "security-center-email-recipients"
-   "security-center-slack-channel" "session-timeout" "site-url"
-   "slack-app-token" "slack-bug-report-channel" "slack-connect-attribute-team-id"
-   "slack-connect-authentication-mode" "slack-connect-client-id" "slack-connect-client-secret"
-   "slack-files-channel" "snowplow-url" "source-address-header"
-   "store-api-url" "store-url" "subscription-allowed-domains"])
+   "remote-sync-url" "report-timezone" "saml-application-name"
+   "saml-attribute-email" "saml-attribute-firstname" "saml-attribute-group"
+   "saml-attribute-lastname" "saml-attribute-tenant" "saml-group-mappings"
+   "saml-identity-provider-certificate" "saml-identity-provider-issuer" "saml-identity-provider-slo-uri"
+   "saml-identity-provider-uri" "saml-keystore-alias" "saml-keystore-password"
+   "saml-keystore-path" "sdk-encryption-validation-key" "search-language"
+   "security-center-email-recipients" "security-center-slack-channel" "session-timeout"
+   "site-url" "slack-app-token" "slack-bug-report-channel"
+   "slack-connect-attribute-team-id" "slack-connect-authentication-mode" "slack-connect-client-id"
+   "slack-connect-client-secret" "slack-files-channel" "snowplow-url"
+   "source-address-header" "store-api-url" "store-url"
+   "subscription-allowed-domains"])
 
 (define-reversible-migration EncryptSettingsV58
   (encrypt-settings encrypted-settings-v58)
