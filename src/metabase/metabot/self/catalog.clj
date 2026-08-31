@@ -9,7 +9,8 @@
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.self.vllm :as vllm]))
+   [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.zai :as zai]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,6 +30,7 @@
       "openai"    (openai/reasoning-model? model)
       "google"    (google/reasoning-model? model)
       "vllm"      (vllm/reasoning-connection? credentials)
+      "zai"       (zai/reasoning-model? model)
       false)))
 
 (defn supports-fast-mode?

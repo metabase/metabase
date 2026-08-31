@@ -192,7 +192,8 @@
                        (connection "openai" "openai")
                        (connection "bedrock" "bedrock")
                        (connection "google" "google")
-                       (connection "azure" "azure")]
+                       (connection "azure" "azure")
+                       (connection "zai" "zai")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -209,6 +210,8 @@
                "azure/openai/my-deployment"                 false
                ;; a family with no deployment segment names no model
                "azure/anthropic"                            false
+               "zai/glm-5.2"                                true
+               "zai/glm-4.7"                                false
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
