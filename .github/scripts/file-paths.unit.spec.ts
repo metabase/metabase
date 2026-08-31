@@ -5,7 +5,7 @@ import { load } from "js-yaml";
 
 const FILTERS = join(__dirname, "..", "file-paths.yaml");
 
-type Filter = string | Filter[] | Record<string, Filter>;
+type Filter = string | Filter[] | { [changeType: string]: Filter };
 
 // A filter is a list of patterns, and an entry may name the change types it applies to as
 // { "added|modified": pattern }. Either way the patterns are what matters here.
