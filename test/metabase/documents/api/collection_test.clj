@@ -158,6 +158,24 @@
           (is (contains? ids plain-doc-id))
           (is (contains? ids expl-doc-id)))))))
 
+(deftest exploration-documents-metadata-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
+                                                     :name "Metadata Exploration"}
+                   :model/Document _ {:collection_id coll-id
+                                      :name "Plain Doc"}
+                   :model/Document _ {:collection_id coll-id
+                                      :name "Exploration Doc"
+                                      :exploration_id expl-id}]
+      (let [url (format "collection/%d/items/metadata" coll-id)]
+        (testing "hides exploration documents by default, like the items list does"
+          (is (= {:available_models ["document"] :total_items 1}
+                 (mt/user-http-request :rasta :get 200 url))))
+        (testing "counts them when show-exploration-documents is set"
+          (is (= {:available_models ["document"] :total_items 2}
+                 (mt/user-http-request :rasta :get 200 url :show-exploration-documents true))))))))
+
 (deftest document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned-state parameter for documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
