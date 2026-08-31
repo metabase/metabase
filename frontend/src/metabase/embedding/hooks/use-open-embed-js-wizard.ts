@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 
 export const useOpenEmbedJsWizard = ({
   initialState,
@@ -15,14 +15,7 @@ export const useOpenEmbedJsWizard = ({
     ({ onBeforeOpen }: { onBeforeOpen?: () => void }) => {
       onBeforeOpen?.();
 
-      dispatch(
-        setOpenModalWithProps({
-          id: "embed",
-          props: {
-            initialState,
-          },
-        }),
-      );
+      dispatch(openEmbedJsWizard(initialState));
     },
     [dispatch, initialState],
   );

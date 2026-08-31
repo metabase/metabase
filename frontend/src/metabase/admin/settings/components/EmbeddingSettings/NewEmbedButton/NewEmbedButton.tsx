@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
 import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button } from "metabase/ui";
 
 interface NewEmbedButtonProps {
@@ -19,16 +19,7 @@ export const NewEmbedButton = ({ forceIsGuest }: NewEmbedButtonProps) => {
       variant="brand"
       size="sm"
       onClick={() => {
-        dispatch(
-          setOpenModalWithProps({
-            id: "embed",
-            props: {
-              initialState: {
-                isGuest: forceIsGuest,
-              },
-            },
-          }),
-        );
+        dispatch(openEmbedJsWizard({ isGuest: forceIsGuest }));
       }}
     >
       {t`New embed`}
