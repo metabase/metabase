@@ -26,6 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -570,6 +571,9 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defonce ^:private password-change-throttler
+  (throttle/make-throttler :user-id :attempts-threshold 10))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -591,6 +595,8 @@
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
+      (when-not (config/config-bool :mb-disable-session-throttle)
+        (throttle/check password-change-throttler id))
       (api/checkp (true? (:success? (auth-identity/authenticate :provider/password {:email    (:email user)
                                                                                     :password old_password})))
                   "old_password"
