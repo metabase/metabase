@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
-import { type FieldEntity, FieldSchema } from "metabase/schema";
 import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -19,6 +18,8 @@ import {
 import type {
   Table as ApiTable,
   Card,
+  FieldId,
+  FieldValue,
   Measure,
   Metric,
   NormalizedDatabase,
@@ -31,6 +32,8 @@ import type {
   NormalizedTable,
   Segment,
 } from "metabase-types/api";
+
+import { type FieldEntity, FieldSchema } from "./schema";
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
@@ -438,4 +441,16 @@ function hydrateMeasureTable(
     ...rest
   } = normalized;
   return { ...rest, schema: schema_name ?? "" };
+}
+
+/**
+ * A field's client-accumulated remappings. No endpoint returns these: they are
+ * merged in as values are fetched, and one component's fetch labels values for
+ * another, so a component cannot answer this from its own result.
+ */
+export function getFieldRemappings(
+  state: State,
+  fieldId: FieldId,
+): FieldValue[] {
+  return state.entities.fields[fieldId]?.remappings ?? [];
 }

@@ -3,11 +3,13 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
+import {
+  entitiesReducer,
+  metadataHydrationMiddleware,
+} from "metabase/metadata-store";
 import { commonReducers } from "metabase/reducers-common";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { reducer as entitiesReducer } from "metabase/redux/entities";
-import { metadataHydrationMiddleware } from "metabase/redux/entities/hydration";
 import type { State } from "metabase/redux/store";
 import {
   type StoreSeedState,

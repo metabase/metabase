@@ -1,8 +1,6 @@
 import type { Schema as NormalizrSchema } from "normalizr";
 import { normalize } from "normalizr";
 
-import type { EntitiesState } from "metabase/redux/store";
-import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import {
   DatabaseSchema,
   FieldSchema,
@@ -13,7 +11,9 @@ import {
   SegmentSchema,
   SnippetSchema,
   TableSchema,
-} from "metabase/schema";
+} from "metabase/metadata-store/schema";
+import type { EntitiesState } from "metabase/redux/store";
+import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import type {
   Card,
   Database,

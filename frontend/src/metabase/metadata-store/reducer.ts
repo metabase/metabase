@@ -117,7 +117,4 @@ const sliceReducers = Object.fromEntries(
   ]),
 ) as Record<(typeof ENTITY_SLICE_NAMES)[number], SliceReducer>;
 
-export const reducer = combineReducers(sliceReducers);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default reducer;
+export const entitiesReducer = combineReducers(sliceReducers);
