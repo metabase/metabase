@@ -40,3 +40,11 @@ export {
   tableFetched,
   tableForeignKeysFetched,
 } from "./actions";
+
+// The slice a model's records live in.
+export { entityTypeForModel, entityTypeForObject } from "./entity-types";
+
+// Fixtures of the mirror's normalized shape. The schemas that build it are
+// private, so specs cannot assemble this themselves.
+export { createMockEntitiesState } from "./mocks";
+export type { EntitiesStateOpts } from "./mocks";
