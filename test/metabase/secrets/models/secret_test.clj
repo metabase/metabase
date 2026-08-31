@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.secrets.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -45,13 +46,16 @@
           (is (mt/secret-value-equals? value (:value loaded))))))))
 
 (deftest secret-retrieval-test
-  (testing "A secret value can be retrieved successfully"
-    (testing " when there is NO encryption key in place"
-      (encryption-test/with-secret-key nil
-        (check-secret)))
-    (testing " when there is an encryption key in place"
-      (encryption-test/with-secret-key (resolve 'encryption-test/secret)
-        (check-secret)))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "A secret value can be retrieved successfully"
+      (testing " when there is NO encryption key in place"
+        (encryption-test/with-secret-key nil
+          (check-secret)))
+      (testing " when there is an encryption key in place"
+        (encryption-test/with-secret-key (resolve 'encryption-test/secret)
+          (check-secret))))))
 
 (deftest get-secret-string-test
   (testing "get-secret-string from value only"
