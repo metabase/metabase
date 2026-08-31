@@ -1,4 +1,4 @@
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "../types";
 
 import { getDashboardAdjustedSettings } from "./settings-adjustments";
 

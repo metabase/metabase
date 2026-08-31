@@ -20,8 +20,11 @@ import type {
   ParameterId,
   ParameterValuesMap,
   RawSeries,
+  TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+
+const NO_TIMELINE_EVENTS: TimelineEvent[] = [];
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
@@ -130,6 +133,10 @@ export function PublicOrEmbeddedQuestionView({
             // `isDashboard` is used by Visualization to change some visual behaviors
             // including the "No results" message
             isDashboard
+            // Public and static embeds cannot reach `/api/timeline`, so a
+            // question saved with timeline events shows none here rather than
+            // letting the chart fetch them itself.
+            timelineEvents={NO_TIMELINE_EVENTS}
             metadata={metadata}
             onChangeCardAndRun={() => {}}
             tableFooterExtraButtons={

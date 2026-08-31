@@ -24,6 +24,11 @@ import {
   getTimelineEventsDashCardIds,
 } from "./selectors";
 
+// A chart with no `timelineEvents` prop falls back to fetching the timelines its
+// saved settings select. On a surface that does not support events that fallback
+// is wrong, so hand it an explicit empty list instead of leaving the prop unset.
+const NO_TIMELINE_EVENTS: TimelineEvent[] = [];
+
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
   const hasEventsDashCards = useSelector(
@@ -57,7 +62,9 @@ export const useDashCardTimelineEvents = (
   );
 
   const timelineEvents = useSelector((state) =>
-    isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : undefined,
+    isEnabled
+      ? getDashCardVisibleTimelineEvents(state, dashcardId)
+      : NO_TIMELINE_EVENTS,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
