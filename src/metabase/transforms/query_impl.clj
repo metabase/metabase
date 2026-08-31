@@ -6,6 +6,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.request.core :as request]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.util]
@@ -71,7 +72,15 @@
                ;; For manual runs, use the triggering user; for cron, use owner/creator
                run-user-id       (if (and (= run-method :manual) user-id)
                                    user-id
-                                   (or owner_user_id creator_id))]
+                                   (or owner_user_id creator_id))
+               ;; Authorized as the user the run executes as -- the requester for a manual run, the owner (or
+               ;; creator) otherwise -- and before the run row is booked. A manual refusal surfaces as a 403 on
+               ;; the request that asked for the run rather than as a failed run.
+               _                 (do (when-not run-user-id
+                                       (throw (ex-info "Transform has no owner or creator to run as"
+                                                       {:transform-id id})))
+                                     (request/with-current-user run-user-id
+                                       (transforms.util/check-source-query-permissions! transform)))]
            (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
              (throw (ex-info "The database does not support the requested transform target type."
                              {:driver driver, :database database, :features features})))

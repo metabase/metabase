@@ -185,9 +185,10 @@
                   (is (some #(= "changed the source." (:description %)) revisions))))
               (mt/with-data-analyst-role! (mt/user->id :rasta)
                 (mt/with-restored-data-perms!
-                  ;; rasta may query the transform's current source database but not its previous one
+                  ;; rasta holds the transforms entitlement on the current source database but none on the prior one
                   (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
-                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder-and-native)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/transforms :yes)
                   (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
                   (testing "an analyst entitled only to the current source can still read the transform"
                     (let [revisions (list-fn :rasta 200)]
