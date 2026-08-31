@@ -59,7 +59,7 @@ const DefaultTemplate = ({
         <Button variant="filled">Click to open</Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg">{children}</Box>
+        <Box p="md">{children}</Box>
       </Popover.Dropdown>
     </Popover>
   </Flex>
@@ -133,7 +133,7 @@ const OverviewTemplate: StoryFn<PopoverProps> = () => (
             <Button variant="filled">Target</Button>
           </Popover.Target>
           <Popover.Dropdown mah={120}>
-            <Stack gap="xs" p="0.75rem" w={344}>
+            <Stack gap="xs" p="md" w={344}>
               {Array.from({ length: 8 }, (_, index) => (
                 <Text key={index}>Row {index + 1}</Text>
               ))}
