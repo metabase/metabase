@@ -23,8 +23,6 @@ AI features work on both Metabase Cloud and self-hosted Metabase, and connecting
 
 When you bring your own key, Metabase checks the credentials against a model before it saves the connection, so a bad key gets caught when you connect, not the first time someone asks Metabot a question.
 
-You're not limited to one provider. See [Connect more than one provider](#connect-more-than-one-provider).
-
 ## Choose AI provider
 
 _Admin > AI_
@@ -53,11 +51,13 @@ To use the Metabase AI service for Metabot:
 
 You can only connect the Metabase AI service once, so it stops showing up in the **Add a provider** grid after you've added it.
 
-To stop the charges, remove the connection: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**. Removing the connection cancels your Metabase AI service subscription, and its models stop showing up in the **Model** dropdown.
+To stop the charges, remove the connection: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**. You'll need to be an admin, since removing the connection cancels your Metabase AI service subscription. Its models stop showing up in the **Model** dropdown.
 
 ### Bring your own API key
 
 You can bring your own credentials for any provider Metabase supports, from Anthropic and OpenAI to Amazon Bedrock and your own self-hosted vLLM server. For the full list, what each provider needs, and which models it serves, check out [Supported AI providers](./providers.md).
+
+A provider your plan can't reach is greyed out in the grid and labeled **Unavailable**.
 
 If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
@@ -113,7 +113,7 @@ If you're self-hosting, you can configure a provider with [`MB_LLM_*` environmen
 
 An environment variable can also override a single field of a connection you manage in the UI. If you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, for example, the base URL comes from the environment, and the rest of the connection stays editable.
 
-To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only: **Add a provider** is still there, but saving fails.
+To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting. The **Add a provider** button is still on the page, but saving a connection through it fails.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
 
@@ -241,6 +241,7 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 ## Further reading
 
 - [Using Metabot](metabot.md)
+- [Supported AI providers](providers.md)
 - [MCP server](mcp.md)
 - [AI privacy](privacy.md)
 - [AI access and usage controls](usage-controls.md)

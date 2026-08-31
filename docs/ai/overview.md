@@ -25,10 +25,10 @@ Metabot is Metabase's built-in AI agent. Metabot can help you with most daily ta
 
 **Provider**: Choose from:
 
-- Metabase's own AI Service (available as an add-on exclusively for Metabase Cloud)
+- Metabase's own AI service (available as an add-on exclusively for Metabase Cloud)
 - Third-party models via your own [provider API key](settings.md#bring-your-own-api-key)
 
-**Plans**: available on all plans. You can only use Metabase's AI Service on Metabase Cloud.
+**Plans**: available on all plans. You can only use Metabase's AI service on Metabase Cloud.
 
 See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/ai-chat.md).
 
