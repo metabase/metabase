@@ -755,6 +755,21 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-primes-table-perms-cache-test
+  (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t2"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t4"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t5"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t6"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
+        (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
+            "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"
@@ -1704,6 +1719,37 @@
                  (#'api.database/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
+
+(deftest no-ssrf-via-database-add-test
+  (testing "endpoints that test connection details cannot be used to probe the internal network (SEC-556)"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [private-details {:host "10.224.7.141" :port 5432 :dbname "postgres" :user "postgres"}]
+        (testing "POST /api/database"
+          (let [response (mt/user-http-request :crowberto :post 400 "database"
+                                               {:name "internal" :engine "postgres" :details private-details})]
+            (is (=? {:message "Cannot connect to a private or internal network address."} response))
+            (is (not (t2/exists? :model/Database :name "internal")))))
+        (testing "POST /api/database/validate"
+          (is (=? {:valid false, :message "Cannot connect to a private or internal network address."}
+                  (mt/user-http-request :crowberto :post 200 "database/validate"
+                                        {:details {:engine "postgres" :details private-details}}))))
+        (testing "every blocked address gives the same answer, so nothing can be learned about what is behind it"
+          (is (apply = (for [host ["10.224.7.141" "127.0.0.1" "169.254.169.254" "192.168.55.55"]]
+                         (mt/user-http-request :crowberto :post 200 "database/validate"
+                                               {:details {:engine "postgres"
+                                                          :details (assoc private-details :host host)}})))))
+        (testing "PUT /api/database/:id cannot repoint an existing database at an internal address either"
+          (mt/with-temp [:model/Database db {:engine "postgres"
+                                             :details {:host "db.example.com" :port 5432 :dbname "x"}}]
+            (is (=? {:message "Cannot connect to a private or internal network address."}
+                    (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db))
+                                          {:details private-details})))))
+        (testing "a Database with internal details cannot be written directly (serialization import, config files)"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"private or internal network address"
+                                (t2/insert! :model/Database {:name    "internal"
+                                                             :engine  "postgres"
+                                                             :details private-details}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |

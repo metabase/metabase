@@ -30,6 +30,14 @@
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
+;; the connection is made through the proxy when one is set, so it is the host actually contacted.
+(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host"])
+
+(defmethod driver/non-host-parameters :clickhouse
+  [_driver]
+  ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
+   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
+
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -88,11 +96,11 @@
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (when session-timezone
-         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
-               query-settings  (new QuerySettings)]
-           (.setOption query-settings "session_timezone" session-timezone)
-           (.setDefaultQuerySettings clickhouse-conn query-settings)))
+       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+             query-settings (new QuerySettings)]
+         (when session-timezone
+           (.serverSetting query-settings "session_timezone" session-timezone))
+         (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))

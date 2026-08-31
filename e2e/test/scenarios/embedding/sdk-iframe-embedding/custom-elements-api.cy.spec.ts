@@ -10,6 +10,21 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
+const LIMITED_ORDERS_ROW_COUNT = 5;
+
+const clickEmbeddedTableCell = (value: string, rowsCount: number) => {
+  // Scoped to the table on purpose: column auto-sizing renders a hidden copy of
+  // the cells on the iframe's body and drops it once measured, so a body-wide
+  // query can latch onto a copy that is about to detach.
+  const tableRoot = () =>
+    H.getSimpleEmbedIframeContent().findByTestId("table-root");
+
+  // Anchor on the fully rendered table before interacting with it.
+  tableRoot().should("have.attr", "data-rows-count", String(rowsCount));
+
+  tableRoot().findByText(value).should("be.visible").click({ force: true });
+};
+
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
@@ -157,37 +172,49 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        cy.wait("@getDashCardQuery");
+
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getDashCardQuery");
+
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
   });
 
@@ -276,37 +303,45 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        cy.wait("@getCardQuery");
+
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getCardQuery");
+
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
 
     it("should allow saving a question when `is-save-enabled` is true", () => {

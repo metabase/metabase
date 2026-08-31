@@ -32,6 +32,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1542,6 +1543,88 @@
                   :params nil}
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
+
+(defn- ist-convert-timezone-expression
+  "Returns `[base ist-expr]` for a lib query on `attempts` with a `convert-timezone` expression `ist_dt`."
+  []
+  (let [mp       (mt/metadata-provider)
+        datetime (lib.metadata/field mp (mt/id :attempts :datetime))
+        base     (-> (lib/query mp (lib.metadata/table mp (mt/id :attempts)))
+                     (lib/expression "ist_dt" (lib/convert-timezone datetime "Asia/Kolkata" "UTC")))
+        ist-expr (lib.tu.notebook/find-col-with-spec base
+                                                     (lib/filterable-columns base)
+                                                     {}
+                                                     {:display-name "ist_dt"})]
+    [base ist-expr]))
+
+(defn- assert-now-wrapped-in-target-timezone
+  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(?, NOW())`."
+  [query]
+  (let [sql       (:query (qp.compile/compile query))
+        bare-nows (count (re-seq #"(?i)\bNOW\(\)" sql))
+        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*\?\s*,\s*NOW\(\)\s*\)" sql))]
+    (is (pos? bare-nows)
+        "sanity: the compiled SQL uses NOW() as a filter boundary")
+    (is (= bare-nows wrapped)
+        (str "Every NOW() must be wrapped in TIMEZONE(?, NOW()) so it lands in the"
+             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))))
+
+(deftest ^:parallel convert-timezone-relative-datetime-filter-test
+  ;; Regression for #80155.
+  (testing "Relative-datetime filter on a convertTimezone expression compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/time-interval ist-expr -3 :month))))))))
+
+(deftest ^:parallel convert-timezone-bucketed-lhs-filter-test
+  ;; Regression for #80155.
+  (testing "A bucketed convertTimezone LHS still compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        ;; Field bucket (week) and relative-datetime bucket (month) are incompatible, so
+        ;; `optimize-temporal-clauses` (an index-friendliness rewrite that otherwise unbuckets the LHS)
+        ;; leaves this alone.
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/>= (lib/with-temporal-bucket ist-expr :week)
+                                    (lib/relative-datetime -2 :month)))))))))
+
+(deftest ^:parallel convert-timezone-now-filter-test
+  ;; Regression for #80155.
+  (testing "A :now filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/< ist-expr (lib/now)))))))))
+
+(deftest ^:parallel convert-timezone-today-filter-test
+  ;; Regression for #80155.
+  (testing "A :today filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/< ist-expr (lib/today)))))))))
+
+(deftest ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
+  ;; Regression for #80155.
+  (testing "A convertTimezone nested inside datetime-add still compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [mp       (mt/metadata-provider)
+              datetime (lib.metadata/field mp (mt/id :attempts :datetime))
+              base     (-> (lib/query mp (lib.metadata/table mp (mt/id :attempts)))
+                           (lib/expression "shifted"
+                                           (lib/datetime-add
+                                            (lib/convert-timezone datetime "Asia/Kolkata" "UTC")
+                                            1 :hour)))
+              shifted  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                           {} {:display-name "shifted"})]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/time-interval shifted -3 :month))))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres

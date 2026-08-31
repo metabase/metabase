@@ -16,7 +16,7 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route {:binding _route-params}, :query {:binding _query-params}}
+      :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
       :body [(neat)]}
 
     '(:post "/move"
@@ -31,8 +31,8 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route   {:binding _route-params}
-               :query   {:binding _query-params}
+      :params {:route   {:binding _route-params, :schema [:map]}
+               :query   {:binding _query-params, :schema [:map]}
                :body    {:binding {:keys [card_ids], :as body}
                          :schema [:map [:card_ids [:sequential ms/PositiveInt]]]}
                :request {:binding request
@@ -53,8 +53,8 @@
                 (raise e))))
     '{:method :post
       :route  {:path "/move"}
-      :params {:route   {:binding _route-params}
-               :query   {:binding _query-params}
+      :params {:route   {:binding _route-params, :schema [:map]}
+               :query   {:binding _query-params, :schema [:map]}
                :body    {:binding {:keys [card_ids], :as body}, :schema :map}
                :request {:binding _request}
                :respond {:binding respond}
@@ -133,7 +133,7 @@
         :route {:path "/test"}
         :docstr "Deprecated endpoint."
         :metadata {:deprecated "0.50.0", :multipart true}
-        :params {:route {:binding _route-params}, :query {:binding _query-params}}
+        :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
         :body [(test)]})))
 
 (deftest ^:parallel decode-strips-undeclared-keys-test

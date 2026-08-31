@@ -42,10 +42,15 @@ export const getTableUrl = (table, metadata) => {
 
 export default _.compose(
   Tables.loadList({
-    query: (state, props) => ({
-      dbId: getDatabaseId(props, { includeVirtual: true }),
-      schemaName: getSchemaName(props),
-    }),
+    query: (state, props) => {
+      const dbId = getDatabaseId(props, { includeVirtual: true });
+      const schemaName = getSchemaName(props);
+      // Schema-less databases are listed via GET /api/database/:id/metadata,
+      // which returns every field of every table unless skip_fields is set.
+      return dbId != null && schemaName == null
+        ? { dbId, schemaName, skip_fields: true }
+        : { dbId, schemaName };
+    },
     reloadInterval: getReloadInterval,
   }),
   connect((state, props) => ({
