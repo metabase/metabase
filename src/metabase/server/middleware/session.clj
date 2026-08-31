@@ -8,8 +8,8 @@
   be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
   instead.
 
-  The `X-Metabase-Session` header is checked before either cookie, and the first session that resolves wins -- so a
-  stale cookie can't shadow a live header.
+  The `X-Metabase-Session` header is checked before either cookie, and decides the request on its own -- a stale
+  cookie can't shadow it, and it doesn't fall back to one when its own session is dead.
 
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
@@ -79,40 +79,12 @@
     (when (seq session)
       (assoc request :metabase-session-key session))))
 
-(def ^:private session-key-strategies
-  "The strategies we look for a session key with, in priority order."
-  [:header :embedded-cookie :normal-cookie])
-
-(def ^:private session-key-request-keys
-  "The request keys a strategy contributes."
-  [:metabase-session-key :metabase-session-type :anti-csrf-token])
-
-;; every candidate carries all of the keys (`nil` where its strategy doesn't set one) so that adopting a candidate
-;; can't leave another candidate's values behind
-(def ^:private empty-session-key-candidate
-  (zipmap session-key-request-keys (repeat nil)))
-
-(defn- session-key-candidates
-  "Every session key on `request`, in priority order. A request can legitimately carry more than one -- e.g. an embed
-  sends `X-Metabase-Session` while the browser also holds a `metabase.SESSION` cookie for a direct login."
-  [request]
-  (or (not-empty
-       (distinct
-        ;; strip any keys a previous pass already applied, or a strategy would report them as its own
-        (let [bare (apply dissoc request session-key-request-keys)]
-          (keep (fn [strategy]
-                  (when-let [request' (wrap-session-key-with-strategy strategy bare)]
-                    (merge empty-session-key-candidate
-                           (select-keys request' session-key-request-keys))))
-                session-key-strategies))))
-      ;; a request whose session key was set directly rather than by one of the strategies above
-      (when (:metabase-session-key request)
-        [(select-keys request session-key-request-keys)])))
-
 (defmethod wrap-session-key-with-strategy :best
   [_ request]
-  (when-let [candidate (first (session-key-candidates request))]
-    (merge request candidate)))
+  (some
+   (fn [strategy]
+     (wrap-session-key-with-strategy strategy request))
+   [:header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
@@ -373,18 +345,9 @@
             oauth-info   "oauth"
             mcp-ui-info  "mcp-ui")))
 
-(defn- resolve-session-candidate
-  "Return `[candidate user-info]` for the first session key on `request` that resolves to a live session, or `nil`.
-  Trying them all in turn means an expired or deleted session doesn't shadow one that is still good."
-  [request]
-  (some (fn [{:keys [metabase-session-key anti-csrf-token] :as candidate}]
-          (when-let [user-info (current-user-info-for-session metabase-session-key anti-csrf-token)]
-            [candidate user-info]))
-        (session-key-candidates request)))
-
 (defn- merge-current-user-info
-  [{{:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (let [[session-candidate session-info] (resolve-session-candidate request)
+  [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
         ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
@@ -395,9 +358,6 @@
         auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
     (merge
      request
-     ;; adopt the session key that actually authenticated, so downstream (activity tracking, timeout cookie, logout)
-     ;; acts on it rather than on whichever candidate merely came first
-     session-candidate
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
      (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider)

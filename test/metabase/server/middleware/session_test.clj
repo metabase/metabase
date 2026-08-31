@@ -159,9 +159,9 @@
                    (:metabase-user-id request')))
             (is (= header-session-key (:metabase-session-key request')))))))))
 
-(deftest stale-session-header-falls-back-to-cookie-test
+(deftest stale-session-header-does-not-fall-back-to-cookie-test
   (init-status/set-complete!)
-  (testing "a session header that no longer resolves falls back to a cookie that still does"
+  (testing "a session header that no longer resolves does not borrow the cookie's identity"
     (let [cookie-session-key (str (random-uuid))
           stale-header-key   (str (random-uuid))]
       (with-session-for
@@ -171,11 +171,21 @@
                             (ring.mock/header session-header stale-header-key)
                             (assoc :cookies {session-cookie {:value cookie-session-key}}))
                 request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (nil? (:metabase-user-id request')))))))))
+
+(deftest cookie-used-when-no-session-header-test
+  (init-status/set-complete!)
+  (testing "with no header on the request the session cookie still authenticates"
+    (let [cookie-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (let [request (assoc (ring.mock/request :get "/anyurl")
+                               :cookies {session-cookie {:value cookie-session-key}})
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
             (is (= (mt/user->id :crowberto)
                    (:metabase-user-id request')))
-            (testing "\nthe request adopts the session key that actually authenticated"
-              (is (= cookie-session-key (:metabase-session-key request')))
-              (is (= :normal (:metabase-session-type request'))))))))))
+            (is (= :normal (:metabase-session-type request')))))))))
 
 (deftest no-valid-session-key-test
   (init-status/set-complete!)
