@@ -13,6 +13,7 @@ import type { DashboardTabId } from "metabase-types/api";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import {
+  clearGuestToken,
   initGuestEmbed,
   refreshGuestSession,
   setGuestTokenFetchError,
@@ -184,6 +185,10 @@ export const sdk = createReducer(initialState, (builder) => {
     state.token.guestTokensByMount[mountId] = token;
     state.token.loading = false;
     state.token.error = null;
+  });
+
+  builder.addCase(clearGuestToken, (state, action) => {
+    delete state.token.guestTokensByMount[action.payload];
   });
 
   builder.addCase(refreshGuestSession.pending, (state) => {

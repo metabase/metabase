@@ -23,6 +23,13 @@ export const setInitialGuestToken = createAction<{
   token: string;
 }>("sdk/guest-embed/SET_INITIAL_TOKEN");
 
+// Drops a mount's guest token when it unmounts, so a remounted embed (the
+// iframe route re-keys its children when the token changes) doesn't leave a
+// stale entry behind for getOrRefreshGuestSession to pick up.
+export const clearGuestToken = createAction<string>(
+  "sdk/guest-embed/CLEAR_TOKEN",
+);
+
 export const setGuestTokenFetchError = createAction<SerializedError | null>(
   "sdk/guest-embed/SET_TOKEN_FETCH_ERROR",
 );
@@ -69,7 +76,8 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     const tokenState = getSessionTokenState(state);
     // This thunk only runs for iframe/modular embeds (see the isEmbeddingEajs
     // check below), where each embed gets its own iframe and therefore its
-    // own store — so there's only ever one guest token in this map.
+    // own store, and each mount drops its entry on unmount — so there's only
+    // ever one guest token in this map.
     // Needs rework for EMB-2295 (guestEmbedProviderUri in the plain SDK): there
     // one store can hold several mounts, and picking an arbitrary key would
     // hand every request the same token again.

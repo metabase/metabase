@@ -36,7 +36,10 @@ import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
 import {
   getGuestTokenForMount,
   getIsGuestEmbed,
@@ -296,6 +299,15 @@ const SdkDashboardInner = ({
       dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
   }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);
