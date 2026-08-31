@@ -147,6 +147,8 @@
    "198.17.255.255"                ; one below the benchmarking range
    "198.20.0.0"                    ; one above the benchmarking range
    "64:ff9b::1"                    ; globally reachable IPv4/IPv6 translation prefix
+   "2000::1"                       ; bottom of the allocated global-unicast space 2000::/3
+   "3fff:1000::1"                  ; inside 2000::/3, just past the 3fff::/20 documentation block
    "2001:1::1"                     ; globally reachable exceptions inside 2001::/23
    "2001:1::2"
    "2001:1::3"
@@ -181,7 +183,12 @@
    "2001:db8::1"                  ; documentation
    "2002::1"                      ; 6to4
    "3fff::1"                      ; documentation
-   "5f00::1"])                    ; segment-routing SIDs
+   "5f00::1"                      ; segment-routing SIDs
+   "1::1"                         ; reserved IPv6 space outside 2000::/3
+   "4000::1"
+   "6000::1"
+   "8000::1"
+   "e000::1"])
 
 (def ^:private non-public-ips
   (into ["127.0.0.1"               ; loopback
