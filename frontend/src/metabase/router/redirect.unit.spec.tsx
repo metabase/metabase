@@ -161,4 +161,25 @@ describe("router/redirect", () => {
       expect(location?.hash).toBe("");
     });
   });
+
+  it("follows a sibling redirect whose target is itself a redirect", async () => {
+    const router = mountRoutes(
+      <>
+        <Route
+          path="/admin/embedding"
+          element={redirect("/embedding/security")}
+        />
+        <Route
+          path="/admin/embedding/modular"
+          element={redirect("/admin/embedding")}
+        />
+        <Route path="/embedding/security" element={<GroupPage />} />
+      </>,
+      "/admin/embedding/modular",
+    );
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/embedding/security"),
+    );
+  });
 });
