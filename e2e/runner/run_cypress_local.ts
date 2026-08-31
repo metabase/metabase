@@ -71,11 +71,17 @@ const isMaildevListening = async (webPort: string | number) => {
  * failing on a port conflict.
  */
 const startContainers = async () => {
+  const env = {
+    ...process.env,
+    MAILDEV_WEB_PORT: String(MAILDEV_WEB_PORT),
+    MAILDEV_SMTP_PORT: String(MAILDEV_SMTP_PORT),
+  };
+
   if (!isPortInUse(MAILDEV_WEB_PORT) && !isPortInUse(MAILDEV_SMTP_PORT)) {
     console.log(
       `ℹ️ Starting maildev on ports ${MAILDEV_WEB_PORT} (web) / ${MAILDEV_SMTP_PORT} (SMTP)`,
     );
-    shell(`${DOCKER_COMPOSE_COMMAND} up -d`);
+    shell(`${DOCKER_COMPOSE_COMMAND} up -d`, { env });
     return;
   }
 
@@ -102,7 +108,9 @@ const startContainers = async () => {
     .map((service) => service.trim())
     .filter((service) => service && service !== "maildev");
 
-  shell(`${DOCKER_COMPOSE_COMMAND} up -d ${services.join(" ")}`);
+  shell(`${DOCKER_COMPOSE_COMMAND} up -d ${services.join(" ")}`, {
+    env,
+  });
 };
 
 const init = async () => {
