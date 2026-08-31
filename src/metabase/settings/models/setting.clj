@@ -1740,24 +1740,30 @@
   there) or re-writes as plaintext every row its registry knew as `:encryption :no`, after the one-shot encryption
   migrations have already run -- and such a row would otherwise fail the strict read and take the whole settings
   cache down with it. Works around the standard getters/setters deliberately: values are rewritten byte-identical
-  modulo encryption. No-op when MB_ENCRYPTION_SECRET_KEY is not set."
+  modulo encryption. No-op when MB_ENCRYPTION_SECRET_KEY is not set.
+
+  Runs with the settings cache disabled: any setting consulted while this runs (e.g. `read-only-mode`, which the
+  cloud-migration DML guard reads on every write this issues) is read directly from the DB. Restoring the cache
+  strictly decrypts every row -- including the very rows this function exists to repair -- so going through it here
+  would fail the repair on exactly the state it is repairing."
   []
   (when (encryption/default-encryption-enabled?)
-    (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
-      (t2/with-transaction [_conn]
-        (doseq [{v :value k :key}
-                (t2/select :setting {:for :update :where [:and
-                                                          [:in :key (map setting-name plaintext)]
-                                                          ;; these are *definitely* decrypted already, let's not bother looking
-                                                          [:not [:in :value ["true" "false"]]]]})
-                :when (encryption/decryptable-string? v)]
-          (t2/update! :setting :key k {:value (encryption/decrypt v)}))
-        (doseq [{v :value k :key}
-                (t2/select :setting {:for :update :where [:and
-                                                          [:in :key (map setting-name encrypting)]
-                                                          [:!= :value nil]]})
-                :when (not (encryption/decryptable-string? v))]
-          (t2/update! :setting :key k {:value (encryption/encrypt v)}))))))
+    (binding [config/*disable-setting-cache* true]
+      (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
+        (t2/with-transaction [_conn]
+          (doseq [{v :value k :key}
+                  (t2/select :setting {:for :update :where [:and
+                                                            [:in :key (map setting-name plaintext)]
+                                                            ;; these are *definitely* decrypted already, let's not bother looking
+                                                            [:not [:in :value ["true" "false"]]]]})
+                  :when (encryption/decryptable-string? v)]
+            (t2/update! :setting :key k {:value (encryption/decrypt v)}))
+          (doseq [{v :value k :key}
+                  (t2/select :setting {:for :update :where [:and
+                                                            [:in :key (map setting-name encrypting)]
+                                                            [:!= :value nil]]})
+                  :when (not (encryption/decryptable-string? v))]
+            (t2/update! :setting :key k {:value (encryption/encrypt v)})))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
