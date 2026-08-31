@@ -1067,9 +1067,6 @@
 
   - ON for settings marked as `sensitive?`
 
-  - ON for settings with a setter of `:none` (the specific value here doesn't really matter, we just don't want the
-  caller to need to provide a value)
-
   - OFF for types unlikely to contain secrets. As of this writing, that's booleans, numbers, keywords, and timestamps
 
   If none of these conditions are met (a non-`:sensitive?` string/json/csv value you're storing in the database, and
@@ -1084,10 +1081,6 @@
    ;;
    ;; if a setting is `:sensitive?`, default to encrypting it
    (when (:sensitive? setting)
-     :when-encryption-key-set)
-   ;; if a setting isn't stored in the DB, the value doesn't really matter, but provide
-   ;; a default so the caller doesn't have to
-   (when (= (:setter setting) :none)
      :when-encryption-key-set)
    ;; if the setting isn't a type likely to contain secrets, default to plaintext
    (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} (:type setting))

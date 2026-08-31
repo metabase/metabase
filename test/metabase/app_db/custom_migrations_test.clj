@@ -2830,7 +2830,7 @@
               shaped-str (str (apply str (repeat 86 "a")) "==")]
           (ins! "snowplow-url" "https://plain.example")
           (ins! "ldap-user-filter" "   ")
-          (ins! "email-reply-to" "")
+          (ins! "ldap-bind-dn" "")
           (ins! "map-tile-server-url" enc-str)
           (ins! "store-url" shaped-str)
           (ins! "site-name" "Metabase")
@@ -2843,8 +2843,8 @@
           (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
             (is (encryption/decryptable-string? (raw "ldap-user-filter")))
             (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter"))))
-            (is (encryption/decryptable-string? (raw "email-reply-to")))
-            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to")))))
+            (is (encryption/decryptable-string? (raw "ldap-bind-dn")))
+            (is (= "" (encryption/maybe-decrypt (raw "ldap-bind-dn")))))
           (testing "a plaintext value that merely looks like ciphertext is encrypted, not skipped"
             (is (encryption/decryptable-string? (raw "store-url")))
             (is (= shaped-str (encryption/maybe-decrypt (raw "store-url")))))
@@ -2856,39 +2856,43 @@
             (migrate! :down 57)
             (is (= "https://plain.example" (raw "snowplow-url")))
             (is (= "   " (raw "ldap-user-filter")))
-            (is (= "" (raw "email-reply-to")))
+            (is (= "" (raw "ldap-bind-dn")))
             (is (= shaped-str (raw "store-url")))
             (is (= "https://already.example" (raw "map-tile-server-url")))
             (is (= "Metabase" (raw "site-name")))))))))
 
 (deftest encrypt-setter-none-settings-test
   ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
-  (testing "known problematic :setter :none settings are in the migration list"
-    (doseq [k ["enable-query-caching" "enable-nested-queries" "setup-token" "instance-creation" "token-features"]]
+  (testing "the :setter :none settings that are encrypted at rest are in the migration list"
+    (doseq [k ["setup-token" "support-access-grant-email" "site-uuid-for-unsubscribing-url"]]
       (testing k
         (is (some #{k} @#'custom-migrations/encrypted-setter-none-settings-v58)))))
-  (testing "v58.2026-08-30T00:00:00 : plaintext rows of :setter :none settings are encrypted at rest, others untouched"
+  (testing "settings that are neither secret nor integrity-critical are not"
+    (doseq [k ["enable-query-caching" "instance-creation" "token-features" "version"]]
+      (testing k
+        (is (not (some #{k} @#'custom-migrations/encrypted-setter-none-settings-v58))))))
+  (testing "v58.2026-08-30T00:00:00 : plaintext rows of listed settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
       (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
         (let [insert-setting! (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
               raw-setting     (fn [k] (t2/select-one-fn :value :setting :key k))
-              encrypted-value (encryption/maybe-encrypt "2026-08-30T00:00:00Z")]
-          ;; legacy plaintext rows from when these settings were still admin toggles
-          (insert-setting! "enable-query-caching" "true")
-          (insert-setting! "enable-nested-queries" "false")
-          ;; a programmatically written row is already encrypted
-          (insert-setting! "instance-creation" encrypted-value)
-          ;; a settable setting is not this migration's business
-          (insert-setting! "site-name" "Metabase")
+              encrypted-value (encryption/maybe-encrypt "https://otel.example")]
+          ;; a plaintext row from before the setting was encrypted
+          (insert-setting! "setup-token" "b7f4a1e2-0000-4000-8000-000000000000")
+          (insert-setting! "support-access-grant-email" "support@example.com")
+          ;; an already-encrypted row
+          (insert-setting! "tracing-endpoint" encrypted-value)
+          ;; a setting that is deliberately plaintext at rest is not this migration's business
+          (insert-setting! "instance-creation" "2026-08-30T00:00:00Z")
           (migrate!)
-          (testing "a legacy plaintext row is encrypted and decrypts back"
-            (is (encryption/decryptable-string? (raw-setting "enable-query-caching")))
-            (is (= "true" (encryption/maybe-decrypt (raw-setting "enable-query-caching"))))
-            (is (= "false" (encryption/maybe-decrypt (raw-setting "enable-nested-queries")))))
+          (testing "a plaintext row of a listed setting is encrypted and decrypts back"
+            (is (encryption/decryptable-string? (raw-setting "setup-token")))
+            (is (= "b7f4a1e2-0000-4000-8000-000000000000" (encryption/maybe-decrypt (raw-setting "setup-token"))))
+            (is (= "support@example.com" (encryption/maybe-decrypt (raw-setting "support-access-grant-email")))))
           (testing "an already-encrypted row is left unchanged"
-            (is (= encrypted-value (raw-setting "instance-creation"))))
+            (is (= encrypted-value (raw-setting "tracing-endpoint"))))
           (testing "a setting not in the list is left plaintext"
-            (is (= "Metabase" (raw-setting "site-name")))))))))
+            (is (= "2026-08-30T00:00:00Z" (raw-setting "instance-creation")))))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"

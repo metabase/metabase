@@ -67,6 +67,6 @@
   Value must be a valid configured language option in your database such as ''english'' or ''simple''")
   :visibility :internal
   :export?    false
-  :encryption :when-encryption-key-set
+  :encryption :no
   :default    nil
   :type       :string)

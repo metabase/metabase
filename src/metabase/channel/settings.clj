@@ -35,7 +35,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :type       :json
   :doc        false
@@ -127,14 +127,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-address-override
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :feature   :cloud-custom-smtp
   :default    "notifications@metabase.com"
   :visibility :settings-manager
@@ -143,7 +143,7 @@
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
@@ -166,7 +166,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :when-encryption-key-set
+  :encryption :no
   :type       :json
   :visibility :settings-manager
   :audit      :getter
