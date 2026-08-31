@@ -33,7 +33,9 @@
 
 (defn- block-view-data!
   "Block the app group's view-data at the database level on every database, so it grants no data access
-   of its own — a viewer reaches an app's data only through access they already hold in another group."
+   of its own — a viewer reaches an app's data only through access they already hold in another group.
+   `view-data :blocked` cascades `download-results`/`transforms` to `:no`; we reassert whenever any of
+   that has drifted, so a manual grant can't survive a sync."
   [group]
   (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
         permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})
@@ -41,7 +43,8 @@
                        (database-level-permission? (get permissions [(:id group) database-id perm-type]) value))]
     (doseq [database-id database-ids
             :when (not (and (db-level? database-id :perms/view-data :blocked)
-                            (db-level? database-id :perms/download-results :no)))]
+                            (db-level? database-id :perms/download-results :no)
+                            (db-level? database-id :perms/transforms :no)))]
       (perms/set-database-permission! permissions group database-id :perms/view-data :blocked))))
 
 (defn- restore-trashed-collection!
