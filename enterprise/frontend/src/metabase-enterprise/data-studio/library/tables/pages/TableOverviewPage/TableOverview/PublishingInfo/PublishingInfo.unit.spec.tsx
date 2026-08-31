@@ -4,7 +4,7 @@ import {
   setupTablePublishingInfoEndpoint,
   setupTablePublishingInfoEndpointError,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { Card } from "metabase/ui";
 import type { TablePublishingInfo } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
@@ -45,12 +45,6 @@ function setup({
 }
 
 describe("PublishingInfo", () => {
-  it("shows a loading state", () => {
-    setup();
-
-    expect(screen.getByTestId("table-publishing-info-loading")).toBeVisible();
-  });
-
   it("shows when and by whom the table was published", async () => {
     setup();
 
@@ -75,7 +69,7 @@ describe("PublishingInfo", () => {
     expect(screen.queryByText(/by /)).not.toBeInTheDocument();
   });
 
-  it("shows an unavailable state when there is no publishing event", async () => {
+  it("does not show publishing information when there is no publishing event", async () => {
     setup({
       publishingInfo: {
         published_at: null,
@@ -83,17 +77,19 @@ describe("PublishingInfo", () => {
       },
     });
 
-    expect(
-      await screen.findByText("Publishing details unavailable"),
-    ).toBeInTheDocument();
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+    expect(screen.queryByText("Published")).not.toBeInTheDocument();
   });
 
-  it("shows an unavailable state when publishing information cannot be loaded", async () => {
+  it("does not show publishing information when it cannot be loaded", async () => {
     setup({ isError: true });
 
-    expect(
-      await screen.findByText("Publishing details unavailable"),
-    ).toBeInTheDocument();
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+    expect(screen.queryByText("Published")).not.toBeInTheDocument();
   });
 
   it("does not request or show publishing information for an unpublished table", () => {

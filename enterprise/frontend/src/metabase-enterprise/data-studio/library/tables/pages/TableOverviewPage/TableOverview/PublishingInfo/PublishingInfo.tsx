@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Card, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import { Card, Group, Icon, Text, Tooltip } from "metabase/ui";
 import { useGetTablePublishingInfoQuery } from "metabase-enterprise/api";
 import type { Table, TablePublishingInfo } from "metabase-types/api";
 
@@ -10,26 +10,23 @@ type PublishingInfoProps = {
 };
 
 export function PublishingInfo({ table }: PublishingInfoProps) {
-  const { data: publishingInfo, isLoading } = useGetTablePublishingInfoQuery(
-    table.id,
-    {
-      skip: !table.is_published,
-    },
-  );
+  const { data: publishingInfo } = useGetTablePublishingInfoQuery(table.id, {
+    skip: !table.is_published,
+  });
 
-  if (!table.is_published) {
+  if (!table.is_published || publishingInfo?.published_at == null) {
     return null;
   }
 
+  // This component must be rendered inside a Card parent.
   return (
     <Card.Section withBorder p="md">
       <Group gap="sm" mb={4} wrap="nowrap">
         <Icon name="publish" c="core-brand" />
-        {isLoading ? (
-          <Loader size="xs" data-testid="table-publishing-info-loading" />
-        ) : (
-          <PublishingInfoValue publishingInfo={publishingInfo} />
-        )}
+        <PublishingInfoValue
+          publishedAt={publishingInfo.published_at}
+          publishedBy={publishingInfo.published_by}
+        />
       </Group>
       <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
         {t`Published`}
@@ -39,26 +36,20 @@ export function PublishingInfo({ table }: PublishingInfoProps) {
 }
 
 function PublishingInfoValue({
-  publishingInfo,
+  publishedAt,
+  publishedBy,
 }: {
-  publishingInfo?: TablePublishingInfo;
+  publishedAt: string;
+  publishedBy: TablePublishingInfo["published_by"];
 }) {
-  if (publishingInfo?.published_at == null) {
-    return (
-      <Text size="md" fw={600} lh="1rem">
-        {t`Publishing details unavailable`}
-      </Text>
-    );
-  }
-
-  const publishedAt = (
+  const publishedAtElement = (
     <Tooltip
       key="published-at"
-      label={<DateTime value={publishingInfo.published_at} />}
+      label={<DateTime value={publishedAt} />}
       offset={8}
     >
       <DateTime
-        value={publishingInfo.published_at}
+        value={publishedAt}
         unit="day"
         data-testid="table-publishing-date"
       />
@@ -67,11 +58,11 @@ function PublishingInfoValue({
 
   return (
     <Text size="md" fw={600} lh="1rem">
-      {publishingInfo.published_by == null
-        ? publishedAt
+      {publishedBy == null
+        ? publishedAtElement
         : c(
             "Describes when a table was published. {0} is a date and {1} is a person's name",
-          ).jt`${publishedAt} by ${publishingInfo.published_by.common_name}`}
+          ).jt`${publishedAtElement} by ${publishedBy.common_name}`}
     </Text>
   );
 }
