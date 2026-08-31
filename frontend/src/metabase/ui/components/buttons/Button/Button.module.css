@@ -3,7 +3,6 @@
   --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
 
   font-family: var(--mb-default-font-family);
-  box-shadow: var(--mantine-shadow-xs);
   padding-inline: rem(15px);
   overflow: hidden;
   line-height: 1.15; /* mimic line-height ratio from mantine v6 */
@@ -164,6 +163,11 @@
     border-color: var(--mb-color-border-neutral);
     background-color: var(--mb-color-background_surface-disabled);
   }
+}
+
+.root[data-variant="default"],
+.root[data-variant="filled"] {
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .label {

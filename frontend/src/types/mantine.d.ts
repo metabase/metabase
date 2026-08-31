@@ -36,7 +36,7 @@ declare module "@mantine/core" {
     >;
   }
 
-  // Register the custom spacing/radius/shadow scales (GDGT-2486) so scale
+  // Register the custom spacing/radius/shadow scales so scale
   // tokens show up in editor autocomplete for style props (p/m/gap/radius/
   // shadow). Values are defined in frontend/src/metabase/ui/theme.ts.
   export interface MantineThemeSizesOverride {

@@ -72,7 +72,7 @@ import {
 } from "./components";
 import { getMantineThemeColors } from "./utils/colors";
 
-// Elevation tokens from the design system (GDGT-2486).
+// Elevation tokens from the design system.
 /* eslint-disable metabase/no-color-literals */
 const LIGHT_SHADOWS = {
   xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
@@ -99,7 +99,7 @@ const DARK_SHADOWS = {
 
 export type ShadowScaleKey = keyof typeof LIGHT_SHADOWS;
 
-// Spacing tokens from the design system (GDGT-2486).
+// Spacing tokens from the design system.
 const SPACING_SCALE = {
   xxxs: rem(2),
   xxs: rem(4),
@@ -114,7 +114,7 @@ const SPACING_SCALE = {
 
 export type SpacingScaleKey = keyof typeof SPACING_SCALE;
 
-// Radius tokens from the design system (GDGT-2486).
+// Radius tokens from the design system.
 const RADIUS_SCALE = {
   xxxs: rem(2),
   xxs: rem(4),

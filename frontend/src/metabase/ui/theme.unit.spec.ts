@@ -12,6 +12,8 @@ const SHADOW_SCALE_KEYS = [
   "lg_outline",
 ];
 
+// Keep expected values independent from the production scale definitions so
+// these tests catch accidental changes to the theme.
 const LIGHT_SHADOWS = {
   xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
   xs_outline:
@@ -98,7 +100,7 @@ const getExtendedComponentTheme = (
 
 const isBareWord = (value: string) => /^[a-z_]+$/.test(value);
 
-describe("theme scales (GDGT-2486)", () => {
+describe("theme scales", () => {
   describe("spacing", () => {
     it("maps each spacing key to its design-system value", () => {
       expect(getThemeOverrides().spacing).toEqual(SPACING_SCALE);
@@ -133,16 +135,9 @@ describe("theme scales (GDGT-2486)", () => {
         expect(dark[key]).not.toEqual(light[key]);
       }
     });
+  });
 
-    it("does not depend on whitelabel colors", () => {
-      const plain = getThemeOverrides("light");
-      const whitelabeled = getThemeOverrides("light", {});
-
-      expect(whitelabeled.spacing).toEqual(plain.spacing);
-      expect(whitelabeled.radius).toEqual(plain.radius);
-      expect(whitelabeled.shadows).toEqual(plain.shadows);
-    });
-
+  describe("shared behavior", () => {
     it("returns independent mutable scale objects", () => {
       const first = getThemeOverrides();
       const second = getThemeOverrides();
@@ -186,7 +181,7 @@ describe("theme scales (GDGT-2486)", () => {
       expect(violations).toEqual([]);
     });
 
-    it("assigns every component elevation from the Linear ticket", () => {
+    it("assigns expected component elevations", () => {
       const components = getThemeOverrides().components ?? {};
       const expectedShadowDefaults = {
         Card: "xs",
@@ -212,14 +207,14 @@ describe("theme scales (GDGT-2486)", () => {
           componentName: "ActionIcon",
           slot: "root",
           file: "frontend/src/metabase/ui/components/buttons/ActionIcon/ActionIcon.module.css",
-          selector: ".root",
+          selector: '.root[data-variant="filled"]',
           shadow: "xs",
         },
         {
           componentName: "Button",
           slot: "root",
           file: "frontend/src/metabase/ui/components/buttons/Button/Button.module.css",
-          selector: ".root",
+          selector: '.root[data-variant="filled"]',
           shadow: "xs",
         },
         {

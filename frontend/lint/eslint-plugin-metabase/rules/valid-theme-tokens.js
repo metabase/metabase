@@ -45,8 +45,6 @@ const SHADOW_KEYS = [
   "xl",
 ];
 
-const LEGACY_SCALE_KEYS = ["xs", "sm", "md", "lg", "xl"];
-
 const RAW_CSS_VALUES = new Set([
   "auto",
   "inherit",
@@ -63,7 +61,6 @@ const SCALE_KEYS = {
 };
 
 const SCALE_LIKE_VALUES = new Set([
-  ...LEGACY_SCALE_KEYS,
   ...SPACING_KEYS,
   ...RADIUS_KEYS,
   ...SHADOW_KEYS,

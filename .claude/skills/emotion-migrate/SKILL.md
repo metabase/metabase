@@ -319,33 +319,33 @@ When migrating, **never carry over hardcoded `rem`/`px` values** from the origin
 
 **Spacing** — snap to the nearest Mantine spacing token:
 
-| Hardcoded value                   | Nearest token | Style prop  | CSS variable                   |
-| --------------------------------- | ------------- | ----------- | ------------------------------ |
-| `0` (0px)                         | —             | `0`         | `0`                            |
-| `0.125rem` (2px)                  | **xxxs** | `"xxxs"`    | `var(--mantine-spacing-xxxs)`  |
-| `0.2rem` (3.2px), `0.25rem` (4px) | **xxs**  | `"xxs"`     | `var(--mantine-spacing-xxs)`   |
-| `0.375rem` (6px)                  | **xs**   | `"xs"`      | `var(--mantine-spacing-xs)`    |
-| `0.5rem` (8px)                    | **sm**   | `"sm"`      | `var(--mantine-spacing-sm)`    |
-| `0.75rem` (12px)                  | **md**  | `"md"`      | `var(--mantine-spacing-md)`    |
-| `1rem` (16px)                     | **lg**  | `"lg"`      | `var(--mantine-spacing-lg)`    |
-| `1.5rem` (24px)                   | **xl**  | `"xl"`      | `var(--mantine-spacing-xl)`    |
-| `2rem` (32px)                     | **xxl** | `"xxl"`     | `var(--mantine-spacing-xxl)`   |
-| `2.5rem` (40px)                   | **xxxl** | `"xxxl"`   | `var(--mantine-spacing-xxxl)`  |
+| Hardcoded value                   | Nearest token | Style prop | CSS variable                    |
+| --------------------------------- | ------------- | ---------- | ------------------------------- |
+| `0` (0px)                         | —             | `0`        | `0`                             |
+| `0.125rem` (2px)                  | **xxxs**      | `"xxxs"`   | `var(--mantine-spacing-xxxs)`   |
+| `0.2rem` (3.2px), `0.25rem` (4px) | **xxs**       | `"xxs"`    | `var(--mantine-spacing-xxs)`    |
+| `0.375rem` (6px)                  | **xs**        | `"xs"`     | `var(--mantine-spacing-xs)`     |
+| `0.5rem` (8px)                    | **sm**        | `"sm"`     | `var(--mantine-spacing-sm)`     |
+| `0.75rem` (12px)                  | **md**        | `"md"`     | `var(--mantine-spacing-md)`     |
+| `1rem` (16px)                     | **lg**        | `"lg"`     | `var(--mantine-spacing-lg)`     |
+| `1.5rem` (24px)                   | **xl**        | `"xl"`     | `var(--mantine-spacing-xl)`     |
+| `2rem` (32px)                     | **xxl**       | `"xxl"`    | `var(--mantine-spacing-xxl)`    |
+| `2.5rem` (40px)                   | **xxxl**      | `"xxxl"`   | `var(--mantine-spacing-xxxl)`   |
 
 Values between steps: keep the literal (e.g. `rem(10)`), don't round to a token.
 
 **Border radius** — snap to the nearest Mantine radius token:
 
-| Hardcoded value  | Nearest token    | CSS variable                 |
-| ---------------- | ---------------- | ---------------------------- |
-| `0` (0px)        | —                | `0`                          |
-| `0.125rem` (2px) | **xxxs**   | `var(--mantine-radius-xxxs)` |
-| `0.25rem` (4px)  | **xxs**    | `var(--mantine-radius-xxs)`  |
-| `0.375rem` (6px) | **xs**     | `var(--mantine-radius-xs)`   |
-| `0.5rem` (8px)   | **sm**     | `var(--mantine-radius-sm)`   |
-| `0.75rem` (12px) | **md**    | `var(--mantine-radius-md)`   |
-| `1rem` (16px)    | **lg**    | `var(--mantine-radius-lg)`   |
-| `1.5rem` (24px)  | **xl**    | `var(--mantine-radius-xl)`   |
+| Hardcoded value  | Nearest token | CSS variable                  |
+| ---------------- | ------------- | ----------------------------- |
+| `0` (0px)        | —             | `0`                           |
+| `0.125rem` (2px) | **xxxs**      | `var(--mantine-radius-xxxs)`  |
+| `0.25rem` (4px)  | **xxs**       | `var(--mantine-radius-xxs)`   |
+| `0.375rem` (6px) | **xs**        | `var(--mantine-radius-xs)`    |
+| `0.5rem` (8px)   | **sm**        | `var(--mantine-radius-sm)`    |
+| `0.75rem` (12px) | **md**        | `var(--mantine-radius-md)`    |
+| `1rem` (16px)    | **lg**        | `var(--mantine-radius-lg)`    |
+| `1.5rem` (24px)  | **xl**        | `var(--mantine-radius-xl)`    |
 
 Fully-round pills/badges (radius ≥ half the element height): keep a literal
 such as `9999px`.
