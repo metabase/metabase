@@ -65,24 +65,26 @@
             (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
                 "the copy the app serves is readable again")))))))
 
-(deftest ensure-resources-reasserts-the-query-creation-restriction-test
+(deftest ensure-resources-blocks-the-app-groups-view-data-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [app (create-data-app! "birds")
-          {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
-      (perms/set-table-permissions! permission_group_id :perms/create-queries
-                                    {(mt/id :venues) :query-builder})
-      (data-app.resources/ensure-resources! app)
-      (is (=? [{:table_id nil, :perm_value :no}]
-              (t2/select [:model/DataPermissions :table_id :perm_value]
-                         :group_id permission_group_id
-                         :db_id (mt/id)
-                         :perm_type :perms/create-queries))
-          "a manual table-level grant is swept back to the database-wide restriction"))))
+          {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)
+          view-data (fn [] (t2/select [:model/DataPermissions :table_id :perm_value]
+                                      :group_id permission_group_id
+                                      :db_id (mt/id)
+                                      :perm_type :perms/view-data))]
+      (testing "the app group is blocked at the database level, so it grants no data access of its own"
+        (is (=? [{:table_id nil, :perm_value :blocked}] (view-data))))
+      (testing "a manual table-level grant is swept back to the database-wide block on the next sync"
+        (perms/set-table-permissions! permission_group_id :perms/view-data
+                                      {(mt/id :venues) :unrestricted})
+        (data-app.resources/ensure-resources! app)
+        (is (=? [{:table_id nil, :perm_value :blocked}] (view-data)))))))
 
 (deftest sso-group-sync-does-not-add-a-user-to-a-data-app-group-test
   (testing "a data app's permission group is server-managed: membership is granted by an admin, not
             an IdP claim. SSO group sync must not add a user to it, or an IdP `groups` value naming
-            \"Data App: <slug>\" would grant the app's tables to whoever it names."
+            \"Data App: <slug>\" would hand the app's collection to whoever it names."
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (mt/with-temp [:model/User {user-id :id} {}]
         (let [app (create-data-app! "birds")

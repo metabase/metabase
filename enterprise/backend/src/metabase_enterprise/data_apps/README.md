@@ -111,8 +111,6 @@ assets (`metabase.server.routes/static-files-handler`).
   first import (superuser).
 - `POST /api/apps/:slug/query` — resolve an authored query definition into a serializable
   Metabase query plus the table IDs it touches (superuser).
-- `PUT /api/apps/:slug/resources/permissions` — reconcile the app group's table view-data grants
-  to a given table-ID set (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
@@ -126,13 +124,12 @@ middleware's lookup doesn't pull in route code.
 ## Permissions
 
 Each app owns two server-managed resources (`resources.clj`), created on draft or first import and
-reconciled on every sync: a **collection** holding the copies the app is served from (saved
+reasserted on every sync: a **collection** holding the copies the app is served from (saved
 questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
-`PUT /api/apps/:slug/resources/permissions` makes the tables the
-app's queries and actions touch `:unrestricted` view-data for the group and everything else
-`:blocked`; the group's `create-queries` is pinned to `:no` on every database, and every group but
-admins is revoked from the collection before the app group gets read access. Deleting an app
-deletes both resources and everything in the collection.
+The group is set database-level `view-data :blocked` on every database, so it grants **no data
+access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
+admins is revoked from the collection before the app group gets read access. Deleting an app deletes
+both resources and everything in the collection.
 
 **Viewing an app** requires read access to its resource collection — in practice, membership in
 the app's group, or admin. `can-read?` on the row itself is unconditionally true (the listing shows
@@ -140,13 +137,13 @@ every app to any signed-in user); the gate is the collection read check in the m
 endpoints, and the endpoints are `+auth`. An app with no linked collection yet is viewable by any
 signed-in user.
 
-**Sandboxing wins.** A sandbox from any of the user's other groups takes precedence over the app
-group's table grants (`sandbox/api/util.clj` excludes data-app groups when deciding whether another
-group lifts a sandbox), so adding someone to an app group cannot widen what their sandbox lets
-them see.
+**A viewer sees an app's data only through access they already hold.** The app group grants no
+view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
+data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
+nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
 
-**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution,
-permission reconciliation, and repo status.
+**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution, and repo
+status.
 
 ## Namespace map
 
@@ -155,7 +152,7 @@ permission reconciliation, and repo status.
 | `sync.clj` | Discovery, materialization, pruning, drafts. The entry point remote-sync calls. |
 | `config.clj` | `data_app.yaml` parsing and validation; the `data_apps/` layout constants. |
 | `api.clj` | The `/api/apps` endpoints, bundle serving, ETag handling. |
-| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, view-data grants, deletion. |
+| `resources.clj` | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion. |
 | `csp.clj` | `allowed_hosts` lookup for the core CSP middleware. |
 | `init.clj` | Loads the above so endpoints, models, and hooks register. |

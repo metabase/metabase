@@ -1373,9 +1373,9 @@
   (zipmap group-ids (repeat :unrestricted)))
 
 (defenterprise data-app-group-ids
-  "Ids of the permission groups Metabase owns and manages itself (data-app groups). SSO group sync must
-   never touch their membership, and a newly-synced table always defaults to `:blocked` for them so an
-   app never silently gains access to data it didn't declare. OSS has none."
+  "Ids of the permission groups Metabase owns and manages itself (data-app groups). They grant no data
+   access of their own — kept `view-data :blocked` on every database and table — and SSO group sync must
+   never touch their membership. OSS has none."
   metabase-enterprise.data-apps.models.data-app
   []
   #{})
