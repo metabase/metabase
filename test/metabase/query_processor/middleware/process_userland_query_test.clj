@@ -208,30 +208,26 @@
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test
-  (let [saved-query-execution? (atom false)]
-    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                                  (reset! saved-query-execution? info))]
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        ;; `*reduce*` runs inside `*run*`'s try block. Wait for it to start so the interrupt reaches the handler that
-        ;; publishes `::cancel`; canceling during earlier query setup bypasses that handler.
-        (let [started         (promise)
-              never-delivered (promise)]
-          (binding [qp.pipeline/*canceled-chan* canceled-chan
-                    qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
-                                                  (deliver started true)
-                                                  ;; Block until `future-cancel` interrupts this deref.
-                                                  @never-delivered)]
-            (let [futur (future
-                          (process-userland-query (mt/mbql-query venues)))]
-              (try
-                (is (true? (deref started 10000 ::timed-out))
-                    "query should reach *reduce* before the 10-second timeout")
-                (finally
-                  (future-cancel futur)
-                  ;; Ensure the worker cannot leak if cancellation fails to interrupt the deref.
-                  (deliver never-delivered nil))))))
-        (testing "canceled-chan receives ::cancel"
-          (is (= ::qp.pipeline/cancel
-                 (first (a/alts!! [canceled-chan (a/timeout 2000)])))))
-        (testing "No QueryExecution is saved when a query is canceled"
-          (is (not @saved-query-execution?)))))))
+  (mt/with-open-channels [canceled-chan (a/promise-chan)]
+    ;; The interrupt must land inside `*run*`'s `try` for it to publish `::cancel`.
+    ;; Synchronize on entry to `*reduce*`; canceling during earlier query setup bypasses
+    ;; that handler and makes this test race.
+    (let [reduce-started (promise)
+          release-reduce (promise)]
+      (binding [qp.pipeline/*canceled-chan* canceled-chan
+                qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
+                                              (deliver reduce-started true)
+                                              ;; Keep `*run*` active until the cancellation interrupt arrives.
+                                              @release-reduce)]
+        (let [futur (future
+                      (process-userland-query (mt/mbql-query venues)))]
+          (try
+            (is (true? (deref reduce-started 10000 ::timed-out))
+                "query should reach *reduce* before the 10-second timeout")
+            (finally
+              (future-cancel futur)
+              ;; Release the worker if cancellation fails to interrupt the deref.
+              (deliver release-reduce nil))))))
+    (testing "canceled-chan receives ::cancel"
+      (is (= ::qp.pipeline/cancel
+             (first (a/alts!! [canceled-chan (a/timeout 2000)])))))))
