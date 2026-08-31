@@ -114,7 +114,7 @@
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
@@ -153,7 +153,7 @@
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -180,7 +180,7 @@
 ;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
 ;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
