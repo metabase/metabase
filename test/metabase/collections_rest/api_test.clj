@@ -1902,10 +1902,11 @@
             (request/with-limit-and-offset 0 0
               (is (pos? (:total (#'api.collection/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
-                                 {:archived?                 false
-                                  :show-dashboard-questions? false
-                                  :models                    #{:snippet}
-                                  :sort-info                 {:sort-column :name :sort-direction :asc}}))))))
+                                 {:archived?                   false
+                                  :show-dashboard-questions?   false
+                                  :show-exploration-documents? false
+                                  :models                      #{:snippet}
+                                  :sort-info                   {:sort-column :name :sort-direction :asc}}))))))
           (is (= [1] (mapv :limit @queries))
               "the row query is bounded instead of fetching every snippet just to read the count"))))))
 
