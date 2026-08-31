@@ -11,15 +11,15 @@ import { Flex, Loader, Stack } from "metabase/ui";
 import { EditorPanel } from "./EditorPanel";
 import { PreviewPanel } from "./PreviewPanel";
 
-const ADMIN_THEMES_BASE_PATH = "/admin/embedding/themes";
+const HUB_THEME_BASE_PATH = "/embedding/appearance/theme";
 
 type EmbeddingThemeEditorAppProps = {
-  /** Where the theme listing lives, so the same editor works under the embedding hub. */
+  /** Where the theme listing lives, so the same editor works under other hosts. */
   basePath?: string;
 };
 
 export function EmbeddingThemeEditorApp({
-  basePath = ADMIN_THEMES_BASE_PATH,
+  basePath = HUB_THEME_BASE_PATH,
 }: EmbeddingThemeEditorAppProps = {}) {
   const { themeId: themeIdParam } = useParams<{ themeId: string }>();
   const themeId =
