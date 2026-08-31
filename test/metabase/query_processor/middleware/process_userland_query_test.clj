@@ -212,22 +212,22 @@
     (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
                                                                                   (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [status (atom ::not-started)]
+        ;; the interrupt must land while the QP is inside `*run*`'s try (which is what posts `::cancel`), so wait
+        ;; for the query to reach `*reduce*` before cancelling — a fixed grace period loses the race whenever
+        ;; pre-pipeline setup is slow, e.g. the first query on a fresh JVM when this test runs in isolation
+        (let [started (promise)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan
                     qp.pipeline/*reduce*        (fn [_rff _metadata rows]
-                                                  (reset! status ::started)
+                                                  (deliver started true)
                                                   (Thread/sleep 1000)
-                                                  (reset! status ::done)
                                                   (qp.pipeline/*result* rows))]
-            (future
-              (let [futur (future
-                            (process-userland-query (mt/mbql-query venues)))]
-                (is (not= ::done
-                          @status))
-                (Thread/sleep 100)
-                (future-cancel futur)))))
+            (let [futur (future
+                          (process-userland-query (mt/mbql-query venues)))]
+              (is (true? (deref started 10000 ::timed-out))
+                  "query should reach *reduce* before we cancel it")
+              (future-cancel futur))))
         (testing "canceled-chan should get get a :cancel message"
-          (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
+          (let [[val port] (a/alts!! [canceled-chan (a/timeout 2000)])]
             (is (= 'canceled-chan
                    (if (= port canceled-chan) 'canceled-chan 'timeout))
                 "port")
