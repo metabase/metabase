@@ -196,12 +196,13 @@
                                          (lib/breakoutable-columns base))]
             (are [bucket start-date end-date expected]
                  (= expected
-                    (-> base
-                        (lib/filter (lib/between created-at start-date end-date))
-                        (lib/aggregate (lib/count))
-                        (lib/breakout (lib/with-temporal-bucket created-at bucket))
-                        (qp/process-query)
-                        (mt/rows)))
+                    (mt/formatted-rows
+                     [identity int]
+                     (-> base
+                         (lib/filter (lib/between created-at start-date end-date))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at bucket))
+                         (qp/process-query))))
               :day "2016-07-26" "2016-07-31"
               [["2016-07-26T00:00:00+01:00" 1]
                ["2016-07-27T00:00:00+01:00" 3]
