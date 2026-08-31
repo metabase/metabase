@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import { Anchor, Flex, Text, type TextProps } from "metabase/ui";
 
 import { useUserMetabotPermissions } from "../hooks";

@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
@@ -45,7 +46,7 @@
    [:map
     [:dimensions           [:sequential ::metrics.dimension/dimension]]
     [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
-    [:dataset_query        {:optional true} ms/Map]
+    [:dataset_query        {:optional true} [:maybe ms/Map]]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
@@ -217,14 +218,20 @@
    Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
   Returns {uuid -> qp-result}."
   [leaves metric-card-ids]
-  (let [uuid->future (into {}
-                           (map (fn [[uuid leaf-plan]]
-                                  [uuid (future (process-leaf-query (:leaf/mbql leaf-plan)
-                                                                    (get metric-card-ids uuid)))]))
-                           leaves)]
-    (into {}
-          (map (fn [[uuid f]] [uuid @f]))
-          uuid->future)))
+  (letfn [(run-leaf [[uuid leaf-plan]]
+            (process-leaf-query (:leaf/mbql leaf-plan) (get metric-card-ids uuid)))]
+    (if (mdb/in-transaction?)
+      ;; A transaction owns one connection, and `future` conveys that binding to each thread. Parallel leaves
+      ;; would therefore interleave app DB writes and savepoints on the same session; one thread's rollback can
+      ;; invalidate its siblings' savepoints. Only tests run this code within a transaction. During a request,
+      ;; each future obtains its own pooled connection.
+      (into {} (map (fn [leaf] [(first leaf) (run-leaf leaf)])) leaves)
+      (let [uuid->future (into {}
+                               (map (fn [leaf] [(first leaf) (future (run-leaf leaf))]))
+                               leaves)]
+        (into {}
+              (map (fn [[uuid f]] [uuid @f]))
+              uuid->future)))))
 
 (defn- stream-arithmetic-results
   "Join leaf results and stream the computed output through the QP reduce pipeline.

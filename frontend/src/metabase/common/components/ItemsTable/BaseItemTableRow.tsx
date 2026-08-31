@@ -1,8 +1,9 @@
 import cx from "classnames";
-import type { PropsWithChildren } from "react";
+import type { MouseEvent, PropsWithChildren } from "react";
 
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import {
   type CollectionDropTargetRenderProps,
   CollectionRowDropTarget,
@@ -69,6 +70,32 @@ type BaseItemTableRowProps = PropsWithChildren<
   >
 >;
 
+const getRowShiftSelectHandler = ({
+  item,
+  collection,
+  onToggleSelected,
+}: Pick<BaseItemTableRowProps, "item" | "collection" | "onToggleSelected">) => {
+  if (!canSelectItems(collection, onToggleSelected)) {
+    return undefined;
+  }
+
+  return (event: MouseEvent<HTMLTableRowElement>) => {
+    if (!event.shiftKey) {
+      return;
+    }
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-ignore-row-selection]")
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    document.getSelection()?.removeAllRanges();
+    onToggleSelected?.(item);
+  };
+};
+
 export const TableRow = ({
   testIdPrefix,
   databases,
@@ -87,7 +114,16 @@ export const TableRow = ({
   onClick,
   visibleColumnsMap,
 }: BaseItemTableRowProps) => (
-  <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
+  <tr
+    key={itemKey}
+    data-testid={testIdPrefix}
+    style={{ height: 48 }}
+    onClickCapture={getRowShiftSelectHandler({
+      item,
+      collection,
+      onToggleSelected,
+    })}
+  >
     <ItemComponent
       onClick={onClick}
       testIdPrefix={testIdPrefix}
@@ -140,6 +176,11 @@ export const ItemDragSourceTableRow = ({
           [S.draggedRow]: dndState === "dragged",
           [S.disabledRow]: dndState === "disabled",
           [S.dropTargetRow]: dndState === "drop-target-hovered",
+        })}
+        onClickCapture={getRowShiftSelectHandler({
+          item,
+          collection,
+          onToggleSelected,
         })}
       >
         <ItemComponent

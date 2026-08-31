@@ -11,6 +11,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; every path still reads field metadata from the ambient store when it's initialized, even the deprecated mbql5 shim
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
@@ -22,10 +23,6 @@
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn- value :- :mbql.clause/value
-  [info :- :map v]
-  [:value (assoc info :lib/uuid (str (random-uuid))) v])
 
 (defn- type-info-from-col [col]
   (when col
@@ -51,25 +48,39 @@
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
 ;; separate transformation from just wrapping the value
+(defonce ^{:private true
+           :doc "Hierarchy grouping the java.time classes that share an [[add-type-info]] method. Kept separate from
+  Clojure's global hierarchy so that these class registrations cannot collide with other users of the global
+  hierarchy."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- derive!
+  "Make `parent` an ancestor of `tag` in the temporal-class [[hierarchy]]."
+  [tag parent]
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
+
 (defmulti ^:private add-type-info
   "Wraps value literals in `:value` clauses that includes base type info about the Field they're being compared against
   for easy driver QP implementation. Temporal literals (e.g., ISO-8601 strings) get wrapped in `:time` or
   `:absolute-datetime` instead which includes unit as well; temporal strings get parsed and converted to "
   {:arglists '([x info & {:keys [parse-datetime-strings?]}])}
-  (fn [x & _] (class x)))
+  (fn [x & _] (class x))
+  :hierarchy #'hierarchy)
 
 (defmethod add-type-info nil
   [_ info & _]
-  (value info nil))
+  (lib/value info nil))
 
 (defmethod add-type-info Object
   [this info & _]
-  (value info this))
+  (lib/value info this))
 
-(derive LocalDate      ::->absolute-datetime)
-(derive LocalDateTime  ::->absolute-datetime)
-(derive OffsetDateTime ::->absolute-datetime)
-(derive ZonedDateTime ::->absolute-datetime)
+(derive! LocalDate      ::->absolute-datetime)
+(derive! LocalDateTime  ::->absolute-datetime)
+(derive! OffsetDateTime ::->absolute-datetime)
+(derive! ZonedDateTime  ::->absolute-datetime)
 
 (prefer-method add-type-info ::->absolute-datetime Object)
 
@@ -77,8 +88,8 @@
   [this info & _]
   (lib/absolute-datetime this (get info :unit :default)))
 
-(derive LocalTime  ::->time)
-(derive OffsetTime ::->time)
+(derive! LocalTime  ::->time)
+(derive! OffsetTime ::->time)
 
 (prefer-method add-type-info ::->time Object)
 
@@ -214,7 +225,7 @@
            (seq s))
     (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value col s)))
+    (lib/value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 

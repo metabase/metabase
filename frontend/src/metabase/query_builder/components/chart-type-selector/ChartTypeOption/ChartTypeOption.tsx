@@ -11,7 +11,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import ChartTypeOptionS from "./ChartTypeOption.module.css";

@@ -1,8 +1,7 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { explorationApi } from "metabase/api/exploration";
 import { Tree, useTree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
@@ -41,9 +40,11 @@ import {
   ExplorationTreeNode,
 } from "./ExplorationTreeNode";
 import {
+  EXPLORATION_SUMMARY_TREE_ID,
   type ExplorationSidebarContentMode,
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeNode as ExplorationTreeNodeDataType,
+  type SelectedSidebarEntity,
   flattenTree,
 } from "./utils";
 
@@ -53,9 +54,9 @@ interface ExplorationSidebarProps {
   selectedSidebarTab: ExplorationSidebarTab;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNodeDataType>[];
-  selectedPageId: ExplorationPageNodeId | null;
-  setSelectedPageId: (pageId: ExplorationPageNodeId) => void;
+  selectedEntity: SelectedSidebarEntity | null;
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
+  getSelectedSummaryUrl: () => string;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   isOpen: boolean;
   readPageIds: ReadonlySet<string>;
@@ -64,6 +65,9 @@ interface ExplorationSidebarProps {
   sortOrder: ExplorationSortOrder;
   onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
   contentMode: ExplorationSidebarContentMode;
+  onPreviousPage: () => void;
+  onNextPage: () => void;
+  onPrefetchPage: (pageId: ExplorationPageNodeId) => void;
 }
 
 export function ExplorationSidebar({
@@ -72,9 +76,9 @@ export function ExplorationSidebar({
   selectedSidebarTab,
   getSelectedSidebarTabUrl,
   tree,
-  selectedPageId,
-  setSelectedPageId,
+  selectedEntity,
   getSelectedPageUrl,
+  getSelectedSummaryUrl,
   shouldScrollSelectionRef,
   isOpen,
   readPageIds,
@@ -83,34 +87,24 @@ export function ExplorationSidebar({
   sortOrder,
   onChangeSortOrder,
   contentMode,
+  onPreviousPage,
+  onNextPage,
+  onPrefetchPage,
 }: ExplorationSidebarProps) {
   const navigate = useNavigate();
+  const selectedTreeId =
+    selectedEntity?.type === "page"
+      ? selectedEntity.id
+      : selectedEntity?.type === "summary"
+        ? EXPLORATION_SUMMARY_TREE_ID
+        : undefined;
   const treeController = useTree({
     data: tree,
-    selectedId: selectedPageId ?? undefined,
+    selectedId: selectedTreeId,
     freezeAutoExpandOnManualToggle: true,
   });
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
-
-  const prefetchQueryResult = explorationApi.usePrefetch(
-    "getExplorationQueryResult",
-  );
-
-  const handlePrefetch = useCallback(
-    (item: ITreeNodeItem<ExplorationTreeNodeDataType>) => {
-      if (item.data?.type !== "page") {
-        return;
-      }
-      const queries = item.data.queries;
-      for (const query of queries) {
-        if (query.status === "done") {
-          prefetchQueryResult(query.id);
-        }
-      }
-    },
-    [prefetchQueryResult],
-  );
 
   // `collapse` is stable, but treeController is not
   // so we need to be careful to prevent this effect from running on every render
@@ -122,17 +116,18 @@ export function ExplorationSidebar({
   // the tree to reveal the selected item. useTree's auto-expand is frozen
   // after a manual chevron toggle, so we bypass it here.
   useEffect(() => {
-    if (shouldScrollSelectionRef.current && selectedPageId) {
+    if (shouldScrollSelectionRef.current && selectedTreeId) {
       setExpandedIds(
         (prev) =>
-          new Set([...prev, ...getInitialExpandedIds(selectedPageId, tree)]),
+          new Set([...prev, ...getInitialExpandedIds(selectedTreeId, tree)]),
       );
     }
-  }, [selectedPageId, shouldScrollSelectionRef, setExpandedIds, tree]);
+  }, [selectedTreeId, shouldScrollSelectionRef, setExpandedIds, tree]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedPageId == null) {
+      // Arrow keys skip the Summary (flattenTree is page-only).
+      if (selectedEntity?.type !== "page") {
         return;
       }
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
@@ -142,32 +137,30 @@ export function ExplorationSidebar({
         return;
       }
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextItem = getAdjacentById(flatItems, selectedPageId, direction);
-      if (nextItem != null && nextItem.id !== selectedPageId) {
-        if (nextItem.data?.type !== "page") {
-          return;
-        }
-        setSelectedPageId(nextItem.data.page_id);
-        trackExplorationVisualizationChanged(exploration.id, "keyboard");
-        event.preventDefault();
-        shouldScrollSelectionRef.current = true;
-        setExpandedIds(
-          (prev) =>
-            new Set([...prev, ...getInitialExpandedIds(nextItem.id, tree)]),
-        );
-        // prefetch the following item
-        // if the user uses a keyboard shortcut once, they're likely to use it again
-        const followingItem = getAdjacentById(
-          flatItems,
-          nextItem.id,
-          direction,
-        );
-        if (followingItem != null) {
-          handlePrefetch(followingItem);
-        }
+      const nextItem = getAdjacentById(flatItems, selectedEntity.id, direction);
+      if (
+        nextItem == null ||
+        nextItem.id === selectedEntity.id ||
+        nextItem.data?.type !== "page"
+      ) {
+        return;
       }
+      if (direction === 1) {
+        onNextPage();
+      } else {
+        onPreviousPage();
+      }
+      trackExplorationVisualizationChanged(exploration.id, "keyboard");
+      event.preventDefault();
+      shouldScrollSelectionRef.current = true;
+      setExpandedIds(
+        (prev) =>
+          new Set([...prev, ...getInitialExpandedIds(nextItem.id, tree)]),
+      );
       // if we moved into a different folder, collapse the previous folder
-      const currentItem = flatItems.find((item) => item.id === selectedPageId);
+      const currentItem = flatItems.find(
+        (item) => item.id === selectedEntity.id,
+      );
       if (
         currentItem?.data?.parent_id &&
         currentItem.data.parent_id !== nextItem?.data?.parent_id
@@ -180,10 +173,10 @@ export function ExplorationSidebar({
   }, [
     flatItems,
     tree,
-    selectedPageId,
-    setSelectedPageId,
+    onPreviousPage,
+    onNextPage,
+    selectedEntity,
     setExpandedIds,
-    handlePrefetch,
     collapse,
     exploration.id,
     shouldScrollSelectionRef,
@@ -193,17 +186,19 @@ export function ExplorationSidebar({
     () => ({
       explorationId: exploration.id,
       canWrite: exploration.can_write,
-      handlePrefetch,
+      onPrefetchPage,
       shouldScrollSelectionRef,
       getSelectedPageUrl,
+      getSelectedSummaryUrl,
       readPageIds,
     }),
     [
       exploration.id,
       exploration.can_write,
-      handlePrefetch,
+      onPrefetchPage,
       shouldScrollSelectionRef,
       getSelectedPageUrl,
+      getSelectedSummaryUrl,
       readPageIds,
     ],
   );

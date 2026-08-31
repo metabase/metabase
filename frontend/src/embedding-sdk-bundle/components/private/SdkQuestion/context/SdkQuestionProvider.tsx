@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -21,9 +22,13 @@ import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/pri
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { EmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
 import {
   getError,
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
@@ -36,8 +41,8 @@ import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "met
 import {
   type OnCreateOptions,
   useCreateQuestion,
-} from "metabase/query_builder/containers/use-create-question";
-import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+} from "metabase/query_builder";
+import { useSaveQuestion } from "metabase/query_builder";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -94,8 +99,13 @@ export const SdkQuestionProvider = ({
   const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
   const [isFirstRender, setIsFirstRender] = useState(true);
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  // Stable per-mount id: keeps this mount's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const mountId = useId();
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForMount(state, mountId),
+  );
 
   const effectiveInitialSqlParameters = getEffectiveParameterValues(
     sqlParameters,
@@ -105,9 +115,18 @@ export const SdkQuestionProvider = ({
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);

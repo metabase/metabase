@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.channel.template.handlebars :as handlebars]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -35,7 +36,7 @@
 
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details mi/transform-encrypted-json})
+   :details (mi/transform-encrypted-json "channel.details")})
 
 (mr/def ::Channel
   "Channel schema."
@@ -56,6 +57,15 @@
   [_channel]
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
+
+(methodical/defmethod mi/to-json :model/Channel
+  "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
+  API. Encoding at the model boundary keeps every response that returns a Channel consistent."
+  [channel json-generator]
+  (next-method (if (mi/can-write? channel)
+                 channel
+                 (dissoc channel :details))
+               json-generator))
 
 (t2/define-before-update :model/Channel
   [instance]
@@ -105,7 +115,8 @@
     [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
-   [:multi {:dispatch (comp keyword :type)}
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :type)}
     [:email/handlebars-resource
      [:map
       [:path [:and
@@ -124,12 +135,12 @@
 
 (mr/def ::ChannelTemplate
   "Channel Template schema."
-  (mu/dispatched-map
-   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
-   (comp keyword :channel_type)
-   channel-template-entries
-   [[:channel/email [[:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default   []]]))
+  [:merge
+   (into [:map] channel-template-entries)
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :channel_type)}
+    [:channel/email [:map [:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default   [:map]]]])
 
 (mr/def ::ChannelTemplateEmailDetailsUserProvided
   "Email template details schema for API-provided templates. Only handlebars-text is allowed;
@@ -142,12 +153,12 @@
 
 (mr/def ::ChannelTemplateUserProvided
   "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
-  (mu/dispatched-map
-   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
-   (comp keyword :channel_type)
-   channel-template-entries
-   [[:channel/email [[:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default   []]]))
+  [:merge
+   (into [:map] channel-template-entries)
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :channel_type)}
+    [:channel/email [:map [:details ::ChannelTemplateEmailDetailsUserProvided]]]
+    [::mc/default   [:map]]]])
 
 (defn- check-valid-channel-template
   [channel-template]

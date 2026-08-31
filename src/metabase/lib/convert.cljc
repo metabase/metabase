@@ -6,7 +6,9 @@
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
+   ;; this ns is the legacy <-> MBQL 5 converter; legacy input must be normalized before lifting
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; the converter validates against the legacy schema it converts from
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -462,6 +464,7 @@
            {:query inner-query
             :type  :query})))
 
+;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
@@ -784,6 +787,7 @@
     stage-number :- :int
     legacy-ref   :- some?]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
+                                          ;; input is a legacy ref; normalize as legacy MBQL before conversion
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]

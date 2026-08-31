@@ -5,7 +5,6 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useUpdateGoogleAuthMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
@@ -23,6 +22,7 @@ import {
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
+import { useUpdateGoogleAuthMutation } from "../../../api/google";
 import { GOOGLE_SCHEMA } from "../../constants";
 
 const ENABLED_KEY = "google-auth-enabled";

@@ -3,11 +3,13 @@ import * as d3 from "d3";
 import L from "leaflet";
 import { type ComponentClass, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Button } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { sumMetric, unaggregatedDataWarningMap } from "metabase/viz-core";
 import type {
   DatasetData,
   PinMapStyle,
@@ -55,6 +57,33 @@ interface GetPointsParams {
   longitudeColumnName?: string;
   metricColumnName?: string;
   isPinMap?: boolean;
+  isGridMap?: boolean;
+}
+
+// Grid maps draw one cell per point, so rows sharing the same cell (e.g. an
+// extra breakout) are folded into a single point with the summed metric.
+function aggregatePointsByCoordinates(
+  points: PinMapPoint[],
+  rows: RowValues[],
+) {
+  const cells = Object.values(
+    _.groupBy(
+      points.map((point, index) => ({ point, row: rows[index] })),
+      ({ point: [latitude, longitude] }) => `${latitude},${longitude}`,
+    ),
+  );
+
+  return {
+    points: cells.map((cell): PinMapPoint => {
+      const [latitude, longitude] = cell[0].point;
+      const metric = cell.reduce<number | null>(
+        (sum, { point }) => sumMetric(sum, point[2]),
+        null,
+      );
+      return [latitude, longitude, metric];
+    }),
+    rows: cells.map((cell) => cell[0].row),
+  };
 }
 
 export function getPoints({
@@ -63,6 +92,7 @@ export function getPoints({
   longitudeColumnName,
   metricColumnName,
   isPinMap = false,
+  isGridMap = false,
 }: GetPointsParams): GetPointsResult {
   const latitudeIndex = cols.findIndex(
     (col) => col.name === latitudeColumnName,
@@ -86,16 +116,27 @@ export function getPoints({
 
     return lat != null && lng != null && metric != null;
   });
-  const points = allPoints.filter(
+  const validRowPoints = allPoints.filter(
     (_point, i): _point is PinMapPoint => validPoints[i],
   );
-  const updatedRows = rows.filter((_row, i) => validPoints[i]);
+  const validRows = rows.filter((_row, i) => validPoints[i]);
+
+  const { points, rows: updatedRows } = isGridMap
+    ? aggregatePointsByCoordinates(validRowPoints, validRows)
+    : { points: validRowPoints, rows: validRows };
 
   const warnings: string[] = [];
-  const filteredRows = allPoints.length - points.length;
+  const filteredRows = allPoints.length - validRowPoints.length;
   if (filteredRows > 0) {
     warnings.push(
       t`We filtered out ${filteredRows} row(s) containing null values.`,
+    );
+  }
+  const hasAggregatedPoints = points.length < validRowPoints.length;
+  if (hasAggregatedPoints && metricIndex >= 0) {
+    warnings.push(
+      unaggregatedDataWarningMap([cols[latitudeIndex], cols[longitudeIndex]])
+        .text,
     );
   }
 
@@ -159,13 +200,15 @@ export function PinMap(props: PinMapProps) {
     latitudeColumnName: settings["map.latitude_column"],
     longitudeColumnName: settings["map.longitude_column"],
     metricColumnName: settings["map.metric_column"],
+    isGridMap: settings["map.pin_type"] === "grid",
   };
   const isPinMap = settings["map.type"] === "pin";
 
   // A new points identity makes LeafletMap refit the viewport to the data
-  // bounds, so points must be recomputed only when the data or the mapped
-  // columns change; `map.type` is read at recompute time but must not trigger
-  // one, hence state adjusted during render instead of useMemo.
+  // bounds, so points must be recomputed only when the data, the mapped
+  // columns or the grid aggregation change; `map.type` is read at recompute
+  // time but must not trigger one, hence state adjusted during render instead
+  // of useMemo.
   const [pointsCache, setPointsCache] = useState(() => ({
     inputs: pointsInputs,
     result: getPoints({ ...pointsInputs, isPinMap }),
@@ -175,7 +218,8 @@ export function PinMap(props: PinMapProps) {
     inputs.data !== pointsInputs.data ||
     inputs.latitudeColumnName !== pointsInputs.latitudeColumnName ||
     inputs.longitudeColumnName !== pointsInputs.longitudeColumnName ||
-    inputs.metricColumnName !== pointsInputs.metricColumnName
+    inputs.metricColumnName !== pointsInputs.metricColumnName ||
+    inputs.isGridMap !== pointsInputs.isGridMap
   ) {
     setPointsCache({
       inputs: pointsInputs,
@@ -295,31 +339,19 @@ export function PinMap(props: PinMapProps) {
         )}
       >
         {shouldShowDefaultViewChangeButton ? (
-          <div
-            className={cx(
-              "PinMapUpdateButton",
-              ButtonsS.Button,
-              ButtonsS.ButtonSmall,
-              ButtonsS.ButtonWhite,
-              S.pinMapButton,
-              {
-                [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
-              },
-            )}
+          <Button
+            className={cx("PinMapUpdateButton", S.pinMapButton)}
+            size="sm"
+            disabled={disableUpdateButton}
             onClick={updateSettings}
           >
             {t`Set as default view`}
-          </div>
+          </Button>
         ) : null}
         {!isDashboard && mapInstance?.supportsFilter() && (
-          <div
-            className={cx(
-              "PinMapUpdateButton",
-              ButtonsS.Button,
-              ButtonsS.ButtonSmall,
-              ButtonsS.ButtonWhite,
-              S.pinMapButton,
-            )}
+          <Button
+            className={cx("PinMapUpdateButton", S.pinMapButton)}
+            size="sm"
             onClick={() => {
               if (!mapInstance) {
                 return;
@@ -332,7 +364,7 @@ export function PinMap(props: PinMapProps) {
             }}
           >
             {filtering ? t`Cancel filter` : t`Draw box to filter`}
-          </div>
+          </Button>
         )}
       </div>
     </div>

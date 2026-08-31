@@ -32,3 +32,94 @@ export interface ExtractSourcesResponse {
   tables: ExtractSourcesTable[];
   card_ids: number[];
 }
+
+export type LlmProviderTypeName =
+  | "anthropic"
+  | "openai"
+  | "openrouter"
+  | "mistral"
+  | "zai"
+  | "moonshot"
+  | "deepseek"
+  | "google"
+  | "azure"
+  | "bedrock"
+  | "vllm"
+  | "metabase";
+
+export type LlmProviderFieldType =
+  | "text"
+  | "password"
+  | "select"
+  | "segmented"
+  | "file";
+
+export interface LlmProviderField {
+  key: string;
+  label: string;
+  type: LlmProviderFieldType;
+  required: boolean;
+  advanced: boolean;
+  placeholder?: string | null;
+  default?: string | null;
+  help?: string | null;
+  docs_url?: string | null;
+  prefix?: string | null;
+  options?: { value: string; label: string }[] | null;
+  show_when?: { field: string; value: string } | null;
+}
+
+export interface LlmProviderType {
+  type: LlmProviderTypeName;
+  label: string;
+  managed: boolean;
+  singleton: boolean;
+  available: boolean;
+  default_model: string | null;
+  models: LlmModel[];
+  required_any: string[][];
+  fields: LlmProviderField[];
+}
+
+export type LlmProviderConfig = Record<string, string | null>;
+
+export type LlmProviderSource = "db" | "env";
+
+export interface LlmProviderConnection {
+  key: string;
+  type: LlmProviderTypeName;
+  name: string;
+  source: LlmProviderSource;
+  usable: boolean;
+  env_vars: string[];
+  env_fields: string[];
+  config: LlmProviderConfig;
+}
+
+export interface LlmModel {
+  id: string;
+  display_name: string;
+}
+
+export interface LlmConnectionModels {
+  key: string;
+  name: string;
+  type: LlmProviderTypeName;
+  models: LlmModel[];
+  error?: string | null;
+}
+
+export interface CreateLlmProviderRequest {
+  type: string;
+  name?: string;
+  key?: string;
+  config?: LlmProviderConfig;
+  model?: string;
+}
+
+export interface UpdateLlmProviderRequest {
+  key: string;
+  name?: string;
+  config?: LlmProviderConfig;
+  model?: string;
+}

@@ -1,13 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { TimelineEventGroup } from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventChip } from "./TimelineEventChip";
-import type { PositionedTimelineEventGroup } from "./utils";
 
-const singleGroup: PositionedTimelineEventGroup = {
+interface ChipFixture {
+  group: TimelineEventGroup;
+  x: number;
+}
+
+const singleGroup: ChipFixture = {
   group: {
     date: "2025-01-01T00:00:00Z",
     events: [
@@ -17,7 +22,7 @@ const singleGroup: PositionedTimelineEventGroup = {
   x: 100,
 };
 
-const twoGroup: PositionedTimelineEventGroup = {
+const twoGroup: ChipFixture = {
   group: {
     date: "2025-02-01T00:00:00Z",
     events: [
@@ -28,7 +33,7 @@ const twoGroup: PositionedTimelineEventGroup = {
   x: 200,
 };
 
-const manyGroup: PositionedTimelineEventGroup = {
+const manyGroup: ChipFixture = {
   group: {
     date: "2025-03-01T00:00:00Z",
     events: [
@@ -42,9 +47,10 @@ const manyGroup: PositionedTimelineEventGroup = {
 };
 
 interface SetupOpts {
-  eventsGroup?: PositionedTimelineEventGroup;
+  eventsGroup?: ChipFixture;
   selectedEventIds?: TimelineEventId[];
   withCallbacks?: boolean;
+  hidden?: boolean;
   onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
@@ -52,6 +58,7 @@ const setup = ({
   eventsGroup = singleGroup,
   selectedEventIds = [],
   withCallbacks = true,
+  hidden,
   onSeeAllEvents,
 }: SetupOpts = {}) => {
   const onGroupHover = jest.fn();
@@ -61,9 +68,11 @@ const setup = ({
 
   renderWithProviders(
     <TimelineEventChip
-      eventsGroup={eventsGroup}
+      group={eventsGroup.group}
+      x={eventsGroup.x}
       centerY={120}
       selectedEventIds={selectedEventIds}
+      hidden={hidden}
       onGroupHover={onGroupHover}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
@@ -247,5 +256,13 @@ describe("TimelineEventChip", () => {
         screen.queryByTestId("timeline-event-popover"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("marks the chip as hidden when hidden", () => {
+    setup({ eventsGroup: singleGroup, hidden: true });
+    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
+      "data-hidden",
+      "true",
+    );
   });
 });

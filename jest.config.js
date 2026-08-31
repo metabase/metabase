@@ -70,11 +70,6 @@ const baseConfig = {
     "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
-     * Imports which are only applicable to the embedding sdk.
-     * As we use SDK components in new iframe embedding, we need to import them here.
-     **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/utils/noop.ts",
-    /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
      * In Jest, mock them as plain strings.
      */
@@ -94,10 +89,7 @@ const baseConfig = {
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
     "<rootDir>/release/.*",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -130,7 +122,6 @@ const baseConfig = {
   ],
   coveragePathIgnorePatterns: [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
     "/target/cljs_dev/",
     "/target/cljs_release/",
     "/frontend/test/",
@@ -156,9 +147,9 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{ts,tsx}",
       ],
 
       setupFiles: [

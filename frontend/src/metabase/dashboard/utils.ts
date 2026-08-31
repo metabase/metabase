@@ -10,11 +10,11 @@ import {
 } from "metabase/utils/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   getDatasetPermissionError,
   getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -216,6 +216,13 @@ export function getCurrentTabDashboardCards(
       (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
       dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {

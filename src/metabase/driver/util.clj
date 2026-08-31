@@ -16,12 +16,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
@@ -165,12 +167,56 @@
               :errors      {:host (str (deferred-tru "check your host settings"))}}
              cause)))
 
+(def ^:private ^:dynamic *allow-private-connection-hosts*
+  "When true, an `:external-only` [[driver.settings/warehouse-allowed-networks]] policy is enforced as
+  `:allow-private`. Bound only by [[do-with-database-network-policy]]."
+  false)
+
+(defn- effective-warehouse-allowed-networks
+  "[[driver.settings/warehouse-allowed-networks]] as it applies to the connection being validated right now:
+  [[*allow-private-connection-hosts*]] relaxes `:external-only` to `:allow-private`."
+  []
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (if (and *allow-private-connection-hosts* (= policy :external-only))
+      :allow-private
+      policy)))
+
+(defn network-exempt-warehouse?
+  "Whether `database` may sit on a private network under an `:external-only`
+  [[driver.settings/warehouse-allowed-networks]] policy: today only the attached DWH, and only when the token also
+  carries the `:attached-dwh` feature. The flag alone is not enough -- serialization import can set it -- so the
+  exemption is confined to instances whose token vouches that a DWH really was attached.
+
+  `database` may be a Toucan row or a config-file entry (`:is_attached_dwh`) or a Lib metadata
+  database (`:is-attached-dwh` -- and a map that throws on `:snake_case` lookups outside prod, which is why the two
+  shapes are told apart rather than the keys tried in turn)."
+  [database]
+  (boolean (and (if (= (:lib/type database) :metadata/database)
+                  (:is-attached-dwh database)
+                  (:is_attached_dwh database))
+                (premium-features/has-attached-dwh?))))
+
+(defn do-with-database-network-policy
+  "Impl for [[with-database-network-policy]]."
+  [database thunk]
+  (binding [*allow-private-connection-hosts* (network-exempt-warehouse? database)]
+    (thunk)))
+
+(defmacro with-database-network-policy
+  "Run `body` with [[driver.settings/warehouse-allowed-networks]] enforced the way it applies to `database`: a
+  network-exempt warehouse (see [[network-exempt-warehouse?]]) gets `:external-only` relaxed to `:allow-private`,
+  any other database the policy as configured. Wrap this around anything that validates connection hosts on
+  `database`'s behalf."
+  {:style/indent 1}
+  [database & body]
+  `(do-with-database-network-policy ~database (^:once fn* [] ~@body)))
+
 (defn validate-resolved-addresses!
   "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
   Used by connection transports, such as Mongo's `InetAddressResolver`, that can enforce the policy on the exact
   addresses used to open a socket."
   [addresses]
-  (let [policy (driver.settings/warehouse-allowed-networks)]
+  (let [policy (effective-warehouse-allowed-networks)]
     (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
       (throw (blocked-network-address-exception)))))
 
@@ -178,7 +224,7 @@
   "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
   [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
   [driver details]
-  (let [policy (driver.settings/warehouse-allowed-networks)]
+  (let [policy (effective-warehouse-allowed-networks)]
     (when (not= policy :allow-all)
       (let [hosts (try
                     (hosts-metabase-will-connect-to driver details)

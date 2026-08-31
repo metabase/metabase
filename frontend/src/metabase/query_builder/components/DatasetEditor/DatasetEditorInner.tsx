@@ -12,7 +12,6 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -22,25 +21,6 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
-import {
-  setDatasetEditorTab,
-  setTemplateTagConfig,
-  updateQuestion as updateQuestionAction,
-} from "metabase/query_builder/actions";
-import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import {
-  getDatasetEditorTab,
-  getIsListViewConfigurationShown,
-  getIsResultDirty,
-  getMetadataDiff,
-  getOriginalQuestion,
-  getResultsMetadata,
-  getVisualizationSettings,
-  isResultsMetadataDirty,
-} from "metabase/query_builder/selectors";
-import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
@@ -74,6 +54,27 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import {
+  setDatasetEditorTab,
+  setTemplateTagConfig,
+  updateQuestion as updateQuestionAction,
+} from "../../actions";
+import { useListModelIndexesQuery } from "../../api/model-index";
+import { useVisualizationResultQBProps } from "../../hooks";
+import type { FieldWithMaybeIndex } from "../../model-indexes/actions";
+import {
+  getDatasetEditorTab,
+  getIsListViewConfigurationShown,
+  getIsResultDirty,
+  getMetadataDiff,
+  getOriginalQuestion,
+  getResultsMetadata,
+  getVisualizationSettings,
+  isResultsMetadataDirty,
+} from "../../store/selectors";
+import { getWritableColumnProperties } from "../../utils";
+import { ViewSidebar } from "../view/ViewSidebar";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {

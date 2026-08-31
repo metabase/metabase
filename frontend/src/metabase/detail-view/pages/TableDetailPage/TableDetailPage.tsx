@@ -20,7 +20,7 @@ import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 
 export function TableDetailPage() {

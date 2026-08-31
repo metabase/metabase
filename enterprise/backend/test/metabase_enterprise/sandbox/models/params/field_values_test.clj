@@ -41,8 +41,9 @@
           (let [new-query (mt/mbql-query categories
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
             (Thread/sleep 1)
-            (t2/update! :model/Card card-id {:dataset_query new-query
-                                             :updated_at    (t/local-date-time)}))
+            (mt/with-test-user :crowberto
+              (t2/update! :model/Card card-id {:dataset_query new-query
+                                               :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values!
            (t2/select-one :model/Field :id (mt/id :categories :id)))
           (is (= [(range 4 6)
@@ -193,3 +194,88 @@
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "CA"} field)))
                 (is (not= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "NY"} field)))))))))))
+
+(deftest cross-table-remapping-hash-test
+  (testing "remappings whose target is not a column of the sandboxed table must still affect the hash (SEC-874)"
+    (mt/with-premium-features #{:sandboxes}
+      ;; hack so that we don't have to setup all the sandbox permissions for the table
+      (mt/with-dynamic-fn-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
+        (let [field      (t2/select-one :model/Field (mt/id :orders :user_id))
+              hash-input (fn [user-id login-attributes]
+                           (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
+                             (request/with-current-user user-id
+                               (ee-params.field-values/hash-input-for-sandbox field))))
+              token      (fn [user-id login-attributes]
+                           (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
+                             (request/with-current-user user-id
+                               (ee-params.field-values/sandbox-token-for-table (mt/id :orders)))))]
+          (testing "remapping targeting a joined table's column"
+            (mt/with-temp
+              [:model/Card                       {card-id :id} {}
+               :model/PermissionsGroup           {group-id :id} {}
+               :model/User                       {user-id-1 :id} {}
+               :model/User                       {user-id-2 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-1}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-2}
+               :model/Sandbox     _ {:card_id card-id
+                                     :group_id group-id
+                                     :table_id (mt/id :orders)
+                                     :attribute_remappings {"state" [:dimension
+                                                                     [:field (mt/id :people :state)
+                                                                      {:join-alias "People"}]]}}]
+              (testing "different attribute values produce different hash inputs"
+                (is (not= (hash-input user-id-1 {"state" "CA"})
+                          (hash-input user-id-2 {"state" "TX"}))))
+              (testing "equal attribute values still share a hash input"
+                (is (= (hash-input user-id-1 {"state" "CA"})
+                       (hash-input user-id-2 {"state" "CA"}))))
+              (testing "different attribute values produce different sandbox tokens"
+                (is (not= (token user-id-1 {"state" "CA"})
+                          (token user-id-2 {"state" "TX"}))))))
+          (testing "remapping targeting a column by name"
+            (mt/with-temp
+              [:model/Card                       {card-id :id} {}
+               :model/PermissionsGroup           {group-id :id} {}
+               :model/User                       {user-id-1 :id} {}
+               :model/User                       {user-id-2 :id} {}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-1}
+               :model/PermissionsGroupMembership _ {:group_id group-id
+                                                    :user_id user-id-2}
+               :model/Sandbox     _ {:card_id card-id
+                                     :group_id group-id
+                                     :table_id (mt/id :orders)
+                                     :attribute_remappings {"state" [:dimension
+                                                                     [:field "STATE"
+                                                                      {:base-type :type/Text}]]}}]
+              (testing "different attribute values produce different hash inputs"
+                (is (not= (hash-input user-id-1 {"state" "CA"})
+                          (hash-input user-id-2 {"state" "TX"})))))))))))
+
+(deftest cross-table-remapping-get-or-create-test
+  (testing "two tenants sandboxed via a joined-table remapping must not share one FieldValues row (SEC-874)"
+    (met/with-gtaps-for-all-users!
+      {:gtaps {:orders {:query      (mt/mbql-query orders
+                                      {:joins [{:source-table $$people
+                                                :alias        "People"
+                                                :condition    [:= $user_id &People.people.id]
+                                                :fields       :none}]})
+                        :remappings {"state" [:dimension
+                                              [:field (mt/id :people :state)
+                                               {:join-alias "People"}]]}}}}
+      (let [field   (t2/select-one :model/Field :id (mt/id :orders :user_id))
+            fv-for  (fn [user-kw state]
+                      (met/with-user-attributes! user-kw {"state" state}
+                        (mt/with-test-user user-kw
+                          (params.field-values/get-or-create-field-values! field))))
+            fv-1    (fv-for :rasta "CA")
+            fv-2    (fv-for :lucky "TX")]
+        (testing "each tenant gets their own FieldValues row"
+          (is (not= (:hash_key fv-1) (:hash_key fv-2)))
+          (is (= 2 (t2/count :model/FieldValues :field_id (mt/id :orders :user_id) :type :advanced))))
+        (testing "and the cached values differ, since the joined-table filter differs"
+          (is (seq (:values fv-1)))
+          (is (seq (:values fv-2)))
+          (is (not= (:values fv-1) (:values fv-2))))))))

@@ -28,6 +28,12 @@
 .scrollArea {
   flex: 1;
   min-height: 0;
+  /* Extend into the column padding so the scrollbar sits beside the rows instead of shrinking them */
+  margin-right: calc(-1 * var(--scrollarea-scrollbar-size));
+
+  .scrollAreaViewport {
+    padding-right: var(--scrollarea-scrollbar-size);
+  }
 }
 
 .emptyState {

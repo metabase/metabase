@@ -21,7 +21,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
+   [metabase.driver.sql-jdbc.quoting :as quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
@@ -320,6 +320,7 @@
       ;; else
       message)))
 
+;; the JDBC-spec variant is still needed so the audit/app-db path can reuse it without a driver pool
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]
@@ -354,10 +355,16 @@
   :sunday)
 
 (defmethod driver/rename-tables!* :mysql
-  [_driver db-id sorted-rename-map]
-  (let [rename-clauses (map (fn [[from-table to-table]]
-                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
-                            sorted-rename-map)
+  [driver db-id sorted-rename-map]
+  ;; `with-quoting` is what binds the dialect: a bare `sql/format-entity` leaves it nil, and
+  ;; then HoneySQL's quote fn is `identity` and every identifier goes out raw
+  (let [rename-clauses (quoting/with-quoting driver
+                         (doall
+                          (map (fn [[from-table to-table]]
+                                 (str (sql/format-entity (quoting/dot-qualified from-table))
+                                      " TO "
+                                      (sql/format-entity (quoting/dot-qualified to-table))))
+                               sorted-rename-map)))
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
     (sql-jdbc.execute/do-with-connection-with-options
      :mysql
@@ -499,7 +506,14 @@
         ;; equivalent; instead you can do `<string> + 0.0` =(
         ("float" "double") [:+ json-extract+jsonpath [:inline 0.0]]
 
-        [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
+        ;; CONVERT's target type cannot be a quoted identifier, so a `database-type` that isn't a plain type name
+        ;; (the same rule as [[h2x/cast]]) cannot be spliced into the SQL safely — reject it instead
+        (do
+          (when-not (h2x/raw-type-name? field-type)
+            (throw (ex-info (format "Invalid database type for MySQL CONVERT: %s" (pr-str field-type))
+                            {:type          driver-api/qp.error-type.invalid-query
+                             :database-type field-type})))
+          [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]])))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ opts id-or-name :as mbql-clause]]
@@ -564,9 +578,9 @@
 
 (defn- temporal-cast [type expr]
   ;; mysql does not allow casting to timestamp
-  (if (= "timestamp" (u/lower-case-en type))
-    (h2x/maybe-cast "datetime" expr)
-    (h2x/maybe-cast type expr)))
+  (if (= "date" (u/lower-case-en type))
+    (h2x/maybe-cast "date" expr)
+    (h2x/maybe-cast "datetime" expr)))
 
 (defmethod sql.qp/date [:mysql :day]
   [_ _ expr]
@@ -618,7 +632,9 @@
                        (h2x/is-of-type? expr "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
-     [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
+     [:convert_tz expr
+      (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))
+      (sql.qp/->honeysql driver target-timezone)]
      "datetime")))
 
 (defn- timestampdiff-dates [unit x y]

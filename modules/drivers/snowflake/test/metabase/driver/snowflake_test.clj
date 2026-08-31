@@ -52,7 +52,13 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringWriter)
+   (java.security KeyFactory)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (org.bouncycastle.openssl PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +93,7 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(deftest ^:sequential sanity-check-test
+(deftest ^:synchronized sanity-check-test
   (mt/test-driver
     :snowflake
     (mt/dataset
@@ -97,7 +103,7 @@
               (mt/run-mbql-query attempts
                 {:aggregation [[:count]]})))))))
 
-(deftest ^:sequential describe-fields-test
+(deftest ^:synchronized describe-fields-test
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
@@ -199,6 +205,39 @@
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
+(defn- pem->private-key
+  [pem]
+  (let [encoded (-> pem
+                    (str/replace #"-----(?:BEGIN|END) (?:\p{Alnum}+ )?PRIVATE KEY-----" "")
+                    (str/replace #"\s" "")
+                    u/decode-base64-to-bytes
+                    (PKCS8EncodedKeySpec.))]
+    (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
+
+(defn- encrypt-pkcs8-pem
+  [private-key ^String passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        sw (StringWriter.)]
+    (with-open [pw (JcaPEMWriter. sw)]
+      (.writeObject pw (JcaPKCS8Generator. private-key encryptor)))
+    (str sw)))
+
+(deftest ^:parallel private-key-passphrase-test
+  (mt/test-driver :snowflake
+    (let [raw-pem (tx/db-test-env-var-or-throw :snowflake :private-key)
+          private-key (pem->private-key raw-pem)]
+      (are [passphrase] (driver/can-connect? :snowflake (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)  ; make sure the stored secret doesn't shadow our new value
+                                                            (assoc :private-key-value      (mt/priv-key->base64-uri (encrypt-pkcs8-pem private-key passphrase))
+                                                                   :private-key-options    "uploaded"
+                                                                   :private-key-passphrase passphrase)))
+        "passphrase"
+        "space and numb3r5"
+        "special,./;'[]-=`~!@#$%^&*()_+|}{:?><}chars"
+        "üñïçodé"))))
+
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (mt/with-dynamic-fn-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
@@ -261,7 +300,7 @@
         (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
                (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
 
-(deftest ^:sequential have-select-privilege?-test
+(deftest ^:synchronized have-select-privilege?-test
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (sql-jdbc.execute/do-with-connection-with-options
@@ -271,7 +310,7 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
-(deftest ^:sequential can-set-schema-in-additional-options
+(deftest ^:synchronized can-set-schema-in-additional-options
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
@@ -286,7 +325,7 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
-(deftest ^:sequential additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :snowflake
     (let [existing-details (dissoc (:details (mt/db)) :password)]
@@ -403,8 +442,12 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
+      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
+      ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
+      ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
+      ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
       (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
@@ -486,7 +529,7 @@
       (testing "but still escapes for the JDBC metadata call, which treats them as patterns"
         (is (= ["MY_DB" "RAW\\_DATA" "MY\\_TABLE"] @fk-args))))))
 
-(deftest ^:sequential describe-table-fields-uuid-column-test
+(deftest ^:synchronized describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
       (let [db-name    (#'driver.snowflake/db-name (mt/db))
@@ -526,7 +569,7 @@
   ;; Five related repro phases (v1-v5) share Snowflake connection setup and table-name lifecycle.
   ;; Splitting would multiply CI Snowflake setup cost. Kondo's warning is acknowledged.
   ^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
-  (deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
+  (deftest ^:synchronized create-or-replace-table-updates-effective-type-test
     (mt/test-driver :snowflake
       (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
              (e.g. TEXT -> NUMBER via TRY_TO_NUMBER), sync should update effective_type to match
@@ -702,7 +745,7 @@
               (u/ignore-exceptions
                 (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])))))))))
 
-(deftest ^:sequential describe-table-test
+(deftest ^:synchronized describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (=? {:name   "categories"
@@ -727,7 +770,7 @@
               (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
-(deftest ^:sequential describe-fks-test
+(deftest ^:synchronized describe-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
       (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
@@ -1122,7 +1165,7 @@
      #t "2024-04-25T14:44:00-07:00"
      "2024-04-25T14:44:00-07:00")))
 
-(deftest ^:sequential zoned-date-time-parameter-test
+(deftest ^:synchronized zoned-date-time-parameter-test
   (test-temporal-instance
    #t "2024-04-25T14:44:00-07:00[US/Pacific]"
    "2024-04-25T21:44:00Z"))
@@ -1327,7 +1370,7 @@
       (is (not (contains? params "ROLE")))
       (is (contains? params "ASDFROLE")))))
 
-(deftest ^:sequential filter-on-variant-column-test
+(deftest ^:synchronized filter-on-variant-column-test
   (testing "We should still let you do various filter types on VARIANT (anything) columns (#45206)"
     (mt/test-driver :snowflake
       (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)

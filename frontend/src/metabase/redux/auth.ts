@@ -4,27 +4,22 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { Api, refetchCurrentUser } from "metabase/api";
+import { Api } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import {
   type MfaChallengeResponse,
   isMfaChallenge,
   sessionApi,
 } from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { navigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(

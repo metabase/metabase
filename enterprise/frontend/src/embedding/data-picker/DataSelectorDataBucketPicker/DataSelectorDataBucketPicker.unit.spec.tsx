@@ -3,7 +3,7 @@ import { render, screen } from "__support__/ui";
 import type { DataTypeInfoItem } from "../types";
 import { getDataTypes } from "../utils";
 
-import DataSelectorDataBucketPicker from "./DataSelectorDataBucketPicker";
+import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 
 const setup = (dataTypes: DataTypeInfoItem[]) => {
   return render(

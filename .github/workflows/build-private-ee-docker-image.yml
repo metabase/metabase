@@ -1,0 +1,142 @@
+name: Build & push private Metabase Docker image
+
+# Builds the ee uberjar for a commit and pushes it to the private ECR repo, tagged with that
+# commit's full SHA. Callers get the tag back as an output.
+#
+# The tag is per-commit rather than per-PR, so a PR leaves one image behind per pushed commit.
+# Nothing in this repo prunes them — retention is whatever lifecycle policy the ECR repo carries.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full sha of commit to build, optional
+  workflow_call:
+    inputs:
+      commit:
+        description: Full sha of commit to build, optional
+        type: string
+
+    secrets:
+      PR_ENV_IAM_ROLE:
+        description: Role assumed via OIDC to reach ECR
+        required: true
+      PR_ENV_AWS_ACCOUNT_ID:
+        description: Account hosting the private ECR registry
+        required: true
+
+    outputs:
+      tag:
+        description: "Image tag (the commit SHA)"
+        value: ${{ jobs.dockerize.outputs.tag }}
+
+# Keyed on the calling workflow as well as the commit: pr-env and ai-benchmark both land here, and
+# a shared group lets a re-label on one evict the other's queued run (`cancel-in-progress: false`
+# still drops a *pending* run when a third queues). Before the extraction the two paths were
+# independent; this keeps them that way.
+concurrency:
+  group: build-private-ee-docker-image-${{ github.workflow }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read # fetch-artifact reads the artifact API
+
+jobs:
+
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/uberjar.yml
+    with:
+      # Pass through only an *explicit* commit and let uberjar apply its own event fallback.
+      # Resolving head.sha here instead would pin the PR path's checkout to the head commit, while
+      # run-tests' uberjar keeps building the merge ref — both upload under the same
+      # `metabase-ee-<head.sha>-uberjar` name, so whichever raced first would decide what the tag
+      # actually contains.
+      commit: ${{ inputs.commit }}
+
+  dockerize:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    needs: [build]
+    if: needs.build.result == 'success'
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      # Deliberately the workflow's own revision, not `inputs.commit`: this checkout is where
+      # `./.github/actions/fetch-artifact` below comes from, and pinning it to the target commit
+      # would run that commit's copy of the action instead of this one. Nothing else in this job
+      # reads the tree.
+      - name: Checkout source code
+        uses: actions/checkout@v6
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        with:
+          registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
+      - name: Compute image tag
+        id: meta
+        env:
+          SHA: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+        run: echo "tag=${SHA}" >> "$GITHUB_OUTPUT"
+      - name: Check whether image already exists
+        id: exists
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          # Same registry the push below targets — the assumed role's default registry is not
+          # necessarily this account, and querying the wrong one always reports "not found".
+          REGISTRY_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
+        run: |
+          set +e
+          OUT=$(aws ecr describe-images \
+                  --registry-id "${REGISTRY_ID}" \
+                  --repository-name metabase-enterprise \
+                  --image-ids imageTag="${TAG}" 2>&1)
+          STATUS=$?
+          set -e
+
+          if [[ "${STATUS}" -eq 0 ]]; then
+            echo "Image already present for ${TAG}; reusing it."
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          elif grep -q 'ImageNotFoundException' <<< "${OUT}"; then
+            echo "No image for ${TAG}; building."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            # Anything else (missing ecr:DescribeImages, wrong registry, throttling) is
+            # indistinguishable from "not found" if we swallow it, and we'd rebuild forever
+            # without ever saying why. Rebuilding is still the safe answer, so warn and go on.
+            echo "${OUT}" >&2
+            echo "::warning::Could not determine whether ${TAG} exists in ECR (exit ${STATUS}); building unconditionally."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Retrieve uberjar artifact for ee
+        if: steps.exists.outputs.found == 'false'
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ steps.meta.outputs.tag }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+      - name: Move uberjar to bin/docker
+        if: steps.exists.outputs.found == 'false'
+        run: mv target/uberjar/metabase.jar bin/docker/metabase.jar
+      - name: Build container
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: bin/docker/
+          platforms: linux/amd64
+          network: host
+          build-args: |
+            GIT_COMMIT_SHA=${{ steps.meta.outputs.tag }}
+          tags: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise:${{ steps.meta.outputs.tag }}
+          push: true

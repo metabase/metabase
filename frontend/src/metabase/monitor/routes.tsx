@@ -1,17 +1,16 @@
 import { createElement } from "react";
 
+import { loadCodeEditor } from "metabase/common/components/CodeEditor/lazy";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
-import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
-import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
-import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
-import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
-import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
-import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelPersistenceLogJobModal,
-  ModelPersistenceLogPage,
-} from "metabase/monitor/tools/components/ModelPersistenceLogJobs";
+  lazyModalRouteElement,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
+import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
+// From the file rather than the barrel beside it: the barrel also re-exports
+// the page this file loads lazily, so importing the modal through it would hold
+// the page in the initial bundle.
+import { ModelPersistenceLogJobModal } from "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobModal";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
@@ -27,7 +26,6 @@ import type { State } from "metabase/redux/store";
 import { Navigate, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { MonitorLayout } from "./components/MonitorLayout";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
@@ -42,34 +40,92 @@ function MonitorIndexRedirect() {
   return <Navigate to={indexPath} replace />;
 }
 
+/**
+ * The monitor pages, in their own chunk. The access guards stay eager: a guard
+ * has to decide before there is anything to show. So does the job modal, which
+ * is small. The log levels modal is not, so it has a loader of its own below.
+ */
+const monitorLayout = () =>
+  import(/* webpackChunkName: "monitor" */ "./components/MonitorLayout").then(
+    ({ MonitorLayout }) => ({
+      Component: MonitorLayout,
+    }),
+  );
+
+const dependencyDiagnosticsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout"
+  ).then(({ DependencyDiagnosticsSectionLayout }) => ({
+    Component: DependencyDiagnosticsSectionLayout,
+  }));
+
+const dependencyDiagnosticsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
+  ).then(({ DependencyDiagnosticsUpsellPage }) => ({
+    Component: DependencyDiagnosticsUpsellPage,
+  }));
+
+const jobInfoApp = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/JobInfoApp"
+  ).then(({ JobInfoApp }) => ({ Component: JobInfoApp }));
+
+const logs = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/Logs"
+  ).then(({ Logs }) => ({
+    Component: Logs,
+  }));
+
+const modelPersistenceLogPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs"
+  ).then(({ ModelPersistenceLogPage }) => ({
+    Component: ModelPersistenceLogPage,
+  }));
+
+// The log levels modal renders a code editor, which nothing else on the logs
+// page needs. Its parent route is already lazy, but a modal declared with
+// `modalRoute` holds its component eagerly.
+const logLevelsModal = () =>
+  Promise.all([
+    import(
+      /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/LogLevelsModal"
+    ),
+    // Awaited here so the modal appears with its editor already in place,
+    // rather than opening around an empty area that fills in a moment later.
+    loadCodeEditor(),
+  ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
+
 export function getMonitorRoutes() {
   return (
     <Route element={<CanAccessMonitor />}>
-      <Route path="monitor" element={<MonitorLayout />}>
+      <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
         <Route element={<CanAccessMonitorDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
-              element={<DependencyDiagnosticsSectionLayout />}
+              lazy={dependencyDiagnosticsSectionLayout}
             >
               {PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()}
             </Route>
           ) : (
             <Route path="dependency-diagnostics">
-              <Route index element={<DependencyDiagnosticsUpsellPage />} />
-              <Route path="*" element={<DependencyDiagnosticsUpsellPage />} />
+              <Route index lazy={dependencyDiagnosticsUpsellPage} />
+              <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
             </Route>
           )}
         </Route>
 
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" element={<JobInfoApp />}>
+          <Route path="jobs" lazy={jobInfoApp}>
             <Route path=":jobKey" />
           </Route>
-          <Route path="logs" element={<Logs />}>
-            {modalRoute("levels", LogLevelsModal)}
+          <Route path="logs" lazy={logs}>
+            {lazyModalRouteElement("levels", logLevelsModal)}
           </Route>
           <Route
             path="errors"
@@ -77,10 +133,7 @@ export function getMonitorRoutes() {
               PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell,
             )}
           />
-          <Route
-            path="model-persistence-log"
-            element={<ModelPersistenceLogPage />}
-          >
+          <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
             {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
         </Route>

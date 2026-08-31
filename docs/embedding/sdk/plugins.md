@@ -30,7 +30,7 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 See docs for specific components:
 
 - [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)
 
 ## Global plugins
 
@@ -58,15 +58,12 @@ To create clickable links in your table columns, set the column's formatting to 
 
 ### `getNoDataIllustration` and `getNoObjectIllustration`
 
-By default, Metabase displays a sailboat image when a query returns no results. To use a different image, you can use `getNoDataIllustration` and `getNoObjectIllustration` plugins which can accept a custom base64-encoded image:
+By default, Metabase displays a sailboat image when a query returns no results. The plugins `getNoDataIllustration` and `getNoObjectIllustration` swap in an image of your own. Both can only be used [globally](#plugin-scope) on provider level.
 
-```typescript
-{% include_file "{{ dirname }}/snippets/plugins/custom-images.tsx" snippet="example" %}
-```
-
-The plugins `getNoDataIllustration` and `getNoObjectIllustration` can only be used [globally](#plugin-scope) on provider level.
+See [Replace the no-results illustration](./loading-and-errors.md#replace-the-no-results-illustration) for more information and examples.
 
 ## Further reading
 
 - [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)
+- [Customize loading, error, and empty states](./loading-and-errors.md)

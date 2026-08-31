@@ -12,7 +12,7 @@ import {
   isSpinnerVisible,
 } from "metabase/status/components/utils/status";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import {
   useGetSourceReplacementRunQuery,
   useListSourceReplacementRunsQuery,

@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
+import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DayOfWeekId } from "metabase-types/api";
@@ -72,8 +72,7 @@ function updateDayjsLocale(language: string): void {
 
   try {
     if (locale !== "en") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic locale loading
-      require(`dayjs/locale/${locale}.js`);
+      loadDayjsLocale(locale);
     }
     dayjs.locale(locale);
   } catch (e) {

@@ -1,13 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useCreateExplorationMutation } from "metabase/api";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
+  createExploration,
   makeMockSelection,
-  mockDimensionBlock,
-  mockMetricBlock,
+  mockExplorationBlock,
 } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { ExplorationMetric, Timeline } from "metabase-types/api";
@@ -25,6 +26,11 @@ import {
 jest.mock("metabase/explorations/analytics", () => ({
   trackExplorationCreated: jest.fn(),
   trackExplorationPlanEdited: jest.fn(),
+}));
+
+jest.mock("metabase/api", () => ({
+  ...jest.requireActual("metabase/api"),
+  useCreateExplorationMutation: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
@@ -56,14 +62,29 @@ const churnMetric = createMockMetric({
   dimension_ids: [dimPlan.id],
 }) as ExplorationMetric;
 
+const createExplorationMock = jest.fn();
+
 function setup({
   blocks = [],
   timelines = [],
-}: { blocks?: ExplorationBlock[]; timelines?: Timeline[] } = {}) {
+  messages = [],
+}: {
+  blocks?: ExplorationBlock[];
+  timelines?: Timeline[];
+  messages?: { role: string; message: string }[];
+} = {}) {
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
-    messages: [],
+    messages,
   } as any);
+
+  createExplorationMock.mockReturnValue({
+    unwrap: () => Promise.resolve(createExploration()),
+  });
+  jest
+    .mocked(useCreateExplorationMutation)
+    // RTK mutation hook mock only needs trigger + isLoading from the tuple.
+    .mockReturnValue([createExplorationMock, { isLoading: false }] as any);
 
   // The Add* modals fetch this on mount even while closed.
   setupExplorationDataEndpoint([]);
@@ -81,11 +102,13 @@ describe("NewExplorationData (Research plan)", () => {
   });
 
   describe("empty state", () => {
-    it("renders the header + the +Data / +Events affordances, with the Start research CTA disabled", () => {
+    it("renders the header + the + Metrics / + Events affordances, with the Start research CTA disabled", () => {
       setup();
 
       expect(screen.getByText("Research plan")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Data/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Metrics/ }),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
@@ -94,11 +117,10 @@ describe("NewExplorationData (Research plan)", () => {
       ).toBeDisabled();
     });
 
-    it("opens the metrics modal from the +Data menu", async () => {
+    it("opens the metrics modal from the + Metrics button", async () => {
       setup();
 
-      await userEvent.click(screen.getByRole("button", { name: /Data/ }));
-      await userEvent.click(screen.getByRole("menuitem", { name: "Metrics" }));
+      await userEvent.click(screen.getByRole("button", { name: /Metrics/ }));
 
       expect(
         await screen.findByText("Add metrics to your research plan"),
@@ -106,10 +128,10 @@ describe("NewExplorationData (Research plan)", () => {
     });
   });
 
-  describe("metric block", () => {
+  describe("block", () => {
     it("renders collapsed by default, showing selected dimensions as plain (non-toggle) pills", () => {
       setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
       expect(screen.getByText("Revenue")).toBeInTheDocument();
@@ -124,7 +146,7 @@ describe("NewExplorationData (Research plan)", () => {
 
     it("expands a collapsed block when its (read-only) body is clicked", async () => {
       setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
       // Collapsed: the dimension is a plain pill, not a toggle button.
@@ -142,7 +164,7 @@ describe("NewExplorationData (Research plan)", () => {
 
     it("expanding groups dimensions into source sections of toggle pills", async () => {
       setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Expand" }));
@@ -157,7 +179,7 @@ describe("NewExplorationData (Research plan)", () => {
 
     it("toggling a dimension pill calls toggleDimensionSelected", async () => {
       const { selection } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Expand" }));
@@ -180,7 +202,7 @@ describe("NewExplorationData (Research plan)", () => {
 
     it("clicking the area's remove button calls selection.removeBlock", async () => {
       const { selection } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt])],
       });
 
       await userEvent.click(screen.getByLabelText("Remove area"));
@@ -194,67 +216,6 @@ describe("NewExplorationData (Research plan)", () => {
       expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
         "manual",
         "dimensions",
-      );
-    });
-  });
-
-  describe("dimension block", () => {
-    it("expanding renders related metrics as toggle pills", async () => {
-      setup({
-        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
-      });
-
-      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
-
-      expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
-      expect(screen.getByRole("button", { name: "Churn" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
-    });
-
-    it("toggling a metric pill calls toggleMetricSelected", async () => {
-      const { selection } = setup({
-        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
-      });
-
-      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
-      await userEvent.click(screen.getByRole("button", { name: "Revenue" }));
-
-      expect(selection.toggleMetricSelected).toHaveBeenCalledWith(
-        "dim:accounts.plan",
-        revenueMetric.id,
-      );
-      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
-      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
-        "manual",
-        "metrics",
-      );
-      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
-        "manual",
-        "dimensions",
-      );
-    });
-
-    it("clicking the area's remove button tracks a dimensions edit", async () => {
-      const { selection } = setup({
-        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
-      });
-
-      await userEvent.click(screen.getByLabelText("Remove area"));
-
-      expect(selection.removeBlock).toHaveBeenCalledWith("dim:accounts.plan");
-      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
-      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
-        "manual",
-        "dimensions",
-      );
-      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
-        "manual",
-        "metrics",
       );
     });
   });
@@ -305,8 +266,8 @@ describe("NewExplorationData (Research plan)", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
     const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
 
-    it("sends only the selected dimensions of a metric block", () => {
-      const block = mockMetricBlock(
+    it("sends only the selected dimensions of a block", () => {
+      const block = mockExplorationBlock(
         revenueMetric,
         [dimCreatedAt, dimPlan],
         new Set([dimCreatedAt.id]),
@@ -318,27 +279,13 @@ describe("NewExplorationData (Research plan)", () => {
       ]);
     });
 
-    it("sends only the selected metrics of a dimension block", () => {
-      const block = mockDimensionBlock(
-        dimPlan,
-        [revenueMetric, churnMetric],
-        [dimPlan],
-        new Set([churnMetric.id]),
-      );
-      const request = buildCreateExplorationRequest("n", "", [block], [], null);
-
-      expect(request.blocks[0].metrics.map((m) => m.card_id)).toEqual([
-        churnMetric.id,
-      ]);
-    });
-
-    it("sends thread-scoped timeline_ids at the top level (not per block) and tags each block's anchor type", () => {
+    it("sends thread-scoped timeline_ids at the top level (not per block)", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
         [
-          mockMetricBlock(revenueMetric, [dimCreatedAt]),
-          mockDimensionBlock(dimPlan, [churnMetric]),
+          mockExplorationBlock(revenueMetric, [dimCreatedAt]),
+          mockExplorationBlock(churnMetric, [dimPlan]),
         ],
         [releasesTimeline, launchTimeline],
         null,
@@ -346,19 +293,17 @@ describe("NewExplorationData (Research plan)", () => {
 
       expect(request.timeline_ids).toEqual([7, 9]);
       expect(request.blocks).toHaveLength(2);
-      // blocks no longer carry timeline_ids
       for (const block of request.blocks) {
         expect(block).not.toHaveProperty("timeline_ids");
+        expect(block).not.toHaveProperty("type");
       }
-      expect(request.blocks[0].type).toBe("metric");
-      expect(request.blocks[1].type).toBe("dimension");
     });
 
     it("uses empty timeline_ids when none are selected", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
-        [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+        [mockExplorationBlock(revenueMetric, [dimCreatedAt])],
         [],
         null,
       );
@@ -380,40 +325,80 @@ describe("NewExplorationData (Research plan)", () => {
         "n",
         "",
         [
-          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
-          mockDimensionBlock(dimPlan, [churnMetric]),
-          mockDimensionBlock(
-            dimCreatedAt,
-            [revenueMetric],
-            [dimCreatedAt],
-            new Set(),
-          ),
+          mockExplorationBlock(revenueMetric, [dimCreatedAt], new Set()),
+          mockExplorationBlock(churnMetric, [dimPlan]),
         ],
         [],
         null,
       );
 
       expect(request.blocks).toHaveLength(1);
-      expect(request.blocks[0].type).toBe("dimension");
       expect(request.blocks[0].metrics.map((m) => m.card_id)).toEqual([
         churnMetric.id,
       ]);
     });
   });
 
-  describe("mixed Research plan", () => {
-    it("renders metric and dimension blocks each with their own controls and enables Start research", () => {
+  describe("contextual interestingness toggle", () => {
+    const metricBlock = mockExplorationBlock(revenueMetric, [dimCreatedAt]);
+    const userQuestion = "What drives churn?";
+
+    it("hides the toggle when there are no user messages", () => {
+      setup({ blocks: [metricBlock] });
+
+      expect(screen.getByRole("switch", { hidden: true })).not.toBeVisible();
+    });
+
+    it("renders the toggle on by default when there are user messages", () => {
       setup({
-        blocks: [
-          mockMetricBlock(revenueMetric, [dimCreatedAt]),
-          mockDimensionBlock(dimPlan, [revenueMetric, churnMetric]),
-        ],
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
       });
 
-      expect(screen.getAllByLabelText("Remove area")).toHaveLength(2);
       expect(
+        screen.getByRole("switch", {
+          name: /Use AI to analyze and order results/,
+        }),
+      ).toBeChecked();
+    });
+
+    it("sends the prompt when the toggle is on", async () => {
+      setup({
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
+      });
+
+      await userEvent.click(
         screen.getByRole("button", { name: "Start research" }),
-      ).toBeEnabled();
+      );
+
+      await waitFor(() => {
+        expect(createExplorationMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt: userQuestion }),
+        );
+      });
+    });
+
+    it("omits the prompt when the toggle is off", async () => {
+      setup({
+        blocks: [metricBlock],
+        messages: [{ role: "user", message: userQuestion }],
+      });
+
+      await userEvent.click(
+        screen.getByRole("switch", {
+          name: /Use AI to analyze and order results/,
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Start research" }),
+      );
+
+      await waitFor(() => {
+        expect(createExplorationMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt: null }),
+        );
+      });
     });
   });
 
@@ -426,9 +411,11 @@ describe("NewExplorationData (Research plan)", () => {
       ).toBeDisabled();
     });
 
-    it("is disabled when a metric block has no selected dimensions", () => {
+    it("is disabled when a block has no selected dimensions", () => {
       setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt], new Set())],
+        blocks: [
+          mockExplorationBlock(revenueMetric, [dimCreatedAt], new Set()),
+        ],
       });
 
       expect(screen.getByText("Revenue")).toBeInTheDocument();
@@ -437,42 +424,11 @@ describe("NewExplorationData (Research plan)", () => {
       ).toBeDisabled();
     });
 
-    it("is disabled when a dimension block has no selected metrics", () => {
-      setup({
-        blocks: [
-          mockDimensionBlock(dimPlan, [revenueMetric], [dimPlan], new Set()),
-        ],
-      });
-
-      expect(screen.getByText("Plan")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Start research" }),
-      ).toBeDisabled();
-    });
-
-    it("is disabled when every block is empty", () => {
-      setup({
-        blocks: [
-          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
-          mockDimensionBlock(
-            dimPlan,
-            [revenueMetric, churnMetric],
-            [dimPlan],
-            new Set(),
-          ),
-        ],
-      });
-
-      expect(
-        screen.getByRole("button", { name: "Start research" }),
-      ).toBeDisabled();
-    });
-
     it("is enabled when at least one block has a selection", () => {
       setup({
         blocks: [
-          mockMetricBlock(revenueMetric, [dimCreatedAt], new Set()),
-          mockDimensionBlock(dimPlan, [churnMetric]),
+          mockExplorationBlock(revenueMetric, [dimCreatedAt], new Set()),
+          mockExplorationBlock(churnMetric, [dimPlan]),
         ],
       });
 

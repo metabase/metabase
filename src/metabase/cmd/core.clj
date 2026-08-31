@@ -165,6 +165,13 @@
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
 
+(defn ^:command ai-providers-documentation
+  "Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the
+  models each one offers. This is written to a file called `docs/ai/providers.md`."
+  []
+  (classloader/require 'metabase.cmd.ai-provider-dox)
+  ((resolve 'metabase.cmd.ai-provider-dox/generate-dox!)))
+
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."
@@ -202,7 +209,6 @@
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
-              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]
               ["-e" "--continue-on-error"        "Do not break execution on errors."]
               [""   "--full-stacktrace"          "Output full stacktraces on errors."]]}
   [path & options]
@@ -219,6 +225,23 @@
     (system-exit! 0)
     (catch Throwable e
       (log/errorf "ERROR ROTATING KEY: %s" (ex-message e))
+      (system-exit! 1))))
+
+(defn ^:command enable-encryption
+  "Encrypts data in the metabase database with the key in the MB_ENCRYPTION_SECRET_KEY environment variable. Run this
+  once, with Metabase stopped, after adding the key to an existing instance: Metabase refuses to start while the key is
+  set but the database is not encrypted with it."
+  []
+  (classloader/require 'metabase.cmd.enable-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.enable-encryption/enable-encryption!))
+    (log/info "Encryption enabled OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/errorf "ERROR ENABLING ENCRYPTION: %s" (ex-message e))
       (system-exit! 1))))
 
 (defn ^:command remove-encryption

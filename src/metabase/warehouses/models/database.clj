@@ -50,14 +50,14 @@
    (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
-  {:details                        mi/transform-encrypted-json
-   :write_data_details             mi/transform-encrypted-json
-   :admin_details                  mi/transform-encrypted-json
+  {:details                        (mi/transform-encrypted-json "metabase_database.details")
+   :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
+   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
    :start_of_week                  mi/transform-keyword
-   :settings                       mi/transform-encrypted-json
+   :settings                       (mi/transform-encrypted-json "metabase_database.settings")
    :dbms_version                   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
@@ -424,9 +424,9 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (let [table-ids-query {:from   [(t2/table-name :model/Table)]
-                         :select [:id]
-                         :where  [:= :db_id database-id]}]
+  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
+                                          :select [:id]
+                                          :where  [:= :db_id database-id]}]
     ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
     ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
     ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
@@ -434,16 +434,16 @@
       (let [no-children-clause (if (= (mdb/db-type) :mysql)
                                  ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                                  ;; DELETE target
-                                 [:not-in :id {:select [:parent_id]
-                                               :from   [[{:select [:parent_id]
-                                                          :from   [(t2/table-name :model/Field)]
-                                                          :where  [:and
-                                                                   [:not= :parent_id nil]
-                                                                   [:in :table_id table-ids-query]]}
-                                                         :parent_fields]]}]
-                                 [:not [:exists {:select [1]
-                                                 :from   [[(t2/table-name :model/Field) :child_field]]
-                                                 :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                                 [:not-in :id ^:allow-subquery {:select [:parent_id]
+                                                                :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                            :from   [(t2/table-name :model/Field)]
+                                                                                            :where  [:and
+                                                                                                     [:not= :parent_id nil]
+                                                                                                     [:in :table_id table-ids-query]]}
+                                                                          :parent_fields]]}]
+                                 [:not [:exists ^:allow-subquery {:select [1]
+                                                                  :from   [[(t2/table-name :model/Field) :child_field]]
+                                                                  :where  [:= :child_field.parent_id :metabase_field.id]}]])]
         (loop []
           (let [deleted (t2/query-one
                          {:delete-from (t2/table-name :model/Field)
@@ -533,11 +533,12 @@
   [engine database keys-to-check]
   (when-not (exempt-audit-db? database)
     (when-let [engine (some-> engine keyword)]
-      (doseq [k     keys-to-check
-              :let  [details (get database k)]
-              :when (map? details)]
-        (driver.u/validate-connection-hosts! engine (cond->> details
-                                                      (not= k :details) (merge (:details database))))))))
+      (driver.u/with-database-network-policy database
+        (doseq [k     keys-to-check
+                :let  [details (get database k)]
+                :when (map? details)]
+          (driver.u/validate-connection-hosts! engine (cond->> details
+                                                        (not= k :details) (merge (:details database)))))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -717,14 +718,9 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
-  [_model-name {:keys [include-database-secrets]}]
-  ;; Export only when secrets are explicitly included AND the database isn't an attached DWH.
-  ;; Import is unconditional.
-  (let [details-transform {:export-with-context (fn [current _ details]
-                                                  (if (and include-database-secrets
-                                                           (not (:is_attached_dwh current)))
-                                                    details
-                                                    ::serdes/skip))
+  [_model-name _opts]
+  ;; Connection details are never exported. Import is unconditional.
+  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub

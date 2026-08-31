@@ -5,7 +5,6 @@ import {
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
@@ -113,9 +112,6 @@ export const setup = ({
       storeInitialState: createMockState({
         currentUser: user,
         settings,
-        entities: createMockEntitiesState({
-          collections,
-        }),
       }),
     },
   );

@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {ai.djl/api                            {:mvn/version "0.36.0"}
+  ai.djl.huggingface/tokenizers         {:mvn/version "0.36.0"}
+  ai.djl.onnxruntime/onnxruntime-engine {:mvn/version "0.36.0"}}}

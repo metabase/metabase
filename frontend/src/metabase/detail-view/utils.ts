@@ -1,12 +1,12 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import { formatValue } from "metabase/value-formatting";
 import {
+  getComputedSettings,
+  getComputedSettingsForSeries,
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
   getTitleForColumn,
-} from "metabase/visualizations/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {

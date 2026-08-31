@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; renaming metabase.util would touch nearly every namespace
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
@@ -10,7 +11,6 @@
              [clojure.pprint :as pprint]
              ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
@@ -83,9 +83,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -188,18 +186,11 @@
       %)
    m))
 
-(defn add-period
-  "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
-   Used for formatting docs."
-  [s]
-  (let [text (str s)]
-    (cond
-      (str/blank? text) text
-      (#{\. \? \!} (last text)) text
-      (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
-      :else (str text "."))))
+(defn trimmed-string
+  "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
+  ^String [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
@@ -788,6 +779,7 @@
   (^String [x]
    #?(:clj
       (with-out-str
+        ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
       :cljs-dev
@@ -795,6 +787,7 @@
       ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
+          ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
       :default
@@ -816,6 +809,7 @@
   `profile` form or 1 for a form inside that."
   0)
 
+;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
@@ -1225,6 +1219,7 @@
      "Return how many milliseconds have elapsed since the given system millisecond time.
      For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
      [start-ms]
+     ;; the sanctioned wall-clock helper: nanoTime timers can't cross process or external-source boundaries
      #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
      (- (System/currentTimeMillis) start-ms)))
 
@@ -1295,6 +1290,7 @@
   #?(:clj
      (reify CollReduce
        (coll-reduce [_ f]
+         ;; this IS the no-init reduce arity; it must delegate without an init
          #_{:clj-kondo/ignore [:reduce-without-init]}
          (let [acc1 (reduce f r1)
                acc2 (reduce f acc1 r2)]

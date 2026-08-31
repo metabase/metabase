@@ -4,27 +4,30 @@ import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import {
+  canManageSubscriptions as canManageSubscriptionsSelector,
+  useUserAcknowledgement,
+} from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import {
-  softReloadCard,
-  turnModelIntoQuestion,
-  turnQuestionIntoModel,
-} from "metabase/query_builder/actions";
-import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import { DatasetMetadataStrengthIndicator } from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
-import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
-import { onOpenQuestionSettings } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
+
+import {
+  softReloadCard,
+  turnModelIntoQuestion,
+  turnQuestionIntoModel,
+} from "../../../../../../actions";
+import { trackTurnIntoModelClicked } from "../../../../../../analytics";
+import { onOpenQuestionSettings } from "../../../../../../store/actions";
+import { getQuestionWithoutComposing } from "../../../../../../store/selectors";
+import { DatasetMetadataStrengthIndicator } from "../../../../sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
+import { shouldShowQuestionSettingsSidebar } from "../../../../sidebars/QuestionSettingsSidebar";
 
 import QuestionActionsS from "./QuestionActions.module.css";
 import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";

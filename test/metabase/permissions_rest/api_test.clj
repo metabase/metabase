@@ -516,9 +516,14 @@
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Sandboxes"
+           (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                 (assoc (data-perms.graph/api-graph)
+                                        :sandboxes [{:group_id group-id, :table_id table-id, :card_id 1}]))))))))
 
 (deftest update-perms-graph-blocked-view-data-test
   (testing "PUT /api/permissions/graph"
@@ -635,6 +640,77 @@
                (mt/user-http-request :rasta :delete 403 (format "permissions/membership/%d" id)))))
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
+
+(deftest hide-tenant-groups-from-graph-test
+  (testing "GET /api/permissions/graph hides tenant-group entries when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup tenant-group {:name "Acme Tenant" :is_tenant_group true}
+                       :model/Database {db-id :id} {}]
+          (data-perms/set-database-permission! tenant-group db-id :perms/view-data :unrestricted)
+          (testing "tenant group is visible when use-tenants is on"
+            (is (contains? (:groups (mt/user-http-request :crowberto :get 200 "permissions/graph"))
+                           (:id tenant-group))))
+          (testing "GET /graph/group/:tenant-id succeeds when use-tenants is on"
+            (is (contains? (:groups (mt/user-http-request :crowberto :get 200
+                                                          (format "permissions/graph/group/%d" (:id tenant-group))))
+                           (:id tenant-group))))
+          (mt/with-temporary-setting-values [use-tenants false]
+            (testing "tenant group is hidden when use-tenants is off"
+              (is (not (contains? (:groups (mt/user-http-request :crowberto :get 200 "permissions/graph"))
+                                  (:id tenant-group)))))
+            (testing "GET /graph/group/:tenant-id returns 404"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :get 404
+                                           (format "permissions/graph/group/%d" (:id tenant-group))))))))))))
+
+(deftest fetch-group-by-id-hides-tenant-group-test
+  (testing "GET /api/permissions/group/:id returns 404 for tenant groups when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/PermissionsGroup tenant-group {:name "Acme Tenant" :is_tenant_group true}]
+        (mt/with-temporary-setting-values [use-tenants true]
+          (testing "visible when on"
+            (is (=? {:id (:id tenant-group)}
+                    (mt/user-http-request :crowberto :get 200 (format "permissions/group/%d" (:id tenant-group)))))))
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "404 when off"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :get 404 (format "permissions/group/%d" (:id tenant-group)))))))))))
+
+(deftest update-and-delete-hide-tenant-group-test
+  (testing "PUT and DELETE /api/permissions/group/:group-id return 404 for tenant groups when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/PermissionsGroup tenant-group {:name "Acme Tenant" :is_tenant_group true}]
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "PUT returns 404 and does not rename the group"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :put 404 (format "permissions/group/%d" (:id tenant-group))
+                                         {:name "Renamed"})))
+            (is (= "Acme Tenant" (t2/select-one-fn :name :model/PermissionsGroup :id (:id tenant-group)))))
+          (testing "DELETE returns 404 and does not delete the group"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :delete 404 (format "permissions/group/%d" (:id tenant-group)))))
+            (is (t2/exists? :model/PermissionsGroup :id (:id tenant-group)))))
+        (mt/with-temporary-setting-values [use-tenants true]
+          (testing "PUT succeeds when use-tenants is on"
+            (is (=? {:name "Renamed Tenant"}
+                    (mt/user-http-request :crowberto :put 200 (format "permissions/group/%d" (:id tenant-group))
+                                          {:name "Renamed Tenant"}))))
+          (testing "DELETE succeeds when use-tenants is on"
+            (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" (:id tenant-group)))
+            (is (not (t2/exists? :model/PermissionsGroup :id (:id tenant-group))))))))))
+
+(deftest update-perms-graph-rejects-tenant-groups-test
+  (testing "PUT /api/permissions/graph rejects bodies referencing tenant groups when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/PermissionsGroup tenant-group {:name "Acme Tenant" :is_tenant_group true}
+                     :model/Database         {db-id :id}  {}]
+        (mt/with-temporary-setting-values [use-tenants false]
+          (let [base     (data-perms.graph/api-graph)
+                attempt  (assoc-in base [:groups (:id tenant-group) db-id :view-data] :unrestricted)
+                response (mt/user-http-request :crowberto :put 400 "permissions/graph" attempt)]
+            (testing "response includes the offending group ID"
+              (is (= [(:id tenant-group)] (get-in response [:errors :tenant-group-ids]))))))))))
 
 (deftest enabling-tenants-changes-groups
   (let [get-magic-group (fn [group-type]

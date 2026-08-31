@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   type CSSProperties,
   type HTMLProps,
@@ -13,6 +14,7 @@ import {
   type To,
   prefetchPage,
   useInRouterContext,
+  usePrefetchOnVisible,
 } from "metabase/router";
 
 const INACTIVE: NavLinkRenderProps = {
@@ -97,8 +99,17 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     { to, innerRef, className, style, end, onMouseEnter, onFocus, ...rest },
     ref,
   ) {
-    const linkRef = ref ?? innerRef;
+    const forwardedRef = ref ?? innerRef;
     const inRouter = useInRouterContext();
+
+    // A touch device never fires the hover below, so watch the link instead and
+    // start the fetch when it comes into view. `usePrefetchOnVisible` decides
+    // whether that applies; on a device with a pointer it does nothing.
+    const hasTarget = to != null && to !== "";
+    const visibleRef = usePrefetchOnVisible(
+      inRouter && hasTarget ? hrefFor(anchorTarget(to)) : null,
+    );
+    const linkRef = useMergedRef(forwardedRef, visibleRef);
 
     // A link with no destination (`to` null or `""`) is used as a button: it
     // navigates through its `onClick`. A real `<Link>` would additionally
@@ -110,7 +121,7 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     // rendered in isolation (common in unit tests) has no router, so fall back
     // to a plain anchor with the resolved href. The real app always mounts a
     // router, so that path never runs there.
-    if (to == null || to === "" || !inRouter) {
+    if (to == null || to === "" || to === "#" || !inRouter) {
       const href = to == null || to === "" ? undefined : hrefFor(to);
       return (
         <a

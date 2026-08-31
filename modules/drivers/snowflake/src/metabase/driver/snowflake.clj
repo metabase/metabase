@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -37,7 +37,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -99,14 +99,20 @@
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
-  (let [message (first messages)]
-    (log/spy :error (type message))
-    (condp re-matches message
-      #"(?s).*Object does not exist.*$"
+  (let [message      (first messages)
+        any-message? (fn [re] (boolean (some (partial re-find re) (filter string? messages))))]
+    (cond
+      (any-message? #"(?s)privateKeyPwd.*is null")
+      (tru "This private key is encrypted. Enter the passphrase to connect.")
+
+      (any-message? #"(?s)Error finalising cipher|unable to read encrypted data")
+      (tru "The passphrase for this private key is incorrect.")
+
+      (and (string? message) (re-matches #"(?s).*Object does not exist.*$" message))
       :database-name-incorrect
 
-      ; default - the Snowflake errors have a \n in them
-      message)))
+      ;; default - the Snowflake errors have a \n in them
+      :else message)))
 
 (defmethod driver/db-start-of-week :snowflake
   [_]
@@ -124,7 +130,7 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file]
+(defn- handle-conn-uri [details user account private-key-file private-key-passphrase]
   (let [existing-conn-uri (or (:connection-uri details)
                               (when-let [sub (:subname details)]
                                 (format "jdbc:snowflake:%s" sub))
@@ -133,7 +139,10 @@
                                                           (cond-> {:user (codec/url-encode user)
                                                                    :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
                                                             (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))))
+                                                            (assoc :db (codec/url-encode (:db details)))
+
+                                                            (not (str/blank? private-key-passphrase))
+                                                            (assoc :private_key_pwd (codec/form-encode private-key-passphrase))))
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
@@ -145,15 +154,20 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account]
+  [{:keys [user password account private-key-passphrase]
     :as   details}]
   (if password
     details
     (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
       (-> details
           (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file))
+          (handle-conn-uri user account private-key-file private-key-passphrase)
+          (assoc :private_key_file private-key-file)
+          ;; We need to put the `:private_key_pwd` property in both the `:connection-uri` and the connection spec.
+          ;; It uses the raw value here in the connection spec, but needs to use `codec/form-encode` for the `:connection-uri`.
+          (cond-> (not (str/blank? private-key-passphrase))
+            (assoc :private_key_pwd private-key-passphrase))
+          (dissoc :private-key-passphrase))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
@@ -207,7 +221,8 @@
                              (-> details
                                  ;; Setting private-key-value to nil will delete the secret
                                  (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-path :private-key-options)
+                                 (dissoc :private-key-id :private-key-path :private-key-options
+                                         :private-key-passphrase)
                                  ;; Add meta for testing
                                  (with-meta {:auth :password})))
           private-key-path-details (when private-key-path
@@ -458,6 +473,14 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
 
+(def ^:private snowflake-date-part-units
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+
+(defn- snowflake-date-part [unit]
+  (when-not (contains? snowflake-date-part-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_driver hsql-form amount unit]
   ;; return type is always the same as expr type, unless expr is a DATE and you're adding something not in a DATE e.g.
@@ -469,7 +492,7 @@
                       "timestamp_ntz"
                       db-type)]
     (-> [:dateadd
-         [:raw (name unit)]
+         [:raw (snowflake-date-part unit)]
          [:inline (int amount)]
          hsql-form]
         (h2x/with-database-type-info return-type))))
@@ -562,7 +585,7 @@
         y (if (h2x/is-of-type? y "timestamptz")
             [:convert_timezone (driver-api/results-timezone-id) y]
             y)]
-    [:datediff [:raw (name unit)] x y]))
+    [:datediff [:raw (snowflake-date-part unit)] x y]))
 
 (defn- time-zoned-extract
   "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
@@ -714,9 +737,10 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           [:to_timestamp_ntz
-           [:convert_timezone target-timezone hsql-form]]
+           [:convert_timezone (sql.qp/->honeysql driver target-timezone) hsql-form]]
           [:to_timestamp_ntz
-           [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
+           [:convert_timezone (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))
+            (sql.qp/->honeysql driver target-timezone) hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
@@ -798,7 +822,7 @@
                           ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
-                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
+                          (vec (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defn- fallback-fields-metadata
   "When JDBC DatabaseMetaData.getColumns() fails (e.g. due to unsupported column types like UUID),

@@ -13,10 +13,12 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -33,7 +35,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList TableResult)
+   (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
@@ -51,6 +53,42 @@
 (defn- drop-table-if-exists!
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
+
+(deftest ^:parallel exactly-named-datasets-agrees-with-scan-test
+  (testing "a filter of plain names selects exactly the datasets a scan of the whole project would keep"
+    (let [universe ["orders" "orders_v2" "ORDERS" "public" "public_archive" "a_b" "x1"]]
+      (doseq [patterns ["orders" "ORDERS" "orders,public" "  orders , public  " "a_b" "x1,orders_v2"
+                        ;; naming something absent is fine -- it just selects nothing
+                        "not_a_dataset" "orders,not_a_dataset"]]
+        (testing (pr-str patterns)
+          (let [named (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                          :dataset-filters-patterns patterns})]
+            (is (some? named)
+                "should be recognized as naming its datasets outright")
+            ;; only names that exist can come back from a lookup, so compare within the universe
+            (is (= (set (filter #(driver.s/include-schema? patterns nil %) universe))
+                   (set (filter (set universe) named)))))))))
+  (testing "a dataset named twice is looked up once, as a scan would yield it once"
+    (is (= ["orders" "public"]
+           (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                               :dataset-filters-patterns "orders,public,orders"}))))
+  (testing "filters that a name lookup cannot answer fall through to a scan"
+    (doseq [[patterns why] {"orders*"        "wildcard"
+                            "*"              "wildcard"
+                            "a,b*"           "wildcard in one segment"
+                            "crazy\\*schema" "escaped asterisk is not a legal dataset ID"
+                            "_hidden"        "leading underscore means hidden; a scan never lists it"
+                            "orders,_hidden" "one hidden name is enough to need a scan"
+                            ""               "blank means include everything"
+                            nil              "blank means include everything"}]
+      (testing why
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                      :dataset-filters-patterns patterns}))))))
+  (testing "only inclusion filters name datasets; anything else needs a scan"
+    (doseq [filters-type ["exclusion" "all" nil]]
+      (testing (pr-str filters-type)
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     filters-type
+                                                      :dataset-filters-patterns "orders"})))))))
 
 (deftest ^:parallel sanity-check-test
   (mt/test-driver
@@ -239,6 +277,51 @@
       (is (= 3 (next-size 1000000000 8 light))))
     (testing "no further page is fetched once the page token is blank"
       (is (nil? ((#'bigquery/adaptive-sample-next-page :table 100) (mock-page "" light)))))))
+
+(defn- mock-query-page
+  "Like [[mock-page]], but for the query-execution path: also exposes the schema and job-id that
+  `bigquery-execute-response` reads off the first page."
+  ^TableResult [token schema rows]
+  (proxy [TableResult] []
+    (getNextPageToken [] token)
+    (getValues [] rows)
+    (getSchema [] schema)
+    (getJobId [] (JobId/of "test-project" "test-job"))))
+
+(deftest ^:synchronized adaptive-query-paging-request-count-test
+  (testing "10,000 rows × 250 cols: pages stay large and round trips stay few (#79273)"
+    (let [n-rows    10000
+          wide-row  (field-value-list (repeat 250 (prim-cell "0123456789")))
+          schema    (Schema/of (u/varargs Field (for [i (range 250)]
+                                                  (Field/of (str "c" i) LegacySQLTypeName/STRING no-fields))))
+          ;; token is non-blank iff rows remain after this page
+          page      (fn [remaining-after rows]
+                      (mock-query-page (if (pos? remaining-after) "tok" "") schema rows))
+          remaining (atom (- n-rows @#'bigquery/initial-page-rows))
+          sizes     (atom [])
+          requests  (atom 0)
+          orig-next-page-size @#'bigquery/next-page-size]
+      (with-redefs [bigquery/next-page-size    (fn ^long [^long budget ^long bytes ^long rows ^long rem]
+                                                 (let [n (long (orig-next-page-size budget bytes rows rem))]
+                                                   (swap! sizes conj n)
+                                                   n))
+                    bigquery/query-results-page (fn [_job _opts]
+                                                  (swap! requests inc)
+                                                  (let [k    (min (long (peek @sizes)) @remaining)
+                                                        rem  (swap! remaining - k)]
+                                                    (page rem (vec (repeat k wide-row)))))]
+        (let [{:keys [rows]}  (#'bigquery/bigquery-execute-response
+                               (page (- n-rows 10) (vec (repeat 10 wide-row)))
+                               nil nil
+                               (fn [cols reducible] {:cols cols, :rows (into [] reducible)})
+                               nil)
+              expected-size   (quot (long @#'bigquery/*query-page-byte-budget*)
+                                    (#'bigquery/row-bytes wide-row))
+              expected-reqs   (long (Math/ceil (/ (- n-rows 10) (double expected-size))))]
+          (is (= n-rows (count rows)))
+          (is (every? #(= expected-size %) @sizes))
+          (is (= expected-reqs @requests))
+          (is (>= expected-size 1000)))))))
 
 ;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
@@ -1600,5 +1683,5 @@
   (testing "no clustering index -> no clause"
     (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
   (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
-    (is (= "CLUSTER BY `c``; DROP TABLE x; --`"
+    (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
            (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

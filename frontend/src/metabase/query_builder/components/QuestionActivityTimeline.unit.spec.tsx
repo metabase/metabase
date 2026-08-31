@@ -7,13 +7,14 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
+
+import { QuestionActivityTimeline } from "./QuestionActivityTimeline";
 
 interface SetupOpts {
   canWrite: boolean;

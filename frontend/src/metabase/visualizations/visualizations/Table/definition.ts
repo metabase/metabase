@@ -1,36 +1,26 @@
 import { t } from "ttag";
 
 import { isNative } from "metabase/common/utils/card";
-import { displayNameForColumn } from "metabase/utils/formatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
 } from "metabase/visualizations/analytics";
-import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
-import {
-  ChartSettingsTableFormatting,
-  isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
+  type ColumnSettingDefinition,
+  type ComputedVisualizationSettings,
+  type FormattableColumn,
+  type VisualizationDefinition,
   columnSettings,
-  isPivoted,
-  tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
-import {
+  getDefaultPivotColumn,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  getOptionFromColumn,
+  isPivoted,
+  makeCellBackgroundGetter,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import {
   isAvatarURL,
   isCoordinate,
@@ -47,6 +37,8 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { isFormattable } from "../../components/settings/ChartSettingsTableFormatting";
 
 export const TABLE_DEFINITION = {
   getUiName: () => t`Table`,
@@ -108,7 +100,7 @@ export const TABLE_DEFINITION = {
       get title() {
         return t`Number of columns to freeze`;
       },
-      widget: ChartSettingNumberInput,
+      widget: "numberInput",
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_columns_count"] >= 1,
@@ -139,7 +131,7 @@ export const TABLE_DEFINITION = {
       get title() {
         return t`Number of rows to freeze`;
       },
-      widget: ChartSettingNumberInput,
+      widget: "numberInput",
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_rows_count"] >= 1,
@@ -155,11 +147,9 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
-      getDefault: ([{ card, data }]: Series) => {
+      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getDefault: ([series]: Series) => {
+        const { card, data } = series;
         let native: boolean;
         try {
           native = isNative(card);
@@ -177,8 +167,16 @@ export const TABLE_DEFINITION = {
           return false;
         }
 
-        return getDefaultPivotColumn(data.cols, data.rows) != null;
+        return getDefaultPivotColumn(series) != null;
       },
+      isValid: (
+        [{ data }]: Series,
+        settings: ComputedVisualizationSettings,
+      ) => {
+        const isInvalid = settings["table.pivot"] && data?.cols.length !== 3; // must have exactly 3 columns to pivot
+        return !isInvalid;
+      },
+      persistDefault: true,
     },
 
     "table.pivot_column": {
@@ -187,12 +185,8 @@ export const TABLE_DEFINITION = {
         return t`Pivot column`;
       },
       widget: "field",
-      getDefault: ([
-        {
-          data: { cols, rows },
-        },
-      ]: Series) => {
-        return getDefaultPivotColumn(cols, rows)?.name;
+      getDefault: ([series]: Series) => {
+        return getDefaultPivotColumn(series)?.name;
       },
       getProps: ([
         {
@@ -239,7 +233,7 @@ export const TABLE_DEFINITION = {
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       getSection: () => t`Conditional Formatting`,
-      widget: ChartSettingsTableFormatting,
+      widget: "tableFormatting",
       getDefault: () => [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols.filter(isFormattable),
@@ -364,7 +358,7 @@ export const TABLE_DEFINITION = {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) =>
@@ -381,7 +375,7 @@ export const TABLE_DEFINITION = {
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",

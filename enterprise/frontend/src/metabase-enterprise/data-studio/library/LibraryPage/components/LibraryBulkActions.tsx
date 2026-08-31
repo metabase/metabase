@@ -5,14 +5,16 @@ import { useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
-  BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import {
   CollectionPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { useConfirmation, useSetCollection } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  useConfirmation,
+  useMetadataToasts,
+  useSetCollection,
+} from "metabase/common/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import { UnpublishTablesModal } from "../../components/UnpublishTablesModal";
@@ -161,9 +163,9 @@ export function LibraryBulkActions({
           </BulkActionButton>
         )}
         {isAllTables && (
-          <BulkActionDangerButton onClick={() => setAction("unpublish")}>
+          <BulkActionButton danger onClick={() => setAction("unpublish")}>
             {t`Unpublish`}
-          </BulkActionDangerButton>
+          </BulkActionButton>
         )}
         <BulkActionButton onClick={onClear}>{t`Clear`}</BulkActionButton>
       </BulkActionBar>

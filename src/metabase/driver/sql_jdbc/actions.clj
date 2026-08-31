@@ -99,7 +99,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- driver-api/schema.actions.row
+(mu/defn- cast-values :- [:map-of :string :any]
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
@@ -476,15 +476,17 @@
          :before   nil
          :after    row}))))
 
+;; TODO (Cam 2026-07-23) Update this stuff to use MBQL 5 instead of legacy MBQL
 (mu/defn- model-create! :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
-  [action context inputs :- [:sequential driver-api/mbql.schema.Query]]
-  (let [database (inputs->db inputs)
+  ;; the legacy MBQL query schema is deprecated, and goes away with the TODO above
+  [action context legacy-queries :- #_{:clj-kondo/ignore [:deprecated-var]} [:sequential driver-api/mbql.schema.Query]]
+  (let [database (inputs->db legacy-queries)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
         [errors diffs]    (run-bulk-transaction!
                            {:database database
                             :proc     (partial row-create!* action database)
-                            :coll     inputs})]
+                            :coll     legacy-queries})]
     (if (seq errors)
       ;; For backwards compatibility
       (throw (:error (first errors)))

@@ -124,7 +124,7 @@ export type ToolTitleData = {
 
 // The picker hydration for a Research plan edit. It rides a data part rather than the
 // `add_research_groups` tool result because that result is also the agent's LLM context, and this
-// payload grows with the metrics a group pulls in.
+// payload grows with every metric the call references.
 export type ResearchPlanUpdateData = AddResearchGroupsResponse & {
   tool_call_id?: string;
 };

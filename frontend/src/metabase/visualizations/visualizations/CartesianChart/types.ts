@@ -1,4 +1,4 @@
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 
 export interface CartesianHoveredObject extends HoveredObject {
   shouldShowTooltip?: boolean;

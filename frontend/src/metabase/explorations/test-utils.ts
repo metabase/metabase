@@ -11,16 +11,8 @@ import type {
   Timeline,
 } from "metabase-types/api";
 
-import type {
-  DimensionBlock,
-  ExplorationBlock,
-  ExplorationSelection,
-  MetricBlock,
-} from "./hooks";
-import {
-  dimensionBlockId,
-  metricBlockId,
-} from "./hooks/useExplorationSelection";
+import type { ExplorationBlock, ExplorationSelection } from "./hooks";
+import { metricBlockId } from "./hooks/useExplorationSelection";
 
 export const INITIAL_BLOCK_ID = 1;
 
@@ -30,34 +22,17 @@ export interface MockSelectionOpts {
   allTimelines?: Timeline[];
 }
 
-export function mockMetricBlock(
+export function mockExplorationBlock(
   metric: ExplorationMetric,
   dimensions: MetricDimension[] = [],
   selectedDimensionIds?: Set<MetricDimension["id"]>,
-): MetricBlock {
+): ExplorationBlock {
   return {
-    kind: "metric",
     id: metricBlockId(metric.id),
     metric,
     dimensions,
     selectedDimensionIds:
       selectedDimensionIds ?? new Set(dimensions.map((d) => d.id)),
-  };
-}
-
-export function mockDimensionBlock(
-  dimension: MetricDimension,
-  metrics: ExplorationMetric[] = [],
-  groupDimensions?: MetricDimension[],
-  selectedMetricIds?: Set<ExplorationMetric["id"]>,
-): DimensionBlock {
-  return {
-    kind: "dimension",
-    id: dimensionBlockId(dimension.id),
-    dimension,
-    groupDimensions: groupDimensions ?? [dimension],
-    metrics,
-    selectedMetricIds: selectedMetricIds ?? new Set(metrics.map((m) => m.id)),
   };
 }
 
@@ -68,47 +43,26 @@ export function makeMockSelection(
   const timelines = opts.timelines ?? [];
   const allTimelines = opts.allTimelines ?? [];
 
-  const metricBlockIds = new Set<ExplorationMetric["id"]>();
-  const dimensionBlockIds = new Set<MetricDimension["id"]>();
   const metricSeen = new Set<ExplorationMetric["id"]>();
   const metrics: ExplorationMetric[] = [];
   const dimensionSeen = new Set<MetricDimension["id"]>();
   const dimensions: MetricDimension[] = [];
 
   for (const block of blocks) {
-    if (block.kind === "metric") {
-      metricBlockIds.add(block.metric.id);
-      if (!metricSeen.has(block.metric.id)) {
-        metricSeen.add(block.metric.id);
-        metrics.push(block.metric);
-      }
-      for (const d of block.dimensions) {
-        if (block.selectedDimensionIds.has(d.id) && !dimensionSeen.has(d.id)) {
-          dimensionSeen.add(d.id);
-          dimensions.push(d);
-        }
-      }
-    } else {
-      for (const d of block.groupDimensions) {
-        dimensionBlockIds.add(d.id);
-        if (!dimensionSeen.has(d.id)) {
-          dimensionSeen.add(d.id);
-          dimensions.push(d);
-        }
-      }
-      for (const m of block.metrics) {
-        if (block.selectedMetricIds.has(m.id) && !metricSeen.has(m.id)) {
-          metricSeen.add(m.id);
-          metrics.push(m);
-        }
+    if (!metricSeen.has(block.metric.id)) {
+      metricSeen.add(block.metric.id);
+      metrics.push(block.metric);
+    }
+    for (const d of block.dimensions) {
+      if (block.selectedDimensionIds.has(d.id) && !dimensionSeen.has(d.id)) {
+        dimensionSeen.add(d.id);
+        dimensions.push(d);
       }
     }
   }
 
   return {
     blocks,
-    metricBlockIds,
-    dimensionBlockIds,
     timelines,
     allTimelines,
     timelinesLoading: false,
@@ -120,13 +74,11 @@ export function makeMockSelection(
     setBlocks: jest.fn(),
     setTimelines: jest.fn(),
     addMetric: jest.fn(),
-    addDimension: jest.fn(),
     addTimelinesById: jest.fn(),
     removeTimelinesById: jest.fn(),
     removeBlock: jest.fn(),
-    removeBlockMembers: jest.fn(),
+    removeBlockDimensions: jest.fn(),
     toggleDimensionSelected: jest.fn(),
-    toggleMetricSelected: jest.fn(),
   };
 }
 
@@ -175,7 +127,6 @@ export function createBlock(
   overrides: Partial<ExplorationBlockNode> & Pick<ExplorationBlockNode, "id">,
 ): ExplorationBlockNode {
   return {
-    type: "metric",
     name: null,
     position: 0,
     pages: [],
@@ -223,7 +174,6 @@ export function createExploration({
   const finalBlocks: ExplorationBlockNode[] = blocks ?? [
     {
       id: INITIAL_BLOCK_ID,
-      type: "metric",
       position: 0,
       name: "Initial investigation",
       pages: queries.map((q, i) => ({

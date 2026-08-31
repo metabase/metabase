@@ -186,3 +186,40 @@
       ;; make sure all keywords have the right namespace in normalized form
       (t/is (empty? (filter #(some? (namespace %)) (all-keywords to-db))))
       (t/is (= db-form to-db)))))
+
+(t/deftest ^:parallel db->norm-column-settings-entries-malformed-entry-test
+  (t/testing "entries that can't be normalized are dropped rather than thrown (SEC-868)"
+    (doseq [bad-click-behavior ["x" [1 2] 42 true]]
+      (t/testing (str "click_behavior = " (pr-str bad-click-behavior))
+        (t/is (= {::mb.viz/column-title "Legit Title"}
+                 (mb.viz/db->norm-column-settings-entries
+                  {:click_behavior bad-click-behavior
+                   :column_title   "Legit Title"})))))
+    (t/testing "a well-formed entry is still normalized"
+      (t/is (= {::mb.viz/click-behavior {::mb.viz/click-behavior-type ::mb.viz/link
+                                         ::mb.viz/link-type           ::mb.viz/url
+                                         ::mb.viz/link-text-template  "http://example.com"}}
+               (mb.viz/db->norm-column-settings-entries
+                {:click_behavior {:type "link" :linkType "url" :linkTextTemplate "http://example.com"}}))))
+    (t/testing "a non-associative settings value normalizes to nothing"
+      (doseq [bad ["x" [1 2] 42]]
+        (t/is (= {} (mb.viz/db->norm-column-settings-entries bad)))))))
+
+(t/deftest ^:parallel db->norm-malformed-blob-test
+  (t/testing "malformed values in a card's visualization_settings are dropped rather than thrown (SEC-868)"
+    (doseq [k   [:click_behavior :column_settings :table.columns]
+            bad ["x" 42 [1 2] true]]
+      (t/testing (str (pr-str k) " = " (pr-str bad))
+        (t/is (map? (mb.viz/db->norm {k bad})))))
+    (t/testing "well-formed sibling keys survive alongside a malformed one"
+      ;; an unusable :column_settings normalizes to no column settings, as it already did for unparseable column refs
+      (t/is (= {:other "kept", ::mb.viz/column-settings {}}
+               (mb.viz/db->norm {:column_settings "x", :other "kept"}))))
+    (t/testing "a blob that isn't a map at all normalizes to no settings"
+      (doseq [bad ["x" 42 [1 2]]]
+        (t/is (= {} (mb.viz/db->norm bad)))))
+    (t/testing "a nil :click_behavior entry is dropped, not normalized to a map of nils"
+      (t/is (= {} (mb.viz/db->norm-column-settings-entries {:click_behavior nil}))))
+    (t/testing "well-formed values still normalize"
+      (t/is (= {::mb.viz/table-columns [{::mb.viz/table-column-enabled true}]}
+               (mb.viz/db->norm {:table.columns [{:enabled true}]}))))))

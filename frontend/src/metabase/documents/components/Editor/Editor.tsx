@@ -21,7 +21,6 @@ import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
@@ -39,9 +38,14 @@ import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/exte
 import { getSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
+import { CardEmbed } from "../editor-extensions/CardEmbed/CardEmbedNode";
+
 import { DocumentBlockShell } from "./DocumentBlockShell";
 import { DocumentCommandSuggestion } from "./DocumentCommandSuggestion";
-import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import {
+  type DocumentEditorHost,
+  DocumentEditorHostProvider,
+} from "./DocumentEditorHost";
 import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
 import { createChartPasteExtension } from "./chart-paste-extension";
@@ -89,11 +93,16 @@ export interface EditorProps {
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
   onChange?: (content: JSONContent) => void;
-  onQuestionSelect?: (cardId: number | null) => void;
+  onQuestionSelect?: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  hostOverride?: Partial<DocumentEditorHost>;
+  placeholder?: string;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -106,6 +115,8 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
+    hostOverride,
+    placeholder,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -137,7 +148,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
           defaultProtocol: "https",
         }),
         Placeholder.configure({
-          placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
+          placeholder:
+            placeholder ??
+            t`Start writing, type "/" to list commands, or "@" to mention an item...`,
         }),
         CardEmbed,
         FlexContainer,
@@ -168,7 +181,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         HandleEditorDrop,
         createChartPasteExtension(dispatch),
       ],
-      [siteUrl, getState, dispatch],
+      [siteUrl, getState, dispatch, placeholder],
     );
 
     const editor = useEditor(
@@ -236,7 +249,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     }
 
     return (
-      <DocumentEditorHostProvider>
+      <DocumentEditorHostProvider hostOverride={hostOverride}>
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
           <Box
             className={S.editorContent}

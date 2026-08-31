@@ -34,18 +34,11 @@ To pass a theme, use `defineMetabaseTheme`. See [Reuse a saved theme in the SDK]
 
 ## Custom visualizations
 
-The SDK can render [custom visualizations](../../questions/visualizations/custom.md). To allow custom visualizations in the embed, pass an allowlist of the custom visualizations to the `allowedCustomVisualizations` prop on `MetabaseProvider`:
+The SDK can render [custom visualizations](../../questions/visualizations/custom.md) that you allowlist with the `allowedCustomVisualizations` prop on `MetabaseProvider`. See [Custom visualizations in embeds](../custom-visualizations.md).
 
-```typescript
-{% include_file "{{ dirname }}/snippets/config/config-with-custom-visualizations.tsx" snippet="example" %}
-```
+## Loading and error components
 
-Only the custom visualizations you list will load. Each entry is the visualization's name (the manifest `name`, which you can find under **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations**), prefixed with `custom:`. For example, a custom visualization named `Calendar Heatmap` becomes `"custom:Calendar Heatmap"`. Names are case-sensitive, so `"custom:calendar heatmap"` won't match a visualization named `Calendar Heatmap`.
-
-Omitting the prop, or passing an empty array, turns off custom visualizations. Cards that use a custom visualization will fall back to the default visualization for the query's results. If you allowlist a name that doesn't match an installed custom visualization, the SDK logs a warning to the console and falls back to the default visualization.
-
-
-For security, the SDK runs each custom visualization's code in an isolated sandbox, so a visualization can't reach your app or make network requests. The sandbox doesn't block passive image loads, though. A visualization can still trigger outbound requests through `<img>` tags or CSS `url()`. To limit where custom visualizations can load images from, set a Content Security Policy with an `img-src` allowlist in your app (the core Metabase app does this with [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains)). [Only add visualizations you trust](../../questions/visualizations/custom.md#only-add-visualizations-you-trust).
+The `loaderComponent` and `errorComponent` props swap the SDK's default loading and error screens for your own React components. See [Customize loading, error, and empty states](./loading-and-errors.md).
 
 ## Global event handlers
 

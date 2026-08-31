@@ -135,6 +135,25 @@
             (is (contains? card-ids (:id root-metric)))
             (is (contains? card-ids (:id coll-model)))))))))
 
+(deftest metabot-scope-query-excludes-destination-database-cards-test
+  (testing "get-metrics-and-models excludes cards backed by a destination (routed) database -- destinations
+            are routing internals reachable only through their router database"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Database router-db      {}
+                     :model/Database destination-db {:router_database_id (:id router-db)}
+                     :model/Card     destination-model {:type :model, :collection_id nil
+                                                        :database_id (:id destination-db)}
+                     :model/Card     open-model        {:type :model, :collection_id nil
+                                                        :database_id (mt/id)}
+                     :model/Metabot  metabot {:name "root metabot"
+                                              :collection_id nil
+                                              :use_verified_content false}]
+        (let [result (mt/with-test-user :crowberto
+                       (metabot.tools.util/get-metrics-and-models (:id metabot)))
+              card-ids (set (map :id result))]
+          (is (contains? card-ids (:id open-model)))
+          (is (not (contains? card-ids (:id destination-model)))))))))
+
 (deftest add-table-reference-test
   (testing "add-table-reference function adds table-reference for FK fields"
     (mt/dataset test-data

@@ -20,6 +20,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -1722,7 +1723,7 @@
 
 (deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
   (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"
-                "to a column from the RHS of the same join (#67667)")
+                " to a column from the RHS of the same join (#67667)")
     (let [mp  meta/metadata-provider
           ;; Q1(a) is a plain query of Products
           q1a (lib/query mp (lib.metadata/table mp (meta/id :products)))

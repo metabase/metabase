@@ -68,6 +68,27 @@
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))
 
+(defn internal-key?
+  "True if `k` is a namespaced key outside the `:lib` namespace. These are internal keys the query processor adds to a
+  query as it runs, as opposed to the `:lib/*` and simple keys that make up a query itself. Handles string keys too,
+  since keys are not always keywordized yet when this runs."
+  [k]
+  (let [k (cond-> k (string? k) keyword)]
+    (and (qualified-keyword? k)
+         (not= "lib" (namespace k)))))
+
+(defn remove-internal-keys
+  "For use as a `:decode/deserialize` (and `:encode/serialize`) transformer on a query/stage/join/options map: remove
+  every [[internal-key?]] from map `m`."
+  [m]
+  (if-not (map? m)
+    m
+    (reduce-kv (fn [acc k _v]
+                 (cond-> acc
+                   (internal-key? k) (dissoc k)))
+               m
+               m)))
+
 (defn normalize-string-key
   "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
   is mostly to work around the REST API recursively keywordizing the entire request body by default."
@@ -187,6 +208,19 @@
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
 
+(defn- coercion-strategy? [x]
+  (isa? x :Coercion/*))
+
+(mr/def ::coercion-strategy
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-keyword}]
+   [:fn
+    {:error/message "valid coercion strategy"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid coercion strategy: " (pr-str value)))}
+    coercion-strategy?]])
+
 (defn normalize-options-map
   "Basic normalization behavior for an MBQL clause options map."
   [m]
@@ -273,6 +307,7 @@
    {:default {}}
    [:map
     {:decode/normalize   #'normalize-options-map
+     :decode/api         #'remove-internal-keys
      :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.

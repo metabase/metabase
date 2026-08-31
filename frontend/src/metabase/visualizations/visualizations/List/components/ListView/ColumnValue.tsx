@@ -11,10 +11,12 @@ import {
   Text,
 } from "metabase/ui";
 import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
+import { formatValue } from "metabase/value-formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  getColumnExtent,
+} from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isAvatarURL,

@@ -2,10 +2,10 @@ import { useMemo } from "react";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
-import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 

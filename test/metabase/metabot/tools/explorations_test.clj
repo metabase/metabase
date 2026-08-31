@@ -9,6 +9,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self]
    [metabase.metabot.tools.explorations :as tools.explorations]
+   [metabase.test :as mt]
    [metabase.util.json :as json]))
 
 (def ^:private exploration-tool-vars
@@ -69,20 +70,31 @@
                        :dimensions (vec (for [i (range n-metrics)] {:id (str "d" i)}))}]
    :groups []})
 
+(defn- wide-metric-payload
+  "An `add_research_groups` result: one metric sliced by `n-dims` distinct dimension groups."
+  [n-dims]
+  (let [ids (vec (for [i (range n-dims)] (str "d" i)))]
+    {:metrics          [{:id 0 :name "Metric 0" :dimension_ids ids}]
+     :dimension_groups (vec (for [i (range n-dims)]
+                              {:name (str "Group " i) :dimensions [{:id (str "d" i)}]}))
+     :groups           [{:metric_id 0 :dimension_ids ids}]}))
+
 (deftest add-research-groups-keeps-the-payload-off-the-llm-wire-test
   (testing "the picker hydration rides a data part the FE consumes; the LLM only sees a summary"
-    (let [payload (assoc (picker-payload 2)
-                         :groups [{:anchor "metric" :metric_id 0 :dimension_ids ["d0"]}
-                                  {:anchor "dimension" :dimension_id "d1"}])]
-      (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+    (let [payload (assoc (picker-payload 3)
+                         :groups [{:metric_id 0 :dimension_ids ["d0"]}
+                                  {:metric_id 1 :dimension_ids ["d1"] :replace_default_dimensions true}
+                                  {:metric_id 2}])]
+      (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
         (let [{:keys [output data-parts]} (tools.explorations/add-research-groups-tool
                                            {:groups (:groups payload)})]
           (testing "the payload is on the data part, not in :output"
             (is (= [{:type :data :data-type "research_plan_update" :data payload}] data-parts)))
           (testing ":output is prose naming what the user got, not the payload"
-            (is (= (str "Added 2 group(s) to the research plan:\n"
+            (is (= (str "Added 3 group(s) to the research plan:\n"
                         "- Metric 0, by: Orders - Region, plus the automatic selection\n"
-                        "- by Orders - Region: Metric 0, Metric 1")
+                        "- Metric 1, by exactly: Orders - Region\n"
+                        "- Metric 2, by the automatically-selected dimensions")
                    output))))))))
 
 (deftest add-research-groups-summary-tolerates-unnamed-dimensions-test
@@ -91,44 +103,42 @@
                 "can't break out on it) — the summary skips what it can't name rather than "
                 "throwing away the whole tool call")
     (let [payload (assoc (picker-payload 1)
-                         :groups [{:anchor "metric" :metric_id 0 :dimension_ids ["d0" "unresolved"]}
-                                  {:anchor "dimension" :dimension_id "unresolved"}])]
-      (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
-        (is (= (str "Added 2 group(s) to the research plan:\n"
+                         :groups [{:metric_id 0 :dimension_ids ["d0" "unresolved"]}])]
+      (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+        (is (= (str "Added 1 group(s) to the research plan:\n"
                     "- Metric 0, by: Orders - Region, plus the automatic selection")
                (:output (tools.explorations/add-research-groups-tool
                          {:groups (:groups payload)}))))))))
 
 (deftest add-research-groups-summary-is-bounded-test
-  (testing "a dimension anchor naming no metrics covers every related one, so the summary counts
-            the tail instead of listing it — :output is the agent's context, not a report"
-    (let [summary-for (fn [n-metrics]
-                        (let [payload (assoc (picker-payload n-metrics)
-                                             :groups [{:anchor "dimension" :dimension_id "d0"}])]
-                          (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+  (testing "a metric can be sliced by a long dimension list, so the summary counts the tail
+            instead of listing it — :output is the agent's context, not a report"
+    (let [summary-for (fn [n-dims]
+                        (let [payload (wide-metric-payload n-dims)]
+                          (mt/with-dynamic-fn-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
                             (:output (tools.explorations/add-research-groups-tool
                                       {:groups (:groups payload)})))))
           fifty       (summary-for 50)]
       (testing "the tail past the first `summary-max-names` members is counted, not listed"
         (is (str/includes? fifty "and 35 more")))
-      (testing "so a 10x larger group costs only the extra digits in that count"
+      (testing "so a 10x longer dimension list costs only the extra digits in that count"
         (is (> 5 (- (count (summary-for 500)) (count fifty))))))))
 
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"
-    (is (= {:block_ids ["metric:42" "dim:7"] :members nil :timeline_ids nil}
+    (is (= {:block_ids ["metric:42" "metric:43"] :members nil :timeline_ids nil}
            (decoded-output
             (tools.explorations/remove-from-research-plan-tool
-             {:block_ids ["metric:42" "dim:7"]})))))
-  (testing "echoes member-level removals (deselect dimensions/metrics within a group)"
+             {:block_ids ["metric:42" "metric:43"]})))))
+  (testing "echoes member-level removals (deselect dimensions within a group)"
     (is (= {:block_ids    nil
             :members      [{:block_id "metric:42" :dimension_ids ["d1"]}
-                           {:block_id "dim:7" :metric_ids [43]}]
+                           {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]
             :timeline_ids nil}
            (decoded-output
             (tools.explorations/remove-from-research-plan-tool
              {:members [{:block_id "metric:42" :dimension_ids ["d1"]}
-                        {:block_id "dim:7" :metric_ids [43]}]})))))
+                        {:block_id "metric:43" :dimension_ids ["d2" "d3"]}]})))))
   (testing "echoes timeline removals"
     (is (= {:block_ids nil :members nil :timeline_ids [7 9]}
            (decoded-output
@@ -191,24 +201,20 @@
 (deftest ^:parallel format-research-plan-test
   (let [plan {:name      "Why was revenue down?"
               :groups    [{:block_id   "metric:42"
-                           :anchor     "metric"
                            :metric     {:id 42 :name "Revenue"}
                            :dimensions [{:id "d1" :name "Region"}
                                         {:id "d2" :name "Plan"}]}
-                          {:block_id  "dim:7"
-                           :anchor    "dimension"
-                           :dimension {:id "d7" :name "Plan"}
-                           :metrics   [{:id 42 :name "Revenue"}
-                                       {:id 43 :name "Churn"}]}]
+                          {:block_id   "metric:43"
+                           :metric     {:id 43 :name "Churn"}
+                           :dimensions [{:id "d7" :name "Plan"}]}]
               :timelines [{:id 1 :name "Releases"}]}]
     (testing "renders groups with block ids, name, and timelines"
       (let [result (tools.explorations/format-research-plan {:research_plan plan})]
         (is (string? result))
         (is (str/includes? result "Why was revenue down?"))
-        ;; metric-anchored group surfaces its block id and selected dimensions with their ids
+        ;; each group surfaces its block id and selected dimensions with their ids
         (is (str/includes? result "[metric:42] Revenue, broken out by: Region (d1), Plan (d2)"))
-        ;; dimension-anchored group surfaces its block id and the metrics it slices with their ids
-        (is (str/includes? result "[dim:7] by Plan, slicing: Revenue (42), Churn (43)"))
+        (is (str/includes? result "[metric:43] Churn, broken out by: Plan (d7)"))
         (is (str/includes? result "Selected timelines: Releases (1)"))))
     (testing "returns nil when there is no plan in context"
       (is (nil? (tools.explorations/format-research-plan {}))))
@@ -226,7 +232,6 @@
     (let [profile (profiles/get-profile :explorations)
           plan    {:name   "Why was revenue down?"
                    :groups [{:block_id   "metric:42"
-                             :anchor     "metric"
                              :metric     {:id 42 :name "Revenue"}
                              :dimensions [{:id "d1" :name "Region"}]}]}
           content (:content (messages/build-system-message {:research_plan plan} profile {}))]

@@ -5,16 +5,19 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -723,3 +726,86 @@
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+(deftest ^:parallel exactly-named-schemas-agrees-with-filter-test
+  (testing "when the inclusion filter names its schemas outright, membership decides exactly what the filter keeps"
+    (let [candidates ["spectrum"
+                      "2026_08_27_18_abc_schema"
+                      "2026_08_27_18_abc_schema_extra"
+                      "prefix_spectrum"
+                      "spectrumx"
+                      "SPECTRUM"
+                      "other"
+                      "with space"
+                      "withxspace"
+                      "hyphen-schema"
+                      "hyphenxschema"
+                      "unicodé"
+                      "unicode"
+                      "at@sign"
+                      "atxsign"]]
+      (doseq [patterns ["spectrum"
+                        "spectrum,2026_08_27_18_abc_schema"
+                        "  spectrum ,  2026_08_27_18_abc_schema  "
+                        "spectrum,spectrum"
+                        ;; legal Redshift schema names that carry no regex syntax
+                        "with space"
+                        "hyphen-schema"
+                        "unicodé"
+                        "at@sign"]]
+        (testing (pr-str patterns)
+          (let [named (#'redshift/exactly-named-schemas patterns)]
+            (is (some? named))
+            (doseq [candidate candidates]
+              (is (= (driver.s/include-schema? patterns nil candidate)
+                     (contains? (set named) candidate))
+                  (pr-str candidate))))))))
+  (testing "a filter that needs every schema to evaluate falls through to the unrestricted query"
+    (are [patterns] (nil? (#'redshift/exactly-named-schemas patterns))
+      nil
+      ""
+      "   "
+      "test*"
+      "*_schema"
+      "spectrum,test*"
+      "crazy\\*schema"
+      "a.c"
+      "a|b"
+      "a$b"
+      "a+b"
+      "a(b)"
+      "a[b]"
+      "a^b"
+      "a?b"
+      ;; an interior empty segment names nothing, so it cannot stand in for the filter
+      "spectrum,,other"))
+  (testing "a trailing comma leaves no empty segment behind, so it still qualifies"
+    (is (= ["spectrum"] (#'redshift/exactly-named-schemas "spectrum,")))))
+
+(deftest ^:parallel regex-metacharacters-is-complete-test
+  (testing "every character the guard admits really does compile to a regex matching only itself"
+    ;; Pins the metacharacter enumeration itself: a character missing from it would be admitted here and show up as
+    ;; a disagreement, rather than as a silently wrong `in (...)` against a real cluster.
+    (let [chars (concat (map char (range 32 127)) [\é \ü \空])
+          ;; the filter splits on commas, so a comma never reaches a segment
+          chars (remove #{\,} chars)]
+      (doseq [c chars
+              :let [segment (str "a" c "c")
+                    named   (#'redshift/exactly-named-schemas segment)]
+              :when named]
+        (testing (pr-str segment)
+          (doseq [candidate [segment "abc" "axc" "ac" "aXc" "a" "other"]]
+            (is (= (boolean (driver.s/include-schema? segment nil candidate))
+                   (contains? (set named) candidate))
+                (pr-str candidate))))))))
+
+(deftest ^:parallel get-tables-sql-test
+  (testing "named schemas are bound once per union branch"
+    (let [[sql & params] (#'redshift/get-tables-sql ["spectrum" "sess"])]
+      (is (= ["spectrum" "sess" "spectrum" "sess"] params))
+      (is (= 2 (count (re-seq #"in \(\?, \?\)" sql))))))
+  (testing "no named schemas leaves the query and its params untouched"
+    (let [[sql & params] (#'redshift/get-tables-sql nil)]
+      (is (empty? params))
+      (is (not (str/includes? sql "nspname in")))
+      (is (not (str/includes? sql "schemaname in"))))))

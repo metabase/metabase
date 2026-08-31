@@ -207,7 +207,7 @@
       (do-login)
       (http-401-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   username]
+                                   (login-throttlers :username)   (u/lower-case-en username)]
           (do-login))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -220,9 +220,13 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
-    (api/check-404 (> rows-deleted 0))
-    (request/clear-session-cookie api/generic-204-no-content)))
+        rows-deleted (t2/delete! :model/Session :key_hashed session-key-hashed)]
+    ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
+    ;; would keep resending the dead cookie
+    (request/clear-session-cookie
+     (if (pos? rows-deleted)
+       api/generic-204-no-content
+       {:status 404, :body "Not found."}))))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -232,7 +236,7 @@
 ;; There's also no need to salt the token because it's already random <3
 
 (def ^:private forgot-password-throttlers
-  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
+  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- sso-password-reset-disabled?
@@ -288,7 +292,7 @@
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
+                             {:object (assoc user :token (auth-identity/reset-token-hash user-id))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -307,7 +311,7 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
-  (throttle-check (forgot-password-throttlers :email) email)
+  (throttle-check (forgot-password-throttlers :email) (u/lower-case-en email))
   (forgot-password-impl email)
   api/generic-204-no-content)
 
@@ -339,7 +343,7 @@
   "Reset password with a reset token."
   [_route-params
    _query-params
-   request-body :- [:map
+   request-body :- [:map {:closed true}
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
    request]
@@ -348,7 +352,7 @@
   (let [auth-result (auth-identity/with-fallback auth-identity/login!
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
-                      request-body)]
+                      (select-keys request-body [:token :password]))]
     (cond
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))

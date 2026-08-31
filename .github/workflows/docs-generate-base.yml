@@ -33,6 +33,9 @@ jobs:
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Set up Babashka
         uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
         with:
@@ -72,17 +75,41 @@ jobs:
           clojure -M:ee:doc command-documentation
         continue-on-error: false
 
+      - name: Generate AI provider documentation
+        id: generate_ai_provider_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating AI provider documentation..."
+          clojure -M:ee:doc ai-providers-documentation
+        continue-on-error: false
+
       - name: Generate usage analytics documentation
         run: ./bin/generate-usage-analytics-docs.bb
+
+      - name: Generate embedding SDK documentation
+        id: generate_embedding_sdk_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding SDK documentation..."
+          bun run embedding-sdk:docs:generate
+        continue-on-error: false
+
+      - name: Generate embedding EAJS documentation
+        id: generate_embedding_eajs_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding EAJS documentation..."
+          bun run embedding-eajs:docs:generate
+        continue-on-error: false
 
       - name: Check for changes
         id: check_changes
         run: |
           if git diff --quiet docs/; then
-            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "changes=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected in docs directory"
           else
-            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "changes=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected in docs directory"
           fi
 
@@ -109,7 +136,7 @@ jobs:
           git commit -m "Update generated docs (${{ inputs.target_branch }})" --no-verify
           git push -u origin "$BRANCH_NAME"
 
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
           echo "Successfully created and pushed branch"
 
       - name: Create pull request
@@ -145,7 +172,10 @@ jobs:
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
           - \`clojure -M:ee:doc command-documentation\`
+          - \`clojure -M:ee:doc ai-providers-documentation\`
           - \`./bin/generate-usage-analytics-docs.bb\`
+          - \`bun run embedding-sdk:docs:generate\`
+          - \`bun run embedding-eajs:docs:generate\`
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \
@@ -155,7 +185,7 @@ jobs:
               break
             else
               echo "PR creation failed on attempt $i"
-              if [ $i -eq 3 ]; then
+              if [ "$i" -eq 3 ]; then
                 echo "All attempts failed. Exiting with error."
                 exit 1
               fi
@@ -172,22 +202,24 @@ jobs:
       - name: Workflow summary
         if: always()
         run: |
-          if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
-            if [ "${{ steps.commit_and_push.outcome }}" == "success" ]; then
-              if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
-                echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
-                echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-                echo "- PR created targeting **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
+          {
+            if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
+              if [ "${{ steps.commit_and_push.outcome }}" == "success" ]; then
+                if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
+                  echo "## ✅ Documentation Updated Successfully"
+                  echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`"
+                  echo "- PR created targeting **${{ inputs.target_branch }}**"
+                else
+                  echo "## ⚠️ Branch Created but PR Failed"
+                  echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`"
+                  echo "- Manual PR creation required"
+                fi
               else
-                echo "## ⚠️ Branch Created but PR Failed" >> $GITHUB_STEP_SUMMARY
-                echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-                echo "- Manual PR creation required" >> $GITHUB_STEP_SUMMARY
+                echo "## ❌ Failed to Create Branch"
+                echo "- Check workflow logs for details"
               fi
             else
-              echo "## ❌ Failed to Create Branch" >> $GITHUB_STEP_SUMMARY
-              echo "- Check workflow logs for details" >> $GITHUB_STEP_SUMMARY
+              echo "## ℹ️ No Changes Detected"
+              echo "- Documentation is up to date on **${{ inputs.target_branch }}**"
             fi
-          else
-            echo "## ℹ️ No Changes Detected" >> $GITHUB_STEP_SUMMARY
-            echo "- Documentation is up to date on **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
-          fi
+          } >> "$GITHUB_STEP_SUMMARY"

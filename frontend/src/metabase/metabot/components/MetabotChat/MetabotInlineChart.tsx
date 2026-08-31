@@ -10,7 +10,6 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { useSaveMetabotEntityMutation } from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -34,12 +33,11 @@ import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import {
-  getDatasetError,
-  getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
+
+import { useSaveMetabotEntityMutation } from "../../api";
 
 import S from "./MetabotInlineChart.module.css";
 

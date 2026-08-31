@@ -7,7 +7,7 @@
   but stream to the client as an empty string, and the plan would silently never update.
 
   `add_research_groups` is the exception: its picker hydration is far too large to spend LLM
-  context on and grows with the metrics a group pulls in, so it rides a `research_plan_update`
+  context on and grows with every metric the call references, so it rides a `research_plan_update`
   data part (FE only) while `:output` carries a plain-text summary."
   (:require
    [clojure.string :as str]
@@ -29,16 +29,10 @@
 (defn- format-research-plan-group
   "Format one group of the draft Research plan as a single line the LLM can act on. The
   `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
-  member dimension/metric carries its id in parentheses."
-  [{:keys [block_id anchor metric dimensions dimension metrics]}]
-  (case anchor
-    "metric"
-    (str "- [" block_id "] " (:name metric)
-         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
-    "dimension"
-    (str "- [" block_id "] by " (:name dimension)
-         ", slicing: " (str/join ", " (map named-with-id metrics)))
-    nil))
+  member dimension carries its id in parentheses."
+  [{:keys [block_id metric dimensions]}]
+  (str "- [" block_id "] " (:name metric)
+       ", broken out by: " (str/join ", " (map named-with-id dimensions))))
 
 (defn format-research-plan
   "Format the user's in-progress draft Research plan for injection into the system message.
@@ -61,7 +55,7 @@
          ""
          (te/field "Plan name" (not-empty name))
          (when (seq groups)
-           (te/lines "Groups:" (keep format-research-plan-group groups)))
+           (te/lines "Groups:" (map format-research-plan-group groups)))
          (when (seq timelines)
            (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
 
@@ -128,9 +122,9 @@
   (explorations/exploration-data->api (explorations/research-groups {:groups groups})))
 
 (def ^:private summary-max-names
-  "How many member names one summary line spells out before falling back to a count. A
-   dimension-anchored group can pull in every metric sharing the dimension, and the summary is
-   the whole of what the LLM sees of the result."
+  "How many dimension names one summary line spells out before falling back to a count. A metric
+   can be sliced by a long list of candidate dimensions, and the summary is the whole of what the
+   LLM sees of the result."
   15)
 
 (defn- summarize-names [names]
@@ -151,58 +145,39 @@
                                    d     (:dimensions g)]
                                [(:id d) i]))
         group-names (mapv :name dimension_groups)
-        group-name  (fn [dimension-id] (some-> (group-idx dimension-id) group-names))
-        sliced-by   (fn [dimension-id]
-                      (let [i (group-idx dimension-id)]
-                        (into [] (comp (filter #(some (fn [d] (= i (group-idx d)))
-                                                      (:dimension_ids %)))
-                                       (map :name))
-                              metrics)))]
+        ;; Nil for a dimension the payload doesn't group: groups are validated against the
+        ;; unresolved catalog, so a dimension can pass validation and still be dropped from the
+        ;; hydrated metrics because their query can't actually break out on it. The summary skips
+        ;; what it can't name rather than failing the whole tool call.
+        group-name  (fn [dimension-id] (some-> (group-idx dimension-id) group-names))]
     (te/lines
      (str "Added " (count groups) " group(s) to the research plan:")
      (for [g groups]
-       (case (:anchor g)
-         "metric"
-         (let [dims (seq (keep group-name (:dimension_ids g)))]
-           (str "- " (metric-name (:metric_id g))
-                (cond
-                  (and dims (:replace_default_dimensions g)) (str ", by exactly: " (summarize-names dims))
-                  dims (str ", by: " (summarize-names dims) ", plus the automatic selection")
-                  :else ", by the automatically-selected dimensions")))
-         "dimension"
-         (when-let [dim-group (group-name (:dimension_id g))]
-           (str "- by " dim-group ": "
-                (summarize-names (if-let [mids (seq (:metric_ids g))]
-                                   (keep metric-name mids)
-                                   (sliced-by (:dimension_id g)))))))))))
+       (let [dims (seq (keep group-name (:dimension_ids g)))]
+         (str "- " (metric-name (:metric_id g))
+              (cond
+                (and dims (:replace_default_dimensions g)) (str ", by exactly: " (summarize-names dims))
+                dims (str ", by: " (summarize-names dims) ", plus the automatic selection")
+                :else ", by the automatically-selected dimensions")))))))
 
 (def ^:private add-research-groups-schema
   [:map {:closed true}
    [:groups
     [:sequential
      [:map {:closed true}
-      [:anchor [:enum "metric" "dimension"]]
-      [:metric_id {:optional true} :int]
-      [:dimension_id {:optional true} :string]
+      [:metric_id :int]
       [:dimension_ids {:optional true} [:sequential :string]]
-      [:metric_ids {:optional true} [:sequential :int]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
 (mu/defn ^{:tool-name "add_research_groups"
            :scope     scope/agent-explorations-write}
   add-research-groups-tool
-  "Add one or more groups to the research artifact. Each group is either:
-   - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
-     — the metric sliced by the chosen dimensions. By default `dimension_ids` are added on top of
-     the automatically-selected interesting dimensions; omit it to use only the automatic
-     selection. To pin the metric to exactly the dimensions you list (no automatic ones), also
-     pass `\"replace_default_dimensions\": true` - then `dimension_ids` must be non-empty.
-   - dimension-anchored: `{\"anchor\": \"dimension\", \"dimension_id\": <id>}`, the dimension
-     slicing every related metric. To slice only a chosen few, pass
-     `\"metric_ids\": [<id>, ...]` and just those metrics are included. Prefer this (a single
-     dimension-anchored group with a curated `metric_ids`) when the user asks to look at a handful
-     of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
-     loose metrics."
+  "Add one or more groups to the research artifact. Each group is a metric sliced by chosen
+   dimensions: `{\"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`. By default
+   `dimension_ids` are added on top of the automatically-selected interesting dimensions; omit
+   it to use only the automatic selection. To pin the metric to exactly the dimensions you
+   list (no automatic ones), also pass `\"replace_default_dimensions\": true` - then
+   `dimension_ids` must be non-empty."
   [{:keys [groups]} :- add-research-groups-schema]
   (let [payload (research-groups-payload groups)]
     {:output     (format-added-groups payload)
@@ -215,23 +190,20 @@
     [:sequential
      [:map {:closed true}
       [:block_id :string]
-      [:metric_ids {:optional true} [:sequential :int]]
-      [:dimension_ids {:optional true} [:sequential :string]]]]]
+      [:dimension_ids [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
 (mu/defn ^{:tool-name "remove_from_research_plan"
            :scope     scope/agent-explorations-write}
   remove-from-research-plan-tool
-  "Remove groups, individual metrics/dimensions within a group, or timelines from the research
-   plan. Address groups by the `block_id` shown in brackets for each group in the current research
-   plan (e.g. `metric:42`, `dim:7`).
+  "Remove groups, individual dimensions within a group, or timelines from the research plan.
+   Address groups by the `block_id` shown in brackets for each group in the current research
+   plan (e.g. `metric:42`).
 
    - To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`. Use this when the
-     user no longer wants a metric or dimension area at all (e.g. \"actually I don't care about
-     revenue\").
-   - To prune within a group, pass `members`. For a metric-anchored group, list the
-     `dimension_ids` to stop slicing by; for a dimension-anchored group, list the `metric_ids` to
-     stop including: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
+     user no longer wants a metric at all (e.g. \"actually I don't care about revenue\").
+   - To prune within a group, pass `members` with the `dimension_ids` to stop slicing that
+     group's metric by: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
    - To drop timelines, pass `timeline_ids` (the ids shown in the current plan's selected
      timelines): `{\"timeline_ids\": [7]}`.
 

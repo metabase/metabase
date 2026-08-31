@@ -344,7 +344,10 @@
                                  :name        "X-API-Key"
                                  :description "API key for authentication"}}))))
 
-#_:clj-kondo/ignore
+;; REPL example; api-routes is cross-module, resolved at runtime
+#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
+  (require '[metabase.api.macros])
+
   (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.api) "/api/geojson")
   (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))

@@ -5,7 +5,6 @@ import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import {
@@ -15,6 +14,7 @@ import {
   type MetabotAgentTextChatMessage,
   type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
+  type MetabotAgentTurnIncompleteMessage,
   type MetabotChatMessage,
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
@@ -38,6 +38,7 @@ import {
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
 
+import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
@@ -80,6 +81,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "chain_of_thought" }, () => true)
     .with({ type: "turn_aborted" }, () => true)
+    .with({ type: "turn_incomplete" }, () => true)
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
@@ -192,6 +194,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   readonly: boolean;
   conversationId: string;
   onRetry?: (messageId: string) => void;
+  onContinue?: (resumePrompt: string) => void;
   onRefreshConversation?: () => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -213,6 +216,7 @@ export const AgentMessage = ({
   conversationId,
   getCopyText,
   onRetry,
+  onContinue,
   onRefreshConversation,
   setFeedbackMessage,
   submittedFeedback,
@@ -234,6 +238,8 @@ export const AgentMessage = ({
   const canGiveFeedback = canActOnMessage && !!setFeedbackMessage;
   const canFork = canActOnMessage && !isFailedTurn && !!onFork;
   const clipboard = useClipboard({ timeout: 2000 });
+  const copyText = getCopyText();
+  const canCopy = !isInProgress && copyText.length > 0;
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -268,6 +274,13 @@ export const AgentMessage = ({
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
         ))
+        .with({ type: "turn_incomplete" }, (m) => (
+          <IncompleteTurnAlert
+            finishReason={m.finishReason}
+            contextWindowFull={m.contextWindowFull}
+            onContinue={onContinue}
+          />
+        ))
         .with({ type: "turn_errored" }, (m) => (
           <AgentErroredTurnAlert
             message={m}
@@ -286,12 +299,12 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions} align="center">
-          {!isInProgress && (
+          {canCopy && (
             <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
               <ActionIcon
                 h="sm"
                 data-testid="metabot-chat-message-copy"
-                onClick={() => clipboard.copy(getCopyText())}
+                onClick={() => clipboard.copy(copyText)}
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
@@ -477,6 +490,67 @@ const AbortedTurnAlert = ({
   );
 };
 
+const getIncompleteTurnConfig = (
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  metabotName: string,
+): { message: string; resumePrompt?: string } =>
+  match(finishReason)
+    .with("length", () => ({
+      message: t`Response from ${metabotName} was cut off because it hit the maximum length`,
+      resumePrompt: t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
+    }))
+    .with("content-filter", () => ({
+      message: t`Response from ${metabotName} was stopped by a content filter. Try rephrasing your question.`,
+    }))
+    .with("tool-calls", () => ({
+      message: t`${metabotName} paused after reaching its step limit for this response`,
+      resumePrompt: t`Continue working on my last request.`,
+    }))
+    .with("other", () => ({
+      message: t`Response from ${metabotName} stopped before it finished`,
+    }))
+    .exhaustive();
+
+const IncompleteTurnAlert = ({
+  finishReason,
+  contextWindowFull,
+  onContinue,
+}: {
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+  contextWindowFull?: boolean;
+  onContinue?: (resumePrompt: string) => void;
+}) => {
+  const metabotName = useSetting("metabot-name");
+  // "length" is overloaded, occurs when context window has been met (unrecoverable)
+  // or when the max_tokens has been met (recoverable)
+  const { message, resumePrompt } =
+    finishReason === "length" && contextWindowFull
+      ? {
+          message: t`This conversation has reached its maximum length and can't continue. Please start a new chat.`,
+          resumePrompt: undefined,
+        }
+      : getIncompleteTurnConfig(finishReason, metabotName);
+  return (
+    <AgentTurnAlert
+      variant="info"
+      message={message}
+      cta={
+        resumePrompt && onContinue ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={() => onContinue(resumePrompt)}
+            data-testid="metabot-chat-message-continue"
+          >
+            {t`Continue`}
+          </Button>
+        ) : null
+      }
+    />
+  );
+};
+
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
   messageId: string,
@@ -508,6 +582,7 @@ export const getFullAgentReply = (
 export const Messages = ({
   messages,
   onRetryMessage,
+  onContinueMessage,
   onRefreshConversation,
   isDoingScience,
   supportsReasoning = true,
@@ -522,6 +597,7 @@ export const Messages = ({
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onContinueMessage?: (resumePrompt: string) => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
   supportsReasoning?: boolean;
@@ -625,6 +701,7 @@ export const Messages = ({
               readonly={readonly}
               conversationId={conversationId}
               onRetry={isLastUserMessage ? onRetryMessage : undefined}
+              onContinue={isLastUserMessage ? onContinueMessage : undefined}
               onRefreshConversation={onRefreshConversation}
               getCopyText={() => getAgentReplyCopyText(message.id)}
               setFeedbackMessage={(data) =>

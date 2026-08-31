@@ -21,12 +21,7 @@
   We want to keep track of recents in multiple contexts. e.g. when selecting a value from the data-picker, that should
   log a recent_view row with context=`selection`. At this time there are only `view` and `selection` contexts.
 
-  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents.
-
-  [Metrics] TODO:
-  At some point in 2024, there was an attempt to add `metric` to the list of recent-view models. This
-  was never completed, and the code has not been hooked up. There is no query for metrics, despite there being a
-  `:metric` model in the `rv-models` list. This is a TODO to complete this work."
+  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
   (:require
    [clojure.set :as set]
    [colorize.core :as colorize]
@@ -78,22 +73,44 @@
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
                        (map :id)))))
 
+(def ^:private rv-model->toucan-model
+  "Maps each rv-model keyword to the Toucan model backing it. `:card`, `:dataset`, and `:metric` are all stored in
+  recent_views as \"card\" and backed by `:model/Card`; a join with report_card is needed to distinguish between
+  them — see [[rv-model->card-type]]."
+  {:card       :model/Card
+   :dataset    :model/Card
+   :metric     :model/Card
+   :dashboard  :model/Dashboard
+   :table      :model/Table
+   :collection :model/Collection
+   :document   :model/Document})
+
 (def rv-models
   "Keywords representing entity types that can be returned as recent views."
-  ;; n.b.: `:card`, `metric` and `:dataset` are stored in recent_views as "card", and a join with report_card is
-  ;; needed to distinguish between them. `:dataset` is an alias for `:model/Card` with type "model".
-  [:card :dataset :metric :dashboard :table :collection :document])
+  (vec (keys rv-model->toucan-model)))
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:dataset :model/Card
-        :card :model/Card
-        :dashboard :model/Dashboard
-        :table :model/Table
-        :collection :model/Collection
-        :document :model/Document}
-       rvm))
+  (rv-model->toucan-model rvm))
+
+(def ^:private card-type->rv-model
+  "Mapping from report_card.type to rv-model keyword."
+  {"model"    :dataset
+   "question" :card
+   "metric"   :metric})
+
+(def ^:private rv-model->card-type
+  "Mapping from rv-model keyword to report_card.type string."
+  (set/map-invert card-type->rv-model))
+
+(defn- rv-model->db-model
+  "The `recent_views.model` string an rv-model is stored under. `:card`, `:dataset`, and `:metric` are all stored as
+  \"card\"; they are told apart by joining report_card.type."
+  [model]
+  (if (rv-model->card-type model)
+    "card"
+    (name model)))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
@@ -101,13 +118,11 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model (get {:dataset "card"} model (name model))]
+                             [:= :rv.model (rv-model->db-model model)]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal (name context))]
-                             (when (#{:card :dataset} model) ;; TODO add metric
-                               [:= :rc.type (cond (= model :card) (h2x/literal "question")
-                                                  ;; TODO add metric
-                                                  (= model :dataset) (h2x/literal "model"))])]
+                             (when-let [card-type (rv-model->card-type model)]
+                               [:= :rc.type (h2x/literal card-type)])]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
@@ -159,16 +174,6 @@
     :order-by [[:recent_views.id :desc]]
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
-
-(def ^:private card-type->rv-model
-  "Mapping from report_card.type to rv-model keyword."
-  {"model"    :dataset
-   "question" :card
-   "metric"   :metric})
-
-(def ^:private rv-model->card-type
-  "Mapping from rv-model keyword to report_card.type string."
-  (set/map-invert card-type->rv-model))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -479,17 +484,10 @@
    :selections "selection"})
 
 (defn- rv-models->db-models
-  "Convert rv-model keywords to database model strings.
-  Note: :card, :dataset, and :metric all map to \"card\" in the database,
-  distinguished by report_card.type."
+  "Convert rv-model keywords to database model strings — see [[rv-model->db-model]]."
   [models]
   (when (seq models)
-    (distinct
-     (map (fn [model]
-            (case model
-              (:card :dataset :metric) "card"
-              (name model)))
-          models))))
+    (distinct (map rv-model->db-model models))))
 
 (defn ^:private do-query [user-id context models]
   (when-not (seq context)
@@ -519,7 +517,10 @@
                                                  [:= nil :coll.namespace]
                                                  ;; exclude instance analytics for selects
                                                  (when (contains? (set context) :selections)
-                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
+                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
+                                               ;; exploration documents are accessible only through their owning Exploration;
+                                               ;; hide them from recents to match search and collection-listing behavior.
+                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
                                    :left-join [[:report_card :rc]
                                                [:and
                                                 ;; only want to join on card_type if it's a card
@@ -528,7 +529,11 @@
                                                [:collection :coll]
                                                [:and
                                                 [:= :rv.model "collection"]
-                                                [:= :coll.id :rv.model_id]]]
+                                                [:= :coll.id :rv.model_id]]
+                                               [:document :doc]
+                                               [:and
+                                                [:= :rv.model "document"]
+                                                [:= :doc.id :rv.model_id]]]
                                    :order-by  [[:rv.timestamp :desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]
