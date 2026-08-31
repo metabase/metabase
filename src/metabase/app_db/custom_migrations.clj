@@ -2253,8 +2253,9 @@
   is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
   forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]].
 
-  `setting-keys` must be exactly the settings whose `:encryption` went from `:no` to `:when-encryption-key-set` in the
-  release the migration ships in: only those were stored plaintext by the previous release."
+  `setting-keys` must be exactly the settings whose stored value could be plaintext as of the release the migration
+  ships in: the ones whose `:encryption` went from `:no` to `:when-encryption-key-set` in it, or whose rows predate
+  their encryption (see [[encrypted-setter-none-settings-v58]])."
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
@@ -2284,63 +2285,73 @@
 (def ^:private encrypted-settings-v58
   "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
   `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones, whose rows
-  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are not
-  listed, since they have no row to encrypt; rows for settings that no longer exist are left alone.
+  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are listed
+  separately in [[encrypted-setter-none-settings-v58]]; rows for settings that no longer exist are left alone.
+  Settings that are neither secret nor integrity-critical are deliberately absent -- they are `:encryption :no`, and
+  the startup reconcile decrypts any row of theirs this migration encrypted before they were reclassified.
   `encrypt-settings-test` checks this list against the registry."
   ["admin-email" "ai-service-base-url" "allowed-iframe-hosts"
-   "api-key" "application-colors" "application-favicon-url"
-   "application-font-files" "application-logo-url" "csp-img-allowed-hosts"
-   "custom-formatting" "custom-geojson" "database-replication-connections"
-   "ee-embedding-provider" "ee-embedding-service-api-key" "ee-embedding-service-base-url"
-   "email-from-address" "email-from-address-override" "email-from-name"
-   "email-reply-to" "email-smtp-host" "email-smtp-host-override"
-   "email-smtp-password" "email-smtp-password-override" "email-smtp-port"
-   "email-smtp-port-override" "email-smtp-security" "email-smtp-security-override"
-   "email-smtp-username" "email-smtp-username-override" "embedding-app-origins-interactive"
-   "embedding-app-origins-sdk" "embedding-secret-key" "google-auth-auto-create-accounts-domain"
-   "google-auth-client-id" "gsheets" "help-link-custom-destination"
+   "api-key" "csp-img-allowed-hosts" "custom-geojson"
+   "database-replication-connections" "ee-embedding-provider" "ee-embedding-service-api-key"
+   "ee-embedding-service-base-url" "email-from-address" "email-from-address-override"
+   "email-from-name" "email-reply-to" "email-smtp-host"
+   "email-smtp-host-override" "email-smtp-password" "email-smtp-password-override"
+   "email-smtp-port" "email-smtp-port-override" "email-smtp-security"
+   "email-smtp-security-override" "email-smtp-username" "email-smtp-username-override"
+   "embedding-app-origins-interactive" "embedding-app-origins-sdk" "embedding-secret-key"
+   "google-auth-auto-create-accounts-domain" "google-auth-client-id" "gsheets"
    "jwt-attribute-email" "jwt-attribute-firstname" "jwt-attribute-groups"
    "jwt-attribute-lastname" "jwt-attribute-tenant" "jwt-attribute-tenant-attributes"
    "jwt-group-mappings" "jwt-identity-provider-uri" "jwt-shared-secret"
-   "landing-page" "landing-page-illustration-custom" "ldap-attribute-email"
-   "ldap-attribute-firstname" "ldap-attribute-lastname" "ldap-bind-dn"
-   "ldap-group-base" "ldap-group-mappings" "ldap-group-membership-filter"
-   "ldap-host" "ldap-password" "ldap-port"
-   "ldap-sync-user-attributes-blacklist" "ldap-user-base" "ldap-user-filter"
-   "llm-anthropic-api-base-url" "llm-anthropic-api-key" "llm-azure-api-base-url"
-   "llm-azure-api-key" "llm-bedrock-access-key-id" "llm-bedrock-secret-access-key"
-   "llm-bedrock-session-token" "llm-deepseek-api-base-url" "llm-deepseek-api-key"
-   "llm-google-api-base-url" "llm-google-oauth-access-token" "llm-google-service-account-key"
-   "llm-mistral-api-base-url" "llm-mistral-api-key" "llm-moonshot-api-base-url"
-   "llm-moonshot-api-key" "llm-openai-api-base-url" "llm-openai-api-key"
-   "llm-openrouter-api-base-url" "llm-openrouter-api-key" "llm-providers"
-   "llm-proxy-base-url" "llm-vllm-api-base-url" "llm-vllm-api-key"
-   "llm-zai-api-base-url" "llm-zai-api-key" "locked-meters"
-   "login-page-illustration-custom" "map-tile-server-url" "mcp-apps-cors-custom-origins"
-   "mcp-apps-cors-enabled-clients" "metabot-chat-system-prompt" "metabot-nlq-system-prompt"
-   "metabot-quota-reached-message" "metabot-slack-signing-secret" "metabot-sql-system-prompt"
-   "metaplow-url" "mfa-challenge-signing-key" "migration-dump-file"
-   "no-data-illustration-custom" "no-object-illustration-custom" "notification-link-base-url"
-   "oidc-providers" "premium-embedding-token" "python-runner-api-token"
-   "python-runner-url" "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint"
-   "python-storage-s-3-endpoint" "python-storage-s-3-secret-key" "remote-sync-allow"
-   "remote-sync-branch" "remote-sync-token" "remote-sync-url"
-   "saml-application-name" "saml-attribute-email" "saml-attribute-firstname"
-   "saml-attribute-group" "saml-attribute-lastname" "saml-attribute-tenant"
-   "saml-group-mappings" "saml-identity-provider-certificate" "saml-identity-provider-issuer"
-   "saml-identity-provider-slo-uri" "saml-identity-provider-uri" "saml-keystore-alias"
-   "saml-keystore-password" "saml-keystore-path" "sdk-encryption-validation-key"
-   "search-language" "security-center-email-recipients" "security-center-slack-channel"
-   "session-timeout" "site-url" "slack-app-token"
-   "slack-bug-report-channel" "slack-cached-channels-and-usernames" "slack-connect-attribute-team-id"
-   "slack-connect-authentication-mode" "slack-connect-client-id" "slack-connect-client-secret"
-   "slack-files-channel" "snowplow-url" "source-address-header"
-   "store-api-url" "store-url" "subscription-allowed-domains"
-   "uploads-settings"])
+   "ldap-attribute-email" "ldap-attribute-firstname" "ldap-attribute-lastname"
+   "ldap-bind-dn" "ldap-group-base" "ldap-group-mappings"
+   "ldap-group-membership-filter" "ldap-host" "ldap-password"
+   "ldap-port" "ldap-sync-user-attributes-blacklist" "ldap-user-base"
+   "ldap-user-filter" "llm-anthropic-api-base-url" "llm-anthropic-api-key"
+   "llm-azure-api-base-url" "llm-azure-api-key" "llm-bedrock-access-key-id"
+   "llm-bedrock-secret-access-key" "llm-bedrock-session-token" "llm-deepseek-api-base-url"
+   "llm-deepseek-api-key" "llm-google-api-base-url" "llm-google-oauth-access-token"
+   "llm-google-service-account-key" "llm-mistral-api-base-url" "llm-mistral-api-key"
+   "llm-moonshot-api-base-url" "llm-moonshot-api-key" "llm-openai-api-base-url"
+   "llm-openai-api-key" "llm-openrouter-api-base-url" "llm-openrouter-api-key"
+   "llm-providers" "llm-proxy-base-url" "llm-vllm-api-base-url"
+   "llm-vllm-api-key" "llm-zai-api-base-url" "llm-zai-api-key"
+   "map-tile-server-url" "mcp-apps-cors-custom-origins" "mcp-apps-cors-enabled-clients"
+   "metabot-chat-system-prompt" "metabot-nlq-system-prompt" "metabot-slack-signing-secret"
+   "metabot-sql-system-prompt" "metaplow-url" "mfa-challenge-signing-key"
+   "migration-dump-file" "notification-link-base-url" "oidc-providers"
+   "premium-embedding-token" "python-runner-api-token" "python-runner-url"
+   "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint" "python-storage-s-3-endpoint"
+   "python-storage-s-3-secret-key" "remote-sync-branch" "remote-sync-token"
+   "remote-sync-url" "report-timezone" "saml-application-name"
+   "saml-attribute-email" "saml-attribute-firstname" "saml-attribute-group"
+   "saml-attribute-lastname" "saml-attribute-tenant" "saml-group-mappings"
+   "saml-identity-provider-certificate" "saml-identity-provider-issuer" "saml-identity-provider-slo-uri"
+   "saml-identity-provider-uri" "saml-keystore-alias" "saml-keystore-password"
+   "saml-keystore-path" "sdk-encryption-validation-key" "search-language"
+   "security-center-email-recipients" "security-center-slack-channel" "session-timeout"
+   "site-url" "slack-app-token" "slack-bug-report-channel"
+   "slack-connect-attribute-team-id" "slack-connect-authentication-mode" "slack-connect-client-id"
+   "slack-connect-client-secret" "slack-files-channel" "snowplow-url"
+   "source-address-header" "store-api-url" "store-url"
+   "subscription-allowed-domains"])
 
 (define-reversible-migration EncryptSettingsV58
   (encrypt-settings encrypted-settings-v58)
   (decrypt-settings encrypted-settings-v58))
+
+(def ^:private encrypted-setter-none-settings-v58
+  "The `:setter :none` settings that are encrypted at rest: each is either a secret or a value whose integrity
+  decides who gets access (`setup-token` creates the first admin, `support-access-grant-email` drives creation of a
+  support superuser, `site-uuid-for-unsubscribing-url` salts unsubscribe URLs, `mcp-embedding-signing-secret` signs
+  embedding tokens, `tracing-endpoint` decides where telemetry is sent). Their rows can be plaintext from before they
+  were encrypted, which the strict read rejects -- and since the settings cache restores the whole table at once, one
+  such row took every setting down with it. `encrypt-setter-none-settings-test` checks these names are listed."
+  ["mcp-embedding-signing-secret" "setup-token" "site-uuid-for-unsubscribing-url"
+   "support-access-grant-email" "tracing-endpoint"])
+
+(define-migration EncryptSetterNoneSettingsV58
+  (encrypt-settings encrypted-setter-none-settings-v58))
 
 (define-reversible-migration EncryptPublicUuids
   (when (encryption/default-encryption-enabled?)
