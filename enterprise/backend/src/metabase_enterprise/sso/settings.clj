@@ -323,6 +323,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled))))
