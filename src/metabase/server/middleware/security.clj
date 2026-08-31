@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.security
   "Ring middleware for adding security-related headers to API responses."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -330,11 +331,19 @@
    (= reference-port "*")
    (= port reference-port)))
 
-(defn parse-approved-origins
-  "Parses the space separated string of approved origins"
+(defn- parse-approved-origins*
   [approved-origins-raw]
   (let [urls (str/split approved-origins-raw #" +")]
     (keep (comp parse-url strip-origin-path) urls)))
+
+;; [[parse-approved-origins]] runs on essentially every API response via [[approved-origin?]]. Cache the parse (and
+;; its `Invalid URL` logging) against the origins string, which is a slow-moving global. A small LRU bound fits the few
+;; distinct strings callers pass -- the merged SDK+MCP allowlist and the MCP-only one -- without either evicting the
+;; other.
+(def ^{:arglists '([approved-origins-raw])}
+  parse-approved-origins
+  "Parses the space separated string of approved origins. Result is LRU-cached against the string."
+  (memoize/lru parse-approved-origins* :lru/threshold 4))
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.
