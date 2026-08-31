@@ -10,8 +10,6 @@ import { storeDrillQuery } from "../api";
 
 interface McpGlobalConfig {
   instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
 }
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
@@ -34,7 +32,7 @@ const isStayDrill = (drillName: string | undefined) =>
     (prefix) => drillName === prefix || drillName.startsWith(`${prefix}.`),
   );
 
-const isClaudeHost = (app: App) => {
+const isClaudeHost = (app: Pick<App, "getHostVersion">) => {
   const hostVersion = app.getHostVersion();
 
   return hostVersion?.name.toLowerCase().includes("claude");
@@ -45,7 +43,22 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
+type McpDrillThroughApp = Pick<
+  App,
+  "getHostVersion" | "openLink" | "sendMessage"
+>;
+
+interface UseHandleMcpDrillThroughParams {
+  app: McpDrillThroughApp | null;
+  uiCredential: string;
+  mcpSessionId: string;
+}
+
+export function useHandleMcpDrillThrough({
+  app,
+  uiCredential,
+  mcpSessionId,
+}: UseHandleMcpDrillThroughParams): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
       if (isStayDrill(drillName) || !app) {
@@ -53,7 +66,8 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      const { instanceUrl, uiCredential, mcpSessionId } =
+      const { instanceUrl } =
+        // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
       if (isClaudeHost(app)) {
@@ -106,6 +120,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         ],
       });
     },
-    [app],
+    [app, mcpSessionId, uiCredential],
   );
 }
