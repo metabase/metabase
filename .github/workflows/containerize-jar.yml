@@ -192,7 +192,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 5
 
-  post-docker-info-comment:   
+  post-docker-info-comment:
     needs: [containerize, verify-docker-pull, verify-docker-pull-arm]
     # Only post a comment if all the steps pass and this is a PR.
     if: |
