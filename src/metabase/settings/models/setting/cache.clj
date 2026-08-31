@@ -39,6 +39,20 @@
   []
   @(cache*))
 
+(def ^:private ^{:arglists '([])} setting-keys-with-duplicate-values*
+  (mdb/memoize-for-application-db (fn [] (atom nil))))
+
+(defn setting-keys-with-duplicate-values
+  "The keys of settings whose value, exactly as stored, is shared with another setting's row. Refreshed alongside the
+  cache by [[restore-cache!]].
+
+  Values are compared as stored, never decrypted. That only tells you something once values are encrypted: encryption
+  uses a random IV, so settings holding the same plaintext still store different bytes, and identical stored bytes
+  mean one row is a copy of another. Stored as plaintext they simply share the value, which is legitimate -- so
+  callers narrow this to settings that are actually encrypted at rest."
+  []
+  @(setting-keys-with-duplicate-values*))
+
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
   [setting-name, ^String new-value]
@@ -143,7 +157,13 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug "Refreshing Settings cache...")
-  (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting)))
+  (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting))
+  (reset! (setting-keys-with-duplicate-values*)
+          (t2/select-fn-set :key [:model/Setting :key]
+                            {:where [:in :value ^:allow-subquery {:select   [:value]
+                                                                  :from     [:setting]
+                                                                  :group-by [:value]
+                                                                  :having   [:> [:count :*] 1]}]})))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

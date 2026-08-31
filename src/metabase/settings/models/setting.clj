@@ -536,6 +536,17 @@
   "Set of deprecated DB keys that have already triggered a warning. Dynamic so tests can rebind it."
   (atom #{}))
 
+(defn- encrypted-setting-key-with-duplicate-value?
+  "Whether `setting` is encrypted at rest and its stored value is byte-identical to some other setting's, which means
+  it is not unique to this setting and so cannot be trusted as one.
+
+  Requires a configured encryption key, not merely a setting that asks to be encrypted: stored as plaintext, two
+  settings holding the same value legitimately share stored bytes and there is nothing to tell apart."
+  [setting]
+  (and (encrypts? setting)
+       (encryption/default-encryption-enabled?)
+       (contains? (setting.cache/setting-keys-with-duplicate-values) (setting-name setting))))
+
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
   When the primary key is absent and the setting has a `:deprecated-name`, the deprecated key is checked as a fallback."
@@ -543,15 +554,18 @@
   (let [setting (resolve-setting setting-definition-or-name)]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
-      (or (not-empty (db-or-cache-value* (setting-name setting)))
-          (when-let [deprecated-name (:deprecated-name setting)]
-            (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
-              (let [dep-key (setting-name deprecated-name)
-                    [old-warned _] (swap-vals! *deprecated-db-key-warned* conj dep-key)]
-                (when-not (contains? old-warned dep-key)
-                  (log/warnf "Deprecated setting key %s found in database; rename it to %s."
-                             dep-key (setting-name setting))))
-              v))))))
+      (if (encrypted-setting-key-with-duplicate-value? setting)
+        (log/errorf "Setting %s is stored as an exact copy of another setting, so it is not unique to this setting and is being ignored. Set a new value for it."
+                    (setting-name setting))
+        (or (not-empty (db-or-cache-value* (setting-name setting)))
+            (when-let [deprecated-name (:deprecated-name setting)]
+              (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
+                (let [dep-key (setting-name deprecated-name)
+                      [old-warned _] (swap-vals! *deprecated-db-key-warned* conj dep-key)]
+                  (when-not (contains? old-warned dep-key)
+                    (log/warnf "Deprecated setting key %s found in database; rename it to %s."
+                               dep-key (setting-name setting))))
+                v)))))))
 
 (defn db-stored-value
   "Return the raw value persisted in the DB/cache for `setting-definition-or-name`, or nil if none.

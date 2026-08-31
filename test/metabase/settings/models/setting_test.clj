@@ -1843,6 +1843,40 @@
                             (#'setting/extract-encryption-or-default
                              {:name :test-unstated-setter-none-setting :type :string :setter :none}))))))
 
+(deftest encrypted-setting-stored-as-a-copy-of-another-is-ignored-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "duplicated-stored-value-test-key"
+      (testing "a setting that encrypts is used normally when its stored value is its own"
+        (toucan-name! "Sad Can")
+        (is (= "Sad Can" (toucan-name))))
+      (testing "two settings may hold the same value: a random IV means their stored values still differ"
+        (test-setting-1! "Sad Can")
+        (is (not= (actual-value-in-db :toucan-name) (actual-value-in-db :test-setting-1))
+            "sanity: equal plaintext, different stored values")
+        (setting.cache/restore-cache!)
+        (is (= "Sad Can" (toucan-name))))
+      (testing "a setting stored as an exact copy of another reads as unset"
+        (t2/query {:update :setting
+                   :set    {:value (actual-value-in-db :test-setting-1)}
+                   :where  [:= :key "toucan-name"]})
+        (setting.cache/restore-cache!)
+        (is (= (actual-value-in-db :toucan-name) (actual-value-in-db :test-setting-1))
+            "sanity: the two rows are now byte-identical")
+        (is (nil? (toucan-name)))
+        (testing "and so does the setting it was copied from, since neither can be told apart"
+          (is (nil? (test-setting-1)))))))
+  (testing "without an encryption key the check does not apply"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key nil
+        (toucan-name! "Sad Can")
+        (test-setting-1! "Sad Can")
+        (setting.cache/restore-cache!)
+        (is (= (actual-value-in-db :toucan-name) (actual-value-in-db :test-setting-1))
+            "sanity: identical plaintext is stored identically")
+        (is (= "Sad Can" (toucan-name)))))))
+
 (deftest boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"
     (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
