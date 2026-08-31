@@ -5,7 +5,7 @@
 FROM node:22-bullseye AS builder
 
 ARG MB_EDITION=oss
-ARG VERSION
+ARG VERSION=0.56.6
 
 WORKDIR /home/node
 

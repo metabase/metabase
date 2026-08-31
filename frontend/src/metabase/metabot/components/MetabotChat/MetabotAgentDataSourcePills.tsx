@@ -70,7 +70,7 @@ type SourceFeedbackTarget = Pick<
   "source_id" | "source_type"
 >;
 
-const isNativeDatasetQuery = (
+export const isNativeDatasetQuery = (
   datasetQuery: DatasetQuery,
 ): datasetQuery is NativeDatasetQuery =>
   "type" in datasetQuery && datasetQuery.type === "native";
