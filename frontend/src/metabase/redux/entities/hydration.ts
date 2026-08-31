@@ -79,7 +79,7 @@ const toNormalizedSchemas = (
 /**
  * Every endpoint whose payload flows into `getMetadata`.
  *
- * `getMetadata` in `metabase/selectors/metadata.ts` stitches one logical object
+ * `getMetadata` in `metabase/metadata-store.ts` stitches one logical object
  * together from several endpoints' payloads, so each of these has to reach
  * `state.entities` on success. This table is the only place that happens.
  *

@@ -8,8 +8,8 @@ import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-s
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { TEST_METADATA } from "./fixtures";
@@ -49,7 +49,7 @@ jest.mock("metabase/redux/tables", () => ({
   })),
 }));
 
-jest.mock("metabase/selectors/metadata", () => ({
+jest.mock("metabase/metadata-store", () => ({
   getMetadataUnfiltered: jest.fn(),
 }));
 

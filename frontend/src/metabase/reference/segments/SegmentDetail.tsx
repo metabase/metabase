@@ -7,6 +7,10 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { updateSegment } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
@@ -16,10 +20,6 @@ import { Formula } from "metabase/reference/components/Formula";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import {
-  getShallowFields as getFields,
-  getMetadata,
-} from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { User } from "metabase-types/api";
 

@@ -1,7 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Table, TableId } from "metabase-types/api";
 import {
   createMockField,

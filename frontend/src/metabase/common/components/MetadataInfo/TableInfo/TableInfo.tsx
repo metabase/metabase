@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import {
   fetchTableForeignKeys,
   fetchTableMetadata,
 } from "metabase/redux/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Loader } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 

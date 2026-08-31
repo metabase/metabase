@@ -18,12 +18,12 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { getMetadata } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import {
   Badge,

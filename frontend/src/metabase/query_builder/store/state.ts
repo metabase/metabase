@@ -1,7 +1,7 @@
 import type { timelineApi } from "metabase/api";
 import type { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import type { getMetadata } from "metabase/metadata-store";
 import type { QueryBuilderState } from "metabase/redux/store/qb";
-import type { getMetadata } from "metabase/selectors/metadata";
 import type { getSetting } from "metabase/settings";
 
 /**
