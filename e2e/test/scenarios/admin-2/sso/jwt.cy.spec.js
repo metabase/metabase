@@ -24,7 +24,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     );
     cy.button("Set up key").click();
     H.modal().within(() => {
-      cy.button("Done").click();
+      cy.button("Create").click();
     });
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
@@ -83,10 +83,14 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
 
     cy.button("Regenerate key").click();
     H.modal().within(() => {
-      cy.findByText("Set up secret key").should("exist");
+      cy.findByText("Delete key and generate a new one?").should("exist");
       cy.findByText(
-        "This will cause existing tokens to stop working until the identity provider is updated with the new key.",
+        "This will cause existing tokens to stop working until the identity provider is updated with a new key.",
       ).should("exist");
+      cy.button("Delete key").click();
+    });
+    H.modal().within(() => {
+      cy.findByText("Store your new key").should("exist");
       cy.button("Done").click();
     });
     cy.button("Save changes").click();
