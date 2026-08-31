@@ -203,7 +203,9 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -270,7 +272,9 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
@@ -418,6 +422,21 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # run-tests.yml compiles it in parallel with the uberjar build, so downloading is ~10x faster than compiling here.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

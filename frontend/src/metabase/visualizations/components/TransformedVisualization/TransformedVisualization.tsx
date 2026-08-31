@@ -1,14 +1,16 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
-  ComputedVisualizationSettings,
   OnChangeCardAndRun,
   OnChangeCardAndRunOpts,
-  RenderingContext,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type RenderingContext,
+  getComputedSettingsForSeries,
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export type TransformSeries = (

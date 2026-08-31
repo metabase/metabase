@@ -181,7 +181,7 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           database_id source_tables]}
+           database_id]}
    :- write-transform-sql-schema]
   (try
     (let [result (add-output
@@ -192,7 +192,6 @@
                     :transform_name transform_name
                     :transform_description transform_description
                     :database_id database_id
-                    :source_tables source_tables
                     :memory-atom shared/*memory-atom*
                     :context (shared/current-context)})
                   format-transform-write-output)
@@ -265,7 +264,7 @@
                        "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
                        "You MUST provide this argument when modifying the source tables of an existing transform "
                        "or when creating a new transform. DO NOT guess or make up table IDs, use the "
-                       "search_tables tool to find the correct table IDs first.")}
+                       "`search` tool to find the correct table IDs first.")}
     [:sequential
      [:map
       [:alias :string]

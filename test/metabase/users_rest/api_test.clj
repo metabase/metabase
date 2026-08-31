@@ -620,6 +620,16 @@
                    :common_name "Rasta Toucan"}
                   resp)))))))
 
+(deftest ^:parallel get-user-non-personal-users-test
+  (testing "GET /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, even for admins (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "user/" api-key-user-id))))))
+    (testing "returns 404 for the internal user"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 (str "user/" config/internal-mb-user-id)))))))
+
 (deftest get-user-structured-attributes-test
   (testing "GET /api/user/:id"
     (testing "includes structured_attributes that tracks attribute provenance"
@@ -723,6 +733,19 @@
               (is (contains? get-response :structured_attributes))
               (is (= {:role {:source "user" :frozen false :value "user"}}
                      (:structured_attributes get-response))))))))))
+
+(deftest ^:parallel update-api-key-user-test
+  (testing "PUT /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, so login_attributes etc. cannot be set on them (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (str "user/" api-key-user-id)
+                                     {:login_attributes {"cat" 50}
+                                      :first_name       "Updated"})))
+        (testing "nothing was updated"
+          (is (=? {:login_attributes nil
+                   :first_name       (comp not #{"Updated"})}
+                  (t2/select-one [:model/User :login_attributes :first_name] :id api-key-user-id))))))))
 
 (deftest combine-function-test
   (testing "combine function merges attributes correctly"

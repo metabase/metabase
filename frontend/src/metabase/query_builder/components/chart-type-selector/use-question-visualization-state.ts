@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
