@@ -148,16 +148,9 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
-  // The theme editor previews the live embed through the app-tier EAJS
-  // runtime (embedding-iframe-sdk's setupConfigWatcher, which has real
-  // module-load side effects -- custom element registration, watching
-  // window.metabaseConfig -- so it can't be split into a shared-tier
-  // reusable piece without touching the live customer embed script). EMB-1526
-  // moved this out of admin/embedding into embedding/themes alongside its
-  // ThemeListing/hooks/utils siblings (those are genuinely shared-tier), but
-  // ThemeEditor itself stays app tier and its pattern must come before
-  // shared/embedding below (first match wins) -- same reason the SDK
-  // carve-outs above do.
+  // The theme editor previews the live embed through the app-tier EAJS runtime,
+  // so it stays app tier while its ThemeListing/hooks/utils siblings are
+  // shared. The pattern must precede shared/embedding below: first match wins.
   createElement({
     type: "app",
     name: "theme-editor",
@@ -257,9 +250,8 @@ const elements = [
   createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
-  // Settings-page building blocks (SettingHeader, SettingsSection,
-  // AdminSettingInput) pulled out of admin in EMB-1526 so embedding's shared
-  // widgets can compose them without importing feature/admin.
+  // Settings-page building blocks, so embedding's shared widgets can compose
+  // them without importing feature/admin.
   createElement({ type: "shared", name: "settings-components" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
@@ -405,11 +397,8 @@ const elements = [
     }),
   ),
   // App tier only because a feature module may not import another feature
-  // module, and the hub mounts feature/admin pages directly (permissions,
-  // tenancy, upsell). EMB-1526 already moved the admin settings-page
-  // components the hub needed into shared/settings-components; EMB-2229
-  // removes the remaining feature/admin imports, and once it lands this
-  // becomes a feature module.
+  // module, and the hub still mounts feature/admin pages directly. EMB-2229
+  // removes those imports and makes this a feature module.
   createElement({
     type: "app",
     name: "embedding-hub",
