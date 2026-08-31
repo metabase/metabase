@@ -81,13 +81,14 @@
         (is (not (api-scope/scope-matches? nlq "agent:delivery:write")))
         (is (not (api-scope/scope-matches? sql-gen "agent:delivery:write")))))))
 
-(deftest ^:parallel nlq-does-not-grant-content-write-test
-  (testing "I2: metabot-nlq grants content READ but NOT content write — an NLQ-only user must not be
-            able to create/edit/trash content via the agent:content:* wildcard"
+(deftest ^:parallel nlq-grants-content-wildcard-test
+  (testing "metabot-nlq grants the agent:content:* wildcard: its type-generic write tools
+            (question/metric/segment/measure authoring) produce content, so an NLQ-permission user
+            can create and edit it — read and write both, matching the tool authors' grant."
     (let [nlq (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (contains? nlq "agent:content:*"))
       (is (api-scope/scope-matches? nlq "agent:content:read"))
-      (is (not (contains? nlq "agent:content:*")))
-      (is (not (api-scope/scope-matches? nlq "agent:content:write"))))))
+      (is (api-scope/scope-matches? nlq "agent:content:write")))))
 
 (deftest ^:parallel perms->scopes-no-does-not-grant-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :no
