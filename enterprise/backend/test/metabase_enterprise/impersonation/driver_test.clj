@@ -1245,3 +1245,36 @@
         (binding [driver.settings/*impersonation-allow-write?* true]
           (is (= :ok       (outcome (query write))))
           (is (= :rejected (outcome (query select)))))))))
+
+(deftest ^:parallel validate-impersonated-query-blocks-stacked-statements-for-sql-jdbc-test
+  (testing "sql-jdbc drivers that used to inherit the no-op :default now reject stacked native queries (SEC-1189)"
+    ;; :mysql (like :snowflake/:clickhouse/:starburst) has no per-driver override, so it previously resolved to
+    ;; driver/validate-impersonated-query's pass-through :default and ran `; SET ROLE ...` verbatim, escaping the
+    ;; impersonation role. It now inherits the :sql-jdbc guard. :mysql is a core driver, so this runs everywhere.
+    (driver/the-driver :mysql)
+    (let [query (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})]
+      (testing "the exact stacked SET ROLE escape from the report is rejected"
+        (let [thrown (try
+                       (driver/validate-impersonated-query
+                        :mysql
+                        (query "SELECT 1; SET ROLE ALL; INSERT INTO analyst_scratch (v) SELECT flag FROM secrets_my"))
+                       (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo thrown)
+              "a multi-statement impersonated native query must be rejected")
+          (is (= qp.error-type/invalid-query (:type (ex-data thrown))))))
+      (testing "a single select statement is still allowed"
+        (let [result (driver/validate-impersonated-query :mysql (query "SELECT 1"))]
+          (is (map? result))
+          (is (string? (get-in result [:stages 0 :native]))))))))
+
+(deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
+  (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (let [query (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})]
+        (testing "a multi-statement native query is rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"single select statement"
+               (driver/validate-impersonated-query driver/*driver* (query "SELECT 1; SELECT 2")))))
+        (testing "the guard is not the no-op :default pass-through"
+          (is (not= (get-method driver/validate-impersonated-query :default)
+                    (get-method driver/validate-impersonated-query driver/*driver*))))))))

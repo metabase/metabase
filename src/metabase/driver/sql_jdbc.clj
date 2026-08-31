@@ -68,6 +68,17 @@
   (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
+;;; Connection impersonation runs a non-admin's native query under a restricted DB role that Metabase activates
+;;; with a `SET ROLE` (or `USE ROLE`) prefix (see [[set-role-statement]] below). Enforce here, as a
+;;; floor for every sql-jdbc driver, that an impersonated native query is a single statement, so a user can't
+;;; append `; SET ROLE ...` (or any other statement) and escape the restricted role. Any driver that doesn't
+;;; override this inherits [[driver/validate-impersonated-query]]'s no-op `:default`, which runs the stacked
+;;; query verbatim -- e.g. `; SET ROLE ALL` on MySQL activates every granted role (SEC-1189). Every driver that
+;;; supports `:connection-impersonation` derives from `:sql-jdbc`, so this covers all of them.
+(defmethod driver/validate-impersonated-query :sql-jdbc
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
+
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
   (query driver database table {:select [:*]}))
