@@ -10,7 +10,8 @@ import {
   getVisualizationTransformed,
   isCartesianChart,
 } from "metabase/viz-core";
-import type { Card, DatasetData, RawSeries } from "metabase-types/api";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import {
   createDataSource,
@@ -156,14 +157,13 @@ const getVisualizerFlatRawSeries = createSelector(
 
     const series: RawSeries = [
       {
-        // Unjustified type cast. FIXME
         card: {
           display,
-          dataset_query: {},
+          dataset_query: STRUCTURED_QUERY_TEMPLATE,
           name: cards[0].name,
           description: cards[0].description,
           visualization_settings: settings,
-        } as Card,
+        },
 
         data,
 
@@ -249,14 +249,13 @@ export const getTabularPreviewSeries = createSelector(
     return [
       {
         ...rest,
-        // Unjustified type cast. FIXME
         card: {
           display: "table",
-          dataset_query: {},
+          dataset_query: STRUCTURED_QUERY_TEMPLATE,
           visualization_settings: {},
-        } as Card,
+        },
       },
-    ];
+    ] satisfies RawSeries;
   },
 );
 

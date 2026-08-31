@@ -39,6 +39,7 @@ import type {
   CardSlownessStatus,
   ClickObject,
 } from "metabase/visualizations/types";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import {
   createDataSource,
   formatVisualizerClickObject,
@@ -46,7 +47,6 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
-import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/utils/dashboard-card-supports-visualizer";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import {
   extendCardWithDashcardSettings,

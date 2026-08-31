@@ -15,6 +15,7 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
@@ -28,6 +29,7 @@ import {
   isCartesianChart,
   makeCellBackgroundGetter,
 } from "metabase/viz-core";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -103,11 +105,11 @@ function getVisualizerRawSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
-        display,
+        display: display ?? DEFAULT_VISUALIZER_DISPLAY,
         visualization_settings: settings,
-      } as Card,
+        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+      },
       // Unjustified type cast. FIXME
       data: mergeVisualizerData({
         columns,
