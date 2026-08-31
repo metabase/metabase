@@ -1239,6 +1239,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1254,6 +1262,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
