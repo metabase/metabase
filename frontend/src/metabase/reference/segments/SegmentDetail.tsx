@@ -12,7 +12,6 @@ import {
   getMetadata,
 } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { updateSegment } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -20,6 +19,7 @@ import { Formula } from "metabase/reference/components/Formula";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
+import { updateSegment } from "metabase/reference/update-actions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { User } from "metabase-types/api";
 

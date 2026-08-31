@@ -1,9 +1,10 @@
 import { fieldApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { updateMetadata } from "metabase/redux/metadata";
+import {
+  getMetadataUnfiltered,
+  tableForeignKeysFetched,
+} from "metabase/metadata-store";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { TableSchema } from "metabase/schema";
 import type { FieldId, TableId } from "metabase-types/api";
 
 type FetchOptions = {
@@ -64,7 +65,7 @@ export const fetchTableForeignKeys =
       tableApi.endpoints.listTableForeignKeys,
       { forceRefetch: false },
     );
-    dispatch(updateMetadata({ id, fks }, TableSchema));
+    dispatch(tableForeignKeysFetched(id, fks));
     return { id, fks };
   };
 

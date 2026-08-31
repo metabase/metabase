@@ -2,7 +2,6 @@ import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { FieldSchema } from "metabase/schema";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -15,7 +14,8 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-import { getFieldRemappings, updateMetadata } from "./metadata";
+import { fieldRemappingsUpdated } from "./actions";
+import { getFieldRemappings } from "./selectors";
 
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>
@@ -31,9 +31,7 @@ export const addRemappings =
           ]),
       ).values(),
     );
-    return dispatch(
-      updateMetadata({ id: fieldId, remappings: merged }, FieldSchema),
-    );
+    return dispatch(fieldRemappingsUpdated(fieldId, merged));
   };
 
 type FetchRemappingOptions = {

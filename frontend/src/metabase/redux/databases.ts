@@ -2,9 +2,7 @@ import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
-import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData } from "metabase-types/api";
 
 export const editParamsForUserControlledScheduling = _.compose(
@@ -50,7 +48,6 @@ export const createDatabase = function (inputDatabase: DatabaseData) {
         dispatch,
         databaseApi.endpoints.createDatabase,
       );
-      dispatch(updateMetadata(savedDatabase, DatabaseSchema));
       return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);
