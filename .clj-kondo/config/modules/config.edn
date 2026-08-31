@@ -1350,8 +1350,10 @@
            bookmarks
            channel
            collections
+           comments
            config
            dashboards
+           documents
            eid-translation
            lib
            lib-be
