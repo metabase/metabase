@@ -50,6 +50,14 @@
   [{:keys [id]}]
   (contains? supported-models id))
 
+(defn reasoning-model?
+  "Whether `model` streams reasoning back to us.
+
+  True only for the whitelisted GLM models, which think by default — thinking defaults to enabled
+  server-side (https://docs.z.ai/api-reference/llm/chat-completion)."
+  [model]
+  (contains? supported-models (str model)))
+
 (defn- list-all-models
   "Fetch the full Z.AI model catalog (`GET /models`).
 
@@ -90,12 +98,21 @@
 (mu/defn zai-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  Z.AI's Chat Completions dialect matches what [[chat-completions/request-body]] emits, so this delegates to it. Z.AI
-  documents only `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is accepted
-  and honored in practice."
-  [{:keys [model] :as opts
-    :or   {model default-model}} :- core/LLMRequestOpts]
-  (chat-completions/request-body (assoc opts :model model)))
+  Z.AI's Chat Completions dialect matches what [[chat-completions/request-body]] emits, so this delegates to it,
+  adding Z.AI's `thinking` directive for whitelisted models. Z.AI documents only `tool_choice \"auto\"`, but
+  `\"required\"` — which the structured-output path relies on — is accepted and honored in practice, with
+  thinking on."
+  [{:keys [model reasoning? schema] :as opts
+    :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
+  ;; Thinking is on by default server-side, at reasoning_effort "max"
+  ;; (https://docs.z.ai/api-reference/llm/chat-completion), so "enabled" only makes the default
+  ;; explicit; the "disabled" half is the real change — structured output would otherwise spend
+  ;; its small output budget on invisible thinking (see
+  ;; [[metabase.metabot.conversation-title]]'s title-max-tokens). Models outside the whitelist
+  ;; get no directive at all: the server default rules, matching the gate answering false.
+  (cond-> (chat-completions/request-body (assoc opts :model model))
+    (reasoning-model? model)
+    (assoc :thinking {:type (if (and reasoning? (not schema)) "enabled" "disabled")})))
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
@@ -141,9 +158,11 @@
          "network_error" "error"))
 
 (defn zai->aisdk-chunks-xf
-  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks."
+  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
+
+  Thinking arrives as `delta.reasoning_content` and is forwarded as reasoning chunks."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? true}))
 
 (defn zai
   "Call the Z.AI Chat Completions API, return AISDK stream."
