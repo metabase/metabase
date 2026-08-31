@@ -2830,7 +2830,7 @@
               shaped-str (str (apply str (repeat 86 "a")) "==")]
           (ins! "snowplow-url" "https://plain.example")
           (ins! "ldap-user-filter" "   ")
-          (ins! "ldap-bind-dn" "")
+          (ins! "email-reply-to" "")
           (ins! "map-tile-server-url" enc-str)
           (ins! "store-url" shaped-str)
           (ins! "site-name" "Metabase")
@@ -2843,8 +2843,8 @@
           (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
             (is (encryption/decryptable-string? (raw "ldap-user-filter")))
             (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter"))))
-            (is (encryption/decryptable-string? (raw "ldap-bind-dn")))
-            (is (= "" (encryption/maybe-decrypt (raw "ldap-bind-dn")))))
+            (is (encryption/decryptable-string? (raw "email-reply-to")))
+            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to")))))
           (testing "a plaintext value that merely looks like ciphertext is encrypted, not skipped"
             (is (encryption/decryptable-string? (raw "store-url")))
             (is (= shaped-str (encryption/maybe-decrypt (raw "store-url")))))
@@ -2856,7 +2856,7 @@
             (migrate! :down 57)
             (is (= "https://plain.example" (raw "snowplow-url")))
             (is (= "   " (raw "ldap-user-filter")))
-            (is (= "" (raw "ldap-bind-dn")))
+            (is (= "" (raw "email-reply-to")))
             (is (= shaped-str (raw "store-url")))
             (is (= "https://already.example" (raw "map-tile-server-url")))
             (is (= "Metabase" (raw "site-name")))))))))

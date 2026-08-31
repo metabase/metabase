@@ -127,14 +127,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-address-override
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
   :default    "notifications@metabase.com"
   :visibility :settings-manager
@@ -143,7 +143,7 @@
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
@@ -166,7 +166,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :visibility :settings-manager
   :audit      :getter
