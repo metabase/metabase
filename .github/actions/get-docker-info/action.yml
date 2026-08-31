@@ -25,9 +25,6 @@ outputs:
   full_image:
     description: Full Docker image name (repo:tag)
     value: ${{ steps.docker-info.outputs.full_image }}
-  editions:
-    description: JSON array of editions to build
-    value: ${{ steps.docker-info.outputs.editions }}
 
 runs:
   using: "composite"
@@ -66,7 +63,5 @@ runs:
           core.setOutput('repo', repo);
           core.setOutput('tag', tag);
           core.setOutput('full_image', fullImage);
-          core.setOutput('editions', JSON.stringify(editions));
 
           console.log(`Docker image: ${fullImage}`);
-          console.log(`Editions: ${JSON.stringify(editions)}`);
