@@ -22,24 +22,27 @@ describe("scenarios > embedding > admin route redirects (EMB-1526)", () => {
       "/admin/embedding/themes/some-theme-id",
       "/embedding/appearance/theme/some-theme-id",
     ],
+    ["/admin/embedding/modular", "/embedding/security"],
+    ["/admin/embedding/interactive", "/embedding/security"],
+    ["/admin/settings/embedding-in-other-applications", "/embedding/security"],
+    [
+      "/admin/settings/embedding-in-other-applications/full-app",
+      "/embedding/security",
+    ],
+    [
+      "/admin/settings/embedding-in-other-applications/standalone",
+      "/embedding/security",
+    ],
+    [
+      "/admin/settings/embedding-in-other-applications/sdk",
+      "/embedding/security",
+    ],
   ];
 
   cases.forEach(([oldPath, newPath]) => {
     it(`redirects ${oldPath} to ${newPath}`, () => {
       cy.visit(oldPath);
       cy.location("pathname").should("eq", newPath);
-    });
-  });
-
-  describe("chained backward-compatibility redirects", () => {
-    it("redirects /admin/embedding/modular through /admin/embedding to /embedding/security", () => {
-      cy.visit("/admin/embedding/modular");
-      cy.location("pathname").should("eq", "/embedding/security");
-    });
-
-    it("redirects /admin/settings/embedding-in-other-applications/standalone through /admin/embedding/guest to /embedding/security", () => {
-      cy.visit("/admin/settings/embedding-in-other-applications/standalone");
-      cy.location("pathname").should("eq", "/embedding/security");
     });
   });
 });
