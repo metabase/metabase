@@ -306,11 +306,34 @@ describe("scenarios > embedding > embedding hub > security", () => {
         cy.findByText(
           "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
         ).should("be.visible");
-        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
+        // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
+        // UpsellCta renders the store link; paid builds get a button that
+        // opens the in-app flow instead.
+        cy.findByRole("link", { name: "Try Metabase Pro" }).should(
           "be.visible",
         );
 
         cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+
+    it("shows every hub tab, gemming the ones this plan lacks", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
+        cy.findByRole("link", { name: "Security" }).should("exist");
+        cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
+
+        for (const label of [
+          "Authentication",
+          "Tenancy",
+          "Appearance",
+          "Localization",
+        ]) {
+          cy.findByRole("link", { name: label })
+            .findByTestId("upsell-gem")
+            .should("exist");
+        }
       });
     });
   });
@@ -333,6 +356,26 @@ describe("scenarios > embedding > embedding hub > security", () => {
         );
 
         cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+
+    it("shows every hub tab, gemming the ones this plan lacks", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
+        cy.findByRole("link", { name: "Security" }).should("exist");
+        cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
+
+        for (const label of [
+          "Authentication",
+          "Tenancy",
+          "Appearance",
+          "Localization",
+        ]) {
+          cy.findByRole("link", { name: label })
+            .findByTestId("upsell-gem")
+            .should("exist");
+        }
       });
     });
   });
