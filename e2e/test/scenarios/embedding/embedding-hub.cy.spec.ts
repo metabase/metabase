@@ -317,7 +317,7 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       cy.log("the shared secret is generated through the key modal");
       cy.button("Set up key").click();
       H.modal().within(() => {
-        cy.button("Done").click();
+        cy.button("Create").click();
       });
 
       cy.button("Save and enable").click();
