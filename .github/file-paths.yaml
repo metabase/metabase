@@ -64,6 +64,9 @@ frontend_specs: &frontend_specs
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
   - ".github/**/*.unit.spec.*"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
