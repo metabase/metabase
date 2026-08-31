@@ -300,6 +300,15 @@
             :initial-exception-message (ex-message e-before)}
            e-after))
 
+(defn- isolate-write!
+  "Run `f` directly unless already in a transaction, in which case use a savepoint so the caller can catch an error
+  without aborting the enclosing transaction."
+  [f]
+  (if (mdb/in-transaction?)
+    (t2/with-transaction [_conn]
+      (f))
+    (f)))
+
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
@@ -311,11 +320,8 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    ;; When this runs inside another transaction, the nested transaction creates a savepoint.
-    ;; Rolling it back lets us handle a missing-table error without aborting the caller's PostgreSQL transaction.
     (let [upsert! (fn [t]
-                    (t2/with-transaction [_conn]
-                      (specialization/batch-upsert! t entries))
+                    (isolate-write! #(specialization/batch-upsert! t entries))
                     t)]
       (try
         (upsert! table-name)
@@ -416,11 +422,9 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   ;; The table can disappear after we read its name, especially during tests. When nested, this
-                   ;; transaction creates a savepoint so handling that error does not abort the caller's PostgreSQL
-                   ;; transaction.
-                   {search-model (try (t2/with-transaction [_conn]
-                                        (t2/delete! table-name :model search-model :model_id [:in (set ids)]))
+                   ;; The table can disappear after we read its name, especially during tests.
+                   {search-model (try (isolate-write!
+                                       #(t2/delete! table-name :model search-model :model_id [:in (set ids)]))
                                       (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
