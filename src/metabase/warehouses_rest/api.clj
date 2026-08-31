@@ -581,7 +581,7 @@
                 (if skip-fields?
                   [:tables :segments :metrics]
                   [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
-        _ (perms/prime-table-perms-cache {:db-ids #{id}})
+        _ (perms/prime-db-cache [id])
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
