@@ -230,13 +230,8 @@
               (is (true? (deref started 10000 ::timed-out))
                   "query should reach *reduce* before we cancel it")
               (future-cancel futur))))
-        (testing "canceled-chan should get get a :cancel message"
-          (let [[val port] (a/alts!! [canceled-chan (a/timeout 2000)])]
-            (is (= 'canceled-chan
-                   (if (= port canceled-chan) 'canceled-chan 'timeout))
-                "port")
-            (is (= ::qp.pipeline/cancel
-                   val)
-                "val")))
+        (testing "canceled-chan should get a :cancel message"
+          (is (= ::qp.pipeline/cancel
+                 (first (a/alts!! [canceled-chan (a/timeout 2000)])))))
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
