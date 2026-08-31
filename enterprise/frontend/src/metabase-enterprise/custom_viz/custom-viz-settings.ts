@@ -149,7 +149,6 @@ function prefixSettingIds(
   );
 }
 
-// Built-in widgets are names; by the public contract a function-shaped widget is a React component.
 function isComponentWidget(
   widget: unknown,
 ): widget is ComponentType<Record<string, unknown>> {
