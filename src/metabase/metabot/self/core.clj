@@ -11,6 +11,7 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -1028,16 +1029,19 @@
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
-  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). Its deployment-controlled URL
-    carries a `:network-policy-floor` of `:allow-private`, so private cluster addresses remain reachable under
-    the default policy; see [[metabase.llm.settings/network-policy]].
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). When the environment supplies
+    the proxy URL it carries a `:network-policy-floor` of `:allow-private`, so private cluster addresses remain
+    reachable under the default policy; see [[metabase.llm.settings/network-policy]].
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     {:url                     (str (str/replace base #"/+$" "") "/" provider-slug)
-                      :headers                 {"x-metabase-instance-token"
-                                                (premium-features/premium-embedding-token)}
-                      :network-policy-floor    :allow-private})]
+                     (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                              :headers {"x-metabase-instance-token"
+                                        (premium-features/premium-embedding-token)}}
+                       ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
+                       ;; stored setting through the generic settings API, which must not widen the policy
+                       (setting/env-var-value :llm-proxy-base-url)
+                       (assoc :network-policy-floor :allow-private)))]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")

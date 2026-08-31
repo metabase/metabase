@@ -432,21 +432,30 @@
                                                                                            {:ssrf true})))]
           (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
                   (rejected "openai")))))
-      (testing "the managed AI service's floor allows private addresses under the default policy"
+      (testing "a stored AI service URL gets the default policy: private is refused"
         (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                     llm.settings/ai-service-base-url                (constantly "http://10.0.0.1:9")
                                     premium-features/premium-embedding-token        (constantly "mock-token")
                                     http/post                                       capture]
-          (embed "ai-service")
-          (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
-          (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
-      (testing "the managed AI service's floor still refuses loopback"
-        (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
-                                    llm.settings/ai-service-base-url                loopback
-                                    premium-features/premium-embedding-token        (constantly "mock-token")
-                                    http/post                                       capture]
           (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
                   (rejected "ai-service")))))
+      (testing "an AI service URL the environment names is deployment configuration: its floor admits private"
+        (mt/with-premium-features #{:metabot-v3}
+          (mt/with-temp-env-var-value! [mb-ai-service-base-url "http://10.0.0.1:9"]
+            (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                        premium-features/premium-embedding-token        (constantly "mock-token")
+                                        http/post                                       capture]
+              (embed "ai-service")
+              (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
+              (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))))
+      (testing "the environment-supplied floor still refuses loopback"
+        (mt/with-premium-features #{:metabot-v3}
+          (mt/with-temp-env-var-value! [mb-ai-service-base-url "http://127.0.0.1:9"]
+            (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                        premium-features/premium-embedding-token        (constantly "mock-token")
+                                        http/post                                       capture]
+              (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                      (rejected "ai-service")))))))
       (testing "an embedding service URL the environment names is deployment configuration: private is fine"
         (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "http://10.0.0.1:9"]
           (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly "key")

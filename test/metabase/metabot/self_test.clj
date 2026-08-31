@@ -207,12 +207,18 @@
 
 (deftest resolve-auth-tags-proxy-auth-test
   (mt/with-premium-features #{:metabot-v3}
-    (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
-      (is (=? {:url                     "http://proxy.internal/anthropic"
-               :network-policy-floor    :allow-private}
-              (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))
-      (is (= {:url "https://api.anthropic.com"}
-             (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false))))))
+    (testing "an environment-supplied proxy URL carries the private-network floor"
+      (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "http://proxy.internal/"]
+        (is (=? {:url                  "http://proxy.internal/anthropic"
+                 :network-policy-floor :allow-private}
+                (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))))
+    (testing "a stored proxy URL gets the default policy: no floor"
+      (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
+        (let [auth (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)]
+          (is (= "http://proxy.internal/anthropic" (:url auth)))
+          (is (not (contains? auth :network-policy-floor))))
+        (is (= {:url "https://api.anthropic.com"}
+               (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false)))))))
 
 (deftest call-llm-prompt-cache-key-test
   (llm.tu/with-default-connections

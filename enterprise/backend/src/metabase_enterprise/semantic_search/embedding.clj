@@ -564,21 +564,24 @@
 (defn- embedding-service-resolve-config!
   "Return the embedding endpoint config, or throw if no base URL is configured.
 
-  Requests without an API key use the premium embedding token. The AI service and environment-configured embedding
-  services are deployment-controlled. Their `:allow-private` policy floor admits private addresses but still blocks
-  loopback and link-local."
+  Requests without an API key use the premium embedding token. A base URL the environment supplies is
+  deployment-controlled: its `:allow-private` policy floor admits private addresses but still blocks loopback and
+  link-local."
   []
+  ;; the floor is granted per source, not per setting: a superuser can write either stored setting through the
+  ;; generic settings API, which must not widen the policy, while a value the environment supplies bypasses the
+  ;; vetting setter and is trusted instead
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
         (cond-> {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
                                 "/v1/embeddings")
                  :api-key  (semantic-settings/ee-embedding-service-api-key)}
-          ;; the setter can't vet a value the environment supplies, so it is trusted like the AI service's
           (setting/env-var-value :ee-embedding-service-base-url)
           (assoc :network-policy-floor :allow-private))
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
-        {:endpoint             (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         :network-policy-floor :allow-private}
+        (cond-> {:endpoint (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")}
+          (setting/env-var-value :ai-service-base-url)
+          (assoc :network-policy-floor :allow-private))
 
         :else
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
