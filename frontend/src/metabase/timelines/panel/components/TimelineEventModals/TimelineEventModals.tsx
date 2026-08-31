@@ -3,11 +3,12 @@ import { t } from "ttag";
 
 import { skipToken, useGetTimelineEventQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import EditEventModal from "metabase/timelines/panel/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
 import { Modal } from "metabase/ui";
 import type { CollectionId, TimelineEventId } from "metabase-types/api";
+
+import EditEventModal from "../../containers/EditEventModal";
+import MoveEventModal from "../../containers/MoveEventModal";
+import NewEventModal from "../../containers/NewEventModal";
 
 export type TimelineEventModalState =
   | { type: "new" }
@@ -27,7 +28,7 @@ export function TimelineEventModals({
   onClose,
 }: {
   modal: TimelineEventModalState | null;
-  collectionId: CollectionId | null;
+  collectionId: CollectionId | null | undefined;
   onClose: () => void;
 }) {
   // The edit/move containers render nothing until the event arrives, so the
