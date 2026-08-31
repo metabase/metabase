@@ -190,6 +190,8 @@
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   ;; runs before anything reads settings -- see its docstring
+  ;; a UUID setting that no key can read would fail the settings read below, so it is regenerated first
+  (setting/repair-unreadable-uuid-settings!)
   (setting/migrate-encrypted-settings!)
   (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group

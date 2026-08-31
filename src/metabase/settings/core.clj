@@ -87,6 +87,7 @@
 
 (p/import-vars
  [metabase.settings.models.setting
+  repair-unreadable-uuid-settings!
   admin-writable-site-wide-settings
   can-read-setting?
   current-user-readable-visibilities

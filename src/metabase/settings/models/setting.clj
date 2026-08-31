@@ -1722,6 +1722,40 @@
                  (name (:name invalid-setting))
                  (ex-message (:parse-error invalid-setting))))))
 
+(def ^:private regenerable-uuid-settings
+  "Settings whose value is a UUID this instance generated for itself, and which nothing outside the instance has to
+  agree with. A value that cannot be read is worth replacing rather than keeping."
+  [:analytics-uuid :site-uuid])
+
+(defn repair-unreadable-uuid-settings!
+  "Replace the value of any [[regenerable-uuid-settings]] setting that can no longer be read with a fresh UUID.
+
+  These are written the first time anything reads them, which for `analytics-uuid` is the first request the instance
+  ever answers -- it is `:visibility :public`, so it is in the payload served before setup and before anyone logs in,
+  by whatever process happens to serve it. A process holding a different `MB_ENCRYPTION_SECRET_KEY` than the one the
+  instance settles on therefore leaves behind a value nothing can decrypt afterwards, while every setting written
+  later is fine.
+
+  Runs with the settings cache disabled, which matters twice over: restoring the cache reads every setting at once,
+  so the unreadable row would fail the very read that is meant to find it, and the write below is DML, which the
+  cloud-migration read-only-mode guard answers by reading a setting of its own.
+
+  Regenerating loses only the continuity of the identifier: `analytics-uuid` starts a new analytics identity, and
+  `site-uuid` changes the schema name persisted models live under, so persisted tables are recreated."
+  []
+  (binding [config/*disable-setting-cache* true
+            *disable-init*                 true]
+    (doseq [setting-name regenerable-uuid-settings
+            :when (t2/exists? :setting :key (name setting-name))
+            :when (not (try
+                         (get-value-of-type :string setting-name)
+                         true
+                         (catch Throwable _
+                           false)))]
+      (log/warnf "Setting %s cannot be read -- it was most likely written with a different encryption key -- so it is being replaced with a new UUID."
+                 (name setting-name))
+      (t2/update! :setting :key (name setting-name) {:value (str (random-uuid))}))))
+
 (defn migrate-encrypted-settings!
   "Reconcile the at-rest encryption of every registered setting's stored value with its declared `:encryption`, in
   both directions: a `:encryption :no` setting whose row is encrypted is decrypted, and a setting that encrypts whose

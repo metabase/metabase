@@ -1765,6 +1765,34 @@
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
 
+(deftest repair-unreadable-uuid-settings!-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (let [raw (fn [k] (t2/select-one-fn :value :setting :key k))]
+      (encryption-test/with-secret-key "repair-uuid-settings-test-key"
+        (testing "a value written under a different key is replaced with a fresh UUID"
+          (let [written-elsewhere (encryption/encrypt (encryption/secret-key->hash "some-other-instance-key")
+                                                      (str (random-uuid)))]
+            (t2/insert! :setting {:key "analytics-uuid" :value written-elsewhere})
+            (setting/repair-unreadable-uuid-settings!)
+            (is (not= written-elsewhere (raw "analytics-uuid")))
+            (is (uuid? (parse-uuid (raw "analytics-uuid"))))))
+        (testing "a readable value is left exactly as it is"
+          (let [readable (str (random-uuid))]
+            (t2/insert! :setting {:key "site-uuid" :value readable})
+            (setting/repair-unreadable-uuid-settings!)
+            (is (= readable (raw "site-uuid")))))
+        (testing "a value this key can decrypt is also left alone"
+          (let [ours (encryption/encrypt (str (random-uuid)))]
+            (t2/delete! :setting :key "site-uuid")
+            (t2/insert! :setting {:key "site-uuid" :value ours})
+            (setting/repair-unreadable-uuid-settings!)
+            (is (= ours (raw "site-uuid")))))
+        (testing "a setting with no row is left for its :init to generate"
+          (t2/delete! :setting :key "site-uuid")
+          (setting/repair-unreadable-uuid-settings!)
+          (is (nil? (raw "site-uuid"))))))))
+
 (deftest migrate-encrypted-settings!-works
   ;; Isolated app DB: with a secret key active this mutates the at-rest encryption of every registered setting row,
   ;; which would poison the shared test DB for later tests running with a different (or no) key.
