@@ -5,8 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
-
-import type { Widget } from "../types";
+import type { Widget } from "metabase/viz-core";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import {

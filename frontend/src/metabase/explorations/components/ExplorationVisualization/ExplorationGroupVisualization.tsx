@@ -20,14 +20,10 @@ import {
   Text,
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
-import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
-import type {
-  ClickActionsMode,
-  HighlightedObject,
-  OnBrush,
-} from "metabase/visualizations/types";
+import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
+import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
 import type {
   ExplorationBlockNodeType,
   ExplorationId,

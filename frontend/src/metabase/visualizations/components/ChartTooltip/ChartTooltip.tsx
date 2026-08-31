@@ -4,7 +4,7 @@ import _ from "underscore";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Box, Portal, Tooltip } from "metabase/ui";
 import { getEventTarget } from "metabase/utils/dom";
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";

@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 
 import { Radio, Stack, Text } from "metabase/ui";
-import {
-  decodeWidgetValue,
-  encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+import { decodeWidgetValue, encodeWidgetValue } from "metabase/viz-core";
 
 interface ChartSettingRadioProps {
   options: { name: string; value: string | null }[];

@@ -7,8 +7,8 @@
                                        :exclusions  [org.apache.commons/commons-lang3  ;; dep in top-level deps.edn; exclusion fixes security warnings
                                                      org.slf4j/slf4j-jdk14]}           ;; conflicts with our log4j2 SLF4J provider
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
-  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
-  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}
+  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.85"}
+  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.85.2"}
   ;; pinned: databricks-jdbc-thin pulls older transitive versions with resource
   ;; exhaustion vulns (jackson-core) and a deserialization vuln (jackson-databind)
   com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}

@@ -49,7 +49,7 @@
 (def ^:private transform-encrypted-edn
   "[[metabase.models.interface/transform-encrypted-text]] over a value serialized as EDN."
   {:in  (comp encryption/maybe-encrypt edn-in)
-   :out (comp edn-out encryption/maybe-decrypt)})
+   :out (comp edn-out (mi/decrypt-error-context "exploration_query_result.chart_stats" encryption/maybe-decrypt))})
 
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the
@@ -58,8 +58,8 @@
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
   {:chart_stats        transform-encrypted-edn
-   :metric_description mi/transform-encrypted-text
-   :chart_description  mi/transform-encrypted-text})
+   :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
+   :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
 
 (defn stored-results
   "Resolve the cached stored_result for an exploration_query_id via the EQR FK. Returns the

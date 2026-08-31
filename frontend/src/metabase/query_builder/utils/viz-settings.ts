@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
-import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getPersistableDefaultSettingsForSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";

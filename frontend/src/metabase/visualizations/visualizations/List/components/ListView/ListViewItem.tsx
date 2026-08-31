@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 
 import { Box, Flex, Icon, Image } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
 import { ColumnValue } from "./ColumnValue";
