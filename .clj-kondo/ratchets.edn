@@ -7,13 +7,12 @@
 ;; widening the exemptions is a hand edit to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
-                  :all                                                                 10
                   :case-symbol-test                                                    1
                   :clojure-lsp/unused-public-var                                       9
                   :consistent-alias                                                    2
                   :def-fn                                                              1
                   :deprecated-namespace                                                95
-                  :deprecated-var                                                      86
+                  :deprecated-var                                                      96
                   :discouraged-java-method                                             4
                   :discouraged-namespace                                               81
                   :discouraged-var                                                     130
