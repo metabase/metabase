@@ -1,4 +1,3 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
 // Must run before any dynamic import(): sets webpack's runtime publicPath so
 // on-demand chunks (leaflet, echarts) resolve to the Metabase instance.
 import "./app-embed-mcp-public-path";
@@ -10,7 +9,6 @@ import "metabase/embedding-sdk/vendors-side-effects";
 
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
@@ -21,16 +19,9 @@ EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
-// Set the MCP UI credential immediately so all SDK API calls carry the purpose-bound header.
-// @ts-expect-error -- this is ONLY set in the MCP Apps route
-const { instanceUrl, uiCredential = "" } = window.metabaseConfig ?? {};
+const { instanceUrl } = window.metabaseConfig ?? {};
 
 setBasename(instanceUrl);
-
-if (uiCredential) {
-  PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-    async () => ({ headers: { "X-Metabase-Mcp-Ui-Auth": uiCredential } });
-}
 
 function init() {
   const rootElement = document.getElementById("root");

@@ -27,8 +27,10 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
+  hostError: McpAppState["hostError"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  mcpSessionId: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
   uiCredential: string;
@@ -36,8 +38,6 @@ interface McpUiAppRouteContentProps {
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  uiCredential: string;
-  mcpSessionId: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -48,11 +48,19 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
-
-  const { instanceUrl = "", uiCredential = "" } =
+  const { instanceUrl = "" } =
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
+
+  const {
+    app,
+    hostError,
+    hostContext,
+    mcpSessionId,
+    uiCredential,
+    prompt,
+    query,
+  } = useMcpApp();
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -81,8 +89,10 @@ export function McpUiAppRoute() {
     >
       <McpUiAppRouteContent
         app={app}
+        hostError={hostError}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
+        mcpSessionId={mcpSessionId}
         prompt={prompt}
         query={query}
         uiCredential={uiCredential}
@@ -93,20 +103,22 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  hostError,
   hostContext,
   instanceUrl,
+  mcpSessionId,
   prompt,
   query,
   uiCredential,
 }: McpUiAppRouteContentProps) {
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSelector(getIsHosted);
-
-  const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
-
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
+
+  const handleDrillThrough = useHandleMcpDrillThrough({
+    app,
+    uiCredential,
+    mcpSessionId,
+  });
 
   const deserializedCard = useMemo(() => {
     if (!query) {
@@ -127,16 +139,17 @@ function McpUiAppRouteContent({
     instanceUrl &&
     hostContext &&
     isSettingsReady &&
+    uiCredential &&
     deserializedCard
   );
 
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || hostError || userAndSettingsFetchError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [hostError, isReady, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -224,6 +237,10 @@ function McpUiAppRouteContent({
     );
 
   const renderContentView = () => {
+    if (hostError) {
+      return <SdkError message={hostError} />;
+    }
+
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
     }
