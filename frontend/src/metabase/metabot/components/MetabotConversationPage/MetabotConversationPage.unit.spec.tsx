@@ -18,7 +18,7 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { FIXED_METABOT_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
-import { metabotReducer } from "../../state";
+import { getMetabotState, metabotReducer } from "../../state";
 import {
   createConversation,
   getMetabotInitialState,
@@ -160,7 +160,7 @@ describe("MetabotConversationPage", () => {
     ).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
-        store.getState().metabot.conversations[CONVERSATION_ID],
+        getMetabotState(store.getState()).conversations[CONVERSATION_ID],
       ).toBeDefined();
     });
   });
