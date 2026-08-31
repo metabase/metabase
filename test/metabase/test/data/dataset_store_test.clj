@@ -96,7 +96,8 @@
 
   ;; `:state` is deliberately not destructured by that name: it would shadow the record's own
   ;; `state` field, which this body derefs.
-  (list-datasets [_this {:keys [id-prefix created-before last-used-before] want-state :state}]
+  (list-datasets [_this {:keys [id-prefix created-before last-used-before used-within-seconds]
+                         want-state :state}]
     (into []
           (comp (map val)
                 (filter (fn [row]
@@ -106,7 +107,10 @@
                                (or (nil? created-before)
                                    (.isBefore ^Instant (:created-at row) ^Instant created-before))
                                (or (nil? last-used-before)
-                                   (.isBefore ^Instant (:last-used-at row) ^Instant last-used-before)))))
+                                   (.isBefore ^Instant (:last-used-at row) ^Instant last-used-before))
+                               (or (nil? used-within-seconds)
+                                   (.isAfter ^Instant (:last-used-at row)
+                                             (.minusSeconds ^Instant (now-fn) used-within-seconds))))))
                 (map descriptor))
           @state))
 
@@ -353,3 +357,45 @@
                                 (reset! seen id)
                                 (throw (ex-info "boom" {})))))
         (is (nil? (dataset-store/describe-dataset s @seen)))))))
+
+(defn- counting-touch-store
+  "A store that counts recorded uses and reports `already-used` as used recently by someone else."
+  [touches already-used]
+  (reify dataset-store/DatasetStore
+    (create-dataset! [_ _ _] :exists)
+    (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
+    (delete-dataset! [_ _] :absent)
+    (describe-dataset [_ _] nil)
+    (list-datasets [_ criteria]
+      (if (:used-within-seconds criteria)
+        (mapv (fn [id] {:id id}) already-used)
+        []))
+    (touch-dataset! [_ _] (swap! touches inc) nil)))
+
+(deftest touch-is-debounced-test
+  (testing "recording a use is the most frequent write a store makes, so it is suppressed hard"
+    (testing "a use another process already recorded is not recorded again"
+      (let [touches (atom 0)
+            cached  (dataset-store/caching-dataset-store (counting-touch-store touches ["mbds_a"]) {})]
+        (dotimes [_ 3] (dataset-store/touch-dataset! cached "mbds_a"))
+        (is (zero? @touches))))
+    (testing "a dataset nobody has touched is recorded once, then suppressed within the window"
+      (let [touches (atom 0)
+            cached  (dataset-store/caching-dataset-store (counting-touch-store touches []) {})]
+        (dotimes [_ 5] (dataset-store/touch-dataset! cached "mbds_b"))
+        (is (= 1 @touches))))
+    (testing "the shared read happens once per store, not once per touch"
+      (let [lists   (atom 0)
+            touches (atom 0)
+            store   (reify dataset-store/DatasetStore
+                      (create-dataset! [_ _ _] :exists)
+                      (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
+                      (delete-dataset! [_ _] :absent)
+                      (describe-dataset [_ _] nil)
+                      (list-datasets [_ _] (swap! lists inc) [])
+                      (touch-dataset! [_ _] (swap! touches inc) nil))
+            cached  (dataset-store/caching-dataset-store store {})]
+        (doseq [id ["mbds_a" "mbds_b" "mbds_c"]]
+          (dotimes [_ 3] (dataset-store/touch-dataset! cached id)))
+        (is (= 1 @lists))
+        (is (= 3 @touches) "one per distinct dataset")))))

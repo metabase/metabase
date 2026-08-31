@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [metabase.util.lru-ttl-cache :as lru-ttl]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +30,9 @@
   (str id-prefix
        (tx/hash-dataset dbdef)
        "_"
-       (:database-name dbdef)))
+       ;; Normalized here rather than per adapter: BigQuery rejects a dataset id containing anything
+       ;; but word characters, and Redshift folds identifiers to lower case regardless.
+       (-> (:database-name dbdef) u/lower-case-en (str/replace #"-" "_"))))
 
 (def temp-id-prefix
   "Prefix borne by ids from [[temp-dataset-id]].
@@ -109,6 +112,9 @@
       :state            :ready or :loading
       :created-before   created strictly before this instant
       :last-used-before use last recorded strictly before this instant
+      :used-within-seconds  use recorded within this many seconds of now. Expressed as a duration
+                            rather than an instant so the warehouse computes the cutoff against its
+                            own clock, which is the only clock every caller agrees on.
 
     Criteria are data so that an implementation may evaluate them on the warehouse; the result is
     the same either way.")
@@ -151,6 +157,14 @@
                       {:dataset-id dataset-id, :timeout-ms timeout-ms}))
       result)))
 
+(def ^:private touch-window-seconds
+  "How stale a dataset's recorded use may be before recording another is worth a round trip.
+
+  Recording a use is by far the most frequent write a store makes -- one per dataset per process,
+  every process -- and they all land on the same place. An hour is far below any reaping window, so
+  suppressing repeats inside it costs nothing that matters."
+  3600)
+
 (def ^:private seen-dataset-ttl-ms
   "How long this JVM trusts its own memory of a dataset being present.
 
@@ -174,9 +188,16 @@
   ([store]
    (caching-dataset-store store {}))
   ([store {:keys [ttl-ms threshold]}]
-   (let [seen (lru-ttl/cache {:ttl-ms     (or ttl-ms seen-dataset-ttl-ms)
-                              :threshold  threshold
-                              :cache-when #{:created :exists}})]
+   (let [seen    (lru-ttl/cache {:ttl-ms     (or ttl-ms seen-dataset-ttl-ms)
+                                 :threshold  threshold
+                                 :cache-when #{:created :exists}})
+         touched (lru-ttl/cache {:ttl-ms (* 1000 touch-window-seconds), :threshold threshold})
+         ;; Read once per process, from the store rather than from local history: the point is to
+         ;; skip a write some *other* process already made. A local cache alone would not, since a
+         ;; process touches each dataset about once anyway.
+         touched-elsewhere (delay (into #{}
+                                        (map :id)
+                                        (list-datasets store {:used-within-seconds touch-window-seconds})))]
      (reify DatasetStore
        (create-dataset! [_this dataset-id dbdef]
          (lru-ttl/get-or-compute! seen dataset-id #(create-dataset! store dataset-id dbdef)))
@@ -188,10 +209,13 @@
        ;; A temp dataset is new every time, so there is nothing to remember.
        (create-temp-isolated-dataset! [_this dbdef] (create-temp-isolated-dataset! store dbdef))
 
-       ;; Reads report live state, so none of them are cached.
+       ;; Reads report live state, so neither is cached.
        (describe-dataset [_this dataset-id]     (describe-dataset store dataset-id))
        (list-datasets    [_this criteria]       (list-datasets store criteria))
-       (touch-dataset!   [_this dataset-id]     (touch-dataset! store dataset-id))))))
+       (touch-dataset! [_this dataset-id]
+         (when-not (contains? @touched-elsewhere dataset-id)
+           (lru-ttl/get-or-compute! touched dataset-id #(touch-dataset! store dataset-id)))
+         nil)))))
 
 (defmacro with-temp-dataset
   "Create a temp isolated dataset from `dbdef`, bind its id to `id-binding`, and delete it when

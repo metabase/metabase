@@ -151,13 +151,17 @@
   (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE"
                                (redshift.tx/dataset-schema dataset-id))]))
 
-(defn- criteria->where [{:keys [id-prefix state created-before last-used-before]}]
+(defn- criteria->where [{:keys [id-prefix state created-before last-used-before used-within-seconds]}]
   (let [clauses (cond-> []
                   ;; POSITION rather than LIKE: dataset ids contain `_`, a LIKE wildcard.
                   id-prefix        (conj ["POSITION(? IN id) = 1" id-prefix])
                   state            (conj ["state = ?" (name state)])
                   created-before   (conj ["created_at < ?" (->timestamp created-before)])
-                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)]))]
+                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)])
+                  ;; A duration, resolved against the warehouse clock -- the only one every caller
+                  ;; shares.
+                  used-within-seconds (conj ["last_used_at > DATEADD(second, ?, GETDATE())"
+                                             (- used-within-seconds)]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))

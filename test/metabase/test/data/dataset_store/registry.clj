@@ -12,8 +12,9 @@
 (def ^:private constructors
   "Driver -> the fully qualified constructor for its store. Symbols rather than functions because a
   driver's test namespaces are only on the classpath when that driver is being tested."
-  {:snowflake 'metabase.test.data.dataset-store.snowflake/snowflake-dataset-store
-   :redshift  'metabase.test.data.dataset-store.redshift/redshift-dataset-store})
+  {:snowflake          'metabase.test.data.dataset-store.snowflake/snowflake-dataset-store
+   :redshift           'metabase.test.data.dataset-store.redshift/redshift-dataset-store
+   :bigquery-cloud-sdk 'metabase.test.data.dataset-store.bigquery/bigquery-dataset-store})
 
 (def ^{:arglists '([driver])} store-for
   "Return the store for `driver`, or nil if it has none.

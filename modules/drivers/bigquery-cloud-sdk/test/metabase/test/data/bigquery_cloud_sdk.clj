@@ -8,6 +8,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.test.data.dataset-store :as dataset-store]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -63,7 +64,10 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (cond (str/starts-with? database-name "sha_")
+  (cond (or (str/starts-with? database-name "sha_")
+            ;; ids minted by a DatasetStore are final; re-qualifying one would point the load at a
+            ;; dataset the store does not track.
+            (str/starts-with? database-name dataset-store/id-prefix))
         database-name
         ;; releases get their own isolated datasets
         (tx/on-master-or-release-branch?)

@@ -126,14 +126,18 @@
 (defn- criteria->where
   "Compile `criteria` into a `[sql-fragment & params]` vector. Every recognized key narrows the
   result; an unrecognized key is ignored rather than silently matching nothing."
-  [{:keys [id-prefix state created-before last-used-before]}]
+  [{:keys [id-prefix state created-before last-used-before used-within-seconds]}]
   (let [clauses (cond-> []
                   ;; STARTSWITH rather than LIKE: dataset ids contain `_`, which LIKE reads as a
                   ;; single-character wildcard.
                   id-prefix        (conj ["STARTSWITH(id, ?)" id-prefix])
                   state            (conj ["state = ?" (name state)])
                   created-before   (conj ["created_at < ?" (->timestamp created-before)])
-                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)]))]
+                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)])
+                  ;; A duration, resolved against the warehouse clock -- the only one every caller
+                  ;; shares.
+                  used-within-seconds (conj ["last_used_at > DATEADD(second, ?, CURRENT_TIMESTAMP())"
+                                             (- used-within-seconds)]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))
