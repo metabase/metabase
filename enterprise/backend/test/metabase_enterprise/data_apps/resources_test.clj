@@ -4,6 +4,7 @@
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.sso.core :as sso]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -77,3 +78,17 @@
                          :db_id (mt/id)
                          :perm_type :perms/create-queries))
           "a manual table-level grant is swept back to the database-wide restriction"))))
+
+(deftest sso-group-sync-does-not-add-a-user-to-a-data-app-group-test
+  (testing "a data app's permission group is server-managed: membership is granted by an admin, not
+            an IdP claim. SSO group sync must not add a user to it, or an IdP `groups` value naming
+            \"Data App: <slug>\" would grant the app's tables to whoever it names."
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (let [app (create-data-app! "birds")
+              {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+          ;; As a name-based SSO sync would, ask to put the user in the data-app group.
+          (sso/sync-group-memberships! user-id [permission_group_id])
+          (is (not (t2/exists? :model/PermissionsGroupMembership
+                               :user_id user-id :group_id permission_group_id))
+              "SSO group sync must not add a user to a data-app group"))))))
