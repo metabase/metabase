@@ -45,7 +45,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :type       :json
   :doc        false
