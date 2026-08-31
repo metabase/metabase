@@ -1103,6 +1103,9 @@
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
                   (migrate!)
+                  ;; migrations write these columns in their unbound legacy form; startup binds them to their column
+                  ;; before anything reads through a model, so do the same here before the model reads below
+                  (mdb/encrypt-plaintext-columns!)
                   (when encrypted?
                     (testing "make sure the settings is encrypted after the migration"
                       (is (true? (encryption/possibly-encrypted-string?
@@ -1126,6 +1129,7 @@
                            (t2/select-one-fn :settings :model/Database empty-options-id)))))
                 (testing "rollback migration"
                   (migrate! :down 46)
+                  (mdb/encrypt-plaintext-columns!)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
@@ -1771,7 +1775,7 @@
     ;; run migration to the latest migration
     (impl/test-migrations ["v49.2024-04-09T10:00:03"] [migrate!]
       ;; create a db because db.details should be encrypted
-      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
+      (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}" nil)}))
             db-detail (fn []
                         (:details (t2/query-one {:select [:details]
                                                  :from   [:metabase_database]
@@ -1953,10 +1957,10 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 1"))
               not-uploads-db-id (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 2"))
-              settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
-                        {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                        {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
-                        {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
+              settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id) nil)}
+                        {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true" nil)}
+                        {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_" nil)}
+                        {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads" nil)}]
               _ (t2/insert! :setting settings)
               get-settings #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})
               settings-before (get-settings)]
@@ -1977,8 +1981,12 @@
                 (is (not-empty settings-after))
                 (is (every? encryption/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-after))))))))))))
+                (let [decrypt (fn [{:keys [key] :as setting}]
+                                (update setting :value encryption/maybe-decrypt
+                                        (encryption/setting-source key)
+                                        {:accept-plaintext true, :accept-unbound true}))]
+                  (is (= (set (map decrypt settings-before))
+                         (set (map decrypt settings-after)))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -1986,8 +1994,8 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-database-id and uploads-schema-name
-                             {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                             {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
+                             {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true" nil)}
+                             {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_" nil)}]
               _             (t2/insert! :setting settings)
               get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
           (migrate!)
@@ -2004,7 +2012,7 @@
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-enabled
-                             {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
+                             {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_" nil)}]
               _             (t2/insert! :setting settings)
               get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
           (migrate!)
@@ -2021,9 +2029,9 @@
 (deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
     (encryption-test/with-secret-key "whateverwhatever"
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true" nil)}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100" nil)}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123" nil)}]))
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
     (encryption-test/with-secret-key "whateverwhatever"
@@ -2618,10 +2626,10 @@
                                  :engine "clickhouse"
                                  :created_at :%now
                                  :updated_at :%now
-                                 :details (mi/encrypted-json-in details)})))
+                                 :details ((mi/encrypted-json-in nil) details)})))
                 (assert-pre-conditions []
                   (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
-                        details-list (map #(mi/encrypted-json-out (:details %)) clickhouse-dbs)]
+                        details-list (map #(mi/encrypted-json-out nil (:details %)) clickhouse-dbs)]
                     (is (= 4 (count clickhouse-dbs)))
                     (is (every? #(contains? % :scan-all-databases) details-list))
                     (is (every? #(contains? % :dbname) details-list))
@@ -2644,7 +2652,7 @@
           (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")]
             (is (= 4 (count clickhouse-dbs)))
             (doseq [db clickhouse-dbs]
-              (let [details (mi/encrypted-json-out (:details db))]
+              (let [details (mi/encrypted-json-out nil (:details db))]
                 (is (true? (:enable-multiple-db details)))
                 (is (contains? details :db-filters-type))
                 (cond
@@ -2713,15 +2721,15 @@
                                                                   :created_at  :%now
                                                                   :updated_at  :%now}))
               plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
-              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
+              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}) nil)
               enc-id   (ins-cred "google" enc-str)
               raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))]
           (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
           (migrate!)
           (testing "plaintext credentials are encrypted and decrypt to the original value"
-            (is (encryption/decryptable-string? (raw-cred plain-id)))
+            (is (encryption/decryptable-string? (raw-cred plain-id) nil))
             (is (= {:password_hash "h" :password_salt "s"}
-                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
+                   (json/decode+kw (encryption/maybe-decrypt (raw-cred plain-id) nil {:accept-plaintext true})))))
           (testing "already-encrypted credentials row is left unchanged"
             (is (= enc-str (raw-cred enc-id)))))))))
 
@@ -2738,15 +2746,15 @@
                                                                    :key           key-str
                                                                    :key_prefix    prefix})))
               plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
-              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
+              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash" nil)
               enc-id   (ins-key "mb_encr" enc-str)
               raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
           (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
           (migrate!)
           (testing "plaintext key is encrypted and decrypts to the original hash"
-            (is (encryption/decryptable-string? (raw-key plain-id)))
+            (is (encryption/decryptable-string? (raw-key plain-id) nil))
             (is (= "plaintext-bcrypt-hash"
-                   (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
+                   (encryption/maybe-decrypt (raw-key plain-id) nil {:accept-plaintext true}))))
           (testing "already-encrypted key row is left unchanged"
             (is (= enc-str (raw-key enc-id))))
           (testing "rollback decrypts keys back to the plaintext hash so downgraded code can still verify them"
@@ -2772,15 +2780,15 @@
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
           (migrate!)
           (testing "encrypted after migration, and still decrypts to the original value"
-            (is (encryption/decryptable-string? (raw-pc)))
-            (is (= pc-details (encryption/maybe-decrypt (raw-pc))))))))))
+            (is (encryption/decryptable-string? (raw-pc) nil))
+            (is (= pc-details (encryption/maybe-decrypt (raw-pc) nil)))))))))
 
 (deftest encrypt-remaining-columns-test
   (testing "v58.2026-08-28T14:00:00 : plaintext rows in the historically mixable columns are encrypted, encrypted rows untouched"
     (encryption-test/with-secret-key "encrypt-remaining-test-key-1234"
       (impl/test-migrations ["v58.2026-08-28T14:00:00"] [migrate!]
         (let [plain-details (json/encode {:db "/plain.db"})
-              enc-details   (encryption/maybe-encrypt (json/encode {:db "/enc.db"}))
+              enc-details   (encryption/maybe-encrypt (json/encode {:db "/enc.db"}) nil)
               plain-db-id   (:id (new-instance-with-default :metabase_database {:details plain-details}))
               enc-db-id     (:id (new-instance-with-default :metabase_database {:details enc-details}))
               user-settings (json/encode {:locale "en"})
@@ -2804,15 +2812,15 @@
           (migrate!)
           (testing "plaintext string values are encrypted and decrypt to the original"
             (is (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id)))
-            (is (= plain-details (encryption/maybe-decrypt (raw :metabase_database :details plain-db-id))))
+            (is (= plain-details (encryption/maybe-decrypt (raw :metabase_database :details plain-db-id) nil)))
             (is (encryption/possibly-encrypted-string? (raw :core_user :settings user-id)))
-            (is (= user-settings (encryption/maybe-decrypt (raw :core_user :settings user-id)))))
+            (is (= user-settings (encryption/maybe-decrypt (raw :core_user :settings user-id) nil))))
           (testing "already-encrypted values are untouched"
             (is (= enc-details (raw :metabase_database :details enc-db-id))))
           (testing "plaintext secret bytes are encrypted and decrypt to the original"
             (let [v (raw-secret secret-id)]
               (is (encryption/possibly-encrypted-bytes? v))
-              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v) "UTF-8"))))))))))
+              (is (= "sooper-secret" (String. (encryption/maybe-decrypt-bytes v nil) "UTF-8"))))))))))
 
 (deftest encrypt-settings-test
   ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
@@ -2825,7 +2833,7 @@
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
         (let [ins!       (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
               raw        (fn [k] (t2/select-one-fn :value :setting :key k))
-              enc-str    (encryption/maybe-encrypt "https://already.example")
+              enc-str    (encryption/maybe-encrypt "https://already.example" nil)
               ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
               shaped-str (str (apply str (repeat 86 "a")) "==")]
           (ins! "snowplow-url" "https://plain.example")
@@ -2838,16 +2846,16 @@
           (is (encryption/possibly-encrypted-string? shaped-str))
           (migrate!)
           (testing "a plaintext value of a listed setting is encrypted and decrypts back"
-            (is (encryption/decryptable-string? (raw "snowplow-url")))
-            (is (= "https://plain.example" (encryption/maybe-decrypt (raw "snowplow-url")))))
+            (is (encryption/decryptable-string? (raw "snowplow-url") nil))
+            (is (= "https://plain.example" (encryption/maybe-decrypt (raw "snowplow-url") nil))))
           (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
-            (is (encryption/decryptable-string? (raw "ldap-user-filter")))
-            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter"))))
-            (is (encryption/decryptable-string? (raw "email-reply-to")))
-            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to")))))
+            (is (encryption/decryptable-string? (raw "ldap-user-filter") nil))
+            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter") nil)))
+            (is (encryption/decryptable-string? (raw "email-reply-to") nil))
+            (is (= "" (encryption/maybe-decrypt (raw "email-reply-to") nil))))
           (testing "a plaintext value that merely looks like ciphertext is encrypted, not skipped"
-            (is (encryption/decryptable-string? (raw "store-url")))
-            (is (= shaped-str (encryption/maybe-decrypt (raw "store-url")))))
+            (is (encryption/decryptable-string? (raw "store-url") nil))
+            (is (= shaped-str (encryption/maybe-decrypt (raw "store-url") nil))))
           (testing "an already-encrypted value is left unchanged"
             (is (= enc-str (raw "map-tile-server-url"))))
           (testing "a setting not in the list is left plaintext"
@@ -2876,7 +2884,7 @@
       (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
         (let [insert-setting! (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
               raw-setting     (fn [k] (t2/select-one-fn :value :setting :key k))
-              encrypted-value (encryption/maybe-encrypt "https://otel.example")]
+              encrypted-value (encryption/maybe-encrypt "https://otel.example" nil)]
           ;; a plaintext row from before the setting was encrypted
           (insert-setting! "setup-token" "b7f4a1e2-0000-4000-8000-000000000000")
           (insert-setting! "support-access-grant-email" "support@example.com")
@@ -2886,9 +2894,9 @@
           (insert-setting! "instance-creation" "2026-08-30T00:00:00Z")
           (migrate!)
           (testing "a plaintext row of a listed setting is encrypted and decrypts back"
-            (is (encryption/decryptable-string? (raw-setting "setup-token")))
-            (is (= "b7f4a1e2-0000-4000-8000-000000000000" (encryption/maybe-decrypt (raw-setting "setup-token"))))
-            (is (= "support@example.com" (encryption/maybe-decrypt (raw-setting "support-access-grant-email")))))
+            (is (encryption/decryptable-string? (raw-setting "setup-token") nil))
+            (is (= "b7f4a1e2-0000-4000-8000-000000000000" (encryption/maybe-decrypt (raw-setting "setup-token") nil)))
+            (is (= "support@example.com" (encryption/maybe-decrypt (raw-setting "support-access-grant-email") nil))))
           (testing "an already-encrypted row is left unchanged"
             (is (= encrypted-value (raw-setting "tracing-endpoint"))))
           (testing "a setting not in the list is left plaintext"
@@ -2960,7 +2968,7 @@
                                                 :uploads_enabled true
                                                 :uploads_schema_name uploads-schema-name
                                                 :uploads_table_prefix "uploads_"
-                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                                                :details ((mi/encrypted-json-in nil) {:dbname "db_foo"})})
                 insert-table! (fn [db-id name schema active is-upload display-name]
                                 (t2/insert-returning-pk! :metabase_table
                                                          {:db_id db-id
@@ -3115,13 +3123,11 @@
                                                          :created_at  :%now
                                                          :updated_at  :%now}))
               enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+                                                (encryption/maybe-encrypt (json/encode {:secret "s1" :confirmed_at confirmed-at}) nil))
               plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
                                                 (json/encode {:secret "s2" :confirmed_at confirmed-at}))
               pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s3"})))]
+                                                (encryption/maybe-encrypt (json/encode {:secret "s3"}) nil))]
           (migrate!)
           (testing "encrypted confirmed row gets the column"
             (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))

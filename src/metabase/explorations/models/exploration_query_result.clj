@@ -1,15 +1,12 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
-   [clojure.edn :as edn]
    [metabase.api.common :as api]
    [metabase.explorations.composite :as composite]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -23,41 +20,13 @@
 (doto :model/ExplorationQueryResult
   (derive :metabase/model))
 
-(defn- edn-in
-  "Encode a value as EDN. JSON would mangle `compute-chart-stats` output: `:chart-type` is a keyword,
-  `:series` is keyed by series-name *strings*, and the histogram `:distribution
-  :estimated-percentiles` is keyed by *integers* — only EDN round-trips all three."
-  [v]
-  (cond
-    (nil? v)    nil
-    (string? v) v
-    :else       (pr-str v)))
-
-(defn- edn-out
-  "Decode an EDN blob, recovering `nil` (with a warning) on parse failure rather than crashing the
-  whole `t2/select`. Bad rows can come from data written under an earlier transform (e.g. JSON), or
-  from forward-compat scenarios where the writer used types the reader can't parse — neither should
-  ever break a read."
-  [s]
-  (when (string? s)
-    (try
-      (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
-      (catch Throwable e
-        (log/warn e "Failed to parse an exploration_query_result EDN column; returning nil")
-        nil))))
-
-(def ^:private transform-encrypted-edn
-  "[[metabase.models.interface/transform-encrypted-text]] over a value serialized as EDN."
-  {:in  (comp encryption/maybe-encrypt edn-in)
-   :out (comp edn-out (mi/decrypt-error-context "exploration_query_result.chart_stats" encryption/maybe-decrypt))})
-
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the
 ;; row blob in `stored_result.result_data`, which is encrypted too. `chart_stats` is easy to read as
 ;; mere shape and is not — the categorical stats carry each top category's `:name` straight from the
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
-  {:chart_stats        transform-encrypted-edn
+  {:chart_stats        (mi/transform-encrypted-edn "exploration_query_result.chart_stats")
    :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
    :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
 

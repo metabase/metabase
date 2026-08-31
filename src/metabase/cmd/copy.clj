@@ -220,7 +220,7 @@
            (cond-> database
              (or (:is_attached_dwh database)
                  (and (not *copy-h2-database-details*)
-                      (= (:engine database) "h2"))) (assoc :details (encryption/maybe-encrypt "{}")))))
+                      (= (:engine database) "h2"))) (assoc :details (encryption/maybe-encrypt "{}" nil)))))
 
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.

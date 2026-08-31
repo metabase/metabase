@@ -126,16 +126,16 @@
     (testing "sharing encrypts the uuid at rest and derives the prefix"
       (t2/update! model id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
-        (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
+        (is (encryption/decryptable-string? raw nil) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
-        (is (= uuid (encryption/maybe-decrypt raw)) "and decrypts back to the uuid"))
+        (is (= uuid (encryption/maybe-decrypt raw nil)) "and decrypts back to the uuid"))
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
           "prefix is the plaintext leading characters of the uuid")
       (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
     (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (t2/update! model id {:name "renamed while unshared"}))
-      (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id))) "public_uuid untouched")
+      (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id) nil)) "public_uuid untouched")
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
           "prefix untouched")
       (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))

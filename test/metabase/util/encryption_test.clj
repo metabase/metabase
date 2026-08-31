@@ -50,49 +50,49 @@
 
 (deftest ^:parallel hash-pattern-test
   (is (re= #"^[0-9A-Za-z/+]+=*$"
-           (encryption/encrypt secret "Hello!"))))
+           (encryption/encrypt "Hello!" nil {:secret-key secret}))))
 
 (deftest ^:parallel hashing-isnt-idempotent-test
   (testing "test that encrypting something twice gives you two different ciphertexts"
-    (is (not= (encryption/encrypt secret "Hello!")
-              (encryption/encrypt secret "Hello!")))))
+    (is (not= (encryption/encrypt "Hello!" nil {:secret-key secret})
+              (encryption/encrypt "Hello!" nil {:secret-key secret})))))
 
 (deftest ^:parallel decrypt-test
   (testing "test that we can decrypt something"
     (is (= "Hello!"
-           (encryption/decrypt secret (encryption/encrypt secret "Hello!"))))))
+           (encryption/decrypt (encryption/encrypt "Hello!" nil {:secret-key secret}) nil {:secret-key secret})))))
 
 (deftest ^:parallel decrypt-bytes-test
   (testing "test that we can decrypt binary data"
     (let [data (byte-array (range 0 100))]
       (is (= (seq data)
-             (seq (encryption/decrypt-bytes secret (encryption/encrypt-bytes secret data))))))))
+             (seq (encryption/decrypt-bytes (encryption/encrypt-bytes data nil {:secret-key secret}) nil {:secret-key secret})))))))
 
 (deftest ^:parallel exception-with-wrong-decryption-key-test
   (testing "trying to decrypt something with the wrong key with `decrypt` should throw an Exception"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Message seems corrupt or manipulated"
-         (encryption/decrypt secret-2 (encryption/encrypt secret "WOW"))))))
+         (encryption/decrypt (encryption/encrypt "WOW" nil {:secret-key secret}) nil {:secret-key secret-2})))))
 
 (deftest ^:parallel maybe-decrypt-not-encrypted-test
-  (testing "trying to `maybe-decrypt-accepting-plaintext` something that's not encrypted should return it as-is"
+  (testing "trying to `maybe-decrypt` with `:accept-plaintext` something that's not encrypted should return it as-is"
     (is (= "{\"a\":100}"
-           (encryption/maybe-decrypt-accepting-plaintext secret "{\"a\":100}")))
+           (encryption/maybe-decrypt "{\"a\":100}" nil {:accept-plaintext true, :secret-key secret})))
     (is (= "abc"
-           (encryption/maybe-decrypt-accepting-plaintext secret "abc")))))
+           (encryption/maybe-decrypt "abc" nil {:accept-plaintext true, :secret-key secret})))))
 
 (deftest ^:parallel maybe-decrypt-with-wrong-key-test
-  (testing (str "decrypting something encrypted with a different key using `maybe-decrypt-accepting-plaintext` throws "
+  (testing (str "decrypting something encrypted with a different key using `maybe-decrypt` with `:accept-plaintext` throws "
                 "rather than returning the ciphertext — returning it would let a re-encrypting caller double-encrypt it")
-    (let [original-ciphertext (encryption/encrypt secret "WOW")]
+    (let [original-ciphertext (encryption/encrypt "WOW" nil {:secret-key secret})]
       (is (thrown? Throwable
-                   (encryption/maybe-decrypt-accepting-plaintext secret-2 original-ciphertext))))))
+                   (encryption/maybe-decrypt original-ciphertext nil {:accept-plaintext true, :secret-key secret-2}))))))
 
 (deftest ^:parallel no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
     (mt/with-log-messages-for-level [messages :warn]
-      (encryption/maybe-decrypt-accepting-plaintext secret "abc")
+      (encryption/maybe-decrypt "abc" nil {:accept-plaintext true, :secret-key secret})
       (is (empty? (messages))))))
 
 (def ^:private fake-ciphertext
@@ -104,39 +104,41 @@
 (deftest ^:parallel possibly-encrypted-test
   (testing "a value shaped like ciphertext but that cannot be decrypted with the current key throws rather than being returned as-is"
     (is (thrown? Throwable
-                 (encryption/maybe-decrypt-accepting-plaintext secret fake-ciphertext)))))
+                 (encryption/maybe-decrypt fake-ciphertext nil {:accept-plaintext true, :secret-key secret})))))
 
 (deftest ^:parallel decryptable-string-test
   (testing "true only for ciphertext that decrypts with the given key"
-    (let [ciphertext (encryption/encrypt secret "WOW")]
-      (is (true? (encryption/decryptable-string? secret ciphertext)))
+    (let [ciphertext (encryption/encrypt "WOW" nil {:secret-key secret})]
+      (is (true? (encryption/decryptable-string? ciphertext nil {:secret-key secret})))
       (testing "false for ciphertext under another key"
-        (is (false? (encryption/decryptable-string? secret-2 ciphertext))))
+        (is (false? (encryption/decryptable-string? ciphertext nil {:secret-key secret-2}))))
       (testing "false with no key, even for genuine ciphertext"
-        (is (false? (encryption/decryptable-string? nil ciphertext))))))
+        (is (false? (encryption/decryptable-string? ciphertext nil {:secret-key nil}))
+            "false when no key is set"))))
   (testing "false for anything that is not ciphertext"
-    (is (false? (encryption/decryptable-string? secret "WOW")))
-    (is (false? (encryption/decryptable-string? secret "")))
-    (is (false? (encryption/decryptable-string? secret nil)))
+    (is (false? (encryption/decryptable-string? "WOW" nil {:secret-key secret})))
+    (is (false? (encryption/decryptable-string? "" nil {:secret-key secret})))
+    (is (false? (encryption/decryptable-string? nil nil {:secret-key secret})))
     (testing "including plaintext shaped like ciphertext, which `possibly-encrypted-string?` cannot tell apart"
       (is (true? (encryption/possibly-encrypted-string? fake-ciphertext)))
-      (is (false? (encryption/decryptable-string? secret fake-ciphertext))))))
+      (is (false? (encryption/decryptable-string? fake-ciphertext nil {:secret-key secret}))))))
 
 (deftest ^:parallel decryptable-bytes-test
   (let [plaintext  (codecs/to-bytes "WOW")
-        ciphertext (encryption/encrypt-bytes secret plaintext)
+        ciphertext (encryption/encrypt-bytes plaintext nil {:secret-key secret})
         fake-bytes (byte-array 64)]
     (testing "true only for ciphertext that decrypts with the given key"
-      (is (true? (encryption/decryptable-bytes? secret ciphertext)))
-      (is (false? (encryption/decryptable-bytes? secret-2 ciphertext)))
-      (is (false? (encryption/decryptable-bytes? nil ciphertext))))
+      (is (true? (encryption/decryptable-bytes? ciphertext nil {:secret-key secret})))
+      (is (false? (encryption/decryptable-bytes? ciphertext nil {:secret-key secret-2})))
+      (is (false? (encryption/decryptable-bytes? ciphertext nil {:secret-key nil}))
+          "false when no key is set"))
     (testing "false for anything that is not ciphertext"
-      (is (false? (encryption/decryptable-bytes? secret plaintext)))
-      (is (false? (encryption/decryptable-bytes? secret (byte-array 0))))
-      (is (false? (encryption/decryptable-bytes? secret nil)))
+      (is (false? (encryption/decryptable-bytes? plaintext nil {:secret-key secret})))
+      (is (false? (encryption/decryptable-bytes? (byte-array 0) nil {:secret-key secret})))
+      (is (false? (encryption/decryptable-bytes? nil nil {:secret-key secret})))
       (testing "including bytes shaped like ciphertext"
         (is (true? (encryption/possibly-encrypted-bytes? fake-bytes)))
-        (is (false? (encryption/decryptable-bytes? secret fake-bytes)))))))
+        (is (false? (encryption/decryptable-bytes? fake-bytes nil {:secret-key secret})))))))
 
 (deftest ^:parallel possibly-encrypted-returns-booleans-test
   (testing "the shape checks never return nil"
@@ -145,26 +147,26 @@
     (is (false? (encryption/possibly-encrypted-string? "not base64!")))
     (is (false? (encryption/possibly-encrypted-bytes? nil)))
     (is (false? (encryption/possibly-encrypted-bytes? (byte-array 3))))
-    (is (true? (encryption/possibly-encrypted-string? (encryption/encrypt secret "WOW"))))))
+    (is (true? (encryption/possibly-encrypted-string? (encryption/encrypt "WOW" nil {:secret-key secret}))))))
 
 (deftest ^:parallel maybe-decrypt-strict-test
   (testing "strict `maybe-decrypt`"
     (testing "decrypts a genuinely encrypted value"
-      (is (= "WOW" (encryption/maybe-decrypt secret (encryption/encrypt secret "WOW")))))
+      (is (= "WOW" (encryption/maybe-decrypt (encryption/encrypt "WOW" nil {:secret-key secret}) nil {:secret-key secret}))))
     (testing "throws on a value that is not encrypted"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
-                            (encryption/maybe-decrypt secret "{\"a\":100}")))
+                            (encryption/maybe-decrypt "{\"a\":100}" nil {:secret-key secret})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
-                            (encryption/maybe-decrypt secret "abc"))))
+                            (encryption/maybe-decrypt "abc" nil {:secret-key secret}))))
     (testing "throws on a value that looks encrypted but fails to decrypt (wrong key or corrupt)"
-      (is (thrown? Throwable (encryption/maybe-decrypt secret fake-ciphertext)))
-      (is (thrown? Throwable (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))
+      (is (thrown? Throwable (encryption/maybe-decrypt fake-ciphertext nil {:secret-key secret})))
+      (is (thrown? Throwable (encryption/maybe-decrypt (encryption/encrypt "WOW" nil {:secret-key secret}) nil {:secret-key secret-2}))))
     (testing "decrypts an encrypted byte array"
-      (is (= "WOW" (String. ^bytes (encryption/maybe-decrypt-bytes secret (encryption/encrypt-bytes secret (.getBytes "WOW")))))))
+      (is (= "WOW" (String. ^bytes (encryption/maybe-decrypt-bytes (encryption/encrypt-bytes (.getBytes "WOW") nil {:secret-key secret}) nil {:secret-key secret})))))
     (testing "passes nil through but rejects a blank (non-encrypted) string"
-      (is (nil? (encryption/maybe-decrypt nil)))
+      (is (nil? (encryption/maybe-decrypt nil nil)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
-                            (encryption/maybe-decrypt secret ""))))))
+                            (encryption/maybe-decrypt "" nil {:secret-key secret}))))))
 
 (deftest ^:parallel stream-encryption-test
   (testing "Can encrypt stream"

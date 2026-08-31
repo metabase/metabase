@@ -1782,10 +1782,10 @@
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
       ;; to hit it
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true" nil)}])
       (encryption-test/with-secret-key "whateverwhatever"
-        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
-                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
+        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4" nil)}
+                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4" nil)}]))
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                                  (update :details json/encode)
@@ -1834,9 +1834,9 @@
 (deftest ^:mb/old-migrations-test cache-config-handle-big-value-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true" nil)}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)) nil)}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)) nil)}])
       (migrate!)
       (is (=? [{:model    "root"
                 :strategy "ttl"
@@ -1848,9 +1848,9 @@
 (deftest ^:mb/old-migrations-test cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
-      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
-                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false" nil)}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100" nil)}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123" nil)}])
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults :model/Database)
                                                       (update :details json/encode)
@@ -1866,9 +1866,9 @@
     (testing "Root cache config for mysql is updated with correct values"
       (encryption-test/with-secret-key "whateverwhatever"
         (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
-          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
-                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
-                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}])
+          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true" nil)}
+                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4" nil)}
+                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4" nil)}])
           ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
           ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
           ;; contains zeros, we assume human did not touch it yet and update with existing (decrypted thanks to

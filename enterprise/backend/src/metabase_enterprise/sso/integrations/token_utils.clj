@@ -11,6 +11,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private token-source
+  "Binds an SDK validation token to this use, so no other encrypted value can be presented as one (or the reverse).
+  Tokens live 300 seconds, so ones issued before this existed have long expired."
+  "sso.sdk-token")
+
 (defn- hashed-key
   []
   (encryption/secret-key->hash (sso-settings/sdk-encryption-validation-key)))
@@ -22,7 +27,7 @@
         expiration (t/instant (t/plus timestamp (t/seconds 300)))
         nonce      (random-uuid)
         payload    (str (.getEpochSecond timestamp) "." (.getEpochSecond expiration) "." nonce)
-        encrypted  (encryption/encrypt (hashed-key) payload)]
+        encrypted  (encryption/encrypt payload token-source {:secret-key (hashed-key)})]
     (URLEncoder/encode encrypted "UTF-8")))
 
 (defn validate-token
@@ -33,7 +38,7 @@
         (not-empty token)
         (try
           (let [decoded-token     (URLDecoder/decode ^String token "UTF-8")
-                decrypted-payload (encryption/decrypt (hashed-key) decoded-token)
+                decrypted-payload (encryption/decrypt decoded-token token-source {:secret-key (hashed-key)})
                 [_ expiration _]  (str/split decrypted-payload #"\." 3)]
             (t/< (t/instant) (Instant/ofEpochSecond (Long/parseLong expiration))))
           (catch Exception _

@@ -304,16 +304,19 @@
   [tf assert-fn]
   (transform-validator-with-fixes tf assert-fn identity))
 
-(def encrypted-json-in
-  "Serialize encrypted json."
-  (comp encryption/maybe-encrypt json-in))
+(defn encrypted-json-in
+  "Serialize encrypted json, binding the ciphertext to `source` so it cannot be read from any other column."
+  [source]
+  (comp #(encryption/maybe-encrypt % source) json-in))
 
 (defn encrypted-json-out
   "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
-  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
-  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
-  [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. Like [[edn-out]], a value that decrypts (or,
+  with no key set, passes through) but is not valid JSON is logged and read as `nil` rather than crashing the whole
+  `t2/select`. Never returns the raw string: callers of a JSON column expect parsed JSON, and handing them the
+  undecrypted value instead only moves the failure somewhere less obvious."
+  [source v]
+  (let [decrypted (encryption/maybe-decrypt v source)]
     (try
       (some-> decrypted json/decode+kw)
       (catch Throwable e
@@ -321,31 +324,17 @@
                 (encryption/possibly-encrypted-bytes? decrypted))
           (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
           (log/errorf "Error parsing JSON: %s" (ex-message e)))
-        v))))
+        nil))))
 
 (def ^:private cached-encrypted-json-out
   (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
-
-(defn decrypt-error-context
-  "Wrap a decrypting transform `out-fn` so a failure names `source` (a \"table.column\" string) in the exception
-  message. The reader of an encrypted-at-rest column otherwise fails with a bare \"Expected an encrypted value...\"
-  that cannot be traced to a row without a debugger: only the message survives into the logs (ex-data is not
-  logged), so the source has to be part of it. The message never includes the value."
-  [source out-fn]
-  (fn [v]
-    (try
-      (out-fn v)
-      (catch Throwable e
-        (throw (ex-info (format "Error decrypting %s: %s" source (ex-message e))
-                        {:source source}
-                        e))))))
 
 (defn transform-encrypted-json
   "Encrypted-json transform for the column named by `source` (a \"table.column\" string, used in decrypt error
   messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   [source]
-  {:in  encrypted-json-in
-   :out (decrypt-error-context source cached-encrypted-json-out)})
+  {:in  (encrypted-json-in source)
+   :out (partial cached-encrypted-json-out source)})
 
 (defn transform-encrypted-text
   "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
@@ -353,8 +342,8 @@
   [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a properly
   encrypted one."
   [source]
-  {:in  encryption/maybe-encrypt
-   :out (decrypt-error-context source encryption/maybe-decrypt)})
+  {:in  #(encryption/maybe-encrypt % source)
+   :out #(encryption/maybe-decrypt % source)})
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -507,12 +496,39 @@
     (blob->bytes v)
     v))
 
+(defn- edn-in
+  "Encode a value as EDN. JSON would mangle values whose maps are keyed by anything but strings, or whose values are
+  keywords -- only EDN round-trips those."
+  [v]
+  (cond
+    (nil? v)    nil
+    (string? v) v
+    :else       (pr-str v)))
+
+(defn- edn-out
+  "Decode an EDN blob, recovering `nil` (with a warning) on parse failure rather than crashing the whole `t2/select`.
+  Bad rows can come from data written under an earlier transform (e.g. JSON), or from forward-compat scenarios where
+  the writer used types the reader can't parse -- neither should ever break a read."
+  [s]
+  (when (string? s)
+    (try
+      (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
+      (catch Throwable e
+        (log/warn e "Failed to parse an EDN column; returning nil")
+        nil))))
+
+(defn transform-encrypted-edn
+  "[[transform-encrypted-text]] over a value serialized as EDN, for the column named by `source`."
+  [source]
+  {:in  (comp #(encryption/maybe-encrypt % source) edn-in)
+   :out (comp edn-out #(encryption/maybe-decrypt % source))})
+
 (defn transform-secret-value
   "Transform for a secret `^bytes` column named by `source` (a \"table.column\" string, used in decrypt error
   messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   [source]
-  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (decrypt-error-context source (comp encryption/maybe-decrypt-bytes maybe-blob->bytes))})
+  {:in  (comp #(encryption/maybe-encrypt-bytes % source) codecs/to-bytes)
+   :out (comp #(encryption/maybe-decrypt-bytes % source) maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."

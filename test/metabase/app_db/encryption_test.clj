@@ -22,18 +22,29 @@
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (notification/seed-notification!)
-      (let [seeded (recipient-details)]
+      (let [source            "notification_recipient.details"
+            decryptable-here? #(encryption/decryptable-string? % source)
+            seeded            (recipient-details)]
         (is (seq seeded) "seeding created recipients with details")
-        (is (every? encryption/decryptable-string? seeded) "seeded through the current build: encrypted at rest")
+        (is (every? decryptable-here? seeded) "seeded through the current build: encrypted and bound to its column")
         (testing "an old build's seed re-writes the rows plaintext; the heal re-encrypts them"
           (t2/query {:update :notification_recipient
                      :set    {:details "{\"pattern\":\"plain\"}"}
                      :where  [:!= :details nil]})
-          (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
+          (is (not-any? decryptable-here? (recipient-details)) "now plaintext, as an old build leaves them")
           (mdb/encrypt-plaintext-columns!)
           (let [healed (recipient-details)]
-            (is (every? encryption/decryptable-string? healed))
-            (is (= "{\"pattern\":\"plain\"}" (encryption/decrypt (first healed))))))
+            (is (every? decryptable-here? healed))
+            (is (= "{\"pattern\":\"plain\"}" (encryption/decrypt (first healed) source)))))
+        (testing "a value encrypted before it was bound to its column is rewritten bound"
+          (t2/query {:update :notification_recipient
+                     :set    {:details (encryption/encrypt "{\"pattern\":\"unbound\"}" nil)}
+                     :where  [:!= :details nil]})
+          (is (not-any? decryptable-here? (recipient-details)) "unbound: the strict reader rejects it")
+          (mdb/encrypt-plaintext-columns!)
+          (let [healed (recipient-details)]
+            (is (every? decryptable-here? healed))
+            (is (= "{\"pattern\":\"unbound\"}" (encryption/decrypt (first healed) source)))))
         (testing "the strict reader that crashed startup now works: seeding runs cleanly again"
           (notification/seed-notification!))
         (testing "idempotent: a second run leaves every value byte-identical"

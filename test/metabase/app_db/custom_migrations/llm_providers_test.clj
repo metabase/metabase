@@ -13,13 +13,13 @@
 (defn- llm-setting-values
   [setting-keys]
   (into {}
-        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt-accepting-plaintext value)]))
+        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt value nil {:accept-plaintext true})]))
         (t2/query {:select [:key :value] :from :setting :where [:in :key setting-keys]})))
 
 (defn- insert-llm-settings!
   [settings]
   (t2/insert! :setting (for [[k v] settings]
-                         {:key k :value (encryption/maybe-encrypt v)})))
+                         {:key k :value (encryption/maybe-encrypt v nil)})))
 
 (defn- llm-connections
   []
@@ -113,11 +113,10 @@
                                "llm-metabot-provider"  "anthropic/claude-opus-4-1"})
         (migrate!)
         (t2/query {:update :setting
-                   :set    {:value (encryption/maybe-encrypt
-                                    (json/encode [{:key    "anthropic"
-                                                   :type   "anthropic"
-                                                   :name   "Anthropic"
-                                                   :config {:api-key "sk-ant-rotated"}}]))}
+                   :set    {:value (encryption/maybe-encrypt (json/encode [{:key    "anthropic"
+                                                                            :type   "anthropic"
+                                                                            :name   "Anthropic"
+                                                                            :config {:api-key "sk-ant-rotated"}}]) nil)}
                    :where  [:= :key "llm-providers"]})
         (migrate! :down 63)
         (testing "the rotated credential is what older code finds, not the one the upgrade started from"
@@ -132,11 +131,10 @@
       (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
       (migrate!)
       (t2/query {:update :setting
-                 :set    {:value (encryption/maybe-encrypt
-                                  (json/encode [{:key    "anthropic-evals"
-                                                 :type   "anthropic"
-                                                 :name   "Anthropic (evals)"
-                                                 :config {:api-key "sk-ant-evals"}}]))}
+                 :set    {:value (encryption/maybe-encrypt (json/encode [{:key    "anthropic-evals"
+                                                                          :type   "anthropic"
+                                                                          :name   "Anthropic (evals)"
+                                                                          :config {:api-key "sk-ant-evals"}}]) nil)}
                  :where  [:= :key "llm-providers"]})
       (insert-llm-settings! {"llm-metabot-provider" "anthropic-evals/claude-opus-4-1"})
       (migrate! :down 63)
@@ -153,11 +151,10 @@
       (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
       (migrate!)
       (t2/query {:update :setting
-                 :set    {:value (encryption/maybe-encrypt
-                                  (json/encode [{:key    "deepseek"
-                                                 :type   "deepseek"
-                                                 :name   "DeepSeek"
-                                                 :config {:api-key "sk-deepseek"}}]))}
+                 :set    {:value (encryption/maybe-encrypt (json/encode [{:key    "deepseek"
+                                                                          :type   "deepseek"
+                                                                          :name   "DeepSeek"
+                                                                          :config {:api-key "sk-deepseek"}}]) nil)}
                  :where  [:= :key "llm-providers"]})
       (insert-llm-settings! {"llm-metabot-provider" "deepseek/deepseek-v4-flash"})
       (migrate! :down 63)
@@ -184,7 +181,7 @@
                                                       "llm-metabot-provider"]]}))]
           (testing "the API key is sensitive, so it comes back as ciphertext"
             (is (not= "sk-ant-stored" (get raw "llm-anthropic-api-key")))
-            (is (= "sk-ant-stored" (encryption/maybe-decrypt-accepting-plaintext (get raw "llm-anthropic-api-key")))))
+            (is (= "sk-ant-stored" (encryption/maybe-decrypt (get raw "llm-anthropic-api-key") nil {:accept-plaintext true}))))
           (testing "settings declared :encryption :no come back as the plaintext they were declared to hold"
             (is (= "https://self-hosted.example" (get raw "llm-anthropic-api-base-url")))
             (is (= "anthropic/claude-opus-4-1" (get raw "llm-metabot-provider")))))))))

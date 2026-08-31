@@ -94,7 +94,8 @@
   [setting-key]
   (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
           :value
-          encryption/maybe-decrypt-accepting-plaintext))
+          (encryption/maybe-decrypt (encryption/setting-source setting-key)
+                                    {:accept-plaintext true, :accept-unbound true})))
 
 (defn- non-blank
   [value]
@@ -103,10 +104,11 @@
 
 (defn- write-setting!
   "Writes `value` for `setting-key`, encrypted only when `encrypt?` — a setting declared `:encryption :no` should
-  not come out of a downgrade holding ciphertext, even though reads would decrypt it opportunistically."
+  not come out of a downgrade holding ciphertext, even though reads would decrypt it opportunistically. Written
+  unbound (no source): this is a downgrade, so the older build that reads it back knows nothing of binding."
   [setting-key value encrypt?]
   (t2/query {:delete-from :setting :where [:= :key setting-key]})
-  (t2/insert! :setting {:key setting-key :value (cond-> value encrypt? encryption/maybe-encrypt)}))
+  (t2/insert! :setting {:key setting-key :value (cond-> value encrypt? (encryption/maybe-encrypt nil))}))
 
 ;;; ------------------------------------------------------ Up ------------------------------------------------------
 

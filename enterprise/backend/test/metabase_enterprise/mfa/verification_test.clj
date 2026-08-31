@@ -183,18 +183,17 @@
                                              :credentials  {:secret secret}}))
           (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
                 raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
+                source    "auth_identity.credentials"
                 plaintext (encryption-test/with-secret-key k1
-                            (encryption/maybe-decrypt-accepting-plaintext raw))
+                            (encryption/maybe-decrypt raw source {:accept-plaintext true}))
                 rotated   (encryption-test/with-secret-key k2
-                            (encryption/maybe-encrypt plaintext))]
+                            (encryption/maybe-encrypt plaintext source))]
             (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
             (t2/update! :auth_identity ai-id {:credentials rotated}))
           (encryption-test/with-secret-key k2
             (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))
                 "the rotated enrollment verifies under the new key"))
           (encryption-test/with-secret-key k1
-            ;; encrypted-json-out falls back to the raw ciphertext string, on which the
-            ;; timestamp-parsing transform then blows up — either way the old key can't read the row
             (is (thrown? Exception
                          (t2/select-one-fn :credentials :model/AuthIdentity
                                            :user_id user-id :provider "totp"))

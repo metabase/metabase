@@ -153,6 +153,11 @@
     (throw (ex-info (tru "OIDC authentication requires MB_ENCRYPTION_SECRET_KEY to be set. Please configure encryption to use OIDC authentication.")
                     {:status-code 500}))))
 
+(def ^:private state-source
+  "Binds an OIDC state token to this use, so no other encrypted value can be replayed as one (or the reverse). A token
+  issued before this existed no longer decrypts, which just restarts the login it was part of."
+  "oidc.state")
+
 (defn encrypt-state
   "Encrypt OIDC state payload to a URL-safe string.
 
@@ -162,7 +167,7 @@
   (assert-encryption-enabled!)
   (-> state-map
       json/encode
-      encryption/encrypt))
+      (encryption/encrypt state-source)))
 
 (defn decrypt-state
   "Decrypt and validate OIDC state from encrypted string.
@@ -180,7 +185,7 @@
    (when encrypted-state
      (try
        (let [state-map (-> encrypted-state
-                           encryption/decrypt
+                           (encryption/decrypt state-source)
                            json/decode+kw)
              now       (t/to-millis-from-epoch (t/instant))]
          (cond

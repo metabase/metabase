@@ -130,16 +130,21 @@
         s))
     s))
 
-(def ^:private encrypted-json-in
-  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+(defn- encrypted-json-in
+  "Should mirror [[metabase.models.interface/encrypted-json-in]], writing the unbound form these columns held when
+  these migrations were written. The startup job rewrites every such value bound to its column before the app reads
+  it, so a migration never has to know the binding to write one."
+  [v]
+  (encryption/maybe-encrypt (json-in v) nil))
 
 (defn- encrypted-json-out
-  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
-  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
-  [v]
+  "Lenient deserialize of the encrypted-json column named by `source`, for reading legacy rows during migrations. Takes
+  a value in any form such a column has ever held: plaintext at rest, encrypted unbound (what these columns held when
+  these migrations were written, and what the migrations themselves write), or encrypted and bound to `source` (a row
+  a newer build has rewritten, reachable by migrating down and back up)."
+  [source v]
   (try
-    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (json/decode+kw (encryption/maybe-decrypt v source {:accept-plaintext true, :accept-unbound true}))
     (catch Throwable e
       (if (or (encryption/possibly-encrypted-string? v)
               (encryption/possibly-encrypted-bytes? v))
@@ -724,7 +729,7 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (encrypted-json-out settings)
+                      (let [settings     (encrypted-json-out "metabase_database.settings" settings)
                             options      (json-out options true)
                             new-settings (encrypted-json-in (merge settings options))]
                         (t2/query {:update :metabase_database
@@ -737,7 +742,7 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (encrypted-json-out settings)
+                        (let [settings (encrypted-json-out "metabase_database.settings" settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
@@ -1107,7 +1112,7 @@
   ;; See #40715
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (when-let [;; find all dbs which are configured not to scan field values
-               dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
+               dbs (seq (filter #(and (-> (encrypted-json-out "metabase_database.details" (:details %)) :let-user-control-scheduling)
                                       (false? (:is_full_sync %)))
                                 (t2/select :metabase_database)))]
       (doseq [db dbs]
@@ -1210,7 +1215,7 @@
             example-dashboard-id  1
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            dbs                   (map #(update % :details encryption/maybe-encrypt)
+            dbs                   (map #(update % :details encryption/maybe-encrypt nil)
                                        (table-name->rows table-name->raw-rows :metabase_database))
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
@@ -1244,7 +1249,7 @@
               ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
-                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
+                                        :value (encryption/maybe-encrypt (str example-dashboard-id) nil)}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1409,7 +1414,8 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt-accepting-plaintext))
+          (encryption/maybe-decrypt (encryption/setting-source key)
+                                    {:accept-plaintext true, :accept-unbound true})))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -1427,10 +1433,10 @@
                                          "uploads-schema-name"
                                          "uploads-table-prefix"]]}))
   (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
-    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
-                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
-                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
+    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)) nil)}
+                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true" nil)}
+                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db) nil)}
+                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db) nil)}]]
       (->> settings
            (filter :value)
            (t2/insert! :setting)))))
@@ -1768,7 +1774,7 @@
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
   (let [update-one! (fn [{:keys [id details]}]
-                      (let [decrypted-details (encrypted-json-out details)
+                      (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
                             dbname (:dbname decrypted-details)
@@ -1788,7 +1794,7 @@
                                            :from   [:metabase_database]
                                            :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
-                        (let [decrypted-details (encrypted-json-out details)
+                        (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
                               new-details (dissoc decrypted-details
                                                   :enable-multiple-db
                                                   :db-filters-type
@@ -1960,7 +1966,7 @@
                                                 [:= :uploads_enabled true]]})
         ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
         set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
-                                   (let [decrypted-details (encrypted-json-out details)
+                                   (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
                                          db-name (:dbname decrypted-details)]
                                      (when (and db-name (not uploads_schema_name))
                                        (t2/query {:update :metabase_database
@@ -2227,7 +2233,7 @@
   ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
   ;; written by older code; new code writes only the column.
   (run! (fn [{:keys [id credentials]}]
-          (let [creds        (encrypted-json-out credentials)
+          (let [creds        (encrypted-json-out "auth_identity.credentials" credentials)
                 confirmed-at (when (map? creds)
                                (try
                                  (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
@@ -2249,9 +2255,9 @@
 (define-migration EncryptAuthIdentityCredentials
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id credentials]}]
-            (when (not (encryption/decryptable-string? credentials))
+            (when (not (encryption/decryptable-string? credentials nil))
               (t2/query {:update :auth_identity
-                         :set    {:credentials (encryption/encrypt credentials)}
+                         :set    {:credentials (encryption/encrypt credentials nil)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :credentials]
                                :from   [:auth_identity]
@@ -2260,18 +2266,18 @@
 (define-reversible-migration EncryptApiKeys
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
-            (when (not (encryption/decryptable-string? k))
+            (when (not (encryption/decryptable-string? k nil))
               (t2/query {:update :api_key
-                         :set    {:key (encryption/encrypt k)}
+                         :set    {:key (encryption/encrypt k nil)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]
                                :where  [:!= :key nil]})))
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
-            (when (encryption/decryptable-string? k)
+            (when (encryption/decryptable-string? k nil)
               (t2/query {:update :api_key
-                         :set    {:key (encryption/decrypt k)}
+                         :set    {:key (encryption/decrypt k nil)}
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]
@@ -2291,9 +2297,9 @@
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
-            (when (not (encryption/decryptable-string? value))
+            (when (not (encryption/decryptable-string? value nil))
               (t2/query {:update :setting
-                         :set    {:value (encryption/encrypt value)}
+                         :set    {:value (encryption/encrypt value nil)}
                          :where  [:= :key key]})))
           (t2/reducible-query {:select [:key :value]
                                :from   [:setting]
@@ -2306,9 +2312,9 @@
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
-            (when (encryption/decryptable-string? value)
+            (when (encryption/decryptable-string? value nil)
               (t2/query {:update :setting
-                         :set    {:value (encryption/decrypt value)}
+                         :set    {:value (encryption/decrypt value nil)}
                          :where  [:= :key key]})))
           (t2/reducible-query {:select [:key :value]
                                :from   [:setting]
@@ -2389,9 +2395,9 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
-              (when (not (encryption/decryptable-string? public_uuid))
+              (when (not (encryption/decryptable-string? public_uuid nil))
                 (t2/query {:update table
-                           :set    {:public_uuid (encryption/encrypt public_uuid)}
+                           :set    {:public_uuid (encryption/encrypt public_uuid nil)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
@@ -2399,9 +2405,9 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
-              (when (encryption/decryptable-string? public_uuid)
+              (when (encryption/decryptable-string? public_uuid nil)
                 (t2/query {:update table
-                           :set    {:public_uuid (encryption/decrypt public_uuid)}
+                           :set    {:public_uuid (encryption/decrypt public_uuid nil)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :public_uuid]
                                  :from   [table]
@@ -2411,9 +2417,9 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
-              (when (not (encryption/decryptable-string? details))
+              (when (not (encryption/decryptable-string? details nil))
                 (t2/query {:update table
-                           :set    {:details (encryption/encrypt details)}
+                           :set    {:details (encryption/encrypt details nil)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :details]
                                  :from   [table]
@@ -2421,9 +2427,9 @@
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
-              (when (encryption/decryptable-string? details)
+              (when (encryption/decryptable-string? details nil)
                 (t2/query {:update table
-                           :set    {:details (encryption/decrypt details)}
+                           :set    {:details (encryption/decrypt details nil)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id :details]
                                  :from   [table]
@@ -2453,7 +2459,7 @@
               (when (and (string? value)
                          (not (encryption/possibly-encrypted-string? value)))
                 (t2/query {:update table
-                           :set    {column (encryption/maybe-encrypt value)}
+                           :set    {column (encryption/maybe-encrypt value nil)}
                            :where  [:= :id id]})))
             (t2/reducible-query {:select [:id [column :value]]
                                  :from   [table]
@@ -2462,7 +2468,7 @@
             (let [value (secret-value->bytes value)]
               (when (and value (not (encryption/possibly-encrypted-bytes? value)))
                 (t2/query {:update :secret
-                           :set    {:value (encryption/maybe-encrypt-bytes value)}
+                           :set    {:value (encryption/maybe-encrypt-bytes value nil)}
                            :where  [:= :id id]}))))
           (t2/reducible-query {:select [:id :value]
                                :from   [:secret]

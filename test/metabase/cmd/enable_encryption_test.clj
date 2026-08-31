@@ -41,10 +41,12 @@
             (is (= "unencrypted" (raw-value "encryption-check"))))
           (testing "the command encrypts everything and writes the sentinel"
             (enable-encryption!)
-            (is (encryption/decryptable-string? (raw-value "encryption-check")))
-            (is (encryption/decryptable-string? (raw-value "test-setting")))
+            (is (encryption/decryptable-string? (raw-value "encryption-check") nil))
+            (is (encryption/decryptable-string? (raw-value "test-setting")
+                                                (encryption/setting-source "test-setting")))
             (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "test-setting")))
-            (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)))
+            (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)
+                                                "metabase_database.details"))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"
             (is (= :done (restart!))))

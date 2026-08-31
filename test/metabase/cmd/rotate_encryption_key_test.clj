@@ -59,8 +59,8 @@
           ;; the original definition of mi/transform-encrypted-json has a cached version of out transform
           ;; in this test we change they key multiple times and we don't want the value to be cached when key change
           (with-redefs [mi/transform-encrypted-json (fn [source]
-                                                      {:in  mi/encrypted-json-in
-                                                       :out (mi/decrypt-error-context source mi/encrypted-json-out)})]
+                                                      {:in  (mi/encrypted-json-in source)
+                                                       :out (partial mi/encrypted-json-out source)})]
             (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                       ;; at this point, all the state switching craziness that happens for
                       ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
@@ -211,9 +211,9 @@
     (testing "when encryption-check verifies the key, a clearable column under an unknown key is reset to {} instead of aborting"
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
-          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
-          (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}"))
-                bad-id  (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))]
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid)) nil))
+          (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}" nil))
+                bad-id  (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" nil {:secret-key k2-hashed}))]
             (mdb/decrypt-db :h2 (mdb/data-source))
             (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
             (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
@@ -221,8 +221,8 @@
     (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
       (mt/with-empty-h2-app-db!
         (let [user-id (encryption-test/with-secret-key k1
-                        (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
-                        (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}")))
+                        (set-encryption-check-raw! (encryption/encrypt (str (random-uuid)) nil))
+                        (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}" nil)))
               raw-settings (t2/select-one-fn :settings :core_user :id user-id)]
           (encryption-test/with-secret-key k2
             (is (thrown-with-msg?
@@ -234,7 +234,7 @@
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
           (t2/delete! :setting :key "encryption-check")
-          (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
+          (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" nil {:secret-key k2-hashed}))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
@@ -242,8 +242,8 @@
     (testing "an undecryptable value in a non-clearable column aborts even when the key is verified"
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
-          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
-          (insert-channel-with-raw-details! (encryption/encrypt k2-hashed "{\"url\":\"http://bad\"}"))
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid)) nil))
+          (insert-channel-with-raw-details! (encryption/encrypt "{\"url\":\"http://bad\"}" nil {:secret-key k2-hashed}))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"

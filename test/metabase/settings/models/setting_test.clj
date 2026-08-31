@@ -623,6 +623,10 @@
                   :where  [:= :key (name setting-key)]})
       first :value))
 
+(def ^:private toucan-name-source
+  "What `toucan-name`'s value at rest is encrypted against, so raw-row assertions read it the way the app does."
+  (encryption/setting-source :toucan-name))
+
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
     ;; Setting an encryption key without running encrypt-db leaves the other encrypted settings in the shared app DB
@@ -646,10 +650,10 @@
   (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
     (encryption-test/with-secret-key "0123456789abcdef"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"Error decrypting setting \"toucan-name\": Expected an encrypted value"
+                                    #"Error decrypting setting\.toucan-name: Expected an encrypted value"
                                     (#'setting/decrypt-setting-value-on-read {:key "toucan-name" :value "plaintext-sekret"})))]
         (is (not (re-find #"sekret" (ex-message e))))
-        (is (= "toucan-name" (:setting-key (ex-data e))))))))
+        (is (= "setting.toucan-name" (:source (ex-data e))))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
@@ -1772,7 +1776,7 @@
     (mdb/setup-db! :create-sample-content? false)
     (testing "It works when a secret key is set"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
+        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar" nil)})
         ;; Sanity check: the value is encrypted
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
         (setting/migrate-encrypted-settings!)
@@ -1782,7 +1786,7 @@
     (testing "It doesn't do anything when the secret key is not set"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (t2/delete! :setting :key "test-never-encrypted-setting")
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
+        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar" nil)}))
       (encryption-test/with-secret-key nil
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
         (setting/migrate-encrypted-settings!)
@@ -1806,8 +1810,8 @@
         (reset! (#'setting.cache/cache*) nil)
         (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0)
         (setting/migrate-encrypted-settings!))
-      (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-      (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name)))))))
+      (is (encryption/decryptable-string? (actual-value-in-db :toucan-name) toucan-name-source))
+      (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name) toucan-name-source))))))
 
 (deftest migrate-encrypted-settings!-encrypts-strict-settings
   ;; raw :setting (not :model/Setting) throughout: the model's before-insert would encrypt the value, and these tests
@@ -1817,10 +1821,10 @@
     (testing "a plaintext row of a setting that encrypts is encrypted at rest on startup (e.g. after a downgraded boot decrypted it)"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
-        (is (not (encryption/decryptable-string? (actual-value-in-db :toucan-name))))
+        (is (not (encryption/decryptable-string? (actual-value-in-db :toucan-name) toucan-name-source)))
         (setting/migrate-encrypted-settings!)
-        (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-        (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name))))
+        (is (encryption/decryptable-string? (actual-value-in-db :toucan-name) toucan-name-source))
+        (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name) toucan-name-source)))
         (testing "already-encrypted rows are left byte-identical"
           (let [before (actual-value-in-db :toucan-name)]
             (setting/migrate-encrypted-settings!)

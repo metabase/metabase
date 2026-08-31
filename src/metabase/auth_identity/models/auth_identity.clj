@@ -39,9 +39,12 @@
 ;; shared secret — survive `rotate-encryption-key`, which re-encrypts whole columns and cannot
 ;; reach fields nested inside JSON. The column is listed in
 ;; `metabase.app-db.encryption/encrypted-string-columns`.
+(def ^:private transform-credentials
+  (let [{:keys [in out]} (mi/transform-encrypted-json "auth_identity.credentials")]
+    {:in in, :out (comp parse-credentials-timestamps-out out)}))
+
 (t2/deftransforms :model/AuthIdentity
-  {:credentials {:in mi/encrypted-json-in
-                 :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
+  {:credentials transform-credentials
    :metadata mi/transform-json})
 
 ;;; ------------------------------------------------ Password Hashing ------------------------------------------------

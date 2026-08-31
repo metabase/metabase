@@ -1749,14 +1749,26 @@
                                                             [:in :key (map setting-name plaintext)]
                                                             ;; these are *definitely* decrypted already, let's not bother looking
                                                             [:not [:in :value ["true" "false"]]]]})
-                  :when (encryption/decryptable-string? v)]
-            (t2/update! :setting :key k {:value (encryption/decrypt v)}))
+                  :let  [source (encryption/setting-source k)]
+                  :when (or (encryption/decryptable-string? v source)
+                            (encryption/decryptable-string? v nil))]
+            (t2/update! :setting :key k
+                        {:value (encryption/maybe-decrypt v source {:accept-plaintext true, :accept-unbound true})}))
           (doseq [{v :value k :key}
                   (t2/select :setting {:for :update :where [:and
                                                             [:in :key (map setting-name encrypting)]
                                                             [:!= :value nil]]})
-                  :when (not (encryption/decryptable-string? v))]
-            (t2/update! :setting :key k {:value (encryption/encrypt v)})))))))
+                  :let  [source (encryption/setting-source k)]
+                  ;; also catches a value encrypted before it was bound to this setting, so it is rewritten bound
+                  :when (not (encryption/decryptable-string? v source))
+                  :let  [plaintext (try
+                                     (encryption/maybe-decrypt v source {:accept-plaintext true, :accept-unbound true})
+                                     (catch Throwable _
+                                       (log/warnf "Setting %s cannot be read with the current encryption key; leaving it as it is."
+                                                  k)
+                                       nil))]
+                  :when plaintext]
+            (t2/update! :setting :key k {:value (encryption/encrypt plaintext source)})))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
@@ -1768,7 +1780,10 @@
       (cond-> setting-model
         (or (nil? resolved)
             (encrypts? resolved))
-        (update :value encryption/maybe-encrypt)))))
+        ;; `string?` because a value can also be a HoneySQL form the database evaluates itself (the way
+        ;; `settings-last-updated` is written): there is nothing to encrypt in one, and it has no definition to
+        ;; resolve, so it would otherwise take the fallback branch above.
+        (update :value #(cond-> % (string? %) (encryption/maybe-encrypt (encryption/setting-source (:key setting-model)))))))))
 
 (t2/define-before-update :model/Setting
   [setting]
@@ -1782,19 +1797,16 @@
   "Decrypt a Setting's `:value` on read. A setting whose `:encryption` is not `:no` is stored encrypted at rest, so it
   is read strictly with [[encryption/maybe-decrypt]]: a plaintext value — forged via a direct DB write, or a legacy row
   from before the setting became encrypted — is rejected rather than trusted. A `:no` setting (or one with no code
-  definition, e.g. in tests) is intentionally plaintext, so it is read leniently with
-  [[encryption/maybe-decrypt-accepting-plaintext]], which returns a plaintext value unchanged."
+  definition, e.g. in tests) is intentionally plaintext, so it is read with `:accept-plaintext`, which returns a
+  plaintext value unchanged. A failure names the setting, since [[encryption/setting-source]] is what the value is
+  bound to."
   [setting]
-  (let [resolved (maybe-resolve-setting (:key setting))
-        decrypt  (if (or (nil? resolved) (not (encrypts? resolved)))
-                   encryption/maybe-decrypt-accepting-plaintext
-                   encryption/maybe-decrypt)]
-    (try
-      (update setting :value decrypt)
-      (catch Throwable e
-        (throw (ex-info (format "Error decrypting setting \"%s\": %s" (:key setting) (ex-message e))
-                        {:setting-key (:key setting)}
-                        e))))))
+  (let [source  (encryption/setting-source (:key setting))
+        resolved (maybe-resolve-setting (:key setting))
+        decrypt (if (or (nil? resolved) (not (encrypts? resolved)))
+                  #(encryption/maybe-decrypt % source {:accept-plaintext true})
+                  #(encryption/maybe-decrypt % source))]
+    (update setting :value decrypt)))
 
 (t2/define-after-select :model/Setting
   [setting]
