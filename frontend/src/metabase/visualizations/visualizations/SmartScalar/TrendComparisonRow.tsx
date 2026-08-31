@@ -1,24 +1,16 @@
 import { Badge, Box, Flex, Text, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
-import { formatValue } from "metabase/value-formatting";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
 
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import S from "./TrendComparisonRow.module.css";
 import {
-  CHANGE_TYPE_OPTIONS,
   type ComparisonResult,
   type Trend,
+  getComparisonDisplay,
 } from "./compute";
 import { TEXT_SPACING } from "./constants";
-
-const getChangeSign = (percentChange: number | undefined) => {
-  if (percentChange == null || percentChange === 0) {
-    return "";
-  }
-  return percentChange < 0 ? "-" : "+";
-};
 
 const SIZE_GAPS = { sm: TEXT_SPACING, lg: 6 };
 
@@ -47,36 +39,21 @@ export function TrendComparisonRow({
     return null;
   }
 
+  const { comparisonDescStr, comparisonDescShortStr } = comparison;
   const {
-    changeColorName,
-    changeType,
-    comparisonDescStr,
-    comparisonDescShortStr,
-    comparisonValue,
-    percentChange,
-  } = comparison;
+    isChanged,
+    signedPercent,
+    valueDisplay: comparisonValueDisplay,
+    sentimentColor,
+  } = getComparisonDisplay(comparison, formatOptions, {
+    compact: compactValue,
+  });
 
-  const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
-  const isMissing = changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
-  const changeColor =
-    changeColorName != null
-      ? (`${changeColorName}-strong` as const)
-      : "text-secondary";
+  const changeColor = sentimentColor ?? "text-secondary";
   const changeDesc = isChanged
     ? (comparisonDescShortStr ?? comparisonDescStr)
     : comparisonDescStr;
-  const changeSign = isChanged ? getChangeSign(percentChange) : "";
-  const changeText = [
-    `${changeSign}${comparison.display.percentChange}`,
-    changeDesc,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const comparisonValueDisplay = isChanged
-    ? formatValue(comparisonValue, { ...formatOptions, compact: compactValue })
-    : isMissing
-      ? comparison.display.comparisonValue
-      : null;
+  const changeText = [signedPercent, changeDesc].filter(Boolean).join(" ");
   const extraComparisonsCount = comparisons.length - 1;
 
   const showsPanel = percentOnly || extraComparisonsCount > 0 || isTruncated;
@@ -111,8 +88,7 @@ export function TrendComparisonRow({
         <Box ref={comparisonTextRef} className={S.comparisonText}>
           {percentOnly ? (
             <Text component="span" fz={size} lh={size} c={changeColor}>
-              {changeSign}
-              {comparison.display.percentChange}
+              {signedPercent}
             </Text>
           ) : (
             <>

@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Stack, Text, Tooltip, rem } from "metabase/ui";
+import { Box, Stack, Text, rem } from "metabase/ui";
 import {
-  ScalarActionButtons,
-  ScalarTitle,
+  ScalarCardShell,
+  useScalarCardShell,
+} from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import {
   ScalarValue,
   ScalarWrapper,
-  TITLE_TOOLTIP_OFFSET,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
-import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import type {
@@ -22,34 +22,36 @@ import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 import { TrendComparisonList } from "./TrendComparisonList";
 import { TrendComparisonRow } from "./TrendComparisonRow";
 import { TrendSymbol } from "./TrendSymbol";
-import { CHANGE_TYPE_OPTIONS, computeTrend } from "./compute";
+import { computeTrend, getComparisonDisplay } from "./compute";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
 
-function SmartScalarComponent({
-  onVisualizationClick,
-  settings,
-  visualizationIsClickable,
-  series,
-  rawSeries,
-  width,
-  height,
-  fontFamily,
-  onRenderError,
-  showTitle,
-  actionButtons,
-  getHref,
-  onChangeCardAndRun,
-  isVisualizerCard,
-  isQueryBuilder,
-  isDashboard,
-  isEditing,
-}: VisualizationProps & VisualizationPassThroughProps) {
+function SmartScalarComponent(
+  props: VisualizationProps & VisualizationPassThroughProps,
+) {
+  const {
+    onVisualizationClick,
+    settings,
+    visualizationIsClickable,
+    series,
+    rawSeries,
+    width,
+    fontFamily,
+    onRenderError,
+    actionButtons,
+    isQueryBuilder,
+    isStandaloneQuestion,
+  } = props;
+
   const scalarRef = useRef(null);
-  const [isInnerTooltipHovered, setIsInnerTooltipHovered] = useState(false);
-  const innerTooltipHoverHandlers = {
-    onMouseEnter: () => setIsInnerTooltipHovered(true),
-    onMouseLeave: () => setIsInnerTooltipHovered(false),
-  };
+  const {
+    tier,
+    rootFontScale,
+    availableWidth,
+    title,
+    titleElement,
+    showsTitleTooltip,
+    innerTooltipHoverHandlers,
+  } = useScalarCardShell(props);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -88,22 +90,20 @@ function SmartScalarComponent({
     }
   };
 
-  const tier = getScalarSizeTier(width, height);
   const isSmallestTier = !tier.showsTitle;
 
   const primaryComparison = comparisons[0];
-  const symbolDirection = isSmallestTier
-    ? null
-    : (primaryComparison?.changeArrowIconName ??
-      (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
-        ? "no_change"
-        : null));
+  const symbolDirection =
+    isSmallestTier || primaryComparison == null
+      ? null
+      : getComparisonDisplay(primaryComparison, formatOptions).symbolDirection;
 
-  const availableWidth = Math.max(width - tier.xPadding * 2, 0);
   const symbolAllowance =
-    symbolDirection != null ? tier.symbolSize + tier.symbolGap : 0;
+    symbolDirection != null
+      ? (tier.symbolSize + tier.symbolGap) * rootFontScale
+      : 0;
   const valueMaxWidth = Math.max(
-    width - 2 * Math.max(tier.xPadding, symbolAllowance),
+    width - 2 * Math.max(tier.xPadding * rootFontScale, symbolAllowance),
     0,
   );
 
@@ -114,20 +114,7 @@ function SmartScalarComponent({
     formatOptions,
   );
 
-  const title = showTitle ? settings["card.title"] : null;
-  const showsInlineTitle = Boolean(title) && tier.showsTitle;
-  const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
-  const description =
-    isDashboard && isEditing ? null : settings["card.description"];
-
-  const canSelectTitle = onChangeCardAndRun != null && !isVisualizerCard;
-  const handleSelectTitle = () =>
-    onChangeCardAndRun?.({ nextCard: rawSeries[0].card });
-
   const hasValueTooltip = fullScalarValue !== displayValue;
-  // show one tooltip at a time: the title tooltip yields to the value and
-  // comparison tooltips while their targets are hovered
-  const showsTitleTooltip = showsTitleOnHover && !isInnerTooltipHovered;
 
   const valueElement = (
     <ScalarValueContainer
@@ -162,7 +149,7 @@ function SmartScalarComponent({
     </Box>
   );
 
-  if (isQueryBuilder) {
+  if (isQueryBuilder || isStandaloneQuestion) {
     const hasSingleComparison = comparisons.length === 1;
 
     return (
@@ -210,61 +197,41 @@ function SmartScalarComponent({
   }
 
   return (
-    <Tooltip
-      label={title}
-      disabled={!showsTitleTooltip}
-      position="top"
-      offset={TITLE_TOOLTIP_OFFSET}
+    <ScalarCardShell
+      tier={tier}
+      title={title}
+      showsTitleTooltip={showsTitleTooltip}
+      actionButtons={actionButtons}
+      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
     >
-      <ScalarWrapper xPadding={tier.xPadding}>
-        <ScalarActionButtons tier={tier} {...innerTooltipHoverHandlers}>
-          {actionButtons}
-        </ScalarActionButtons>
-        <Stack
-          pos="relative"
-          align="center"
-          gap={tier.valueTitleGap}
-          maw="100%"
-          data-testid="scalar-content"
+      <Box
+        pos="relative"
+        // measured pixels, not a design size — must not be rem-scaled
+        maw={`${valueMaxWidth}px`}
+        {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
+      >
+        {valueElement}
+        {symbolElement}
+      </Box>
+      {titleElement}
+      {comparisons.length > 0 && (
+        <Box
+          pos="absolute"
+          top={`calc(100% + ${rem(tier.comparisonGap)})`}
+          left="50%"
+          // measured pixels, not a design size — must not be rem-scaled
+          w={`${availableWidth}px`}
+          style={{ transform: "translateX(-50%)" }}
+          {...innerTooltipHoverHandlers}
         >
-          <Box
-            pos="relative"
-            // measured pixels, not a design size — must not be rem-scaled
-            maw={`${valueMaxWidth}px`}
-            {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
-          >
-            {valueElement}
-            {symbolElement}
-          </Box>
-          {showsInlineTitle && (
-            <ScalarTitle
-              description={description}
-              getHref={canSelectTitle ? getHref : undefined}
-              onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
-            >
-              {title}
-            </ScalarTitle>
-          )}
-          {comparisons.length > 0 && (
-            <Box
-              pos="absolute"
-              top={`calc(100% + ${rem(tier.comparisonGap)})`}
-              left="50%"
-              // measured pixels, not a design size — must not be rem-scaled
-              w={`${availableWidth}px`}
-              style={{ transform: "translateX(-50%)" }}
-              {...innerTooltipHoverHandlers}
-            >
-              <TrendComparisonRow
-                trend={trend}
-                formatOptions={formatOptions}
-                percentOnly={isSmallestTier}
-              />
-            </Box>
-          )}
-        </Stack>
-      </ScalarWrapper>
-    </Tooltip>
+          <TrendComparisonRow
+            trend={trend}
+            formatOptions={formatOptions}
+            percentOnly={isSmallestTier}
+          />
+        </Box>
+      )}
+    </ScalarCardShell>
   );
 }
 

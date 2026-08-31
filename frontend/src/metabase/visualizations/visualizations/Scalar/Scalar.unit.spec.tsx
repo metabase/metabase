@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { render, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  render,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
@@ -109,6 +115,83 @@ describe("Scalar", () => {
         nextCard: expect.objectContaining({ display: "scalar" }),
       }),
     );
+  });
+
+  it("should compute the title link on mousedown so middle-click and copy-link never see the placeholder", () => {
+    const getHref = jest.fn(() => "/question/42");
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        onChangeCardAndRun={jest.fn()}
+        getHref={getHref}
+        width={230}
+        height={150}
+      />,
+    );
+
+    const link = screen.getByTestId("legend-label");
+    expect(link).toHaveAttribute("href", "#");
+
+    fireEvent.mouseDown(link);
+
+    expect(getHref).toHaveBeenCalled();
+    expect(link).toHaveAttribute("href", "/question/42");
+  });
+
+  it("should navigate from a visualizer card with a single underlying question", async () => {
+    const onChangeCardAndRun = jest.fn();
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        isVisualizerCard
+        titleMenuItems={<div>menu item</div>}
+        visualizerRawSeries={series(999)}
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        onChangeCardAndRun={onChangeCardAndRun}
+        width={230}
+        height={150}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("Scalar Title"));
+
+    expect(onChangeCardAndRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextCard: expect.objectContaining({ display: "scalar" }),
+      }),
+    );
+  });
+
+  it("should not navigate from a visualizer card with several underlying questions", async () => {
+    const onChangeCardAndRun = jest.fn();
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        isVisualizerCard
+        titleMenuItems={[<div key="1" />, <div key="2" />]}
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        onChangeCardAndRun={onChangeCardAndRun}
+        width={230}
+        height={150}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("Scalar Title"));
+
+    expect(onChangeCardAndRun).not.toHaveBeenCalled();
   });
 
   it("should show the description in a tooltip on the title info icon", async () => {

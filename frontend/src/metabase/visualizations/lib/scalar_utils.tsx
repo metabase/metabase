@@ -12,11 +12,11 @@ import type {
 // separators ≈0.22em), so borderline values compact instead of overflowing
 const CHAR_WIDTH_EM = 0.6;
 const THIN_CHAR_WIDTH_EM = 0.25;
-const THIN_CHARS_PATTERN = /[.,' ]/;
+const THIN_CHARS_PATTERN = /[.,'\u2019\u00A0\u202F ]/;
 
 // font sizes render in rem, so the effective pixel size follows the root font
 // scale while the measured container width stays in device pixels
-function getRootFontScale() {
+export function getRootFontScale() {
   if (typeof document === "undefined") {
     return 1;
   }

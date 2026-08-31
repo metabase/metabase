@@ -1,6 +1,6 @@
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-import { compactifyValue } from "./scalar_utils";
+import { compactifyValue, estimateScalarValueWidth } from "./scalar_utils";
 
 describe("scalar utils", () => {
   describe("compactifyValue", () => {
@@ -55,6 +55,17 @@ describe("scalar utils", () => {
       }) as { displayValue: string };
 
       expect(displayValue).toBe("45.0k");
+    });
+  });
+
+  describe("estimateScalarValueWidth", () => {
+    it("should count locale digit separators as thin characters", () => {
+      const plain = estimateScalarValueWidth("68000", 32);
+      // Swiss apostrophe, no-break space, and narrow no-break space grouping
+      for (const separator of ["’", " ", " ", ","]) {
+        const grouped = estimateScalarValueWidth(`68${separator}000`, 32);
+        expect(grouped - plain).toBeLessThan(0.3 * 32);
+      }
     });
   });
 });

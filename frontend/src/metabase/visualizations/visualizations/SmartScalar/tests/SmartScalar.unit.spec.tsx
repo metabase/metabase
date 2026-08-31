@@ -342,6 +342,52 @@ describe("SmartScalar", () => {
       expect(getTrendSymbol()).toHaveAttribute("data-direction", "arrow_down");
     });
 
+    it("should show the full layout on standalone question views", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({
+            rows,
+            insights,
+            comparisonTypes: [
+              { id: "1", type: "previousPeriod" },
+              { id: "2", type: "periodsAgo", value: 2 },
+            ],
+          })}
+          width={800}
+          isStandaloneQuestion
+        />,
+      );
+
+      expect(screen.getByTestId("scalar-comparison-list")).toBeInTheDocument();
+    });
+
+    it("should show the collection badge next to the inline title", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({ rows, insights, name: "Revenue" })}
+          width={800}
+          height={400}
+          showTitle
+          headerIcon={{ name: "star" }}
+        />,
+      );
+
+      const title = screen.getByTestId("scalar-title");
+      expect(within(title).getByLabelText("star icon")).toBeInTheDocument();
+    });
+
     it("should not show a trend symbol for several comparisons in the query builder", () => {
       const rows = [
         ["2019-10-01T00:00:00", 100],

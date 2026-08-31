@@ -20,6 +20,7 @@
 
 .comparisonRow {
   display: grid;
+  column-gap: 0.75rem;
   grid-template-columns: subgrid;
   grid-column: span 3;
   align-items: center;

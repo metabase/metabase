@@ -17,6 +17,10 @@
   }
 }
 
+.titleIcon {
+  flex: 0 0 auto;
+}
+
 .descriptionIcon {
   display: flex;
   flex: 0 0 auto;

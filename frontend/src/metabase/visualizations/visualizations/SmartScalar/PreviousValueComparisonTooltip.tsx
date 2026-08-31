@@ -4,7 +4,7 @@ import { formatValue } from "metabase/value-formatting";
 import type { ColumnSettings } from "metabase-types/api";
 
 import { TrendSymbol } from "./TrendSymbol";
-import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "./compute";
+import { type ComparisonResult, getComparisonDisplay } from "./compute";
 
 const SYMBOL_SIZE = 12;
 const PERCENT_MIN_WIDTH = 48;
@@ -20,21 +20,14 @@ export function PreviousValueComparisonTooltip({
   formatOptions,
   className,
 }: PreviousValueComparisonProps) {
-  const {
-    changeArrowIconName,
-    changeColorName,
-    changeType,
-    comparisonDescStr,
-    comparisonValue,
-    display,
-  } = comparison;
+  const { changeColorName, comparisonDescStr, comparisonValue, display } =
+    comparison;
 
-  const isSame = changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE;
-  const symbolDirection = changeArrowIconName ?? (isSame ? "no_change" : null);
-  const percentColor =
-    changeColorName != null
-      ? (`${changeColorName}-strong` as const)
-      : "text-primary";
+  const { sentimentColor, symbolDirection } = getComparisonDisplay(
+    comparison,
+    formatOptions,
+  );
+  const percentColor = sentimentColor ?? "text-primary";
   const valueFormatted = !isEmpty(comparisonValue)
     ? formatValue(comparisonValue, { ...formatOptions, compact: true })
     : display.comparisonValue;

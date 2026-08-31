@@ -697,6 +697,7 @@ class Visualization extends PureComponent<
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isStandaloneQuestion,
       isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
@@ -981,6 +982,7 @@ class Visualization extends PureComponent<
                       isPreviewing={isPreviewing}
                       isRawTable={isRawTable}
                       isQueryBuilder={!!isQueryBuilder}
+                      isStandaloneQuestion={!!isStandaloneQuestion}
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}
