@@ -57,7 +57,8 @@
  [mdb.encryption
   decrypt-db
   encrypt-db
-  encryption-check-status]
+  encryption-check-status
+  encrypt-plaintext-columns!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup
