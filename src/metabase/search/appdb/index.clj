@@ -311,7 +311,12 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
+    ;; Each write gets a nested transaction (savepoint), so a swallowed missing-table error can't leave a
+    ;; caller's Postgres transaction aborted.
+    (let [upsert! (fn [t]
+                    (t2/with-transaction [_conn]
+                      (specialization/batch-upsert! t entries))
+                    t)]
       (try
         (upsert! table-name)
         (catch InterruptedException ie
@@ -322,7 +327,7 @@
           (if (and (table-not-found-exception? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
-                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
                 (try
                   (upsert! refreshed-table-name)
                   (catch InterruptedException ie
@@ -411,8 +416,11 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                      ;; Race conditions with table being deleted, especially in tests.
+                   ;; The table can be dropped from under us, especially in tests. The nested transaction
+                   ;; (savepoint) lets us swallow that error without leaving a caller's Postgres transaction
+                   ;; aborted.
+                   {search-model (try (t2/with-transaction [_conn]
+                                        (t2/delete! table-name :model search-model :model_id [:in (set ids)]))
                                       (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))

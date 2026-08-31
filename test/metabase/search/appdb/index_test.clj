@@ -788,3 +788,22 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))
+
+(deftest missing-index-table-does-not-poison-transaction-test
+  (when (search/supports-index?)
+    (testing "Swallowing writes against a dropped index table must not abort a surrounding transaction"
+      (search.tu/with-temp-index-table
+        (let [table-name (search.index/active-table)]
+          (#'search.index/drop-table! table-name)
+          (testing "delete!"
+            (t2/with-transaction [_conn]
+              (is (= {"card" 0} (search.engine/delete! :search.engine/appdb "card" [1])))
+              (testing "\nthe surrounding transaction is still usable"
+                (is (true? (t2/exists? :model/User))))))
+          (testing "upsert"
+            (t2/with-transaction [_conn]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
+                                    (#'search.index/safe-batch-upsert! :active (constantly table-name)
+                                                                       [{:model "card" :model_id "1"}])))
+              (testing "\nthe surrounding transaction is still usable"
+                (is (true? (t2/exists? :model/User)))))))))))
