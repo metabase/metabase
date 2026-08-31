@@ -1,4 +1,4 @@
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";

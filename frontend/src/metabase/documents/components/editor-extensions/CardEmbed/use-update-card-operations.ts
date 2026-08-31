@@ -1,7 +1,7 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   type UseCardDataResult,

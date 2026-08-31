@@ -6,7 +6,7 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";

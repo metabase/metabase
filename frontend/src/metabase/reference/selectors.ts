@@ -6,7 +6,7 @@ import {
   getShallowFields as getFields,
   getShallowSegments as getSegments,
   getShallowTables as getTables,
-} from "metabase/metadata/store";
+} from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 

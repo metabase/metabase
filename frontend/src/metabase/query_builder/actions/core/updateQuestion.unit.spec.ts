@@ -1,5 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import {

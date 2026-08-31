@@ -17,7 +17,7 @@ import {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Select } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";

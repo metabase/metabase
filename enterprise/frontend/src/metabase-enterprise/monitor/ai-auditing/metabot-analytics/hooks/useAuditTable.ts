@@ -5,7 +5,7 @@ import {
   useGetAdhocQueryMetadataQuery,
   useGetDatabaseMetadataQuery,
 } from "metabase/api";
-import { getMetadataUnfiltered } from "metabase/metadata/store";
+import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type {
   CardMetadata,

@@ -7,7 +7,7 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
-import { getShallowDatabases as getDatabases } from "metabase/metadata/store";
+import { getShallowDatabases as getDatabases } from "metabase/metadata-store";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";

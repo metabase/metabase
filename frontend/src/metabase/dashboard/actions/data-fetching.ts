@@ -33,7 +33,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";

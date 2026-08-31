@@ -17,7 +17,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { fetchTableMetadata } from "metabase/redux/tables";

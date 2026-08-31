@@ -9,7 +9,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { getMetadataUnfiltered } from "metabase/metadata/store";
+import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

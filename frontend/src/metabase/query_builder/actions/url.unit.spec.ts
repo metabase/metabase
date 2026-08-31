@@ -6,7 +6,7 @@
 // other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,

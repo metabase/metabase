@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";

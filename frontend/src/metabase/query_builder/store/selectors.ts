@@ -10,7 +10,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,

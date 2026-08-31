@@ -12,7 +12,7 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";

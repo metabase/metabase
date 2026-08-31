@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useListDatabasesQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,

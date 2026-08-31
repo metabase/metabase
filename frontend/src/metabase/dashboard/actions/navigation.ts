@@ -1,4 +1,4 @@
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";

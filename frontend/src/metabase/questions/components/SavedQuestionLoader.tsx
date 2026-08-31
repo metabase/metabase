@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import Question from "metabase-lib/v1/Question";

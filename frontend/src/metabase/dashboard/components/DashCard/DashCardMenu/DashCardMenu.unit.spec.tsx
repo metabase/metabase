@@ -7,7 +7,7 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockDashboardState,
   createMockState,

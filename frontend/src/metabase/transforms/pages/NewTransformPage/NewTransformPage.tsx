@@ -14,7 +14,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   getInitialUiState,

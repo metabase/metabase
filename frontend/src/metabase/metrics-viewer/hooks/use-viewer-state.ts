@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { getObjectEntries } from "metabase/utils/objects";

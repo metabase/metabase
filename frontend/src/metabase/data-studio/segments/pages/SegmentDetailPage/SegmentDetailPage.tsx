@@ -8,7 +8,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";

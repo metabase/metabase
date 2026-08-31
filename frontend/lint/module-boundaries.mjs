@@ -11,17 +11,11 @@ const createElement = ({
   // Enforced by the `metabase/enforce-module-public-api` rule via `getPublicApiModules` below.
   enforcePublicApi = false,
 }) => {
-  // A folder element's alias is its name; a folder pattern under the `metabase`
-  // alias root derives its alias from the pattern, so a module may live in a
-  // subfolder and still enforce a barrel.
-  const publicApiAlias = pattern
-    ? (/^frontend\/src\/(metabase\/[\w./-]+)\/\*\*$/.exec(pattern)?.[1] ?? null)
-    : `metabase/${name}`;
-  if (enforcePublicApi && (!publicApiAlias || mode)) {
+  if (enforcePublicApi && (pattern || mode)) {
     // Single-file elements are their own entry point, and elements outside the
-    // `metabase` alias root have no alias to derive.
+    // `metabase` alias root would need their own alias derivation.
     throw new Error(
-      `enforcePublicApi needs a folder element under frontend/src/metabase: ${name}`,
+      `enforcePublicApi requires a default folder element (frontend/src/metabase/<name>/**): ${name}`,
     );
   }
   return {
@@ -30,7 +24,7 @@ const createElement = ({
     ...(mode && { mode }),
     enforceOutgoing,
     enforceSharedTiers,
-    ...(enforcePublicApi && { publicApiAlias }),
+    ...(enforcePublicApi && { publicApiAlias: `metabase/${name}` }),
   };
 };
 
@@ -208,13 +202,12 @@ const elements = [
   createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
-  // Must precede shared/metadata: its pattern is a subfolder of that element.
-  // The store is the module's public face for metadata reads; the UI around it
-  // stays at platform tier.
+  // The app-wide mirror of table and field metadata. Separate from
+  // `shared/metadata`, which is the Semantic Layer UI: 147 files read the store,
+  // 115 use the UI, and 8 do both.
   createElement({
     type: "shared",
     name: "metadata-store",
-    pattern: "frontend/src/metabase/metadata/store/**",
     enforcePublicApi: true,
   }),
   createElement({ type: "shared", name: "metadata" }),

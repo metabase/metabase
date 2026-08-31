@@ -11,7 +11,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   type ExpressionError,
   diagnoseAndCompile,

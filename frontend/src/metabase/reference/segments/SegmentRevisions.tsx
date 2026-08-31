@@ -7,7 +7,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { getShallowTables as getTables } from "metabase/metadata/store";
+import { getShallowTables as getTables } from "metabase/metadata-store";
 import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/components/List/List.module.css";

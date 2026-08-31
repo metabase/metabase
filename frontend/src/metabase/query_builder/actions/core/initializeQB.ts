@@ -6,7 +6,7 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";

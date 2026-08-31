@@ -7,7 +7,7 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   getParameterValuesForQuestion,
   resolveCards,

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api/table";

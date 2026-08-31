@@ -1,5 +1,5 @@
-import type { MetadataSelectorOpts } from "metabase/metadata/store";
-import { getMetadata } from "metabase/metadata/store";
+import type { MetadataSelectorOpts } from "metabase/metadata-store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockSettingsState,
   createMockState,

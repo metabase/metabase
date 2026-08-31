@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import {
   getShallowFields as getFields,
   getMetadata,
-} from "metabase/metadata/store";
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { updateTable } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";

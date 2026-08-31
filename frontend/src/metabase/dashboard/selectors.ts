@@ -11,7 +11,7 @@ import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,

@@ -1,7 +1,7 @@
 import { type ReactElement, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

@@ -1,4 +1,4 @@
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { getSegmentQuery } from "metabase/querying/segments/utils";
 import { useSelector } from "metabase/redux";

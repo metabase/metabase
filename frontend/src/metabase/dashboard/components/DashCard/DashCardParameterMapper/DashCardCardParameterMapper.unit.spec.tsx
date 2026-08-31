@@ -8,7 +8,7 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
