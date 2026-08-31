@@ -101,11 +101,13 @@
   (cron-string (case (keyword schedule-type)
                  :hourly  {:minutes minute}
                  :daily   {:hours (or hour 0)}
-                 :weekly  {:hours       hour
-                           :day-of-week (day-of-week->cron day-of-week)
+                 ;; An omitted hour means midnight, not "every hour": leaving it out of a weekly/
+                 ;; monthly schedule would otherwise leave the cron hours field as `*` and fire 24x/day.
+                 :weekly  {:hours        (or hour 0)
+                           :day-of-week  (day-of-week->cron day-of-week)
                            :day-of-month "?"}
                  :monthly (assoc (frame->cron frame day-of-week)
-                                 :hours hour))))
+                                 :hours (or hour 0)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          CRON STRING -> SCHEDULE MAP                                           |

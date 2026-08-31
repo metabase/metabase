@@ -1387,7 +1387,8 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform}}
+                    :model/Transform
+                    :model/User}}
 
   measures
   {:team "Graphy"
