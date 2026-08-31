@@ -129,4 +129,63 @@ describe("StaticQuestion - multiple guest questions", () => {
       expect(screen.queryAllByText("Alpha")).toHaveLength(1);
     });
   });
+
+  it("should query with the new token when a guest question remounts with a different token", async () => {
+    const rows = ["Alpha", "Bravo"] as const;
+    const cards = rows.map((row, index) =>
+      createMockCard({
+        id: index + 1,
+        name: `Question ${row}`,
+      }),
+    );
+    const tokens = await Promise.all(
+      cards.map((card) => createQuestionJwt(card.id)),
+    );
+
+    const { state } = setupSdkState({
+      sdkState: createMockSdkState({
+        // Let initGuestEmbed run so /api → /api/embed request rewriting is installed.
+        initStatus: createMockLoginStatusState({ status: "uninitialized" }),
+        isGuestEmbed: true,
+      }),
+    });
+
+    cards.forEach((card, index) => {
+      setupEmbedCardEndpoints(tokens[index], card, getMockDataset(rows[index]));
+    });
+
+    // guestEmbedProviderUri installs the handler that rewrites every request
+    // with the token held in the store.
+    const authConfig = createMockSdkConfig({
+      isGuest: true,
+      guestEmbedProviderUri: "/mock-guest-token-provider",
+    });
+
+    const { rerender } = renderWithSDKProviders(
+      <StaticQuestion key={tokens[0]} token={tokens[0]} />,
+      {
+        componentProviderProps: { authConfig },
+        storeInitialState: state,
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha")).toBeInTheDocument();
+    });
+
+    // The iframe embed route re-keys its children when the token changes, so a
+    // new token remounts the component rather than updating it in place.
+    rerender(<StaticQuestion key={tokens[1]} token={tokens[1]} />);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/embed/card/${tokens[1]}/query`),
+      ).not.toHaveLength(0);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Bravo")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
 });
