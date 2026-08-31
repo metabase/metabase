@@ -46,7 +46,9 @@
 
       (and
        (server.settings/redirect-all-requests-to-https)
-       (not (request/https? request)))
+       ;; the client does not get a say in whether its own request is redirected, so `Origin` -- which it sets, and
+       ;; which describes the initiating page rather than this request's transport -- is not evidence of HTTPS here
+       (not (request/https? request false)))
       (respond (ssl-redirect-response request))
 
       :else (handler request respond raise))))
