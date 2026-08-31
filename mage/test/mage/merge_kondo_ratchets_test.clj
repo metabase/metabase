@@ -152,9 +152,12 @@
   "Everything one refused run prints, having first checked that it failed and left the conflict untouched.
   Both streams, because mage reports task exceptions on stdout."
   [dir note]
-  ;; a conflicted path stays UU/DU/UD however its contents are rewritten, so compare those too
+  ;; a conflicted path stays UU/DU/UD however its contents are rewritten, so compare those too, and
+  ;; the index stages besides: they carry the blob of each side, which porcelain status does not show
   (let [snapshot               #(let [f (fs/path dir ratchets-file)]
-                                  [(status dir) (when (fs/exists? f) (slurp (str f)))])
+                                  [(status dir)
+                                   (when (fs/exists? f) (slurp (str f)))
+                                   (git dir "ls-files" "--stage" "--unmerged" "--" ratchets-file)])
         before                 (snapshot)
         {:keys [exit out err]} (run dir script)]
     (is (pos? exit) note)
