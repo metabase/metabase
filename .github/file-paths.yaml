@@ -8,8 +8,7 @@ default: &default
   - "bin/**/!(*.md)"
 
 workflows:
-  - added|modified: ".github/workflows/*.yml"
-  - added|modified: ".github/workflows/*.yaml"
+  - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"
