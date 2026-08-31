@@ -82,13 +82,13 @@ jobs:
             exit 0
           fi
 
-          # The automation branch holds exactly one commit on top of some earlier master. Depth 2 fetches
-          # that commit and its master parent, which is all the comparison below needs.
+          # The ratchet file is the whole payload, so an open PR that already carries this result is left
+          # alone. Rebasing it onto every master push would restart its CI and churn the diff without
+          # changing what it delivers.
           if [ -n "$open_pr" ] \
-             && git fetch --quiet --depth=2 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
-             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
-             && git diff --quiet FETCH_HEAD^ HEAD -- "$RATCHETS_FILE"; then
-            echo "The automation PR #$open_pr already carries this result; master has not touched $RATCHETS_FILE since"
+             && git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
+             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE"; then
+            echo "The automation PR #$open_pr already carries this result"
             echo "push=false" >> "$GITHUB_OUTPUT"
             echo "head=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
             exit 0
