@@ -316,27 +316,27 @@ export const getRoutes = (
         {/* Backwards compatibility for embedding settings */}
         <Route
           path="/admin/embedding/modular"
-          element={redirect("/admin/embedding")}
+          element={redirect("/embedding/security")}
         />
         <Route
           path="/admin/embedding/interactive"
-          element={redirect("/admin/embedding")}
+          element={redirect("/embedding/security")}
         />
         <Route
           path="/admin/settings/embedding-in-other-applications"
-          element={redirect("/admin/embedding")}
+          element={redirect("/embedding/security")}
         />
         <Route
           path="/admin/settings/embedding-in-other-applications/full-app"
-          element={redirect("/admin/embedding")}
+          element={redirect("/embedding/security")}
         />
         <Route
           path="/admin/settings/embedding-in-other-applications/standalone"
-          element={redirect("/admin/embedding/guest")}
+          element={redirect("/embedding/security")}
         />
         <Route
           path="/admin/settings/embedding-in-other-applications/sdk"
-          element={redirect("/admin/embedding")}
+          element={redirect("/embedding/security")}
         />
 
         {/* SETTINGS */}
