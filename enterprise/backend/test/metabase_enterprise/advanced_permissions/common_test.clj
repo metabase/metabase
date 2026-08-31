@@ -4,6 +4,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -164,6 +165,43 @@
             (is (nil? (perm-value nil)))
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
+
+(deftest new-view-data-permission-levels-block-data-app-groups-test
+  (testing "data-app groups block newly-synced tables/databases even with no `:blocked` row (full manifest)"
+    (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {}
+                     :model/PermissionsGroup {ctl-group-id :id} {}                        ; a normal, non-data-app group
+                     :model/DataApp          _                  {:name "perm-test-app" :display_name "Perm Test"
+                                                                 :bundle_path "app/dist/index.js"
+                                                                 :permission_group_id app-group-id}
+                     :model/Database         {db-id :id}      {}
+                     :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}]
+        ;; effective (coalesced) view-data — the control group inherits the DB-level value with no
+        ;; table row of its own, so a raw-row check would see nil.
+        (let [effective (fn [group-id table-id]
+                          (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id))]
+          (testing "a late table is blocked for the data-app group but not for a normal group"
+            ;; a "full manifest" for both groups: all existing tables :unrestricted, so no `:blocked` row exists
+            (doseq [group-id [app-group-id ctl-group-id]]
+              (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted))
+            (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+              (is (= :blocked (effective app-group-id table-id-3))
+                  "the late table is blocked for the data-app group")
+              (is (= :unrestricted (effective ctl-group-id table-id-3))
+                  "the same late table is NOT blocked for a normal group — the rule is scoped to app groups")
+              (is (= :unrestricted (effective app-group-id table-id-1))
+                  "the app's declared tables stay unrestricted")
+              ;; the going-granular apply keeps a clean per-table shape, so the permissions graph the
+              ;; admin panel loads still builds (M1's db-level+table-override mix used to 500 it).
+              (is (map? (data-perms.graph/api-graph))
+                  "the whole permissions graph still builds")))
+          (testing "a newly-added database is blocked only for the data-app group"
+            (let [levels (advanced-permissions.common/new-database-view-data-permission-levels
+                          [app-group-id ctl-group-id])]
+              (is (= :blocked (levels app-group-id)) "blocked for the data-app group")
+              (is (not= :blocked (levels ctl-group-id)) "not blocked for a normal group"))))))))
 
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"

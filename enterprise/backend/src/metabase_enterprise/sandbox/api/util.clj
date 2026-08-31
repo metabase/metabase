@@ -52,9 +52,10 @@
 
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (sandbox.db/impersonations-for-groups user-group-ids))
-          ;; Data app groups grant unrestricted table access for app queries.
-          ;; Make sure a sandbox from another group always takes precedence over data app groups.
-          data-app-group-ids (into #{} (keep :data_app_group_id) sandboxes-with-group-ids)
+          ;; A user's membership in a data-app group must never lift a sandbox another group
+          ;; imposes on them — the app's access path can't leak into product-wide enforcement.
+          ;; So exclude app groups from the set whose access can lift a sandbox.
+          data-app-group-ids (perms/data-app-group-ids)
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

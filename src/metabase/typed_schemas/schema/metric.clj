@@ -287,7 +287,7 @@
   [database-ids collection-ids]
   (let [metrics        (remove source-card-id
                                (schema.common/select-schema-cards :metric database-ids collection-ids))
-        dependency-ids (metric-dependency-ids metrics)]
+        dependency-ids (or (metric-dependency-ids metrics) #{})]
     (for [metric metrics
           :when (not-any? dependency-ids (lib/all-source-card-ids (:dataset_query metric)))
           :let [details (metric-details metric)]

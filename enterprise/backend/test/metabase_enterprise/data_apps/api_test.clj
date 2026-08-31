@@ -91,6 +91,21 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false}))))))))
 
+(deftest data-app-without-a-resource-collection-is-not-published-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :name "demo"))
+            "precondition: the app has no resource collection")
+        (testing "an app with no resource collection is not published: neither its metadata nor its
+                  bundle is served — to anyone — and a 409 lets the client show a \"not published\" screen"
+          (doseq [user [:rasta :crowberto]]
+            (is (= "This data app has not been published yet."
+                   (mt/user-http-request user :get 409 "apps/demo")))
+            (is (= "This data app has not been published yet."
+                   (mt/user-http-request user :get 409 "apps/demo/bundle")))))))))
+
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
@@ -364,6 +379,8 @@
                   :bundle        (.getBytes "BUNDLE" "UTF-8")
                   :bundle_hash   "abc123"
                   :allowed_hosts ["https://api.example.com"])
+      ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
+      (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
       (testing "the bundle response carries the app's allowed_hosts as a JSON header"
         (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[\"https://api.example.com\"]"

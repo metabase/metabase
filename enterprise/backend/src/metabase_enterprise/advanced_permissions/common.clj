@@ -189,8 +189,10 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
+          ;; Data-app groups only ever see what their app declared, so a newly-added database must
+          ;; default to `:blocked` for them.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids))]
+                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-view-data-permission-levels
@@ -205,6 +207,9 @@
           sandbox-group-ids (into #{}
                                   (map :group_id)
                                   (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
-          blocked-groups    (into (or blocked-group-ids #{})
-                                  sandbox-group-ids)]
+          ;; Data-app groups only ever see tables their app declared, so a newly-synced table must
+          ;; default to `:blocked` for them even when every existing table is `:unrestricted`.
+          blocked-groups    (-> (or blocked-group-ids #{})
+                                (into sandbox-group-ids)
+                                (into (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
