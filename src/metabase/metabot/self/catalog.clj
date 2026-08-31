@@ -9,6 +9,7 @@
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]))
 
@@ -27,8 +28,9 @@
       "azure"     (azure/reasoning-model? model)
       "bedrock"   (bedrock/reasoning-model? model)
       "deepseek"  (deepseek/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      "google"    (google/reasoning-model? model)
+      "openai"     (openai/reasoning-model? model)
+      "openrouter" (openrouter/reasoning-model? model)
+      "google"     (google/reasoning-model? model)
       "vllm"      (vllm/reasoning-connection? credentials)
       "zai"       (zai/reasoning-model? model)
       false)))
