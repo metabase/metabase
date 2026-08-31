@@ -1,4 +1,4 @@
-import { entityTypeForModel, entityTypeForObject } from "./entities";
+import { entityTypeForModel, entityTypeForObject } from "./entity-types";
 
 const MODEL_ENTITY_TYPE = [
   { model: "card", entityType: "questions" },
