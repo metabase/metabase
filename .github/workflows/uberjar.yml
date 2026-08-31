@@ -66,7 +66,6 @@ jobs:
       - name: Create build matrices
         id: matrix
         uses: actions/github-script@v9
-        # A branch name is attacker-controlled, so it reaches the script via env, not inline.
         env:
           BRANCH: ${{ github.head_ref || github.ref_name }}
         with:
@@ -81,14 +80,11 @@ jobs:
               oss: "${{ steps.check-oss.outputs.fetch-hit }}" === "true",
             };
 
-            // We build by commit hash, so an artifact that already exists for this hash is
-            // exactly what we would have produced — reuse it and build only what is missing.
+            // Don't rebuild the uberjar if it has already been built for this commit.
             const buildEditions = ['ee', 'oss'].filter((edition) => !hit[edition]);
 
-            // Only the editions this branch actually pushes images for. Mirrors the rule in
-            // ./.github/actions/get-docker-info, which containerize-jar.yml uses to pick the
-            // repo: master publishes both editions, every other branch only ee. Keep the two
-            // in step -- an edition here with no repo there would clobber ee's tag.
+            // Only containerize the uberjar if containerize input is set. On master 
+            // publish ee and oss versions, otherwise just containerize the ee version.
             const containerEditions = containerize
               ? (branch === 'master' ? ['ee', 'oss'] : ['ee'])
               : [];
@@ -108,8 +104,9 @@ jobs:
 
             core.info(`build: ${buildEditions} healthcheck: ${healthcheckEditions} containerize: ${containerEditions}`);
 
-      - uses: ./.github/actions/prepare-release-scripts
+      - name: Prepare release scripts
         if: ${{ contains(github.ref, 'release-x') }}
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Get build dependencies
         if: ${{ contains(github.ref, 'release-x') }}
@@ -184,10 +181,7 @@ jobs:
     name: Is ${{ matrix.edition }} healthy?
     needs: [setup, build]
     # `build` is skipped when every artifact already exists, which must not skip this job.
-    if: |
-      !cancelled() &&
-      needs.setup.result == 'success' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    if: ${{ !failure() && !cancelled() }}
     timeout-minutes: 10
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.healthcheck_matrix) }}
@@ -222,12 +216,7 @@ jobs:
     needs: [setup, build, jar-healthcheck]
     # Both upstream jobs legitimately skip (nothing to build; nothing to health-check off
     # trunk), so gate on "not failed" rather than on `success()`.
-    if: |
-      !cancelled() &&
-      inputs.containerize &&
-      needs.setup.result == 'success' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs.jar-healthcheck.result == 'success' || needs.jar-healthcheck.result == 'skipped')
+    if: ${{ !failure() && !cancelled() && inputs.containerize }}
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.container_matrix) }}
     uses: ./.github/workflows/containerize-jar.yml
