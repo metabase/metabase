@@ -84,9 +84,9 @@ Once you're done here simply follow the link to **Take me to Metabase**. And if 
 
 ## Connect an AI provider
 
-The last screen also offers to set up AI. If you click **Set up AI**, Metabase walks you through connecting an AI provider so you can use AI explorations, SQL generation, and Metabot. It's the same provider picker you'd find later in **Admin > AI**, so nothing is lost by clicking **I'll set this up later** and coming back to it.
+If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
 
-You won't see the offer if you told Metabase you're here for embedding, or if AI features are turned off for your instance. For what each provider needs, and how to connect more than one, check out [AI settings](../ai/settings.md#enable-ai-features).
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md).
 
 ## Getting started with Metabase
 
