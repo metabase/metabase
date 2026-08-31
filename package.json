@@ -179,7 +179,6 @@
     "@cypress/code-coverage": "^4.0.3",
     "@cypress/grep": "^6",
     "@cypress/react": "^9",
-    "@cypress/skip-test": "^2.6.1",
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@eslint/compat": "2.0.2",
