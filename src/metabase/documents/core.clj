@@ -19,15 +19,18 @@
   add-card-to-document!
   copy-document!]
  [metabase.documents.markdown
+  escape-text
   parse
   serialize
   splice]
  [metabase.documents.models.document
   clone-cards-in-document!
   create-document!
+  DocumentName
   get-document
   register-doc-content-visibility-fn!
   update-document!
+  validate-collection-move-permissions
   with-content-gate-cache]
  [metabase.documents.prose-mirror
   insert-card-embed
