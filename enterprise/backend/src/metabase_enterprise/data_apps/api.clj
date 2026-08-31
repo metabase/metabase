@@ -17,6 +17,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -172,11 +173,17 @@
     (select-keys app [:name :display_name])))
 
 (defn- read-check-data-app
-  "Check whether the current user can access a data app and its resource collection."
+  "Check whether the current user can access a data app. Viewing requires read access to the app's
+   resource collection. An app with no linked resource collection has not been published yet: it is
+   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
+   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
+   the bundle to every signed-in user."
   [app]
   (api/read-check app)
-  (when-let [collection-id (:resource_collection_id app)]
-    (api/read-check :model/Collection collection-id))
+  (if-let [collection-id (:resource_collection_id app)]
+    (api/read-check :model/Collection collection-id)
+    (throw (ex-info (tru "This data app has not been published yet.")
+                    {:status-code 409})))
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]

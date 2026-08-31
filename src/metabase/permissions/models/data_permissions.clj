@@ -1270,6 +1270,14 @@
   [_db-id group-ids]
   (zipmap group-ids (repeat :unrestricted)))
 
+(defenterprise data-app-group-ids
+  "Ids of the permission groups Metabase owns and manages itself (data-app groups). SSO group sync must
+   never touch their membership, and a newly-synced table always defaults to `:blocked` for them so an
+   app never silently gains access to data it didn't declare. OSS has none."
+  metabase-enterprise.data-apps.models.data-app
+  []
+  #{})
+
 ;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
 ;; These functions set permissions for newly-created entities (groups, databases, tables) using batch SQL operations
 ;; instead of per-row mutations. They are intended to be called from within a coarse cluster lock.
