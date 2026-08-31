@@ -311,8 +311,8 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    ;; Each write gets a nested transaction (savepoint), so a swallowed missing-table error can't leave a
-    ;; caller's Postgres transaction aborted.
+    ;; When this runs inside another transaction, the nested transaction creates a savepoint. Rolling it back lets us
+    ;; handle a missing-table error without aborting the caller's PostgreSQL transaction.
     (let [upsert! (fn [t]
                     (t2/with-transaction [_conn]
                       (specialization/batch-upsert! t entries))
@@ -416,9 +416,9 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   ;; The table can be dropped from under us, especially in tests. The nested transaction
-                   ;; (savepoint) lets us swallow that error without leaving a caller's Postgres transaction
-                   ;; aborted.
+                   ;; The table can disappear after we read its name, especially during tests. When nested, this
+                   ;; transaction creates a savepoint so handling that error does not abort the caller's PostgreSQL
+                   ;; transaction.
                    {search-model (try (t2/with-transaction [_conn]
                                         (t2/delete! table-name :model search-model :model_id [:in (set ids)]))
                                       (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
