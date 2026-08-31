@@ -26,6 +26,7 @@ describe("embedding hub routes", () => {
       "embedding/permissions/data",
       "embedding/permissions/data/database",
       "embedding/permissions/data/database/:databaseId",
+      "embedding/permissions/data/database/:databaseId/table/:tableId",
       "embedding/permissions/data/database/:databaseId/schema/:schemaName",
       "embedding/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId",
       "embedding/permissions/data/group",
@@ -39,7 +40,7 @@ describe("embedding hub routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    expect(loaders).toHaveLength(17);
+    expect(loaders).toHaveLength(18);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
