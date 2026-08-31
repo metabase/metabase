@@ -1,9 +1,7 @@
 .dropdown {
-  /* Content pads itself (see Popover.mdx) — Menu is the one exception below. */
-  padding: 0;
+  padding: 0; /* Content pads itself */
   overflow: auto;
   background: var(--mb-color-background_surface-primary);
-  /* Figma draws the edge as a 0.5px hairline; on 1x screens Chrome rounds it up to 1px. */
   border-width: 0.5px;
   border-color: var(--mb-color-border-neutral-strong);
   color: var(--mb-color-text-primary);

@@ -65,31 +65,18 @@ const DefaultTemplate = ({
   </Flex>
 );
 
-// The same sentence the Figma spec uses, so the story and the design line up.
-const FIGMA_SAMPLE_TEXT =
-  "This is uncontrolled popover, it is opened when button is clicked.";
-
-// Tall enough for a bottom-positioned dropdown to render inside the cell
-// (`withinPortal={false}` keeps it inline so Loki can capture it).
-const OVERVIEW_CELL_HEIGHT = 200;
-
-// Keep every dropdown anchored below its target: the theme's `flip` middleware
-// would move a tall one above the target, and `size` overrides `mah` with the
-// available viewport height.
+// make the stories viewport independent by disabling middlewares
 const OVERVIEW_MIDDLEWARES = { shift: false, flip: false, size: false };
 
 const OverviewCell = ({ children }: { children: React.ReactNode }) => (
-  <Flex align="flex-start" justify="center" w={400} h={OVERVIEW_CELL_HEIGHT}>
+  <Flex align="flex-start" justify="center" w={400} h={200}>
     {children}
   </Flex>
 );
 
 const OverviewTemplate: StoryFn<PopoverProps> = () => (
   <StoryShowcase title="Popover">
-    <StorySection
-      title="Default"
-      description="Content pads itself — the dropdown has no padding of its own."
-    >
+    <StorySection title="Default">
       <OverviewCell>
         <Popover
           opened
@@ -101,18 +88,18 @@ const OverviewTemplate: StoryFn<PopoverProps> = () => (
             <Button variant="filled">Target</Button>
           </Popover.Target>
           <Popover.Dropdown>
-            <Box p="0.75rem" w={344}>
-              <Text>{FIGMA_SAMPLE_TEXT}</Text>
+            <Box p="md" w={300}>
+              <Text>
+                This is uncontrolled popover, it is opened when button is
+                clicked.
+              </Text>
             </Box>
           </Popover.Dropdown>
         </Popover>
       </OverviewCell>
     </StorySection>
 
-    <StorySection
-      title="Menu dropdown"
-      description="Menu renders the same dropdown with data-menu-dropdown, which adds its own padding."
-    >
+    <StorySection title="Menu dropdown">
       <OverviewCell>
         <Menu
           opened
