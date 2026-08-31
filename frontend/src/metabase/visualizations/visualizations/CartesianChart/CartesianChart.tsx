@@ -268,8 +268,7 @@ function CartesianChartInner(props: VisualizationProps) {
           <DataPointsVisiblePopover
             isDashboard={isDashboard}
             isVisualizer={isVisualizer}
-            chartModel={chartModel}
-            settings={settings}
+            chartInstance={chartInstance}
           />
           <TimelineEventsBand
             chartInstance={chartInstance}

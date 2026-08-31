@@ -164,6 +164,12 @@ export {
   TREEMAP_HOVER_OVERLAY_FILL,
 } from "./echarts/graph/treemap/style";
 export { registerEChartsModules } from "./echarts";
+export {
+  DATA_VISIBILITY_ACTION,
+  DATA_VISIBILITY_EVENT,
+  type DataVisibilityResult,
+  isDataVisibilityResult,
+} from "./echarts/data-visibility";
 export { DIMENSIONS, OTHER_SLICE_KEY } from "./echarts/pie/constants";
 export { getPieChartFormatters } from "./echarts/pie/format";
 export type { PieChartFormatters } from "./echarts/pie/format";
