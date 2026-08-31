@@ -788,3 +788,16 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))
+
+(deftest batch-upsert-failure-does-not-poison-transaction-test
+  (testing "an upsert into a search index table that no longer exists must not poison the caller's transaction
+           (a concurrent index swap can drop the table between the exists? check and the INSERT)"
+    (when (= :postgres (mdb/db-type))
+      (t2/with-transaction [_conn]
+        (t2/query {:insert-into :setting :values [{:key "savepoint-repro-canary" :value "x"}]})
+        (is (thrown? Exception
+                     (specialization/batch-upsert! (keyword (str "search_index__missing_" (u/lower-case-en (mt/random-name))))
+                                                   [{:model "card" :model_id 1}])))
+        (testing "the enclosing transaction is still usable, with its earlier writes intact"
+          (is (= "x" (:value (t2/query-one {:select [:value] :from [:setting] :where [:= :key "savepoint-repro-canary"]})))))
+        (t2/query {:delete-from :setting :where [:= :key "savepoint-repro-canary"]})))))

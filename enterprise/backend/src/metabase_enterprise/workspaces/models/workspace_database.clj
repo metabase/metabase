@@ -14,7 +14,7 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceDatabase
-  {:database_details mi/transform-encrypted-json
+  {:database_details (mi/transform-encrypted-json "workspace_database.database_details")
    :input_schemas    mi/transform-json
    :status           mi/transform-keyword})
 
