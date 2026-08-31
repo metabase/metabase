@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboardCollectionId } from "metabase/dashboard/timeline-events";
 import { useSelector } from "metabase/redux";
-import { TimelineSidebarContent } from "metabase/timelines/panel/components/TimelineSidebarContent";
-import type { DashCardId, Timeline, TimelineEventId } from "metabase-types/api";
-
 import {
   type TimelineEventModalState,
   TimelineEventModals,
-} from "./TimelineEventModals";
+} from "metabase/timelines/panel/components/TimelineEventModals";
+import { TimelineSidebarContent } from "metabase/timelines/panel/components/TimelineSidebarContent";
+import type { DashCardId, Timeline, TimelineEventId } from "metabase-types/api";
+
 import { useTimelineEventsHandlers } from "./use-timeline-events-handlers";
 
 export interface EventsPanelProps {
