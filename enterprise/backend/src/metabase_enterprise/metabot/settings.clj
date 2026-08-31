@@ -45,7 +45,7 @@
   :type       :string
   :default    "You have reached your AI usage limit for the current period. Please contact your administrator."
   :visibility :settings-manager
-  :encryption :when-encryption-key-set
+  :encryption :no
   :export?    true
   :feature    :ai-controls)
 
