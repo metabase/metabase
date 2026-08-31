@@ -1,5 +1,4 @@
 import type { Api } from "metabase/api/api";
-import type { MetabotState } from "metabase/metabot/state";
 import type { DocumentsState } from "metabase/redux/store/documents";
 import type { ExplorationsState } from "metabase/redux/store/explorations";
 
@@ -47,7 +46,8 @@ export interface State {
   };
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
-  metabot: MetabotState;
+  // The slice shape is metabot's own — read it through metabot's selectors, which narrow this key.
+  metabot: unknown;
   explorations: ExplorationsState;
 }
 

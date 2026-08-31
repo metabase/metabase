@@ -21,6 +21,7 @@ import {
 import type {
   MetabotAgentId,
   MetabotChatMessage,
+  MetabotState,
   MetabotUserChatMessage,
 } from "./types";
 import { hasInProgressMessage } from "./utils";
@@ -29,8 +30,10 @@ import { hasInProgressMessage } from "./utils";
  * Top Level Selectors
  */
 
-export const getMetabotState = (state: State) => {
-  return state.metabot;
+export const getMetabotState = (state: { metabot: unknown }) => {
+  // The global `State` declares this key as `unknown` because the shape is metabot's own.
+  // Every store root registers `metabotReducer` under this key, so the value is always a `MetabotState`.
+  return state.metabot as MetabotState;
 };
 
 export const getActiveMetabotAgentIds = createSelector(
