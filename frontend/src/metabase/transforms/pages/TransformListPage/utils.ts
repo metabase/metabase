@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";

@@ -349,6 +349,14 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :type       :csv
   :audit      :getter)
 
+(defsetting ldap-sync-user-attributes-allowlist
+  (deferred-tru "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.")
+  :encryption :no
+  :default    ""
+  :type       :csv
+  :export?    false
+  :audit      :getter)
+
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
   :encryption :when-encryption-key-set
@@ -401,6 +409,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting oidc-login-providers
   (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :encryption :no
   :type       :json
   :default    []
   :feature    :sso-oidc
@@ -430,6 +439,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
   (SAML/JWT) for authorization rather than the normal login form or Google Auth button."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured))))

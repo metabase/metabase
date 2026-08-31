@@ -6,9 +6,9 @@ import {
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "metabase/dashboard/utils/click-behavior";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";

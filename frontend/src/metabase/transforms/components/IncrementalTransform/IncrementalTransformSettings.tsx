@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import { getLibQuery } from "metabase/transforms/utils";
 import {

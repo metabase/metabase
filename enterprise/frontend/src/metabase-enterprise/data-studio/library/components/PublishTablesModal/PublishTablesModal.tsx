@@ -4,13 +4,13 @@ import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import {

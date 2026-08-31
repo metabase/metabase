@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetadata } from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";

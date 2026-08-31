@@ -97,6 +97,7 @@
 
 (defsetting available-fonts
   "Available fonts"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -105,6 +106,7 @@
 
 (defsetting available-locales
   "Available i18n locales"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -113,6 +115,7 @@
 
 (defsetting available-timezones
   "Available report timezone options"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -121,6 +124,7 @@
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
+  :encryption :no
   :visibility :authenticated
   :export?    true
   :setter     :none

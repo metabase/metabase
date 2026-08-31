@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getMetadata } from "metabase/metadata-store";
 import { getMode as getQuestionMode } from "metabase/querying/click-actions/lib/modes";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 
 import type { QueryBuilderStoreState } from "./state";

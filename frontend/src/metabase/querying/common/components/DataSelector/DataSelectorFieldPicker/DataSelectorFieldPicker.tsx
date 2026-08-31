@@ -7,9 +7,9 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
+import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";

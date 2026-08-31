@@ -2024,3 +2024,24 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(deftest known-models-normalization-test
+  (testing "adapters that key model id to a map are passed through"
+    (let [models (self/known-models "anthropic")]
+      (is (seq models))
+      (is (every? (comp :display-name val) models))))
+  (testing "DeepSeek keys model id straight to a display name, and is normalized to the same shape"
+    (let [models (self/known-models "deepseek")]
+      (is (seq models))
+      (is (every? (comp string? :display-name val) models))))
+  (testing "the types with no allow-list return nil rather than an empty map"
+    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+      (is (nil? (self/known-models provider)) provider)))
+  (testing "an unregistered provider throws instead of reading as one with no models"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown LLM provider"
+                          (self/known-models "brand-new"))))
+  (testing "an entry that is neither a map nor a string throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" 42)))))

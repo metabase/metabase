@@ -11,6 +11,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -24,7 +25,6 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";

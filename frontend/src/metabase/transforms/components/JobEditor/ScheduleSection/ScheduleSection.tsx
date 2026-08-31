@@ -18,7 +18,7 @@ import type {
 } from "metabase/common/components/Schedule/types";
 import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";

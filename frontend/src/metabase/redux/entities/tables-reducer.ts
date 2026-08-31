@@ -16,7 +16,7 @@ type ReducerAction = { type: string; payload?: any; error?: unknown };
  *
  * Tables no longer go through the entity framework — CRUD lives in
  * `metabase/api/table`. The slice itself is still consumed by `getMetadata` in
- * `metabase/selectors/metadata.ts`, so we keep it in sync when:
+ * `metabase/metadata-store.ts`, so we keep it in sync when:
  *
  * - questions are created/updated/archived (the saved-question virtual table
  *   `card__<id>` representation needs to track them), and

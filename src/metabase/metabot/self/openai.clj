@@ -250,7 +250,7 @@
       500 (tru "OpenAI API is not working but not saying why")
       (tru "OpenAI API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}

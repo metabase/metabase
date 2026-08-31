@@ -6,6 +6,7 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
@@ -20,7 +21,6 @@ import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { navigate } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";

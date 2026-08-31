@@ -7,9 +7,8 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-actionlint:
-  - added|modified: ".github/workflows/*.yml"
-  - added|modified: ".github/workflows/*.yaml"
+workflows:
+  - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"
