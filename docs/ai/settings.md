@@ -13,74 +13,113 @@ This page covers admin settings for AI features in Metabase, including [Metabot]
 
 ## Enable AI features
 
-AI features are available on both Metabase Cloud and self-hosted Metabase. To turn them on:
+AI features work on both Metabase Cloud and self-hosted Metabase, and connecting your own AI provider doesn't require a paid plan. To turn AI features on:
 
-1. Go to **Admin settings > AI**.
-2. In **Connect to an AI provider**, choose a **Provider**:
-   - **Metabase**: The Metabase AI service. Metabase picks a benchmarked, cost-effective model for you, and charges you on token usage. See [Choose AI provider](#choose-ai-provider)
-   - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
-3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
+1. Go to **Admin > AI**.
+2. In **Connect to an AI provider**, click **Add a provider**.
+3. Pick a provider and fill in its credentials. See [Choose AI provider](#choose-ai-provider).
+4. Click **Connect**.
+5. Configure [Metabot](#configure-metabot) and the other AI features below.
+
+When you bring your own key, Metabase checks the credentials against a model before it saves the connection, so a bad key gets caught when you connect, not the first time someone asks Metabot a question.
+
+You're not limited to one provider. See [Connect more than one provider](#connect-more-than-one-provider).
 
 ## Choose AI provider
 
 _Admin > AI_
 
-You can choose which AI provider and model is used to power Metabase's built-in agent.
+You pick which AI providers Metabase can use, and which model Metabot runs on.
 
-- If you're **self-hosting Metabase** and want to use Metabot, you need to [bring your own AI API key](#bring-your-own-api-key).
-- On **Metabase Cloud**, you can either [bring your own AI API key](#bring-your-own-api-key) or [use the Metabase AI Service](#metabase-ai-service).
+- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [bring your own AI API key](#bring-your-own-api-key).
+- On **Metabase Cloud**, you can [bring your own AI API key](#bring-your-own-api-key), [use the Metabase AI service](#metabase-ai-service), or do both.
 
-The AI provider that you specify in AI settings powers Metabase's built-in AI functionality, not the MCP server. [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
-### Metabase AI Service
+### Metabase AI service
 
-On Metabase Cloud, you can have us manage the AI for you with our AI Service.
+On Metabase Cloud, you can have us manage the AI for you with our AI service.
 
-Metabase's AI Service is a good option if you don't have a preferred AI provider, or if you want to manage all your Metabase AI costs through Metabase. We (Metabase the company) select the models for you. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
+Metabase's AI service is a good option if you don't have a preferred AI provider, or if you want to manage all your Metabase AI costs through Metabase. We (Metabase the company) select the models for you. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
-If you use Metabase's AI Service, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
+If you use Metabase's AI service, you'll get charged based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
 
-To use Metabase AI provider for your Metabot:
+To use the Metabase AI service for Metabot:
 
-1. Go to **Admin > AI > AI settings**.
-2. In **Connect to an AI provider**, choose **Metabase** as the provider.
+1. Go to **Admin > AI**.
+2. Click **Add a provider**, then pick **Metabase AI service**.
 3. Agree to the terms of service.
 4. Click **Connect**.
 
-To disable Metabase AI provider and stop charges:
+You can only connect the Metabase AI service once, so it stops showing up in the **Add a provider** grid after you've added it.
 
-1. Go to **Admin > AI > AI settings**.
-2. Under **Connected to Metabase**, click **Disconnect**.
+To stop the charges, remove the connection: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**. Removing the connection cancels your Metabase AI service subscription, and its models stop showing up in the **Model** dropdown.
 
 ### Bring your own API key
 
-You can specify your own API key and model for Metabot from one of the supported providers. When you connect a provider, the **Model** dropdown lists the supported models that your API key can access.
-
-- **Amazon Bedrock**: Claude and GPT models.
-- **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
-- **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
-- **Mistral**
-- **OpenAI**: GPT models.
-- **OpenRouter**: Claude, GPT, Mistral, DeepSeek, and GLM-5.2 models.
-- **Z.AI**: GLM-5.2 models.
+You can bring your own credentials for any provider Metabase supports, from Anthropic and OpenAI to Amazon Bedrock and your own self-hosted vLLM server. For the full list, what each provider needs, and which models it serves, check out [Supported AI providers](./providers.md).
 
 If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
-To enable AI features with your own API key:
+To connect a provider with your own API key:
 
 1. Go to **Admin > AI**.
-2. Select your **Provider**.
-3. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
-4. Click **Connect**.
-5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
+2. Click **Add a provider**.
+3. Pick your provider.
+4. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
+5. Click **Connect**.
 
-When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), and [inline SQL generation](./metabot.md#inline-sql-editing).
+If you've already copied a key, you can skip picking a provider: paste the key anywhere on the provider grid, and Metabase will select the matching provider and fill the key in for you. Metabase recognizes Anthropic, OpenAI, and OpenRouter keys by their prefix. DeepSeek and Moonshot AI keys start with the same `sk-` prefix as OpenAI keys, so check which provider Metabase picked before you click **Connect**.
 
-To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
+Once the connection saves, you can point [Metabot](./metabot.md) at any model it serves. SQL generation is the exception: it always runs on your Anthropic connection, whatever model you pick for Metabot. See [Semantic search and SQL generation don't follow the Model dropdown](#semantic-search-and-sql-generation-dont-follow-the-model-dropdown).
+
+### Connect more than one provider
+
+You can connect as many providers as you want. Once you've added your first one, the card is titled **AI providers** and the button reads **Add another provider**.
+
+You can add more than one connection of the same type, like two Anthropic keys or two Azure deployments. Give each connection its own name so you can tell them apart: click **Advanced settings** in the connect form and fill in **Display name**. That name labels the connection in the **Model** dropdown, so "Anthropic" and "Anthropic (evals)" can sit side by side.
+
+The one exception is the [Metabase AI service](#metabase-ai-service), which you can only connect once.
+
+### Pick the model Metabot runs on
+
+The **Model** dropdown below your provider list sets the model Metabot uses by default. It lists the models from each working connection, grouped by connection, so picking a model also picks which connection serves it.
+
+If one connection's credentials stop working, only that connection reports an error. Models from your other connections still list, so you can move Metabot to a different provider without having to fix the broken connection first.
+
+A connection that's missing a required setting shows a warning icon, and Metabot can't use it until you fill the setting in.
+
+### Semantic search and SQL generation don't follow the Model dropdown
+
+Two features read a fixed connection instead of following your **Model** selection:
+
+- **Semantic search**, which ranks search results by meaning as well as by keyword, always runs on your OpenAI connection. Semantic search is only available on [paid plans](https://www.metabase.com/pricing).
+- **SQL generation**, including [inline SQL editing](./metabot.md#inline-sql-editing), always runs on your Anthropic connection.
+
+Neither feature falls back to a second connection of the same type. If you've added two OpenAI connections, semantic search uses the first one, and removing that connection stops semantic search even though the second one is still there. Metabot carries on with whatever model you picked. Metabase tells you which feature you're about to turn off when you confirm the removal.
+
+### Edit or remove a provider connection
+
+Each connection in the list has a **...** menu:
+
+- **Edit**: change the connection's display name, credentials, or API base URL. You don't have to retype the API key. Metabase keeps the stored key unless you replace it.
+- **Remove**: delete the connection and its saved credentials. If Metabot was running on a model from that connection, Metabot switches to a model from one of your remaining connections, or reports itself as unconfigured if there aren't any.
+
+The [Metabase AI service](#metabase-ai-service) connection only offers **Remove**, since there are no credentials of your own to edit.
+
+### Set provider credentials with environment variables
+
+If you're self-hosting, you can configure a provider with [`MB_LLM_*` environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. A provider configured this way shows up in the list as a read-only connection that names the variables that set it, and it has no **...** menu.
+
+An environment variable can also override a single field of a connection you manage in the UI. If you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, for example, the base URL comes from the environment, and the rest of the connection stays editable.
+
+To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only: **Add a provider** is still there, but saving fails.
+
+On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
 
 ## Configure Metabot
 
-_Admin > AI > AI settings_
+_Admin > AI_
 
 ![Metabot settings](./images/ai-settings.png)
 

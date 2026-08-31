@@ -82,6 +82,12 @@ At this point you are all set and ready to use Metabase. Since we like keeping i
 
 Once you're done here simply follow the link to **Take me to Metabase**. And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
+## Connect an AI provider
+
+The last screen also offers to set up AI. If you click **Set up AI**, Metabase walks you through connecting an AI provider so you can use AI explorations, SQL generation, and Metabot. It's the same provider picker you'd find later in **Admin > AI**, so nothing is lost by clicking **I'll set this up later** and coming back to it.
+
+You won't see the offer if you told Metabase you're here for embedding, or if AI features are turned off for your instance. For what each provider needs, and how to connect more than one, check out [AI settings](../ai/settings.md#enable-ai-features).
+
 ## Getting started with Metabase
 
 For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started/).
