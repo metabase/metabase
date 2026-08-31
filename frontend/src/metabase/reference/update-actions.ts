@@ -15,10 +15,9 @@ import type { Database, Field, Segment, Table } from "metabase-types/api";
  * from `state.entities` and carries the nested records the mirror stitched onto
  * it. The API rejects those, so each one is dropped before the request.
  *
- * These write the response into the mirror themselves rather than the update
- * endpoints hydrating for everyone. Those endpoints have around 25 other
- * callers, and hydrating for all of them broke
- * `database-writable-connection.cy.spec.ts`.
+ * Each one writes the response into the mirror itself. Do not move that into
+ * the update endpoints: they have about 25 other callers, and hydrating for all
+ * of them fails `database-writable-connection.cy.spec.ts`.
  */
 
 export const updateDatabase =
