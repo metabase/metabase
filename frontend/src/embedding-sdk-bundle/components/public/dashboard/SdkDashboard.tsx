@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -34,8 +35,12 @@ import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
+import {
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
@@ -260,6 +265,9 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
+  // Stable per-mount id: keeps this mount's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const mountId = useId();
 
   useWarnConflictingParameterProps({
     initialParameters,
@@ -278,15 +286,26 @@ const SdkDashboardInner = ({
     onParametersChange,
   });
 
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForMount(state, mountId),
+  );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);
