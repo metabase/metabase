@@ -117,7 +117,7 @@ describe("Scalar", () => {
     );
   });
 
-  it("should compute the title link on mousedown so middle-click and copy-link never see the placeholder", () => {
+  it("should render the real title link from the start so middle-click and copy-link never see a placeholder", () => {
     const getHref = jest.fn(() => "/question/42");
     render(
       <Scalar
@@ -135,12 +135,11 @@ describe("Scalar", () => {
     );
 
     const link = screen.getByTestId("legend-label");
-    expect(link).toHaveAttribute("href", "#");
-
-    fireEvent.mouseDown(link);
-
-    expect(getHref).toHaveBeenCalled();
     expect(link).toHaveAttribute("href", "/question/42");
+
+    // interactions refresh the href in case it went stale
+    fireEvent.mouseDown(link);
+    expect(getHref).toHaveBeenCalledTimes(2);
   });
 
   it("should navigate from a visualizer card with a single underlying question", async () => {

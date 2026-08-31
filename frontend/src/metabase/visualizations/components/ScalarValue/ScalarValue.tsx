@@ -97,8 +97,6 @@ export const ScalarValue = ({
   );
 };
 
-const TITLE_HREF_PLACEHOLDER = "#";
-
 interface ScalarTitleProps {
   children: ReactNode;
   description?: string | null;
@@ -114,9 +112,7 @@ export const ScalarTitle = ({
   getHref,
   onSelectTitle,
 }: ScalarTitleProps) => {
-  const [href, setHref] = useState(
-    getHref ? TITLE_HREF_PLACEHOLDER : undefined,
-  );
+  const [href, setHref] = useState(() => getHref?.());
   const computeHref = useCallback(() => {
     if (getHref) {
       setHref(getHref());
