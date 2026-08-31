@@ -1359,6 +1359,7 @@
            lib-be
            llm
            metabot
+           metrics
            models
            notification
            oauth-server
@@ -1373,13 +1374,20 @@
            session
            settings
            system
+           transforms
            util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
                     :model/Field
-                    :model/NativeQuerySnippet}}
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   measures
   {:team "Graphy"
