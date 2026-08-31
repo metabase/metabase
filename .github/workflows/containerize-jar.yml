@@ -23,16 +23,6 @@ on:
         default: false
       build-args:
         type: string
-    outputs:
-      repo:
-        description: Docker repository name
-        value: ${{ jobs.containerize.outputs.repo }}
-      tag:
-        description: Docker tag
-        value: ${{ jobs.containerize.outputs.tag }}
-      full_image:
-        description: Full Docker image name (repo:tag)
-        value: ${{ jobs.containerize.outputs.full_image }}
   workflow_dispatch:
     inputs:
       edition:
@@ -202,15 +192,13 @@ jobs:
       timeout-minutes: 5
 
   post-docker-info-comment:
-    # Lives here rather than in the caller so every containerize path gets the comment, and so
-    # it can read the resolved image directly instead of re-deriving it upstream.
     needs: [containerize, verify-docker-pull, verify-docker-pull-arm]
+    # Only post a comment if all the steps pass and this is a PR.
     if: |
-      !cancelled() &&
-      github.event_name == 'pull_request' && !inputs.release &&
-      needs.containerize.result == 'success' &&
-      needs.verify-docker-pull.result == 'success' &&
-      (needs.verify-docker-pull-arm.result == 'success' || needs.verify-docker-pull-arm.result == 'skipped')
+      !cancelled() && 
+      !failure() &&
+      !inputs.release &&
+      github.event_name == 'pull_request'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Post PR comment
     steps:
