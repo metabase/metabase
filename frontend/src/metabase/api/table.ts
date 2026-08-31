@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
   BulkTableRequest,
   BulkTableSelectionInfo,
@@ -30,7 +28,6 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -41,10 +38,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [TableSchema])),
-        ),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -52,10 +45,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -64,10 +53,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableData: builder.query<TableData, GetTableDataRequest>({
       query: ({ tableId }) => ({
@@ -81,10 +66,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [ForeignKeySchema])),
-        ),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -285,6 +266,13 @@ export const {
   useSyncTablesSchemasMutation,
   useDiscardTablesFieldValuesMutation,
 } = tableApi;
+
+/**
+ * Reads a table's already-fetched `query_metadata` out of the RTK cache. Use it
+ * after awaiting the fetch, where a hook is not an option.
+ */
+export const selectTableQueryMetadata =
+  tableApi.endpoints.getTableQueryMetadata.select;
 
 /**
  * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.

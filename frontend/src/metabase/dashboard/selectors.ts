@@ -31,7 +31,7 @@ import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { extendCardWithDashcardSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -179,6 +179,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+export const getLinkTargetEntities = (state: State) =>
+  state.dashboard.linkTargets;
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],

@@ -2,19 +2,13 @@ import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { setHighlightedComment } from "metabase/explorations/explorations.slice";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ClickObject } from "metabase/visualizations/types";
 import type {
-  Comment,
   Dataset,
   ExplorationPageNode,
   ExplorationQuery,
@@ -29,7 +23,6 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { ExplorationGroupVisualization } from "./ExplorationGroupVisualization";
 
@@ -56,9 +49,6 @@ const sampleClickObject: ClickObject = {
   cardId: 101,
 };
 
-let mockComments: Comment[] = [
-  createMockComment({ id: 1, context: { timeline_id: 42 } }),
-];
 let lastVisualizationProps: Record<string, unknown> | undefined;
 let visualizationCommitCount = 0;
 
@@ -89,11 +79,9 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
 
 jest.mock("./ExplorationComments", () => ({
   ExplorationComments: ({
-    renderCommentTags,
     disableAutoFocus,
     onClose,
   }: {
-    renderCommentTags?: (comment: Comment) => React.ReactNode;
     disableAutoFocus?: boolean;
     onClose?: () => void;
   }) => (
@@ -102,9 +90,6 @@ jest.mock("./ExplorationComments", () => ({
       data-disable-autofocus={disableAutoFocus ? "true" : "false"}
     >
       <button data-testid="comments-stub-close" onClick={onClose} />
-      {mockComments.map((comment) => (
-        <div key={comment.id}>{renderCommentTags?.(comment)}</div>
-      ))}
     </div>
   ),
 }));
@@ -147,6 +132,7 @@ jest.mock("metabase/api/exploration", () => ({
   useSetPageStarredMutation: () => [mockMutationTrigger()],
   useSetPagesHiddenMutation: () => [mockMutationTrigger()],
   useExploreFurtherMutation: () => [mockMutationTrigger()],
+  useAppendChartToSummaryMutation: () => [mockMutationTrigger()],
 }));
 
 jest.mock("metabase/api/comment", () => ({
@@ -288,6 +274,7 @@ function setup({
             isCommentsSidebarOpen={isCommentsSidebarOpen}
             wasCommentsSidebarOpen={wasCommentsSidebarOpen}
             onCloseCommentsSidebar={onCloseCommentsSidebar}
+            setSelectedSummary={jest.fn()}
           />
         }
       />,
@@ -321,7 +308,6 @@ function captureSeeAllEvents(): (events: TimelineEvent[]) => void {
 
 describe("ExplorationGroupVisualization", () => {
   beforeEach(() => {
-    mockComments = [createMockComment({ id: 1, context: { timeline_id: 42 } })];
     lastVisualizationProps = undefined;
     visualizationCommitCount = 0;
   });
@@ -608,6 +594,7 @@ describe("ExplorationGroupVisualization", () => {
             isCommentsSidebarOpen={commentsOpen}
             wasCommentsSidebarOpen={false}
             onCloseCommentsSidebar={jest.fn()}
+            setSelectedSummary={jest.fn()}
           />
         </>
       );
@@ -731,78 +718,38 @@ describe("ExplorationGroupVisualization", () => {
       );
     });
 
-    it("calls onSelectTimelineId when a comment timeline badge is clicked", async () => {
-      const onSelectTimelineId = jest.fn();
-      setup({
+    it("resolves highlightedComment from redux onto the visualization", () => {
+      const { store } = setup({
         ...timeseriesSetup,
         isCommentsSidebarOpen: true,
-        onSelectTimelineId,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Releases" }));
-
-      expect(onSelectTimelineId).toHaveBeenCalledWith(42);
-    });
-
-    it("renders filter and timeline badges together", () => {
-      mockComments = [
-        createMockComment({
-          id: 1,
-          context: {
-            timeline_id: 42,
+      act(() => {
+        store.dispatch(
+          setHighlightedComment({
+            childTargetId: "1",
+            explorationQueryIds: [101],
             highlighted: {
-              cardId: 101,
               columnName: "count",
               dimensions: [{ columnName: "ts", value: "2025-01-01" }],
             },
-          },
-        }),
-      ];
-
-      setup({
-        ...timeseriesSetup,
-        isCommentsSidebarOpen: true,
+          }),
+        );
       });
-
-      expect(
-        screen.getByRole("button", { name: "Releases" }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Jan/ })).toBeInTheDocument();
-    });
-
-    it("sets highlighted on the visualization when hovering the filter badge", async () => {
-      mockComments = [
-        createMockComment({
-          id: 1,
-          context: {
-            highlighted: {
-              cardId: 101,
-              columnName: "count",
-              dimensions: [{ columnName: "ts", value: "2025-01-01" }],
-            },
-          },
-        }),
-      ];
-
-      setup({
-        ...timeseriesSetup,
-        isCommentsSidebarOpen: true,
-      });
-
-      const filterBadge = screen.getByRole("button", { name: /Jan/ });
-      fireEvent.mouseEnter(filterBadge);
 
       expect(screen.getByTestId("visualization-stub")).toHaveAttribute(
         "data-highlighted",
         JSON.stringify({
-          cardId: 101,
           columnName: "count",
           dimensions: [{ columnName: "ts", value: "2025-01-01" }],
+          cardId: 101,
           shouldShowTooltip: true,
         }),
       );
 
-      fireEvent.mouseLeave(filterBadge);
+      act(() => {
+        store.dispatch(setHighlightedComment(null));
+      });
       expect(screen.getByTestId("visualization-stub")).toHaveAttribute(
         "data-highlighted",
         "null",

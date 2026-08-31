@@ -117,6 +117,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
           .findByText(/Caching settings/)
           .should("be.visible");
         H.selectCacheStrategy(/Duration/);
+        H.fillCacheDuration(24);
         H.cacheStrategySidesheet()
           .findByRole("button", { name: /Save/ })
           .click();

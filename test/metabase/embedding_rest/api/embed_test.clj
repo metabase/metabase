@@ -151,7 +151,9 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:lib/type "mbql/query"
-                            :stages   [{:lib/type "mbql.stage/mbql"}]}
+                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                        :source-table int?
+                                        :aggregation  [["count" {:lib/uuid string?}]]}]}
    :parameters             []
    :param_fields           {}})
 
@@ -170,6 +172,18 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (=? successful-card-info
               (client/client :get 200 (card-url card)))))))
+
+(deftest embed-card-strips-dataset-query-test
+  (testing "GET /api/embed/card/:token replaces the Card's query with a blank native query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-card [card {:enable_embedding true
+                             :dataset_query    (mt/native-query {:query "SELECT id FROM venues"})}]
+        (let [{:keys [dataset_query]} (client/client :get 200 (card-url card))]
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 dataset_query)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -330,11 +344,13 @@
           (let [expected-status (response-format->status-code response-format)]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
               (with-temp-card [card {:enable_embedding true}]
+                ;; embed tests still assert via the deprecated helper; not yet migrated
                 #_{:clj-kondo/ignore [:deprecated-var]}
                 (test-query-results
                  response-format
                  (client/real-client :get expected-status (card-query-url card response-format)
                                      {:request-options request-options}))
+                ;; embed tests still assert via the deprecated helper; not yet migrated
                 #_{:clj-kondo/ignore [:deprecated-var]}
                 (test-query-results
                  response-format
@@ -416,6 +432,7 @@
             (is (= "You must specify a value for :venue_id in the JWT."
                    (client/client :get 400 (card-query-url card response-format)))))
           (testing "if `:locked` param is present, request should succeed"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -456,6 +473,7 @@
                                                         "&venue_id=100"
                                                         "?venue_id=100")))))))
           (testing "If an `:enabled` param is present in the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -463,6 +481,7 @@
                                  (card-query-url card response-format {:params {:venue_id "enabled"}})
                                  {:request-options request-options})))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -571,6 +590,18 @@
               (client/client :get 200 (dashboard-url dash))))
       (is (=? successful-dashboard-info
               (client/client :get 200 (dashboard-url (:entity_id dash) dash)))))))
+
+(deftest embed-dashboard-strips-dataset-query-test
+  (testing "GET /api/embed/dashboard/:token replaces each Card's query with a blank query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
@@ -757,8 +788,10 @@
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        ;; embed tests still assert via the deprecated helper; not yet migrated
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard)))
+        ;; embed tests still assert via the deprecated helper; not yet migrated
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 

@@ -12,6 +12,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn page-url
+  "Relative URL of a page in the exploration detail view. Used by the summary-append
+  endpoint to deep-link a static `cardEmbed`'s title back to its page."
+  [exploration-id page-id]
+  (str "/question/research/" exploration-id "/page/" page-id))
+
 ;;; ------------------------------------------- names -------------------------------------------
 
 (defn block-display-name

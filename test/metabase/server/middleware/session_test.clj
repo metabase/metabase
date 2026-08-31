@@ -15,8 +15,11 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
+   [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
@@ -51,6 +54,36 @@
                 (if expected
                   (is (nil? session))
                   (is (some? session)))))))))))
+
+(defn- insert-test-session!
+  "Insert a `core_session` row directly, bypassing the model hooks so that columns like `created_at` and `expires_at`
+  can be set to arbitrary (including DB-side) expressions. Returns the plaintext session key."
+  [user-id extra-cols]
+  (let [session-key (str (random-uuid))]
+    (t2/insert! (t2/table-name :model/Session)
+                (merge {:id         (session/generate-session-id)
+                        :key_hashed (session/hash-session-key session-key)
+                        :user_id    user-id}
+                       extra-cols))
+    session-key))
+
+(deftest session-expires-at-test
+  (init-status/set-complete!)
+  (testing "`expires_at` is enforced server-side, even for a session well within `max-session-age`"
+    (let [db-type (mdb/db-type)
+          now     (h2x/current-datetime-honeysql-form db-type)]
+      (doseq [[expires-at expected msg]
+              [[nil                                                    false "session with no expires_at"]
+               [(h2x/add-interval-honeysql-form db-type now 60 :second) false "session that expires in 60 seconds"]
+               [(h2x/add-interval-honeysql-form db-type now -1 :second) true  "session that expired 1 second ago"]
+               [#t "1970-01-01T00:00:01Z"                              true  "session that expired long ago"]]]
+        (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
+          (mt/with-temp [:model/User {user-id :id}]
+            (let [session-key (insert-test-session! user-id {:created_at now, :expires_at expires-at})
+                  session     (#'mw.session/current-user-info-for-session session-key nil)]
+              (if expected
+                (is (nil? session))
+                (is (some? session))))))))))
 
 ;;; ---------------------------------------- TEST wrap-session-key middleware -----------------------------------------
 
@@ -133,6 +166,38 @@
                                  :user-locale             nil
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info req))))))))))
+
+(deftest api-key-hash-encrypted-at-rest-test
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
+                                                     :user_id               (mt/user->id :lucky)
+                                                     :creator_id            (mt/user->id :lucky)
+                                                     :updated_by_id         (mt/user->id :lucky)
+                                                     ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
+        (testing "the stored bcrypt hash is encrypted at rest"
+          ;; select from the raw table to bypass the model's decrypting :out transform
+          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+            (is (encryption/possibly-encrypted-string? raw)
+                "raw column value should be ciphertext")
+            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
+                "it should decrypt to the (plaintext) bcrypt hash")))
+        (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
+          (is (= (mt/user->id :lucky)
+                 (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
+        (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
+          (t2/query {:update :api_key
+                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     :where  [:= :id api-key-id]})
+          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
+              "strict decrypt rejects the unencrypted hash")
+          ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
+          ;; strict decrypt on the corrupted plaintext value
+          (t2/query {:update :api_key
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     :where  [:= :id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"

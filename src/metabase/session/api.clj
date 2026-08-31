@@ -292,7 +292,7 @@
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
+                             {:object (assoc user :token (auth-identity/reset-token-hash user-id))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -311,7 +311,7 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
-  (throttle-check (forgot-password-throttlers :email) email)
+  (throttle-check (forgot-password-throttlers :email) (u/lower-case-en email))
   (forgot-password-impl email)
   api/generic-204-no-content)
 

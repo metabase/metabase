@@ -8,34 +8,39 @@ import {
   trackExplorationCommentCreated,
   trackExplorationExploreFurtherClicked,
 } from "metabase/explorations/analytics";
+import {
+  buildCommentHighlightContext,
+  canExploreFurther,
+  getExploreFurtherFilters,
+} from "metabase/explorations/components/ExplorationVisualization/utils";
 import type {
   ClickAction,
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
-  HighlightedObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,
   ExplorationPageId,
+  ExplorationQuery,
+  ExplorationQueryId,
   ExplorationQueryType,
 } from "metabase-types/api";
 
 import { ExplorationCommentEditor } from "../components/ExplorationVisualization/ExplorationCommentEditor";
-import {
-  canExploreFurther,
-  getExploreFurtherFilters,
-} from "../components/ExplorationVisualization/utils";
 import type { CommentDrafts } from "../types";
 
 interface UseExplorationClickActionsModeParams {
-  explorationId: ExplorationId;
-  pageId: ExplorationPageId;
-  queryType: ExplorationQueryType;
+  explorationId?: ExplorationId;
+  pageId?: ExplorationPageId;
+  queryType?: ExplorationQueryType;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
+  seriesQueryIds: ExplorationQueryId[];
+  queriesById: Readonly<Record<ExplorationQueryId, ExplorationQuery>>;
 }
 
 export function useExplorationClickActionsMode({
@@ -44,6 +49,8 @@ export function useExplorationClickActionsMode({
   queryType,
   commentDrafts,
   setCommentDrafts,
+  seriesQueryIds,
+  queriesById,
 }: UseExplorationClickActionsModeParams): ClickActionsMode {
   const [exploreFurther] = useExploreFurtherMutation();
   const [createComment] = useCreateCommentMutation();
@@ -56,8 +63,15 @@ export function useExplorationClickActionsMode({
 
   const mode = useMemo(() => {
     return {
-      actionsForClick: (clicked: ClickObject) => {
+      actionsForClick: (
+        clicked: ClickObject,
+        settings?: ComputedVisualizationSettings,
+      ) => {
         const actions: ClickAction[] = [];
+
+        if (explorationId == null || pageId == null) {
+          return actions;
+        }
 
         if (canExploreFurther(clicked, queryType)) {
           const handleExploreFurther = async () => {
@@ -99,23 +113,19 @@ export function useExplorationClickActionsMode({
             content: DocumentContent,
             onClose: () => void,
           ) => {
-            const highlighted: HighlightedObject = {
-              cardId: clicked.cardId,
-              columnName: clicked.column?.name,
-              dimensions: clicked.dimensions?.map((d) => ({
-                value: d.value,
-                columnName: d.column.name,
-              })),
-            };
+            const highlightContext = buildCommentHighlightContext(
+              clicked,
+              seriesQueryIds,
+              queriesById,
+              settings,
+            );
             const { error } = await createComment({
               target_id: explorationId,
               target_type: "exploration",
               child_target_id: String(pageId),
               parent_comment_id: null,
               content,
-              context: {
-                highlighted,
-              },
+              context: highlightContext,
             });
             if (error) {
               sendToast({
@@ -162,6 +172,8 @@ export function useExplorationClickActionsMode({
     exploreFurther,
     createComment,
     sendToast,
+    seriesQueryIds,
+    queriesById,
   ]);
 
   return mode;

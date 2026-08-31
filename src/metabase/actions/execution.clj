@@ -61,11 +61,13 @@
 (defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
-    (let [model (t2/select-one :model/Card :id (:model_id action))]
-      (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
+    (let [model (t2/select-one :model/Card :id (:model_id action))
+          ;; the query executes against its own :database; fall back to the derived column if absent
+          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
+      (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (t2/select-one :model/Database :id (:database_id action)))))
+         (t2/select-one :model/Database :id action-db-id))))
     (try
       (case action-type
         :query

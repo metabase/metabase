@@ -117,6 +117,7 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
+   :public_uuid            (mi/transform-encrypted-text "report_card.public_uuid")
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
@@ -135,6 +136,58 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defn- parent-document-id
+  "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
+  nor a primary key to resolve it from.
+
+  A narrowed `t2/select` that dropped the column must not read as \"belongs to no document\" — that
+  would let a caller widen access just by shortening its column list — so the column is resolved
+  from the primary key rather than assumed. The one shape that cannot be resolved is the synthetic
+  `{:collection_id …}` stub [[metabase.query-permissions.impl]] builds for source-card permission
+  checks: it carries no identity at all. Those decide whether a query may *run*, have never been
+  document-aware, and denying them would break every query with a source card — so they keep the
+  collection-perms answer they have always had."
+  [card]
+  (cond
+    (contains? card :document_id) (:document_id card)
+    (:id card)                    (t2/select-one-fn :document_id :model/Card :id (:id card))
+    :else                         ::not-adjudicable))
+
+(defn- parent-document-permits?
+  "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
+
+  A Card scoped to a Document is a child of it, and the Document — not the collection — is the
+  authority on who may see it. An exploration Summary materializes ephemeral Cards whose `name` and
+  `dataset_query` are copied from the `ExplorationQuery` they render, and those embed dimension
+  values discovered under the *creator's* data-access lens (see
+  [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
+  material — withholding it is the entire reason the Document's content gate exists — so a Card
+  that carries those values must be gated exactly as the document embedding it is."
+  [card read-or-write]
+  (let [document-id (parent-document-id card)]
+    (if (or (= ::not-adjudicable document-id) (nil? document-id))
+      true
+      (case read-or-write
+        :read  (mi/can-read? :model/Document document-id)
+        :write (mi/can-write? :model/Document document-id)))))
+
+;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
+;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
+;; being true for Cards once a Card could be scoped to a Document (see [[parent-document-permits?]]).
+;; Its docstring prescribes exactly this: drop the macro call and write the richer method by hand.
+;; The collection half still delegates to the same helper the macro installed, so the audit-collection
+;; rule it carries is preserved verbatim.
+;;
+;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
+;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
+;; so the document check below adds no further queries.
+(defmethod mi/can-read? :model/Card
+  ([instance]
+   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+        (parent-document-permits? instance :read)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Card :id pk))))
+
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
@@ -145,11 +198,10 @@
           (some? (:id (audit/default-audit-collection)))
           ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
+    (parent-document-permits? instance :write)))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
-
-(perms/define-collection-based-visibility! :model/Card)
 
 (defn model?
   "Returns true if `card` is a model."
@@ -339,6 +391,16 @@
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
+(mu/defn parameter-template-tag? :- :boolean
+  "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
+  like snippets, card references, and tables."
+  [{tag-type :type, widget-type :widget-type} :- [:maybe ::lib.schema.template-tag/template-tag]]
+  (boolean
+   (and tag-type
+        (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+            (= tag-type :temporal-unit)
+            (and (= tag-type :dimension) widget-type (not= widget-type :none))))))
+
 ;;; TODO -- does this belong HERE or in the `parameters` module?
 (mu/defn template-tag-parameters :- ::parameters.schema/parameters
   "Transforms native query's `template-tags` into `parameters`.
@@ -346,10 +408,7 @@
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card :- [:maybe ::queries.schema/card]]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card :dataset_query not-empty lib/all-template-tags)
-        :when                         (and tag-type
-                                           (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-                                               (= tag-type :temporal-unit)
-                                               (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
+        :when                         (parameter-template-tag? tag)]
     {:id       (:id tag)
      :type     (or widget-type (case tag-type
                                  :temporal-unit :temporal-unit
@@ -813,7 +872,8 @@
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
-        populate-query-fields)
+        populate-query-fields
+        public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
@@ -873,7 +933,8 @@
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
-        maybe-populate-initially-published-at)))
+        maybe-populate-initially-published-at
+        public-sharing/add-public-uuid-prefix-if-changed)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -1414,7 +1475,9 @@
           ;; always re-derived from dataset_query by populate-query-fields on import
           :table_id :source_card_id
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
-          :metabot_conversation_id :metabot_chart_id]
+          :metabot_conversation_id :metabot_chart_id
+          ;; always re-derived from public_uuid on import
+          :public_uuid_prefix]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
@@ -1487,6 +1550,30 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(def ^:private not-in-exploration-document
+  "HoneySQL predicate: this Card does not belong to an exploration Summary document.
+
+  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied
+  from the `ExplorationQuery` it renders, so they carry dimension values discovered under the
+  creator's data-access lens. Its parent Document is never serialized (see
+  `metabase.documents.models.document`'s `extract-query`), and this Card's
+  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a
+  dangling reference even setting the lens question aside."
+  [:or
+   [:= :document_id nil]
+   [:in :document_id ^:allow-subquery {:select [:id]
+                                       :from   [:document]
+                                       :where  [:= :exploration_id nil]}]])
+
+(defmethod serdes/extract-query "Card"
+  [model-name opts]
+  ((get-method serdes/extract-query :default)
+   model-name
+   (update opts :where (fn [where]
+                         (if where
+                           [:and where not-in-exploration-document]
+                           not-in-exploration-document)))))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
   (card-deps true card))

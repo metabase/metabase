@@ -10,8 +10,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 

@@ -46,7 +46,6 @@ await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
 });
 ```
 
-
 ## Set up JWT authentication
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
@@ -118,7 +117,7 @@ If you add group mappings manually, Metabase will _not_ try to also match groups
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
 User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via JWT SSO.
 
