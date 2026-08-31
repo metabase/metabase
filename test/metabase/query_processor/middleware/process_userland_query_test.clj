@@ -215,16 +215,16 @@
         ;; the interrupt must land while the QP is inside `*run*`'s try (which is what posts `::cancel`), so wait
         ;; for the query to reach `*reduce*` before cancelling — a fixed grace period loses the race whenever
         ;; pre-pipeline setup is slow, e.g. the first query on a fresh JVM when this test runs in isolation
-        (let [started    (promise)
-              never-open (java.util.concurrent.CountDownLatch. 1)]
+        (let [started         (promise)
+              never-delivered (promise)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan
-                    qp.pipeline/*reduce*        (fn [_rff _metadata rows]
+                    qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
                                                   (deliver started true)
-                                                  ;; nothing ever opens this latch: block until future-cancel's
+                                                  ;; nothing ever delivers this: block until future-cancel's
                                                   ;; interrupt arrives, bounded so a broken cancel can't hang the
-                                                  ;; worker thread forever
-                                                  (.await never-open 30 java.util.concurrent.TimeUnit/SECONDS)
-                                                  (qp.pipeline/*result* rows))]
+                                                  ;; worker thread forever. The interrupt throws out of the deref,
+                                                  ;; so there is nothing to do after it.
+                                                  (deref never-delivered 30000 nil))]
             (let [futur (future
                           (process-userland-query (mt/mbql-query venues)))]
               (is (true? (deref started 10000 ::timed-out))
