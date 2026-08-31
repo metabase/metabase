@@ -37,7 +37,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      build_matrix: ${{ steps.matrix.outputs.build_matrix }}
+      build_editions: ${{ steps.matrix.outputs.build_editions }}
       java_version: ${{ steps.dependencies.outputs.java_version }}
       node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
@@ -76,9 +76,7 @@ jobs:
 
             core.info(`build: ${editions.join(', ') || '(nothing, both artifacts already exist)'}`);
 
-            core.setOutput('build_matrix', JSON.stringify({
-              include: editions.map((edition) => ({ edition })),
-            }));
+            core.setOutput('build_editions', JSON.stringify(editions));
 
       - name: Prepare release scripts
         if: ${{ contains(github.ref, 'release-x') }}
@@ -100,11 +98,13 @@ jobs:
 
   build:
     needs: [setup]
+    if: ${{ needs.setup.outputs.build_editions != '[]' }}
     name: Build MB ${{ matrix.edition }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
-      matrix: ${{ fromJson(needs.setup.outputs.build_matrix) }}
+      matrix:
+        edition: ${{ fromJson(needs.setup.outputs.build_editions) }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
