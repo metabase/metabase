@@ -80,6 +80,7 @@
   ;; https://www.iana.org/assignments/iana-ipv6-special-registry
   [(address-prefix "192.0.0.9" 32)       ; PCP anycast
    (address-prefix "192.0.0.10" 32)      ; TURN anycast
+   (address-prefix "64:ff9b::" 96)       ; IPv4/IPv6 translation (NAT64 well-known prefix)
    (address-prefix "2001:1::1" 128)      ; PCP anycast
    (address-prefix "2001:1::2" 128)      ; TURN anycast
    (address-prefix "2001:1::3" 128)      ; DNS-SD service registration anycast
@@ -91,28 +92,27 @@
 (def ^:private non-global-special-prefixes
   ;; Additional IANA special-purpose blocks that are not globally reachable and are not already handled by
   ;; `InetAddress` or the checks in [[public-address?]]. Entries whose registry value is N/A or blank are also refused:
-  ;; they do not carry the external-reachability guarantee required by `:external-only`.
+  ;; they do not carry the external-reachability guarantee required by `:external-only`. IPv6 blocks outside 2000::/3
+  ;; (discard-only, local-use translation, segment-routing SIDs, ...) need no entry: everything outside the allocated
+  ;; global-unicast space is refused wholesale unless listed above.
   [(address-prefix "192.0.0.0" 24)       ; IETF protocol assignments
    (address-prefix "192.0.2.0" 24)       ; TEST-NET-1
    (address-prefix "192.88.99.0" 24)     ; deprecated 6to4 relay anycast
    (address-prefix "198.18.0.0" 15)      ; benchmarking
    (address-prefix "198.51.100.0" 24)    ; TEST-NET-2
    (address-prefix "203.0.113.0" 24)     ; TEST-NET-3
-   (address-prefix "64:ff9b:1::" 48)     ; local-use IPv4/IPv6 translation
-   (address-prefix "100::" 64)           ; discard-only
-   (address-prefix "100:0:0:1::" 64)     ; dummy IPv6 prefix
    (address-prefix "2001::" 23)          ; IETF protocol assignments
    (address-prefix "2001:db8::" 32)      ; documentation
    (address-prefix "2002::" 16)          ; 6to4
-   (address-prefix "3fff::" 20)          ; documentation
-   (address-prefix "5f00::" 16)])        ; segment-routing SIDs
+   (address-prefix "3fff::" 20)])        ; documentation
 
 (defn public-address?
   "True only for globally reachable unicast IP addresses.
 
   In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
   IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
-  entries."
+  entries. IPv6 addresses outside the allocated global-unicast space (2000::/3) are rejected unless the registry
+  marks them globally reachable: an internal network can route reserved space."
   [^InetAddress addr]
   (let [b     (.getAddress addr)
         ipv4? (= 4 (alength b))
@@ -130,7 +130,9 @@
                   (and ipv4? (zero? b0))                          ; IPv4 "this network" 0.0.0.0/8
                   (and ipv4? (<= 240 b0))))                       ; IPv4 reserved 240.0.0.0/4 + broadcast
          (or (some #(address-in-prefix? addr %) globally-reachable-special-prefixes)
-             (not-any? #(address-in-prefix? addr %) non-global-special-prefixes)))))
+             (and (or ipv4?
+                      (= 0x20 (bit-and b0 0xe0)))                 ; IPv6 allocated global unicast 2000::/3
+                  (not-any? #(address-in-prefix? addr %) non-global-special-prefixes))))))
 
 (defn- private-address?
   "True for addresses that are private but may be intentionally reachable from a self-hosted deployment."
