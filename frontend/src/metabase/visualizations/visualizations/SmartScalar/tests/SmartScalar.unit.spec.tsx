@@ -293,7 +293,14 @@ describe("SmartScalar", () => {
 
       renderWithProviders(
         <Visualization
-          rawSeries={series({ rows, insights })}
+          rawSeries={series({
+            rows,
+            insights,
+            comparisonTypes: [
+              { id: "1", type: "previousPeriod" },
+              { id: "2", type: "periodsAgo", value: 2 },
+            ],
+          })}
           width={800}
           isQueryBuilder
         />,
@@ -301,7 +308,64 @@ describe("SmartScalar", () => {
 
       const list = screen.getByTestId("scalar-comparison-list");
       expect(within(list).getByText("vs. previous month")).toBeInTheDocument();
-      expect(within(list).getByText("N/A (No data)")).toBeInTheDocument();
+      expect(within(list).getAllByText("N/A (No data)").length).toBeGreaterThan(
+        0,
+      );
+    });
+
+    it("should show a single comparison inline in the query builder", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 45683.68],
+        ["2019-11-01T00:00:00", 30759.47],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({ rows, insights })}
+          width={800}
+          isQueryBuilder
+        />,
+      );
+
+      // no list, one inline row with the date, the short description, and
+      // the full (non-compact) comparison value; the trend symbol shows
+      expect(
+        screen.queryByTestId("scalar-comparison-list"),
+      ).not.toBeInTheDocument();
+      const row = screen.getByTestId("scalar-previous-value");
+      expect(within(row).getByTestId("scalar-period")).toHaveTextContent(
+        "Nov 2019",
+      );
+      expect(within(row).getByText("-32.67% MoM")).toBeInTheDocument();
+      expect(within(row).getByText("(45,683.68)")).toBeInTheDocument();
+      expect(getTrendSymbol()).toHaveAttribute("data-direction", "arrow_down");
+    });
+
+    it("should not show a trend symbol for several comparisons in the query builder", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({
+            rows,
+            insights,
+            comparisonTypes: [
+              { id: "1", type: "previousPeriod" },
+              { id: "2", type: "periodsAgo", value: 2 },
+            ],
+          })}
+          width={800}
+          isQueryBuilder
+        />,
+      );
+
+      expect(screen.getByTestId("scalar-comparison-list")).toBeInTheDocument();
+      expect(screen.queryByTestId("trend-symbol")).not.toBeInTheDocument();
     });
 
     it("should show one tooltip at a time on the smallest cards", async () => {

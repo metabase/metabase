@@ -71,6 +71,8 @@ function ScalarComponent(
     getHref,
     onChangeCardAndRun,
     isVisualizerCard,
+    isDashboard,
+    isEditing,
   } = props;
 
   if (rawSeries.length > 1) {
@@ -121,6 +123,8 @@ function ScalarComponent(
   const title = showTitle && !isMetricsViewer ? settings["card.title"] : null;
   const showsInlineTitle = Boolean(title) && tier.showsTitle;
   const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
+  const description =
+    isDashboard && isEditing ? null : settings["card.description"];
 
   const canSelectTitle = onChangeCardAndRun != null && !isVisualizerCard;
   const handleSelectTitle = () =>
@@ -228,6 +232,7 @@ function ScalarComponent(
           </Box>
           {showsInlineTitle && (
             <ScalarTitle
+              description={description}
               getHref={canSelectTitle ? getHref : undefined}
               onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
             >

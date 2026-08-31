@@ -20,16 +20,22 @@ const getChangeSign = (percentChange: number | undefined) => {
   return percentChange < 0 ? "-" : "+";
 };
 
+const SIZE_GAPS = { sm: TEXT_SPACING, lg: 6 };
+
 interface TrendComparisonRowProps {
   trend: Trend;
   formatOptions: ColumnSettings;
   percentOnly?: boolean;
+  size?: "sm" | "lg";
+  compactValue?: boolean;
 }
 
 export function TrendComparisonRow({
   trend,
   formatOptions,
   percentOnly,
+  size = "sm",
+  compactValue = true,
 }: TrendComparisonRowProps) {
   const { isTruncated, ref: comparisonTextRef } =
     useIsTruncated<HTMLDivElement>({ ignoreHeightTruncation: true });
@@ -67,7 +73,7 @@ export function TrendComparisonRow({
     .filter(Boolean)
     .join(" ");
   const comparisonValueDisplay = isChanged
-    ? formatValue(comparisonValue, { ...formatOptions, compact: true })
+    ? formatValue(comparisonValue, { ...formatOptions, compact: compactValue })
     : isMissing
       ? comparison.display.comparisonValue
       : null;
@@ -94,34 +100,34 @@ export function TrendComparisonRow({
       }
     >
       <Flex
-        gap={TEXT_SPACING}
+        gap={SIZE_GAPS[size]}
         align="center"
         justify="center"
         maw="100%"
-        fz="sm"
-        lh="sm"
+        fz={size}
+        lh={size}
         data-testid="scalar-previous-value"
       >
         <Box ref={comparisonTextRef} className={S.comparisonText}>
           {percentOnly ? (
-            <Text component="span" fz="sm" lh="sm" c={changeColor}>
+            <Text component="span" fz={size} lh={size} c={changeColor}>
               {changeSign}
               {comparison.display.percentChange}
             </Text>
           ) : (
             <>
               {display.date != null && display.date !== "" && (
-                <Text component="span" fz="sm" lh="sm" c="text-secondary">
-                  {display.date}
+                <Text component="span" fz={size} lh={size} c="text-secondary">
+                  <span data-testid="scalar-period">{display.date}</span>
                   {", "}
                 </Text>
               )}
-              <Text component="span" fz="sm" lh="sm" c={changeColor}>
+              <Text component="span" fz={size} lh={size} c={changeColor}>
                 {changeText}
               </Text>
               {comparisonValueDisplay != null &&
                 comparisonValueDisplay !== "" && (
-                  <Text component="span" fz="sm" lh="sm" c={changeColor}>
+                  <Text component="span" fz={size} lh={size} c={changeColor}>
                     {isChanged ? (
                       <> ({comparisonValueDisplay})</>
                     ) : (

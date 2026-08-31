@@ -111,6 +111,44 @@ describe("Scalar", () => {
     );
   });
 
+  it("should show the description in a tooltip on the title info icon", async () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={{ ...settings, "card.description": "Scalar description" }}
+        visualizationIsClickable={() => false}
+        width={230}
+        height={150}
+      />,
+    );
+
+    await userEvent.hover(screen.getByLabelText("info icon"));
+
+    expect(await screen.findByText("Scalar description")).toBeInTheDocument();
+  });
+
+  it("should not show the info icon while editing a dashboard", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        isDashboard
+        isEditing
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={{ ...settings, "card.description": "Scalar description" }}
+        visualizationIsClickable={() => false}
+        width={230}
+        height={150}
+      />,
+    );
+
+    expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
+  });
+
   it("should render null", () => {
     render(
       <Scalar
