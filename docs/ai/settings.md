@@ -112,7 +112,7 @@ A connection that's missing a required setting shows a warning icon, and Metabot
 
 Quick, high-volume tasks run on the **Mini model**, which should be a cheaper, faster model than your default.
 
-You don't have to pick a mini model. By default, Metabase will use the fastest model from the same connection as your **Default model**. Some providers don't offer a smaller model, though. In those cases, the mini model falls back to your default model.
+You don't have to pick a mini model. By default, Metabase will use the fastest model from the same connection as your default model. Some providers don't offer a smaller model; in those cases, the mini model falls back to your default model.
 
 ## Configure Metabot
 
