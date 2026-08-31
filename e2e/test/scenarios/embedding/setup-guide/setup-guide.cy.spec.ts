@@ -309,7 +309,7 @@ describe("scenarios - setup guide", () => {
         .findByText("Configure data permissions and enable tenants")
         .click();
 
-      cy.url().should("include", "/embedding/get-started/permissions-setup");
+      cy.url().should("include", "/embedding/get-started/permissions");
 
       H.main()
         .findByText("Configure data permissions and enable tenants")
@@ -322,7 +322,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("all 5 steps are present and none are completed at first");
       H.main().within(() => {
@@ -399,7 +399,7 @@ describe("scenarios - setup guide", () => {
       cy.log("wait for x-ray dashboard to generate and save it");
       H.undoToast().should("contain", "Your dashboard was saved");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("tenants should not be enabled");
       cy.request("GET", "/api/session/properties").then((response) => {
@@ -504,7 +504,7 @@ describe("scenarios - setup guide", () => {
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("no steps should be completed");
       H.main().within(() => {
@@ -535,7 +535,7 @@ describe("scenarios - setup guide", () => {
         namespace: "shared-tenant-collection",
       });
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("wait until step is marked as complete");
       H.main().icon("check").should("have.length", 1);
@@ -556,7 +556,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("click the enable tenants button");
       H.main()
@@ -615,7 +615,7 @@ describe("scenarios - setup guide", () => {
       });
 
       it("can create two tenants and show summary", () => {
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         cy.log("step 1 should be marked as done before navigating");
         H.main()
@@ -745,7 +745,7 @@ describe("scenarios - setup guide", () => {
           slug: "existing-tenant",
         });
 
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         H.main()
           .findByRole("listitem", { name: "Create tenants" })
@@ -779,7 +779,7 @@ describe("scenarios - setup guide", () => {
       });
 
       it("reloads with strategy pre-selected and 'Select data' step unlocked when RLS is configured", () => {
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         cy.log(
           "'Select data' step should not be locked when RLS is configured",
@@ -805,7 +805,7 @@ describe("scenarios - setup guide", () => {
         cy.signInAsAdmin();
         H.activateToken("pro-self-hosted");
 
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         cy.log("enable tenants and create shared collection");
         H.main()
@@ -868,7 +868,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("enable tenants and create shared collection");
       H.main()
@@ -955,7 +955,7 @@ describe("scenarios - setup guide", () => {
         "updatePermissionsGraph",
       );
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("steps 3, 4, and 5 should be locked initially");
       H.main().within(() => {
@@ -1178,7 +1178,7 @@ describe("scenarios - setup guide", () => {
         },
       );
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("wait for checklist data to load before interacting with steps");
       H.main()
@@ -1290,7 +1290,7 @@ describe("scenarios - setup guide", () => {
           "updatePermissionsGraph",
         );
 
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         cy.log("enable tenants and create shared collection");
         H.main()
@@ -1438,7 +1438,7 @@ describe("scenarios - setup guide", () => {
       H.addPostgresDatabase("QA Postgres12");
 
       cy.get<number>("@postgresID").then((postgresId) => {
-        cy.visit("/embedding/get-started/permissions-setup");
+        cy.visit("/embedding/get-started/permissions");
 
         H.main()
           .findByRole("radio", { name: /Connection impersonation/ })
@@ -1503,7 +1503,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should show 'no compatible databases' message when only Sample Database exists", () => {
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1531,7 +1531,7 @@ describe("scenarios - setup guide", () => {
     it("should show disabled database with tooltip when database does not support connection impersonation", function () {
       H.addPostgresDatabase("QA Postgres12");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1585,7 +1585,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1655,7 +1655,7 @@ describe("scenarios - setup guide", () => {
       );
       cy.intercept("GET", "/api/embedding-hub/checklist").as("getChecklist");
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log(
         "wait for checklist to load and page to settle on the summary step",
@@ -1745,7 +1745,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("creates a tenant with database_slug attribute when using database routing", () => {
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("select database routing strategy");
       H.main()
@@ -1803,7 +1803,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("disables the Enable JWT button when IdP URI is empty", () => {
-      cy.visit("/embedding/get-started/sso-setup");
+      cy.visit("/embedding/get-started/sso");
 
       cy.findByLabelText(/JWT Identity Provider URI/i)
         .should("be.visible")
@@ -1818,7 +1818,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("can configure JWT auth and complete SSO setup", () => {
-      cy.visit("/embedding/get-started/sso-setup");
+      cy.visit("/embedding/get-started/sso");
 
       cy.log("no steps should be completed initially");
       H.main().icon("check").should("not.exist");
@@ -1910,7 +1910,7 @@ describe("scenarios - setup guide", () => {
       "jwt-shared-secret": "0".repeat(64),
     });
 
-    cy.visit("/embedding/get-started/sso-setup");
+    cy.visit("/embedding/get-started/sso");
 
     cy.log("step 1 should be marked as done");
     H.main()
