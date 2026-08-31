@@ -13,7 +13,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import {
   createMockQueryBuilderState,

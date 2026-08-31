@@ -4,7 +4,7 @@ import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase/metabot/state";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

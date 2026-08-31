@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import {
   getShallowFields as getFields,
   getMetadata,
-} from "metabase/metadata/store";
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { updateSegment } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";

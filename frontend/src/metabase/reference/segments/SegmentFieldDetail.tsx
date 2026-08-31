@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { updateField } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";

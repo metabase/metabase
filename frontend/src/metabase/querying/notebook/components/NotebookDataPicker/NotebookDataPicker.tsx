@@ -17,7 +17,7 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { Icon, TextInput } from "metabase/ui";

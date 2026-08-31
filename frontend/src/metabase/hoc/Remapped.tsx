@@ -1,6 +1,6 @@
 import { Component, type ComponentType } from "react";
 
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { fetchRemapping } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";

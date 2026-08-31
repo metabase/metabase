@@ -23,7 +23,7 @@ import {
   getUserIsAdmin,
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";

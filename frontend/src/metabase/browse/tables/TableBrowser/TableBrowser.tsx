@@ -6,7 +6,7 @@ import {
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";

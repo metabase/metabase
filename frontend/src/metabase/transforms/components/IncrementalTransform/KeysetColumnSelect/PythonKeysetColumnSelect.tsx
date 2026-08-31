@@ -2,7 +2,7 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import * as Lib from "metabase-lib";

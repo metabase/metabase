@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   QueryEditor,
   type QueryEditorUiOptions,

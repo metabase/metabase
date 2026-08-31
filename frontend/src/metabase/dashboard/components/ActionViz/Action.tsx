@@ -11,7 +11,7 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { Tooltip } from "metabase/ui";

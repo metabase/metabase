@@ -8,7 +8,7 @@ import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { getMetadataWithHiddenTables } from "metabase/metadata/store";
+import { getMetadataWithHiddenTables } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";

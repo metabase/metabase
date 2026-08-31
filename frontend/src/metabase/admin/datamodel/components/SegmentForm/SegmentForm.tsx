@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import {

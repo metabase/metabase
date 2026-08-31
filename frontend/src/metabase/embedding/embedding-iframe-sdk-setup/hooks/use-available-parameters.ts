@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useLatest, usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateMetadata } from "metabase/redux/metadata";

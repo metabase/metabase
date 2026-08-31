@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";

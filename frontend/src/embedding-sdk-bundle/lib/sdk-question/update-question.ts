@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   computeQuestionPivotTable,
   getAdHocQuestionWithVizSettings,

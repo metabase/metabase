@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { useSelector } from "metabase/redux";
 import Question from "metabase-lib/v1/Question";

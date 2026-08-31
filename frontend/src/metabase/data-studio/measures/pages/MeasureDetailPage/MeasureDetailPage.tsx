@@ -7,7 +7,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";

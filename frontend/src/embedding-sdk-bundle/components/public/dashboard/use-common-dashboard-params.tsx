@@ -4,7 +4,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { navigateBackToDashboard } from "metabase/query_builder";
 import {
   NAVIGATE_TO_NEW_CARD,

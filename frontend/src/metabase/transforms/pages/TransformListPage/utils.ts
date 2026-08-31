@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLibQuery } from "metabase/transforms/utils";

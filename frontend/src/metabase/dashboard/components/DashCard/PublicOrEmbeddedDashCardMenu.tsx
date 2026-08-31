@@ -7,7 +7,7 @@ import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownl
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector, useStore } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";

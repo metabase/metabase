@@ -11,7 +11,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata/store";
+import { getMetadata } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
