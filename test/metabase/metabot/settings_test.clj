@@ -193,7 +193,8 @@
                        (connection "bedrock" "bedrock")
                        (connection "google" "google")
                        (connection "azure" "azure")
-                       (connection "zai" "zai")]
+                       (connection "zai" "zai")
+                       (connection "openrouter" "openrouter")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -212,6 +213,13 @@
                "azure/anthropic"                            false
                "zai/glm-5.2"                                true
                "zai/glm-4.7"                                false
+               "openrouter/anthropic/claude-sonnet-4.6"     true
+               "openrouter/z-ai/glm-5.2"                    true
+               ;; streams reasoning summaries under the server default
+               "openrouter/openai/gpt-5.5"                  true
+               ;; encrypted-only upstream: reasoning exists but never renders
+               "openrouter/openai/gpt-5.4"                  false
+               "openrouter/anthropic/claude-haiku-4.5"      false
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
