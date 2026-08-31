@@ -134,33 +134,36 @@
                      (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest api-key-hash-encrypted-at-rest-test
-  (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-    (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
-                                                   :user_id               (mt/user->id :lucky)
-                                                   :creator_id            (mt/user->id :lucky)
-                                                   :updated_by_id         (mt/user->id :lucky)
-                                                   ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
-      (testing "the stored bcrypt hash is encrypted at rest"
-        ;; select from the raw table to bypass the model's decrypting :out transform
-        (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
-          (is (encryption/possibly-encrypted-string? raw)
-              "raw column value should be ciphertext")
-          (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
-              "it should decrypt to the (plaintext) bcrypt hash")))
-      (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
-        (is (= (mt/user->id :lucky)
-               (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
-      (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-        (t2/query {:update :api_key
-                   :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
-                   :where  [:= :id api-key-id]})
-        (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
-            "strict decrypt rejects the unencrypted hash")
-        ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
-        ;; strict decrypt on the corrupted plaintext value
-        (t2/query {:update :api_key
-                   :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
-                   :where  [:= :id api-key-id]})))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
+                                                     :user_id               (mt/user->id :lucky)
+                                                     :creator_id            (mt/user->id :lucky)
+                                                     :updated_by_id         (mt/user->id :lucky)
+                                                     ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
+        (testing "the stored bcrypt hash is encrypted at rest"
+          ;; select from the raw table to bypass the model's decrypting :out transform
+          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+            (is (encryption/possibly-encrypted-string? raw)
+                "raw column value should be ciphertext")
+            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
+                "it should decrypt to the (plaintext) bcrypt hash")))
+        (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
+          (is (= (mt/user->id :lucky)
+                 (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
+        (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
+          (t2/query {:update :api_key
+                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     :where  [:= :id api-key-id]})
+          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
+              "strict decrypt rejects the unencrypted hash")
+          ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
+          ;; strict decrypt on the corrupted plaintext value
+          (t2/query {:update :api_key
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     :where  [:= :id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"

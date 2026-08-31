@@ -1,6 +1,7 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel] ;; ensure known-labels are loaded
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -9,10 +10,13 @@
    [toucan2.core :as t2]))
 
 (deftest channel-details-is-encrypted
-  (encryption-test/with-secret-key "secret"
-    (mt/with-model-cleanup [:model/Channel]
-      (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
-        (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "secret"
+      (mt/with-model-cleanup [:model/Channel]
+        (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel)))))))))
 
 (deftest deactivate-channel-test
   (mt/with-temp
