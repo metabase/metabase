@@ -8,10 +8,11 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { getHighlightedComment } from "metabase/explorations/selectors";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { Comment, CommentContext } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { Comment, CommentContext, Timeline } from "metabase-types/api";
+import { createMockTimeline, createMockUser } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 
@@ -66,25 +67,35 @@ function commentWithText(text: string, comment?: Partial<Comment>): Comment {
 interface SetupOpts {
   comments?: Comment[];
   context?: CommentContext;
-  renderCommentTags?: (comment: Comment) => React.ReactNode;
+  timelines?: Timeline[];
+  onSelectTimelineId?: (timelineId: number | null) => void;
+  pageId?: string;
 }
 
-function setup({ comments = [], context, renderCommentTags }: SetupOpts = {}) {
+function setup({
+  comments = [],
+  context,
+  timelines = [],
+  onSelectTimelineId,
+  pageId = PAGE_ID,
+}: SetupOpts = {}) {
   fetchMock.get("path:/api/comment", { comments });
   fetchMock.post("path:/api/comment", 200);
 
   const onClose = jest.fn();
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Route
       path="*"
       element={
         <ExplorationComments
           explorationId={EXPLORATION_ID}
-          pageId={PAGE_ID}
+          pageId={pageId}
+          view="page"
           context={context}
           onClose={onClose}
-          renderCommentTags={renderCommentTags}
+          timelines={timelines}
+          onSelectTimelineId={onSelectTimelineId}
         />
       }
     />,
@@ -97,7 +108,7 @@ function setup({ comments = [], context, renderCommentTags }: SetupOpts = {}) {
     },
   );
 
-  return { onClose };
+  return { onClose, store: view.store };
 }
 
 describe("ExplorationComments", () => {
@@ -202,20 +213,122 @@ describe("ExplorationComments", () => {
     });
   });
 
-  it("renders metadata tags between the author line and the comment body", async () => {
+  it("renders highlight and timeline badges between the author line and the comment body", async () => {
     setup({
-      comments: [commentWithText("Tagged comment", { id: 1 })],
-      renderCommentTags: () => (
-        <div data-testid="comment-tag">Marketing Events, on Sunday</div>
-      ),
+      comments: [
+        commentWithText("Tagged comment", {
+          id: 1,
+          context: {
+            highlight_label: "Gadget, EU",
+            exploration_query_ids: [102],
+            highlighted: {
+              dimensions: [{ columnName: "category", value: "Gadget" }],
+            },
+            timeline_id: 42,
+          },
+        }),
+      ],
+      timelines: [createMockTimeline({ id: 42, name: "Releases" })],
+      onSelectTimelineId: jest.fn(),
     });
 
     const row = await screen.findByTestId("discussion-comment");
-    const tag = within(row).getByTestId("comment-tag");
+    const highlightBadge = within(row).getByRole("button", {
+      name: "Gadget, EU",
+    });
+    const timelineBadge = within(row).getByRole("button", { name: "Releases" });
     const body = within(row).getByText("Tagged comment");
     expect(
-      tag.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
+      highlightBadge.compareDocumentPosition(body) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(timelineBadge).toBeInTheDocument();
+  });
+
+  it("dispatches highlightedComment on highlight badge hover", async () => {
+    const { store } = setup({
+      comments: [
+        commentWithText("Hover me", {
+          id: 1,
+          context: {
+            highlight_label: "Gadget",
+            exploration_query_ids: [101],
+            highlighted: {
+              dimensions: [{ columnName: "category", value: "Gadget" }],
+            },
+          },
+        }),
+      ],
+    });
+
+    const badge = await screen.findByRole("button", { name: "Gadget" });
+    fireEvent.mouseEnter(badge);
+
+    expect(getHighlightedComment(store.getState())).toEqual({
+      childTargetId: PAGE_ID,
+      explorationQueryIds: [101],
+      highlighted: {
+        dimensions: [{ columnName: "category", value: "Gadget" }],
+      },
+    });
+
+    fireEvent.mouseLeave(badge);
+    expect(getHighlightedComment(store.getState())).toBeNull();
+  });
+
+  it("calls onSelectTimelineId when a timeline badge is clicked", async () => {
+    const onSelectTimelineId = jest.fn();
+    setup({
+      comments: [
+        commentWithText("Timeline", {
+          id: 1,
+          context: { timeline_id: 42 },
+        }),
+      ],
+      timelines: [createMockTimeline({ id: 42, name: "Releases" })],
+      onSelectTimelineId,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Releases" }),
+    );
+
+    expect(onSelectTimelineId).toHaveBeenCalledWith(42);
+  });
+
+  it("renders the timeline badge as a plain label when onSelectTimelineId is omitted", async () => {
+    setup({
+      comments: [
+        commentWithText("Timeline", {
+          id: 1,
+          context: { timeline_id: 42 },
+        }),
+      ],
+      timelines: [createMockTimeline({ id: 42, name: "Releases" })],
+    });
+
+    expect(await screen.findByText("Releases")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Releases" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders no tags and does not throw when the child target is a prose uuid", async () => {
+    const proseId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+    setup({
+      pageId: proseId,
+      comments: [
+        commentWithText("Prose note", {
+          id: 1,
+          child_target_id: proseId,
+          context: {},
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Prose note")).toBeInTheDocument();
+    // No highlight/timeline tags — only the action-panel chrome buttons remain.
+    expect(screen.queryByText("Gadget")).not.toBeInTheDocument();
   });
 
   it("keeps reactions on stream comments", async () => {

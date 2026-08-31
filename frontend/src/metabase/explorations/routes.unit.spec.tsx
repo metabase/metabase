@@ -6,7 +6,7 @@ describe("explorations routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getExplorationsRoutes());
 
-    expect(loaders).toHaveLength(5);
+    expect(loaders).toHaveLength(6);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

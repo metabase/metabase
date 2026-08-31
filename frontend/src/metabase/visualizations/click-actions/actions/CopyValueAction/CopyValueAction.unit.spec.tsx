@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
   type ClickObject,
-  type ComputedVisualizationSettings,
   isCustomClickAction,
 } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -69,6 +69,21 @@ describe("CopyValueAction", () => {
     });
 
     expect(setup({ column: pkColumn, value: 42 })).toHaveLength(0);
+  });
+
+  it("returns no actions for clicks that group several rows, like the pie 'Other' slice (metabase#5334)", () => {
+    const metricColumn = createMockNumericColumn({
+      name: "count",
+      display_name: "Count",
+    });
+
+    const actions = setup({
+      column: metricColumn,
+      value: 93,
+      dimensions: [{ column, value: ["Doohickey", "Gizmo"] }],
+    });
+
+    expect(actions).toHaveLength(0);
   });
 
   it("returns an action on a foreign key cell", () => {

@@ -69,6 +69,8 @@ const elements = [
     name: "value-formatting",
     enforcePublicApi: true,
   }),
+  // static-viz runs this in GraalJS, so it stays free of the React and redux side of visualizations.
+  createElement({ type: "basic", name: "viz-core", enforcePublicApi: true }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
@@ -271,7 +273,7 @@ const elements = [
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
-  createElement({ type: "feature", name: "documents" }),
+  createElement({ type: "shared", name: "documents" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below
@@ -330,7 +332,11 @@ const elements = [
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
-  createElement({ type: "feature", name: "query_builder" }),
+  createElement({
+    type: "feature",
+    name: "query_builder",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "reference" }),
   createElement({ type: "feature", name: "search" }),
 
@@ -446,6 +452,11 @@ const baseRules = [
   {
     from: ["basic/value-formatting"],
     allow: ["basic/mlv1"],
+  },
+  // mlv1 for the column predicates, value-formatting for formatValue, ui for the colour utilities and theme types.
+  {
+    from: ["basic/viz-core"],
+    allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
   {
     from: ["shared/*"],

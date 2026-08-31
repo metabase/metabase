@@ -110,45 +110,48 @@
 ;; metric cards need no result_metadata — columns are computed from metadata.
 (deftest full-pipeline-end-to-end-test
   (mt/dataset test-data
-    (mt/with-actions-enabled
-      (let [mp            (mt/metadata-provider)
-            orders-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-            revenue-query (lib/aggregate orders-query
-                                         (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
-        (mt/with-temp [:model/Card _question {:name "Order totals", :database_id (mt/id), :table_id (mt/id :orders)
-                                              :type :question, :display :table
-                                              :dataset_query orders-query}
-                       :model/Card _metric {:name "Order revenue", :database_id (mt/id), :table_id (mt/id :orders)
-                                            :type :metric, :display :scalar
-                                            :dataset_query revenue-query}
-                       :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
-                                          :type :model
-                                          :dataset_query orders-query
-                                          :result_metadata [{:name "total", :display_name "Total"
-                                                             :base_type :type/Float
-                                                             :field_ref [:field (mt/id :orders :total) nil]
-                                                             :id (mt/id :orders :total)}]}
-                       :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
-                       :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (let [schema (typed-schemas/build-semantic-schema {:database {:id (mt/id)}} test-info)
-                  body   (typed-schemas/render-typescript schema)]
-              (testing "every entity kind lands in the schema with its real relationships"
-                (is (=? {:generatedAt "2026-01-01T00:00:00Z"
-                         :metabase    {:instanceUrl "https://metabase.example.com"}
-                         :questions   {"orderTotals" {:type "card", :id int?}}
-                         :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
-                         :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
-                                                       :columns        [{:displayName "Sum of Total"
-                                                                         :jsType      "number"}]}}
-                         :models      {"orderModel" {:actions {"updateOrder" {:kind "action"}}}}}
-                        schema)))
-              (testing "only the temp cards are in scope for the dataset database"
-                (is (= {:questions ["orderTotals"], :metrics ["orderRevenue"], :models ["orderModel"]}
-                       (update-vals (select-keys schema [:questions :metrics :models])
-                                    (comp vec keys)))))
-              (testing "the rendered module carries the real entities"
-                (is (str/includes? body "orders: {"))
-                (is (str/includes? body "name: \"Order revenue\""))
-                (is (str/includes? body "updateOrder: {"))
-                (is (str/ends-with? body "export default schema;\n"))))))))))
+    ;; Use a copy of the Database so Cards committed concurrently by other namespaces cannot affect the
+    ;; database-scoped assertion below.
+    (mt/with-temp-copy-of-db
+      (mt/with-actions-enabled
+        (let [mp            (mt/metadata-provider)
+              orders-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              revenue-query (lib/aggregate orders-query
+                                           (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
+          (mt/with-temp [:model/Card _question {:name "Order totals", :database_id (mt/id), :table_id (mt/id :orders)
+                                                :type :question, :display :table
+                                                :dataset_query orders-query}
+                         :model/Card _metric {:name "Order revenue", :database_id (mt/id), :table_id (mt/id :orders)
+                                              :type :metric, :display :scalar
+                                              :dataset_query revenue-query}
+                         :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
+                                            :type :model
+                                            :dataset_query orders-query
+                                            :result_metadata [{:name "total", :display_name "Total"
+                                                               :base_type :type/Float
+                                                               :field_ref [:field (mt/id :orders :total) nil]
+                                                               :id (mt/id :orders :total)}]}
+                         :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
+                         :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [schema (typed-schemas/build-semantic-schema {:database {:id (mt/id)}} test-info)
+                    body   (typed-schemas/render-typescript schema)]
+                (testing "every entity kind lands in the schema with its real relationships"
+                  (is (=? {:generatedAt "2026-01-01T00:00:00Z"
+                           :metabase    {:instanceUrl "https://metabase.example.com"}
+                           :questions   {"orderTotals" {:type "card", :id int?}}
+                           :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
+                           :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
+                                                         :columns        [{:displayName "Sum of Total"
+                                                                           :jsType      "number"}]}}
+                           :models      {"orderModel" {:actions {"updateOrder" {:kind "action"}}}}}
+                          schema)))
+                (testing "only the temp cards are in scope for the dataset database"
+                  (is (= {:questions ["orderTotals"], :metrics ["orderRevenue"], :models ["orderModel"]}
+                         (update-vals (select-keys schema [:questions :metrics :models])
+                                      (comp vec keys)))))
+                (testing "the rendered module carries the real entities"
+                  (is (str/includes? body "orders: {"))
+                  (is (str/includes? body "name: \"Order revenue\""))
+                  (is (str/includes? body "updateOrder: {"))
+                  (is (str/ends-with? body "export default schema;\n")))))))))))

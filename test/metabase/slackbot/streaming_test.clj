@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
@@ -15,11 +17,14 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -89,6 +94,49 @@
         (is (= :user (:role (first result))))
         (is (= "Live bot response" (:content (second result))))))))
 
+(deftest thread->history-drops-errored-turns-tool-calls-test
+  (testing "an errored turn's tool calls are not replayed, but its Slack text still is"
+    (let [conv-id    (str (random-uuid))
+          clean-ts   "1712200000.000002"
+          errored-ts "1712200000.000004"
+          insert!    (fn [slack-ts call-id & {:keys [error]}]
+                       (t2/insert! :model/MetabotMessage
+                                   (cond-> {:conversation_id conv-id
+                                            :slack_msg_id    slack-ts
+                                            :role            "assistant"
+                                            :profile_id      "slackbot"
+                                            :total_tokens    0
+                                            :data            [{:type       "tool-search"
+                                                               :toolCallId call-id
+                                                               :state      "output-available"
+                                                               :input      {:query "orders"}
+                                                               :output     {:output "<result>orders</result>"}}]
+                                            :data_version    2
+                                            :finished        true}
+                                     error (assoc :error error))))]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        ;; The clean row is the control: without it a green assertion cannot tell the filter
+        ;; working apart from the fixture never producing tool parts at all.
+        (insert! clean-ts   "call-clean")
+        (insert! errored-ts "call-errored" :error "boom")
+        (let [thread   {:messages [{:ts "1712200000.000001" :text "First question"  :user   "U123"}
+                                   {:ts clean-ts            :text "Here you go"     :bot_id "B123"}
+                                   {:ts "1712200000.000003" :text "Second question" :user   "U123"}
+                                   {:ts     errored-ts
+                                    :text   "Something went wrong. Please try again."
+                                    :bot_id "B123"}]}
+              result   (#'slackbot.streaming/thread->history thread "UBOT123" conv-id)
+              call-ids (into #{} (comp (mapcat :tool_calls) (map :id)) result)]
+          (testing "the clean turn's tool call is replayed, the errored turn's is not"
+            (is (= #{"call-clean"} call-ids)))
+          (testing "both bot messages keep their Slack text -- the thread still shows the failure"
+            (is (= ["First question"
+                    "Here you go"
+                    "Second question"
+                    "Something went wrong. Please try again."]
+                   (into [] (comp (remove #(= :tool (:role %))) (keep :content)) result)))))))))
+
 (deftest format-viz-title-test
   (testing "format-viz-title builds correct title text"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
@@ -128,9 +176,9 @@
                        "revenue-by-month"
                        "Revenue by month"
                        huge-link)]
-        (is (nil? (tu/oversized-section-error blocks))
+        (is (nil? (tu/oversized-block-error blocks))
             "Slack no longer rejects the whole message")
-        (is (some? (tu/oversized-section-error
+        (is (some? (tu/oversized-block-error
                     [{:type "section"
                       :text {:type "mrkdwn"
                              :text (str "📊 <https://metabase.example.com" huge-link "|Revenue by month>")}}]))
@@ -226,7 +274,7 @@
                     :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest streaming-response-includes-feedback-blocks-test
+(deftest ^:synchronized streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -267,7 +315,7 @@
                 :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
                @posted-message))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-on-messages-test
   (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
             for metabase/ prefixed provider"
     (tu/with-slackbot-setup
@@ -294,7 +342,70 @@
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
-(deftest slackbot-streaming-persists-failed-conversations-test
+(deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
+  (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {:ai-text "Hello!"}
+            (fn [{:keys [ai-request-calls stop-stream-calls]}]
+              (letfn [(send! []
+                        (mt/client :post 200 "metabot/slack/events"
+                                   (tu/slack-request-options event-body)
+                                   event-body))
+                      (wait! [n]
+                        (u/poll {:thunk      #(>= (count @stop-stream-calls) n)
+                                 :done?      true?
+                                 :timeout-ms 5000}))]
+                (send!)
+                (wait! 1)
+                (testing "the opening turn of a thread starts from an empty baseline"
+                  (is (= {} (:state (last @ai-request-calls)))))
+                ;; Stand in for the state a real first turn would have written: the mocked
+                ;; agent loop produces no turn-state of its own. Taking the conversation id
+                ;; from the captured opts keeps this independent of how it is derived.
+                (t2/insert! :model/MetabotMessage
+                            {:conversation_id (:conversation-id (last @ai-request-calls))
+                             :role            "assistant"
+                             :profile_id      "slackbot"
+                             :total_tokens    0
+                             :data            []
+                             :data_version    2
+                             :finished        true
+                             :state           {:queries {"q1" {:database 1}}}})
+                (send!)
+                (wait! 2)
+                (testing "the next turn in the same thread picks it up instead of {}"
+                  (is (= {:queries {:q1 {:database 1}}}
+                         (:state (last @ai-request-calls)))))))))))))
+
+(deftest ^:synchronized slackbot-streaming-records-streamed-error-test
+  (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
+            so conversation-state does not later replay a failed turn's partial state (BOT-522)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            finalized  (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (rf init {:type :error :error {:message "boom"}}))))
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [_msg-id _parts & {:as opts}]
+                                          (deliver finalized opts)
+                                          nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref finalized 5000 ::timeout)]
+                (is (not= ::timeout opts))
+                (is (= {:message "boom"} (:error opts)))))))))))
+
+(deftest ^:synchronized slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
             start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
@@ -318,7 +429,7 @@
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
-(deftest slackbot-streaming-never-writes-pii-columns-test
+(deftest ^:synchronized slackbot-streaming-never-writes-pii-columns-test
   (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
     (mt/with-premium-features #{:audit-app}
       (tu/with-slackbot-setup
@@ -347,7 +458,7 @@
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
             for direct BYOK provider"
     (tu/with-slackbot-setup

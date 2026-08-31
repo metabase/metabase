@@ -26,6 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? empty? get-in not-empty]]
+   ;; records QueryExecution rows in the app db; a write the metadata provider can't do
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -88,6 +89,12 @@
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
+
+(defn flush-execution-metadata!
+  "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
+  anything that reads the `query_execution` table back and cannot tolerate the batching lag."
+  []
+  (grouper/flush! @save-execution-metadata-queue))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution

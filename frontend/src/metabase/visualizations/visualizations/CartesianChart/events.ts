@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
@@ -11,52 +12,46 @@ import {
 } from "metabase/utils/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import type {
-  EChartsTooltipModel,
-  EChartsTooltipRow,
-} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import {
-  INDEX_KEY,
-  IS_WATERFALL_TOTAL_DATA_KEY,
-  OTHER_DATA_KEY,
-  X_AXIS_DATA_KEY,
-  X_AXIS_RAW_VALUE_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import {
-  isBreakoutSeries,
-  isNumericAxis,
-  isQuarterInterval,
-  isTimeSeriesAxis,
-} from "metabase/visualizations/echarts/cartesian/model/guards";
-import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
-import type {
-  AxisFormatter,
-  BaseCartesianChartModel,
-  BaseSeriesModel,
-  ChartDataset,
-  DataKey,
-  Datum,
-  DimensionModel,
-  SeriesModel,
-  StackModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
-import {
-  type EChartsSeriesBrushEndEvent,
-  type EChartsSeriesMouseEvent,
-  isLineXBrushRange,
-} from "metabase/visualizations/echarts/types";
-import { computeChange } from "metabase/visualizations/lib/numeric";
-import {
-  hasClickBehavior,
-  isRemappedToString,
-} from "metabase/visualizations/lib/renderer_utils";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import type {
-  ComputedVisualizationSettings,
-  DataPoint,
   OnBrush,
   OnChangeCardAndRun,
 } from "metabase/visualizations/types";
+import {
+  type AxisFormatter,
+  type BaseCartesianChartModel,
+  type BaseSeriesModel,
+  type ChartDataset,
+  type ComputedVisualizationSettings,
+  type DataKey,
+  type DataPoint,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
+  type EChartsTooltipModel,
+  type EChartsTooltipRow,
+  INDEX_KEY,
+  IS_WATERFALL_TOTAL_DATA_KEY,
+  OTHER_DATA_KEY,
+  type SeriesModel,
+  type StackModel,
+  X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
+  computeChange,
+  dimensionIsTimeseries,
+  formatValueForTooltip,
+  getMarkerColorClass,
+  getOtherSeriesAggregationLabel,
+  getPercent,
+  getTotalValue,
+  hasClickBehavior,
+  isBreakoutSeries,
+  isLineXBrushRange,
+  isNumericAxis,
+  isQuarterInterval,
+  isRemappedToString,
+  isTimeSeriesAxis,
+} from "metabase/viz-core";
 import type {
   BrushClickObject,
   BrushRange,
@@ -76,9 +71,6 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
-
-import { formatValueForTooltip } from "../../echarts/tooltip/format";
-import { getPercent, getTotalValue } from "../../echarts/tooltip/utils";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -322,6 +314,13 @@ export const canBrush = (
     !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
 
   if (!hasBrushableDimension) {
+    return false;
+  }
+
+  // disable brushing for a binned dimension
+  // binning plus "linear" scale is possible, so excluding "histogram" isn't sufficient
+  // a binned bar "0-10" is centered on the axis value 0. so the brush filter would apply incorrect values
+  if (dimensionColumn?.binning_info) {
     return false;
   }
 
@@ -948,6 +947,70 @@ export const getSeriesClickData = (
   };
 };
 
+export const getAdjustedBrushEndEvent = (
+  brushEndEvent: EChartsSeriesBrushEndEvent,
+  brushSelectedEvent: EChartsSeriesBrushSelectedEvent | null,
+  chartModel: BaseCartesianChartModel,
+): EChartsSeriesBrushEndEvent | null => {
+  const coordRange = brushEndEvent.areas[0]?.coordRange;
+  if (!coordRange || !isLineXBrushRange(coordRange)) {
+    return null;
+  }
+  const adjustedCoordRange = getAdjustedCoordRange(
+    coordRange,
+    brushSelectedEvent,
+    chartModel,
+  );
+  return {
+    ...brushEndEvent,
+    areas: [
+      {
+        ...brushEndEvent.areas[0],
+        coordRange: adjustedCoordRange,
+      },
+    ],
+  };
+};
+
+const getAdjustedCoordRange = (
+  coordRange: [number, number],
+  brushSelectedEvent: EChartsSeriesBrushSelectedEvent | null,
+  chartModel: BaseCartesianChartModel,
+): [number, number] => {
+  const { xAxisModel, transformedDataset } = chartModel;
+  // only the time series brush drill "clamps" dates and needs this adjustment
+  if (!isTimeSeriesAxis(xAxisModel) || !brushSelectedEvent) {
+    return coordRange;
+  }
+  let minIndex: number | null = null;
+  let maxIndex: number | null = null;
+  for (const { dataIndex } of brushSelectedEvent.batch[0]?.selected ?? []) {
+    for (const i of dataIndex) {
+      if (minIndex === null || i < minIndex) {
+        minIndex = i;
+      }
+      if (maxIndex === null || i > maxIndex) {
+        maxIndex = i;
+      }
+    }
+  }
+  if (minIndex === null || maxIndex === null) {
+    return coordRange;
+  }
+
+  const getRangeValue = (index: number, defaultValue: number): number => {
+    const axisValue = transformedDataset[index]?.[X_AXIS_DATA_KEY];
+    if (typeof axisValue === "string") {
+      return dayjs.utc(axisValue).valueOf();
+    }
+    return defaultValue;
+  };
+  return [
+    Math.min(coordRange[0], getRangeValue(minIndex, coordRange[0])),
+    Math.max(coordRange[1], getRangeValue(maxIndex, coordRange[1])),
+  ];
+};
+
 export const getBrushClickObject = (
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
@@ -957,12 +1020,7 @@ export const getBrushClickObject = (
   const area = event.areas[0];
   const coordRange = area?.coordRange;
   const pixelRange = area?.range;
-  if (
-    !isLineXBrushRange(coordRange) ||
-    !isLineXBrushRange(pixelRange) ||
-    coordRange.length < 2 ||
-    pixelRange.length < 2
-  ) {
+  if (!isLineXBrushRange(coordRange) || !isLineXBrushRange(pixelRange)) {
     return null;
   }
 

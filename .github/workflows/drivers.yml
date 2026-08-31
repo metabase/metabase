@@ -329,93 +329,57 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 0
           - name: Driver Tests Part 2
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 1
-          - name: Driver Tests Part 3
+          - name: Driver Tests (Multi-Catalog)
+            multi-level-schema: true
             test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+              :only metabase.driver.databricks-test
               :fail-fast? true
-              :partition/total 3
-              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
-      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
-      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
-      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_MULTI_LEVEL_SCHEMA: ${{ matrix.job.multi-level-schema }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks
     steps:
+    - name: Select Databricks workspace
+      shell: bash
+      env:
+        TOTAL_SHARDS: '2'
+        HOST_0: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+        TOKEN_0: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+        HTTP_PATH_0: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+        HOST_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST_2 }}
+        TOKEN_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN_2 }}
+        HTTP_PATH_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH_2 }}
+      run: | # sh
+        shard=$(( GITHUB_RUN_NUMBER % TOTAL_SHARDS ))
+        echo "Using Databricks workspace shard $(( shard + 1 )) of $TOTAL_SHARDS"
+        for name in HOST HTTP_PATH TOKEN; do
+          var="${name}_${shard}"
+          if [ -z "${!var}" ]; then
+            echo "::error::Secret $var is empty - is the shard $shard Databricks workspace configured?"
+            exit 1
+          fi
+          echo "MB_DATABRICKS_TEST_${name}=${!var}" >> "$GITHUB_ENV"
+        done
     - uses: actions/checkout@v6
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
-        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-
-  be-tests-databricks-multi-catalog-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
-    env:
-      CI: 'true'
-      DRIVERS: databricks
-      MB_DATABRICKS_TEST_MULTI_LEVEL_SCHEMA: true
-      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
-      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
-      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
-      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
-      MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
-      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
-      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
-    steps:
-    - uses: actions/checkout@v6
-    - name: Test Databricks driver with multi-catalog
-      id: test-driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-databricks-multi-catalog-ee'
         artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
@@ -814,9 +778,20 @@ jobs:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
         job:
-          - name: Driver Tests
+          # Split because the unpartitioned Driver Tests job was running ~40 minutes of tests against
+          # `timeout-minutes: 50` (checkout and prepare-backend take the rest), and Postgres Latest was
+          # timing out.
+          - name: Driver Tests Part 1
             test-args: >-
               :only-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 0
+            exclude-tag: ':mb/transforms-python-test'
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
             exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
@@ -955,17 +930,44 @@ jobs:
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
-          - name: Redshift (Excluding Upload Tests) Part 1
+          # `:partition/*` balances on test-var count, so it cannot break up a block of namespaces that is
+          # cheap in vars and expensive in seconds. The `metabase-enterprise.*` driver tests are exactly that:
+          # ~10% of the vars and ~40% of the wall clock, and they sort ahead of `metabase.*`, so a plain 2-way
+          # split hands one job the whole block and times out. Splitting on the namespace pattern first puts
+          # them in their own pair of jobs, and each pair then partitions by count within a comparable cost.
+          # The two patterns are exhaustive over the default `:namespace-pattern` -- every namespace lands in
+          # exactly one of them -- so nothing stops running when a namespace is added.
+          - name: Redshift EE (Excluding Upload Tests) Part 1
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
               :partition/total 2
               :partition/index 0
-          - name: Redshift (Excluding Upload Tests) Part 2
+          - name: Redshift EE (Excluding Upload Tests) Part 2
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
+          - name: Redshift OSS (Excluding Upload Tests) Part 1
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift OSS (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
@@ -1282,7 +1284,6 @@ jobs:
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-clickhouse-ee
       - be-tests-databricks-ee
-      - be-tests-databricks-multi-catalog-ee
       - be-tests-druid-jdbc-ee
       - be-tests-h2
       - be-tests-h2-oss

@@ -2,11 +2,13 @@
   "Google Gemini Enterprise Agent Platform (formerly Vertex AI) provider.
 
   This namespace handles credentials, endpoint URLs, HTTP calls, error translation, and connect-time model validation.
-  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]].
+  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]]
+  and [[metabase.metabot.self.google.raw-predict]].
 
   Like openrouter and azure, models for this provider must specify the sub-provider in the `llm-metabot-provider`
-  setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Currently only google/gemini models
-  are supported, but this may expand in the future to anthropic or other third-party models.
+  setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Gemini models are served by
+  `streamGenerateContent`; Anthropic partner models (e.g. `google/anthropic/claude-sonnet-4-6`) are served by
+  `streamRawPredict`, whose payload is Anthropic's Messages API.
 
   Credentials can be supplied via either a service account key JSON or an OAuth access token.
 
@@ -29,8 +31,8 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -48,21 +50,6 @@
 (def ^:private default-model
   "The model to use when the request does not name one."
   "google/gemini-3.5-flash")
-
-(def ^:private model-context-windows
-  "Input context windows for known Google Gemini models, keyed by publisher-qualified model id.
-  Values:
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
-  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash"
-  {"google/gemini-3.5-flash" 1048576
-   "google/gemini-3.6-flash" 1048576
-   "google/gemini-3.7-flash" 1048576})
-
-(defn context-window-tokens
-  "The input context window for `model`, or nil when it isn't one we know."
-  [model]
-  (get model-context-windows model))
 
 ;;; Auth / HTTP plumbing
 
@@ -256,21 +243,100 @@
                 (<= (count segment) max-model-segment-length)
                 (re-matches pattern segment))))
 
+(defn- model-publisher
+  "The publisher segment of a publisher-qualified model ID, e.g. `google` or `anthropic`."
+  [model]
+  (llm.provider/model-ref->connection-key model))
+
+(defn- model-id
+  "The model segment of a publisher-qualified model ID, or nil when there is none."
+  [model]
+  (llm.provider/model-ref->model model))
+
+(def ^:private model-families
+  "Map from supported model publishers to their API format."
+  {"google"    :google
+   "anthropic" :anthropic})
+
+(def model-publishers
+  "The publishers whose models this adapter serves."
+  (set (keys model-families)))
+
+(defn- unqualified-model-ex
+  "The error for a `model` that does not name both a publisher and a model."
+  [model]
+  (ex-info (tru "Invalid Google model {0} — expected a publisher-qualified ID like \"google/gemini-3.5-flash\""
+                (pr-str model))
+           {:api-error   true
+            :status-code 400
+            :error-code  :invalid-model}))
+
+(defn- model->family
+  "Return the model family for the given `model`.
+  Throws for a publisher this adapter cannot speak to."
+  [model]
+  (or (model-families (model-publisher model))
+      (throw (if (str/blank? (model-id model))
+               (unqualified-model-ex model)
+               (ex-info (tru "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+                             (pr-str model))
+                        {:api-error   true
+                         :status-code 400
+                         :error-code  :unsupported-model
+                         :model       model})))))
+
+(def ^:private raw-predict-method
+  "The verb that serves Anthropic partner models."
+  ":streamRawPredict")
+
+(def ^:private generate-content-method
+  "The verb that serves Gemini models, asking for its stream as SSE rather than a JSON array."
+  ":streamGenerateContent?alt=sse")
+
+(def ^:private gemini-context-windows
+  "Input context windows for known Google Gemini models, keyed by publisher-qualified model id.
+  Values:
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash"
+  {"google/gemini-3.5-flash" 1048576
+   "google/gemini-3.6-flash" 1048576
+   "google/gemini-3.7-flash" 1048576})
+
+(defn reasoning-model?
+  "Whether a publisher-qualified `model` streams its reasoning back to us.
+
+  Answers false for a model this adapter cannot serve rather than throwing the way [[model->family]] does: the
+  `llm-metabot-supports-reasoning?` setting reads this, and a provider setting Metabot cannot use must not take the
+  public settings endpoint down with it. The request path rejects the same model soon enough."
+  [model]
+  (case (model-families (model-publisher model))
+    :anthropic (raw-predict/reasoning-model? (model-id model))
+    :google    (stream-generate-content/reasoning-model? (model-id model))
+    false))
+
+(defn context-window-tokens
+  "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
+
+  Answers nil for a model this adapter cannot serve rather than throwing the way [[model->family]] does, for the
+  same reason [[reasoning-model?]] does."
+  [model]
+  (case (model-families (model-publisher model))
+    :anthropic (raw-predict/context-window-tokens (model-id model))
+    :google    (get gemini-context-windows model)
+    nil))
+
 (defn- model-resource-path
   "Returns the URL path to a publisher model resource, without the `:method` verb at the end.
   The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash`.
 
   Both segments become path segments of the request URL, so a character that does not belong in one is rejected here.
-  The `llm-metabot-provider` setting takes the Google model as free text — unlike a whitelisted provider, nothing
-  upstream of this constrains it."
+  [[model->family]] has already settled the publisher by this point; the model ID is still free text."
   [credentials model]
-  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+  (let [publisher (model-publisher model)
+        model-id  (model-id model)]
     (when (str/blank? model-id)
-      (throw (ex-info (tru "Invalid Google model {0} — expected a publisher-qualified ID like \"google/gemini-3.5-flash\""
-                           (pr-str model))
-                      {:api-error   true
-                       :status-code 400
-                       :error-code  :invalid-model})))
+      (throw (unqualified-model-ex model)))
     (when-not (and (valid-model-segment? publisher-pattern publisher)
                    (valid-model-segment? model-id-pattern model-id))
       (throw (ex-info (tru (str "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, "
@@ -309,23 +375,27 @@
   ;; the API is not available in this location.
   (contains? #{404 501} status))
 
+(defn- google-res->msg
+  "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]]."
+  [credentials]
+  (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
+    (fn [res]
+      (cond-> (google-error-msg res)
+        (and (include-endpoint-in-msg? (:status res)) @endpoint)
+        (str " " (tru "(endpoint: {0})" @endpoint))))))
+
 (defn- rethrow-google-api-error!
   "Rethrows a Google HTTP exception like [[core/rethrow-api-error!]], with two changes:
 
   - For a status that satisfies [[include-endpoint-in-msg?]], the message includes the endpoint URL.
   - For 404s include a hint to check that the provided location is correct."
   [credentials e]
-  (let [data        (ex-data e)
-        location    (:location credentials)
-        known?      (conj multi-region-locations global-location)
-        endpoint    (delay (try (api-base-url credentials) (catch Exception _ nil)))
-        res->msg    (fn [res]
-                      (cond-> (google-error-msg res)
-                        (and (include-endpoint-in-msg? (:status res)) @endpoint)
-                        (str " " (tru "(endpoint: {0})" @endpoint))))]
+  (let [data     (ex-data e)
+        location (:location credentials)
+        known?   (conj multi-region-locations global-location)]
     (core/rethrow-api-error!
      "google"
-     res->msg
+     (google-res->msg credentials)
      (if (and location
               (= 404 (:status data))
               (not (known? location))
@@ -343,61 +413,111 @@
   "The smallest `countTokens` request body for the connect-time probe."
   {:contents [{:role "user" :parts [{:text "hi"}]}]})
 
-(defn- count-tokens!
-  "Makes a free `countTokens` call for `model` and discards the response — the connect-time probe.
+(defn- validate-google-surface!
+  "Validate `credentials` and `model` for a google model.
 
-  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/countTokens
+  Round-trip a Gemini model's `countTokens` route, which is free and names the model in the URL, so a 2xx proves the
+  credential, the project, the location, and the model all resolve.
 
-  This one call shows that the credential, the project ID, the endpoint, and the model are correct, and it uses no
-  inference tokens. It agrees with real inference about model availability."
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/countTokens"
   [auth credentials model]
   (core/request auth
                 {:method  :post
                  :url     (str (model-resource-path credentials model) ":countTokens")
                  :headers {"Content-Type" "application/json"}
-                 :body    (json/encode count-tokens-probe-body)})
+                 :body    (json/encode count-tokens-probe-body)}))
+
+(defn- anthropic-error-body?
+  "Whether an error `body` shape matches an Anthropic error rather than Google's.
+
+  Anthropic: `{\"type\": \"error\", \"error\": {...}}`
+  Google:    `{\"error\": {\"code\": ..., \"status\": ...}}`"
+  [body]
+  (= "error" (:type (try (json/decode+kw body) (catch Exception _ nil)))))
+
+(defn- validate-anthropic-surface!
+  "Validate `credentials` and `model` for an Anthropic model.
+
+  Round-trip an Anthropic partner model's `streamRawPredict` route with an empty body in order to check whether the
+  provided credentials and model are valid without consuming any tokens. This is similar to the approach taken by the
+  azure provider in [[metabase.metabot.self.azure/validate-anthropic-surface!]].
+
+  Google resolves the credential, the project, the location, and the model from the URL before it hands the body to
+  Anthropic, so a reply matching Anthropic's error shape proves all four while spending no tokens. Anything Google
+  answers itself is rethrown: a 404 for a model this project or location cannot reach, a 403 for a publisher whose
+  data-sharing terms are not accepted, a 401 for a stale credential.
+
+  We do not use Anthropic's count-tokens endpoint here because, unlike the corresponding :countTokens for Gemini
+  models, Anthropic's count-tokens will accept any valid anthropic model, even ones that are not actually available in
+  the given location.
+
+  Unlike [[metabase.metabot.self.azure/validate-anthropic-surface!]], the status code alone cannot settle it. Google
+  rejects a model that the location does not serve with a `400 FAILED_PRECONDITION` of its own — the same status
+  Anthropic uses for the validation error that means the model *is* servable."
+  [auth credentials model]
+  (try
+    (core/request auth
+                  {:method  :post
+                   :url     (str (model-resource-path credentials model) raw-predict-method)
+                   :headers {"Content-Type" "application/json"}
+                   :body    "{}"})
+    (catch Exception e
+      (let [{:keys [status body]} (ex-data e)]
+        (when-not (and (= 400 status) (anthropic-error-body? body))
+          (throw e))))))
+
+(defn- validate-model!
+  "Validates `model` against the surface that serves it, and discards the response."
+  [auth credentials model]
+  (case (model->family model)
+    :anthropic (validate-anthropic-surface! auth credentials model)
+    :google    (validate-google-surface! auth credentials model))
   nil)
 
-(defn- configured-google-model
-  "The publisher-qualified model of the connection Metabot is pointed at, when that connection is a Google one."
-  []
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
-    (when (= type "google")
-      model)))
-
 (defn list-models
-  "Validates the Google credentials and the candidate model with a free `countTokens` call.
+  "Validates the Google credentials and the candidate model with a probe, and returns an empty model list.
 
   Similar to the Azure provider, there is no list-models call that we can use to whitelist models for the Gemini
   Enterprise Agent Platform. An endpoint does exist, but it sometimes returns models that are not really available and
   sometimes omits models that are available, hence we can't rely on it. See
   https://github.com/googleapis/python-genai/issues/679
 
-  We therefore take an approach similar to the Azure provider: validate credentials and caller-provided model strings
-  by sending a `countTokens` probe, but always return an empty model list."
+  `:probe?` reports the model the probe verified as `:learned-config` `:probed-model`, for the connect and edit paths
+  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
   ([] (list-models {}))
-  ([{:keys [credentials model ai-proxy?]}]
-   (when-let [model (or (not-empty model) (configured-google-model))]
-     (try
-       (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
-         (count-tokens! auth credentials model))
-       (catch Exception e
-         (rethrow-google-api-error! credentials e))))
-   {:models []}))
+  ([{:keys [credentials model proposed-model ai-proxy? probe?]}]
+   (if-let [model (or (not-empty model) (not-empty proposed-model))]
+     (do
+       (try
+         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
+           (validate-model! auth credentials model))
+         (catch Exception e
+           (rethrow-google-api-error! credentials e)))
+       (cond-> {:models []}
+         probe? (assoc :learned-config {:probed-model model})))
+     {:models []})))
 
 (mu/defn google-raw
-  "Makes a streaming `streamGenerateContent` request to the Gemini Enterprise Agent Platform.
+  "Makes a streaming request to the Gemini Enterprise Agent Platform.
+  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
   `:ai-proxy?` is not supported and throws when it is true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [req (stream-generate-content/request-body opts)]
+  (let [family   (model->family model)
+        req      (case family
+                   :anthropic (raw-predict/request-body (model-id model) opts)
+                   :google    (stream-generate-content/request-body opts))
+        method   (case family
+                   :anthropic raw-predict-method
+                   :google    generate-content-method)
+        res->msg (google-res->msg credentials)]
     (with-span :info {:name       :metabot.google/request
                       :model      model
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)
-              url      (str (model-resource-path credentials model) ":streamGenerateContent?alt=sse")
+              url      (str (model-resource-path credentials model) method)
               response (core/request auth
                                      {:method  :post
                                       :url     url
@@ -408,12 +528,19 @@
               (debug/capture-stream {:provider "google"
                                      :model    model
                                      :url      url
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "google" res->msg)))
         (catch Exception e
           (rethrow-google-api-error! credentials e))))))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
   [& args]
-  (let [raw (apply google-raw args)]
-    (eduction (stream-generate-content/->aisdk-chunks-xf) raw)))
+  (let [{:keys [model] :or {model default-model}} (first args)
+        raw (apply google-raw args)]
+    ;; Keep this dispatch in sync with `google-raw`, which independently uses
+    ;; `model->family` to select the request protocol.
+    (eduction (case (model->family model)
+                :anthropic (raw-predict/->aisdk-chunks-xf)
+                :google    (stream-generate-content/->aisdk-chunks-xf))
+              raw)))

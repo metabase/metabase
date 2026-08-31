@@ -153,8 +153,7 @@
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Case
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Deleting dataset: " dataset-id)
+  (tx/print-progress! :bigquery-cloud-sdk "deleting %s" dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
@@ -385,20 +384,45 @@
                       (project-id)
                       (track-debounce-seconds))))))
 
+(def ^:private old-dataset-name-pattern "sha_%")
+
+(defn- old-dataset-names
+  "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
+  created that long ago. Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway.
+
+  Shared by [[delete-old-datasets!]] and the nightly sweep ([[tx/gc-orphans!]]), which differ only in `hours`."
+  [hours]
+  (let [current-test-data (test-dataset-id (tx/get-dataset-definition
+                                            (data.impl/resolve-dataset-definition *ns* 'test-data)))]
+    (into []
+          (comp (map first)
+                (remove #(= % current-test-data)))
+          (execute! (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                         " WHERE `name` LIKE '%2$s'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))"
+                         " UNION ALL "
+                         "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
+                           and d.schema_name like '%2$s'
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))")
+                    (project-id)
+                    old-dataset-name-pattern
+                    hours))))
+
+(defn- drop-datasets!
+  "Delete each named dataset, reporting per dataset whether it went. See [[tx/gc-orphans!]] for the shape."
+  [dataset-ids]
+  (mapv (fn [dataset-id]
+          (try
+            (destroy-dataset! dataset-id)
+            {:name dataset-id, :status :deleted}
+            ;; usually just another job deleting the same dataset at the same time
+            (catch Exception e
+              {:name dataset-id, :status :failed, :error (ex-message e)})))
+        dataset-ids))
+
 (defn delete-old-datasets! []
-  (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))"
-                           " UNION ALL "
-                           "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
-                             and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))")
-                      (project-id)
-                      (.toSeconds reap-after))]
-    (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
+  (drop-datasets! (old-dataset-names (.toHours reap-after))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -408,6 +432,17 @@
   []
   (when (compare-and-set! deleted-old-datasets? false true)
     (delete-old-datasets!)))
+
+;; Nightly garbage collection of orphaned test datasets.
+(defmethod tx/gc-orphans! :bigquery-cloud-sdk
+  [_driver {:keys [fixture-hours]}]
+  (let [project (project-id)]
+    (mapv #(assoc % :server project) (drop-datasets! (old-dataset-names fixture-hours)))))
+
+(defmethod tx/count-datasets :bigquery-cloud-sdk
+  [_driver]
+  (let [project (project-id)]
+    {project (ffirst (execute! "SELECT COUNT(*) FROM `%s`.INFORMATION_SCHEMA.SCHEMATA" project))}))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

@@ -28,7 +28,6 @@ import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
@@ -36,8 +35,6 @@ import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
 } from "metabase/visualizations/components/legend/LegendCaption";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -50,6 +47,12 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+import {
+  extendCardWithDashcardSettings,
+  getComputedSettingsForSeries,
+  getVisualizationRaw,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
