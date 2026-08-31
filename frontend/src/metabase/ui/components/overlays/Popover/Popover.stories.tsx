@@ -90,8 +90,7 @@ const OverviewTemplate: StoryFn<PopoverProps> = () => (
           <Popover.Dropdown>
             <Box p="md" w={300}>
               <Text>
-                This is uncontrolled popover, it is opened when button is
-                clicked.
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
               </Text>
             </Box>
           </Popover.Dropdown>
