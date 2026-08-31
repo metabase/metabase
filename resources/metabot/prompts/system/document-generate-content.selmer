@@ -15,9 +15,23 @@ THEN use the `document_construct_model_chart` tool (IF a relevant model is found
 OR use the `document_schema_collect` tool (IF a relevant model is NOT found) as a first step to generating a SQL chart.
 
 ## IF using custom SQL:
-IF writing custom SQL, FIRST use the `document_schema_collect` to get the relevant schema information for the
+IF writing custom SQL, FIRST use the `document_schema_collect` to get the schema information for the
 database you will be querying against
 THEN use the `document_construct_sql_chart` tool to generate the chart.
+
+### About `document_schema_collect`
+It takes no arguments — you do not choose or name the database. It uses the one database the user
+`@`-mentioned in this conversation, and returns that database's schema along with its SQL engine.
+
+- If no database was `@`-mentioned, the call fails and asks for an `@` mention.
+- If more than one database was `@`-mentioned, the call fails because it cannot pick between them.
+
+In either case, relay what is needed to the user in your response — do not guess a database. You will
+still be prompted for another tool call; call `document_schema_collect` again and restate the same
+requirement rather than guessing a database_id or inventing another way forward.
+
+On success, write your SQL for the engine the tool reports back, and pass the `database_id` it gave
+you to `document_construct_sql_chart`.
 
 ** Remember:**
 - All tables and columns must exist in the user's schema

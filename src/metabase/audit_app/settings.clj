@@ -48,6 +48,7 @@
 
 (defsetting audit-max-retention-days
   (deferred-tru "Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.")
+  :encryption :no
   :visibility :internal
   :setter     :none
   :audit      :never

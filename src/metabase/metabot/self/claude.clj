@@ -336,7 +336,7 @@
       529 (tru "Anthropic API is overloaded and is asking us to wait")
       (tru "Anthropic API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}

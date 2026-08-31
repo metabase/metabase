@@ -21,6 +21,10 @@
     (is (true? (mcp.scope/matches? #{"agent:*"} "agent:read")))
     (is (true? (mcp.scope/matches? #{"agent:*"} "agent:write")))
     (is (false? (mcp.scope/matches? #{"other:*"} "agent:read"))))
+  (testing "any required scope match"
+    (is (true? (mcp.scope/matches? #{"agent:read"} #{"agent:read" "agent:write"})))
+    (is (true? (mcp.scope/matches? #{"agent:write"} #{"agent:read" "agent:write"})))
+    (is (false? (mcp.scope/matches? #{"other:read"} #{"agent:read" "agent:write"}))))
   (testing "no match"
     (is (false? (mcp.scope/matches? #{"foo:bar"} "agent:read")))
     (is (false? (mcp.scope/matches? #{} "agent:read")))))

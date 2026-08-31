@@ -1,6 +1,7 @@
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -10,7 +11,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";

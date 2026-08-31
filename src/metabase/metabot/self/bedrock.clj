@@ -171,7 +171,7 @@
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
-(def ^:private supported-models
+(def supported-models
   "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
