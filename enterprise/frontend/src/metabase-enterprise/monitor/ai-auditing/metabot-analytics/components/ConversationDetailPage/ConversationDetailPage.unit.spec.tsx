@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  createMockMetabotTextPart,
+  createMockMetabotToolCallPart,
+  createMockParentedMessage,
   setupGroupsEndpoint,
   setupMetabotConversationEndpoint,
   setupPermissionMembershipEndpoint,
@@ -25,57 +28,53 @@ jest.mock("metabase/monitor/components/MonitorLayout/Sidebar", () => ({
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
+type AgentMessagePart = Extract<
+  ConversationMessage["parts"][number],
+  { role: "agent" }
+>;
 
 function userMessage(
   id: string,
   parentId: string | null,
-  message: string,
+  text: string,
 ): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
+  return createMockParentedMessage(id, parentId, {
     role: "user",
-    type: "text",
-    message,
-  };
+    parts: [{ id: `${id}-text`, role: "user", type: "text", message: text }],
+  });
 }
 
 function agentMessage(
   id: string,
   parentId: string,
-  message: string,
+  ...parts: (string | AgentMessagePart)[]
 ): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "text",
-    message,
+  return createMockParentedMessage(id, parentId, {
     externalId: id,
-  };
+    parts: parts.map((part, index) =>
+      typeof part === "string"
+        ? createMockMetabotTextPart({
+            id: `${id}-text-${index}`,
+            message: part,
+          })
+        : part,
+    ),
+  });
 }
 
 function inProgressMessage(id: string, parentId: string): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "turn_in_progress",
+  return createMockParentedMessage(id, parentId, {
     externalId: id,
-  };
+    status: { type: "in_progress" },
+  });
 }
 
-function toolCallMessage(id: string, parentId: string): ConversationMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "tool_call",
-    name: "search",
-    status: "ended",
+function toolCallPart(id: string): AgentMessagePart {
+  return createMockMetabotToolCallPart({
+    id: `${id}-tool-call`,
     args: JSON.stringify({ query: "orders" }),
     result: JSON.stringify({ count: 3 }),
-  };
+  });
 }
 
 function createConversation(
@@ -354,8 +353,7 @@ describe("ConversationDetailPage", () => {
     setup(
       createConversation([
         userMessage("u1", null, "search orders"),
-        toolCallMessage("t1", "u1"),
-        agentMessage("a1", "t1", "found 3 orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
     );
 
@@ -383,8 +381,7 @@ describe("ConversationDetailPage", () => {
     setup(
       createConversation([
         userMessage("u1", null, "search orders"),
-        toolCallMessage("t1", "u1"),
-        agentMessage("a1", "t1", "found 3 orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
     );
 

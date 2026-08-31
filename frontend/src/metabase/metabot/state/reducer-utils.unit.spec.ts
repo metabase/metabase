@@ -1,22 +1,32 @@
 import { produce } from "immer";
 
 import {
+  createConversation as _createConversation,
   addChainTool,
   appendChainReasoning,
   closeChain,
-  createConversation,
   endChainTool,
-  openChain,
+  ensureChain,
+  startAgentMessage,
   startChainReasoning,
 } from "./reducer-utils";
 import type { MetabotConversationState } from "./types";
 
+// the chain lives on the message being streamed into, so open one first
+const createConversation = () =>
+  produce(_createConversation(), (d) => startAgentMessage(d));
+
+const partsOf = (convo: MetabotConversationState) =>
+  convo.messages.flatMap((t) => t.parts);
+
 const chainOf = (convo: MetabotConversationState) =>
-  convo.messages.find((m) => m.type === "chain_of_thought");
+  partsOf(convo).find((p) => p.type === "chain_of_thought");
 
 describe("chain of thought duration timing", () => {
   it("stamps and advances endedAtMs on each step so the span lives in redux", () => {
-    const opened = produce(createConversation(), (d) => openChain(d));
+    const opened = produce(createConversation(), (d) => {
+      ensureChain(d);
+    });
     const started = produce(opened, (d) => startChainReasoning(d, 1000));
     expect(chainOf(started)).toMatchObject({
       startedAtMs: 1000,
@@ -34,7 +44,7 @@ describe("chain of thought duration timing", () => {
 
   it("keeps the last step's end time when the answer closes the chain without a clock", () => {
     const convo = produce(createConversation(), (d) => {
-      openChain(d);
+      ensureChain(d);
       startChainReasoning(d, 1000);
       appendChainReasoning(d, "x", 3000);
       closeChain(d); // e.g. a data-part answer arrives with no nowMs
@@ -44,11 +54,10 @@ describe("chain of thought duration timing", () => {
 
   it("drops a shell that never gathered a step at turn teardown", () => {
     const convo = produce(createConversation(), (d) => {
-      openChain(d);
+      ensureChain(d);
       closeChain(d);
     });
     expect(chainOf(convo)).toBeUndefined();
-    expect(convo.activeChainId).toBeUndefined();
   });
 
   it("advances endedAtMs when a tool ends, so a turn ending on a tool counts its runtime", () => {
@@ -81,11 +90,11 @@ describe("chain tool step dedupe", () => {
       closeChain(d, 2000);
       addChainTool(d, { id: "t1", name: "search", title: "revenue" });
     });
-    const chains = convo.messages.filter((m) => m.type === "chain_of_thought");
+    const chains = partsOf(convo).filter((p) => p.type === "chain_of_thought");
     expect(chains).toHaveLength(1);
     expect(chains[0].steps).toEqual([
       expect.objectContaining({ kind: "tool", id: "t1", title: "revenue" }),
     ]);
-    expect(convo.activeChainId).toBeUndefined();
+    expect(chains[0].finished).toBe(true);
   });
 });

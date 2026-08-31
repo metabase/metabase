@@ -24,8 +24,8 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import type {
-  MetabotChatMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import type {
@@ -283,24 +283,24 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       return;
     }
 
-    const unprocessedMessages = messages.filter(
-      (message) => !processedMessageIdsRef.current.has(message.id),
-    );
-    for (const message of unprocessedMessages) {
-      processedMessageIdsRef.current.add(message.id);
+    const unprocessedParts = messages
+      .flatMap((message) => message.parts)
+      .filter((part) => !processedMessageIdsRef.current.has(part.id));
+    for (const part of unprocessedParts) {
+      processedMessageIdsRef.current.add(part.id);
     }
 
     handleAddResearchGroupsToolCallMessages(
-      unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
+      unprocessedParts.filter(isAddResearchGroupsToolCallMessage),
     );
     handleRemoveFromResearchPlanToolCallMessages(
-      unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
+      unprocessedParts.filter(isRemoveFromResearchPlanToolCallMessage),
     );
     handleSetExplorationNameToolCallMessages(
-      unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
+      unprocessedParts.filter(isSetExplorationNameToolCallMessage),
     );
     handleSelectExplorationTimelinesToolCallMessages(
-      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+      unprocessedParts.filter(isSelectExplorationTimelinesToolCallMessage),
     );
   }, [
     isDoingScience,
@@ -390,7 +390,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 }
 
 function isAddResearchGroupsToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -402,7 +402,7 @@ function isAddResearchGroupsToolCallMessage(
 }
 
 function isRemoveFromResearchPlanToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -414,7 +414,7 @@ function isRemoveFromResearchPlanToolCallMessage(
 }
 
 function isSetExplorationNameToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -426,7 +426,7 @@ function isSetExplorationNameToolCallMessage(
 }
 
 function isSelectExplorationTimelinesToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&

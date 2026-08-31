@@ -163,17 +163,17 @@ const ToolCallDetailsModal = ({
   </Modal>
 );
 
-export const AgentToolCallMessage = ({
-  message,
+export const AgentToolCallPart = ({
+  part,
   onSelect,
 }: {
-  message: MetabotDebugToolCallMessage;
-  onSelect?: (message: MetabotDebugToolCallMessage) => void;
+  part: MetabotDebugToolCallMessage;
+  onSelect?: (part: MetabotDebugToolCallMessage) => void;
 }) => {
   const [isModalOpen, { open, close }] = useDisclosure(false);
   const clipboard = useClipboard();
-  const handleCopy = () => clipboard.copy(JSON.stringify(message, null, 2));
-  const handleClick = () => (onSelect ? onSelect(message) : open());
+  const handleCopy = () => clipboard.copy(JSON.stringify(part, null, 2));
+  const handleClick = () => (onSelect ? onSelect(part) : open());
 
   return (
     <>
@@ -198,7 +198,7 @@ export const AgentToolCallMessage = ({
       >
         <Flex align="center">
           <Icon name="gear" c="text-secondary" mr="sm" />
-          <Text fw="bold">{message.name}</Text>
+          <Text fw="bold">{part.name}</Text>
         </Flex>
         <Flex align="center" gap="xs" className={Styles.agentPartActions}>
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
@@ -216,9 +216,7 @@ export const AgentToolCallMessage = ({
           </Tooltip>
         </Flex>
       </Flex>
-      {isModalOpen && (
-        <ToolCallDetailsModal message={message} onClose={close} />
-      )}
+      {isModalOpen && <ToolCallDetailsModal message={part} onClose={close} />}
     </>
   );
 };

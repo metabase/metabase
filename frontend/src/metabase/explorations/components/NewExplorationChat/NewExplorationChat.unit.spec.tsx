@@ -11,8 +11,9 @@ import {
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
-  MetabotChatMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
@@ -100,7 +101,7 @@ const metricChurn: GetExplorationDataResponse["metrics"][number] = {
   dimensions: [customerSegmentDimension],
 };
 
-const userMessage: MetabotChatMessage = {
+const userMessage: MetabotMessagePart = {
   id: "user-1",
   role: "user",
   type: "text",
@@ -178,12 +179,33 @@ const removeFromResearchPlanToolCallMessage: MetabotDebugToolCallMessage = {
   }),
 };
 
-const agentMessage: MetabotChatMessage = {
+const agentMessage: MetabotMessagePart = {
   id: "agent-1",
   role: "agent",
   type: "text",
   message: "I selected these metrics because they are related to revenue.",
 };
+
+/**
+ * Group the fixture parts the way a stream would: each user prompt is its own
+ * message, and the agent parts that follow belong to one reply.
+ */
+function toMessages(parts: MetabotMessagePart[]): MetabotMessage[] {
+  return parts.reduce<MetabotMessage[]>((messages, part) => {
+    const open = messages.at(-1);
+    if (open && part.role === "agent" && open.role === "agent") {
+      open.parts.push(part);
+      return messages;
+    }
+    messages.push({
+      id: `message-${messages.length}`,
+      role: part.role,
+      parts: [part],
+      status: { type: "done" },
+    });
+    return messages;
+  }, []);
+}
 
 function mockMetabotAgentState({
   messages,
@@ -192,18 +214,19 @@ function mockMetabotAgentState({
   submitInput = jest.fn(),
   retryMessage = jest.fn(),
 }: {
-  messages: MetabotChatMessage[];
+  messages: MetabotMessagePart[];
   isDoingScience: boolean;
   prompt?: string;
   submitInput?: jest.Mock;
   retryMessage?: jest.Mock;
 }) {
+  const groupedMessages = toMessages(messages);
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt,
     setPrompt: jest.fn(),
-    conversation: { messages },
-    messages,
+    conversation: { messages: groupedMessages },
+    messages: groupedMessages,
     errorMessages: [],
     retryMessage,
     isDoingScience,
@@ -221,7 +244,7 @@ function setup({
   isDoingScience = true,
   prompt = "",
 }: {
-  messages?: MetabotChatMessage[];
+  messages?: MetabotMessagePart[];
   isDoingScience?: boolean;
   prompt?: string;
 } = {}) {
@@ -260,7 +283,7 @@ function setup({
     messages,
     isDoingScience,
   }: {
-    messages: MetabotChatMessage[];
+    messages: MetabotMessagePart[];
     isDoingScience: boolean;
   }) => {
     mockMetabotAgentState({
@@ -557,13 +580,13 @@ describe("NewExplorationChat", () => {
   it("does not re-apply tool calls that survive a conversation rewind/retry", async () => {
     const { selection, rerender } = setup();
 
-    const secondUserMessage: MetabotChatMessage = {
+    const secondUserMessage: MetabotMessagePart = {
       id: "user-2",
       role: "user",
       type: "text",
       message: "Remove the churn block",
     };
-    const secondAgentMessage: MetabotChatMessage = {
+    const secondAgentMessage: MetabotMessagePart = {
       id: "agent-2",
       role: "agent",
       type: "text",
@@ -602,7 +625,7 @@ describe("NewExplorationChat", () => {
       id: "tool-call-4-retry",
       result: JSON.stringify({ block_ids: ["metric:1"] }),
     };
-    const retriedSecondAgentMessage: MetabotChatMessage = {
+    const retriedSecondAgentMessage: MetabotMessagePart = {
       ...secondAgentMessage,
       id: "agent-2-retry",
     };

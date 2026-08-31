@@ -59,7 +59,7 @@
                                   [:map
                                    [:card_id  ms/PositiveInt]
                                    [:chart_id [:maybe :string]]]]]
-   [:messages                    [:sequential :map]]])
+   [:messages                    [:sequential ::metabot.schema/client-message]]])
 
 (def ^:private ConversationTitleResponse
   [:map

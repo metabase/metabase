@@ -40,31 +40,33 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
-type AgentDataPartMessageProps = {
-  message: MetabotAgentDataPartMessage;
+type AgentDataPartProps = {
+  dataPart: MetabotAgentDataPartMessage;
+  externalId?: string;
   readonly: boolean;
   debug: boolean;
   conversationId: string;
 };
 
-export const AgentDataPartMessage = ({
-  message,
+export const AgentDataPart = ({
+  dataPart,
+  externalId,
   readonly,
   debug,
   conversationId,
-}: AgentDataPartMessageProps) =>
-  match(message)
+}: AgentDataPartProps) =>
+  match(dataPart)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
     ))
-    .with({ part: { type: "data-transform_suggestion" } }, (msg) => (
-      <AgentSuggestionMessage message={msg} readonly={readonly} />
+    .with({ part: { type: "data-transform_suggestion" } }, (dataPart) => (
+      <AgentSuggestionMessage message={dataPart} readonly={readonly} />
     ))
     .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (
         <NavigateToTablePills
           path={part.data}
-          messageId={readonly ? undefined : message.externalId}
+          messageId={readonly ? undefined : externalId}
         />
       );
 
@@ -80,7 +82,7 @@ export const AgentDataPartMessage = ({
         <CodeEditTablePills
           value={part.data}
           buffer={metadata?.codeEditBuffer}
-          messageId={readonly ? undefined : message.externalId}
+          messageId={readonly ? undefined : externalId}
         />
       );
 
@@ -103,7 +105,7 @@ export const AgentDataPartMessage = ({
           />
           <GeneratedCardTablePills
             value={part.data}
-            messageId={readonly ? undefined : message.externalId}
+            messageId={readonly ? undefined : externalId}
           />
         </Stack>
       ),
@@ -129,8 +131,8 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "data-static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
-    .exhaustive((msg: unknown) => {
-      console.warn("AgentDataPartMessage received an unexpected value:", msg);
+    .exhaustive((dataPart: unknown) => {
+      console.warn("AgentDataPart received an unexpected value:", dataPart);
       return null;
     });
 

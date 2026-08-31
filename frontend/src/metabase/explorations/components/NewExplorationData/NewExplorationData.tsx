@@ -16,6 +16,7 @@ import type {
 } from "metabase/explorations/hooks";
 import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import { getPromptText } from "metabase/metabot/state";
 import { useNavigate } from "metabase/router";
 import {
   Box,
@@ -133,7 +134,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 
   const { messages, isDoingScience } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
   const hasUserPrompt = messages.some(
-    (message) => message.role === "user" && message.message.trim().length > 0,
+    (message) => message.role === "user" && getPromptText(message).trim(),
   );
   const canStart = blocks.some(isNonEmptyBlock);
 
@@ -176,7 +177,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       hasUserPrompt && useContextualInterestingness
         ? messages
             .filter((message) => message.role === "user")
-            .map((message) => message.message)
+            .map(getPromptText)
             .join("\n---\n")
         : "";
     const request = buildCreateExplorationRequest(

@@ -69,170 +69,174 @@
                  :data [{:type "text" :text "inherited prompt"}]}
                 {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}])))))
 
-(deftest ^:parallel message->chat-messages-test
-  (testing "text part on a user row renders as a user message"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :user
-                   :data [{:type "text" :text "hello"}]})]
-      (is (= 1 (count result)))
+(defn- client-message
+  [row]
+  (first (metabot-persistence/messages->client-messages
+          [(merge {:id 1} row)]
+          {:include-errored? true})))
+
+(defn- part-messages
+  [message]
+  (mapv :message (:parts message)))
+
+(deftest ^:parallel messages->client-messages-user-text-part-test
+  (testing "text part on a user row renders as a user part"
+    (let [[part] (:parts (client-message {:role :user
+                                          :data [{:type "text" :text "hello"}]}))]
       (is (= {:role "user" :type "text" :message "hello"}
-             (select-keys (first result) [:role :type :message])))
-      (is (string? (:id (first result)))))))
+             (select-keys part [:role :type :message])))
+      (is (string? (:id part))))))
 
-(deftest ^:parallel message->chat-messages-test-2
-  (testing "text part on an assistant row renders as an agent message with a generated id"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "text" :text "hi there"}]})]
-      (is (= [{:role "agent" :type "text" :message "hi there"}]
-             (mapv #(select-keys % [:role :type :message]) result)))
-      (is (string? (:id (first result)))))))
+(deftest ^:parallel messages->client-messages-assistant-text-part-test
+  (testing "text part on an assistant row renders as an agent part with a generated id"
+    (let [[part] (:parts (client-message {:role :assistant
+                                          :data [{:type "text" :text "hi there"}]}))]
+      (is (= {:role "agent" :type "text" :message "hi there"}
+             (select-keys part [:role :type :message])))
+      (is (string? (:id part))))))
 
-(deftest ^:parallel message->chat-messages-test-5
+(deftest ^:parallel messages->client-messages-resolved-tool-part-test
   (testing "resolved tool part carries args and result"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "tool-search" :toolCallId "call-1" :state "output-available"
-                           :input {:query "foo"} :output {:output "rows!" :structured_output {:query-id "q"}}}]})]
-      (is (= 1 (count result)))
+    (let [[part] (:parts (client-message
+                          {:role :assistant
+                           :data [{:type "tool-search" :toolCallId "call-1" :state "output-available"
+                                   :input {:query "foo"}
+                                   :output {:output "rows!" :structured_output {:query-id "q"}}}]}))]
       (is (= {:id       "call-1"
               :role     "agent"
               :type     "tool_call"
               :name     "search"
               :status   "ended"
               :is_error false}
-             (select-keys (first result) [:id :role :type :name :status :is_error])))
-      (is (= {:query "foo"} (json/decode+kw (:args (first result)))))
+             (select-keys part [:id :role :type :name :status :is_error])))
+      (is (= {:query "foo"} (json/decode+kw (:args part))))
       (is (= {:output "rows!" :structured_output {:query-id "q"}}
-             (json/decode+kw (:result (first result))))))))
+             (json/decode+kw (:result part)))))))
 
-(deftest ^:parallel message->chat-messages-test-6
+(deftest ^:parallel messages->client-messages-errored-tool-part-test
   (testing "errored tool part is flagged and carries no result"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "tool-boom" :toolCallId "call-2" :state "output-error"
-                           :input {} :errorText "exploded"}]})]
-      (is (true? (:is_error (first result))))
-      (is (nil? (:result (first result)))))))
+    (let [[part] (:parts (client-message
+                          {:role :assistant
+                           :data [{:type "tool-boom" :toolCallId "call-2" :state "output-error"
+                                   :input {} :errorText "exploded"}]}))]
+      (is (true? (:is_error part)))
+      (is (nil? (:result part))))))
 
-(deftest ^:parallel message->chat-messages-test-7
+(deftest ^:parallel messages->client-messages-unresolved-tool-part-test
   (testing "unresolved tool part renders without result/error fields"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "tool-search" :toolCallId "call-3" :state "input-available" :input {}}]})]
-      (is (= 1 (count result)))
-      (is (= "tool_call" (:type (first result))))
-      (is (not (contains? (first result) :result)))
-      (is (not (contains? (first result) :is_error))))))
+    (let [[part] (:parts (client-message
+                          {:role :assistant
+                           :data [{:type "tool-search" :toolCallId "call-3"
+                                   :state "input-available" :input {}}]}))]
+      (is (= "tool_call" (:type part)))
+      (is (not (contains? part :result)))
+      (is (not (contains? part :is_error))))))
 
-(deftest ^:parallel message->chat-messages-test-11
+(deftest ^:parallel messages->client-messages-nil-tool-result-test
   (testing "resolved tool part with a nil :output yields a nil :result, not the string \"null\""
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "tool-search" :toolCallId "call-4" :state "output-available"
-                           :input {} :output nil}]})]
-      (is (false? (:is_error (first result))))
-      (is (nil? (:result (first result)))))))
+    (let [[part] (:parts (client-message
+                          {:role :assistant
+                           :data [{:type "tool-search" :toolCallId "call-4" :state "output-available"
+                                   :input {} :output nil}]}))]
+      (is (false? (:is_error part)))
+      (is (nil? (:result part))))))
 
-(deftest ^:parallel message->chat-messages-test-8
+(deftest ^:parallel messages->client-messages-unknown-part-test
   (testing "unknown part types are dropped"
-    (is (= []
-           (metabot-persistence/message->chat-messages
-            {:role :assistant
-             :data [{:type "mystery"}]})))))
+    (is (= [] (:parts (client-message {:role :assistant :data [{:type "mystery"}]}))))))
 
-(deftest ^:parallel message->chat-messages-test-9
-  (testing "data parts are converted to data_part chat messages"
+(deftest ^:parallel messages->client-messages-data-parts-test
+  (testing "data parts are converted to data_part message parts"
     (let [blocks [{:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
-               {:role "agent" :type "data_part" :part {:type "data-todo_list"   :data [{:id "t1"}]}}
-               {:role "agent" :type "data_part" :part {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}}]
-              (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
+      (is (=? [{:role "agent" :type "data_part"
+                :part {:type "data-generated_entity"
+                       :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
+               {:role "agent" :type "data_part"
+                :part {:type "data-todo_list" :data [{:id "t1"}]}}
+               {:role "agent" :type "data_part"
+                :part {:type "data-code_edit" :data {:buffer_id "b" :value "v"}}}]
+              (:parts (client-message {:role :assistant :data blocks})))))))
 
-(deftest ^:parallel message->chat-messages-test-10
-  (testing "nil :data yields no messages"
-    (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil})))))
+(deftest ^:parallel messages->client-messages-nil-data-test
+  (testing "nil :data yields no parts"
+    (is (= [] (:parts (client-message {:role :user :data nil}))))))
 
-(deftest ^:parallel messages->chat-messages-flattens-across-messages-test
-  (let [result (metabot-persistence/messages->chat-messages
-                [{:role :user      :data [{:type "text" :text "hi"}]}
-                 {:role :assistant :data [{:type "text" :text "hello!"}
-                                          {:type "tool-f" :toolCallId "t1" :state "output-available"
-                                           :input {:x 1} :output {:output "ok"}}]}])]
-    (is (= 3 (count result)))
-    (is (= ["user" "agent" "agent"] (map :role result)))
-    (is (= ["text" "text" "tool_call"] (map :type result)))
-    (is (= "hi" (:message (nth result 0))))
-    (is (= "hello!" (:message (nth result 1))))
-    (is (= {:output "ok"} (json/decode+kw (:result (nth result 2)))))))
+(deftest ^:parallel messages->client-messages-external-id-test
+  (testing "a row external id is represented on its message envelope, not its parts"
+    (let [message (client-message {:role :assistant :external_id "a1"
+                                   :data [{:type "text" :text "hello"}]})]
+      (is (= "a1" (:externalId message)))
+      (is (not-any? #(contains? % :externalId) (:parts message)))))
+  (testing "a legacy row without an external id omits the optional key"
+    (is (not (contains? (client-message {:role :assistant :data []}) :externalId)))))
 
-(deftest ^:parallel messages->chat-messages-active-placeholder-test
-  (testing "an in-flight assistant placeholder becomes a trailing turn_in_progress message"
-    (let [result (metabot-persistence/messages->chat-messages
-                  [{:role :user :data [{:type "text" :text "hi"}]}
-                   {:id 2 :role :assistant :external_id "a1"
+(deftest ^:parallel messages->client-messages-groups-parts-by-row-test
+  (let [result (metabot-persistence/messages->client-messages
+                [{:id 1 :external_id "u1" :role :user
+                  :data [{:type "text" :text "hi"}]}
+                 {:id 2 :external_id "a1" :role :assistant
+                  :data [{:type "text" :text "hello!"}
+                         {:type "tool-f" :toolCallId "t1" :state "output-available"
+                          :input {:x 1} :output {:output "ok"}}]}])]
+    (is (= ["user" "agent"] (map :role result)))
+    (is (= [["text"] ["text" "tool_call"]] (mapv #(mapv :type (:parts %)) result)))
+    (is (= "hi" (-> result first :parts first :message)))
+    (is (= "hello!" (-> result second :parts first :message)))
+    (is (= {:output "ok"} (json/decode+kw (-> result second :parts second :result))))))
+
+(deftest ^:parallel messages->client-messages-placeholder-status-test
+  (testing "an in-flight assistant placeholder is an in-progress row"
+    (let [result (metabot-persistence/messages->client-messages
+                  [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :external_id "a1" :role :assistant
                     :created_at (t/offset-date-time) :finished nil :data []}])]
       (is (= ["user" "agent"] (map :role result)))
-      (is (= ["text" "turn_in_progress"] (map :type result)))
-      (is (= "a1" (:externalId (second result)))))))
-
-(deftest ^:parallel messages->chat-messages-stale-placeholder-test
-  (testing "a placeholder past the grace window is an aborted (finished=false) turn, not in-progress"
-    (let [result (metabot-persistence/messages->chat-messages
-                  [{:role :user :data [{:type "text" :text "hi"}]}
-                   {:id 2 :role :assistant :external_id "a1"
+      (is (= {:type "in_progress"} (:status (second result))))
+      (is (= [] (:parts (second result))))
+      (is (= "a1" (:externalId (second result))))))
+  (testing "a placeholder past the grace window is aborted, not in-progress"
+    (let [result (metabot-persistence/messages->client-messages
+                  [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :external_id "a1" :role :assistant
                     :created_at (t/minus (t/offset-date-time) (t/hours 1))
                     :finished nil :data []}])]
-      (is (not-any? #(= "turn_in_progress" (:type %)) result))
-      (is (false? (:finished (last result)))))))
+      (is (= {:type "aborted"} (:status (second result)))))))
 
-(deftest ^:parallel messages->flat-messages-test
+(deftest ^:parallel messages->threaded-client-messages-test
   (let [deleted-at (t/offset-date-time)
-        messages   (metabot-persistence/messages->flat-messages
-                    [{:role :user :data [{:type "text" :text "q1"}]}
-                     {:role       :assistant
-                      :deleted_at deleted-at
-                      :data       [{:type "text" :text "discarded-1"}
-                                   {:type "text" :text "discarded-2"}]}
-                     {:role :assistant :data [{:type "text" :text "older-live"}]}
-                     {:role :assistant :data [{:type "text" :text "kept-1"}
-                                              {:type "text" :text "kept-2"}]}
-                     {:role :user :data [{:type "text" :text "q2"}]}])
-        by-text    #(u/seek (fn [message] (= % (:message message))) messages)
-        q1         (by-text "q1")
-        discarded-1 (by-text "discarded-1")
-        discarded-2 (by-text "discarded-2")
-        older-live (by-text "older-live")
-        kept-1     (by-text "kept-1")
-        kept-2     (by-text "kept-2")
-        q2         (by-text "q2")]
-    (is (= ["q1" "discarded-1" "discarded-2" "older-live" "kept-1" "kept-2" "q2"]
-           (map :message messages)))
+        messages   (metabot-persistence/messages->threaded-client-messages
+                    [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "q1"}]}
+                     {:id 2 :external_id "a1" :role :assistant :deleted_at deleted-at
+                      :data [{:type "text" :text "discarded-1"}
+                             {:type "text" :text "discarded-2"}]}
+                     {:id 3 :external_id "a2" :role :assistant
+                      :data [{:type "text" :text "older-live"}]}
+                     {:id 4 :external_id "a3" :role :assistant
+                      :data [{:type "text" :text "kept-1"}
+                             {:type "text" :text "kept-2"}]}
+                     {:id 5 :external_id "u2" :role :user :data [{:type "text" :text "q2"}]}])
+        [q1 discarded older-live kept q2] messages]
+    (is (= ["u1" "a1" "a2" "a3" "u2"] (map :id messages)))
+    (is (= [["q1"] ["discarded-1" "discarded-2"] ["older-live"] ["kept-1" "kept-2"] ["q2"]]
+           (mapv part-messages messages)))
     (is (nil? (:parent_message_id q1)))
-    (is (= (:id q1) (:parent_message_id discarded-1)))
-    (is (= (:id discarded-1) (:parent_message_id discarded-2)))
-    (is (= (:id q1) (:parent_message_id older-live)))
-    (is (= (:id q1) (:parent_message_id kept-1)))
-    (is (= (:id kept-1) (:parent_message_id kept-2)))
-    (is (= (:id kept-2) (:parent_message_id q2)))))
+    (is (= "u1" (:parent_message_id discarded)))
+    (is (= "u1" (:parent_message_id older-live)))
+    (is (= "u1" (:parent_message_id kept)))
+    (is (= "a3" (:parent_message_id q2)))))
 
-(deftest ^:parallel messages->flat-messages-deleted-placeholder-test
+(deftest ^:parallel messages->threaded-client-messages-deleted-placeholder-test
   (let [now      (t/offset-date-time)
-        messages (metabot-persistence/messages->flat-messages
-                  [{:role :user :data [{:type "text" :text "q1"}]}
-                   {:id          1
-                    :role        :assistant
-                    :external_id "a1"
-                    :created_at  now
-                    :deleted_at  now
-                    :finished    nil
-                    :data        []}])]
-    (is (= ["text" "text"] (map :type messages)))
-    (is (false? (:finished (second messages))))))
+        messages (metabot-persistence/messages->threaded-client-messages
+                  [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "q1"}]}
+                   {:id 2 :external_id "a1" :role :assistant :created_at now :deleted_at now
+                    :finished nil :data []}])]
+    (is (= [{:type "done"} {:type "aborted"}] (mapv :status messages)))
+    (is (= [] (:parts (second messages))))))
 
-(deftest ^:parallel messages->flat-messages-keeps-rewound-errored-turn-test
+(deftest ^:parallel messages->threaded-client-messages-keeps-rewound-errored-turn-test
   (let [deleted-at (t/offset-date-time)
         rows       [{:id 1 :role :user :external_id "u1" :deleted_at deleted-at
                      :data [{:type "text" :text "revenue"}]}
@@ -241,23 +245,25 @@
                     {:id 3 :role :user :external_id "u2" :data [{:type "text" :text "orders"}]}
                     {:id 4 :role :assistant :external_id "a2" :finished true
                      :data [{:type "text" :text "here"}]}]]
-    (testing "with :include-rewound-errors? the rewound errored turn shows its prompt and error,
-              threaded as a dead branch the live follow-up does not descend from"
-      (let [messages (metabot-persistence/messages->flat-messages rows {:include-rewound-errors? true})
-            by-text  #(u/seek (fn [m] (= % (:message m))) messages)]
-        (is (= ["revenue" "" "orders" "here"] (map :message messages)))
-        (is (some (fn [m] (and (= "agent" (:role m)) (some? (:error m)))) messages)
-            "the errored reply's error survives")
-        (is (nil? (:parent_message_id (by-text "orders")))
-            "the live follow-up parents onto the root, not the rewound errored turn")))
+    (testing "with :include-rewound-errors? the rewound errored turn is a dead branch"
+      (let [messages (metabot-persistence/messages->threaded-client-messages
+                      rows {:include-rewound-errors? true})
+            [rewound-prompt errored-attempt live-prompt live-attempt] messages]
+        (is (= ["u1" "a1" "u2" "a2"] (map :id messages)))
+        (is (= {:type "errored" :error {:message "boom"}} (:status errored-attempt)))
+        (is (= [] (:parts errored-attempt)))
+        (is (= (:id rewound-prompt) (:parent_message_id errored-attempt)))
+        (is (nil? (:parent_message_id live-prompt))
+            "the live follow-up parents onto the root, not the rewound errored turn")
+        (is (= (:id live-prompt) (:parent_message_id live-attempt)))))
     (testing "by default the rewound errored turn is dropped"
-      (is (= ["orders" "here"]
-             (map :message (metabot-persistence/messages->flat-messages rows)))))))
+      (is (= ["u2" "a2"]
+             (map :id (metabot-persistence/messages->threaded-client-messages rows)))))))
 
-(deftest ^:parallel messages->flat-messages-drops-cleanly-superseded-turn-test
+(deftest ^:parallel messages->threaded-client-messages-drops-cleanly-superseded-turn-test
   (testing "even with :include-rewound-errors?, a soft-deleted prompt with no error is dropped"
     (let [deleted-at (t/offset-date-time)
-          messages   (metabot-persistence/messages->flat-messages
+          messages   (metabot-persistence/messages->threaded-client-messages
                       [{:id 1 :role :user :external_id "u1" :deleted_at deleted-at
                         :data [{:type "text" :text "stale-prompt"}]}
                        {:id 2 :role :assistant :external_id "a1" :deleted_at deleted-at
@@ -266,7 +272,7 @@
                        {:id 4 :role :assistant :external_id "a2" :finished true
                         :data [{:type "text" :text "here"}]}]
                       {:include-rewound-errors? true})]
-      (is (= ["orders" "here"] (map :message messages))))))
+      (is (= ["u2" "a2"] (map :id messages))))))
 
 (deftest start-turn-persists-slack-conversation-metadata-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -356,10 +362,10 @@
   (testing "step-start renders no chat message on read"
     (is (= [{:role "agent" :type "text" :message "Hello"}]
            (mapv #(select-keys % [:role :type :message])
-                 (metabot-persistence/message->chat-messages
-                  {:role :assistant
-                   :data [{:type "step-start"}
-                          {:type "text" :text "Hello"}]}))))))
+                 (:parts (client-message
+                          {:role :assistant
+                           :data [{:type "step-start"}
+                                  {:type "text" :text "Hello"}]})))))))
 
 (deftest start-turn-persists-slack-metadata-on-rows-test
   (testing "start-turn! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
@@ -569,29 +575,38 @@
         ;; leaving just the retry turn.
         (let [{:keys [messages]} (metabot-persistence/conversation-detail conversation-id)]
           (is (= [["user" "retry"] ["agent" "ok"]]
-                 (mapv (juxt :role :message) messages))))))))
+                 (mapv (fn [message]
+                         [(:role message) (-> message :parts first :message)])
+                       messages))))))))
 
 (deftest placeholder-still-active-uses-nil-finished-marker-test
   (testing "the in-flight predicate keys off finished IS NULL (not :data emptiness or :error)"
     (let [recent (java.time.OffsetDateTime/now)
           stale  (.minusHours recent 2)
-          base   {:role :assistant :data [] :error nil}]
+          base   {:id 1 :role :assistant :data [] :error nil}]
       (testing "finished=nil + recent created_at → in-progress turn"
-        (is (=? [{:type "turn_in_progress" :role "agent"}]
-                (metabot-persistence/messages->chat-messages
-                 [(assoc base :finished nil :created_at recent)]))))
-      (testing "finished=nil + stale created_at → not filtered (renders aborted stub)"
-        (is (=? [{:type "text" :message "" :finished false}]
-                (metabot-persistence/messages->chat-messages
-                 [(assoc base :finished nil :created_at stale)]))))
+        (is (= {:type "in_progress"}
+               (-> (metabot-persistence/messages->client-messages
+                    [(assoc base :finished nil :created_at recent)])
+                   first
+                   :status))))
+      (testing "finished=nil + stale created_at → aborted"
+        (is (= {:type "aborted"}
+               (-> (metabot-persistence/messages->client-messages
+                    [(assoc base :finished nil :created_at stale)])
+                   first
+                   :status))))
       (testing "finished=false → never filtered, even within grace"
-        (is (=? [{:type "text" :message "" :finished false}]
-                (metabot-persistence/messages->chat-messages
-                 [(assoc base :finished false :created_at recent)]))))
+        (is (= {:type "aborted"}
+               (-> (metabot-persistence/messages->client-messages
+                    [(assoc base :finished false :created_at recent)])
+                   first
+                   :status))))
       (testing "finished=true → never filtered"
-        (is (= [] (metabot-persistence/messages->chat-messages
-                   [(assoc base :finished true :created_at recent)]))
-            "no stub: finished=true with no error is a successful empty turn")))))
+        (let [message (first (metabot-persistence/messages->client-messages
+                              [(assoc base :finished true :created_at recent)]))]
+          (is (= {:type "done"} (:status message)))
+          (is (= [] (:parts message))))))))
 
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
@@ -620,7 +635,7 @@
                   :created-at (.plusSeconds now 3)
                   :deleted-at now})
         (let [detail (metabot-persistence/conversation-detail conversation-id)
-              texts  (mapv :message (:messages detail))]
+              texts  (mapv #(-> % :parts first :message) (:messages detail))]
           (is (= conversation-id (:conversation_id detail)))
           (is (= ["first" "second"] texts)))))))
 
@@ -798,7 +813,8 @@
               (metabot-persistence/finalize-assistant-turn!
                assistant-msg-id [{:type :text :text "retried reply"}])
               (let [messages (:messages (metabot-persistence/conversation-detail conversation-id))]
-                (is (= ["hi" "retried reply"] (map :message messages)))))))))))
+                (is (= ["hi" "retried reply"]
+                       (map #(-> % :parts first :message) messages)))))))))))
 
 (deftest retry-turn-deletes-all-trailing-assistant-rows-test
   (testing "retry-turn! soft-deletes every live assistant row after the retried prompt"
@@ -868,48 +884,47 @@
             (is (= assistant-external-id
                    (metabot-persistence/leaf-external-id conversation-id)))))))))
 
-(deftest message->chat-messages-annotates-agent-row-test
-  (testing "empty :data on errored row emits a stub agent message so the FE can render the alert"
-    (is (=? [{:id "ext-1" :role "agent" :type "text" :message ""
-              :finished true :error {:message "boom"} :externalId "ext-1"}]
-            (metabot-persistence/message->chat-messages
-             {:role :assistant :error (json/encode {:message "boom"}) :finished true :data []
-              :external_id "ext-1"}))))
-  (testing "empty :data on aborted row also gets a stub"
-    (is (=? [{:role "agent" :type "text" :message "" :finished false}]
-            (metabot-persistence/message->chat-messages
-             {:role :assistant :finished false :data []}))))
-  (testing "empty :data on healthy row produces no messages"
-    (is (= [] (metabot-persistence/message->chat-messages
-               {:role :assistant :finished true :data []}))))
-  (testing "agent message gets :finished true and no :error by default"
-    (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :assistant :data [{:type "text" :text "ok"}]})]
-      (is (=? {:finished true} msg))
-      (is (not (contains? msg :error)))))
-  (testing "agent message inherits :finished false from parent row"
-    (is (=? [{:finished false}]
-            (metabot-persistence/message->chat-messages
-             {:role :assistant :finished false
-              :data [{:type "text" :text "interrupted"}]}))))
-  (testing "agent message inherits JSON-decoded :error from parent row"
-    (is (=? [{:error {:message "boom" :type "RuntimeException"}}]
-            (metabot-persistence/message->chat-messages
+(deftest message->client-message-status-test
+  (testing "empty :data on an errored row needs no stub because the row carries the alert status"
+    (let [message (client-message
+                   {:role :assistant :error (json/encode {:message "boom"}) :finished true :data []
+                    :external_id "ext-1"})]
+      (is (= [] (:parts message)))
+      (is (= {:type "errored" :error {:message "boom"}} (:status message)))))
+  (testing "empty :data on an aborted row needs no stub"
+    (let [message (client-message {:role :assistant :finished false :data []})]
+      (is (= [] (:parts message)))
+      (is (= {:type "aborted"} (:status message)))))
+  (testing "empty :data on a healthy row is a done message with no parts"
+    (let [message (client-message {:role :assistant :finished true :data []})]
+      (is (= [] (:parts message)))
+      (is (= {:type "done"} (:status message)))))
+  (testing "agent message is done by default"
+    (is (= {:type "done"}
+           (:status (client-message {:role :assistant :data [{:type "text" :text "ok"}]})))))
+  (testing "agent message inherits an aborted status from its row"
+    (let [message (client-message {:role :assistant :finished false
+                                   :data [{:type "text" :text "interrupted"}]})]
+      (is (= ["interrupted"] (part-messages message)))
+      (is (= {:type "aborted"} (:status message)))))
+  (testing "agent message inherits a JSON-decoded error status from its row"
+    (is (= {:type "errored" :error {:message "boom" :type "RuntimeException"}}
+           (:status
+            (client-message
              {:role :assistant :finished true
               :error (json/encode {:message "boom" :type "RuntimeException"})
-              :data [{:type "text" :text "partial"}]}))))
+              :data [{:type "text" :text "partial"}]})))))
   (testing "non-JSON :error column values fall through unchanged"
-    (is (=? [{:error "raw legacy text"}]
-            (metabot-persistence/message->chat-messages
-             {:role :assistant :finished true :error "raw legacy text"
-              :data [{:type "text" :text "partial"}]}))))
-  (testing "user messages do not receive agent-only status fields"
-    (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :user :data [{:type "text" :text "hi"}]})]
-      (is (not-any? #(contains? msg %) [:finished :error]))))
-  (testing "multi-block assistant row: only the last agent message is annotated"
-    (let [result     (metabot-persistence/message->chat-messages
-                      {:role :assistant :finished false
+    (is (= {:type "errored" :error "raw legacy text"}
+           (:status (client-message
+                     {:role :assistant :finished true :error "raw legacy text"
+                      :data [{:type "text" :text "partial"}]})))))
+  (testing "user messages have a done status"
+    (is (= {:type "done"}
+           (:status (client-message {:role :user :data [{:type "text" :text "hi"}]})))))
+  (testing "a multi-block assistant row carries one status without annotating its parts"
+    (let [message    (client-message
+                      {:role :assistant :finished true
                        :error (json/encode {:message "boom"})
                        :data [{:type "text" :text "first"}
                               {:type "tool-search" :toolCallId "call-1" :state "input-available" :input nil}
@@ -917,35 +932,40 @@
           annotated? #(or (contains? % :finished) (contains? % :error))]
       (is (=? [{:message "first"}
                {:type "tool_call" :name "search"}
-               {:message "last" :finished false :error {:message "boom"}}]
-              result))
-      (is (= [false false true] (mapv annotated? result))))))
+               {:message "last"}]
+              (:parts message)))
+      (is (= {:type "errored" :error {:message "boom"}} (:status message)))
+      (is (not-any? annotated? (:parts message))))))
 
-(deftest messages->chat-messages-errored-pairs-test
+(deftest messages->client-messages-errored-pairs-test
   (testing "by default, errored assistant rows and the preceding user prompt are dropped"
     (is (= ["first" "first reply" "third" "third reply"]
-           (mapv :message
-                 (metabot-persistence/messages->chat-messages
-                  [{:role :user      :data [{:type "text" :text "first"}]}
-                   {:role :assistant :data [{:type "text" :text "first reply"}]}
-                   {:role :user      :data [{:type "text" :text "broken"}]}
-                   {:role :assistant :error (json/encode {:message "boom"}) :data []}
-                   {:role :user      :data [{:type "text" :text "third"}]}
-                   {:role :assistant :data [{:type "text" :text "third reply"}]}])))))
-  (testing "with :include-errored? true, errored pairs stay and :error surfaces on the agent message"
-    (let [result (metabot-persistence/messages->chat-messages
-                  [{:role :user      :data [{:type "text" :text "broken"}]}
-                   {:role :assistant :error (json/encode {:message "boom"}) :finished true
+           (mapv #(-> % :parts first :message)
+                 (metabot-persistence/messages->client-messages
+                  [{:id 1 :role :user      :data [{:type "text" :text "first"}]}
+                   {:id 2 :role :assistant :data [{:type "text" :text "first reply"}]}
+                   {:id 3 :role :user      :data [{:type "text" :text "broken"}]}
+                   {:id 4 :role :assistant :error (json/encode {:message "boom"}) :data []}
+                   {:id 5 :role :user      :data [{:type "text" :text "third"}]}
+                   {:id 6 :role :assistant :data [{:type "text" :text "third reply"}]}])))))
+  (testing "with :include-errored? true, errored pairs stay and the status carries the error"
+    (let [result (metabot-persistence/messages->client-messages
+                  [{:id 1 :role :user      :data [{:type "text" :text "broken"}]}
+                   {:id 2 :role :assistant :error (json/encode {:message "boom"}) :finished true
                     :data [{:type "text" :text "partial"}]}
-                   {:role :user      :data [{:type "text" :text "ok"}]}
-                   {:role :assistant :data [{:type "text" :text "fine"}]}]
+                   {:id 3 :role :user      :data [{:type "text" :text "ok"}]}
+                   {:id 4 :role :assistant :data [{:type "text" :text "fine"}]}]
                   {:include-errored? true})]
-      (is (= ["broken" "partial" "ok" "fine"] (mapv :message result)))
-      (is (= [nil {:message "boom"} nil nil] (mapv :error result))))))
+      (is (= ["broken" "partial" "ok" "fine"] (mapv #(-> % :parts first :message) result)))
+      (is (= [{:type "done"}
+              {:type "errored" :error {:message "boom"}}
+              {:type "done"}
+              {:type "done"}]
+             (mapv :status result))))))
 
 (defn- start-and-finalize!
   "Run start-turn! then finalize-assistant-turn! with a one-text-part body (as :rasta).
-  Returns `[asst-row chat-msg]`."
+  Returns `[asst-row client-message]`."
   [& finalize-opts]
   (let [conversation-id (str (random-uuid))]
     (mt/with-current-user (mt/user->id :rasta)
@@ -957,7 +977,8 @@
                [{:type :text :text "x"}]
                finalize-opts)
         (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
-          [row (first (metabot-persistence/message->chat-messages row))])))))
+          [row (first (metabot-persistence/messages->client-messages
+                       [row] {:include-errored? true}))])))))
 
 (deftest throwable->error-payload-test
   (testing "matches the streamed :error part shape produced by the agent loop's
@@ -1020,18 +1041,18 @@
     (testing "aborted: finished false flows through, no error"
       (let [[row] (start-and-finalize! :finished? false)]
         (is (=? {:finished false :error nil} row))))
-    (testing "errored map: JSON-encoded into column, decoded onto chat msg; partial parts persisted"
+    (testing "errored map: JSON-encoded into column, decoded onto status; partial parts persisted"
       (let [error-data     {:message "agent loop API error: 503"
                             :type    "java.lang.RuntimeException"
                             :data    {:status 503}}
-            [row chat-msg] (start-and-finalize! :error error-data)]
+            [row message]  (start-and-finalize! :error error-data)]
         (is (=? {:finished true :error string? :data seq} row))
         (is (= error-data (json/decode+kw (:error row))))
-        (is (= error-data (:error chat-msg)))))
+        (is (= {:type "errored" :error error-data} (:status message)))))
     (testing "errored string: any JSON-serializable value accepted"
-      (let [[row chat-msg] (start-and-finalize! :error "boom")]
+      (let [[row message] (start-and-finalize! :error "boom")]
         (is (= "\"boom\"" (:error row)))
-        (is (= "boom" (:error chat-msg)))))))
+        (is (= {:type "errored" :error "boom"} (:status message)))))))
 
 (deftest finalize-persists-streamed-error-text-part-to-error-column-test
   ;; Regression guard: before the `aisdk-chunks->part` fix the error chunk passed through unchanged, so the
@@ -1062,38 +1083,39 @@
           (is (true? (:finished row))
               "an errored turn still finalizes as finished"))))))
 
-(deftest messages-chat-messages-in-flight-placeholders-test
+(deftest messages-client-messages-in-flight-placeholders-test
   (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)
-            become a trailing turn_in_progress message, so a resumed mid-stream read
-            renders a 'Response in progress…' row"
+            become an in-progress message envelope"
     (let [recent      (java.time.OffsetDateTime/now)
           ;; Comfortably outside the grace window so the test isn't sensitive
           ;; to the exact value of `placeholder-grace-period-ms`.
           stale       (.minusHours recent 2)
-          placeholder {:role :assistant :data [] :finished nil :error nil :created_at recent}
-          stale-stub  {:role :assistant :data [] :finished nil :error nil :created_at stale}
-          user-msg    {:role :user :data [{:type "text" :text "hi"}]}
-          done-asst   {:role :assistant :data [{:type "text" :text "done"}] :finished true}]
-      (testing "in-flight placeholder renders as turn_in_progress; surrounding messages still render"
-        (let [out (metabot-persistence/messages->chat-messages [user-msg done-asst placeholder])]
-          (is (= ["hi" "done" nil] (mapv :message out)))
-          (is (= ["text" "text" "turn_in_progress"] (mapv :type out)))))
-      (testing "stale placeholder (older than grace window) still renders as the aborted-turn stub"
-        (let [out (metabot-persistence/messages->chat-messages [user-msg stale-stub])]
+          placeholder {:id 3 :role :assistant :data [] :finished nil :error nil :created_at recent}
+          stale-stub  {:id 2 :role :assistant :data [] :finished nil :error nil :created_at stale}
+          user-msg    {:id 1 :role :user :data [{:type "text" :text "hi"}]}
+          done-asst   {:id 2 :role :assistant :data [{:type "text" :text "done"}] :finished true}]
+      (testing "in-flight placeholder carries the in-progress status; surrounding messages still render"
+        (let [out (metabot-persistence/messages->client-messages [user-msg done-asst placeholder])]
+          (is (= [["hi"] ["done"] []] (mapv part-messages out)))
+          (is (= [{:type "done"} {:type "done"} {:type "in_progress"}]
+                 (mapv :status out)))))
+      (testing "stale placeholder (older than grace window) carries the aborted status"
+        (let [out (metabot-persistence/messages->client-messages [user-msg stale-stub])]
           (is (= 2 (count out)))
-          (is (=? [{:message "hi"} {:type "text" :message "" :finished false}] out))))
+          (is (= {:type "aborted"} (:status (second out))))
+          (is (= [] (:parts (second out))))))
       (testing "row with :error set is treated as errored (not in-flight) — the errored pair is dropped from default reads but visible to the audit path"
-        (let [errored {:role :assistant :data [] :finished true
+        (let [errored {:id 2 :role :assistant :data [] :finished true
                        :error (json/encode {:message "boom"})
                        :created_at recent}]
           (is (= []
-                 (metabot-persistence/messages->chat-messages
+                 (metabot-persistence/messages->client-messages
                   [user-msg errored] {:include-errored? false}))
               "default read drops the errored row AND the preceding user prompt")
-          (is (= ["hi" ""]
-                 (mapv :message (metabot-persistence/messages->chat-messages
-                                 [user-msg errored] {:include-errored? true})))
-              "audit read keeps both rows; the empty-data stub renders so the FE has somewhere to hang the error alert"))))))
+          (let [out (metabot-persistence/messages->client-messages
+                     [user-msg errored] {:include-errored? true})]
+            (is (= [["hi"] []] (mapv part-messages out)))
+            (is (= {:type "errored" :error {:message "boom"}} (:status (second out))))))))))
 
 ;;; ---------------------------------------- used-table recording ----------------------------------------
 

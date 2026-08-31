@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 
 import { act, screen } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type { MetabotMessagePart } from "metabase/metabot/state/types";
 import {
   createTestMetabotState,
   setup,
@@ -11,11 +11,16 @@ import {
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 
-const makeVisibleState = (messages: MetabotChatMessage[]) =>
+const makeVisibleState = (parts: MetabotMessagePart[]) =>
   assocIn(
     assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
     ["conversations", testConversationId("omnibot"), "messages"],
-    messages,
+    parts.map((part, index) => ({
+      id: `message-${index}`,
+      role: part.role,
+      parts: [part],
+      status: { type: "done" },
+    })),
   );
 
 describe("MetabotChatHistory", () => {
@@ -47,12 +52,18 @@ describe("MetabotChatHistory", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not render generated_entity card data_part messages in the message list", () => {
+  it("does not render an agent message for a card-only reply", () => {
     setup({
       ui: <MetabotChatHistory />,
       metabotInitialState: makeVisibleState([
         {
-          id: "1",
+          id: "prompt",
+          role: "user",
+          type: "text",
+          message: "Show me orders",
+        },
+        {
+          id: "card",
           role: "agent",
           type: "data_part",
           part: {
@@ -76,9 +87,8 @@ describe("MetabotChatHistory", () => {
       ]),
     });
 
-    expect(
-      screen.queryByTestId("metabot-chat-message"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Show me orders")).toBeInTheDocument();
+    expect(screen.getAllByTestId("metabot-chat-message")).toHaveLength(1);
   });
 
   it("should not render chain_of_thought messages (app-only reasoning UI)", () => {
@@ -90,6 +100,7 @@ describe("MetabotChatHistory", () => {
           role: "agent",
           type: "chain_of_thought",
           steps: [{ kind: "reasoning", text: "Let me think about this" }],
+          finished: true,
         },
       ]),
     });

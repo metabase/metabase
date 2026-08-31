@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
 
-import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
+import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 
 const createMockToolCall = (
   overrides: Partial<MetabotDebugToolCallMessage> = {},
@@ -25,13 +25,11 @@ const setup = ({
   message?: MetabotDebugToolCallMessage;
   onSelect?: (message: MetabotDebugToolCallMessage) => void;
 } = {}) => {
-  renderWithProviders(
-    <AgentToolCallMessage message={message} onSelect={onSelect} />,
-  );
+  renderWithProviders(<AgentToolCallPart part={message} onSelect={onSelect} />);
   return { message };
 };
 
-describe("AgentToolCallMessage", () => {
+describe("AgentToolCallPart", () => {
   describe("without onSelect (normal Metabot chat)", () => {
     it("opens the details modal on click", async () => {
       const { message } = setup();

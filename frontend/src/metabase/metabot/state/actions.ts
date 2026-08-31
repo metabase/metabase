@@ -42,7 +42,6 @@ import {
   type MetabotProfileId,
   isHistoryEnabledProfile,
 } from "../constants";
-import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
 
 import { metabot } from "./reducer";
 import {
@@ -54,8 +53,10 @@ import {
   getIsConversationProcessing,
   getIsPollingForTitle,
   getMessageIdToRewind,
+  getMessages,
   getMetabotConversationId,
-  getUserPromptForMessageId,
+  getPromptText,
+  getUserPromptMessage,
 } from "./selectors";
 import type {
   MetabotAgentDataPartMessage,
@@ -73,7 +74,6 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
-  setMessageExternalIds,
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
@@ -398,6 +398,7 @@ export const submitInput = createAsyncThunk<
       dispatch(
         addUserMessage({
           id: messageId,
+          externalId: userMessageId,
           ..._.omit(data, ["context", "metabot_id"]),
           message: prompt,
           conversationId,
@@ -454,6 +455,7 @@ type SendAgentRequestError =
       type: "error";
       conversation_id: string;
       shouldRetry: boolean;
+      serverStarted: boolean;
       error: MetabotAgentTurnError;
       display?: MetabotAgentTurnDisplayError;
     }
@@ -495,6 +497,7 @@ export const sendAgentRequest = createAsyncThunk<
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
+    let serverStarted = false;
     const hadTitleBeforeTurn = Boolean(
       getConversationTitle(getState(), conversationId),
     );
@@ -514,10 +517,7 @@ export const sendAgentRequest = createAsyncThunk<
         {
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
-              message: Omit<
-                MetabotAgentDataPartMessage,
-                "id" | "role" | "externalId"
-              >,
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
             ) => dispatch(addAgentMessage({ ...message, conversationId }));
 
             match(part)
@@ -636,14 +636,8 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .exhaustive();
           },
-          onStart: function handleStart(event) {
-            dispatch(
-              setMessageExternalIds({
-                conversationId,
-                agentMessageId: event.messageId,
-                userMessageId: event.messageMetadata?.userMessageId,
-              }),
-            );
+          onStart: function handleStart() {
+            serverStarted = true;
           },
           onTextPart: function handleTextPart(delta) {
             dispatch(
@@ -734,6 +728,7 @@ export const sendAgentRequest = createAsyncThunk<
           type: "error",
           conversation_id: request.conversation_id,
           shouldRetry: true,
+          serverStarted,
           error: streamedError,
           display: isMatching(
             { type: "ai_usage_limit_reached", message: P.string },
@@ -783,6 +778,7 @@ export const sendAgentRequest = createAsyncThunk<
         type: "error" as const,
         conversation_id: request.conversation_id,
         shouldRetry: true,
+        serverStarted,
         error: handled.error,
         display: handled.display,
       });
@@ -823,12 +819,12 @@ const rewindConversation = createAsyncThunk(
     },
     { dispatch, getState },
   ) => {
-    const promptMessage = getUserPromptForMessageId(
+    const userTurn = getUserPromptMessage(
       getState(),
       conversationId,
       messageId,
     );
-    if (!promptMessage) {
+    if (!userTurn) {
       throw new Error(
         `Unable to find the prompt for message ${messageId} in conversation ${conversationId}`,
       );
@@ -838,7 +834,7 @@ const rewindConversation = createAsyncThunk(
     dispatch(
       metabot.actions.rewindStateToMessageId({
         conversationId,
-        messageId: promptMessage.id,
+        messageId: userTurn.id,
       }),
     );
   },
@@ -871,31 +867,37 @@ export const retryPrompt = createAsyncThunk<
   ) => {
     const state = getState();
 
-    const prompt = getUserPromptForMessageId(state, conversationId, messageId);
-    if (!prompt) {
+    const userTurn = getUserPromptMessage(state, conversationId, messageId);
+    if (!userTurn) {
       throw new Error("Agent message was not proceeded by a user message");
     }
+    const promptText = getPromptText(userTurn);
 
     if (getIsConversationProcessing(state, conversationId)) {
       console.error("Metabot is actively serving a request");
-      return { prompt: prompt.message, success: false, shouldRetry: false };
+      return { prompt: promptText, success: false, shouldRetry: false };
     }
 
-    dispatch(rewindConversation({ conversationId, messageId: prompt.id }));
+    // a turn the server never started has no rows to regenerate
+    const failedTurn = getMessages(state, conversationId).at(-1);
+    const retryMessageId =
+      failedTurn?.status.type === "errored" &&
+      failedTurn.status.serverStarted === false
+        ? undefined
+        : userTurn.externalId;
+
+    dispatch(rewindConversation({ conversationId, messageId: userTurn.id }));
     dispatch(cancelInflightConversationRequests(conversationId));
-    dispatch(
-      metabot.actions.rewindStateToMessageId({ conversationId, messageId }),
-    );
 
     return await dispatch(
       submitInput({
         conversationId,
         type: "text",
-        message: prompt.message,
+        message: promptText,
         context,
         metabot_id,
         profile,
-        retryMessageId: prompt.externalId,
+        retryMessageId,
         isTransformsPage,
         isFullPageMetabot,
       }),
@@ -903,9 +905,24 @@ export const retryPrompt = createAsyncThunk<
   },
 );
 
+const assertConversationIsNotStreaming = (conversationId: string) => {
+  const isStreaming =
+    findMatchingInflightAiStreamingRequests(
+      "/api/metabot/agent-streaming",
+      conversationId,
+    ).length > 0;
+  if (isStreaming) {
+    throw new Error(
+      `Cannot load conversation ${conversationId} while it is streaming`,
+    );
+  }
+};
+
 export const fetchConversationSnapshot = createAsyncThunk(
   "metabase/metabot/fetchConversationSnapshot",
   async (conversationId: string, { dispatch }) => {
+    assertConversationIsNotStreaming(conversationId);
+
     const { data: detail, error } = await dispatch(
       metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
         forceRefetch: true,
@@ -930,7 +947,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
         title: detail.title ?? undefined,
         forkedFromConversationId:
           detail.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(detail.messages),
+        messages: detail.messages,
         state: detail.state,
         activeToolCalls: [],
       }),
@@ -947,10 +964,12 @@ export const loadConversation = createAsyncThunk(
     }: { agentId: MetabotAgentId; conversationId: string },
     { dispatch },
   ) => {
+    assertConversationIsNotStreaming(conversationId);
+
     // NOTE: deliberately doesn't cancel the inflight streaming-request;
     // as we do not want to record it as an aborted response.
     dispatch(attachAgentToConversation({ agentId, conversationId }));
-    await dispatch(fetchConversationSnapshot(conversationId));
+    await dispatch(fetchConversationSnapshot(conversationId)).unwrap();
   },
 );
 
@@ -986,7 +1005,7 @@ export const forkConversation = createAsyncThunk(
         title: conversation.title ?? undefined,
         forkedFromConversationId:
           conversation.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(conversation.messages),
+        messages: conversation.messages,
         state: conversation.state,
         activeToolCalls: [],
       }),

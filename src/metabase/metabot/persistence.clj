@@ -64,7 +64,7 @@
   "Convert internal agent-loop parts to v2 at-rest parts
   (`:metabase.metabot.schema.v2/message-data`). `:tool-input`/`:tool-output`
   pairs merge into a single `tool-<name>` part whose `:state` reflects the
-  outcome; the stored `:output` is the trimmed result map
+  status; the stored `:output` is the trimmed result map
   (see [[tool-result->storable-output]])."
   [parts]
   (let [outputs (into {}
@@ -564,25 +564,19 @@
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
 (defn- convert-content-block
-  "Convert a single v2 part from `:data` into a frontend `MetabotChatMessage` map.
+  "Convert a single v2 part from `:data` into a frontend message part.
    Returns nil for parts that should be skipped (unknown types).
 
-   `row-role` decides whether text parts render as user or agent messages — v2
-   text parts carry no role of their own. `external-id` (the parent row's
-   `metabot_message.external_id`) is attached to text and data part chat
-   messages as `:externalId` — the stable key for feedback and retry; the
-   per-block `:id` stays unique."
-  [row-role external-id part]
+   `row-role` decides whether text parts render as user or agent parts — v2
+   text parts carry no role of their own. The owning message carries the row's
+   `external_id`; the per-block `:id` stays unique."
+  [row-role part]
   (cond
     (schema.v2/text-part? part)
-    (if (= :user row-role)
-      (cond-> {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
-        external-id (assoc :externalId external-id))
-      (cond-> {:id      (str (random-uuid))
-               :role    "agent"
-               :type    "text"
-               :message (:text part)}
-        external-id (assoc :externalId external-id)))
+    {:id      (str (random-uuid))
+     :role    (if (= :user row-role) "user" "agent")
+     :type    "text"
+     :message (:text part)}
 
     (schema.v2/tool-part? part)
     (cond-> {:id     (:toolCallId part)
@@ -600,14 +594,18 @@
       (assoc :result nil :is_error true))
 
     (schema.v2/data-part? part)
-    (cond-> {:id   (str (random-uuid))
-             :role "agent"
-             :type "data_part"
-             :part {:type (:type part)
-                    :data (:data part)}}
-      external-id (assoc :externalId external-id))
+    {:id   (str (random-uuid))
+     :role "agent"
+     :type "data_part"
+     :part {:type (:type part)
+            :data (:data part)}}
 
     :else nil))
+
+(defn- message->parts
+  "The row's `:data` blocks as frontend message parts."
+  [message]
+  (into [] (keep #(convert-content-block (:role message) %)) (:data message)))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by
@@ -617,65 +615,6 @@
     (try (json/decode+kw error)
          (catch Exception _ error))
     error))
-
-;; TODO (sloansparger 2026-05-12) -- chat_messages should be replaced with turns
-;; so that we have a higher-level abstraction to annotate. this is fine, but a
-;; bit of a hack.
-(defn- annotate-agent-messages
-  "Stamp `:finished` and `:error` from the parent row onto the
-  *last* agent-role chat message produced from it. The annotation describes the
-  row's outcome, so it belongs on a single message — the FE expands it into a
-  trailing `turn_aborted` / `turn_errored` chat message.
-
-  Parent `:finished nil` (stale placeholder past the grace window) becomes
-  `:finished false` so the FE renders it as aborted."
-  [chat-messages message]
-  (let [finished       (if (contains? message :finished)
-                         (or (:finished message) false)
-                         true)
-        decoded-error  (some-> (:error message) decode-error)
-        last-agent-idx (->> chat-messages
-                            (keep-indexed (fn [i m] (when (= "agent" (:role m)) i)))
-                            last)]
-    (if (nil? last-agent-idx)
-      chat-messages
-      (update chat-messages last-agent-idx
-              (fn [m]
-                (cond-> (assoc m :finished finished)
-                  (some? decoded-error) (assoc :error decoded-error)))))))
-
-(defn- empty-agent-placeholder
-  "Stub chat message for an assistant row whose `:data` produced no chat messages
-  (typical for errored turns where the agent failed before emitting any text/
-  tool parts). Without this the FE has nowhere to render the error alert."
-  [{:keys [external_id]}]
-  (cond-> {:id      (or external_id (str (random-uuid)))
-           :role    "agent"
-           :type    "text"
-           :message ""}
-    external_id (assoc :externalId external_id)))
-
-(defn message->chat-messages
-  "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
-   Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
-   Assistant rows that produced zero chat messages but carry `:error`,
-   `:finished false`, or `:finished nil` (a stale placeholder past the grace
-   window) get a synthetic empty text message so the FE has something to render
-   the alert on."
-  [message]
-  (let [blocks       (or (:data message) [])
-        external-id  (:external_id message)
-        chat-msgs    (into [] (keep #(convert-content-block (:role message) external-id %)) blocks)
-        ;; Absent :finished is treated as true (success); only explicit nil
-        ;; (stale placeholder) or false (aborted) should drive the stub branch.
-        not-finished (and (contains? message :finished)
-                          (not (true? (:finished message))))
-        with-stub    (if (and (= :assistant (:role message))
-                              (empty? chat-msgs)
-                              (or (some? (:error message)) not-finished))
-                       [(empty-agent-placeholder message)]
-                       chat-msgs)]
-    (annotate-agent-messages with-stub message)))
 
 (defn- errored-agent-row?
   [m]
@@ -698,8 +637,7 @@
   than a crashed/aborted turn. Generous enough to cover any plausible live agent
   loop — the `transforms_codegen` profile allows 30 iterations and there is no
   client-independent LLM timeout, so a long-running turn can easily exceed
-  several minutes. Readers older than this fall back to rendering the trailing
-  `turn_aborted` alert.
+  several minutes. Readers older than this expose an aborted status.
 
   Bias: this is the 'show a still-running stream as aborted' window vs. the
   'show a crashed turn as absent' window. The first is more user-visible (a
@@ -729,65 +667,74 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
-(defn- turn-in-progress-message
-  "Synthetic chat message emitted for an assistant row that is still streaming
-  (an active placeholder). The FE renders it as a 'Response in progress…' row."
+(defn- row->status
+  "The message's status, from its own `finished` / `error` columns. Absent
+  `:finished` means success; explicit `nil` past the grace window is a crashed
+  placeholder and reads as aborted."
   [row]
-  (cond-> {:id   (or (:external_id row) (str (:id row)))
-           :role "agent"
-           :type "turn_in_progress"}
-    (:external_id row) (assoc :externalId (:external_id row))))
+  (cond
+    (placeholder-still-active? row)
+    {:type "in_progress"}
 
-(defn messages->chat-messages
-  "Convert a seq of `MetabotMessage` model instances into a flat vector of `MetabotChatMessage` maps.
-  In-flight placeholder rows (assistant rows still streaming) become a trailing
-  `turn_in_progress` message. Errored pairs are dropped unless `:include-errored? true`."
-  ([messages] (messages->chat-messages messages nil))
+    (some? (:error row))
+    {:type "errored" :error (decode-error (:error row))}
+
+    (and (contains? row :finished) (not (true? (:finished row))))
+    {:type "aborted"}
+
+    :else
+    {:type "done"}))
+
+(defn- message->client-message
+  "Convert one `MetabotMessage` row into its client shape: the row's parts, plus
+  the optional `external_id` and status the row itself carries. Rows with no
+  renderable parts are still fully represented."
+  [row]
+  (let [status (row->status row)]
+    (cond-> {:id     (or (:external_id row) (str (:id row)))
+             :role   (if (= :user (:role row)) "user" "agent")
+             :parts  (if (= "in_progress" (:type status))
+                       []
+                       (message->parts row))
+             :status status}
+      (:external_id row) (assoc :externalId (:external_id row)))))
+
+(defn messages->client-messages
+  "Convert a seq of `MetabotMessage` model instances into their client shape, one
+  per row. Errored pairs are dropped unless `:include-errored? true`."
+  ([messages] (messages->client-messages messages nil))
   ([messages {:keys [include-errored?]}]
-   (into []
-         (mapcat (fn [message]
-                   (if (placeholder-still-active? message)
-                     [(turn-in-progress-message message)]
-                     (message->chat-messages message))))
+   (mapv message->client-message
          (if include-errored? messages (drop-errored-pairs messages)))))
 
-(defn- row->flat-messages
-  [row parent-id]
-  (let [messages (if (placeholder-still-active? row)
-                   [(turn-in-progress-message row)]
-                   (message->chat-messages row))]
-    (reduce (fn [[messages parent-id] message]
-              (let [message (assoc message :parent_message_id parent-id)]
-                [(conj messages message) (:id message)]))
-            [[] parent-id]
-            messages)))
-
-(defn messages->flat-messages
-  "Convert ordered live and deleted rows to chat messages with parent pointers.
+(defn messages->threaded-client-messages
+  "Convert ordered live and deleted rows to client messages with parent pointers.
   With `:include-rewound-errors?`, a turn whose prompt was soft-deleted is also
   kept when it errored (a rewound failed turn), as a dead branch the main thread
   does not descend from; by default such turns are dropped."
-  ([messages] (messages->flat-messages messages nil))
+  ([messages] (messages->threaded-client-messages messages nil))
   ([messages {:keys [include-rewound-errors?]}]
-   (loop [turns (rows->turns messages), parent-id nil, flat-messages []]
+   (loop [turns (rows->turns messages), parent-id nil, client-messages []]
      (if-let [turn (first turns)]
        (let [prompt-row   (u/seek #(= :user (:role %)) turn)
              prompt-live? (and prompt-row (nil? (:deleted_at prompt-row)))
              errored?     (and include-rewound-errors?
                                (some #(and (= :assistant (:role %)) (some? (:error %))) turn))]
          (if (and prompt-row (or prompt-live? errored?))
-           (let [[prompt-messages prompt-last-id] (row->flat-messages prompt-row parent-id)
-                 assistant-rows                  (filterv #(= :assistant (:role %)) turn)
-                 attempts                        (mapv #(row->flat-messages % prompt-last-id) assistant-rows)
-                 kept-last-id                    (->> (map vector assistant-rows attempts)
-                                                      (keep (fn [[row [_ last-id]]]
-                                                              (when (nil? (:deleted_at row)) last-id)))
-                                                      last)]
+           (let [prompt-message (assoc (message->client-message prompt-row) :parent_message_id parent-id)
+                 assistant-rows (filterv #(= :assistant (:role %)) turn)
+                 attempts       (mapv #(assoc (message->client-message %)
+                                              :parent_message_id (:id prompt-message))
+                                      assistant-rows)
+                 kept-last-id   (->> (map vector assistant-rows attempts)
+                                     (keep (fn [[row message]]
+                                             (when (nil? (:deleted_at row)) (:id message))))
+                                     last)]
              (recur (rest turns)
-                    (if prompt-live? (or kept-last-id prompt-last-id) parent-id)
-                    (into (into flat-messages prompt-messages) (mapcat first) attempts)))
-           (recur (rest turns) parent-id flat-messages)))
-       flat-messages))))
+                    (if prompt-live? (or kept-last-id (:id prompt-message)) parent-id)
+                    (into (conj client-messages prompt-message) attempts)))
+           (recur (rest turns) parent-id client-messages)))
+       client-messages))))
 
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found.
@@ -814,7 +761,7 @@
                                                      :metabot_conversation_id conversation-id
                                                      :archived false
                                                      {:order-by [[:id :asc]]}))
-       :messages                    (messages->chat-messages messages)})))
+       :messages                    (messages->client-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------
 

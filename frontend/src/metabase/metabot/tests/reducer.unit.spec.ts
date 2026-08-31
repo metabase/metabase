@@ -14,6 +14,7 @@ import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
+import { sendAgentRequest } from "../state/actions";
 import {
   createConversation,
   getMetabotInitialState,
@@ -24,6 +25,7 @@ import {
   conversationIdForAgent,
   convoForAgent,
   createTestMetabotState,
+  startRequestlessAgentTurn,
   testConversationId,
 } from "./utils";
 
@@ -49,6 +51,14 @@ const createTestStore = (initialState?: Partial<MetabotState>) =>
 const requestAction = (arg: Partial<{ conversation_id: string }> = {}) => ({
   meta: { arg: { conversation_id: "matching-id", ...arg } },
 });
+
+// tool-call and chain-of-thought events only ever arrive inside a message the
+// stream has already opened
+const createStreamingStore = () => {
+  const store = createTestStore();
+  startRequestlessAgentTurn(store, testConversationId("omnibot"));
+  return store;
+};
 
 describe("metabot reducer", () => {
   describe("transforms", () => {
@@ -434,15 +444,34 @@ describe("metabot reducer", () => {
     });
   });
 
+  it("settles an aborted rejection that carries no payload", () => {
+    const conversationId = testConversationId("omnibot");
+    const store = createTestStore();
+    startRequestlessAgentTurn(store, conversationId);
+
+    store.dispatch({
+      type: sendAgentRequest.rejected.type,
+      error: { message: "Aborted" },
+      meta: {
+        aborted: true,
+        arg: { conversation_id: conversationId },
+      },
+    });
+
+    expect(convoForAgent(store, "omnibot").messages.at(-1)?.status).toEqual({
+      type: "aborted",
+    });
+  });
+
   describe("tool calls", () => {
     const conversationId = testConversationId("omnibot");
     const getToolCallMessages = (store: ReturnType<typeof createTestStore>) =>
-      convoForAgent(store, "omnibot").messages.filter(
-        (m) => m.type === "tool_call",
-      );
+      convoForAgent(store, "omnibot")
+        .messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "tool_call");
 
     it("toolCallStart is idempotent for the same toolCallId", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -464,7 +493,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs updates the existing tool-call message when toolCallStart preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -494,7 +523,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs creates a tool-call message when no tool-input-start preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallArgs({
           conversationId,
@@ -517,7 +546,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallEnd marks the tool-call message as errored", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -555,10 +584,12 @@ describe("metabot reducer", () => {
     const getConvo = (store: ReturnType<typeof createTestStore>) =>
       convoForAgent(store, "omnibot");
     const getChain = (store: ReturnType<typeof createTestStore>) =>
-      getConvo(store).messages.find((m) => m.type === "chain_of_thought");
+      getConvo(store)
+        .messages.flatMap((t) => t.parts)
+        .find((p) => p.type === "chain_of_thought");
 
     it("accumulates reasoning deltas into one chain step", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "Think" }),
@@ -571,11 +602,11 @@ describe("metabot reducer", () => {
       expect(chain?.type === "chain_of_thought" && chain.steps).toEqual([
         { kind: "reasoning", text: "Thinking" },
       ]);
-      expect(getConvo(store)?.activeChainId).toBe(chain?.id);
+      expect(chain?.finished).toBe(false);
     });
 
     it("interleaves tool calls between reasoning blocks in order", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "look" }),
@@ -601,7 +632,7 @@ describe("metabot reducer", () => {
     });
 
     it("marks a tool step ended when its result arrives", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -624,7 +655,7 @@ describe("metabot reducer", () => {
     });
 
     it("persists the chain but closes it when the answer text starts", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "hmm" }),
@@ -635,18 +666,18 @@ describe("metabot reducer", () => {
 
       // the chain message stays in history, and its id is released
       expect(getChain(store)).toBeDefined();
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
+      expect(getChain(store)?.finished).toBe(true);
 
       // later reasoning starts a fresh chain after the answer text
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
-      const chains = getConvo(store)?.messages.filter(
-        (m) => m.type === "chain_of_thought",
-      );
+      const chains = getConvo(store)
+        ?.messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "chain_of_thought");
       expect(chains).toHaveLength(2);
     });
 
     it("attaches search results to their tool step, even after the chain closed", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -673,7 +704,7 @@ describe("metabot reducer", () => {
     });
 
     it("stamps a save_entity step title from its saved-entity data part", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -704,7 +735,7 @@ describe("metabot reducer", () => {
     });
 
     it("backfills a title arriving on tool-input-available", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -738,6 +769,7 @@ describe("metabot reducer", () => {
           }),
         },
       });
+      startRequestlessAgentTurn(store, conversationId);
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.setConversationSnapshot({
@@ -746,7 +778,7 @@ describe("metabot reducer", () => {
         }),
       );
 
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
+      expect(getConvo(store)?.messages).toEqual([]);
       expect(getConvo(store)?.lastTokenUsage).toBeUndefined();
     });
   });
