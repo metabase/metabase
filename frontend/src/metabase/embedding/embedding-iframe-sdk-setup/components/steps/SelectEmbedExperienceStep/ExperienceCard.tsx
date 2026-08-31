@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { getEmbedExperiences } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import { useHandleExperienceChange } from "../../../hooks/use-handle-experience-change";
-import type { SdkIframeEmbedSetupExperience } from "../../../types";
 import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
 import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 
