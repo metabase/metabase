@@ -290,11 +290,11 @@ export const getRoutes = (
         />
         <Route
           path="/admin/embedding/setup-guide/permissions"
-          element={redirect("/embedding/get-started/permissions-setup")}
+          element={redirect("/embedding/get-started/permissions")}
         />
         <Route
           path="/admin/embedding/setup-guide/sso"
-          element={redirect("/embedding/get-started/sso-setup")}
+          element={redirect("/embedding/get-started/sso")}
         />
         <Route
           path="/admin/embedding/guest"

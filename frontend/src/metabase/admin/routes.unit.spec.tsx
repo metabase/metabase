@@ -95,8 +95,8 @@ describe("admin routes", () => {
       "/admin/embedding": "/embedding/security",
       "/admin/embedding/setup-guide": "/embedding",
       "/admin/embedding/setup-guide/permissions":
-        "/embedding/get-started/permissions-setup",
-      "/admin/embedding/setup-guide/sso": "/embedding/get-started/sso-setup",
+        "/embedding/get-started/permissions",
+      "/admin/embedding/setup-guide/sso": "/embedding/get-started/sso",
       "/admin/embedding/guest": "/embedding/security",
       "/admin/embedding/security": "/embedding/security",
       "/admin/embedding/themes": "/embedding/appearance",

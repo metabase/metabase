@@ -95,7 +95,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
 
       cy.location("pathname").should(
         "eq",
-        "/embedding/get-started/permissions-setup",
+        "/embedding/get-started/permissions",
       );
 
       cy.log(
@@ -130,7 +130,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         },
       );
 
-      cy.visit("/embedding/get-started/permissions-setup");
+      cy.visit("/embedding/get-started/permissions");
 
       cy.log("the Summary step closes the wizard out");
       cy.findByRole("button", { name: "Done" }).click();
@@ -143,7 +143,7 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.log("JWT configured is what unlocks the two steps after it");
       enableJwtAuth();
 
-      cy.visit("/embedding/get-started/sso-setup");
+      cy.visit("/embedding/get-started/sso");
 
       cy.findByRole("button", { name: "Next" }).click();
 

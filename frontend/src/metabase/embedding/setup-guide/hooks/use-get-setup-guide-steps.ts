@@ -11,8 +11,8 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import type { SetupGuideStep } from "../types";
 
 const SETUP_GUIDE_URLS = {
-  permissions: "/embedding/get-started/permissions-setup",
-  sso: "/embedding/get-started/sso-setup",
+  permissions: "/embedding/get-started/permissions",
+  sso: "/embedding/get-started/sso",
 };
 
 export const useGetSetupGuideSteps = (): SetupGuideStep[] => {

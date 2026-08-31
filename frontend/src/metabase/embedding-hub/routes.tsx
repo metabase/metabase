@@ -86,11 +86,8 @@ export function getEmbeddingHubRoutes() {
 
         <Route path="get-started">
           <Route index lazy={embeddingHubGetStartedPage} />
-          <Route
-            path="permissions-setup"
-            lazy={setupPermissionsAndTenantsPage}
-          />
-          <Route path="sso-setup" lazy={setupSsoPage} />
+          <Route path="permissions" lazy={setupPermissionsAndTenantsPage} />
+          <Route path="sso" lazy={setupSsoPage} />
         </Route>
 
         <Route path="security" lazy={embeddingHubSecurityPage} />

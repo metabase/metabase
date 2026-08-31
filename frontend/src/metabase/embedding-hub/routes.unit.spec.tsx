@@ -5,7 +5,7 @@ import { getEmbeddingHubRoutes } from "./routes";
 
 /**
  * Reading the tree as data keeps the paths honest without rendering the pages,
- * the layout or the guard. No e2e test visits `sso-setup`.
+ * the layout or the guard. No e2e test visits `sso`.
  *
  * Each page is named in an `import()` rather than imported, so resolving every
  * loader is what catches a typo that would otherwise first show as a blank page.
@@ -17,8 +17,8 @@ describe("embedding hub routes", () => {
     expect(paths).toEqual([
       "embedding",
       "embedding/get-started",
-      "embedding/get-started/permissions-setup",
-      "embedding/get-started/sso-setup",
+      "embedding/get-started/permissions",
+      "embedding/get-started/sso",
       "embedding/security",
       "embedding/authentication",
       "embedding/permissions",

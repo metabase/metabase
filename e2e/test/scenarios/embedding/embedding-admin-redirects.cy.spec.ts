@@ -12,9 +12,9 @@ describe("scenarios > embedding > admin route redirects (EMB-1526)", () => {
     ["/admin/embedding/setup-guide", "/embedding/get-started"],
     [
       "/admin/embedding/setup-guide/permissions",
-      "/embedding/get-started/permissions-setup",
+      "/embedding/get-started/permissions",
     ],
-    ["/admin/embedding/setup-guide/sso", "/embedding/get-started/sso-setup"],
+    ["/admin/embedding/setup-guide/sso", "/embedding/get-started/sso"],
     ["/admin/embedding/guest", "/embedding/security"],
     ["/admin/embedding/security", "/embedding/security"],
     ["/admin/embedding/themes", "/embedding/appearance"],
