@@ -87,17 +87,23 @@ const MaybeStyledWrapper = ({
   skip,
   className,
   style,
+  fullHeight,
   children,
 }: {
   skip: boolean;
   className?: string;
   style?: React.CSSProperties;
+  fullHeight?: boolean;
   children: React.ReactNode;
 }) =>
   skip ? (
     <>{children}</>
   ) : (
-    <SdkDashboardStyledWrapper className={className} style={style}>
+    <SdkDashboardStyledWrapper
+      className={className}
+      style={style}
+      fullHeight={fullHeight}
+    >
       {children}
     </SdkDashboardStyledWrapper>
   );
@@ -645,6 +651,7 @@ const SdkDashboardInner = ({
                 skip={skipStyledWrapper}
                 className={className}
                 style={style}
+                fullHeight
               >
                 <DashboardQueryBuilder
                   onCreate={(question) => {
