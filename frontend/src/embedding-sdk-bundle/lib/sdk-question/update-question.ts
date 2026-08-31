@@ -8,7 +8,7 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { createRawSeries } from "metabase/visualizations/lib/series";
+import { createRawSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";

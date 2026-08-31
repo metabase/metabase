@@ -18,9 +18,9 @@ import type {
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
-  ComputedVisualizationSettings,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationBlockNodeType,

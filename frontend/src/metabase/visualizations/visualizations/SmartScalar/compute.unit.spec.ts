@@ -1,13 +1,13 @@
 import { color, colors } from "metabase/ui/colors";
 import { isNumber } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,
   CHANGE_TYPE_OPTIONS,
   type Trend,
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { computeChange } from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,

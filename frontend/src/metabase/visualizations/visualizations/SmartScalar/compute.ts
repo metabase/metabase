@@ -9,12 +9,12 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { computeChange } from "metabase/visualizations/lib/numeric";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import {
+  computeChange,
   findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
-} from "metabase/visualizations/lib/trend-helpers";
-import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {

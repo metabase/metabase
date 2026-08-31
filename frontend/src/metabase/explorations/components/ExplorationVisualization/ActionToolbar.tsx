@@ -37,7 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
+import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,

@@ -8,7 +8,7 @@ import {
 } from "metabase/common/components/QuestionDownloadWidget";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { StackProps } from "metabase/ui";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getComputedSettingsForSeries } from "metabase/viz-core";
 
 import { useSdkQuestionContext } from "../../context";
 

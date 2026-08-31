@@ -18,6 +18,9 @@
 (def ^:private configured-anthropic
   (connection "anthropic" "anthropic" {:api-key "sk-ant-test"}))
 
+(def ^:private configured-google
+  (connection "google" "google" {:oauth-access-token "ya29.test" :project-id "my-project"}))
+
 (defn- do-with-connections!
   [conns thunk]
   (mt/with-temporary-setting-values [llm-providers conns]
@@ -184,13 +187,18 @@
   (testing "only anthropic and openai models that stream reasoning report support"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
-                       (connection "bedrock" "bedrock")]
+                       (connection "bedrock" "bedrock")
+                       (connection "google" "google")]
       (doseq [[model-ref expected]
-              {"anthropic/claude-sonnet-4-6"       true
-               "anthropic/claude-haiku-4-5"        false
-               "openai/gpt-5.4"                    true
-               "openai/gpt-4o"                     false
-               "bedrock/anthropic.claude-opus-4-8" false}]
+              {"anthropic/claude-sonnet-4-6"                true
+               "anthropic/claude-haiku-4-5"                 false
+               "openai/gpt-5.4"                             true
+               "openai/gpt-4o"                              false
+               "bedrock/anthropic.claude-opus-4-8"          false
+               ;; google serves both wire families; only its Claude models stream reasoning back
+               "google/anthropic/claude-sonnet-4-6"         true
+               "google/anthropic/claude-haiku-4-5@20251001" false
+               "google/google/gemini-3.5-flash"             false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
@@ -311,6 +319,35 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Azure model"
            (metabot.settings/llm-metabot-provider! "azure/anthropic/a/b"))))))
+
+(deftest validate-metabot-provider-google-model-format-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "accepts a publisher-qualified model"
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+        (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
+        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a model with no publisher: the connection key is not one, so this names the model \"gemini-3.5-flash\""
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/gemini-3.5-flash\""
+           (metabot.settings/llm-metabot-provider! "google/gemini-3.5-flash"))))))
+
+(deftest validate-metabot-provider-google-rejects-an-unsupported-publisher-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a publisher this provider does not serve"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/evilai/some-model\""
+           (metabot.settings/llm-metabot-provider! "google/evilai/some-model"))))))
+
+(deftest validate-metabot-provider-google-rejects-a-slash-in-the-model-id-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a model ID with a slash in it, which is not one path segment"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/anthropic/a/b\""
+           (metabot.settings/llm-metabot-provider! "google/anthropic/a/b"))))))
 
 (deftest validate-metabot-provider-managed-model-allow-list-test
   (mt/with-premium-features #{:metabase-ai-managed}

@@ -8,7 +8,7 @@ import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { useDndSensors } from "metabase/common/hooks";
 import type { IconProps } from "metabase/ui";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
-import type { ChartSettingOrderedItem } from "metabase/visualizations/types";
+import type { ChartSettingOrderedItem } from "metabase/viz-core";
 
 import { ColumnItem } from "../ColumnItem";
 

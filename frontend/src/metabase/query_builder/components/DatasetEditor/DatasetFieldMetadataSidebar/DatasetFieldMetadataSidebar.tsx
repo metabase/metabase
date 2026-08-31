@@ -28,7 +28,7 @@ import {
   type ColumnSettingsProps,
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";

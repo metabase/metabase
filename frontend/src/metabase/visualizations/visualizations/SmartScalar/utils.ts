@@ -5,8 +5,10 @@ import { dayjs } from "metabase/dayjs";
 import { formatNumber } from "metabase/utils/formatting";
 import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
-import { formatPreviousPeriodOptionName } from "metabase/visualizations/lib/trend-helpers";
-import type { ComparisonMenuOption } from "metabase/visualizations/types";
+import {
+  type ComparisonMenuOption,
+  formatPreviousPeriodOptionName,
+} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,

@@ -48,16 +48,16 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getDatasetError } from "metabase/visualizations/lib/errors";
-import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getDatasetError,
+  getVisualizationTransformed,
+  isTimeseries,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
