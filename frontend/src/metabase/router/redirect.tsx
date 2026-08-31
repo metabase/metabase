@@ -33,5 +33,7 @@ function RedirectRoute({ to }: { to: string }): JSX.Element {
  * route contributes no path, so its target is already parent relative.
  */
 export function redirect(to: string): JSX.Element {
-  return <RedirectRoute to={to} />;
+  // Keyed so a redirect whose target is itself a redirect remounts rather than
+  // reusing the instance, which would keep the first target frozen in state.
+  return <RedirectRoute key={to} to={to} />;
 }
