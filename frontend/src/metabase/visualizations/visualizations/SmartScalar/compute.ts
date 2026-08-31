@@ -14,10 +14,6 @@ import {
   findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/lib/trend-helpers";
-import {
-  COMPARISON_TYPES,
-  VIZ_SETTINGS_DEFAULTS,
-} from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -39,6 +35,8 @@ import type {
 import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
+import { COMPARISON_TYPES, VIZ_SETTINGS_DEFAULTS } from "./constants";
+
 export type ComparisonResult = {
   changeArrowIconName: ChangeArrowType | undefined;
   changeColor: string | undefined;
@@ -51,7 +49,6 @@ export type ComparisonResult = {
     percentChange: string;
     comparisonValue: SmartScalarDisplayValue;
   };
-  isComparisonValueVisible: boolean;
   percentChange: number | undefined;
 };
 
@@ -197,6 +194,10 @@ function buildComparisonObject({
   const showComparisonValue =
     settings["scalar.show_comparison_value"] ??
     VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"];
+  // "(No data)" is a status rather than a number, so it stays visible when the value is hidden.
+  const isComparisonValueHidden =
+    !showComparisonValue &&
+    changeType !== CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
 
   return {
     changeArrowIconName,
@@ -208,15 +209,11 @@ function buildComparisonObject({
       comparison,
       currentMetricData,
     }),
-    comparisonValue,
+    comparisonValue: isComparisonValueHidden ? undefined : comparisonValue,
     display: {
       percentChange: percentChangeStr,
-      comparisonValue: comparisonValueStr,
+      comparisonValue: isComparisonValueHidden ? "" : comparisonValueStr,
     },
-    // Status text such as "(No data)" stays visible; only an actual comparison number can be hidden.
-    isComparisonValueVisible:
-      showComparisonValue ||
-      changeType !== CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     percentChange,
   };
 }

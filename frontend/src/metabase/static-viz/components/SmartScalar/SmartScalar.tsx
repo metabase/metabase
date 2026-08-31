@@ -122,9 +122,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
     },
   };
 
-  const comparisonValue = comparison.isComparisonValueVisible
-    ? comparison.display.comparisonValue
-    : "";
+  const comparisonValue = comparison.display.comparisonValue;
   const hasComparisonValue = !isEmpty(comparisonValue);
   const description = hasComparisonValue
     ? `${comparison.comparisonDescStr}: `
