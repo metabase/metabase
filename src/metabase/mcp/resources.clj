@@ -11,7 +11,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [environ.core :as env]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -66,11 +65,13 @@
    Expected keys: :instanceUrl (JSON-encoded) and :instanceUrlRaw."
   [vars]
   (cond
-    @fallback-template
-    (stencil/render-string @fallback-template vars)
-
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
+
+    ;; Backend-only tests install this stub when the frontend build is absent. A
+    ;; real build must win so tests and shared REPL JVMs exercise production HTML.
+    @fallback-template
+    (stencil/render-string @fallback-template vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
@@ -187,8 +188,16 @@
   [schema]
   (tools-manifest/malli->json-schema schema))
 
-(defn- register-ui-tool-for-resources!
-  [resource-keys tool]
+(mu/defn- register-ui-tool-for-resources!
+  [resource-keys :- [:sequential :keyword]
+   tool          :- [:map
+                     [:name :string]
+                     [:description :string]
+                     [:inputSchema :any]
+                     [:outputSchema {:optional true} :any]
+                     [:annotations {:optional true} :map]
+                     [:visibility {:optional true} [:sequential [:enum "model" "app"]]]
+                     [:response-fn fn?]]]
   (let [resources (mapv (fn [resource-key]
                           (if-let [uri (get-in @registry [:key->uri resource-key])]
                             (get-in @registry [:uri->resource uri])
@@ -208,17 +217,9 @@
     (swap! registry assoc-in [:tools (:name tool)] tool)
     tool))
 
-(mu/defn- register-ui-tool!
+(defn- register-ui-tool!
   "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas (not JSON Schema)."
-  [resource-key :- :keyword
-   tool         :- [:map
-                    [:name :string]
-                    [:description :string]
-                    [:inputSchema  :any]
-                    [:outputSchema {:optional true} :any]
-                    [:annotations  {:optional true} :map]
-                    [:visibility   {:optional true} [:sequential [:enum "model" "app"]]]
-                    [:response-fn fn?]]]
+  [resource-key tool]
   (register-ui-tool-for-resources! [resource-key] tool))
 
 (defn resource-scopes
@@ -241,11 +242,31 @@
                                    (:ui? resource) (assoc :_meta (ui-meta resource))))))
                     (vals (:uri->resource @registry)))})
 
+(def ^:private compatible-mcp-app-uri-pattern
+  #"^ui://metabase/(visualize-query|render-drill-through)(?:-v2|\.[0-9a-f]+)?\.html$")
+
+(def ^:private mcp-app-name->resource-key
+  {"visualize-query"      :visualize-query
+   "render-drill-through" :render-drill-through})
+
+(defn- resource-for-uri
+  "Resolve current resource URIs exactly. Known MCP App URI variants resolve to
+   the corresponding current resource. This compatibility step must ship before
+   build-versioned URIs are advertised so rolling upgrades remain safe."
+  [uri]
+  (let [snapshot @registry]
+    (or (get-in snapshot [:uri->resource uri])
+        (when-let [[_ app-name] (re-matches compatible-mcp-app-uri-pattern uri)]
+          (let [resource-key (get mcp-app-name->resource-key app-name)
+                current-uri  (get-in snapshot [:key->uri resource-key])]
+            (some-> (get-in snapshot [:uri->resource current-uri])
+                    (assoc :uri uri)))))))
+
 (defn check-resource-access
   "Check whether `uri` exists and is accessible under `token-scopes`.
    Returns :ok, :not-found, or :scope-denied."
   [uri token-scopes]
-  (if-let [{:keys [scope]} (get-in @registry [:uri->resource uri])]
+  (if-let [{:keys [scope]} (resource-for-uri uri)]
     (if (mcp.scope/public-or-matches? token-scopes scope)
       :ok
       :scope-denied)
@@ -254,14 +275,14 @@
 (defn read-resource
   "Read a registered resource by URI, gated by `token-scopes`. Returns one of
    `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or
-   `{:status :not-found}`. Single registry lookup keeps the gate atomic with the
-   render, so callers cannot bypass the scope check."
+   `{:status :not-found}`. Resource resolution and scope enforcement use the same
+   immutable registry snapshot, so aliases cannot bypass the scope check."
   [uri token-scopes opts]
-  (if-let [{:keys [render-fn scope ui?] :as resource} (get-in @registry [:uri->resource uri])]
+  (if-let [{:keys [render-fn scope ui?] :as resource} (resource-for-uri uri)]
     (if (mcp.scope/public-or-matches? token-scopes scope)
       {:status   :ok
        :contents [(cond-> (select-keys resource [:uri :mimeType])
-                    true (assoc :text (render-fn opts))
+                    true (assoc :text (render-fn (assoc opts :resource-uri uri)))
                     ui?  (assoc :_meta (ui-meta resource)))]}
       {:status :scope-denied})
     {:status :not-found}))
@@ -297,12 +318,12 @@
    (notably ChatGPT, which otherwise skips rendering a new iframe for a tool
    whose `_meta.ui.resourceUri` already has one mounted) treat them as distinct.
    `tag` is a per-URI marker embedded in the rendered HTML so the bytes hash
-   differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
+  differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
   [tag]
-  (fn [_opts]
+  (fn [{:keys [resource-uri]}]
     (let [site-url (system/site-url)]
-      (str "<!-- metabase-mcp-asset: " tag " -->\n"
+      (str "<!-- metabase-mcp-asset: " tag " " resource-uri " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
              :instanceUrlRaw site-url})))))
@@ -327,21 +348,19 @@
 
 (defn- with-ui-credential
   [result session-id]
-  (cond-> result
-    (and session-id api/*current-user-id*)
-    (assoc :_meta {:com.metabase/mcp-apps
-                   {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
-                    :sessionId  session-id}})))
+  (if (and session-id api/*current-user-id*)
+    (assoc result :_meta {:com.metabase/mcp-apps
+                          {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
+                           :sessionId  session-id}})
+    {:content [{:type "text"
+                :text "MCP UI credential refresh requires an authenticated MCP session."}]
+     :isError true}))
 
 (defn redact-ui-credential
-  "Redact MCP UI credentials before values are persisted in traces."
-  [value]
-  (walk/postwalk
-   (fn [item]
-     (if (and (map? item) (map? (:_meta item)))
-       (update item :_meta dissoc :com.metabase/mcp-apps)
-       item))
-   value))
+  "Remove the private MCP UI credential from a tool result before tracing it."
+  [result]
+  (cond-> result
+    (map? (:_meta result)) (update :_meta dissoc :com.metabase/mcp-apps)))
 
 (register-ui-tool-for-resources!
  [:visualize-query :render-drill-through]

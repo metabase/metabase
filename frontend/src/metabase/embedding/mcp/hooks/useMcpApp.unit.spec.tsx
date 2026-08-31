@@ -24,12 +24,18 @@ const QUERY_RESULT: McpUiToolResultNotification["params"] = {
   structuredContent: { query: "encoded-query" },
 };
 
+const NEXT_QUERY_RESULT: McpUiToolResultNotification["params"] = {
+  content: [],
+  structuredContent: { query: "next-encoded-query" },
+};
+
 const createAuthResult = (
   credential = "refreshed-credential",
+  sessionId = "mcp-session-id",
 ): Awaited<ReturnType<App["callServerTool"]>> => ({
   content: [],
   _meta: {
-    [MCP_APPS_METADATA_KEY]: { credential, sessionId: "mcp-session-id" },
+    [MCP_APPS_METADATA_KEY]: { credential, sessionId },
   },
 });
 
@@ -92,10 +98,16 @@ describe("useMcpApp", () => {
     });
 
     await waitFor(() => {
-      expect(app.callServerTool).toHaveBeenCalledWith({
-        name: "refresh_ui_credential",
-        arguments: {},
-      });
+      expect(app.callServerTool).toHaveBeenCalledWith(
+        {
+          name: "refresh_ui_credential",
+          arguments: {},
+        },
+        {
+          signal: expect.any(AbortSignal),
+          timeout: 10 * 1000,
+        },
+      );
 
       expect(result.current.query).toBe("encoded-query");
       expect(result.current.uiCredential).toBe("refreshed-credential");
@@ -127,9 +139,50 @@ describe("useMcpApp", () => {
 
     await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(app.callServerTool).toHaveBeenCalledTimes(1);
+    const firstSignal = app.callServerTool.mock.calls[0][1]?.signal;
 
     await act(async () => app.ontoolresult(QUERY_RESULT));
     expect(app.callServerTool).toHaveBeenCalledTimes(2);
+    const secondSignal = app.callServerTool.mock.calls[1][1]?.signal;
+
+    expect(firstSignal).not.toBe(secondSignal);
+    expect(firstSignal?.aborted).toBe(false);
+  });
+
+  it("keeps the previous query and auth while a new tool result authenticates", async () => {
+    let resolveRefresh!: (result: ReturnType<typeof createAuthResult>) => void;
+    const pendingRefresh = new Promise<ReturnType<typeof createAuthResult>>(
+      (resolve) => {
+        resolveRefresh = resolve;
+      },
+    );
+    const { app, result } = setup({
+      callServerTool: jest
+        .fn()
+        .mockResolvedValueOnce(
+          createAuthResult("initial-credential", "initial-session-id"),
+        )
+        .mockReturnValueOnce(pendingRefresh),
+      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+    });
+
+    await act(async () => app.ontoolresult(QUERY_RESULT));
+    expect(result.current.uiCredential).toBe("initial-credential");
+    expect(result.current.mcpSessionId).toBe("initial-session-id");
+    expect(result.current.query).toBe("encoded-query");
+
+    act(() => app.ontoolresult(NEXT_QUERY_RESULT));
+    expect(result.current.uiCredential).toBe("initial-credential");
+    expect(result.current.mcpSessionId).toBe("initial-session-id");
+    expect(result.current.query).toBe("encoded-query");
+
+    await act(async () => {
+      resolveRefresh(createAuthResult("next-credential", "next-session-id"));
+      await pendingRefresh;
+    });
+    expect(result.current.uiCredential).toBe("next-credential");
+    expect(result.current.mcpSessionId).toBe("next-session-id");
+    expect(result.current.query).toBe("next-encoded-query");
   });
 
   it("reports an error after two initial credential refresh failures", async () => {
@@ -173,7 +226,7 @@ describe("useMcpApp", () => {
     expect(result.current.uiCredential).toBe("initial-credential");
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(4 * 60 * 1000);
+      await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
       await jest.advanceTimersByTimeAsync(30 * 1000);
     });
 
@@ -188,5 +241,107 @@ describe("useMcpApp", () => {
     expect(app.callServerTool).toHaveBeenCalledTimes(4);
     expect(result.current.hostError).toBeNull();
     expect(result.current.uiCredential).toBe("recovered-credential");
+  });
+
+  it("keeps retrying when auth refresh fails for a repeated tool result", async () => {
+    jest.useFakeTimers();
+    jest.spyOn(console, "error").mockImplementation();
+
+    const { app, result } = setup({
+      callServerTool: jest
+        .fn()
+        .mockResolvedValueOnce(createAuthResult("initial-credential"))
+        .mockRejectedValueOnce(new Error("Refresh failed"))
+        .mockRejectedValueOnce(new Error("Refresh failed"))
+        .mockResolvedValueOnce(createAuthResult("recovered-credential")),
+      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+    });
+
+    await act(async () => app.ontoolresult(QUERY_RESULT));
+    expect(result.current.uiCredential).toBe("initial-credential");
+
+    await act(async () => app.ontoolresult(QUERY_RESULT));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(30 * 1000);
+    });
+
+    expect(app.callServerTool).toHaveBeenCalledTimes(3);
+    expect(result.current.hostError).toBeNull();
+    expect(result.current.uiCredential).toBe("initial-credential");
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(30 * 1000);
+    });
+
+    expect(app.callServerTool).toHaveBeenCalledTimes(4);
+    expect(result.current.hostError).toBeNull();
+    expect(result.current.uiCredential).toBe("recovered-credential");
+  });
+
+  it("does not reuse expired auth for a repeated tool result", async () => {
+    jest.useFakeTimers();
+    jest.spyOn(console, "error").mockImplementation();
+
+    const { app, result } = setup({
+      callServerTool: jest
+        .fn()
+        .mockResolvedValueOnce(createAuthResult("initial-credential"))
+        .mockRejectedValue(new Error("Refresh failed")),
+      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+    });
+
+    await act(async () => app.ontoolresult(QUERY_RESULT));
+    expect(result.current.uiCredential).toBe("initial-credential");
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(4.5 * 60 * 1000);
+    });
+    expect(result.current.uiCredential).toBe("");
+    expect(result.current.mcpSessionId).toBe("");
+
+    await act(async () => app.ontoolresult(QUERY_RESULT));
+    expect(result.current.uiCredential).toBe("");
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(30 * 1000);
+    });
+    expect(result.current.hostError).toBe(
+      "This visualization did not load. Ask your MCP client to show it again.",
+    );
+  });
+
+  it("measures credential validity from the successful request start", async () => {
+    jest.useFakeTimers();
+    jest.spyOn(console, "error").mockImplementation();
+
+    let resolveRefresh!: (result: ReturnType<typeof createAuthResult>) => void;
+    const delayedRefresh = new Promise<ReturnType<typeof createAuthResult>>(
+      (resolve) => {
+        resolveRefresh = resolve;
+      },
+    );
+    const { app, result } = setup({
+      callServerTool: jest
+        .fn()
+        .mockReturnValueOnce(delayedRefresh)
+        .mockRejectedValue(new Error("Refresh failed")),
+      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+    });
+
+    act(() => app.ontoolresult(QUERY_RESULT));
+    expect(app.callServerTool).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(60 * 1000);
+      resolveRefresh(createAuthResult("delayed-credential"));
+      await delayedRefresh;
+    });
+    expect(result.current.uiCredential).toBe("delayed-credential");
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3.5 * 60 * 1000);
+    });
+    expect(result.current.uiCredential).toBe("");
+    expect(result.current.mcpSessionId).toBe("");
   });
 });
