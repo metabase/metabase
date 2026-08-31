@@ -36,10 +36,12 @@
    of its own — a viewer reaches an app's data only through access they already hold in another group."
   [group]
   (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-        permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})]
+        permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})
+        db-level?    (fn [database-id perm-type value]
+                       (database-level-permission? (get permissions [(:id group) database-id perm-type]) value))]
     (doseq [database-id database-ids
-            :let [rows (get permissions [(:id group) database-id :perms/view-data])]
-            :when (not (database-level-permission? rows :blocked))]
+            :when (not (and (db-level? database-id :perms/view-data :blocked)
+                            (db-level? database-id :perms/download-results :no)))]
       (perms/set-database-permission! permissions group database-id :perms/view-data :blocked))))
 
 (defn- restore-trashed-collection!

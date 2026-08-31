@@ -26,7 +26,7 @@ authoring mistake.
 
 ## The pipeline
 
-`syncResources` (`sync.ts`) runs five steps:
+`syncResources` (`sync.ts`) runs four steps:
 
 1. **Discover** every `defineQuery` / `defineAction` in those directories (`discover.ts`).
 2. **Ensure resources** — `POST /api/apps/:slug/draft` creates the app row if it doesn't exist
@@ -36,8 +36,6 @@ authoring mistake.
 4. **Reconcile models** (`reconcile-models.ts`) — each declared action's model is copied into the
    collection, the action is copied onto that copy, and the copy's ID is injected back as
    `copiedActionId`.
-5. **Reconcile permissions** — `PUT /api/apps/:slug/resources/permissions` makes the tables those
-   queries and actions touch `:unrestricted` for the group, and everything else `:blocked`.
 
 ## Why actions copy a whole model
 
