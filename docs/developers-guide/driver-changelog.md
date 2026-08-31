@@ -7,11 +7,7 @@ title: Driver interface changelog
 ## Metabase 0.64.0
 
 - `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
-  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement (rejecting
-  e.g. a stacked `; SET ROLE ...` that would escape the restricted role). Previously only `:postgres` and
-  `:sqlserver` overrode the no-op `:default`, so other impersonation-capable JDBC drivers (MySQL, Snowflake,
-  ClickHouse, Starburst) inherited the pass-through. The per-driver `:postgres`/`:sqlserver` overrides were
-  removed as redundant. A `:sql-jdbc` driver that needs different behavior can still override the method.
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
 
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
