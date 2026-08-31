@@ -636,6 +636,15 @@
           (is (= "Sad Can"
                  (actual-value-in-db :toucan-name))))))))
 
+(deftest decrypt-error-names-setting-test
+  (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
+    (encryption-test/with-secret-key "0123456789abcdef"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Error decrypting setting \"toucan-name\": Expected an encrypted value"
+                                    (#'setting/decrypt-setting-value-on-read {:key "toucan-name" :value "plaintext-sekret"})))]
+        (is (not (re-find #"sekret" (ex-message e))))
+        (is (= "toucan-name" (:setting-key (ex-data e))))))))
+
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/with-temp-empty-app-db [_conn :h2]
