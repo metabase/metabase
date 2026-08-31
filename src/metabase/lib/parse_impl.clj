@@ -6,7 +6,7 @@
   "A typed reimplementation of metabase.lib.parse: parsing `{{param}}` and
    `[[optional]]` clauses in native query strings, with best-effort skipping
    of params inside SQL comments and string literals.
-   
+
    Faithful port of the Clojure original:
    - tokenization is sequential pass-by-pass splitting (pattern order
    matters for overlaps, so a single left-to-right scan would differ)
