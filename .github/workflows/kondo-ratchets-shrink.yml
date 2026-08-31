@@ -82,12 +82,26 @@ jobs:
             exit 0
           fi
 
+          # Mergeability is computed lazily, so poll past UNKNOWN rather than believing the first answer.
+          # Still unknown leaves the PR alone and the next run settles it.
+          conflicted() {
+            for _ in 1 2 3 4 5; do
+              case "$(gh pr view "$1" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable)" in
+                CONFLICTING) return 0 ;;
+                MERGEABLE)   return 1 ;;
+              esac
+              sleep 2
+            done
+            return 1
+          }
+
           # The ratchet file is the whole payload, so an open PR that already carries this result is left
           # alone. Rebasing it onto every master push would restart its CI and churn the diff without
-          # changing what it delivers.
+          # changing what it delivers. A conflicted PR is the exception: only a fresh commit clears it.
           if [ -n "$open_pr" ] \
              && git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
-             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE"; then
+             && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
+             && ! conflicted "$open_pr"; then
             echo "The automation PR #$open_pr already carries this result"
             echo "push=false" >> "$GITHUB_OUTPUT"
             echo "head=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
