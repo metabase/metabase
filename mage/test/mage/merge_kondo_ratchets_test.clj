@@ -152,10 +152,10 @@
   "Everything one refused run prints, having first checked that it failed and left the conflict untouched.
   Both streams, because mage reports task exceptions on stdout."
   [dir note]
-  ;; git keeps a conflicted path marked unmerged (UU when both sides changed it, DU or UD when one
-  ;; side deleted it) whatever the file ends up holding, so status alone cannot show that a refused run
-  ;; left the conflict alone. Compare the contents too, and the index stages besides: those hold each
-  ;; side's blob and never reach the status line.
+  ;; Git's unmerged status describes the index, not the worktree contents: UU means both sides
+  ;; modified the path; DU and UD mean one side deleted it. Rewriting the file therefore does not
+  ;; change its status. To prove a refused run changed nothing, snapshot the file contents and every
+  ;; unmerged index stage as well as the porcelain status.
   (let [snapshot               #(let [f (fs/path dir ratchets-file)]
                                   [(status dir)
                                    (when (fs/exists? f) (slurp (str f)))
