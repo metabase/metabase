@@ -212,3 +212,13 @@
           (is (= 7 (.getMaxPoolSize ^WrapperConnectionPoolDataSource (.getConnectionPoolDataSource pool))))
           (finally
             (DataSources/destroy pool)))))))
+
+(deftest quartz-connection-pool-rejects-pre-pooled-test
+  (testing "an already-pooled data-source is rejected -- the Quartz pool must be distinct from the main pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pool-reject-pooled-test")
+          pre-pooled  (DataSources/pooledDataSource ^javax.sql.DataSource data-source)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already-pooled"
+                              (mdb.connection-pool-setup/quartz-connection-pool-data-source :h2 pre-pooled)))
+        (finally
+          (DataSources/destroy pre-pooled))))))

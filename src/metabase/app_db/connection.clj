@@ -78,9 +78,11 @@
 
   Options:
 
-  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database if
-    `data-source` is not already a pooled data source. Default: `false`. You should only do this for application DBs
-    that are expected to be long-lived; for test DBs that will be destroyed at the end of the test it's hardly worth it."
+  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database (plus a
+    dedicated Quartz pool -- see [[metabase.app-db.connection-pool-setup/quartz-connection-pool-data-source]]).
+    Default: `false`. Requires an unpooled `data-source`: passing an already-pooled one throws. You should only do
+    this for application DBs that are expected to be long-lived; for test DBs that will be destroyed at the end of
+    the test it's hardly worth it."
   ^ApplicationDB [db-type data-source & {:keys [create-pool?], :or {create-pool? false}}]
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)

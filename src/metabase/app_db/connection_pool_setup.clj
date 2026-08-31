@@ -211,9 +211,18 @@
   connection that can never be freed (the outer transaction won't release its connection until the block completes).
 
   Inherits all the main pool's properties (connection customizer, credential-rotation settings, etc.) except the
-  pool sizing."
+  pool sizing.
+
+  `data-source` must be unpooled: an already-pooled `data-source` is rejected."
   ^PoolBackedDataSource [db-type :- :keyword
                          data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  ;; [[connection-pool-data-source]] returns an already-pooled data-source as-is, which here would silently make the
+  ;; "dedicated" Quartz pool the same pool as the main one -- reintroducing the exact starvation deadlock this pool
+  ;; exists to prevent -- so reject pooled input instead.
+  (when (instance? PoolBackedDataSource data-source)
+    (throw (ex-info (str "quartz-connection-pool-data-source requires an unpooled data-source: an already-pooled one"
+                         " would be shared with the main pool, defeating the deadlock protection.")
+                    {:data-source-name (.getDataSourceName ^PoolBackedDataSource data-source)})))
   (connection-pool-data-source
    db-type
    data-source

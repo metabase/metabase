@@ -638,6 +638,16 @@
           (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
           (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db)))))))
 
+(deftest quartz-data-source-rejects-pre-pooled-test
+  (testing ":create-pool? true with an already-pooled data-source throws instead of silently sharing one pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pre-pooled-test")
+          pre-pooled  (DataSources/pooledDataSource ^javax.sql.DataSource data-source)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already-pooled"
+                              (mdb.connection/application-db :h2 pre-pooled :create-pool? true)))
+        (finally
+          (DataSources/destroy pre-pooled))))))
+
 (deftest quartz-data-source-no-pool-test
   (testing "with :create-pool? false, the Quartz data source is just the raw data source itself"
     (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-no-pool-test")
