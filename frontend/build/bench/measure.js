@@ -42,6 +42,10 @@ if (!url) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Cleared by the first load that shows the build records no performance
+// marks, so the rest of the series skips waiting for them.
+let buildRecordsMarks = true;
+
 function devtools(path, method = "GET") {
   return new Promise((resolve, reject) => {
     http
@@ -191,7 +195,6 @@ async function loadOnce() {
     if (
       parsed &&
       parsed.domContentLoaded > 0 &&
-      parsed.appMounted > 0 &&
       parsed.scriptCount > 0 &&
       parsed.href.startsWith(url)
     ) {
@@ -201,16 +204,24 @@ async function loadOnce() {
     await sleep(150);
   }
 
-  // `mb:page-ready` lands after the shell, and only on a route that records it.
-  // Wait a bounded while for it rather than either missing it or hanging on a
-  // page that never fires it.
+  // The marks land after the entry scripts, and `mb:page-ready` only on a route
+  // that records it. Wait a bounded while rather than missing them.
+  //
+  // They must not gate the reading itself. A jar built before the marks existed
+  // never fires either one, which is every older commit the backfill measures,
+  // and waiting on them there would turn each load into a 45s timeout and then
+  // report no reading at all. One load settles it for the whole series, so the
+  // rest do not pay the wait again.
   for (
     let attempt = 0;
-    metrics && !metrics.pageReady && attempt < 80;
+    buildRecordsMarks && metrics && !metrics.pageReady && attempt < 40;
     attempt++
   ) {
     await sleep(150);
     metrics = (await read()) || metrics;
+  }
+  if (metrics && !metrics.appMounted) {
+    buildRecordsMarks = false;
   }
 
   socket.close();

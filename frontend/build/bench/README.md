@@ -32,6 +32,10 @@ the load. Each is a median over the runs.
 | `pageReady`              | `mb:page-ready` mark       | The route has all its data.                   |
 | `load`                   | `loadEventEnd`             | Everything the document referenced arrived.   |
 
+A jar built before these marks existed reports `0` for both, so a backfill over
+older commits still produces every other reading. The marks never gate a
+measurement.
+
 The two marks come from the app, in
 `frontend/src/metabase/utils/performance-marks.ts`. `mb:app-mounted` is recorded
 in a layout effect inside the render tree, so every entry reports it.
