@@ -212,26 +212,26 @@
     (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
                                                                                   (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        ;; the interrupt must land while the QP is inside `*run*`'s try (which is what posts `::cancel`), so wait
-        ;; for the query to reach `*reduce*` before cancelling — a fixed grace period loses the race whenever
-        ;; pre-pipeline setup is slow, e.g. the first query on a fresh JVM when this test runs in isolation
+        ;; `*reduce*` runs inside `*run*`'s try block. Wait for it to start so the interrupt reaches the handler that
+        ;; publishes `::cancel`; canceling during earlier query setup bypasses that handler.
         (let [started         (promise)
               never-delivered (promise)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan
                     qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
                                                   (deliver started true)
-                                                  ;; nothing ever delivers this: block until future-cancel's
-                                                  ;; interrupt arrives, bounded so a broken cancel can't hang the
-                                                  ;; worker thread forever. The interrupt throws out of the deref,
-                                                  ;; so there is nothing to do after it.
-                                                  (deref never-delivered 30000 nil))]
+                                                  ;; Block until `future-cancel` interrupts this deref.
+                                                  @never-delivered)]
             (let [futur (future
                           (process-userland-query (mt/mbql-query venues)))]
-              (is (true? (deref started 10000 ::timed-out))
-                  "query should reach *reduce* before we cancel it")
-              (future-cancel futur))))
-        (testing "canceled-chan should get a :cancel message"
+              (try
+                (is (true? (deref started 10000 ::timed-out))
+                    "query should reach *reduce* before the 10-second timeout")
+                (finally
+                  (future-cancel futur)
+                  ;; Ensure the worker cannot leak if cancellation fails to interrupt the deref.
+                  (deliver never-delivered nil))))))
+        (testing "canceled-chan receives ::cancel"
           (is (= ::qp.pipeline/cancel
                  (first (a/alts!! [canceled-chan (a/timeout 2000)])))))
-        (testing "No QueryExecution should get saved when a query is canceled"
+        (testing "No QueryExecution is saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
