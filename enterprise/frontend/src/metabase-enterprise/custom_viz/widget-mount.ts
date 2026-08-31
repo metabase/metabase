@@ -63,7 +63,6 @@ function toPluginWidgetProps(
     id: id.startsWith(prefix) ? id.slice(prefix.length) : id,
     value,
     onChange: (value) => onChange(value),
-    // The plugin is sandboxed, not trusted: check the payload before namespacing it.
     onChangeSettings: (settings) =>
       onChangeSettings(
         toHostSettings(isObject(settings) ? settings : {}, prefix),
