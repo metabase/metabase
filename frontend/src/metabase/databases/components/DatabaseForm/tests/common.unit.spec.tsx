@@ -9,6 +9,14 @@ import * as utils from "../utils";
 import { TEST_ENGINES, setup } from "./setup";
 
 describe("DatabaseForm", () => {
+  it("does not create a nested vertical scroll region in the admin layout", () => {
+    setup();
+
+    expect(screen.getByTestId("database-form-body")).not.toHaveStyle({
+      overflowY: "auto",
+    });
+  });
+
   it("should submit default values", async () => {
     const { onSubmit } = setup();
     const expectedDatabaseName = "My H2 Database";
