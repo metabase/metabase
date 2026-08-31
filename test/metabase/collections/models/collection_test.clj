@@ -1249,7 +1249,12 @@
        :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
                                                       :personal_owner_id nil}
        :model/Collection {top-level-coll :id}        {:location "/"}
-       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
+       ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
+       :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
+       ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
+       ;; location does not make that Collection personal
+       :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
                                   (-> (t2/select-one :model/Collection id-or-ids)
@@ -1261,7 +1266,11 @@
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
+          (testing "only the first ID of the location decides"
+            (is (= [true false]
+                   (map check-is-personal [deep-personal-coll sneaky-coll])
+                   (check-is-personal [deep-personal-coll sneaky-coll])))))
         (testing "root collection shouldn't be hydrated"
           (is (= nil (t2/hydrate nil :is_personal)))
           (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))

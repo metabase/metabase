@@ -95,6 +95,7 @@
      auth-identity
      auth-provider
      batch-processing
+     bug-reporting
      channel
      classloader
      collections

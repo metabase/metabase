@@ -1,9 +1,11 @@
 import { SAMPLE_DB_TABLES, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 
 const { STATIC_ORDERS_ID, STATIC_PEOPLE_ID } = SAMPLE_DB_TABLES;
+const { ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
@@ -1128,7 +1130,7 @@ describe("scenarios - embedding hub", () => {
           group_id: allExternalUsersGroup.id,
           card_id: null,
           attribute_remappings: {
-            organization_id: ["dimension", ["field", 2, null]], // USER_ID field
+            organization_id: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
       });
@@ -1143,11 +1145,23 @@ describe("scenarios - embedding hub", () => {
         })
         .should("have.attr", "data-completed", "true");
 
-      cy.log("open the data segregation strategy step");
+      // The seeded sandbox marks the later steps done, so the stepper
+      // auto-advances to "Create tenants" — clicking before it settles misses.
+      cy.log("wait for the stepper to settle on the first incomplete step");
       H.main()
-        .findByText("Which data segregation strategy does your database use?")
-        .scrollIntoView()
-        .click();
+        .findByRole("listitem", { name: "Create tenants", timeout: 10_000 })
+        .should("have.attr", "data-active", "true");
+
+      const dataSegregationStep = () =>
+        H.main().findByRole("listitem", {
+          name: /Which data segregation strategy/,
+        });
+
+      cy.log("open the data segregation strategy step");
+      dataSegregationStep().scrollIntoView().click();
+
+      cy.log("the strategy picker should be expanded");
+      dataSegregationStep().should("have.attr", "data-active", "true");
 
       cy.log("select row and column level security strategy");
       H.main()
@@ -1171,9 +1185,22 @@ describe("scenarios - embedding hub", () => {
       H.main().findByRole("button", { name: "Next" }).click();
 
       cy.log("wait for sandbox update to complete");
-      cy.wait("@updatePermissionsGraph");
+      // "Next" runs several sequential metadata fetches before issuing the
+      // PUT, so under load it can land after the default 5s request timeout.
+      cy.wait("@updatePermissionsGraph", { timeout: 15_000 });
 
-      cy.log("error toast should not appear");
+      cy.log("the 'Select data' step should be marked complete");
+      H.main()
+        .findByRole("listitem", {
+          name: "Select data to make available",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+
+      // Anchored on the positive signal above so it can't pass by racing an
+      // unrendered page.
+      cy.log("no error toast should appear once the update has settled");
       H.undoToast().should("not.exist");
 
       cy.log("sandbox should be updated and not created");
@@ -1191,18 +1218,8 @@ describe("scenarios - embedding hub", () => {
         const [orderPolicy] = orderPolicies;
         const tenantFieldRef = orderPolicy.attribute_remappings.organization_id;
 
-        // attribute_remappings should reference field 3 (PRODUCT_ID),
-        // not field 2 (USER_ID)
-        expect(tenantFieldRef[1][1]).to.equal(3);
+        expect(tenantFieldRef[1][1]).to.equal(ORDERS.PRODUCT_ID);
       });
-
-      H.main()
-        .findByRole("listitem", {
-          name: "Select data to make available",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
     });
 
     it(

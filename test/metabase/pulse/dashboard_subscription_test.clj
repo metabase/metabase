@@ -433,11 +433,12 @@
     {:email
      (fn [_ [email]]
        (testing "Markdown cards are included in email subscriptions"
-         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"                 true
-                                                   "header, quote isn't escaped" true}
+         ;; The apostrophe arrives as `&apos;` now that heading text is escaped on its way into the body.
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"                      true
+                                                   "header, quote isn&apos;t escaped" true}
                                                   pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-single-email email #"Aviary KPIs"
-                                                     #"header, quote isn't escaped")))))
+                                                     #"header, quote isn&apos;t escaped")))))
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -506,6 +507,36 @@
                                {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                     message)))))}})))
 
+(deftest dashboard-filter-html-escaping-test
+  (let [name-html  "<b>Bold</b>"
+        value-html "R&D <i>x</i>"]
+    (tests!
+     {:pulse     {:skip_if_empty false}
+      :dashboard (update pulse.test-util/test-dashboard :parameters
+                         (fn [params]
+                           (for [param params]
+                             (cond-> param
+                               (= "State" (:name param)) (assoc :name    name-html
+                                                                :default [value-html])))))}
+     "Dashboard subscription whose filter name and value contain HTML delivers them escaped"
+     {:card (pulse.test-util/checkins-query-card {})
+
+      :fixture
+      (fn [_ thunk]
+        (thunk))
+
+      :assert
+      {:email
+       (fn [_ [email]]
+         (let [html-body (-> email :message first :content)]
+           (testing "the filter name and value arrive as text, not as markup"
+             (is (not (str/includes? html-body name-html))
+                 "filter name was not escaped")
+             (is (not (str/includes? html-body value-html))
+                 "filter value was not escaped")
+             (is (str/includes? html-body "&lt;b&gt;Bold&lt;/b&gt;"))
+             (is (str/includes? html-body "R&amp;D &lt;i&gt;x&lt;/i&gt;")))))}})))
+
 (deftest dashboard-with-header-filters-test
   (tests!
    {:pulse     {:skip_if_empty false}
@@ -557,6 +588,32 @@
                               :text {:type "mrkdwn", :text "*## Dashboard Header*"},
                               :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}
                   message)))))}}))
+
+(deftest dashboard-heading-html-escaping-test
+  (let [heading-html "<b>Heading</b>"]
+    (tests!
+     {:pulse     {:skip_if_empty false}
+      :dashboard pulse.test-util/test-dashboard}
+     "Dashboard subscription whose heading card contains HTML delivers it escaped"
+     {:card (pulse.test-util/checkins-query-card {})
+
+      :fixture
+      (fn [{dashboard-id :dashboard-id} thunk]
+        (mt/with-temp [:model/DashboardCard _ {:dashboard_id            dashboard-id
+                                               :row                    0
+                                               :col                    0
+                                               :visualization_settings {:virtual_card {:display "heading"}
+                                                                        :text         heading-html}}]
+          (thunk)))
+
+      :assert
+      {:email
+       (fn [_ [email]]
+         (let [html-body (-> email :message first :content)]
+           (testing "the heading text arrives as text, not as markup"
+             (is (not (str/includes? html-body heading-html))
+                 "heading text was not escaped")
+             (is (str/includes? html-body "&lt;b&gt;Heading&lt;/b&gt;")))))}})))
 
 (deftest dashboard-with-dashcard-filters-test
   (tests!
