@@ -99,7 +99,7 @@ jobs:
   build:
     needs: [setup]
     if: ${{ needs.setup.outputs.build_editions != '[]' }}
-    name: Build MB ${{ matrix.edition }}
+    name: build (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
@@ -156,7 +156,7 @@ jobs:
     needs: [setup, build]
     # Health-check whatever we are about to containerize, plus every build on master and release.
     if: ${{ !failure() && !cancelled() && (inputs.containerize || github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
-    name: Is ${{ matrix.edition }} healthy?
+    name:  jar-healthcheck (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -192,6 +192,7 @@ jobs:
   containerize:
     needs: [build, jar-healthcheck]
     if: ${{ inputs.containerize && !failure() && !cancelled() }}
+    name: containerize (${{ matrix.edition }})
     strategy:
       matrix:
         edition: [ee, oss]
