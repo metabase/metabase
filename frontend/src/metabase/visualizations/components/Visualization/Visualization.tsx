@@ -150,6 +150,11 @@ type VisualizationOwnProps = {
   customVizLoadingView?: ReactNode;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode;
+  /**
+   * Resolves click actions when no `mode` is passed.
+   * It is not forwarded to the chart, so table affordances keyed on `mode` stay off.
+   */
+  defaultMode?: ClickActionModeGetter | ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -506,6 +511,7 @@ class Visualization extends PureComponent<
   getClickActions(clickedObject?: ClickObject | null) {
     const {
       mode,
+      defaultMode,
       dashcard,
       metadata,
       rawSeries,
@@ -519,7 +525,7 @@ class Visualization extends PureComponent<
 
     return this._getClickActionsCached(
       clickedObject,
-      mode,
+      mode ?? defaultMode,
       computedSettings,
       dashcard,
       metadata,

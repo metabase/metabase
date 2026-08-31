@@ -148,7 +148,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       {...vizSpecificProps}
       // Visualization has no default mode,
       // so surfaces that never pass one get the stock drills here.
-      mode={props.mode ?? getDefaultClickActionMode}
+      defaultMode={getDefaultClickActionMode}
     />
   );
 }
