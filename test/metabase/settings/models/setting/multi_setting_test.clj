@@ -47,6 +47,7 @@
 (multi-setting/define-multi-setting ^:private multi-setting-read-only
   "A test setting that is always read-only."
   (fn [] *parakeet*)
+  :encryption :no
   :visibility :internal
   :getter     (constantly "Parroty")
   :setter     :none)
