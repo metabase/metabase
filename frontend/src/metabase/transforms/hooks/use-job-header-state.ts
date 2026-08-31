@@ -5,7 +5,6 @@ import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { TransformJobId } from "metabase-types/api";
 
-
 import {
   useListTransformJobTransformsQuery,
   useUpdateTransformJobMutation,
