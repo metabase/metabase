@@ -14,8 +14,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -336,7 +338,7 @@
 
             :else
             (let [load-result (serdes/with-cache
-                                (serialization/load-metabase! ingestable-snapshot))
+                                (serialization/load-metabase! ingestable-snapshot :reindex? false))
                   seen-paths (:seen load-result)
                   imported-data (spec/extract-imported-entities seen-paths)]
               (remote-sync.task/update-progress! task-id 0.8)
@@ -351,6 +353,12 @@
                          (settings/remote-sync-transforms))
                 (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
                 (settings/remote-sync-transforms! false))
+              ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
+              ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
+              (try
+                (search/reindex! :async? (not= :h2 (mdb/db-type)))
+                (catch Exception e
+                  (log/warn e "Search reindex after import failed")))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id

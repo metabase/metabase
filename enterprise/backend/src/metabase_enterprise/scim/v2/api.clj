@@ -291,7 +291,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
@@ -512,7 +513,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters

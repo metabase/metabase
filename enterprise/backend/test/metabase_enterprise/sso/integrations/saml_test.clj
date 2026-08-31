@@ -800,6 +800,8 @@
                          :body {:method "saml"}
                          :headers {"Content-Type" "application/json"}}
                         result))
+          (is (= (str (system/site-url) "/auth/sso")
+                 (get-in result [:body :saml-popup-url])))
           (is (str/starts-with? (-> result :body :url) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-integration-includes-origin-tests
@@ -847,23 +849,38 @@
           (is (str/starts-with? (get-in result [:headers "Location"]) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-post-integration-tests
-  (testing "should the token when it is included in relay state and embedding SDK header"
-    (with-other-sso-types-disabled!
-      (with-saml-default-setup!
-        (do-with-some-validators-disabled!
-         (fn []
-           (let [relay-state (str  "http://localhost:3000/"
-                                   "?token=" (token-utils/generate-token)
-                                   "&origin=https%3A%2F%2Fapp.example.com")
-                 req-options (saml-post-request-options
-                              (saml-test-response)
-                              relay-state)
-                 response (client/client-real-response :post 200 "/auth/sso" req-options)]
-             (is (partial= {:status 200
-                            :headers {"Content-Type" "text/html"}}
-                           response))
-             (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
-             (is (str/includes? (:body response) "authData")))))))))
+  (mt/with-additional-premium-features #{:embedding-sdk}
+    (testing "should the token when it is included in relay state and embedding SDK header"
+      (with-other-sso-types-disabled!
+        (with-saml-default-setup!
+          (do-with-some-validators-disabled!
+           (fn []
+             (let [relay-state (str  "http://localhost:3000/"
+                                     "?token=" (token-utils/generate-token)
+                                     "&origin=https%3A%2F%2Fapp.example.com")
+                   req-options (saml-post-request-options
+                                (saml-test-response)
+                                relay-state)
+                   response (client/client-real-response :post 200 "/auth/sso" req-options)]
+               (is (partial= {:status 200
+                              :headers {"Content-Type" "text/html"}}
+                             response))
+               (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
+               (is (str/includes? (:body response) "authData"))))))))))
+
+(deftest saml-embedding-unapproved-origin-rejected-test
+  (mt/with-additional-premium-features #{:embedding-sdk}
+    (testing "an embedding login rejects an unapproved popup origin"
+      (with-other-sso-types-disabled!
+        (with-saml-default-setup!
+          (do-with-some-validators-disabled!
+           (fn []
+             (let [relay-state (str "http://localhost:3000/?token=" (token-utils/generate-token)
+                                    "&origin=" (codec/url-encode "https://evil.example"))
+                   req-options (saml-post-request-options (saml-test-response) relay-state)
+                   response    (client/client-real-response :post 400 "/auth/sso" req-options)]
+               (is (not (successful-login? response)))
+               (is (not (str/includes? (str (:body response)) "SAML_AUTH_COMPLETE")))))))))))
 
 (deftest non-string-saml-attributes-dropped-test
   (testing "SAML attributes with non-string values are dropped"

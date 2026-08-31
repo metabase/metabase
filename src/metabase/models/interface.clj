@@ -316,11 +316,13 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn encrypted-json-out
-  "Deserialize encrypted json."
+  "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
+  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/decode+kw decrypted)
+      (some-> decrypted json/decode+kw)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
@@ -328,14 +330,38 @@
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
 
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
-(def transform-encrypted-json
-  "Transform for encrypted json."
+(defn decrypt-error-context
+  "Wrap a decrypting transform `out-fn` so a failure names `source` (a \"table.column\" string) in the exception
+  message. The reader of an encrypted-at-rest column otherwise fails with a bare \"Expected an encrypted value...\"
+  that cannot be traced to a row without a debugger: only the message survives into the logs (ex-data is not
+  logged), so the source has to be part of it. The message never includes the value."
+  [source out-fn]
+  (fn [v]
+    (try
+      (out-fn v)
+      (catch Throwable e
+        (throw (ex-info (format "Error decrypting %s: %s" source (ex-message e))
+                        {:source source}
+                        e))))))
+
+(defn transform-encrypted-json
+  "Encrypted-json transform for the column named by `source` (a \"table.column\" string, used in decrypt error
+  messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
+  [source]
   {:in  encrypted-json-in
-   :out cached-encrypted-json-out})
+   :out (decrypt-error-context source cached-encrypted-json-out)})
+
+(defn transform-encrypted-text
+  "Whole-column encrypted text transform for the column named by `source` (a \"table.column\" string, used in decrypt
+  error messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read (see
+  [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a properly
+  encrypted one."
+  [source]
+  {:in  encryption/maybe-encrypt
+   :out (decrypt-error-context source encryption/maybe-decrypt)})
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -488,10 +514,12 @@
     (blob->bytes v)
     v))
 
-(def transform-secret-value
-  "Transform for secret value."
+(defn transform-secret-value
+  "Transform for a secret `^bytes` column named by `source` (a \"table.column\" string, used in decrypt error
+  messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
+  [source]
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+   :out (decrypt-error-context source (comp encryption/maybe-decrypt-bytes maybe-blob->bytes))})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."

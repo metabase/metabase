@@ -45,7 +45,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :type       :json
   :doc        false
@@ -76,7 +76,7 @@
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
   :default "metabase_files"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]
@@ -85,7 +85,7 @@
 (defsetting slack-bug-report-channel
   (deferred-tru "The name of the channel where bug reports should be posted")
   :default "metabase-bugs"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :export?    false
@@ -115,7 +115,7 @@
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
   :feature    :whitelabel
@@ -125,14 +125,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-address-override
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
   :default    "notifications@metabase.com"
   :visibility :settings-manager
@@ -141,7 +141,7 @@
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
@@ -164,7 +164,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :visibility :settings-manager
   :audit      :getter
