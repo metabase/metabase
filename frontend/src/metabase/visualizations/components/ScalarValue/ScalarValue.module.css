@@ -16,3 +16,13 @@
     line-height: inherit;
   }
 }
+
+.descriptionIcon {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--mb-color-text-disabled);
+}
+
+.descriptionIcon:hover {
+  color: var(--mb-color-text-secondary);
+}

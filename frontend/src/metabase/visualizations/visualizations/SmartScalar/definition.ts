@@ -104,6 +104,7 @@ export const SMART_SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   iconName: "smartscalar",
   canSavePng: true,
   noHeader: true,
+  noLoadingHeader: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
