@@ -2407,6 +2407,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
