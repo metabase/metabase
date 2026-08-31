@@ -8,7 +8,7 @@ records.
 
 The store doctrine says to delete mirror slices and to read the RTK Query cache
 instead. That rule fits a slice which copies one endpoint. The `user` slice is
-the example. One endpoint filled it, so a cache read replaced it.
+the example: one endpoint fills it, so a cache read serves it.
 
 This store is different. It folds 34 endpoints into one record per entity, so it
 needs a reducer. It is one write path over many sources, not a copy of one

@@ -14,10 +14,6 @@ import type { Database, Field, Segment, Table } from "metabase-types/api";
  * The edit forms in this module submit the entity they rendered, which came
  * from `state.entities` and carries the nested records the mirror stitched onto
  * it. The API rejects those, so each one is dropped before the request.
- *
- * Each one writes the response into the mirror itself. Do not move that into
- * the update endpoints: they have about 25 other callers, and hydrating for all
- * of them fails `database-writable-connection.cy.spec.ts`.
  */
 
 export const updateDatabase =
