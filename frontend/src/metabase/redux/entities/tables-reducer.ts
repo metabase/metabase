@@ -84,10 +84,10 @@ export function tablesReducer(
     };
   }
 
-  // Keep `original_fields` in sync when something dispatches
-  // `updateMetadata(field, FieldSchema)` (e.g. RTK Query's getField
-  // onQueryStarted). Without this, edits land in state.entities.fields but
-  // hydrateTableFields keeps reading stale data from original_fields.
+  // Keep `original_fields` in sync when a field reaches the mirror, which the
+  // hydration listener does for every endpoint carrying one. Without this,
+  // edits land in state.entities.fields but hydrateTableFields keeps reading
+  // stale data from original_fields.
   //
   // Virtual card tables can have multiple `original_fields` entries with the
   // same `id` (a model with two columns both mapped to the same source
@@ -101,6 +101,11 @@ export function tablesReducer(
   ) {
     let nextState = state;
     for (const updated of Object.values<any>(payload.entities.fields)) {
+      // A null entry is a delete, so there is nothing to sync into
+      // `original_fields`.
+      if (updated == null) {
+        continue;
+      }
       const tableId = updated.table_id;
       const table = nextState[tableId];
       if (!table?.original_fields) {

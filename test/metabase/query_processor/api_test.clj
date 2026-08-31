@@ -21,12 +21,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
+   [metabase.models.interface :as mi]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -324,6 +326,40 @@
                        (update-in [:data :native_form :query]
                                   #(str/split-lines (or (driver/prettify-native-form :h2 %)
                                                         "error: no query generated")))))))))))))
+
+(deftest native-checks-source-card-read-permission-test
+  (testing "POST /api/dataset/native requires read permission on a referenced source Card"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)
+                                           :database_id   (mt/id)
+                                           :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (testing "source-table card__N"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}})))
+        (testing "card template tag"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query "SELECT * FROM {{#c}}"
+                                                :template-tags {"#c" {:id "x" :name "#c" :display-name "c"
+                                                                      :type "card" :card-id (:id card)}}}})))))))
+
+(deftest native-compiles-readable-source-card-test
+  (testing "POST /api/dataset/native returns the compiled query when the user can read the source Card"
+    (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                     :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (is (=? {:query some?}
+              (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}}))))))
 
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
@@ -995,6 +1031,35 @@
                                   (lib/limit 2))]
         (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+
+(mt/defdataset boolean-like-strings
+  [["ratings"
+    [{:field-name "isactive", :base-type :type/Text}]
+    [["true"] ["true"] ["false"]]]])
+
+(deftest ^:parallel filter-text-column-on-boolean-like-string-test
+  (testing "filtering a text column on the literal string \"true\" should not coerce it to a boolean (#80004)"
+    (mt/dataset boolean-like-strings
+      (let [mp (mt/metadata-provider)
+            ratings           (lib.metadata/table mp (mt/id :ratings))
+            isactive          (lib.metadata/field mp (mt/id :ratings :isactive))
+            query             (-> (lib/query mp ratings)
+                                  (lib/filter (lib/= isactive "true")))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "true"] [2 "true"]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query))))))
+  (testing "filtering a boolean column on an actual boolean should still work"
+    (mt/dataset places-cam-likes
+      (let [mp (mt/metadata-provider)
+            places            (lib.metadata/table mp (mt/id :places))
+            liked             (lib.metadata/field mp (mt/id :places :liked))
+            query             (-> (lib/query mp places)
+                                  (lib/filter (lib/= liked true)))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "Tempest" true] [2 "Bullit" true]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mbql5-query-convert-to-native-test

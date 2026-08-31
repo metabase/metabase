@@ -277,12 +277,23 @@ const getRefreshToken = async ({
         headers: getSdkRequestHeaders(),
       });
 
-  const { method, url: responseUrl, hash } = urlResponseJson || {};
-  if (method === "saml") {
-    const token = await openSamlLoginPopup(responseUrl);
-    samlTokenStorage.set(token);
+  const {
+    method,
+    url: responseUrl,
+    hash,
+    "saml-popup-url": samlPopupUrl,
+  } = urlResponseJson || {};
 
-    return token;
+  if (method === "saml") {
+    const sessionToken = await openSamlLoginPopup(
+      responseUrl,
+      metabaseInstanceUrl,
+      samlPopupUrl,
+    );
+
+    samlTokenStorage.set(sessionToken);
+
+    return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(

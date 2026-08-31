@@ -7,6 +7,7 @@ import {
   trackExplorationCommentCreated,
   trackExplorationExploreFurtherClicked,
 } from "metabase/explorations/analytics";
+import { createQuery } from "metabase/explorations/test-utils";
 import type {
   ClickActionPopoverProps,
   ClickObject,
@@ -17,6 +18,15 @@ import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 import type { CommentDrafts } from "../types";
 
 import { useExplorationClickActionsMode } from "./useExplorationClickActionsMode";
+
+const defaultQuery = createQuery({
+  id: 101,
+  name: "q-101",
+  status: "done",
+  segment_name: null,
+});
+const defaultQueryIds = [101];
+const defaultQueriesById = { 101: defaultQuery };
 
 const exploreFurtherMock = jest.fn();
 const createCommentMock = jest.fn();
@@ -105,6 +115,8 @@ function renderMode(
         queryType: "default",
         commentDrafts,
         setCommentDrafts,
+        seriesQueryIds: defaultQueryIds,
+        queriesById: defaultQueriesById,
         ...overrides,
       }),
     {
@@ -228,7 +240,7 @@ describe("useExplorationClickActionsMode", () => {
     );
   });
 
-  it("creates a comment with highlighted context and closes on success", async () => {
+  it("creates a comment with highlighted context, highlight_label, and closes on success", async () => {
     const onClose = jest.fn();
     const { result } = renderMode();
     const Popover = getAddCommentPopover(
@@ -252,10 +264,11 @@ describe("useExplorationClickActionsMode", () => {
         child_target_id: "7",
         context: {
           highlighted: {
-            cardId: 101,
             columnName: "count",
             dimensions: [{ columnName: "category", value: "Gadget" }],
           },
+          exploration_query_ids: [101],
+          highlight_label: "Gadget",
         },
       }),
     );
@@ -264,6 +277,16 @@ describe("useExplorationClickActionsMode", () => {
       42,
       "chart_click",
     );
+  });
+
+  it("offers add-comment but not explore-further when blockType/queryType are omitted", () => {
+    const { result } = renderMode({
+      blockType: undefined,
+      queryType: undefined,
+    });
+    const actions = result.current.actionsForClick(makeClicked());
+
+    expect(actions.map((action) => action.name)).toEqual(["add-comment"]);
   });
 
   it("shows an error toast when comment creation fails", async () => {

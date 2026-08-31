@@ -1,8 +1,9 @@
 import type { ComponentProps } from "react";
 
-import { NativeQueryRightSidebar } from "metabase/query_builder/components/view/View/NativeQueryRightSidebar/NativeQueryRightSidebar";
-import { StructuredQueryRightSidebar } from "metabase/query_builder/components/view/View/StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 import * as Lib from "metabase-lib";
+
+import { NativeQueryRightSidebar } from "../NativeQueryRightSidebar/NativeQueryRightSidebar";
+import { StructuredQueryRightSidebar } from "../StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 
 type ViewRightSidebarContainerProps = ComponentProps<
   typeof NativeQueryRightSidebar
@@ -25,10 +26,8 @@ export const ViewRightSidebarContainer = (
     hideTimelineEvents,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
-    onCloseAIQuestionAnalysisSidebar,
     onCloseSummary,
     onCloseTimelines,
     onOpenModal,
@@ -52,10 +51,8 @@ export const ViewRightSidebarContainer = (
       hideTimelineEvents={hideTimelineEvents}
       isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
-      isShowingAIQuestionAnalysisSidebar={isShowingAIQuestionAnalysisSidebar}
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
-      onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
       onCloseSummary={onCloseSummary}
       onCloseTimelines={onCloseTimelines}
       onOpenModal={onOpenModal}

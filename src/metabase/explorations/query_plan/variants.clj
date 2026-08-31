@@ -9,6 +9,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [metabase.api.common :as api]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -334,11 +335,10 @@
         ;; per-bin line series (e.g. 8 lines for an auto-binned `Subtotal`)
         ;; rather than one line per raw value.
         dim-breakout (qp.mbql/apply-default-bucket base-query ref-clause dim)]
-    (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
-                                        mp (:dataset_query card))]
+    (when-let [[temporal-col unit] (qp.mbql/default-time-dimension-col base-query card)]
       ;; Row cap is defense-in-depth: the planner's `:max-cardinality 20` gate
       ;; is fingerprint-based and can be stale (claims low, reality high).
-      (let [temporal-breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month))]
+      (let [temporal-breakout (lib/with-temporal-bucket temporal-col unit)]
         (-> base-query
             (lib/breakout dim-breakout)
             (lib/breakout temporal-breakout)
@@ -355,7 +355,7 @@
             ;; Postgres and other strict warehouses. No-op for text dims.
             pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) (str v)]) top-values)
             case-expr              (lib/case pairs other-bucket-label)
-            expr-name              (or (:display-name dim) (:dimension-id dim) "value")
+            expr-name              (or (block/dimension-label dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)
             with-bo                (lib/breakout with-expr (lib/expression-ref with-expr expr-name))]
         ;; Order by metric desc within the named buckets. One note: `(Other)`
@@ -382,16 +382,15 @@
   [_ {:keys [mp card target segment params] :as ctx}]
   (let [v (nth (cached-discovery ctx) (:value_index params) nil)]
     (when (some? v)
-      (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
-                                          mp (:dataset_query card))]
-        (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-              [ref-clause field-ref] (resolve-target base-query target)
-              temporal-breakout      (lib/with-temporal-bucket temporal-col (or raw-unit :month))]
-          (-> base-query
-              (lib/filter (lib/= (or field-ref ref-clause) v))
-              (lib/breakout temporal-breakout)
-              (maybe-segment-filtered segment)
-              (order-by-temporal-and-limit temporal-breakout default-max-rows)))))))
+      (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)]
+        (when-let [[temporal-col unit] (qp.mbql/default-time-dimension-col base-query card)]
+          (let [[ref-clause field-ref] (resolve-target base-query target)
+                temporal-breakout      (lib/with-temporal-bucket temporal-col unit)]
+            (-> base-query
+                (lib/filter (lib/= (or field-ref ref-clause) v))
+                (lib/breakout temporal-breakout)
+                (maybe-segment-filtered segment)
+                (order-by-temporal-and-limit temporal-breakout default-max-rows))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; pin-other-last — runner-side result post-processing.

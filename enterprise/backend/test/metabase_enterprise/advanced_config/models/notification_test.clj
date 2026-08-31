@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -77,3 +78,22 @@
               (is (=? {:status "success"}
                       (api:unsubscribe-undo 200 handler-id "cam@metabase.com")))
               (is (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))))))))
+
+(deftest validate-email-handlers!-test
+  (testing "the send-time check reuses validate-email-handlers!, which throws on a disallowed raw external recipient"
+    (let [handler (fn [email] {:channel_type :channel/email
+                               :recipients   [{:type :notification-recipient/raw-value :details {:value email}}
+                                              {:type :notification-recipient/user :user {:email "someone@evil.com"}}]})]
+      (mt/with-premium-features #{:email-allow-list}
+        (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
+          (testing "throws for a disallowed external recipient"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not allowed"
+                 (models.notification/validate-email-handlers! [(handler "attacker@evil.com")]))))
+          (testing "does not throw for an allowed external recipient (user recipients are never domain-checked)"
+            (is (nil? (models.notification/validate-email-handlers! [(handler "cam@metabase.com")]))))))
+      (testing "no-op without the :email-allow-list feature"
+        (mt/with-premium-features #{}
+          (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
+            (is (nil? (models.notification/validate-email-handlers! [(handler "attacker@evil.com")])))))))))

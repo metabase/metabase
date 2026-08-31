@@ -34,10 +34,16 @@
       500 (tru "Mistral returned an internal server error")
       (tru "Mistral API error (HTTP {0})" status))))
 
-(def ^:private supported-models
-  "Mistral models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "Mistral models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"mistral-medium-3-5" "Mistral Medium 3.5"})
+  {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know.
+  Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- whitelisted-id
   "The [[supported-models]] id a `/models` catalog entry resolves to, or nil when unsupported.
@@ -80,7 +86,7 @@
                  distinct
                  sort
                  (mapv (fn [id]
-                         {:id id :display_name (supported-models id)})))}))
+                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
 (mu/defn mistral-request-body
   "Build the Chat Completions request body for an LLM request.

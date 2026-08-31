@@ -3,16 +3,16 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import type {
-  ComputedVisualizationSettings,
-  PivotedDatasetColumn,
-  PivotedRowValues,
-} from "metabase/visualizations/types";
 import type {
   BodyItem,
   HeaderItem,
 } from "metabase/visualizations/visualizations/PivotTable/types";
+import {
+  type ComputedVisualizationSettings,
+  type PivotedDatasetColumn,
+  type PivotedRowValues,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   DatasetColumn,
@@ -25,6 +25,12 @@ export function isPivotGroupColumn(
   col: Pick<DatasetColumn, "name"> | undefined,
 ) {
   return col?.name === "pivot-grouping";
+}
+
+// Detail rows (real data, not subtotals/totals) have a pivot-grouping of 0;
+// Number() so a string-typed value from some drivers still compares.
+export function isPivotDetailRow(row: RowValues, pivotGroupingIndex: number) {
+  return Number(row[pivotGroupingIndex]) === 0;
 }
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";

@@ -97,7 +97,7 @@
                                         :setter :none
                                         :visibility :internal})))))
   (testing "Internal settings with a setter get no config file line"
-    (is (= "" (#'sut/format-config-name {:munged-name "internal-setting"
+    (is (nil? (#'sut/format-config-name {:munged-name "internal-setting"
                                          :visibility :internal}))))
   (testing "Settable, non-internal settings get their config file name"
     (is (= "[Configuration file name](./config-file.md): `admin-email`"

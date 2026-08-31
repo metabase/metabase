@@ -47,7 +47,7 @@ export function AdminNavItem({
       to={path ?? ""}
       defaultOpened={folderPattern ? subpath.includes(folderPattern) : false}
       active={path === subpath}
-      variant="admin-nav"
+      variant="secondary"
       label={label}
       mb="xs"
       {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}

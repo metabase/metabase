@@ -2,22 +2,20 @@ import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
 import { isNative } from "metabase/common/utils/card";
+import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import {
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type TreemapChartColumns,
+  type TreemapTree,
   getNodesFromPath,
   getTreemapRootNodeId,
   isOverview,
-} from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type {
-  TreemapChartColumns,
-  TreemapTree,
-} from "metabase/visualizations/echarts/graph/treemap/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
-import type {
-  ClickObject,
-  ComputedVisualizationSettings,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+} from "metabase/viz-core";
 import type { ClickObjectDimension } from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { RawSeries, RowValue } from "metabase-types/api";

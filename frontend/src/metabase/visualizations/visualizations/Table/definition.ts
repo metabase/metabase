@@ -8,23 +8,19 @@ import {
 } from "metabase/visualizations/analytics";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
+  type ColumnSettingDefinition,
+  type ComputedVisualizationSettings,
+  type FormattableColumn,
+  type VisualizationDefinition,
   columnSettings,
-  isPivoted,
-  tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
-import {
+  getDefaultPivotColumn,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  getOptionFromColumn,
+  isPivoted,
+  makeCellBackgroundGetter,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import {
   isAvatarURL,
   isCoordinate,
@@ -151,10 +147,7 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
+      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
       getDefault: ([series]: Series) => {
         const { card, data } = series;
         let native: boolean;

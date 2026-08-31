@@ -420,34 +420,37 @@
     (entity-result (present-collection coll))))
 
 (defn- fetch-collection-items [id-str query-params]
-  (let [coll-id        (parse-long id-str)
-        coll           (api/read-check :model/Collection coll-id)
-        cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                        :collection_id :database_id :table_id]
-                                       {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                        :order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        documents      (->> (t2/select [:model/Document :id :name :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                        :description :personal_owner_id]
-                                       :location (str (:location coll) coll-id "/")
-                                       :archived false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        items          (concat (map present-collection subcollections)
-                               (map present-card cards)
-                               (map present-dashboard dashboards)
-                               (map present-document documents))]
-    (list-result :collection-items items query-params)))
+  (documents/with-content-gate-cache
+    (let [coll-id        (parse-long id-str)
+          coll           (api/read-check :model/Collection coll-id)
+          cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                          :collection_id :database_id :table_id]
+                                         {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
+                                          :order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
+                                         :collection_id coll-id
+                                         :archived      false
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
+          documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
+                                         :collection_id  coll-id
+                                         :archived       false
+                                         :exploration_id nil
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
+                                          :description :personal_owner_id]
+                                         :location (str (:location coll) coll-id "/")
+                                         :archived false
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          items          (concat (map present-collection subcollections)
+                                 (map present-card cards)
+                                 (map present-dashboard dashboards)
+                                 (map present-document documents))]
+      (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll-id (parse-long id-str)
@@ -471,11 +474,18 @@
   (when db-id
     (warehouses/get-database db-id)))
 
-(defn- check-table-resource-database [table-id]
+(defn check-table-resource-database
+  "Require that `table-id`'s backing database is addressable as a Metabot resource (see
+  [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]], which needs the
+  same guard for the `get_field_values` tool."
+  [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
     (check-resource-database (:db_id table))))
 
-(defn- check-card-resource-database [card-id]
+(defn check-card-resource-database
+  "Require that `card-id`'s (model/question/metric) backing database is addressable as a Metabot
+  resource (see [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]]."
+  [card-id]
   (when-let [card (api/read-check :model/Card card-id)]
     (check-resource-database (:database_id card))))
 
@@ -1094,7 +1104,8 @@
   - metabase://chart/{chart_id} - the chart's type and its query
   - metabase://query/{query_id} - the query definition"
   [{:keys [uris]} :- [:map {:closed true}
-                      [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
+                      [:uris [:sequential {:error/message "must be an array of URI strings"}
+                              [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
     (read-resource {:uris uris})
     (catch Exception e

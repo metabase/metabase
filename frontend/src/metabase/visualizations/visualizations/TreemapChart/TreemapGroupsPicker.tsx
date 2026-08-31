@@ -1,19 +1,11 @@
 import { t } from "ttag";
 
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries, TreemapRow } from "metabase-types/api";
-
-export type TreemapGroupsPickerProps = {
-  rawSeries: RawSeries;
-  settings: ComputedVisualizationSettings;
-  onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
-  onShowWidget: (
-    widget: { id?: string; props?: { seriesKey: string } },
-    ref: HTMLElement | undefined,
-  ) => void;
-};
+import {
+  type TreemapGroupsPickerProps,
+  getTreemapChartColumns,
+} from "metabase/viz-core";
+import type { TreemapRow } from "metabase-types/api";
 
 export function TreemapGroupsPicker({
   rawSeries,

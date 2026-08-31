@@ -70,15 +70,29 @@
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
-(defn- parse-target [[model-name id :as target]]
+(defn- missing-target-error
+  "Bad-input error for a target that matches no row. `id-kind` names the flavour of id for the message."
+  [model-name id-kind id]
+  (ex-info (format "Could not find %s with %s: %s" model-name id-kind id)
+           {:status-code 400
+            :model       model-name
+            :id          id}))
+
+(defn- parse-target
+  "Normalizes a `[model-name id]` target to a database-local id, checking that it actually exists.
+
+  Nothing downstream treats a missing target as an error: `serdes/descendants` finds no children for an
+  id with no row behind it, and a `nil` id quietly exports root-level content. Both are reported as bad
+  input here instead."
+  [[model-name id :as target]]
   (if (string? id)
     (if-let [resolved-id (serdes/eid->id model-name id)]
       [model-name resolved-id]
-      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
-                      {:status-code 400
-                       :model       model-name
-                       :entity-id   id})))
-    target))
+      (throw (missing-target-error model-name "entity ID" id)))
+    (let [model (keyword "model" model-name)]
+      (when-not (t2/exists? model (first (t2/primary-keys model)) id)
+        (throw (missing-target-error model-name "ID" id)))
+      target)))
 
 (defn- analytics-collection-ids
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).

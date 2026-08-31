@@ -14,12 +14,13 @@
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
+   Preserves :status-code and :terminal-error? from ex-data."
   [e]
-  (let [{:keys [agent-error? status-code]} (ex-data e)]
+  (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
     (if agent-error?
       (cond-> {:output (ex-message e)}
-        status-code (assoc :status-code status-code))
+        status-code     (assoc :status-code status-code)
+        terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
 (defn convert-field-type
@@ -264,11 +265,25 @@
       (integer? limit)
       (assoc :limit limit))))
 
+(defn- destination-db-ids
+  "Returns the subset of `db-ids` that back a destination (routed) database -- routing internals
+  reachable only through their router database (see
+  [[metabase.metabot.tools.resources/check-resource-database]])."
+  [db-ids]
+  (when (seq db-ids)
+    (t2/select-fn-set :id :model/Database :id [:in db-ids] :router_database_id [:not= nil])))
+
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 
-  Only cards visible to the current user are returned."
+  Only cards visible to the current user are returned, excluding those backed by a destination
+  (routed) database (see [[destination-db-ids]])."
   [metabot-id & {:as opts}]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
-                             ;; qualified: the official-collections branch joins `collection`, which also has `id`
-                             (update :order-by (fnil conj []) [:report_card.id]))))
+  (let [cards (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
+                                         ;; qualified: the official-collections branch joins `collection`,
+                                         ;; which also has `id`
+                                         (update :order-by (fnil conj []) [:report_card.id])))
+        destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
+    (if (seq destination-ids)
+      (remove #(contains? destination-ids (:database_id %)) cards)
+      cards)))

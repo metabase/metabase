@@ -16,6 +16,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -362,6 +363,7 @@
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions?     :boolean]
+   [:show-exploration-documents?   :boolean]
    [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
@@ -456,24 +458,27 @@
 
 (defmethod ^:private post-process-collection-children :document
   [_ _ collection rows]
-  (t2/hydrate (for [document rows]
-                (-> (t2/instance :model/Document document)
-                    (assoc :location (or (when collection
-                                           (collection/children-location collection))
-                                         "/"))
-                    (dissoc :namespace)
-                    (update :archived api/bit->boolean)
-                    (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
+  (documents/with-content-gate-cache
+    (map #(dissoc % :exploration_id)
+         (t2/hydrate (for [document rows]
+                       (-> (t2/instance :model/Document document)
+                           (assoc :location (or (when collection
+                                                  (collection/children-location collection))
+                                                "/"))
+                           (dissoc :namespace)
+                           (update :archived api/bit->boolean)
+                           (update :archived_directly api/bit->boolean)))
+                     :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
   (-> {:select [:document.id
                 :document.name
                 :document.collection_id
                 :document.collection_position
                 :document.archived
                 :document.archived_directly
+                :document.exploration_id
                 [:u.id :last_edit_user]
                 [:u.email :last_edit_email]
                 [:u.first_name :last_edit_first_name]
@@ -493,7 +498,12 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
+               [:= :document.archived (boolean archived?)]
+               ;; Hide exploration-attached documents - similar to Dashboard Questions, they're not visible in the
+               ;; collection, but only through the Exploration they're in. Callers that want them (e.g. the
+               ;; Trash view, embedding SDK) pass show-exploration-documents? to opt in.
+               (when-not show-exploration-documents?
+                 [:= :document.exploration_id nil])]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod ^:private post-process-collection-children :exploration
@@ -508,21 +518,35 @@
               :can_write :can_restore :can_delete))
 
 (def ^:private exploration-recent-edits-subquery
-  ;; Per-exploration latest edit, from the Exploration's own metadata revisions.
-  ;; `rn = 1` picks the winner.
+  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
+  ;; revisions of its Summary Document. `rn = 1` picks the winner.
+  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
+  ;; the attached Document, so "Last edited" must reflect both sources.
   ^:allow-subquery
   {:select [:exploration_id
             :timestamp
             :user_id
             [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
                                                      :order-by     [[:timestamp :desc]]}]] :rn]]
-   :from   [[^:allow-subquery {:select [[:r.model_id :exploration_id]
-                                        [:r.timestamp :timestamp]
-                                        [:r.user_id   :user_id]]
-                               :from   [[:revision :r]]
-                               :where  [:and
-                                        [:= :r.model (h2x/literal "Exploration")]
-                                        [:= :r.most_recent true]]}
+   :from   [[^:allow-subquery {:union-all
+                               [^:allow-subquery
+                                {:select [[:r.model_id :exploration_id]
+                                          [:r.timestamp :timestamp]
+                                          [:r.user_id   :user_id]]
+                                 :from   [[:revision :r]]
+                                 :where  [:and
+                                          [:= :r.model (h2x/literal "Exploration")]
+                                          [:= :r.most_recent true]]}
+                                ^:allow-subquery
+                                {:select [[:d.exploration_id :exploration_id]
+                                          [:r.timestamp      :timestamp]
+                                          [:r.user_id        :user_id]]
+                                 :from   [[:revision :r]]
+                                 :join   [[:document :d] [:= :d.id :r.model_id]]
+                                 :where  [:and
+                                          [:= :r.model (h2x/literal "Document")]
+                                          [:= :r.most_recent true]
+                                          [:not= :d.exploration_id nil]]}]}
              :all_edits]]})
 
 (defmethod collection-children-query :exploration
@@ -705,13 +729,23 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
+      ;; `card-query` filters `[:= :c.document_id nil]` unconditionally, so every row here is known
+      ;; not to belong to a Document. Say so on the instance: `mi/can-write?` consults `document_id`
+      ;; (a Document-scoped Card is gated by its Document), and an instance that merely *omits* the
+      ;; column makes it resolve one from the primary key instead — one extra query per row, on a
+      ;; listing that renders a full page of them. Stamping it rather than selecting it keeps the
+      ;; column out of `all-select-columns`, which every model's union arm would otherwise have to
+      ;; pad, and out of the response body.
+      (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
 (defn- post-process-card-row-after-hydrate [row]
-  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace)
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace
+              ;; internal-only: stamped in `post-process-card-row` for the permission check
+              :document_id)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
@@ -1525,19 +1559,21 @@
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type
-           show-dashboard-questions q include-available-models]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe Models]]
-                                                                     [:collection-type             {:optional true} CollectionType]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                     [:include-library             {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                     [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                     [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                     [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:q                           {:optional true} [:maybe :string]]
-                                                                     [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
+           show-dashboard-questions show-exploration-documents
+           q include-available-models]} :- [:map
+                                            [:models                      {:optional true} [:maybe Models]]
+                                            [:collection-type             {:optional true} CollectionType]
+                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                            [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                            [:include-library             {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                            [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                            [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                            [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:q                           {:optional true} [:maybe :string]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1548,6 +1584,7 @@
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
+                         :show-exploration-documents? (boolean show-exploration-documents)
                          :collection-type             collection-type
                          :include-library?            include-library
                          :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
@@ -1570,26 +1607,28 @@
   scope params so the metadata describes the list being shown."
   [_route-params
    {:keys [models archived namespace pinned-state collection-type include-library
-           show-dashboard-questions]} :- [:map
-                                          [:models                   {:optional true} [:maybe Models]]
-                                          [:archived                 {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                {:optional true} [:maybe ms/NonBlankString]]
-                                          [:pinned-state             {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:collection-type          {:optional true} CollectionType]
-                                          [:include-library          {:default false} [:maybe ms/BooleanValue]]
-                                          [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
+           show-dashboard-questions show-exploration-documents]} :- [:map
+                                                                     [:models                     {:optional true} [:maybe Models]]
+                                                                     [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                     [:collection-type            {:optional true} CollectionType]
+                                                                     [:include-library            {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         restrict-models (visible-model-kwds root-collection model-set)]
     (collection-items-metadata root-collection restrict-models
-                               {:archived?                 (boolean archived)
-                                :show-dashboard-questions? (boolean show-dashboard-questions)
-                                :collection-type           collection-type
-                                :include-library?          include-library
-                                :pinned-state              (keyword pinned-state)
-                                :sort-info                 {:sort-column                 :name
-                                                            :sort-direction              :asc
-                                                            :official-collections-first? false}})))
+                               {:archived?                   (boolean archived)
+                                :show-dashboard-questions?   (boolean show-dashboard-questions)
+                                :show-exploration-documents? (boolean show-exploration-documents)
+                                :collection-type             collection-type
+                                :include-library?            include-library
+                                :pinned-state                (keyword pinned-state)
+                                :sort-info                   {:sort-column                 :name
+                                                              :sort-direction              :asc
+                                                              :official-collections-first? false}})))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -1830,20 +1869,23 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
-           show-dashboard-questions q include-available-models]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe Models]]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                     [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                     [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                     [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:q                           {:optional true} [:maybe :string]]
-                                                                     [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
+           show-dashboard-questions show-exploration-documents
+           q include-available-models]} :- [:map
+                                            [:models                      {:optional true} [:maybe Models]]
+                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                            [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                            [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                            [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
+                                            [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
+                                            [:q                           {:optional true} [:maybe :string]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
         options     {:show-dashboard-questions?   show-dashboard-questions
+                     :show-exploration-documents? show-exploration-documents
                      :models                      model-kwds
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
@@ -1865,24 +1907,27 @@
 (api.macros/defendpoint :get "/:id/items/metadata" :- ::ItemsMetadata
   "Metadata about the collection's items list: the models with at least one visible item plus the item count. Unlike
   `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope
-  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions` -- so the metadata describes the list
-  being shown."
+  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the
+  metadata describes the list being shown."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [models archived pinned-state show-dashboard-questions]} :- [:map
-                                                                       [:models                   {:optional true} [:maybe Models]]
-                                                                       [:archived                 {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:pinned-state             {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                       [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models archived pinned-state
+           show-dashboard-questions show-exploration-documents]} :- [:map
+                                                                     [:models                     {:optional true} [:maybe Models]]
+                                                                     [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                     [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         collection  (api/read-check :model/Collection resolved-id)]
     (collection-items-metadata collection (set (map keyword (u/one-or-many models)))
-                               {:archived?                 (boolean (or archived
-                                                                        (:archived collection)
-                                                                        (collection/is-trash? collection)))
-                                :show-dashboard-questions? (boolean show-dashboard-questions)
-                                :pinned-state              (keyword pinned-state)
-                                :include-library?          true
-                                :sort-info                 {:sort-column                 :name
-                                                            :sort-direction              :asc
-                                                            :official-collections-first? false}})))
+                               {:archived?                   (boolean (or archived
+                                                                          (:archived collection)
+                                                                          (collection/is-trash? collection)))
+                                :show-dashboard-questions?   (boolean show-dashboard-questions)
+                                :show-exploration-documents? (boolean show-exploration-documents)
+                                :pinned-state                (keyword pinned-state)
+                                :include-library?            true
+                                :sort-info                   {:sort-column                 :name
+                                                              :sort-direction              :asc
+                                                              :official-collections-first? false}})))

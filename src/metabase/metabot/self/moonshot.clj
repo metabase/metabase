@@ -40,13 +40,18 @@
       500 (tru "Moonshot returned an internal server error")
       (tru "Moonshot API error (HTTP {0})" status))))
 
-(def ^:private supported-models
-  "Moonshot models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "Moonshot models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
   The `kimi-k2.7-code` models the catalog also carries are coding models, not agent models, and are excluded."
-  {"kimi-k2.6" "Kimi K2.6"
-   "kimi-k3"   "Kimi K3"})
+  {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
+   "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-only-models
   "Models whose catalog entry reports `supports_thinking_type: \"only\"`: thinking cannot be turned off, so sending
@@ -95,7 +100,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (supported-models id)})))}))
+                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
 (mu/defn moonshot-request-body
   "Build the Chat Completions request body for an LLM request.

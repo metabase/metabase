@@ -1,9 +1,24 @@
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
+import type { ComponentType } from "react";
+import _ from "underscore";
+
 import {
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
+import {
+  convertLinkColumnToClickBehavior,
+  removeInternalClickBehaviors,
+} from "metabase/embedding-sdk/lib/links";
+import {
+  type ChartSettingColorRangeProps,
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
   registerSettingWidgets,
   registerVisualization,
+  setComputedSettingsTransform,
   setDefaultVisualization,
-} from "metabase/visualizations";
+  setTooltipRootProvider,
+} from "metabase/viz-core";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
@@ -31,6 +46,7 @@ import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSerie
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
+import { ColorRangeSelector } from "./components/settings/ColorRangeSelector";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
@@ -187,7 +203,8 @@ function registerVisualizationSettingWidgets() {
     fieldsPartition: ChartSettingFieldsPartition,
     color: ChartSettingColorPicker,
     colors: ChartSettingColorsPicker,
-    colorRangeSelector: ColorRangeSelector,
+    colorRangeSelector:
+      ColorRangeSelector satisfies ComponentType<ChartSettingColorRangeProps>,
     linkUrlInput: ChartSettingLinkUrlInput,
     tableFormatting: ChartSettingsTableFormatting,
     multiselect: ChartSettingMultiSelect,
@@ -207,8 +224,35 @@ function registerVisualizationSettingWidgets() {
   });
 }
 
+function transformComputedSettingsForSdk(
+  computedSettings: ComputedVisualizationSettings,
+  extra: SettingsExtra,
+): ComputedVisualizationSettings {
+  if (!isEmbeddingSdk()) {
+    return computedSettings;
+  }
+
+  const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
+
+  return _.compose(
+    // remove internal click behaviors unless internal navigation is enabled
+    shouldKeepInternalClickBehavior ? _.identity : removeInternalClickBehaviors,
+    convertLinkColumnToClickBehavior,
+  )(computedSettings);
+}
+
+function registerSdkAwareBehaviors() {
+  setComputedSettingsTransform(transformComputedSettingsForSdk);
+  setTooltipRootProvider(() =>
+    isEmbeddingSdk()
+      ? document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+      : document.body,
+  );
+}
+
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
+  registerSdkAwareBehaviors();
 }

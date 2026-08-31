@@ -87,7 +87,7 @@
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
@@ -116,7 +116,7 @@
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
@@ -139,7 +139,7 @@
 
 (defsetting llm-openrouter-api-base-url
   (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
@@ -162,7 +162,7 @@
 
 (defsetting llm-zai-api-base-url
   (deferred-tru "The Z.AI API base URL used for Chat Completions.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.z.ai/api/paas/v4"
   :export?    false
@@ -185,7 +185,7 @@
 
 (defsetting llm-mistral-api-base-url
   (deferred-tru "The Mistral API base URL used for Chat Completions.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.mistral.ai/v1"
   :export?    false
@@ -206,7 +206,7 @@
 
 (defsetting llm-moonshot-api-base-url
   (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    "https://api.moonshot.ai/v1"
   :export?    false
@@ -222,6 +222,27 @@
   :getter     (connection-field-getter :llm-moonshot-api-key)
   :setter     (connection-field-setter :llm-moonshot-api-key)
   :doc        "Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+;;; ------------------------------------------------- DeepSeek --------------------------------------------------
+
+(defsetting llm-deepseek-api-base-url
+  (deferred-tru "The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :default    "https://api.deepseek.com"
+  :export?    false
+  :getter     (connection-field-getter :llm-deepseek-api-base-url)
+  :setter     (connection-field-setter :llm-deepseek-api-base-url)
+  :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-deepseek-api-key
+  (deferred-tru "The DeepSeek API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-deepseek-api-key)
+  :setter     (connection-field-setter :llm-deepseek-api-key)
+  :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
@@ -301,7 +322,7 @@
 
 (defsetting llm-google-api-base-url
   (deferred-tru "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.")
-  :encryption  :no
+  :encryption  :when-encryption-key-set
   :visibility  :settings-manager
   :default     google-global-api-base-url
   :export?     false
@@ -362,7 +383,7 @@
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
-  :encryption  :no
+  :encryption  :when-encryption-key-set
   :visibility  :settings-manager
   :export?     false
   :getter      (connection-field-getter :llm-azure-api-base-url)
@@ -386,6 +407,34 @@
   :getter     (connection-field-getter :llm-azure-deployment-name)
   :setter     (connection-field-setter :llm-azure-deployment-name)
   :doc        "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+;;; --------------------------------------------------- vLLM ----------------------------------------------------
+
+(defsetting llm-vllm-api-base-url
+  (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-base-url)
+  :setter     (connection-field-setter :llm-vllm-api-base-url)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-api-key
+  (deferred-tru "The API key for your vLLM server. Only needed when the server was started with `--api-key`.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-key)
+  :setter     (connection-field-setter :llm-vllm-api-key)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware; the shared 60s default is too short.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
@@ -415,7 +464,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :offer-metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false
@@ -425,7 +474,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   (deferred-tru "Base URL for the managed Metabase AI service.")
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false
