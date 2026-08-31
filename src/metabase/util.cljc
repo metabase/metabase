@@ -186,19 +186,6 @@
       %)
    m))
 
-(defn add-period
-  "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
-   Used for formatting docs."
-  [s]
-  (let [text (str s)]
-    (cond
-      (str/blank? text) text
-      (#{\. \? \!} (last text)) text
-      (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
-      :else (str text "."))))
-
 (defn trimmed-string
   "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
   ^String [value]
