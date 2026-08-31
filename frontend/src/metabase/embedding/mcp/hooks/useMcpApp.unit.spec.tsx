@@ -185,6 +185,45 @@ describe("useMcpApp", () => {
     expect(result.current.query).toBe("next-encoded-query");
   });
 
+  it("aborts an in-flight auth request when a newer tool result arrives", async () => {
+    let resolveFirstRefresh!: (
+      result: ReturnType<typeof createAuthResult>,
+    ) => void;
+    const firstRefresh = new Promise<ReturnType<typeof createAuthResult>>(
+      (resolve) => {
+        resolveFirstRefresh = resolve;
+      },
+    );
+    const { app, result } = setup({
+      callServerTool: jest
+        .fn()
+        .mockReturnValueOnce(firstRefresh)
+        .mockResolvedValueOnce(
+          createAuthResult("next-credential", "next-session-id"),
+        ),
+      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+    });
+
+    act(() => app.ontoolresult(QUERY_RESULT));
+    const firstSignal = app.callServerTool.mock.calls[0][1]?.signal;
+
+    await act(async () => app.ontoolresult(NEXT_QUERY_RESULT));
+
+    expect(firstSignal?.aborted).toBe(true);
+    expect(result.current.query).toBe("next-encoded-query");
+    expect(result.current.uiCredential).toBe("next-credential");
+
+    await act(async () => {
+      resolveFirstRefresh(
+        createAuthResult("stale-credential", "stale-session-id"),
+      );
+      await firstRefresh;
+    });
+
+    expect(result.current.query).toBe("next-encoded-query");
+    expect(result.current.uiCredential).toBe("next-credential");
+  });
+
   it("reports an error after two initial credential refresh failures", async () => {
     jest.useFakeTimers();
     jest.spyOn(console, "error").mockImplementation();
