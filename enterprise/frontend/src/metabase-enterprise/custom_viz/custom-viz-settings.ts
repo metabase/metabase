@@ -41,10 +41,10 @@ export type HostContext = {
 };
 
 /**
- * Turn a plugin's `vizDef.settings` into host definitions. Setting ids and
+ * Turns plugin's `vizDef.settings` into host definitions. Setting ids and
  * dependency ids get the plugin's namespace, every callback sees the plugin's
- * view of the series and settings, and Component widgets are rewrapped into
- * host-allocated `WidgetMount`s that delegate to the plugin's `mount`.
+ * view of the series and settings, and custom setting widgets are rewrapped into
+ * host-side `WidgetMount`s.
  */
 export function sanitizePluginSettings(
   settings: PluginSettingDefinitions | undefined,
@@ -65,7 +65,7 @@ export function sanitizePluginSettings(
       if (!isObject(definition)) {
         return [];
       }
-      // Definitions leave the sandbox as opaque branded values; at runtime they are the `defineSetting` argument.
+      // Definitions leave the sandbox as opaque branded values.
       return [[settingId, definition as unknown as PluginSettingDefinition]];
     },
   );
@@ -144,9 +144,9 @@ function prefixSettingIds(
   if (!Array.isArray(ids)) {
     return undefined;
   }
-  return ids
-    .filter((id): id is string => typeof id === "string")
-    .map((id) => `${prefix}${id}`);
+  return ids.flatMap((id) =>
+    typeof id === "string" ? [`${prefix}${id}`] : [],
+  );
 }
 
 // Built-in widgets are names; by the public contract a function-shaped widget is a React component.
