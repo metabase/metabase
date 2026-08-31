@@ -98,6 +98,7 @@ export function getStoredSettingsForSeries(
   definitions?: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   let storedSettings = series?.[0]?.card?.visualization_settings ?? {};
+
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
     storedSettings = assocIn(
@@ -106,19 +107,21 @@ export function getStoredSettingsForSeries(
       normalizeColumnSettings(storedSettings.column_settings),
     );
   }
+
   const display = series?.[0]?.card?.display;
+
   if (isCustomVizDisplay(display)) {
-    storedSettings = adoptLegacyCustomVizSettings(
+    storedSettings = migrateLegacyCustomVizSettings(
       storedSettings,
       getCustomVizSettingKeyPrefix(display),
       definitions ?? getSettingDefinitionsForSeries(series),
     );
   }
+
   return storedSettings;
 }
 
-// Cards saved before plugin settings were namespaced hold them under the bare setting id.
-function adoptLegacyCustomVizSettings(
+function migrateLegacyCustomVizSettings(
   storedSettings: VisualizationSettings,
   prefix: string,
   definitions: VisualizationSettingsDefinitions,
@@ -126,20 +129,24 @@ function adoptLegacyCustomVizSettings(
   const legacyKeys = Object.keys(definitions)
     .filter((key) => key.startsWith(prefix))
     .map((key) => [key, key.slice(prefix.length)] as const)
-    .filter(
-      ([, legacyKey]) =>
-        !(legacyKey in definitions) && legacyKey in storedSettings,
-    );
+    .filter(([, legacyKey]) => {
+      return !(legacyKey in definitions) && legacyKey in storedSettings;
+    });
+
   if (legacyKeys.length === 0) {
     return storedSettings;
   }
+
   const settings = { ...storedSettings };
+
   for (const [key, legacyKey] of legacyKeys) {
-    if (settings[key] === undefined) {
+    if (typeof settings[key] === "undefined") {
       settings[key] = settings[legacyKey];
     }
+
     delete settings[legacyKey];
   }
+
   return settings;
 }
 

@@ -89,7 +89,7 @@ const ChartSettingsWidget = ({
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
             widgetProps={{
-              ...props, // spread here intentionally, to prevent overriding 4 base props below
+              ...props, // spread here intentionally, to prevent overriding the base props below
               id: extraWidgetProps.id,
               value: extraWidgetProps.value,
               onChange: checkNotNull(extraWidgetProps.onChange),
