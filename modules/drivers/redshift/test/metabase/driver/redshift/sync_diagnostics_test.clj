@@ -15,11 +15,13 @@
   - [[catalog-census-test]] counts what has accumulated on every cluster+database, because the
     ablations only mean something next to the size of the catalog they scan.
 
-  Off unless `MB_REDSHIFT_SYNC_DIAGNOSTICS` is set: the probes cost a few minutes of cluster time,
-  which no ordinary PR should pay.
+  These run unconditionally and cost minutes of cluster time against every cluster in
+  `MB_REDSHIFT_TEST_HOSTS`, so run them deliberately -- one shard, from workflow dispatch -- rather
+  than as part of a sweep. Run one shard, not several: [[catalog-census-test]] already fans out to
+  every cluster from whichever process executes it, so repeating it per shard multiplies load on the
+  clusters whose load it is measuring.
 
-    MB_REDSHIFT_SYNC_DIAGNOSTICS=1 ./bin/test-agent --drivers=redshift \\
-      :only '[metabase.driver.redshift.sync-diagnostics-test]'"
+    ./bin/test-agent --drivers=redshift :only '[metabase.driver.redshift.sync-diagnostics-test]'"
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -38,10 +40,6 @@
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
-
-(defn- enabled?
-  []
-  (some? (System/getenv "MB_REDSHIFT_SYNC_DIAGNOSTICS")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Running and reporting probes                                          |
@@ -152,26 +150,25 @@
     :sql   ["select count(*) as running from stv_recents where status = 'Running'"]}])
 
 (deftest catalog-census-test
-  (when (enabled?)
-    (mt/test-driver :redshift
-      (testing "what has accumulated on every cluster+database CI can pick"
-        ;; Every host, not just the one this process rolled: a shard's sync pays for what every other
-        ;; shard left behind, and `random-host` pins one cluster per process.
-        (doseq [result (#'redshift.tx/with-gc-pool!
-                        (fn [details]
-                          (let [server (#'redshift.tx/server-label details)]
-                            [server (#'redshift.tx/with-gc-connection
-                                     :redshift details
-                                     (fn [conn]
-                                       (mapv #(run-probe {:connection conn} %) census-probes))
-                                     (fn [e]
-                                       (log/errorf "[redshift-census] %s unreachable: %s" server (ex-message e))
-                                       nil))])))]
-          (let [[server probes] result]
-            (doseq [probe probes]
-              (report-timing! (str "[redshift-census] " server) probe)
-              (report-rows! (str "[redshift-census] " server) probe))))
-        (is true "census is a report, not an assertion -- read the [redshift-census] lines")))))
+  (mt/test-driver :redshift
+    (testing "what has accumulated on every cluster+database CI can pick"
+      ;; Every host, not just the one this process rolled: a shard's sync pays for what every other
+      ;; shard left behind, and `random-host` pins one cluster per process.
+      (doseq [result (#'redshift.tx/with-gc-pool!
+                      (fn [details]
+                        (let [server (#'redshift.tx/server-label details)]
+                          [server (#'redshift.tx/with-gc-connection
+                                   :redshift details
+                                   (fn [conn]
+                                     (mapv #(run-probe {:connection conn} %) census-probes))
+                                   (fn [e]
+                                     (log/errorf "[redshift-census] %s unreachable: %s" server (ex-message e))
+                                     nil))])))]
+        (let [[server probes] result]
+          (doseq [probe probes]
+            (report-timing! (str "[redshift-census] " server) probe)
+            (report-rows! (str "[redshift-census] " server) probe))))
+      (is true "census is a report, not an assertion -- read the [redshift-census] lines"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          describe-database ablations                                             |
@@ -261,27 +258,26 @@
     :sql   (sql-jdbc.sync/describe-fields-sql :redshift {:schema-names schema-names})}])
 
 (deftest describe-database-cost-test
-  (when (enabled?)
-    (mt/test-driver :redshift
-      (testing "which clause of the catalog query costs the minute"
-        (let [db           (mt/db)
-              [inclusion]  (driver.s/db-details->schema-filter-patterns db)
-              schema-names (#'redshift/exactly-named-schemas inclusion)
-              conn-spec    (sql-jdbc.conn/db->pooled-connection-spec db)]
-          (log/infof "[redshift-probe] narrowing to %s" (pr-str schema-names))
-          (doseq [probe (timing-probes schema-names)]
-            (report-timing! "[redshift-probe]" (run-probe conn-spec probe)))
-          ;; End to end, through the production implementation. The test override filters the
-          ;; production result down to one dataset's tables, which would time the filtering rather
-          ;; than the query the filtering is applied to.
-          (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-            (let [start  (System/nanoTime)
-                  tables (:tables (driver/describe-database* :redshift db))]
-              (log/infof "[redshift-probe] %-52s %7d ms  rows=%d"
-                         "driver/describe-database* end to end"
-                         (quot (- (System/nanoTime) start) 1000000)
-                         (count tables))))
-          (is true "cost breakdown is a report -- read the [redshift-probe] lines"))))))
+  (mt/test-driver :redshift
+    (testing "which clause of the catalog query costs the minute"
+      (let [db           (mt/db)
+            [inclusion]  (driver.s/db-details->schema-filter-patterns db)
+            schema-names (#'redshift/exactly-named-schemas inclusion)
+            conn-spec    (sql-jdbc.conn/db->pooled-connection-spec db)]
+        (log/infof "[redshift-probe] narrowing to %s" (pr-str schema-names))
+        (doseq [probe (timing-probes schema-names)]
+          (report-timing! "[redshift-probe]" (run-probe conn-spec probe)))
+        ;; End to end, through the production implementation. The test override filters the
+        ;; production result down to one dataset's tables, which would time the filtering rather
+        ;; than the query the filtering is applied to.
+        (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+          (let [start  (System/nanoTime)
+                tables (:tables (driver/describe-database* :redshift db))]
+            (log/infof "[redshift-probe] %-52s %7d ms  rows=%d"
+                       "driver/describe-database* end to end"
+                       (quot (- (System/nanoTime) start) 1000000)
+                       (count tables))))
+        (is true "cost breakdown is a report -- read the [redshift-probe] lines")))))
 
 (deftest probe-ablations-match-driver-test
   (testing "every clause the ablations remove is still one `get-tables-sql` carries"
