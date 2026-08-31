@@ -117,9 +117,15 @@ export function TrendComparisonRow({
           ) : (
             <>
               {display.date != null && display.date !== "" && (
-                <Text component="span" fz={size} lh={size} c="text-secondary">
+                <Text
+                  component="span"
+                  fz={size}
+                  lh={size}
+                  c="text-secondary"
+                  mr={SIZE_GAPS[size]}
+                >
                   <span data-testid="scalar-period">{display.date}</span>
-                  {", "}
+                  {","}
                 </Text>
               )}
               <Text component="span" fz={size} lh={size} c={changeColor}>
