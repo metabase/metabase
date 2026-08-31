@@ -31,6 +31,8 @@ export const DataModel = {
   },
   TablePicker: {
     get: getTablePicker,
+    expandDatabase: expandTablePickerDatabase,
+    expandSchema: expandTablePickerSchema,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabaseCheckbox,
@@ -286,6 +288,69 @@ function getTablePickerDatabase(name: string) {
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
     .filter(`:contains("${name}")`);
+}
+
+let tablePickerExpandCount = 0;
+
+/**
+ * Expands a database row in the table picker via its toggle, waits for the
+ * schemas request (and, for a lone schema, the dependent tables request) to
+ * resolve, and asserts the children rendered.
+ */
+function expandTablePickerDatabase(name: string) {
+  tablePickerExpandCount += 1;
+  const schemasAlias = `tablePickerSchemas${tablePickerExpandCount}`;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schemas?*").as(schemasAlias);
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerDatabaseToggle(name).click();
+
+  cy.wait(`@${schemasAlias}`, { timeout: 30000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+    const schemas = response?.body;
+    if (Array.isArray(schemas) && schemas.length === 1) {
+      cy.wait(`@${tablesAlias}`, { timeout: 30000 }).then(
+        ({ response: tablesResponse }) => {
+          expect(tablesResponse?.statusCode).to.eq(200);
+        },
+      );
+    }
+  });
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "true",
+  );
+}
+
+/**
+ * Expands a schema row in the table picker and synchronizes on its tables
+ * being loaded, mirroring expandTablePickerDatabase.
+ */
+function expandTablePickerSchema(name: string) {
+  tablePickerExpandCount += 1;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerSchemaToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerSchemaToggle(name).click();
+
+  cy.wait(`@${tablesAlias}`, { timeout: 30000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+  });
+
+  getTablePickerSchemaToggle(name).should("have.attr", "aria-expanded", "true");
 }
 
 function getTablePickerDatabaseToggle(name: string) {
