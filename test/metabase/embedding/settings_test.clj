@@ -89,6 +89,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
             (embed.settings/enable-embedding-simple! true)
+            ;; asserts the deprecated setting the setter under test writes
             (is (true? #_:clj-kondo/ignore (embed.settings/enable-embedding-simple)))
             (is (not (str/blank? (embed.settings/embedding-secret-key))))
             (let [generated-key (embed.settings/embedding-secret-key)]
@@ -117,6 +118,7 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
+        ;; reads the deprecated sdk setting on purpose; that is what this test asserts
         (is (not (and #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)
                       (embed.settings/embedding-app-origins-sdk))))))))
 
@@ -167,24 +169,32 @@
   ;; reads the deprecated enable-embedding setting on purpose; the sync under test bridges from it
   (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
+                          ;; reads the deprecated sdk setting on purpose; the sync under test bridges from it
                           :enable-embedding-sdk         #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)
+                          ;; reads the deprecated static setting on purpose; the sync under test bridges from it
                           :enable-embedding-static      #_:clj-kondo/ignore (embed.settings/enable-embedding-static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
+          ;; compares against the deprecated sdk setting the sync bridges from
           (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          ;; compares against the deprecated static setting the sync bridges from
           (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
+          ;; compares against the deprecated sdk setting the sync bridges from
           (is (= [expected-behavior true] [:sets-all-true #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          ;; compares against the deprecated static setting the sync bridges from
           (is (= [expected-behavior true] [:sets-all-true #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
+          ;; compares against the deprecated sdk setting the sync bridges from
           (is (= [expected-behavior false] [:sets-all-false #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          ;; compares against the deprecated static setting the sync bridges from
           (is (= [expected-behavior false] [:sets-all-false #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
