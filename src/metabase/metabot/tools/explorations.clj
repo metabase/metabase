@@ -150,7 +150,8 @@
         group-idx   (into {} (for [[i g] (map-indexed vector dimension_groups)
                                    d     (:dimensions g)]
                                [(:id d) i]))
-        group-name  (comp (mapv :name dimension_groups) group-idx)
+        group-names (mapv :name dimension_groups)
+        group-name  (fn [dimension-id] (some-> (group-idx dimension-id) group-names))
         sliced-by   (fn [dimension-id]
                       (let [i (group-idx dimension-id)]
                         (into [] (comp (filter #(some (fn [d] (= i (group-idx d)))
@@ -169,10 +170,11 @@
                   dims (str ", by: " (summarize-names dims) ", plus the automatic selection")
                   :else ", by the automatically-selected dimensions")))
          "dimension"
-         (str "- by " (group-name (:dimension_id g)) ": "
-              (summarize-names (if-let [mids (seq (:metric_ids g))]
-                                 (keep metric-name mids)
-                                 (sliced-by (:dimension_id g))))))))))
+         (when-let [dim-group (group-name (:dimension_id g))]
+           (str "- by " dim-group ": "
+                (summarize-names (if-let [mids (seq (:metric_ids g))]
+                                   (keep metric-name mids)
+                                   (sliced-by (:dimension_id g)))))))))))
 
 (def ^:private add-research-groups-schema
   [:map {:closed true}

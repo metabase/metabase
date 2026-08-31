@@ -85,6 +85,20 @@
                         "- by Orders - Region: Metric 0, Metric 1")
                    output))))))))
 
+(deftest add-research-groups-summary-tolerates-unnamed-dimensions-test
+  (testing (str "groups are validated against the unresolved catalog, so a dimension can pass "
+                "validation and still be absent from the hydrated payload (its metric's query "
+                "can't break out on it) — the summary skips what it can't name rather than "
+                "throwing away the whole tool call")
+    (let [payload (assoc (picker-payload 1)
+                         :groups [{:anchor "metric" :metric_id 0 :dimension_ids ["d0" "unresolved"]}
+                                  {:anchor "dimension" :dimension_id "unresolved"}])]
+      (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+        (is (= (str "Added 2 group(s) to the research plan:\n"
+                    "- Metric 0, by: Orders - Region, plus the automatic selection")
+               (:output (tools.explorations/add-research-groups-tool
+                         {:groups (:groups payload)}))))))))
+
 (deftest add-research-groups-summary-is-bounded-test
   (testing "a dimension anchor naming no metrics covers every related one, so the summary counts
             the tail instead of listing it — :output is the agent's context, not a report"

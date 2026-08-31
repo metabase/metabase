@@ -589,8 +589,7 @@
                                      #{} groups)
             relevant-metrics (->> all
                                   (filterv #(contains? relevant (:id %)))
-                                  resolve-metric-queries
-                                  (mapv with-candidate-dimensions))]
+                                  resolve-metric-queries)]
         {:metrics          (mapv slim-metric relevant-metrics)
          :dimension_groups (group-dimensions relevant-metrics)
          :groups           (vec groups)}))))
