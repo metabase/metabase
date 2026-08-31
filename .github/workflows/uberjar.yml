@@ -83,7 +83,7 @@ jobs:
             // Don't rebuild the uberjar if it has already been built for this commit.
             const buildEditions = ['ee', 'oss'].filter((edition) => !hit[edition]);
 
-            // Only containerize the uberjar if containerize input is set. On master 
+            // Only containerize the uberjar if containerize input is set. On master
             // publish ee and oss versions, otherwise just containerize the ee version.
             const containerEditions = containerize
               ? (branch === 'master' ? ['ee', 'oss'] : ['ee'])
