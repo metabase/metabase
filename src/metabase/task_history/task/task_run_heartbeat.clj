@@ -9,10 +9,10 @@
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
    [metabase.task-history.models.task-history-queries :as th.queries]
+   [metabase.task-history.models.task-run-queries :as tr.queries]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,10 +28,7 @@
   "Update updated_at for all :started runs belonging to this process."
   []
   (tracing/with-span :tasks "task.heartbeat.update" {}
-    (let [updated (t2/update! :model/TaskRun
-                              {:status       :started
-                               :process_uuid config/local-process-uuid}
-                              {:updated_at (mi/now)})]
+    (let [updated (tr.queries/send-heartbeat! (t/instant) config/local-process-uuid)]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))

@@ -84,6 +84,16 @@ WHERE id = :value:id
 -- :name- task-history-by-id :? :*
 SELECT * FROM task_history WHERE id = :value:id
 
+-- :name- task-counts-for-runs :? :*
+-- Per-run task counts for the runs listing. :run-ids must be non-empty (executor guards it).
+SELECT run_id,
+       COUNT(id)                                          AS task_count,
+       SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_count,
+       SUM(CASE WHEN status = 'failed'  THEN 1 ELSE 0 END) AS failed_count
+FROM task_history
+WHERE run_id IN (:value*:run-ids)
+GROUP BY run_id
+
 -- :name- statuses-for-run :? :*
 SELECT status
 FROM task_history

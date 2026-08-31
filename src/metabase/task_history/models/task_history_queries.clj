@@ -17,8 +17,8 @@
 ;; doubles as the file's table of contents (clj-kondo can't see vars interned by def-sqlvec-fns).
 (declare cleanup-cutoff-sqlvec delete-ended-before-sqlvec list-tasks-sqlvec count-tasks-sqlvec
          unique-tasks-sqlvec insert-task-history-sqlvec update-task-history-sqlvec
-         task-history-by-id-sqlvec statuses-for-run-sqlvec tasks-for-run-sqlvec
-         mark-orphaned-tasks-sqlvec)
+         task-history-by-id-sqlvec task-counts-for-runs-sqlvec statuses-for-run-sqlvec
+         tasks-for-run-sqlvec mark-orphaned-tasks-sqlvec)
 
 (hugsql/def-sqlvec-fns "metabase/task_history/models/task_history.sql")
 
@@ -60,6 +60,12 @@
   "Count rows matching the optional `:task`/`:status` filters."
   [params]
   (:cnt (app-db.hugsql/scalar model count-tasks-sqlvec params)))
+
+(defn task-counts-for-runs
+  "Per-run {:run_id :task_count :success_count :failed_count} for non-empty `run-ids` (plain rows)."
+  [run-ids]
+  (when (seq run-ids)
+    (app-db.hugsql/rows model task-counts-for-runs-sqlvec {:run-ids run-ids})))
 
 (defn insert-task-history!
   "Insert one task_history `row`, returning the generated id."

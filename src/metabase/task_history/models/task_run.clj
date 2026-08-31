@@ -1,5 +1,15 @@
 (ns metabase.task-history.models.task-run
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
+  ;; direct-jdbc-access-forbidden: converted module -- app-db SQL runs through the queries ns, not
+  ;; direct t2 sinks. This ns-local ban is the enforced choke point (see metabase.app-db.hugsql).
+  {:clj-kondo/config
+   '{:linters {:discouraged-var
+               {toucan2.core/select              {:message "app-db SQL goes through tr.queries (HugSQL)"}
+                toucan2.core/select-one          {:message "app-db SQL goes through tr.queries (HugSQL)"}
+                toucan2.core/query               {:message "app-db SQL goes through tr.queries (HugSQL)"}
+                toucan2.core/insert-returning-pk! {:message "app-db SQL goes through tr.queries (HugSQL)"}
+                toucan2.core/update!             {:message "app-db SQL goes through tr.queries (HugSQL)"}
+                toucan2.core/delete!             {:message "app-db SQL goes through tr.queries (HugSQL)"}}}}}
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
@@ -7,6 +17,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.models.task-history-queries :as th.queries]
+   [metabase.task-history.models.task-run-queries :as tr.queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -93,16 +104,16 @@
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
   [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
-  (let [now (mi/now)]
-    (t2/insert-returning-pk! :model/TaskRun
-                             {:run_type        run_type
-                              :entity_type     entity_type
-                              :entity_id       entity_id
-                              :notification_id notification_id
-                              :status          :started
-                              :started_at      now
-                              :updated_at      now
-                              :process_uuid    config/local-process-uuid})))
+  (let [now (t/instant)]
+    (tr.queries/insert-task-run!
+     {:run_type        run_type
+      :entity_type     entity_type
+      :entity_id       entity_id
+      :notification_id notification_id
+      :status          :started
+      :started_at      now
+      :updated_at      now
+      :process_uuid    config/local-process-uuid})))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
@@ -113,9 +124,7 @@
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (t2/update! :model/TaskRun {:id run-id :status :started}
-                {:status   status
-                 :ended_at (t/instant)})))
+    (tr.queries/complete-task-run! {:id run-id, :status status, :ended_at (t/instant)})))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.

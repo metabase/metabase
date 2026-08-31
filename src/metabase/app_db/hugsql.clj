@@ -103,6 +103,14 @@
     (some->> (t2/query-one (builder (apply-transforms ins params)))
              (apply-transforms outs))))
 
+(defn rows
+  "Run a read `builder` returning plain maps (aggregations, projections that aren't model rows).
+  In-transforms the params; does NOT out-transform or instance the results, since these rows are
+  not model instances. Use [[select-executor]] when you want instances."
+  [model builder params]
+  (let [ins (direction-fns model :in)]
+    (t2/query (builder (apply-transforms ins params)))))
+
 (defn insert-returning-pk!
   "Insert one `row` (in-transformed) via a `builder`, returning the generated primary key. Uses
   the `insert.pks` query type so generated-key handling stays cross-db."
