@@ -134,7 +134,7 @@ Five methods. Every one is justified by ≥2 real call sites in §4.
 
   (describe-dataset [store dataset-id]
     "Return a descriptor map, or nil if no such dataset.
-     {:id, :state, :created-at, :last-used-at}
+     {:id, :state, :created-at}
      :state is :ready or :loading.")
 
   (list-datasets [store criteria]
@@ -142,9 +142,10 @@ Five methods. Every one is justified by ≥2 real call sites in §4.
      `{}` means all. The store may push criteria down to the warehouse or apply
      them locally; the result is the same either way.")
 
-  (touch-dataset! [store dataset-id]
-    "Record that `dataset-id` was used now, updating :last-used-at.
-     Returns nil. No-op if the dataset does not exist."))
+  (create-temp-isolated-dataset! [store dbdef]
+    "Materialize `dbdef` as a brand new dataset no other caller shares; return its id.
+     No claim and no idempotence -- the id is freshly minted. The caller owns the
+     result and is expected to delete it; see `with-temp-dataset`."))
 ```
 
 ### Semantics that need to be nailed down
@@ -161,8 +162,7 @@ has expired**, using the same compare-and-set it uses to acquire a free one, so 
 waiters produce exactly one winner. A waiter therefore only ever retries; it never decides that an
 owner is dead. See Q2 for the lease TTL and the atomic-publish obligation that makes stealing safe.
 
-**Criteria are data, not predicates.** `{:name-prefix "sha_" :created-before t :last-used-before t
-:state :ready}`. A predicate function would force full enumeration — which is the 18s/3.4k-dataset
+**Criteria are data, not predicates.** `{:name-prefix "sha_" :created-before t :state :ready}`. A predicate function would force full enumeration — which is the 18s/3.4k-dataset
 problem. Criteria-as-data lets an adapter push a filter into SQL while keeping one method and
 letting callers compose freely. Callers that want arbitrary logic can still
 `(filter pred (list-datasets store {}))`.
@@ -172,8 +172,7 @@ anyway. Compose with `run!`. Revisit only if measurement demands it.
 
 ### Deliberately NOT in the protocol
 
-Retry / await / poll-until-ready · touch debouncing (BigQuery's `recently-tracked-hashes` is already
-exactly this decorator) · reaping policy · batch delete · content hashing and naming · app-DB
+Retry / await / poll-until-ready · reaping policy · batch delete · content hashing and naming · app-DB
 `:model/Database` creation, sync, permissions, FK fixups · users, roles, service accounts ·
 table-level operations.
 
@@ -191,15 +190,15 @@ construction.
 | 2 | `create-database!` rollback on load failure | `delete-dataset!` |
 | 3 | `impl/drop-dataset!` (REPL / `clojure -X`) | `delete-dataset!` |
 | 4 | `impl/test-drop-dataset` (verifies before + after) | `describe-dataset` → `delete-dataset!` → `describe-dataset` |
-| 5 | BigQuery `delete-old-datasets!` | `list-datasets {:last-used-before t}` ∪ `list-datasets {:name-prefix "sha_" :created-before t}` → `delete-dataset!` each |
+| 5 | BigQuery `delete-old-datasets!` | `list-datasets {:id-prefix id-prefix :created-before t}` → `delete-dataset!` each |
 | 6 | Snowflake `drop-old-datasets!` (disabled) | same as #5 — and re-enableable, because `:in-progress` blocks the delete that broke it |
 | 7 | Redshift `delete-old-schemas!` two-phase live re-snapshot | `list-datasets` → delete → `list-datasets` again |
-| 8 | `tx/track-dataset` | `touch-dataset!` |
+| 8 | `tx/track-dataset` | *gone* — nothing records use; see Q5 |
 | 9 | `tx/dataset-already-loaded?` | `describe-dataset` → `:state = :ready` |
 | 10 | Redshift session schema `before-run`/`after-run` | `create-dataset!` / `delete-dataset!` with a session-scoped id |
 
-`describe-dataset` earns its place from #4 and #9; `touch-dataset!` from #8 plus the debounce
-decorator; `list-datasets` from #5, #6, #7. No method is speculative.
+`describe-dataset` earns its place from #4 and #9; `list-datasets` from #5, #6, #7. No method is
+speculative.
 
 ---
 
@@ -318,7 +317,7 @@ everything, which feeds the bloat in `[[project_bigquery_ci_dataset_bloat]]`.
 | Reaped by | age since last use | end of run |
 
 A private workspace needs no claim because nobody else can name it — so `create-dataset!`'s
-idempotence, `:in-progress`, and `touch-dataset!` are all meaningless for it. Shape matches,
+idempotence and `:in-progress` are both meaningless for it. Shape matches,
 contract does not. Same split as gold/work in `[[project_bq_test_infra_plan]]`.
 
 **Consequence worth chasing later:** if the claim works, Snowflake's CI `isolate_` branch can
@@ -340,6 +339,30 @@ This is also why there is **no `LegacyTxDatasetStore`.** An adapter that returns
 protocol — it satisfies the signature while dropping the guarantee, which is exactly the failure
 mode the design exists to prevent. The test double is instead an **in-memory `DatasetStore`
 implementing the full contract, `:in-progress` included** — a real fake, not a lobotomised delegate.
+
+**Q5 — Should a dataset record when it was used? — DECIDED: no.**
+
+Reaping is by age since creation, and nothing tracks use.
+
+What makes this safe is content-addressing: a dataset's id is a hash of its contents, so deleting
+one is never *wrong*, only wasteful. The next caller recreates exactly the same dataset, and the
+claim means only one of them does the work. A reaper that is too eager costs duplicated effort, not
+corruption and not a wrong test result.
+
+Against that, recording use is the most frequent write a store makes -- one per dataset per process,
+in every process, all landing on one table. It is what drove BigQuery's 20-queued-DML-per-table
+limit and the `recently-tracked-hashes` debounce built to dodge it. Removing it deletes that whole
+class of problem along with a protocol method, a column, a decorator behaviour, and two criteria.
+
+The two lifetimes it leaves:
+
+- **Shared datasets** live a long time and are rebuilt if anything removes them.
+- **Temp datasets** are reaped a fixed interval after *creation* -- an hour or two, matching how long
+  a test that made one could plausibly still be running. `with-temp-dataset` deletes them
+  immediately anyway; the interval is only a backstop for a run that died.
+
+Cost accepted: nothing can answer "which datasets are actually in use". If that is ever needed, it
+is a query-log question, not a reason to write on every dataset load.
 
 ---
 

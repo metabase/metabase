@@ -62,18 +62,16 @@
                                     " state TEXT NOT NULL,"
                                     " claim_owner TEXT,"
                                     " claimed_at TIMESTAMP_TZ,"
-                                    " created_at TIMESTAMP_TZ NOT NULL,"
-                                    " last_used_at TIMESTAMP_TZ NOT NULL)")
+                                    " created_at TIMESTAMP_TZ NOT NULL)")
                                (table-name tracking-db))]))
 
-(defn- row->descriptor [{:keys [id state created_at last_used_at]}]
+(defn- row->descriptor [{:keys [id state created_at]}]
   {:id           id
    :state        (keyword state)
-   :created-at   created_at
-   :last-used-at last_used_at})
+   :created-at   created_at})
 
 (defn- select-row [spec tracking-db dataset-id]
-  (first (jdbc/query spec [(format "SELECT id, state, created_at, last_used_at FROM %s WHERE id = ?"
+  (first (jdbc/query spec [(format "SELECT id, state, created_at FROM %s WHERE id = ?"
                                    (table-name tracking-db))
                            dataset-id])))
 
@@ -86,8 +84,8 @@
                          " WHEN MATCHED AND d.state = 'loading' AND %s"
                          "   THEN UPDATE SET d.claim_owner = ?, d.claimed_at = CURRENT_TIMESTAMP()"
                          " WHEN NOT MATCHED"
-                         "   THEN INSERT (id, state, claim_owner, claimed_at, created_at, last_used_at)"
-                         "   VALUES (s.id, 'loading', ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())")
+                         "   THEN INSERT (id, state, claim_owner, claimed_at, created_at)"
+                         "   VALUES (s.id, 'loading', ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())")
                     (table-name tracking-db)
                     expired-claim)]
     (pos? (first (jdbc/execute! spec [sql dataset-id (- lease-seconds) claim-owner claim-owner])))))
@@ -111,7 +109,7 @@
   lease was stolen and whatever it wrote has been superseded."
   [spec tracking-db dataset-id]
   (pos? (first (jdbc/execute! spec [(format (str "UPDATE %s SET state = 'ready', claim_owner = NULL,"
-                                                 " claimed_at = NULL, last_used_at = CURRENT_TIMESTAMP()"
+                                                 " claimed_at = NULL"
                                                  " WHERE id = ? AND claim_owner = ?")
                                             (table-name tracking-db))
                                     dataset-id claim-owner]))))
@@ -126,18 +124,13 @@
 (defn- criteria->where
   "Compile `criteria` into a `[sql-fragment & params]` vector. Every recognized key narrows the
   result; an unrecognized key is ignored rather than silently matching nothing."
-  [{:keys [id-prefix state created-before last-used-before used-within-seconds]}]
+  [{:keys [id-prefix state created-before]}]
   (let [clauses (cond-> []
                   ;; STARTSWITH rather than LIKE: dataset ids contain `_`, which LIKE reads as a
                   ;; single-character wildcard.
                   id-prefix        (conj ["STARTSWITH(id, ?)" id-prefix])
                   state            (conj ["state = ?" (name state)])
-                  created-before   (conj ["created_at < ?" (->timestamp created-before)])
-                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)])
-                  ;; A duration, resolved against the warehouse clock -- the only one every caller
-                  ;; shares.
-                  used-within-seconds (conj ["last_used_at > DATEADD(second, ?, CURRENT_TIMESTAMP())"
-                                             (- used-within-seconds)]))]
+                  created-before   (conj ["created_at < ?" (->timestamp created-before)]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))
@@ -218,16 +211,9 @@
     (let [[where & params] (criteria->where criteria)]
       (into []
             (map row->descriptor)
-            (jdbc/query spec (into [(format "SELECT id, state, created_at, last_used_at FROM %s%s"
+            (jdbc/query spec (into [(format "SELECT id, state, created_at FROM %s%s"
                                             (table-name tracking-db) where)]
-                                   params)))))
-
-  (touch-dataset! [_this dataset-id]
-    @setup
-    (jdbc/execute! spec [(format "UPDATE %s SET last_used_at = CURRENT_TIMESTAMP() WHERE id = ?"
-                                 (table-name tracking-db))
-                         dataset-id])
-    nil))
+                                   params))))))
 
 (defn- server-connection-spec []
   (sql-jdbc.conn/connection-details->spec

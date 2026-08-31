@@ -27,7 +27,7 @@
     (cond
       (nil? row)
       (assoc state id {:id id :state :loading :claim-owner owner :claimed-at now
-                       :created-at now :last-used-at now})
+                       :created-at now})
 
       (and (= :loading (:state row)) (expired? row now lease-seconds))
       (update state id assoc :claim-owner owner :claimed-at now)
@@ -46,7 +46,7 @@
   (= owner (get-in state [id :claim-owner])))
 
 (defn- descriptor [row]
-  (select-keys row [:id :state :created-at :last-used-at]))
+  (select-keys row [:id :state :created-at]))
 
 (defrecord MemoryDatasetStore [state lease-seconds now-fn owner load-fn]
   dataset-store/DatasetStore
@@ -65,7 +65,7 @@
                                                    (cond-> m
                                                      (own-claim? m dataset-id owner)
                                                      (update dataset-id assoc :state :ready :claim-owner nil
-                                                             :claimed-at nil :last-used-at (now-fn))))))
+                                                             :claimed-at nil)))))
                                          dataset-id owner)]
               (if published?
                 :created
@@ -96,8 +96,7 @@
 
   ;; `:state` is deliberately not destructured by that name: it would shadow the record's own
   ;; `state` field, which this body derefs.
-  (list-datasets [_this {:keys [id-prefix created-before last-used-before used-within-seconds]
-                         want-state :state}]
+  (list-datasets [_this {:keys [id-prefix created-before] want-state :state}]
     (into []
           (comp (map val)
                 (filter (fn [row]
@@ -105,20 +104,9 @@
                                    (.startsWith ^String (:id row) ^String id-prefix))
                                (or (nil? want-state) (= want-state (:state row)))
                                (or (nil? created-before)
-                                   (.isBefore ^Instant (:created-at row) ^Instant created-before))
-                               (or (nil? last-used-before)
-                                   (.isBefore ^Instant (:last-used-at row) ^Instant last-used-before))
-                               (or (nil? used-within-seconds)
-                                   (.isAfter ^Instant (:last-used-at row)
-                                             (.minusSeconds ^Instant (now-fn) used-within-seconds))))))
+                                   (.isBefore ^Instant (:created-at row) ^Instant created-before)))))
                 (map descriptor))
-          @state))
-
-  (touch-dataset! [_this dataset-id]
-    (swap! state (fn [m] (cond-> m
-                           (contains? m dataset-id)
-                           (update dataset-id assoc :last-used-at (now-fn)))))
-    nil))
+          @state)))
 
 (defn- memory-store
   "Build a store over `state`. Distinct `:owner` values sharing one `state` model distinct processes."
@@ -201,19 +189,6 @@
                           (dataset-store/create-dataset! boom "mbds_a" (dbdef "a"))))
     (testing "the next caller need not wait out the lease"
       (is (= :created (dataset-store/create-dataset! ok "mbds_a" (dbdef "a")))))))
-
-(deftest touch-advances-last-used-test
-  (let [{:keys [store advance]} (test-world)
-        s                       (store {})]
-    (dataset-store/create-dataset! s "mbds_a" (dbdef "a"))
-    (let [before (:last-used-at (dataset-store/describe-dataset s "mbds_a"))]
-      (advance 60)
-      (is (nil? (dataset-store/touch-dataset! s "mbds_a")))
-      (is (.isAfter ^Instant (:last-used-at (dataset-store/describe-dataset s "mbds_a"))
-                    ^Instant before)))
-    (testing "touching a dataset that is not there does nothing"
-      (is (nil? (dataset-store/touch-dataset! s "mbds_missing")))
-      (is (nil? (dataset-store/describe-dataset s "mbds_missing"))))))
 
 (deftest list-criteria-test
   (let [{:keys [store advance clock]} (test-world)
@@ -301,8 +276,7 @@
                             (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
                             (delete-dataset! [_ _] :deleted)
                             (describe-dataset [_ _] nil)
-                            (list-datasets [_ _] [])
-                            (touch-dataset! [_ _] nil))
+                            (list-datasets [_ _] []))
           cached          (dataset-store/caching-dataset-store counting {})]
       (is (= :created (dataset-store/create-dataset! cached "mbds_a" (dbdef "a"))))
       (is (= :created (dataset-store/create-dataset! cached "mbds_a" (dbdef "a"))))
@@ -321,8 +295,7 @@
                     (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
                     (delete-dataset! [_ _] :absent)
                     (describe-dataset [_ _] nil)
-                    (list-datasets [_ _] [])
-                    (touch-dataset! [_ _] nil))
+                    (list-datasets [_ _] []))
           cached  (dataset-store/caching-dataset-store busy {})]
       (dotimes [_ 3] (dataset-store/create-dataset! cached "mbds_a" (dbdef "a")))
       (is (= 3 @calls)))))
@@ -357,45 +330,3 @@
                                 (reset! seen id)
                                 (throw (ex-info "boom" {})))))
         (is (nil? (dataset-store/describe-dataset s @seen)))))))
-
-(defn- counting-touch-store
-  "A store that counts recorded uses and reports `already-used` as used recently by someone else."
-  [touches already-used]
-  (reify dataset-store/DatasetStore
-    (create-dataset! [_ _ _] :exists)
-    (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
-    (delete-dataset! [_ _] :absent)
-    (describe-dataset [_ _] nil)
-    (list-datasets [_ criteria]
-      (if (:used-within-seconds criteria)
-        (mapv (fn [id] {:id id}) already-used)
-        []))
-    (touch-dataset! [_ _] (swap! touches inc) nil)))
-
-(deftest touch-is-debounced-test
-  (testing "recording a use is the most frequent write a store makes, so it is suppressed hard"
-    (testing "a use another process already recorded is not recorded again"
-      (let [touches (atom 0)
-            cached  (dataset-store/caching-dataset-store (counting-touch-store touches ["mbds_a"]) {})]
-        (dotimes [_ 3] (dataset-store/touch-dataset! cached "mbds_a"))
-        (is (zero? @touches))))
-    (testing "a dataset nobody has touched is recorded once, then suppressed within the window"
-      (let [touches (atom 0)
-            cached  (dataset-store/caching-dataset-store (counting-touch-store touches []) {})]
-        (dotimes [_ 5] (dataset-store/touch-dataset! cached "mbds_b"))
-        (is (= 1 @touches))))
-    (testing "the shared read happens once per store, not once per touch"
-      (let [lists   (atom 0)
-            touches (atom 0)
-            store   (reify dataset-store/DatasetStore
-                      (create-dataset! [_ _ _] :exists)
-                      (create-temp-isolated-dataset! [_ _] "mbds_isolate_x")
-                      (delete-dataset! [_ _] :absent)
-                      (describe-dataset [_ _] nil)
-                      (list-datasets [_ _] (swap! lists inc) [])
-                      (touch-dataset! [_ _] (swap! touches inc) nil))
-            cached  (dataset-store/caching-dataset-store store {})]
-        (doseq [id ["mbds_a" "mbds_b" "mbds_c"]]
-          (dotimes [_ 3] (dataset-store/touch-dataset! cached id)))
-        (is (= 1 @lists))
-        (is (= 3 @touches) "one per distinct dataset")))))

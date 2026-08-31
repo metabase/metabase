@@ -414,8 +414,7 @@
       (log/infof "Creating test dataset %s for %s if needed..." (pr-str dataset-id) driver)
       ;; Loading as UTC is each store's own business -- see their `create-dataset!`.
       (dataset-store/create-dataset-and-wait! store dataset-id dbdef
-                                              {:timeout-ms create-database-timeout-ms})
-      (dataset-store/touch-dataset! store dataset-id))
+                                              {:timeout-ms create-database-timeout-ms}))
     (do
       (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
       ;; there's locking around this stuff elsewhere.

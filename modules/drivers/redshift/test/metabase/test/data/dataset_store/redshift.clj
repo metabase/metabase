@@ -64,15 +64,14 @@
                                     " state VARCHAR(16) NOT NULL,"
                                     " claim_owner VARCHAR(64),"
                                     " claimed_at TIMESTAMP,"
-                                    " created_at TIMESTAMP NOT NULL,"
-                                    " last_used_at TIMESTAMP NOT NULL)")
+                                    " created_at TIMESTAMP NOT NULL)")
                                (table-name tracking-schema))]))
 
-(defn- row->descriptor [{:keys [id state created_at last_used_at]}]
-  {:id id, :state (keyword state), :created-at created_at, :last-used-at last_used_at})
+(defn- row->descriptor [{:keys [id state created_at]}]
+  {:id id, :state (keyword state), :created-at created_at})
 
 (defn- select-row [spec tracking-schema dataset-id]
-  (first (jdbc/query spec [(format "SELECT id, state, created_at, last_used_at FROM %s WHERE id = ?"
+  (first (jdbc/query spec [(format "SELECT id, state, created_at FROM %s WHERE id = ?"
                                    (table-name tracking-schema))
                            dataset-id])))
 
@@ -94,8 +93,8 @@
             ;; enforce; the surrounding serializable transaction is what makes the guard hold.
             added  (first (jdbc/execute!
                            t [(format (str "INSERT INTO %1$s (id, state, claim_owner, claimed_at,"
-                                           " created_at, last_used_at)"
-                                           " SELECT ?, 'loading', ?, GETDATE(), GETDATE(), GETDATE()"
+                                           " created_at)"
+                                           " SELECT ?, 'loading', ?, GETDATE(), GETDATE()"
                                            " WHERE NOT EXISTS (SELECT 1 FROM %1$s WHERE id = ?)")
                                       (table-name tracking-schema))
                               dataset-id claim-owner dataset-id]))]
@@ -128,7 +127,7 @@
   stolen and whatever it wrote has been superseded."
   [spec tracking-schema dataset-id]
   (pos? (first (jdbc/execute! spec [(format (str "UPDATE %s SET state = 'ready', claim_owner = NULL,"
-                                                 " claimed_at = NULL, last_used_at = GETDATE()"
+                                                 " claimed_at = NULL"
                                                  " WHERE id = ? AND claim_owner = ?")
                                             (table-name tracking-schema))
                                     dataset-id claim-owner]))))
@@ -151,17 +150,12 @@
   (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE"
                                (redshift.tx/dataset-schema dataset-id))]))
 
-(defn- criteria->where [{:keys [id-prefix state created-before last-used-before used-within-seconds]}]
+(defn- criteria->where [{:keys [id-prefix state created-before]}]
   (let [clauses (cond-> []
                   ;; POSITION rather than LIKE: dataset ids contain `_`, a LIKE wildcard.
                   id-prefix        (conj ["POSITION(? IN id) = 1" id-prefix])
                   state            (conj ["state = ?" (name state)])
-                  created-before   (conj ["created_at < ?" (->timestamp created-before)])
-                  last-used-before (conj ["last_used_at < ?" (->timestamp last-used-before)])
-                  ;; A duration, resolved against the warehouse clock -- the only one every caller
-                  ;; shares.
-                  used-within-seconds (conj ["last_used_at > DATEADD(second, ?, GETDATE())"
-                                             (- used-within-seconds)]))]
+                  created-before   (conj ["created_at < ?" (->timestamp created-before)]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))
@@ -227,16 +221,9 @@
     (let [[where & params] (criteria->where criteria)]
       (into []
             (map row->descriptor)
-            (jdbc/query spec (into [(format "SELECT id, state, created_at, last_used_at FROM %s%s"
+            (jdbc/query spec (into [(format "SELECT id, state, created_at FROM %s%s"
                                             (table-name tracking-schema) where)]
-                                   params)))))
-
-  (touch-dataset! [_this dataset-id]
-    @setup
-    (jdbc/execute! spec [(format "UPDATE %s SET last_used_at = GETDATE() WHERE id = ?"
-                                 (table-name tracking-schema))
-                         dataset-id])
-    nil))
+                                   params))))))
 
 (defn- default-load-dataset! [dataset-id dbdef]
   ((get-method tx/create-db! :sql-jdbc/test-extensions)

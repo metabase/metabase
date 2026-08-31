@@ -97,10 +97,9 @@
   (describe-dataset [store dataset-id]
     "Return a descriptor for `dataset-id`, or nil if there is no such dataset.
 
-      {:id           the dataset id
-       :state        :ready or :loading
-       :created-at   when the dataset was first claimed
-       :last-used-at when use was last recorded}
+      {:id         the dataset id
+       :state      :ready or :loading
+       :created-at when the dataset was first claimed}
 
     `:loading` reports that a claim is held, not that its holder is alive.")
 
@@ -108,13 +107,14 @@
     "Return a sequence of descriptors, shaped as in [[describe-dataset]], for the datasets matching
     `criteria`. `{}` matches every dataset. Recognized keys, all optional, ANDed together:
 
-      :id-prefix        id starts with this string
-      :state            :ready or :loading
-      :created-before   created strictly before this instant
-      :last-used-before use last recorded strictly before this instant
-      :used-within-seconds  use recorded within this many seconds of now. Expressed as a duration
-                            rather than an instant so the warehouse computes the cutoff against its
-                            own clock, which is the only clock every caller agrees on.
+      :id-prefix      id starts with this string
+      :state          :ready or :loading
+      :created-before created strictly before this instant
+
+    Age since creation, deliberately, with nothing tracking use. A dataset's id is a hash of its
+    contents, so deleting one is never wrong -- the next caller recreates exactly the same dataset,
+    and the claim means only one of them does the work. Reaping therefore costs duplicated effort at
+    worst, which is not worth a write on every dataset in every process to avoid.
 
     Criteria are data so that an implementation may evaluate them on the warehouse; the result is
     the same either way.")
@@ -128,14 +128,7 @@
 
     The caller owns the result and is expected to delete it -- see [[with-temp-dataset]]. An
     implementation may also arrange for the warehouse to expire it, but nothing here assumes the
-    warehouse can.")
-
-  (touch-dataset! [store dataset-id]
-    "Record that `dataset-id` was used now, advancing its `:last-used-at`. Returns nil, and does
-    nothing if there is no such dataset.
-
-    Recording use is separate from creating or reading so that a caller decides what counts as a
-    use."))
+    warehouse can."))
 
 (defn create-dataset-and-wait!
   "Materialize `dbdef` as `dataset-id`, waiting out any caller that holds the claim.
@@ -156,14 +149,6 @@
       (throw (ex-info "Timed out waiting for another caller to finish creating a dataset"
                       {:dataset-id dataset-id, :timeout-ms timeout-ms}))
       result)))
-
-(def ^:private touch-window-seconds
-  "How stale a dataset's recorded use may be before recording another is worth a round trip.
-
-  Recording a use is by far the most frequent write a store makes -- one per dataset per process,
-  every process -- and they all land on the same place. An hour is far below any reaping window, so
-  suppressing repeats inside it costs nothing that matters."
-  3600)
 
 (def ^:private seen-dataset-ttl-ms
   "How long this JVM trusts its own memory of a dataset being present.
@@ -188,16 +173,9 @@
   ([store]
    (caching-dataset-store store {}))
   ([store {:keys [ttl-ms threshold]}]
-   (let [seen    (lru-ttl/cache {:ttl-ms     (or ttl-ms seen-dataset-ttl-ms)
-                                 :threshold  threshold
-                                 :cache-when #{:created :exists}})
-         touched (lru-ttl/cache {:ttl-ms (* 1000 touch-window-seconds), :threshold threshold})
-         ;; Read once per process, from the store rather than from local history: the point is to
-         ;; skip a write some *other* process already made. A local cache alone would not, since a
-         ;; process touches each dataset about once anyway.
-         touched-elsewhere (delay (into #{}
-                                        (map :id)
-                                        (list-datasets store {:used-within-seconds touch-window-seconds})))]
+   (let [seen (lru-ttl/cache {:ttl-ms     (or ttl-ms seen-dataset-ttl-ms)
+                              :threshold  threshold
+                              :cache-when #{:created :exists}})]
      (reify DatasetStore
        (create-dataset! [_this dataset-id dbdef]
          (lru-ttl/get-or-compute! seen dataset-id #(create-dataset! store dataset-id dbdef)))
@@ -211,11 +189,7 @@
 
        ;; Reads report live state, so neither is cached.
        (describe-dataset [_this dataset-id]     (describe-dataset store dataset-id))
-       (list-datasets    [_this criteria]       (list-datasets store criteria))
-       (touch-dataset! [_this dataset-id]
-         (when-not (contains? @touched-elsewhere dataset-id)
-           (lru-ttl/get-or-compute! touched dataset-id #(touch-dataset! store dataset-id)))
-         nil)))))
+       (list-datasets    [_this criteria]       (list-datasets store criteria))))))
 
 (defmacro with-temp-dataset
   "Create a temp isolated dataset from `dbdef`, bind its id to `id-binding`, and delete it when

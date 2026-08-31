@@ -54,17 +54,16 @@
                        " state STRING NOT NULL,"
                        " claim_owner STRING,"
                        " claimed_at TIMESTAMP,"
-                       " created_at TIMESTAMP NOT NULL,"
-                       " last_used_at TIMESTAMP NOT NULL)")
+                       " created_at TIMESTAMP NOT NULL)")
                   (table-name tracking-dataset)))
 
 ;; A read, despite the `!` on the general-purpose executor it goes through.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- select-row
-  "Return `[state claim-owner created-at last-used-at]` for `dataset-id`, or nil."
+  "Return `[state claim-owner created-at]` for `dataset-id`, or nil."
   [tracking-dataset dataset-id]
   (first (bq.tx/execute-params!
-          (format "SELECT state, claim_owner, created_at, last_used_at FROM %s WHERE id = ?"
+          (format "SELECT state, claim_owner, created_at FROM %s WHERE id = ?"
                   (table-name tracking-dataset))
           [dataset-id])))
 
@@ -83,8 +82,8 @@
                 " WHEN MATCHED AND d.state = 'loading' AND " expired-claim
                 "   THEN UPDATE SET claim_owner = s.owner, claimed_at = CURRENT_TIMESTAMP()"
                 " WHEN NOT MATCHED"
-                "   THEN INSERT (id, state, claim_owner, claimed_at, created_at, last_used_at)"
-                "   VALUES (s.id, 'loading', s.owner, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())")
+                "   THEN INSERT (id, state, claim_owner, claimed_at, created_at)"
+                "   VALUES (s.id, 'loading', s.owner, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())")
            (table-name tracking-dataset)
            lease-seconds)
    [dataset-id claim-owner])
@@ -113,8 +112,7 @@
   affected-row count."
   [tracking-dataset dataset-id]
   (bq.tx/execute-params!
-   (format (str "UPDATE %s SET state = 'ready', claimed_at = NULL,"
-                " last_used_at = CURRENT_TIMESTAMP()"
+   (format (str "UPDATE %s SET state = 'ready', claimed_at = NULL"
                 " WHERE id = ? AND claim_owner = ?")
            (table-name tracking-dataset))
    [dataset-id claim-owner])
@@ -139,18 +137,12 @@
                   (bq.tx/project-id)
                   dataset-id))
 
-(defn- criteria->where [{:keys [id-prefix state created-before last-used-before used-within-seconds]}]
+(defn- criteria->where [{:keys [id-prefix state created-before]}]
   (let [clauses (cond-> []
                   ;; STARTS_WITH rather than LIKE: dataset ids contain `_`, a LIKE wildcard.
                   id-prefix        (conj ["STARTS_WITH(id, ?)" id-prefix])
                   state            (conj ["state = ?" (name state)])
-                  created-before   (conj ["created_at < ?" created-before])
-                  last-used-before (conj ["last_used_at < ?" last-used-before])
-                  ;; Inlined rather than bound: it is an integer from configuration, and BigQuery
-                  ;; resolves the cutoff against its own clock, the only one every caller shares.
-                  used-within-seconds
-                  (conj [(format "last_used_at > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d SECOND)"
-                                 used-within-seconds)]))]
+                  created-before   (conj ["created_at < ?" created-before]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))
@@ -218,28 +210,19 @@
 
   (describe-dataset [_this dataset-id]
     @setup
-    (when-let [[state _owner created-at last-used-at] (select-row tracking-dataset dataset-id)]
-      {:id dataset-id, :state (keyword state), :created-at created-at, :last-used-at last-used-at}))
+    (when-let [[state _owner created-at] (select-row tracking-dataset dataset-id)]
+      {:id dataset-id, :state (keyword state), :created-at created-at}))
 
   (list-datasets [_this criteria]
     @setup
     (let [[where & params] (criteria->where criteria)]
       (into []
-            (map (fn [[id state created-at last-used-at]]
-                   {:id id, :state (keyword state)
-                    :created-at created-at, :last-used-at last-used-at}))
+            (map (fn [[id state created-at]]
+                   {:id id, :state (keyword state), :created-at created-at}))
             (bq.tx/execute-params!
-             (format "SELECT id, state, created_at, last_used_at FROM %s%s"
+             (format "SELECT id, state, created_at FROM %s%s"
                      (table-name tracking-dataset) where)
-             (vec params)))))
-
-  (touch-dataset! [_this dataset-id]
-    @setup
-    (bq.tx/execute-params!
-     (format "UPDATE %s SET last_used_at = CURRENT_TIMESTAMP() WHERE id = ?"
-             (table-name tracking-dataset))
-     [dataset-id])
-    nil))
+             (vec params))))))
 
 ;; The DDL below is wrapped in a `delay`, so building a store performs no effect and the name needs
 ;; no `!`; the linter does not model `delay` and sees only the call.
