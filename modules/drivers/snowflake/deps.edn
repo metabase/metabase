@@ -12,6 +12,8 @@
   com.nimbusds/nimbus-jose-jwt      {:mvn/version "10.5"}
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
   org.apache.commons/commons-lang3  {:mvn/version "3.19.0"}
+  ;; pinned: snowflake-jdbc-thin 3.28.0 pulls jsoup 1.15.3
+  org.jsoup/jsoup                   {:mvn/version "1.23.2"}
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
   org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.85"}
   org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.85.2"}
