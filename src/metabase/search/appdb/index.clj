@@ -311,8 +311,8 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    ;; When this runs inside another transaction, the nested transaction creates a savepoint. Rolling it back lets us
-    ;; handle a missing-table error without aborting the caller's PostgreSQL transaction.
+    ;; When this runs inside another transaction, the nested transaction creates a savepoint.
+    ;; Rolling it back lets us handle a missing-table error without aborting the caller's PostgreSQL transaction.
     (let [upsert! (fn [t]
                     (t2/with-transaction [_conn]
                       (specialization/batch-upsert! t entries))
