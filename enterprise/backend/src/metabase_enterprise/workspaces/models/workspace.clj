@@ -18,7 +18,7 @@
   #{:uninitialized :pending :ready :broken})
 
 (t2/deftransforms :model/Workspace
-  {:database_details mi/transform-encrypted-json
+  {:database_details (mi/transform-encrypted-json "workspace.database_details")
    :base_status      (mi/transform-validator mi/transform-keyword (partial mi/assert-enum base-statuses))
    :db_status        (mi/transform-validator mi/transform-keyword (partial mi/assert-enum db-statuses))})
 

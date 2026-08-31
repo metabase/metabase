@@ -1739,7 +1739,12 @@
         decrypt  (if (or (nil? resolved) (not (encrypts? resolved)))
                    encryption/maybe-decrypt-accepting-plaintext
                    encryption/maybe-decrypt)]
-    (update setting :value decrypt)))
+    (try
+      (update setting :value decrypt)
+      (catch Throwable e
+        (throw (ex-info (format "Error decrypting setting \"%s\": %s" (:key setting) (ex-message e))
+                        {:setting-key (:key setting)}
+                        e))))))
 
 (t2/define-after-select :model/Setting
   [setting]
