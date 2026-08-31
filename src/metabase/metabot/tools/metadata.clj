@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -36,7 +38,9 @@
         {:value structured}
         {:error (or output (str "No metadata returned for ID " id))}))
     (catch Exception e
-      (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)})
+      (if (= 404 (:status-code (ex-data e)))
+        (log/debugf "Omitting unresolvable metadata entry: %s %s" id (ex-message e))
+        (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)}))
       {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
 
 (defn get-metadata
@@ -48,55 +52,59 @@
   (try
     (doseq [[ids label] [[table-ids "table"] [model-ids "model"] [metric-ids "metric"]]]
       (validate-id-count ids label))
-    (let [table-results (mapv #(safe-fetch
-                                (fn [table-id]
-                                  (entity-details-tools/get-table-details
-                                   {:entity-type :table
-                                    :entity-id table-id
-                                    :with-fields? true
-                                    :with-field-values? false
-                                    :with-related-tables? false
-                                    :with-metrics? false
-                                    :with-default-temporal-breakout? false
-                                    :with-measures? true
-                                    :with-segments? true}))
-                                %)
-                              table-ids)
-          model-results (mapv #(safe-fetch
-                                (fn [model-id]
-                                  (entity-details-tools/get-table-details
-                                   {:entity-type :model
-                                    :entity-id model-id
-                                    :with-fields? true
-                                    :with-field-values? false
-                                    :with-related-tables? false
-                                    :with-metrics? false
-                                    :with-default-temporal-breakout? false
-                                    :with-measures? true
-                                    :with-segments? true}))
-                                %)
-                              model-ids)
-          metric-results (mapv #(safe-fetch
-                                 (fn [metric-id]
-                                   (entity-details-tools/get-metric-details
-                                    {:metric-id metric-id
-                                     :with-default-temporal-breakout? false
-                                     :with-field-values? false
-                                     :with-queryable-dimensions? false
-                                     :with-segments? true}))
-                                 %)
-                               metric-ids)
-          tables (->> table-results (keep :value) vec)
-          models (->> model-results (keep :value) vec)
-          metrics (->> metric-results (keep :value) vec)
-          errors (->> (concat table-results model-results metric-results)
-                      (keep :error)
-                      vec)]
-      {:structured-output {:result-type :metadata
-                           :tables tables
-                           :models models
-                           :metrics metrics
-                           :errors errors}})
+    (metabot.perms/with-cache
+      (let [table-results (mapv #(safe-fetch
+                                  (fn [table-id]
+                                    (resources-tools/check-table-resource-database table-id)
+                                    (entity-details-tools/get-table-details
+                                     {:entity-type :table
+                                      :entity-id table-id
+                                      :with-fields? true
+                                      :with-field-values? false
+                                      :with-related-tables? false
+                                      :with-metrics? false
+                                      :with-default-temporal-breakout? false
+                                      :with-measures? true
+                                      :with-segments? true}))
+                                  %)
+                                table-ids)
+            model-results (mapv #(safe-fetch
+                                  (fn [model-id]
+                                    (resources-tools/check-card-resource-database model-id)
+                                    (entity-details-tools/get-table-details
+                                     {:entity-type :model
+                                      :entity-id model-id
+                                      :with-fields? true
+                                      :with-field-values? false
+                                      :with-related-tables? false
+                                      :with-metrics? false
+                                      :with-default-temporal-breakout? false
+                                      :with-measures? true
+                                      :with-segments? true}))
+                                  %)
+                                model-ids)
+            metric-results (mapv #(safe-fetch
+                                   (fn [metric-id]
+                                     (resources-tools/check-card-resource-database metric-id)
+                                     (entity-details-tools/get-metric-details
+                                      {:metric-id metric-id
+                                       :with-default-temporal-breakout? false
+                                       :with-field-values? false
+                                       :with-queryable-dimensions? false
+                                       :with-segments? true}))
+                                   %)
+                                 metric-ids)
+            tables (->> table-results (keep :value) vec)
+            models (->> model-results (keep :value) vec)
+            metrics (->> metric-results (keep :value) vec)
+            errors (->> (concat table-results model-results metric-results)
+                        (keep :error)
+                        vec)]
+        {:structured-output {:result-type :metadata
+                             :tables tables
+                             :models models
+                             :metrics metrics
+                             :errors errors}}))
     (catch Exception e
       (log/errorf "Failed to fetch metadata: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
@@ -168,7 +176,7 @@
 
 (def ^:private get-field-values-schema
   [:map {:closed true}
-   [:data_source [:enum "table" "model" "metric"]]
+   [:data_source [:enum "table" "model" "metric" "question" "report"]]
    [:source_id :int]
    [:field_id [:or :int :string]]])
 
@@ -177,6 +185,12 @@
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]
+  ;; mu/defn schemas aren't enforced in production, so `data_source` may be any string the LLM
+  ;; sends -- fall through to `field-values`'s own agent-facing error instead of throwing here.
+  (case data_source
+    "table"                                (resources-tools/check-table-resource-database source_id)
+    ("model" "metric" "question" "report") (resources-tools/check-card-resource-database source_id)
+    nil)
   (add-output
    (field-stats-tools/field-values {:entity-type data_source
                                     :entity-id source_id

@@ -401,6 +401,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting oidc-login-providers
   (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :encryption :no
   :type       :json
   :default    []
   :feature    :sso-oidc
@@ -430,6 +431,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
   (SAML/JWT) for authorization rather than the normal login form or Google Auth button."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured))))
