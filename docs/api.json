@@ -25315,7 +25315,7 @@
       "post" : {
         "operationId" : "post-api-ee-ai-controls-permissions-advanced",
         "summary" : "POST /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group.",
+        "description" : "Switch to group-level permissions. Removes the permissions of All Users and All tenant users, so nobody has\n   access until they are in a group that grants it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25367,7 +25367,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-ai-controls-permissions-advanced",
         "summary" : "DELETE /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users.",
+        "description" : "Switch back to simple permissions. Removes the permissions of every group other than Administrators, All Users\n   and All tenant users.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {

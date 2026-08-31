@@ -191,6 +191,8 @@ describe("issue 15542", () => {
 
 describe("issue 52411", { tags: "@external" }, () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
+    cy.intercept("GET", "/api/database").as("getDatabases");
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "multi_schema" });
     cy.signInAsAdmin();
@@ -199,8 +201,10 @@ describe("issue 52411", { tags: "@external" }, () => {
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
     cy.visit("/admin/datamodel/segments");
+    cy.wait(["@getDatabases", "@getSchema"]);
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     H.popover().within(() => {
+      cy.icon("chevronleft").click(); // go back
       cy.findByText("Writable Postgres12").click();
       cy.findByText("Wild").click();
       cy.findByText("Birds").click();
