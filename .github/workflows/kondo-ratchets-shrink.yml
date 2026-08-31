@@ -84,9 +84,11 @@ jobs:
 
           # The ratchet file is the whole payload, so an open PR that already carries this result is left
           # alone. Rebasing it onto every master push would restart its CI and churn the diff without
-          # changing what it delivers. A conflicted PR is the exception: only a fresh commit clears it.
-          # Mergeability is computed lazily, so a pending UNKNOWN reads as not conflicted and the next run
-          # settles it.
+          # changing what it delivers. The diff is against the working tree, holding what
+          # fix-kondo-ratchets produced above, and so asks whether the PR would deliver the same file.
+          #
+          # A conflicted PR is the exception: only a fresh commit clears it. Mergeability is computed
+          # lazily, so a pending UNKNOWN reads as not conflicted and the next run settles it.
           if [ -n "$open_pr" ] \
              && git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
              && git diff --quiet FETCH_HEAD -- "$RATCHETS_FILE" \
