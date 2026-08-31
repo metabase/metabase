@@ -26,9 +26,12 @@ It takes no arguments — you do not choose or name the database. It uses the on
 - If no database was `@`-mentioned, the call fails and asks for an `@` mention.
 - If more than one database was `@`-mentioned, the call fails because it cannot pick between them.
 
-In either case, relay what is needed to the user and stop — do not retry the call or guess a database.
-Write your SQL for the engine the tool reports back, and pass that same `database_id` to
-`document_construct_sql_chart`.
+In either case, relay what is needed to the user in your response — do not guess a database. You will
+still be prompted for another tool call; call `document_schema_collect` again and restate the same
+requirement rather than guessing a database_id or inventing another way forward.
+
+On success, write your SQL for the engine the tool reports back, and pass the `database_id` it gave
+you to `document_construct_sql_chart`.
 
 ** Remember:**
 - All tables and columns must exist in the user's schema
