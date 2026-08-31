@@ -41,7 +41,7 @@ describe("embedding hub routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    expect(loaders).toHaveLength(18);
+    expect(loaders).toHaveLength(19);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
