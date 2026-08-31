@@ -46,7 +46,6 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
-  // Writes start from the normalized stored settings, so keys saved under an old shape get rewritten on the first edit.
   const chartSettings = useMemo(
     () => settings || getStoredSettingsForSeries(series),
     [series, settings],
