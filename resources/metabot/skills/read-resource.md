@@ -9,7 +9,7 @@ When using the read_resource tool, you have access to a unified interface for na
 
 The URI pattern determines what is returned — from top-level lists (databases, collections) to a single entity, to its sub-resources (fields, items, sources, derived items).
 
-You can request multiple resources in one call by providing a list of URIs (max 5). Lists are paginated at 25 items per page. Every `<list>` carries `total`, `page`, `pages`, `showing`, and `truncated` — `truncated` is always present, reading `"false"` when you have the whole list and `"true"` when more pages remain, in which case a `<truncation-note>` names the next page. From there you can fetch the next page by appending `?page=N` to the same URI (e.g. `metabase://database/1/tables?page=2`), drill into a specific item via its URI (list items carry a `uri="..."` attribute — the exception is a dashboard's virtual items, `virtual_heading`/`virtual_text` and the like, which are not addressable resources and carry a `dashcard_id` instead), or refine via `search`.
+You can request multiple resources in one call by providing a list of URIs (max 5). Lists are paginated at 25 items per page. Every `<list>` carries `total`, `page`, `pages`, `showing`, and `truncated` — `truncated` is always present, reading `"true"` when pages remain after this one and `"false"` when this is the last page (which only means the whole list if you've also fetched every earlier page — on page 3 of 3, `"false"` still means you've only seen a third of the list). When more pages remain, a `<truncation-note>` names the next page. Fetch it by adding `page=N` to the URI's query string: `?page=N` if the URI has none yet, `&page=N` if it already does (e.g. `metabase://collections?tree=true&page=2` — a second `?` is not a separator and silently breaks the query). Drill into a specific item via its URI (list items carry a `uri="..."` attribute — the exception is a dashboard's virtual items, `virtual_heading`/`virtual_text` and the like, which are not addressable resources and carry a `dashcard_id` instead), or refine via `search`.
 
 # When to Use read_resource vs search
 
@@ -25,7 +25,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container — its element name is `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
+2. If a top hit is a container — its element name is `<dashboard>` or `<document>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -159,5 +159,5 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 - **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
-- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by appending `?page=N` to the same URI (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your `search` query (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list.
+- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by adding `page=N` to the URI's query string — `?page=N` if it has none yet, `&page=N` if it already does — (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your `search` query (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list, and remember `truncated="false"` on a later page doesn't mean you've seen the earlier ones too.
 - **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.

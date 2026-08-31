@@ -18,9 +18,10 @@
   - metabase://user/recent-items - current user's recent items
 
   Pagination:
-  List responses are capped at page-size items per page. When :truncated is true, use ?page=N to
-  fetch subsequent pages, e.g. metabase://database/1/tables?page=2. The response includes
-  :page (current, 1-indexed) and :pages (total).
+  List responses are capped at page-size items per page. When :truncated is true, add page=N to
+  the URI's query string to fetch subsequent pages — ?page=N if it has none yet, &page=N if it
+  already does (e.g. metabase://database/1/tables?page=2, or metabase://collections?tree=true&page=2).
+  The response includes :page (current, 1-indexed) and :pages (total).
 
   Database drill-down:
   - metabase://database/{id} - one database
@@ -1064,8 +1065,10 @@
   back here. Only numeric IDs accepted, never alphanumeric entity-id's.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
-  When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).
-  The response includes :page (current, 1-indexed) and :pages (total page count).
+  When :truncated is true, add page=N to the URI's query string to fetch the next page — ?page=N
+  if it has none yet, &page=N if it already does (e.g. metabase://database/1/tables?page=2, or
+  metabase://collections?tree=true&page=2). The response includes :page (current, 1-indexed) and
+  :pages (total page count).
 
   NAVIGATION (top-level lists):
   - metabase://databases - all databases
