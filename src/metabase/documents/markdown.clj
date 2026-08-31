@@ -779,6 +779,17 @@
   ^String [^String s]
   (str/join "\n" (map escape-line-start (str/split s line-ending-re -1))))
 
+(defn escape-text
+  "Escape `s` so that, spliced into Markdown source and re-parsed, it round-trips back to the same
+  literal text wherever it lands — inline or at the start of a line. [[splice]] treats its
+  replacement as Markdown *source* (that is how it inserts a heading or a card embed), so a caller
+  that means literal text — `document_write`'s `edits` — must escape it first, or a replacement
+  like `*` reopens the block as a list. Escapes inline emphasis/link/code characters on every line,
+  then any leading character that would open a block construct; over-escaping a character that was
+  not actually in a special position is inert (CommonMark renders `\\#` as `#`)."
+  ^String [^String s]
+  (str/join "\n" (map (comp escape-line-start escape-inline) (str/split s line-ending-re -1))))
+
 (defn- code-span
   "Wrap `s` in a backtick run longer than any run it contains, space-padded when the content
   has edge backticks or symmetric edge spaces (CommonMark strips one pad space from each
