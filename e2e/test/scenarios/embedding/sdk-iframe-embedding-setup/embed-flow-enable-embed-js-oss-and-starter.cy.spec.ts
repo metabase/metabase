@@ -36,7 +36,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
         embedModalEnableEmbeddingCard().should(
           "contain.text",
-          "To continue, enable guest embeds and agree to the usage conditions.",
+          "To continue, enable embedding and agree to the usage conditions.",
         );
 
         embedModalEnableEmbeddingCard().within(() => {

@@ -15,7 +15,7 @@ const DATA_BY_EMBEDDING_TYPE = {
     authMethodLabel: "Guest",
     cardTestId: "guest-embeds-setting-card",
     cardText:
-      "To continue, enable guest embeds and agree to the usage conditions.",
+      "To continue, enable embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-modular",
     showTermsSettingName: "show-static-embed-terms",
     tooltipText:
