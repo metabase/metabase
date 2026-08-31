@@ -17,7 +17,7 @@ import {
   Text,
 } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
-import { getIconForVisualizationType } from "metabase/visualizations";
+import { getIconForVisualizationType } from "metabase/viz-core";
 import type {
   CollectionSyncPreferences,
   RemoteSyncDependencyFailure,
@@ -127,7 +127,7 @@ const RequiredCollectionRowItem = ({
   const syncableId = isSyncableRow(row) ? row.id : null;
 
   return (
-    <Accordion.Item value={String(row.id)}>
+    <Accordion.Item value={String(row.id)} mt="sm">
       {/* The switch sits outside the control, so flipping it doesn't also toggle the panel. */}
       <Group
         gap="sm"
