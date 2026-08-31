@@ -53,6 +53,7 @@ export function createMockContentDiagnosticsStaleFinding(
     detected_at: "2026-06-01T00:00:00Z",
     entity_display_name: "Stale question",
     created_at: "2026-01-01T00:00:00Z",
+    can_write: true,
     last_active_at: "2026-03-01T00:00:00Z",
     ...opts,
     details: {
@@ -93,6 +94,7 @@ export function createMockContentDiagnosticsSlowFinding(
     detected_at: "2026-06-01T00:00:00Z",
     entity_display_name: "Slow question",
     created_at: "2026-01-01T00:00:00Z",
+    can_write: true,
     duration_ms: 5000,
     ...opts,
     details: {
@@ -145,6 +147,7 @@ export function createMockContentDiagnosticsDuplicatedFinding(
     detected_at: "2026-06-01T00:00:00Z",
     entity_display_name: "Duplicated question",
     created_at: "2026-01-01T00:00:00Z",
+    can_write: true,
     duplicate_count: 1,
     ...opts,
     details: {
@@ -186,6 +189,7 @@ export function createMockContentDiagnosticsImbalancedFinding(
     detected_at: "2026-06-01T00:00:00Z",
     entity_display_name: "Crowded collection",
     created_at: "2026-01-01T00:00:00Z",
+    can_write: true,
     content_count: 101,
     ...opts,
     details: {

@@ -60,6 +60,8 @@
    [:entity_display_name [:maybe :string]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
    [:created_at          [:maybe ms/TemporalInstant]]
+   ;; whether the caller can trash the entity (curate its collection, or delete a transform)
+   [:can_write           :boolean]
    ;; scan-time parent-collection name (the collection sort key); root rows carry the site-locale root
    ;; label. nil when the caller cannot read the scan-time parent or the row predates the migration.
    ;; details.collection stays the live, permission-scoped breadcrumb for navigation.

@@ -163,6 +163,34 @@ describe("ImbalancedContentPage", () => {
     expect(within(list).getByText("42")).toBeInTheDocument();
   });
 
+  it.each(["empty", "sparse"] as const)(
+    "offers bulk-trash selection on the %s tab",
+    async (mode) => {
+      setup({
+        mode,
+        findings: [
+          createMockContentDiagnosticsImbalancedFinding({ can_write: true }),
+        ],
+      });
+
+      await screen.findByRole("treegrid");
+      expect(await screen.findByLabelText("Select all")).toBeInTheDocument();
+    },
+  );
+
+  it("has no bulk-trash selection on the Crowded tab", async () => {
+    setup({
+      mode: "crowded",
+      findings: [
+        createMockContentDiagnosticsImbalancedFinding({ can_write: true }),
+      ],
+    });
+
+    await screen.findByRole("treegrid");
+    expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
   it("pins the finding type to the tab's problem type", async () => {
     setup({ mode: "crowded", findings: FINDINGS });
     await waitForListToLoad();

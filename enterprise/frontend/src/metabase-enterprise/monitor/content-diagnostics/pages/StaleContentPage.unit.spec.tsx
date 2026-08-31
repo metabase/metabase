@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardEndpoints,
   setupListStaleFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -23,6 +24,7 @@ import type {
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockContentDiagnosticsCollection,
   createMockContentDiagnosticsStaleFinding,
   createMockContentDiagnosticsUser,
@@ -88,7 +90,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const { router } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     <Route
       path={Urls.staleContent()}
       element={
@@ -106,7 +108,7 @@ function setup({
     },
   );
 
-  return { router };
+  return { router, store };
 }
 
 function getUrlQuery(router: TestRouter | undefined) {
@@ -142,6 +144,144 @@ describe("StaleContentPage", () => {
     expect(
       await screen.findByText("No stale content found"),
     ).toBeInTheDocument();
+  });
+
+  it("allows to select only findings the user can trash", async () => {
+    setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_display_name: "Can trash",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_display_name: "Read only",
+          can_write: false,
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await within(list).findByText("Can trash");
+
+    const rows = within(list).getAllByRole("row");
+    const writableRow = rows.find((row) =>
+      within(row).queryByText("Can trash"),
+    );
+    const readonlyRow = rows.find((row) =>
+      within(row).queryByText("Read only"),
+    );
+    if (writableRow == null || readonlyRow == null) {
+      throw new Error("expected both finding rows to render");
+    }
+
+    expect(within(writableRow).getByRole("checkbox")).toBeEnabled();
+    expect(within(readonlyRow).getByRole("checkbox")).toBeDisabled();
+  });
+
+  it("archives the selected findings and refetches the list", async () => {
+    setupCardEndpoints(createMockCard({ id: 1 }));
+    setupCardEndpoints(createMockCard({ id: 2 }));
+    const { store } = setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_type: "card",
+          entity_id: 1,
+          entity_display_name: "First card",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_type: "card",
+          entity_id: 2,
+          entity_display_name: "Second card",
+          can_write: true,
+        }),
+      ],
+    });
+
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to trash" }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/card/1")).toHaveLength(1);
+    });
+    expect(fetchMock.callHistory.calls("path:/api/card/2")).toHaveLength(1);
+    // the two archive requests set archived
+    for (const id of [1, 2]) {
+      const [call] = fetchMock.callHistory.calls(`path:/api/card/${id}`);
+      expect(JSON.parse(String(call.options?.body))).toMatchObject({
+        archived: true,
+      });
+    }
+    // archiving invalidates the findings cache, so the list refetches
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
+          .length,
+      ).toBeGreaterThan(1);
+    });
+
+    await waitFor(() => {
+      expect(
+        store
+          .getState()
+          .undo.some((undo) => undo.message === "Moved 2 items to the trash"),
+      ).toBe(true);
+    });
+  });
+
+  it("keeps items that failed to trash selected", async () => {
+    setupCardEndpoints(createMockCard({ id: 1 }));
+    fetchMock.put("path:/api/card/2", { status: 500, body: {} });
+    const { store } = setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_type: "card",
+          entity_id: 1,
+          entity_display_name: "Ok card",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_type: "card",
+          entity_id: 2,
+          entity_display_name: "Bad card",
+          can_write: true,
+        }),
+      ],
+    });
+
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to trash" }),
+    );
+
+    // the failed item stays selected, so the bar reappears with just it
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        store
+          .getState()
+          .undo.some((undo) => undo.message === "Couldn't remove 1 item"),
+      ).toBe(true);
+    });
   });
 
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {

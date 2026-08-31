@@ -3,6 +3,7 @@
   Scan-snapshot, latest-wins; a stamped `invalidated_at` evicts a superseded/invalidated finding from the
   served set (NULL = active)."
   (:require
+   [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -31,3 +32,28 @@
                  :finding_type   [:in finding-types]
                  :invalidated_at nil}
                 {:invalidated_at (mi/now)})))
+
+(defn invalidate-for-entity!
+  "Soft-invalidate every still-active finding for a single entity (`entity-type` + `entity-id`) - e.g. when
+  the entity is archived or deleted through any path."
+  [entity-type entity-id]
+  (t2/update! :model/ContentDiagnosticsFinding
+              {:entity_type    entity-type
+               :entity_id      entity-id
+               :invalidated_at nil}
+              {:invalidated_at (mi/now)}))
+
+(defn invalidate-for-collection-subtree!
+  "Soft-invalidate the active findings of an archived collection subtree: the collections themselves, and the
+  collection items currently in them (live `collection_id`, not the scan-time `scope_collection_id`).
+  Archiving a collection does not archive its transforms, so their findings stay."
+  [collection-ids]
+  (when (seq collection-ids)
+    (let [archived-types (conj (descendants common/hierarchy ::common/collection-item) :collection)]
+      (t2/query-one {:update (t2/table-name :model/ContentDiagnosticsFinding)
+                     :set    {:invalidated_at (mi/now)}
+                     :where  [:and
+                              [:= :invalidated_at nil]
+                              (into [:or] (common/entity-collection-clauses
+                                           archived-types
+                                           (fn [_etype coll-col] [:in coll-col collection-ids])))]}))))

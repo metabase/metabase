@@ -56,21 +56,6 @@
   transform-serving clauses - see [[visible-findings-clause]] for why."
   {:include-archived-items :all})
 
-(defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
-  built by `coll-pred-fn` - a fn of the entity-type and the column holding the entity's collection id.
-  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
-  contribute nothing. For every containable type that column is `:collection_id`; a `:collection` subject
-  *is* the collection, so its predicate is keyed on its own `:id`. Callers combine the seq with
-  `:or`/`:and`."
-  [coll-pred-fn]
-  (for [[etype model] common/entity-type->model]
-    [:and
-     [:= :entity_type (name etype)]
-     [:in :entity_id {:select [:id]
-                      :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn etype (if (= etype :collection) :id :collection_id))}]]))
-
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read (a collection subject must
   itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped.
@@ -79,7 +64,8 @@
   its transforms. Only the archived exclusion is relaxed; permission filtering is unchanged."
   []
   (into [:or]
-        (entity-collection-clauses
+        (common/entity-collection-clauses
+         (keys common/entity-type->model)
          (fn [etype coll-col]
            (collection/visible-collection-filter-clause
             coll-col
@@ -131,7 +117,9 @@
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses (fn [_etype coll-col] [:in coll-col excluded-personal-ids])))))
+          (common/entity-collection-clauses
+           (keys common/entity-type->model)
+           (fn [_etype coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
@@ -422,6 +410,30 @@
 (defmethod finalize-finding :sparse  [_ base row _ctx] (merge base (select-keys row [:content_count])))
 (defmethod finalize-finding :crowded [_ base row _ctx] (merge base (select-keys row [:content_count])))
 
+(defn- can-write-by-entity
+  "`{[entity-type entity-id] → can_write bool}` for the page's findings, each entity hydrated with its own
+  model's `:can_write` - collection curate for card/dashboard/document/collection, DB-transforms permission
+  for transform. Collection items select only `collection_id`; collection and transform read many columns,
+  so they stay whole-row."
+  [findings]
+  (into {}
+        (for [[etype rows] (group-by :entity_type findings)
+              :let  [model      (common/entity-type->model etype)
+                     ids        (into #{} (map :entity_id) rows)
+                     selectable (cond
+                                  ;; card_schema: Card's after-select throws on a row with query columns but no schema
+                                  (= etype :card)
+                                  [model :id :collection_id :card_schema]
+
+                                  (isa? common/hierarchy etype ::common/collection-item)
+                                  [model :id :collection_id]
+
+                                  :else
+                                  model)]
+              :when (and model (seq ids))
+              row   (t2/hydrate (t2/select selectable :id [:in ids]) :can_write)]
+          [[etype (:id row)] (boolean (:can_write row))])))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
@@ -443,6 +455,7 @@
         ;; scan-time parents ride along so the collection_name gate below can check their readability -
         ;; an entity may have moved since the scan, so they can differ from the live coll-ids
         breadcrumbs (collection-breadcrumbs (into coll-ids (keep :scope_collection_id) findings))
+        can-write   (can-write-by-entity findings)
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
@@ -472,6 +485,7 @@
                                       :entity_display_name entity_name
                                       :created_at          entity_created_at
                                       :details             details*
+                                      :can_write           (get can-write [entity_type entity_id] false)
                                       ;; additive flat kind; coalesce pre-migration rows
                                       :entity_kind         (or entity_kind card_type entity_type)
                                       ;; scan-time display name for the collection sort column (root rows
