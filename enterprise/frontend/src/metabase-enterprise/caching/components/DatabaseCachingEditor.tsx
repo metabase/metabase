@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PerformancePageContent } from "metabase/admin/performance/components/PerformancePageContent";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import {
@@ -24,6 +23,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { ActionIcon, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
