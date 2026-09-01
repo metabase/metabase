@@ -127,6 +127,7 @@ jobs:
             --base "$TARGET_BRANCH" \
             --head "$SEED_BRANCH" \
             --title "Add docs/_includes/data/nav.yml for $TARGET_BRANCH" \
-            --body "One-off seed of \`docs/_includes/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Once this merges, docs.metabase.github.io will generate its versioned nav file from this branch instead of the other way around." \
+            --body "One-off seed of \`docs/_includes/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Auto-generated via https://github.com/metabase/metabase/pull/81703." \
             --label "no-backport" \
-            --label "ci:skip"
+            --label "ci:skip" \
+            --assignee bpander
