@@ -30,7 +30,7 @@
   mage.merge-kondo-ratchets-test/keep-me
   mage.util-test/keep-me
   mage.modules-test/keep-me
-   mage.project-tests-test/keep-me
+  mage.project-tests-test/keep-me
   mage.shell-test/keep-me
   merge-yaml-migrations-test/keep-me
   token-scan-test/keep-me)
