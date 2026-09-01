@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   extractRemappings,
+  getVisualizationRaw,
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { updateSettings } from "metabase/visualizations/lib/settings";
@@ -46,9 +47,13 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
+  const visualization = getVisualizationRaw(series);
   const chartSettings = useMemo(
     () => settings || getStoredSettingsForSeries(series),
-    [series, settings],
+    // getStoredSettingsForSeries reads the registry internally; `visualization`
+    // forces a recompute once an async custom viz plugin registers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [series, settings, visualization],
   );
 
   const handleChangeSettings = useCallback(

@@ -95,4 +95,35 @@ describe("useChartSettingsState", () => {
       undefined,
     );
   });
+
+  it("re-runs the migration once the plugin registers after the first render", () => {
+    const series = [
+      createMockSingleSeries({
+        display: "custom:late-viz",
+        visualization_settings: { threshold: 5 },
+      }),
+    ];
+
+    const { result, rerender } = renderHook(() =>
+      useChartSettingsState({ series, onChange: jest.fn() }),
+    );
+
+    // Not registered yet: the bare key can't be migrated.
+    expect(result.current.chartSettings).toEqual({ threshold: 5 });
+
+    registerVisualization({
+      identifier: "custom:late-viz",
+      getUiName: () => "Late viz",
+      checkRenderable: () => undefined,
+      settings: {
+        "custom-viz:late-viz:threshold": { widget: "number" },
+      },
+    });
+
+    rerender();
+
+    expect(result.current.chartSettings).toEqual({
+      "custom-viz:late-viz:threshold": 5,
+    });
+  });
 });
