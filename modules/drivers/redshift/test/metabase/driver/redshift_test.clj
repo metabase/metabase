@@ -808,4 +808,11 @@
     (let [[sql & params] (#'redshift/get-tables-sql nil)]
       (is (empty? params))
       (is (not (str/includes? sql "nspname in")))
-      (is (not (str/includes? sql "schemaname in"))))))
+      (is (not (str/includes? sql "schemaname in")))))
+  (testing "per-relation privilege calls are select-list expressions, never predicates"
+    ;; As predicates the planner hoists them over the schema filter and they cost ~10s per sync. See the
+    ;; comment in `get-tables-sql`.
+    (let [[sql]           (#'redshift/get-tables-sql nil)
+          predicate-lines (filter #(re-find #"^\s*(where|and)\b" %) (str/split-lines sql))]
+      (is (str/includes? sql "as selectable"))
+      (is (not-any? #(re-find #"has_(table|any_column)_privilege" %) predicate-lines)))))

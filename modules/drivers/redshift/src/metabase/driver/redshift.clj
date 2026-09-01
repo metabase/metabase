@@ -165,17 +165,33 @@
        "\n"
        (remove
         nil?
+        ;; The two per-relation privilege calls live in the outer select list, not the `where`, and the caller
+        ;; drops rows where `selectable` is false. In a `where` the planner hoists them above the schema filter
+        ;; and evaluates them across the whole catalog: `has_any_column_privilege` alone then costs ~10s on a
+        ;; shared cluster, flat in how many relations survive. A select-list expression is computed only on rows
+        ;; that already passed the `where`, so the same calls cost nothing measurable. Filtering on `selectable`
+        ;; in SQL instead of in the caller puts the expression back in a predicate and brings the whole cost
+        ;; back -- measured, not assumed.
         ["select"
-         "  c.relname as name,"
-         "  n.nspname as schema,"
-         "  case c.relkind"
-         "    when 'r' then 'table'"
-         "    when 'p' then 'partitioned table'"
-         "    when 'v' then 'view'"
-         "    when 'f' then 'foreign table'"
-         "    when 'm' then 'materialized view'"
-         "    end as type,"
-         "  d.description"
+         "  s.name,"
+         "  s.schema,"
+         "  s.type,"
+         "  s.description,"
+         "  pg_catalog.has_table_privilege(s.oid, 'SELECT')"
+         "    or pg_catalog.has_any_column_privilege(s.oid, 'SELECT') as selectable"
+         "from ("
+         "  select"
+         "    c.oid,"
+         "    c.relname as name,"
+         "    n.nspname as schema,"
+         "    case c.relkind"
+         "      when 'r' then 'table'"
+         "      when 'p' then 'partitioned table'"
+         "      when 'v' then 'view'"
+         "      when 'f' then 'foreign table'"
+         "      when 'm' then 'materialized view'"
+         "      end as type,"
+         "    d.description"
          "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
          "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
          "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
@@ -184,16 +200,18 @@
          "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
          "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
          (when placeholders (str "    and n.nspname in " placeholders))
+         ;; per-schema, so cheap enough to stay a predicate
          "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
-         "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
-         "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
+         ") s"
          "union all"
          "select"
          "  tablename as name,"
          "  schemaname as schema,"
          "  'EXTERNAL TABLE' as type,"
          ;; external tables don't have descriptions
-         "  null as description"
+         "  null as description,"
+         ;; the USAGE predicate below is this branch's whole privilege test
+         "  true as selectable"
          "from svv_external_tables t"
          "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
          (when placeholders (str "  and t.schemaname in " placeholders))
@@ -209,10 +227,13 @@
         syncable? (fn [schema]
                     (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
     (eduction
-     ;; kept over the narrowed query too: `syncable?` stays the definition of what syncs, and an exclusion filter
-     ;; still arrives here with every schema.
-     (comp (filter (comp syncable? :schema))
-           (map #(dissoc % :type)))
+     ;; `selectable` is filtered here rather than in the SQL on purpose; `get-tables-sql` says why.
+     ;;
+     ;; `syncable?` is kept over the narrowed query too: it stays the definition of what syncs, and an exclusion
+     ;; filter still arrives here with every schema.
+     (comp (filter :selectable)
+           (filter (comp syncable? :schema))
+           (map #(dissoc % :type :selectable)))
      (sql-jdbc.execute/reducible-query database (get-tables-sql (exactly-named-schemas inclusion-patterns))))))
 
 (defmethod driver/describe-database* :redshift
