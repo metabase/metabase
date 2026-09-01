@@ -1,10 +1,14 @@
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LlmModelPicker } from "metabase/metabot";
+import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 export function AIModelSettingsSection({ id }: { id?: string }) {
+  const supportsFastMode = useSetting("llm-metabot-supports-fast-mode?");
+
   return (
     <SettingsSection
       id={id}
@@ -17,6 +21,14 @@ export function AIModelSettingsSection({ id }: { id?: string }) {
           label={t`Default model`}
           description={t`Metabot, AI explorations and SQL generation all run on this model.`}
         />
+        {supportsFastMode && (
+          <AdminSettingInput
+            name="llm-fast-mode"
+            title={t`Fast mode`}
+            description={t`Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment.`}
+            inputType="boolean"
+          />
+        )}
         <LlmModelPicker
           settingKey="llm-mini-model"
           label={t`Mini model`}

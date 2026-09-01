@@ -80,14 +80,16 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
         </ExternalLink>
       )}`}
     >
-      <McpServerUrlSection />
-
-      {isEnabled && (
+      {isEnabled ? (
         <Stack gap="xl">
+          <McpServerUrlSection />
+
           <CommonMcpClientsSection />
 
           <CustomMcpOriginsSection />
         </Stack>
+      ) : (
+        <></>
       )}
     </SettingsSection>
   );
