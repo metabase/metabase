@@ -1188,11 +1188,23 @@ describe("scenarios - setup guide", () => {
         })
         .should("have.attr", "data-completed", "true");
 
-      cy.log("open the data segregation strategy step");
+      // The seeded sandbox marks the later steps done, so the stepper
+      // auto-advances to "Create tenants" — clicking before it settles misses.
+      cy.log("wait for the stepper to settle on the first incomplete step");
       H.main()
-        .findByText("Which data segregation strategy does your database use?")
-        .scrollIntoView()
-        .click();
+        .findByRole("listitem", { name: "Create tenants", timeout: 10_000 })
+        .should("have.attr", "data-active", "true");
+
+      const dataSegregationStep = () =>
+        H.main().findByRole("listitem", {
+          name: /Which data segregation strategy/,
+        });
+
+      cy.log("open the data segregation strategy step");
+      dataSegregationStep().scrollIntoView().click();
+
+      cy.log("the strategy picker should be expanded");
+      dataSegregationStep().should("have.attr", "data-active", "true");
 
       cy.log("select row and column level security strategy");
       H.main()

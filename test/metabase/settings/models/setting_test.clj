@@ -1832,6 +1832,17 @@
         (setting/migrate-encrypted-settings!)
         (is (= "Lenny" (actual-value-in-db :toucan-name)))))))
 
+(deftest setter-none-does-not-imply-encryption-test
+  (testing "`:setter :none` does not imply encryption -- it is decided by type or stated explicitly, like any setting"
+    (testing "a :setter :none setting of a plaintext type is not encrypted"
+      (is (= :no (:encryption (setting/resolve-setting :version)))))
+    (testing "a :setter :none setting that is secret or integrity-critical states it explicitly"
+      (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :setup-token)))))
+    (testing "a :setter :none string setting must state `:encryption`, rather than defaulting to encrypted"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"`:encryption` is a required option"
+                            (#'setting/extract-encryption-or-default
+                             {:name :test-unstated-setter-none-setting :type :string :setter :none}))))))
+
 (deftest boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"
     (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))

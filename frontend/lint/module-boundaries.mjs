@@ -87,6 +87,18 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "shared", name: "metrics-ui", pattern }),
   ),
+  // Data-studio UI shared by the metrics and data-studio features and consumed
+  // by shared/transforms. Only the components are carved out: they import
+  // querying/nav/metabot/upsells, which must not become edges of shared/common.
+  // The sibling analytics and collection utils stay in common (common files
+  // import them). Untiered for now: it cannot take a sub-tier level until the
+  // metabot button and the AppSwitcher are slotted out of PaneHeader, and a
+  // pattern element cannot take enforcePublicApi.
+  createElement({
+    type: "shared",
+    name: "data-studio-ui",
+    pattern: "frontend/src/metabase/common/data-studio/components/**",
+  }),
   createElement({
     type: "shared",
     name: "upsells",
@@ -196,16 +208,24 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
-  createElement({ type: "shared", name: "forms", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
+  // The app-wide mirror of table and field metadata. Separate from
+  // `shared/metadata`, which is the Semantic Layer UI: 147 files read the store,
+  // 115 use the UI, and 8 do both.
+  createElement({
+    type: "shared",
+    name: "metadata-store",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
-  createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "nav" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),

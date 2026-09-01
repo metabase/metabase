@@ -957,7 +957,7 @@ function getTimeSeriesXAxisInfo(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    Object.values(dimensionModel.columnByCardId)
+    dimensionModel.columns
       .map((column) =>
         isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
       )

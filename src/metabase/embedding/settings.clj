@@ -219,7 +219,7 @@
   :type       :string
   :feature    :embedding
   :export?    false
-  :visibility :public
+  :visibility :authenticated
   :encryption :when-encryption-key-set
   :audit      :getter)
 
@@ -274,7 +274,7 @@
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
   :type       :string
   :export?    false
-  :visibility :public
+  :visibility :authenticated
   :default    ""
   :encryption :when-encryption-key-set
   :audit      :getter
