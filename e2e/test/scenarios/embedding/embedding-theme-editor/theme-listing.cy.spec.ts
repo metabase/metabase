@@ -46,7 +46,7 @@ describe(
         cy.findByRole("button", { name: /New theme/ }).click();
       });
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
     });
 
     it("does not create a theme when cancelling from the draft editor", () => {
@@ -57,12 +57,12 @@ describe(
         .findByRole("button", { name: /New theme/ })
         .click();
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
 
       cy.findByRole("button", { name: /Cancel/ }).click();
 
       cy.log("navigates back to the listing");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
 
       cy.log("new theme card is still visible");
       H.main()
@@ -82,7 +82,7 @@ describe(
       });
 
       cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/\d+/);
     });
 
     it("uses white-labeled colors as a base for creating themes", () => {
