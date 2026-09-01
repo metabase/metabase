@@ -226,3 +226,18 @@
                 "the cached mode goes back to the one the database still holds")
             (is (t2/exists? :model/MetabotPermissions :group_id group-id)
                 "the rows the switch would have deleted are rolled back with it")))))))
+
+(deftest mode-switch-rejected-under-env-var-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "the /advanced endpoints refuse to switch modes while an env var forces the setting"
+      (with-metabot-permissions-snapshot
+        (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Specific Group"}
+                       :model/MetabotPermissions _              {:group_id   group-id
+                                                                 :perm_type  :permission/metabot
+                                                                 :perm_value :yes}]
+          (mt/with-temp-env-var-value! [mb-metabot-advanced-permissions "true"]
+            (let [msg "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable."]
+              (is (= msg (mt/user-http-request :crowberto :delete 400 "ee/ai-controls/permissions/advanced")))
+              (is (= msg (mt/user-http-request :crowberto :post 400 "ee/ai-controls/permissions/advanced"))))
+            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+                "no rows are deleted by the refused switch")))))))
