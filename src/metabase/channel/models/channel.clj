@@ -36,7 +36,7 @@
 
 (t2/deftransforms :model/Channel
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
-   :details (mi/transform-encrypted-json "channel.details")})
+   :details (mi/transform-encrypted-json :encryption/channel.details)})
 
 (mr/def ::Channel
   "Channel schema."

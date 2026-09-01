@@ -14,7 +14,7 @@
 (def ^:private token-source
   "Binds an SDK validation token to this use, so no other encrypted value can be presented as one (or the reverse).
   Tokens live 300 seconds, so ones issued before this existed have long expired."
-  "sso.sdk-token")
+  :encryption/sso.sdk-token)
 
 (defn- hashed-key
   []

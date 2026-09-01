@@ -320,8 +320,7 @@
     (try
       (some-> decrypted json/decode+kw)
       (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
+        (if (encryption/possibly-encrypted-string? decrypted)
           (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
           (log/errorf "Error parsing JSON: %s" (ex-message e)))
         nil))))
@@ -330,8 +329,8 @@
   (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (defn transform-encrypted-json
-  "Encrypted-json transform for the column named by `source` (a \"table.column\" string, used in decrypt error
-  messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
+  "Encrypted-json transform for the column named by `source` (an `:encryption/table.column` keyword, used in decrypt
+  error messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   [source]
   {:in  (encrypted-json-in source)
    :out (partial cached-encrypted-json-out source)})
@@ -524,8 +523,8 @@
    :out (comp edn-out #(encryption/maybe-decrypt % source))})
 
 (defn transform-secret-value
-  "Transform for a secret `^bytes` column named by `source` (a \"table.column\" string, used in decrypt error
-  messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
+  "Transform for a secret `^bytes` column named by `source` (an `:encryption/table.column` keyword, used in decrypt
+  error messages). When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   [source]
   {:in  (comp #(encryption/maybe-encrypt-bytes % source) codecs/to-bytes)
    :out (comp #(encryption/maybe-decrypt-bytes % source) maybe-blob->bytes)})

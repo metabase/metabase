@@ -1105,7 +1105,7 @@
                   (migrate!)
                   ;; migrations write these columns in their unbound legacy form; startup binds them to their column
                   ;; before anything reads through a model, so do the same here before the model reads below
-                  (mdb/encrypt-plaintext-columns!)
+                  (mdb/migrate-encrypted-columns!)
                   (when encrypted?
                     (testing "make sure the settings is encrypted after the migration"
                       (is (true? (encryption/possibly-encrypted-string?
@@ -1129,7 +1129,7 @@
                            (t2/select-one-fn :settings :model/Database empty-options-id)))))
                 (testing "rollback migration"
                   (migrate! :down 46)
-                  (mdb/encrypt-plaintext-columns!)
+                  (mdb/migrate-encrypted-columns!)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
@@ -1983,7 +1983,7 @@
                             (map :value settings-after)))
                 (let [decrypt (fn [{:keys [key] :as setting}]
                                 (update setting :value encryption/maybe-decrypt
-                                        (encryption/setting-source key)
+                                        (keyword "encryption" (str "setting." key))
                                         {:accept-plaintext true, :accept-unbound true}))]
                   (is (= (set (map decrypt settings-before))
                          (set (map decrypt settings-after)))))))))))))

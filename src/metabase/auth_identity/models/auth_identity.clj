@@ -40,7 +40,7 @@
 ;; reach fields nested inside JSON. The column is listed in
 ;; `metabase.app-db.encryption/encrypted-string-columns`.
 (def ^:private transform-credentials
-  (let [{:keys [in out]} (mi/transform-encrypted-json "auth_identity.credentials")]
+  (let [{:keys [in out]} (mi/transform-encrypted-json :encryption/auth_identity.credentials)]
     {:in in, :out (comp parse-credentials-timestamps-out out)}))
 
 (t2/deftransforms :model/AuthIdentity

@@ -117,7 +117,7 @@
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
-   :public_uuid            (mi/transform-encrypted-text "report_card.public_uuid")
+   :public_uuid            (mi/transform-encrypted-text :encryption/report_card.public_uuid)
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword

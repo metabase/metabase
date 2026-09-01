@@ -365,7 +365,7 @@
 
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
-   :details (mi/transform-encrypted-json "notification_recipient.details")})
+   :details (mi/transform-encrypted-json :encryption/notification_recipient.details)})
 
 (defn- notification-recipient-schema
   [{:keys [with-id?]}]

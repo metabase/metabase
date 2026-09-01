@@ -204,7 +204,7 @@
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   ;; runs before anything reads settings -- see its docstring
   (setting/migrate-encrypted-settings!)
-  (mdb/encrypt-plaintext-columns!)
+  (mdb/migrate-encrypted-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.

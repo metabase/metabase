@@ -202,7 +202,7 @@
           (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
             (is (encryption/possibly-encrypted-string? raw)
                 "raw column value should be ciphertext")
-            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw "api_key.key")))
+            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw :encryption/api_key.key)))
                 "it should decrypt to the (plaintext) bcrypt hash")))
         (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
           (is (= (mt/user->id :lucky)
@@ -216,7 +216,7 @@
           ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
           ;; strict decrypt on the corrupted plaintext value
           (t2/query {:update :api_key
-                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123") "api_key.key")}
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123") :encryption/api_key.key)}
                      :where  [:= :id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b

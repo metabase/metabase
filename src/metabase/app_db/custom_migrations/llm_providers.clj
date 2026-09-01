@@ -94,7 +94,8 @@
   [setting-key]
   (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
           :value
-          (encryption/maybe-decrypt (encryption/setting-source setting-key)
+          ;; a frozen copy of `metabase.settings.models.setting/setting-source`, which migrations must not call
+          (encryption/maybe-decrypt (keyword "encryption" (str "setting." setting-key))
                                     {:accept-plaintext true, :accept-unbound true})))
 
 (defn- non-blank

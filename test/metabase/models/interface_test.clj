@@ -19,8 +19,8 @@
 (deftest decrypt-error-names-source-test
   (encryption-test/with-secret-key "0123456789abcdef"
     (testing "a decrypt failure in an encrypted transform names the column in the message (and never the value)"
-      (doseq [[transform source] {(mi/transform-encrypted-json "metabase_database.details") "metabase_database.details"
-                                  (mi/transform-encrypted-text "report_card.public_uuid")   "report_card.public_uuid"}]
+      (doseq [[transform source] {(mi/transform-encrypted-json :encryption/metabase_database.details) :encryption/metabase_database.details
+                                  (mi/transform-encrypted-text :encryption/report_card.public_uuid)   :encryption/report_card.public_uuid}]
         (testing source
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 (re-pattern (str "Error decrypting " source ": Expected an encrypted value"))
@@ -30,12 +30,12 @@
                  (is (not (re-find #"sekret" (ex-message e))))
                  (is (= source (:source (ex-data e)))))))))
     (testing "a value written through the transform still round-trips"
-      (let [{:keys [in out]} (mi/transform-encrypted-text "report_card.public_uuid")]
+      (let [{:keys [in out]} (mi/transform-encrypted-text :encryption/report_card.public_uuid)]
         (is (= "some-uuid" (out (in "some-uuid"))))))
     (testing "bytes: a plaintext secret value names the column too"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Error decrypting secret\.value: Expected an encrypted value"
-                            ((:out (mi/transform-secret-value "secret.value")) (.getBytes "plaintext-sekret")))))))
+                            #"Error decrypting :encryption/secret\.value: Expected an encrypted value"
+                            ((:out (mi/transform-secret-value :encryption/secret.value)) (.getBytes "plaintext-sekret")))))))
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
@@ -115,7 +115,7 @@
                          :pie.show_data_labels     labels})))))))
 
 (deftest encrypted-data-with-no-secret-test
-  (let [source "metabase_database.details"]
+  (let [source :encryption/metabase_database.details]
     (encryption-test/with-secret-key nil
       (testing "Just parses string normally when there is no key and the string is JSON"
         (is (= {:a 1}

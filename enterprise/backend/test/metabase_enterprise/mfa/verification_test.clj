@@ -183,7 +183,7 @@
                                              :credentials  {:secret secret}}))
           (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
                 raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
-                source    "auth_identity.credentials"
+                source    :encryption/auth_identity.credentials
                 plaintext (encryption-test/with-secret-key k1
                             (encryption/maybe-decrypt raw source {:accept-plaintext true}))
                 rotated   (encryption-test/with-secret-key k2

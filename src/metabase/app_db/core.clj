@@ -60,7 +60,7 @@
   decrypt-db
   encrypt-db
   encryption-check-status
-  encrypt-plaintext-columns!]
+  migrate-encrypted-columns!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup

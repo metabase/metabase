@@ -146,8 +146,7 @@
   (try
     (json/decode+kw (encryption/maybe-decrypt v source {:accept-plaintext true, :accept-unbound true}))
     (catch Throwable e
-      (if (or (encryption/possibly-encrypted-string? v)
-              (encryption/possibly-encrypted-bytes? v))
+      (if (encryption/possibly-encrypted-string? v)
         (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
         (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
       v)))
@@ -729,7 +728,7 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (encrypted-json-out "metabase_database.settings" settings)
+                      (let [settings     (encrypted-json-out :encryption/metabase_database.settings settings)
                             options      (json-out options true)
                             new-settings (encrypted-json-in (merge settings options))]
                         (t2/query {:update :metabase_database
@@ -742,7 +741,7 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (encrypted-json-out "metabase_database.settings" settings)
+                        (let [settings (encrypted-json-out :encryption/metabase_database.settings settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
@@ -1112,7 +1111,7 @@
   ;; See #40715
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (when-let [;; find all dbs which are configured not to scan field values
-               dbs (seq (filter #(and (-> (encrypted-json-out "metabase_database.details" (:details %)) :let-user-control-scheduling)
+               dbs (seq (filter #(and (-> (encrypted-json-out :encryption/metabase_database.details (:details %)) :let-user-control-scheduling)
                                       (false? (:is_full_sync %)))
                                 (t2/select :metabase_database)))]
       (doseq [db dbs]
@@ -1414,7 +1413,8 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          (encryption/maybe-decrypt (encryption/setting-source key)
+          ;; a frozen copy of `metabase.settings.models.setting/setting-source`, which migrations must not call
+          (encryption/maybe-decrypt (keyword "encryption" (str "setting." key))
                                     {:accept-plaintext true, :accept-unbound true})))
 
 (define-reversible-migration MigrateUploadsSettings
@@ -1774,7 +1774,7 @@
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
   (let [update-one! (fn [{:keys [id details]}]
-                      (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
+                      (let [decrypted-details (encrypted-json-out :encryption/metabase_database.details details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
                             dbname (:dbname decrypted-details)
@@ -1794,7 +1794,7 @@
                                            :from   [:metabase_database]
                                            :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
-                        (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
+                        (let [decrypted-details (encrypted-json-out :encryption/metabase_database.details details)
                               new-details (dissoc decrypted-details
                                                   :enable-multiple-db
                                                   :db-filters-type
@@ -1966,7 +1966,7 @@
                                                 [:= :uploads_enabled true]]})
         ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
         set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
-                                   (let [decrypted-details (encrypted-json-out "metabase_database.details" details)
+                                   (let [decrypted-details (encrypted-json-out :encryption/metabase_database.details details)
                                          db-name (:dbname decrypted-details)]
                                      (when (and db-name (not uploads_schema_name))
                                        (t2/query {:update :metabase_database
@@ -2233,7 +2233,7 @@
   ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
   ;; written by older code; new code writes only the column.
   (run! (fn [{:keys [id credentials]}]
-          (let [creds        (encrypted-json-out "auth_identity.credentials" credentials)
+          (let [creds        (encrypted-json-out :encryption/auth_identity.credentials credentials)
                 confirmed-at (when (map? creds)
                                (try
                                  (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)

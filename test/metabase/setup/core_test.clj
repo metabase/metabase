@@ -149,7 +149,8 @@
                 (testing "after `enable-encryption` the database is encrypted and starts"
                   (mdb/encrypt-db driver/*driver* (mdb/data-source) nil)
                   (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check")) nil))
-                  (is (encryption/decryptable-string? (:details (t2/select-one "metabase_database")) nil))
+                  (is (encryption/decryptable-string? (:details (t2/select-one "metabase_database"))
+                                                      :encryption/metabase_database.details))
                   (testing "Cache is cleared on encryption"
                     (is (= 0 (t2/count :model/QueryCache))))
                   (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -158,8 +159,13 @@
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
+          ;; the sample-content migration writes the unbound form of its era, so bind it the way startup does before
+          ;; asserting on (or reading through the model) anything it wrote -- see `metabase.core.core/init!`
+          (setting/migrate-encrypted-settings!)
+          (mdb/migrate-encrypted-columns!)
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check") nil))
-          (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database") nil))
+          (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")
+                                              :encryption/metabase_database.details))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)

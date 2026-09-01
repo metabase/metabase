@@ -50,14 +50,14 @@
    (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
-  {:details                        (mi/transform-encrypted-json "metabase_database.details")
-   :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
-   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
+  {:details                        (mi/transform-encrypted-json :encryption/metabase_database.details)
+   :write_data_details             (mi/transform-encrypted-json :encryption/metabase_database.write_data_details)
+   :admin_details                  (mi/transform-encrypted-json :encryption/metabase_database.admin_details)
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
    :start_of_week                  mi/transform-keyword
-   :settings                       (mi/transform-encrypted-json "metabase_database.settings")
+   :settings                       (mi/transform-encrypted-json :encryption/metabase_database.settings)
    :dbms_version                   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)

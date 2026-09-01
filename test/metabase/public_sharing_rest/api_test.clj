@@ -105,6 +105,13 @@
   [model id]
   (:public_uuid_prefix (t2/query-one {:select [:public_uuid_prefix] :from [(t2/table-name model)] :where [:= :id id]})))
 
+(defn- public-uuid-source
+  "The source `model`'s `public_uuid` is bound to at rest, the same `:encryption/table.column` keyword the model's
+  transform binds. Reading the raw column has to name it, since a value bound to one column does not decrypt as
+  another's."
+  [model]
+  (keyword "encryption" (str (name (t2/table-name model)) ".public_uuid")))
+
 (defn- set-raw-public-uuid!
   "Forge a public link via raw SQL: write a plaintext `public_uuid` (and a matching prefix so the lookup would find it),
   bypassing the model's encrypting transform."
@@ -119,31 +126,32 @@
   unshare and assert `public_uuid` stays encrypted at rest while `public_uuid_prefix` always tracks it. Runs inside a
   secret-key + public-sharing-enabled context."
   [model id]
-  (testing "a row with no public_uuid has no prefix"
-    (is (nil? (raw-public-uuid model id)))
-    (is (nil? (raw-public-uuid-prefix model id))))
-  (let [uuid (str (random-uuid))]
-    (testing "sharing encrypts the uuid at rest and derives the prefix"
-      (t2/update! model id {:public_uuid uuid})
-      (let [raw (raw-public-uuid model id)]
-        (is (encryption/decryptable-string? raw nil) "public_uuid is stored as ciphertext")
-        (is (not= uuid raw) "public_uuid is not stored in plaintext")
-        (is (= uuid (encryption/maybe-decrypt raw nil)) "and decrypts back to the uuid"))
-      (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
-          "prefix is the plaintext leading characters of the uuid")
-      (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
-    (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
-      (mt/with-temporary-setting-values [enable-public-sharing false]
-        (t2/update! model id {:name "renamed while unshared"}))
-      (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id) nil)) "public_uuid untouched")
-      (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
-          "prefix untouched")
-      (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))
-    (testing "unsharing clears uuid + prefix"
-      (t2/update! model id {:public_uuid nil})
+  (let [source (public-uuid-source model)]
+    (testing "a row with no public_uuid has no prefix"
       (is (nil? (raw-public-uuid model id)))
-      (is (nil? (raw-public-uuid-prefix model id)))
-      (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
+      (is (nil? (raw-public-uuid-prefix model id))))
+    (let [uuid (str (random-uuid))]
+      (testing "sharing encrypts the uuid at rest and derives the prefix"
+        (t2/update! model id {:public_uuid uuid})
+        (let [raw (raw-public-uuid model id)]
+          (is (encryption/decryptable-string? raw source) "public_uuid is stored as ciphertext")
+          (is (not= uuid raw) "public_uuid is not stored in plaintext")
+          (is (= uuid (encryption/maybe-decrypt raw source)) "and decrypts back to the uuid"))
+        (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
+            "prefix is the plaintext leading characters of the uuid")
+        (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
+      (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
+        (mt/with-temporary-setting-values [enable-public-sharing false]
+          (t2/update! model id {:name "renamed while unshared"}))
+        (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id) source)) "public_uuid untouched")
+        (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
+            "prefix untouched")
+        (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))
+      (testing "unsharing clears uuid + prefix"
+        (t2/update! model id {:public_uuid nil})
+        (is (nil? (raw-public-uuid model id)))
+        (is (nil? (raw-public-uuid-prefix model id)))
+        (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves")))))
 
 (deftest ^:synchronized card-public-uuid-encryption-lifecycle-test
   (encryption-tu/with-encrypted-app-db

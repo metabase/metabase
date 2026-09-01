@@ -625,7 +625,7 @@
 
 (def ^:private toucan-name-source
   "What `toucan-name`'s value at rest is encrypted against, so raw-row assertions read it the way the app does."
-  (encryption/setting-source :toucan-name))
+  (setting/setting-source :toucan-name))
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
@@ -650,10 +650,10 @@
   (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
     (encryption-test/with-secret-key "0123456789abcdef"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"Error decrypting setting\.toucan-name: Expected an encrypted value"
+                                    #"Error decrypting :encryption/setting\.toucan-name: Expected an encrypted value"
                                     (#'setting/decrypt-setting-value-on-read {:key "toucan-name" :value "plaintext-sekret"})))]
         (is (not (re-find #"sekret" (ex-message e))))
-        (is (= "setting.toucan-name" (:source (ex-data e))))))))
+        (is (= :encryption/setting.toucan-name (:source (ex-data e))))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"

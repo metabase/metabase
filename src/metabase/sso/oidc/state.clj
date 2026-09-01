@@ -156,7 +156,7 @@
 (def ^:private state-source
   "Binds an OIDC state token to this use, so no other encrypted value can be replayed as one (or the reverse). A token
   issued before this existed no longer decrypts, which just restarts the login it was part of."
-  "oidc.state")
+  :encryption/oidc.state)
 
 (defn encrypt-state
   "Encrypt OIDC state payload to a URL-safe string.

@@ -246,7 +246,7 @@
   by timing."
   [{:keys [api-key] :as _user-data} passed-api-key]
   (if-let [stored-hash (when api-key
-                         (u/ignore-exceptions (encryption/maybe-decrypt api-key "api_key.key")))]
+                         (u/ignore-exceptions (encryption/maybe-decrypt api-key :encryption/api_key.key)))]
     (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 

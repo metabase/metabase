@@ -60,7 +60,7 @@
 (t2/deftransforms :model/User
   {:login_attributes transform-attributes
    :jwt_attributes   transform-attributes
-   :settings         (mi/transform-encrypted-json "core_user.settings")
+   :settings         (mi/transform-encrypted-json :encryption/core_user.settings)
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
 

@@ -26,9 +26,9 @@
 ;; mere shape and is not — the categorical stats carry each top category's `:name` straight from the
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
-  {:chart_stats        (mi/transform-encrypted-edn "exploration_query_result.chart_stats")
-   :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
-   :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
+  {:chart_stats        (mi/transform-encrypted-edn :encryption/exploration_query_result.chart_stats)
+   :metric_description (mi/transform-encrypted-text :encryption/exploration_query_result.metric_description)
+   :chart_description  (mi/transform-encrypted-text :encryption/exploration_query_result.chart_description)})
 
 (defn stored-results
   "Resolve the cached stored_result for an exploration_query_id via the EQR FK. Returns the

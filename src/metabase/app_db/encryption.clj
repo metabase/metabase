@@ -62,10 +62,18 @@
 (def ^:private clearable-when-undecryptable
   #{[:core_user :settings]})
 
-(defn- column-source
-  "The source a column's value is encrypted against: the same `\"table.column\"` string the model transforms bind."
-  ^String [table column]
-  (str (name table) "." (name column)))
+(mu/defn- column-source :- ::encryption/source
+  "The source a column's value is encrypted against: the same `:encryption/table.column` keyword the model transforms
+  bind."
+  [table  :- :keyword
+   column :- :keyword]
+  (keyword "encryption" (str (name table) "." (name column))))
+
+(mu/defn- setting-source :- ::encryption/source
+  "The source a setting's value is encrypted against, mirroring
+  `metabase.settings.models.setting/setting-source`."
+  [setting-name :- [:or :string :keyword]]
+  (keyword "encryption" (str "setting." (name setting-name))))
 
 (def ^:private encryption-check-key "encryption-check")
 
@@ -303,53 +311,59 @@
                 (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted source)}))))
           (t2/reducible-select [table :id [column :value]]))))
 
-(defn encrypt-plaintext-columns!
-  "Encrypt at rest any value in the encrypted-at-rest columns that is not already encrypted and bound to its own
-  column, and rewrite in bound form any value that is encrypted but unbound.
+(defn- migrate-encrypted-column!
+  "Rewrite every value in `table`.`column` into its bound, encrypted form. `decryptable?` says whether a value is
+  already there; `read-value` gets at the plaintext of one that is not, accepting the unbound and plaintext forms
+  earlier versions left behind; `encrypt-value` writes it back bound to `source`. A value `read-value` cannot read at
+  all is left exactly as it is."
+  [conn table column source decryptable? read-value encrypt-value]
+  (run! (fn [{:keys [id value]}]
+          (when-let [value (maybe-blob->bytes value)]
+            (when-not (decryptable? value)
+              (when-let [plaintext (try
+                                     (read-value value)
+                                     (catch Throwable _
+                                       (log/warnf "Can't read %s for id %s with MB_ENCRYPTION_SECRET_KEY; leaving it as it is."
+                                                  source id)
+                                       nil))]
+                (t2/update! :conn conn table {:id id} {column (encrypt-value plaintext)})))))
+        (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
+
+(defn migrate-encrypted-columns!
+  "Reconcile every encrypted-at-rest column -- the string/JSON ones and the `^bytes` ones alike -- with the form the
+  app reads: encrypt at rest any value that is not encrypted, and rewrite in bound form any value that is encrypted
+  but unbound.
 
   Runs on every startup: the one-shot encryption backfills cannot be relied on to have done this -- run without
   MB_ENCRYPTION_SECRET_KEY (the `migrate` command does not check the key) they are recorded as executed while doing
   nothing, a boot of an older version re-writes these columns through its own plaintext-era transforms (e.g.
-  notification seeding re-creates `notification_recipient.details` rows every boot), and `load-from-h2` copies a
-  decrypted dump's values verbatim. Values written before encryption was bound to a column are read unbound here and
-  rewritten bound, which is the only place that accepts an unbound value; everywhere else the binding is required.
+  notification seeding re-creates `notification_recipient.details` rows every boot), migrations write the unbound
+  form of their era (e.g. the sample content a fresh install is seeded with), and `load-from-h2` copies a decrypted
+  dump's values verbatim. Values written before encryption was bound to a column are read unbound here and rewritten
+  bound, which is the only place that accepts an unbound value; everywhere else the binding is required.
 
   A value that cannot be read with the current key at all is left exactly as it is, since re-encrypting it would
   produce `encrypt(encrypt(x))` and lose it for good. No-op when MB_ENCRYPTION_SECRET_KEY is not set."
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [conn]
+      ;; a column the schema has not reached yet holds nothing to heal: these lists name columns from every version,
+      ;; and the job can run against a database mid-way through its migrations
       (doseq [[table column] encrypted-string-columns
-              ;; a column the schema has not reached yet holds nothing to heal: this list names columns from every
-              ;; version, and the job can run against a database mid-way through its migrations
               :when (column-exists? table column)
               :let  [source (column-source table column)]]
-        (run! (fn [{:keys [id value]}]
-                (when (and (string? value)
-                           (not (encryption/decryptable-string? value source)))
-                  (when-let [plaintext (try
-                                         (encryption/maybe-decrypt value source {:accept-plaintext true, :accept-unbound true})
-                                         (catch Throwable _
-                                           (log/warnf "Can't read %s for id %s with MB_ENCRYPTION_SECRET_KEY; leaving it as it is."
-                                                      source id)
-                                           nil))]
-                    (t2/update! :conn conn table {:id id} {column (encryption/encrypt plaintext source)}))))
-              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
+        (migrate-encrypted-column! conn table column source
+                                   #(and (string? %) (encryption/decryptable-string? % source))
+                                   #(when (string? %)
+                                      (encryption/maybe-decrypt % source {:accept-plaintext true, :accept-unbound true}))
+                                   #(encryption/encrypt % source)))
       (doseq [[table column] encrypted-bytes-columns
               :when (column-exists? table column)
               :let  [source (column-source table column)]]
-        (run! (fn [{:keys [id value]}]
-                (when-let [value (maybe-blob->bytes value)]
-                  (when-not (encryption/decryptable-bytes? value source)
-                    (when-let [plaintext (try
-                                           (encryption/maybe-decrypt-bytes value source {:accept-plaintext true, :accept-unbound true})
-                                           (catch Throwable _
-                                             (log/warnf "Can't read %s for id %s with MB_ENCRYPTION_SECRET_KEY; leaving it as it is."
-                                                        source id)
-                                             nil))]
-                      (t2/update! :conn conn table {:id id}
-                                  {column (encryption/encrypt-bytes plaintext source)})))))
-              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))))))
+        (migrate-encrypted-column! conn table column source
+                                   #(encryption/decryptable-bytes? % source)
+                                   #(encryption/maybe-decrypt-bytes % source {:accept-plaintext true, :accept-unbound true})
+                                   #(encryption/encrypt-bytes % source))))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -378,7 +392,7 @@
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
                                     (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
           "encryption-check" nil
-          (let [source (encryption/setting-source key)]
+          (let [source (setting-source key)]
             (t2/update! :conn conn :setting
                         {:key key}
                         {:value (encrypt-str-fn (encryption/maybe-decrypt value source {:accept-plaintext true, :accept-unbound true})

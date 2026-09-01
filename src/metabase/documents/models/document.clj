@@ -27,7 +27,7 @@
 
 (t2/deftransforms :model/Document
   {:document    mi/transform-json
-   :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
+   :public_uuid (mi/transform-encrypted-text :encryption/document.public_uuid)})
 
 (doto :model/Document
   (derive :metabase/model)

@@ -58,7 +58,7 @@
 
 (t2/deftransforms :model/ApiKey
   {:scope mi/transform-keyword
-   :key   (mi/transform-encrypted-text "api_key.key")})
+   :key   (mi/transform-encrypted-text :encryption/api_key.key)})
 
 (mu/defn- expose :- :string
   ^String [s :- [:or ::u.secret/secret :string]]

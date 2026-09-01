@@ -1722,6 +1722,13 @@
                  (name (:name invalid-setting))
                  (ex-message (:parse-error invalid-setting))))))
 
+(mu/defn setting-source :- ::encryption/source
+  "The `::encryption/source` a setting's value is encrypted against, mirroring the
+  `:encryption/table.column` form model columns use. Binding the ciphertext to it means the value cannot be read from
+  any other setting, however it got there."
+  [setting-name :- [:or :string :keyword]]
+  (keyword "encryption" (str "setting." (name setting-name))))
+
 (defn migrate-encrypted-settings!
   "Reconcile the at-rest encryption of every registered setting's stored value with its declared `:encryption`, in
   both directions: a `:encryption :no` setting whose row is encrypted is decrypted, and a setting that encrypts whose
@@ -1749,7 +1756,7 @@
                                                             [:in :key (map setting-name plaintext)]
                                                             ;; these are *definitely* decrypted already, let's not bother looking
                                                             [:not [:in :value ["true" "false"]]]]})
-                  :let  [source (encryption/setting-source k)]
+                  :let  [source (setting-source k)]
                   :when (or (encryption/decryptable-string? v source)
                             (encryption/decryptable-string? v nil))]
             (t2/update! :setting :key k
@@ -1758,7 +1765,7 @@
                   (t2/select :setting {:for :update :where [:and
                                                             [:in :key (map setting-name encrypting)]
                                                             [:!= :value nil]]})
-                  :let  [source (encryption/setting-source k)]
+                  :let  [source (setting-source k)]
                   ;; also catches a value encrypted before it was bound to this setting, so it is rewritten bound
                   :when (not (encryption/decryptable-string? v source))
                   :let  [plaintext (try
@@ -1783,7 +1790,7 @@
         ;; `string?` because a value can also be a HoneySQL form the database evaluates itself (the way
         ;; `settings-last-updated` is written): there is nothing to encrypt in one, and it has no definition to
         ;; resolve, so it would otherwise take the fallback branch above.
-        (update :value #(cond-> % (string? %) (encryption/maybe-encrypt (encryption/setting-source (:key setting-model)))))))))
+        (update :value #(cond-> % (string? %) (encryption/maybe-encrypt (setting-source (:key setting-model)))))))))
 
 (t2/define-before-update :model/Setting
   [setting]
@@ -1798,10 +1805,10 @@
   is read strictly with [[encryption/maybe-decrypt]]: a plaintext value — forged via a direct DB write, or a legacy row
   from before the setting became encrypted — is rejected rather than trusted. A `:no` setting (or one with no code
   definition, e.g. in tests) is intentionally plaintext, so it is read with `:accept-plaintext`, which returns a
-  plaintext value unchanged. A failure names the setting, since [[encryption/setting-source]] is what the value is
+  plaintext value unchanged. A failure names the setting, since [[setting-source]] is what the value is
   bound to."
   [setting]
-  (let [source  (encryption/setting-source (:key setting))
+  (let [source  (setting-source (:key setting))
         resolved (maybe-resolve-setting (:key setting))
         decrypt (if (or (nil? resolved) (not (encrypts? resolved)))
                   #(encryption/maybe-decrypt % source {:accept-plaintext true})

@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.enable-encryption :refer [enable-encryption!]]
+   [metabase.settings.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -43,10 +44,10 @@
             (enable-encryption!)
             (is (encryption/decryptable-string? (raw-value "encryption-check") nil))
             (is (encryption/decryptable-string? (raw-value "test-setting")
-                                                (encryption/setting-source "test-setting")))
+                                                (setting/setting-source "test-setting")))
             (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "test-setting")))
             (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)
-                                                "metabase_database.details"))
+                                                :encryption/metabase_database.details))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"
             (is (= :done (restart!))))

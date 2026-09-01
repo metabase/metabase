@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.remove-encryption :refer [remove-encryption!]]
+   [metabase.settings.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -34,7 +35,7 @@
         (t2/insert! :model/Setting {:key "test-setting", :value "unencrypted value"})
         (is (encryption/decryptable-string? (raw-value _conn "encryption-check") nil))
         (is (encryption/decryptable-string? (raw-value _conn "test-setting")
-                                            (encryption/setting-source "test-setting")))
+                                            (setting/setting-source "test-setting")))
         (remove-encryption!)
         (is (= "unencrypted" (raw-value _conn "encryption-check")))
         (is (not (encryption/possibly-encrypted-string? (raw-value _conn "test-setting"))))))))
