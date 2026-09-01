@@ -445,17 +445,35 @@
   (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn delete!
-  "Delete the `core_session` backing this MCP session (if one was ever created) and any associated query handles. Scoped
-  to `user-id` so that one user cannot delete another user's session.
+  "Delete the `core_session` backing this MCP session (if one was ever created) and this user's query handles on it.
+  Every statement is scoped to `user-id`, so tearing down one user's session cannot touch another's.
 
-  Handles tied to a `core_session` are also reaped by the FK cascade when the session row goes; the explicit
-  handle-delete here covers handles whose `core_session_id` was never set — e.g. handles for regular query payloads
-  that aren't backed by an MCP iframe and so never materialize a `core_session`."
+  That scoping is not belt-and-braces: `Mcp-Session-Id` is client-supplied and unsigned, so two users can hold
+  rows under one id and [[owned-by-user?]] admits both by design. Deleting handles by `mcp_session_id` alone
+  would therefore reap the other user's handles — rows the FK cascade would never have touched, since they hang
+  off *their* `core_session`.
+
+  Handles are deleted before the session row so they can still be scoped through it; the `ON DELETE CASCADE` that
+  follows is then a no-op for this user. Rows with no `core_session_id` are deliberately left alone: no code path
+  creates one ([[store-handle!]] always sets it), [[find-handle-row]] inner-joins `core_session` so such a row
+  could never be read back, and nothing attributes it to a user — deleting it on session id alone is precisely
+  the cross-user delete this scoping exists to prevent."
   [session-id user-id]
   (assert-session-id! session-id)
-  (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
+  (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
+        ;; Deliberate subquery: the handle rows carry no user of their own, so the only thing that attributes one
+        ;; is the `core_session` it hangs off. Resolving these ids in a separate round trip would leave a window
+        ;; where a concurrent teardown drops the session between the two statements.
+        own-sessions ^:allow-subquery {:select [:id]
+                                       :from   [:core_session]
+                                       :where  [:and
+                                                [:= :key_hashed key-hashed]
+                                                [:= :user_id user-id]]}]
+    (t2/query {:delete-from :mcp_query_handle
+               :where       [:and
+                             [:= :mcp_session_id session-id]
+                             [:in :core_session_id own-sessions]]})
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})
-    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))
+                             [:= :user_id user-id]]})))

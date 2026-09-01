@@ -358,6 +358,29 @@
           _          (mcp.session/delete! session-id user-id)]
       (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))))))
 
+(deftest delete-does-not-reap-another-users-handles-test
+  (testing "GHY-4333: an `Mcp-Session-Id` is client-supplied and unsigned, so two users can each materialize a
+            core_session under one id — `owned-by-user?` tolerates that by design, and
+            `owned-by-user-tolerates-cross-user-rows-test` pins it. Tearing down one user's session therefore has
+            to scope the handle delete to that user: deleting by `mcp_session_id` alone destroys the other user's
+            handles, which the FK cascade would never have touched."
+    (let [owner-id   (mt/user->id :crowberto)
+          other-id   (mt/user->id :rasta)
+          session-id (mcp.session/create! owner-id nil)]
+      (try
+        (let [owner-handle (mcp.session/store-handle! session-id owner-id "owner payload")
+              other-handle (mcp.session/store-handle! session-id other-id "other payload")]
+          (is (= 2 (t2/count :model/McpQueryHandle :mcp_session_id session-id))
+              "both users hold a handle under the same session id — otherwise this test proves nothing")
+          (mcp.session/delete! session-id owner-id)
+          (testing "the caller's own handle is gone"
+            (is (nil? (mcp.session/resolve-query-handle session-id owner-id owner-handle))))
+          (testing "the other user's handle survives, and stays resolvable for them"
+            (is (some? (mcp.session/resolve-query-handle session-id other-id other-handle)))))
+        (finally
+          (mcp.session/delete! session-id owner-id)
+          (mcp.session/delete! session-id other-id))))))
+
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-embedding-session! does not publish :event/user-login"
     (let [login-events (atom [])
