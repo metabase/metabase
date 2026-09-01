@@ -709,6 +709,25 @@
       (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
           "removing the environment overlay leaves the original stored URL, not the rejected one"))))
 
+(deftest legacy-credential-setting-refuses-a-connection-on-its-own-base-url-test
+  (testing (str "The per-provider settings write one field at a time, so a credential entered through them arrives "
+                "with no sight of the base URL it would be sent to. A connection on its own URL takes its "
+                "credentials through the connection settings, which submit both together.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://proxy.example.com"})]]
+      (is (=? {:message "This connection has its own base URL. Use the provider connection settings to enter its credentials."}
+              (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key"
+                                    {:value "sk-ant-fresh"})))
+      (is (nil? (:api-key (stored-config "anthropic"))))))
+  (testing "a connection still on the type's default URL is the ordinary first-time setup, and is allowed"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+      (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
+  (testing "so is a base URL the environment supplies, which the operator chose"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))))
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
                 "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")

@@ -641,8 +641,7 @@
 
   [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
   caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
-  all. That check runs when the base URL is written, so it cannot see a variable the operator sets afterwards: a
-  base URL saved while the connection had nothing worth stealing would capture the credential that arrived later.
+  all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
   Deciding it again here makes the rule hold whichever order the two arrived in.
 
   A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
@@ -890,6 +889,27 @@
                           :field       :base-url
                           :secrets     (mapv name missing-secrets)})))))))
 
+(defn- assert-credential-write-authorized!
+  "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
+
+  [[assert-base-url-change-authorized!]] binds the two together from the base URL's side. This is the other side:
+  the per-provider settings write one field at a time, so a credential entered here arrives with no sight of where
+  it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
+  connection on a custom URL takes its credentials.
+
+  A base URL the environment supplies needs no such treatment: the operator chose it."
+  [type-name field {:keys [config env-fields]}]
+  (when (contains? (secret-field-keys type-name) field)
+    (let [base-url (:base-url (with-field-defaults type-name config))]
+      (when (and base-url
+                 (not= base-url (:base-url (with-field-defaults type-name {})))
+                 (not (contains? (set env-fields) :base-url)))
+        (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
+                        {:status-code 400
+                         :api-error   true
+                         :error-code  :llm-credential-change-requires-connection-settings
+                         :field       field}))))))
+
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
   configures, creating the connection when a non-blank value arrives for one that does not exist yet; blank clears
@@ -912,21 +932,26 @@
             (setting/obfuscated-value? value))
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
-        (when (and (= field :base-url) (request.current/current-request))
-          (when (contains? (:env-fields live) field)
-            ;; Persisting an inert value underneath the environment overlay would make it live if the operator later
-            ;; removed that variable, carrying any stored credentials to a URL the API caller planted earlier.
-            (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
-                            {:status-code 400
-                             :api-error   true
-                             :error-code  :llm-base-url-is-env-managed
-                             :field       :base-url})))
-          (let [current-config (or (:config live) {})
-                new-config     (if value
-                                 (assoc current-config field value)
-                                 (dissoc current-config field))]
-            (assert-base-url-change-authorized! group-type current-config new-config {field value}
-                                                (:env-fields live) {:legacy-setting? true})))
+        (when (request.current/current-request)
+          (if (= field :base-url)
+            (do
+              (when (contains? (:env-fields live) field)
+                ;; Persisting an inert value underneath the environment overlay would make it live if the operator
+                ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
+                ;; earlier.
+                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                                {:status-code 400
+                                 :api-error   true
+                                 :error-code  :llm-base-url-is-env-managed
+                                 :field       :base-url})))
+              (let [current-config (or (:config live) {})
+                    new-config     (if value
+                                     (assoc current-config field value)
+                                     (dissoc current-config field))]
+                (assert-base-url-change-authorized! group-type current-config new-config {field value}
+                                                    (:env-fields live) {:legacy-setting? true})))
+            (when value
+              (assert-credential-write-authorized! group-type field live))))
         (when value
           (validate-config-field! group-type field {field value}))
         (cond
