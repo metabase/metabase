@@ -10,6 +10,13 @@ export {
 } from "./selectors";
 export type { MetadataSelectorOpts } from "./selectors";
 
+export {
+  selectMetadataProvider,
+  selectMetadataProviderUnfiltered,
+  useMetadataProvider,
+  useMetadataProviderUnfiltered,
+} from "./provider";
+
 export { entitiesReducer } from "./reducer";
 
 export { metadataHydrationMiddleware } from "./hydration";

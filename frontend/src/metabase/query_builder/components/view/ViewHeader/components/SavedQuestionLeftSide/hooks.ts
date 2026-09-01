@@ -1,5 +1,4 @@
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -7,11 +6,7 @@ export function useHiddenSourceTables(
   question: Question,
 ): Lib.TableDisplayInfo[] {
   const datasetQuery = question.datasetQuery();
-  const metadata = useSelector(getMetadataUnfiltered);
-  const metadataProvider = Lib.metadataProvider(
-    datasetQuery.database,
-    metadata,
-  );
+  const metadataProvider = useMetadataProviderUnfiltered(datasetQuery.database);
   const query = Lib.fromJsQuery(metadataProvider, datasetQuery);
   const sourceTableId = Lib.sourceTableOrCardId(query);
 

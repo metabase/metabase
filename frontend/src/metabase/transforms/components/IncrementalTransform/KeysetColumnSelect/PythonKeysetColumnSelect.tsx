@@ -2,8 +2,7 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProvider } from "metabase/metadata-store";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { PythonTransformTableAliases } from "metabase-types/api";
@@ -29,8 +28,6 @@ export function PythonKeysetColumnSelect({
   sourceTables,
   disabled,
 }: PythonKeysetColumnSelectProps) {
-  const metadata = useSelector(getMetadata);
-
   // Get the first (and should be only) table ID
   // Incremental transforms are only supported for single-table Python transforms
   const tableId = useMemo(() => {
@@ -45,13 +42,14 @@ export function PythonKeysetColumnSelect({
   } = useGetTableQueryMetadataQuery(tableId ? { id: tableId } : skipToken);
 
   // Create a query from the table to get column metadata
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+
   const query = useMemo(() => {
     if (!table || !table.db_id) {
       return null;
     }
 
     try {
-      const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
       const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
       if (!tableMetadata) {
         return null;
@@ -60,7 +58,7 @@ export function PythonKeysetColumnSelect({
     } catch {
       return null;
     }
-  }, [table, metadata]);
+  }, [table, metadataProvider]);
 
   return (
     <KeysetColumnSelect
