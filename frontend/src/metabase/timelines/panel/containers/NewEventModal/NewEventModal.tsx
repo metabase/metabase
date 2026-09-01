@@ -14,9 +14,8 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type {
   Collection,
   CollectionId,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
   TimelineEvent,
+  TimelineEventData,
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
@@ -40,25 +39,23 @@ function NewEventModalContainer({
   });
 
   const onSubmit = async (
-    values: Partial<TimelineEvent>,
+    values: TimelineEventData,
     collection?: Collection,
   ) => {
-    if (values.timeline_id) {
-      const event = await createTimelineEvent(
-        // Unjustified type cast. FIXME
-        values as CreateTimelineEventRequest,
-      ).unwrap();
+    if (values.timeline_id != null) {
+      const event = await createTimelineEvent({
+        ...values,
+        timeline_id: values.timeline_id,
+      }).unwrap();
       onEventCreated?.(event);
     } else if (collection) {
       const timeline = await createTimeline(
-        // Unjustified type cast. FIXME
-        getDefaultTimeline(collection) as CreateTimelineRequest,
+        getDefaultTimeline(collection),
       ).unwrap();
-      // Unjustified type cast. FIXME
       const event = await createTimelineEvent({
         ...values,
         timeline_id: timeline.id,
-      } as CreateTimelineEventRequest).unwrap();
+      }).unwrap();
       onEventCreated?.(event);
     }
     dispatch(addUndo({ message: t`Created event` }));
