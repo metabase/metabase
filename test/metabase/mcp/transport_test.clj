@@ -7,6 +7,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
@@ -387,13 +388,15 @@
 
 (defn- issue-bearer!
   "Insert an OAuth access token row for `user-id` and return the raw (unhashed) token to present. `:token` is stored
-  hashed, so the row is written the way a real issued token would be. Call inside `with-model-cleanup`."
-  [user-id]
+  hashed, so the row is written the way a real issued token would be — including `client-id` naming a live
+  `oauth_client` row ([[oauth-server.tu/with-oauth-client]]): the resolver fails closed on a token whose issuing
+  client is gone. Call inside `with-model-cleanup`."
+  [user-id client-id]
   (let [token (str (random-uuid))]
     (t2/insert! :model/OAuthAccessToken
                 {:token     (oidc.util/hash-token token)
                  :user_id   user-id
-                 :client_id (str (random-uuid))
+                 :client_id client-id
                  :scope     ["agent:content:read"]
                  :expiry    (+ (System/currentTimeMillis) 3600000)})
     token))
@@ -410,23 +413,24 @@
     ;; needs no is_active toggling (a `with-temp` user, created in-test, is not reliably visible cross-thread to the
     ;; mock handler's request thread, which would 401 for the wrong reason). `:rasta` is the active control.
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [initialize (fn [expected-status token]
-                           ;; `expected-status` is passed so the client asserts it rather than throwing on an
-                           ;; "unexpected" 401 (which triggers its session re-auth path).
-                           (client/client-full-response :post expected-status endpoint
-                                                        {:request-options {:headers {"authorization" (str "Bearer " token)}}}
-                                                        (jsonrpc-request "initialize" {:capabilities {}})))]
-          (testing "control: an ACTIVE user's bearer token authenticates and gets a session"
-            (let [response (initialize 200 (issue-bearer! (mt/user->id :rasta)))]
-              (is (= 200 (:status response)))
-              (is (some? (get-in response [:headers "Mcp-Session-Id"])))))
-          (testing "a DEACTIVATED user's bearer token is refused — no session, invalid_token challenge"
-            (let [response (initialize 401 (issue-bearer! (mt/user->id :trashbird)))]
-              (is (= 401 (:status response)))
-              (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
-                  "a deactivated user must not be handed a working MCP session")
-              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token")))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [initialize (fn [expected-status token]
+                             ;; `expected-status` is passed so the client asserts it rather than throwing on an
+                             ;; "unexpected" 401 (which triggers its session re-auth path).
+                             (client/client-full-response :post expected-status endpoint
+                                                          {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                                          (jsonrpc-request "initialize" {:capabilities {}})))]
+            (testing "control: an ACTIVE user's bearer token authenticates and gets a session"
+              (let [response (initialize 200 (issue-bearer! (mt/user->id :rasta) client-id))]
+                (is (= 200 (:status response)))
+                (is (some? (get-in response [:headers "Mcp-Session-Id"])))))
+            (testing "a DEACTIVATED user's bearer token is refused — no session, invalid_token challenge"
+              (let [response (initialize 401 (issue-bearer! (mt/user->id :trashbird) client-id))]
+                (is (= 401 (:status response)))
+                (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
+                    "a deactivated user must not be handed a working MCP session")
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
@@ -610,3 +614,25 @@
             (is (= id (override {:headers {"x-eval-session-id" id}}))))))
       (testing "absent header yields nil"
         (is (nil? (override {:headers {}})))))))
+
+(deftest ^:parallel redact-ui-credentials-test
+  (testing "a resources/read response has its embedded UI credential scrubbed before it is recorded
+           into an eval trace — a recorded credential is a live bearer authenticator"
+    (let [redact   @#'mcp.transport/redact-ui-credentials
+          response {:jsonrpc "2.0"
+                    :id      1
+                    :result  {:contents [{:uri      "ui://metabase/visualize-query.html"
+                                          :mimeType "text/html;profile=mcp-app"
+                                          :text     "<script>\nuiCredential: \"top.secret.credential\",\n</script>"}
+                                         {:uri "ui://metabase/logo.png" :blob "aGk=" :text nil}]}}
+          redacted (redact response)]
+      (is (not (str/includes? (get-in redacted [:result :contents 0 :text]) "top.secret.credential")))
+      (is (str/includes? (get-in redacted [:result :contents 0 :text]) "uiCredential: \"[redacted]\""))
+      (testing "a blob content with no :text passes through untouched"
+        (is (nil? (get-in redacted [:result :contents 1 :text]))))))
+  (testing "responses without resource contents pass through untouched"
+    (let [redact @#'mcp.transport/redact-ui-credentials]
+      (doseq [response [{:jsonrpc "2.0" :id 2 :result {:content [{:type "text" :text "hi"}]}}
+                        {:jsonrpc "2.0" :id 3 :error {:code -32603 :message "Internal error"}}
+                        nil]]
+        (is (= response (redact response)))))))

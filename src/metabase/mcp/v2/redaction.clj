@@ -52,6 +52,16 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn- recipient-tenant-id
+  "The tenant of a user recipient. Read off the hydrated `:user` when present; the
+   `:recipients-detail` hydration deliberately attaches `:user` nil for a deactivated user, whose
+   tenant must then be looked up — otherwise a deactivated recipient reads as tenantless and slips
+   past (or is wrongly dropped by) the tenant filter."
+  [recipient]
+  (if-some [user (:user recipient)]
+    (:tenant_id user)
+    (t2/select-one-fn :tenant_id :model/User :id (:user_id recipient))))
+
 (defn- visible-recipients
   "`recipients` less the ones the current user may not see: sandboxed or impersonated callers see
    only themselves among user recipients, and non-superusers never see cross-tenant users."
@@ -62,7 +72,16 @@
 
          (not api/*is-superuser?*)
          (filter #(or (nil? (:user_id %))
-                      (= (some-> % :user :tenant_id) (:tenant_id @api/*current-user*)))))))
+                      (= (recipient-tenant-id %) (:tenant_id @api/*current-user*)))))))
+
+(defn- payload-readable?
+  "Whether the current user may read the notification's payload.
+   [[models.notification/current-user-can-read-payload?]] has no `:notification/dashboard` clause
+   (its `case` throws on one), so dashboard rows are checked against the dashboard directly."
+  [notification]
+  (if (= :notification/dashboard (:payload_type notification))
+    (boolean (some->> notification :payload :dashboard_id (mi/can-read? :model/Dashboard)))
+    (models.notification/current-user-can-read-payload? notification)))
 
 (defn redact-notification
   "`notification`, hydrated, with handler recipients redacted for the current user the way
@@ -70,8 +89,8 @@
    recipient — not its payload — loses the recipient lists entirely; otherwise individual
    recipients are filtered by [[visible-recipients]]."
   [notification]
-  (let [strip? (and (= :notification/card (:payload_type notification))
-                    (not (models.notification/current-user-can-read-payload? notification)))]
+  (let [strip? (and (#{:notification/card :notification/dashboard} (:payload_type notification))
+                    (not (payload-readable? notification)))]
     (update notification :handlers
             (fn [handlers]
               (mapv (fn [handler]

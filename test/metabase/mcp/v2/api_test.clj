@@ -9,6 +9,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -188,9 +189,13 @@
             resource added later cannot start leaking one by accident."
     (mcp.ui-resource/with-fallback-template
       (let [[session-id _] (initialize!)
-            minted (atom 0)
-            real   mcp.session/issue-ui-credential]
-        (with-redefs [mcp.session/issue-ui-credential (fn [& args] (swap! minted inc) (apply real args))]
+            minted (atom 0)]
+        ;; Delegation captures the original through `mt/original-fn` — a value captured before the
+        ;; redef would be the dynamic-redef proxy if an earlier test already patched the var.
+        (mt/with-dynamic-fn-redefs [mcp.session/issue-ui-credential
+                                    (fn [& args]
+                                      (swap! minted inc)
+                                      (apply (mt/original-fn #'mcp.session/issue-ui-credential) args))]
           (testing "a data resource does not mint one — its render-fn never asks"
             (mcp-request (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri})
                          {"mcp-session-id" session-id})
@@ -293,17 +298,19 @@
   "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
   [scopes f]
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (mt/with-model-cleanup [:model/OAuthAccessToken]
-      (let [token (str (random-uuid))]
-        ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-        ;; up, so the row has to be written the same way a real issued token would be.
-        (t2/insert! :model/OAuthAccessToken
-                    {:token     (oidc.util/hash-token token)
-                     :user_id   (mt/user->id :crowberto)
-                     :client_id (str (random-uuid))
-                     :scope     (vec scopes)
-                     :expiry    (+ (System/currentTimeMillis) 3600000)})
-        (f {"authorization" (str "Bearer " token)})))))
+    (oauth-server.tu/with-oauth-client [client-id]
+      (mt/with-model-cleanup [:model/OAuthAccessToken]
+        (let [token (str (random-uuid))]
+          ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+          ;; up, so the row has to be written the same way a real issued token would be — including a
+          ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+          (t2/insert! :model/OAuthAccessToken
+                      {:token     (oidc.util/hash-token token)
+                       :user_id   (mt/user->id :crowberto)
+                       :client_id client-id
+                       :scope     (vec scopes)
+                       :expiry    (+ (System/currentTimeMillis) 3600000)})
+          (f {"authorization" (str "Bearer " token)}))))))
 
 (defn- ui-credential-for
   "Drive the full MCP Apps handshake as a client holding `scopes`: initialize, read the
@@ -415,30 +422,32 @@
       :handler     (fn [_ _] nil)}
      (fn []
        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-         (mt/with-model-cleanup [:model/OAuthAccessToken]
-           (let [token   (str (random-uuid))
-                 headers {"authorization" (str "Bearer " token)}]
-             ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-             ;; up, so the row has to be written the same way a real issued token would be.
-             (t2/insert! :model/OAuthAccessToken
-                         {:token     (oidc.util/hash-token token)
-                          :user_id   (mt/user->id :crowberto)
-                          :client_id (str (random-uuid))
-                          :scope     ["agent:content:read"]
-                          :expiry    (+ (System/currentTimeMillis) 3600000)})
-             (let [session-id (-> (client/client-full-response :post 200 endpoint
-                                                               {:request-options {:headers headers}}
-                                                               (jsonrpc-request "initialize" {:capabilities {}}))
-                                  (get-in [:headers "Mcp-Session-Id"]))
-                   tool-names (-> (client/client-full-response
-                                   :post 200 endpoint
-                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                   (jsonrpc-request "tools/list"))
-                                  (get-in [:body :result :tools])
-                                  (->> (map :name) set))]
-               (is (some? session-id))
-               (testing "a tool inside the granted scope (agent:content:read) is served"
-                 (is (contains? tool-names "ping_v2")))
-               (testing "a tool gated on a scope the token lacks (agent:content:write) is filtered out"
-                 (is (not (contains? tool-names "scope_probe_write"))
-                     "scope filtering must hide a write-scoped tool from a read-only token"))))))))))
+         (oauth-server.tu/with-oauth-client [client-id]
+           (mt/with-model-cleanup [:model/OAuthAccessToken]
+             (let [token   (str (random-uuid))
+                   headers {"authorization" (str "Bearer " token)}]
+               ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+               ;; up, so the row has to be written the same way a real issued token would be — including a
+               ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+               (t2/insert! :model/OAuthAccessToken
+                           {:token     (oidc.util/hash-token token)
+                            :user_id   (mt/user->id :crowberto)
+                            :client_id client-id
+                            :scope     ["agent:content:read"]
+                            :expiry    (+ (System/currentTimeMillis) 3600000)})
+               (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                                 {:request-options {:headers headers}}
+                                                                 (jsonrpc-request "initialize" {:capabilities {}}))
+                                    (get-in [:headers "Mcp-Session-Id"]))
+                     tool-names (-> (client/client-full-response
+                                     :post 200 endpoint
+                                     {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                     (jsonrpc-request "tools/list"))
+                                    (get-in [:body :result :tools])
+                                    (->> (map :name) set))]
+                 (is (some? session-id))
+                 (testing "a tool inside the granted scope (agent:content:read) is served"
+                   (is (contains? tool-names "ping_v2")))
+                 (testing "a tool gated on a scope the token lacks (agent:content:write) is filtered out"
+                   (is (not (contains? tool-names "scope_probe_write"))
+                       "scope filtering must hide a write-scoped tool from a read-only token")))))))))))

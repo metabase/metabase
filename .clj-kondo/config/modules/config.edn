@@ -1359,7 +1359,8 @@
            session
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/Dashboard :model/User}}
 
   measures
   {:team "Graphy"

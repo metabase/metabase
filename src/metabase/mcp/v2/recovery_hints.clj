@@ -3,8 +3,9 @@
 
    The pipeline throws a bare statement of what went wrong plus structured `ex-data`; it does
    not know which tools the caller has. This namespace turns that `ex-data` into the sentence
-   telling *this* surface's agent how to recover, and `metabase.mcp.v2.common` hands it to the
-   pipeline as `:recovery-hint`. v1's equivalent is
+   telling *this* surface's agent how to recover. Its first consumer arrives with the query
+   tools (which hand it to the pipeline as `:recovery-hint`); it lands here so those slices wire
+   it in without also authoring it. v1's equivalent is
    [[metabase.metabot.tools.recovery-hints/recovery-hint]].
 
    Keep every sentence inside v2's own vocabulary — `browse_data`, `search`, numeric ids. An

@@ -11,12 +11,12 @@
    copy: native detection raw-scans the payload instead of normalize-then-inspect, so a payload
    too malformed to normalize now fails closed instead of falling through to shape validation.
 
-   [[check-mcp-ui-native-query!]] is the odd one out: it is written to guard the ordinary QP endpoints,
-   which the MCP Apps iframe reaches with a credential that the endpoint scope middleware cannot narrow.
-   It shares the native detection but refuses raw SQL on scope rather than banning it outright. It is
-   NOT yet wired into any endpoint — the `:mcp-ui-credential` it keys on, and the scopes claim it spends,
-   only exist once the v2 core's session rework lands (the next PR in this stack). It is extracted and
-   unit-tested here so that slice can wire it in without also authoring it; until then it is dormant."
+   [[check-mcp-ui-native-query!]] is the odd one out: it guards the ordinary QP endpoints, which the
+   MCP Apps iframe reaches with a credential that the endpoint scope middleware cannot narrow. It
+   shares the native detection but refuses raw SQL on scope rather than banning it outright. It is
+   mounted on the whole `/api/dataset` route tree via [[+refuse-unscoped-native-sql]], keyed on the
+   `:mcp-ui-credential` the session middleware attaches and the scopes claim the v2 session rework
+   put on it."
   (:require
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]

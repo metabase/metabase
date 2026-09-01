@@ -16,6 +16,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.v2.common :as v2.common]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -50,7 +51,7 @@
   [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn handle-initialize
+(defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
 
   - `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
@@ -88,6 +89,21 @@
   (when-let [id (get-in request [:headers "x-eval-session-id"])]
     (try (ait/checked-session-id id) (catch Exception _ nil))))
 
+(defn- redact-ui-credentials
+  "Strip minted MCP Apps UI credentials from a JSON-RPC response before it is recorded into an eval
+  trace. A `resources/read` of a UI shell embeds the freshly minted credential in the rendered HTML
+  (`uiCredential: \"…\"` via [[metabase.mcp.ui-resource/embed-render-fn]]); recording it verbatim
+  parks a live bearer authenticator in the trace file (and the superuser-readable ai-tracing API),
+  where it outlives its 5-minute window in backups and log shipping. v1 stripped its credential
+  channel before tracing the same way (`mcp.resources/redact-ui-credential`)."
+  [response]
+  (letfn [(redact-text [s]
+            (cond-> s
+              (string? s) (str/replace #"uiCredential: \"[^\"]*\"" "uiCredential: \"[redacted]\"")))]
+    (cond-> response
+      (sequential? (get-in response [:result :contents]))
+      (update-in [:result :contents] (partial mapv #(update % :text redact-text))))))
+
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request through the surface's `dispatch-method-fn`.
   Returns a response map or nil for notifications."
@@ -114,10 +130,15 @@
                    (let [response (try
                                     (dispatch-method-fn id method params session-id token-scopes request-context)
                                     (catch Throwable e
-                                      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
-                                      (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
+                                      (log/error e "Error dispatching JSON-RPC method" method)
+                                      ;; The sanitizer, not the raw message: handlers that answer with a
+                                      ;; JSON-RPC error (resources/read render-fns, tools/list) don't pass
+                                      ;; through `->mcp-error-content`, and a thrown Error (not Exception)
+                                      ;; skips even the tool-call sanitizer — either way an unvetted message
+                                      ;; may embed SQL, schema, or connection detail.
+                                      (jsonrpc-error id -32603 (v2.common/caller-safe-error-message e))))]
                      ;; record the materialized JSON-RPC result/error (the request's output)
-                     (ait/record! {:mcp/response response})
+                     (ait/record! {:mcp/response (redact-ui-credentials response)})
                      response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
@@ -136,7 +157,7 @@
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
-(defn json-response
+(defn- json-response
   "Build a Ring response with a JSON-encoded `body`."
   ([status body]
    (json-response status body nil))
@@ -297,7 +318,9 @@
                 ;; nil, which `keep` silently drops (a malformed message vanishing rather than being answered), and
                 ;; an object missing `method` reaches dispatch as method-not-found. The `-32600` carries a null id:
                 ;; §5 requires it when the request can't be parsed, even if a malformed object happens to carry one.
-                ;; A well-formed notification still dispatches to nil and so stays out of the response array.
+                ;; A `notifications/initialized` notification and an unknown method with no id dispatch to nil and
+                ;; stay out of the response array; a known method with no id still executes and — contra JSON-RPC
+                ;; §4.1, which says a notification gets no reply — answers with `"id": null`.
                 handle-msg      (fn [msg]
                                   (if (and (map? msg) (string? (:method msg)))
                                     (dispatch-request dispatch-method-fn msg session-id (:token-scopes request)
@@ -482,8 +505,9 @@
 
 (defn- check-throttle
   "Charge `n` throttle attempts for `user-id` (one per JSON-RPC message in the request). Returns a 429 JSON-RPC
-  response if the cap is hit partway through, nil otherwise. Charging N up front means a batch is refused before any
-  of its messages run, and the whole batch counts against the cap even when the throttle trips on its first element."
+  response if the cap is hit partway through, nil otherwise. Checking N up front means a batch is refused before any
+  of its messages run; `throttle/check` throws before recording the attempt, so a batch that trips on element k has
+  charged only the k-1 attempts before it."
   [user-id n]
   (try
     (dotimes [_ n]
@@ -533,7 +557,9 @@
      field, surfaced to the model by clients that support it.
    - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
-   - `:endpoint-paths` — the URL paths (relative to site-url) this surface is served at.
+   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 `WWW-Authenticate`
+     challenge matches the request URI against. NOT necessarily all served by this surface:
+     during the migration the set includes v1's paths — see [[metabase.mcp.paths/endpoint-paths]].
    - `:default-path` — the canonical path advertised when the request URI matches no entry in
      `:endpoint-paths`.
    - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401

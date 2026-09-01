@@ -29,7 +29,7 @@
   {:name        "ping_v2"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map
+   :args        [:map {:closed true}
                  [:message {:optional true} [:maybe :string]]]}
   [{:keys [message]} _context]
   (let [payload {:ok true :message (or message "pong")}]
@@ -115,7 +115,7 @@
        "visualization settings — read the matching skill unless it is already in context.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
-(def default-ask-scopes
+(def ^:private default-ask-scopes
   "What an uninstructed client is asked to request for this surface: everything the surface accepts.
 
   A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting

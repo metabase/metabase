@@ -51,6 +51,17 @@
   (when-not (ifn? handler)
     (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" tool-name)
                     {:tool-name tool-name})))
+  ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
+  ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
+  (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
+                                    :output-schema :required-extensions :title :_meta}
+                                  (keys tool)))]
+    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
+                    {:tool-name tool-name :unknown-keys (vec unknown)})))
+  (when (and (contains? tool :required-extensions)
+             (not (and (set? (:required-extensions tool)) (every? keyword? (:required-extensions tool)))))
+    (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
+                    {:tool-name tool-name :required-extensions (:required-extensions tool)})))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
   (swap! tools* assoc tool-name tool)
@@ -86,6 +97,8 @@
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
+   - `:required-extensions` - _optional_ - set of client extensions (e.g. `:mcp-apps`) the tool
+     needs; clients lacking one never see the tool listed and cannot call it
 
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]

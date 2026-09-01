@@ -25,12 +25,14 @@
   {:type :notification-recipient/raw-value :details {:value "someone@example.com"}})
 
 (defn- dashboard-notification
-  "A hydrated-shaped notification with one email handler carrying `recipients`. `payload_type` is
-   `:notification/dashboard` so the strip-everything branch — which needs a card read — never
-   fires and the per-recipient filters are what's under test."
-  [recipients]
+  "A hydrated-shaped notification for `dashboard-id` with one email handler carrying `recipients`.
+   The tests bind a user who can read the dashboard, so the payload-unreadable strip stays out of
+   the way and the per-recipient filters are what's under test; the strip branch itself is driven
+   by [[unreadable-payload-strips-recipient-lists-test]]."
+  [dashboard-id recipients]
   {:id           1
    :payload_type :notification/dashboard
+   :payload      {:dashboard_id dashboard-id}
    :handlers     [{:id 10 :channel_type :channel/email :recipients recipients}]})
 
 (defn- visible-user-ids
@@ -44,14 +46,33 @@
 (deftest redact-notification-hides-cross-tenant-recipients-test
   (testing "GHY-4219: a non-superuser never sees recipients from another tenant, while raw email
             recipients — which have no tenant — always survive"
-    (let [notification (dashboard-notification [same-tenant-recipient
-                                                cross-tenant-recipient
-                                                email-recipient])]
-      (mt/with-test-user :rasta
-        (is (= [100 nil] (visible-user-ids notification))))
-      (testing "a superuser sees every recipient"
-        (mt/with-test-user :crowberto
-          (is (= [100 200 nil] (visible-user-ids notification))))))))
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (let [notification (dashboard-notification dashboard-id
+                                                 [same-tenant-recipient
+                                                  cross-tenant-recipient
+                                                  email-recipient])]
+        (mt/with-test-user :rasta
+          (is (= [100 nil] (visible-user-ids notification))))
+        (testing "a superuser sees every recipient"
+          (mt/with-test-user :crowberto
+            (is (= [100 200 nil] (visible-user-ids notification)))))))))
+
+(deftest unreadable-payload-strips-recipient-lists-test
+  (testing "a caller who cannot read a dashboard notification's dashboard loses the recipient
+            lists entirely — the strip branch, driven for real rather than hand-simulated"
+    ;; A new collection inherits its parent's grants, and the test fixtures give All Users root
+    ;; perms — revoke those so the collection (and so the dashboard) is unreadable to rasta.
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}]
+        (let [notification (dashboard-notification dashboard-id [same-tenant-recipient email-recipient])]
+          (mt/with-test-user :rasta
+            (is (not-any? #(contains? % :recipients)
+                          (:handlers (redaction/redact-notification notification)))))
+          (testing "a reader of the dashboard keeps the (filtered) lists"
+            (mt/with-test-user :crowberto
+              (is (every? #(contains? % :recipients)
+                          (:handlers (redaction/redact-notification notification)))))))))))
 
 (deftest filtered-to-empty-is-not-the-same-as-stripped-test
   (testing "GHY-4219: a handler whose recipients are all filtered away keeps the key with an empty
@@ -59,21 +80,22 @@
             reports the two differently, so a caller can tell \"nobody you may see\" from
             \"withheld\" — this pins that the split of redaction out of the projection preserves
             the distinction."
-    (mt/with-test-user :rasta
-      (testing "filtered to empty projects as an empty list"
-        (let [handler (-> (dashboard-notification [cross-tenant-recipient])
-                          redaction/redact-notification
-                          projections/notification-row
-                          :handlers
-                          first)]
-          (is (contains? handler :recipients))
-          (is (= [] (:recipients handler)))))
-      (testing "stripped projects without the key at all"
-        (let [handler (-> (dashboard-notification [same-tenant-recipient])
-                          ;; What `redact-notification` does when the caller cannot read the
-                          ;; payload; done by hand here so the assertion needs no card fixture.
-                          (update :handlers (partial mapv #(dissoc % :recipients)))
-                          projections/notification-row
-                          :handlers
-                          first)]
-          (is (not (contains? handler :recipients))))))))
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (mt/with-test-user :rasta
+        (testing "filtered to empty projects as an empty list"
+          (let [handler (-> (dashboard-notification dashboard-id [cross-tenant-recipient])
+                            redaction/redact-notification
+                            projections/notification-row
+                            :handlers
+                            first)]
+            (is (contains? handler :recipients))
+            (is (= [] (:recipients handler)))))
+        (testing "stripped projects without the key at all"
+          (let [handler (-> (dashboard-notification dashboard-id [same-tenant-recipient])
+                            ;; What `redact-notification` does when the caller cannot read the
+                            ;; payload; done by hand here so the assertion needs no card fixture.
+                            (update :handlers (partial mapv #(dissoc % :recipients)))
+                            projections/notification-row
+                            :handlers
+                            first)]
+            (is (not (contains? handler :recipients)))))))))

@@ -72,7 +72,7 @@
                 "it is minted, not silently created and then 404'd on every later request by the read-path length "
                 "guard. A future payload field is the realistic way this happens; here we force it by making the "
                 "capability encoder emit an over-long segment.")
-    (with-redefs [mcp.session/encode-session-payload (constantly (apply str (repeat 300 "x")))]
+    (mt/with-dynamic-fn-redefs [mcp.session/encode-session-payload (constantly (apply str (repeat 300 "x")))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"exceeds the persisted column width"
                             (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))
           "minting must fail loudly at creation rather than defer the failure to the read path"))))
@@ -163,7 +163,7 @@
                (scopes-of #{(str ::scope/unrestricted)}))))
       (testing "a credential minted before the claim existed fails closed rather than reading as unrestricted"
         ;; A rolling deploy can hand this node a credential from an older one for the 300s it stays valid.
-        (with-redefs [mcp.session/encode-token-scopes (constantly {})]
+        (mt/with-dynamic-fn-redefs [mcp.session/encode-token-scopes (constantly {})]
           (is (= #{} (scopes-of #{metabot.scope/agent-sql-run}))))))))
 
 (deftest v1-credential-is-marked-legacy-test

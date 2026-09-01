@@ -113,11 +113,11 @@
    which is returned. Lets the usage-logging contract be asserted without the EE DB writer."
   [thunk]
   (let [records (atom [])]
-    (with-redefs [mcp.usage/record-mcp-tool-call! (fn [m] (swap! records conj m))]
+    (mt/with-dynamic-fn-redefs [mcp.usage/record-mcp-tool-call! (fn [m] (swap! records conj m))]
       (thunk))
     @records))
 
-;; not ^:parallel: with-redefs on the shared usage var
+;; not ^:parallel: exercises shared registry/tool state alongside the usage redef
 (deftest usage-logging-contract-test
   (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
     (testing "success → status \"success\", no error"
