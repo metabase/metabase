@@ -63,7 +63,7 @@
                          (sql.helpers/set (cond-> {}
                                             index-created-at (assoc :index_created_at index-created-at)
                                             indexer-last-poll (assoc :indexer_last_poll indexer-last-poll)))
-                         (sql.helpers/where [:= :id index-id])
+                         (sql.helpers/where ['= 'id index-id])
                          (sql/format :quoted true))))
     index-id))
 
@@ -72,8 +72,8 @@
   [pgvector control-table-name index-id]
   (jdbc/execute! pgvector
                  (-> (sql.helpers/update (keyword control-table-name))
-                     (sql.helpers/set {:active_id index-id
-                                       :active_updated_at [:now]})
+                     (sql.helpers/set {'active_id index-id
+                                       'active_updated_at ['now]})
                      (sql/format :quoted true))))
 
 (defn- create-table!
@@ -265,20 +265,20 @@
             (jdbc/execute! pgvector
                            (-> (sql.helpers/insert-into (keyword gate-table-name))
                                (sql.helpers/values
-                                [{:id "old-tombstone-1"
-                                  :model "card"
-                                  :model_id "321"
-                                  :updated_at old-time
-                                  :gated_at old-time
-                                  :document nil
-                                  :document_hash nil}])
+                                [{'id "old-tombstone-1"
+                                  'model "card"
+                                  'model_id "321"
+                                  'updated_at old-time
+                                  'gated_at old-time
+                                  'document nil
+                                  'document_hash nil}])
                                (sql/format :quoted true)))
             (cleanup-old-tombstones! pgvector index-metadata)
             ;; Verify no records were deleted since indexer hasn't run recently
             (let [remaining-records (jdbc/execute! pgvector
-                                                   (-> (sql.helpers/select [:*])
+                                                   (-> (sql.helpers/select ['*])
                                                        (sql.helpers/from (keyword gate-table-name))
-                                                       (sql.helpers/order-by :id)
+                                                       (sql.helpers/order-by 'id)
                                                        (sql/format :quoted true))
                                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                   remaining-ids (map :id remaining-records)]
@@ -295,43 +295,43 @@
               (jdbc/execute! pgvector
                              (-> (sql.helpers/insert-into (keyword gate-table-name))
                                  (sql.helpers/values
-                                  [{:id "old-tombstone-2"
-                                    :model "card"
-                                    :model_id "123"
-                                    :updated_at old-time
-                                    :gated_at old-time
-                                    :document nil
-                                    :document_hash nil}
-                                   {:id "old-tombstone-3"
-                                    :model "dashboard"
-                                    :model_id "456"
-                                    :updated_at old-time
-                                    :gated_at old-time
-                                    :document nil
-                                    :document_hash nil}
-                                   {:id "recent-tombstone"
-                                    :model "card"
-                                    :model_id "789"
-                                    :updated_at recent-time
-                                    :gated_at recent-time
-                                    :document nil
-                                    :document_hash nil}
-                                   {:id "non-tombstone"
-                                    :model "card"
-                                    :model_id "101"
-                                    :updated_at old-time
-                                    :gated_at old-time
-                                    :document (doto (PGobject.)
+                                  [{'id "old-tombstone-2"
+                                    'model "card"
+                                    'model_id "123"
+                                    'updated_at old-time
+                                    'gated_at old-time
+                                    'document nil
+                                    'document_hash nil}
+                                   {'id "old-tombstone-3"
+                                    'model "dashboard"
+                                    'model_id "456"
+                                    'updated_at old-time
+                                    'gated_at old-time
+                                    'document nil
+                                    'document_hash nil}
+                                   {'id "recent-tombstone"
+                                    'model "card"
+                                    'model_id "789"
+                                    'updated_at recent-time
+                                    'gated_at recent-time
+                                    'document nil
+                                    'document_hash nil}
+                                   {'id "non-tombstone"
+                                    'model "card"
+                                    'model_id "101"
+                                    'updated_at old-time
+                                    'gated_at old-time
+                                    'document (doto (PGobject.)
                                                 (.setType "jsonb")
                                                 (.setValue (json/encode {:content "some content"})))
-                                    :document_hash "hash123"}])
+                                    'document_hash "hash123"}])
                                  (sql/format :quoted true)))
               (cleanup-old-tombstones! pgvector index-metadata)
               ;; Verify only old tombstones were deleted after cleanup task runs
               (let [remaining-records (jdbc/execute! pgvector
-                                                     (-> (sql.helpers/select [:*])
+                                                     (-> (sql.helpers/select ['*])
                                                          (sql.helpers/from (keyword gate-table-name))
-                                                         (sql.helpers/order-by :id)
+                                                         (sql.helpers/order-by 'id)
                                                          (sql/format :quoted true))
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                     remaining-ids (map :id remaining-records)]

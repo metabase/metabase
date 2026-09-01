@@ -170,7 +170,7 @@
                                                                      [:= :collection_id nil])]]
                                                           ;; stable filename de-dup suffixes across exports, see GHY-3754
                                                           'order-by serdes/stable-storage-order}
-                                                   where (sql.helpers/where :or where))))
+                                                   where (sql.helpers/where 'or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]

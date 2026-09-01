@@ -88,4 +88,4 @@
                    (common/add-sort-clause
                     (or sort-column "card.name")
                     (or sort-direction "asc"))
-                   (sql.helpers/order-by [:card.id :asc]))))})))
+                   (sql.helpers/order-by ['card.id 'asc]))))})))

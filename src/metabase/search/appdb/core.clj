@@ -83,11 +83,11 @@
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
-                  [:or
-                   [:= :search_index.model nil]
-                   [:!= :search_index.model "table"]
-                   [:and
-                    [:= :search_index.model "table"]
+                  ['or
+                   ['= 'search_index.model nil]
+                   ['!= 'search_index.model "table"]
+                   ['and
+                    ['= 'search_index.model "table"]
                     clause]]))))
 
 (defn add-collection-join-and-where-clauses
@@ -104,7 +104,7 @@
                                    [:in :search_index.model excluded-models]
                                    %)]
     (cond-> qry
-      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true (sql.helpers/left-join ['collection 'collection] ['= collection-id-col 'collection.id])
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
@@ -201,9 +201,9 @@
          (into #{} (map :model)))))
 
 (defn- restrict-to-row [model id qry]
-  (sql.helpers/where qry [:and
-                          [:= :search_index.model model]
-                          [:= :search_index.model_id (str id)]]))
+  (sql.helpers/where qry ['and
+                          ['= 'search_index.model model]
+                          ['= 'search_index.model_id (str id)]]))
 
 (defn- row-present? [qry]
   (-> qry

@@ -188,7 +188,7 @@
                         (mentioned-ids-who-can-read entity))
         recipients (-> (t2/select-fn-set :email [:model/User 'email]
                                          (cond-> clause
-                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+                                           (seq mentions) (sql.helpers/where 'or ['in 'id mentions])))
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
@@ -330,13 +330,13 @@
   [clauses]
   (if api/*is-superuser?*
     clauses
-    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+    (let [clauses (sql.helpers/where clauses ['= 'tenant_id (:tenant_id @api/*current-user*)])]
       (case (users.settings/user-visibility)
         :all   clauses
-        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+        :group (sql.helpers/where clauses ['in 'core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
                                                                  (set)
                                                                  (conj api/*current-user-id*))])
-        :none (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+        :none (sql.helpers/where clauses ['= 'core_user.id api/*current-user-id*])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -353,9 +353,9 @@
                  restrict-to-visible-users)]
     {:data   (->> (t2/select [:model/User 'id 'first_name 'last_name 'email]
                              (-> clauses
-                                 (sql.helpers/order-by [:%lower.first_name :asc]
-                                                       [:%lower.last_name :asc]
-                                                       [:id :asc])))
+                                 (sql.helpers/order-by ['%lower.first_name 'asc]
+                                                       ['%lower.last_name 'asc]
+                                                       ['id 'asc])))
                   (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
                       (merge {'select [[['count ['distinct 'core_user.id]] 'count]]

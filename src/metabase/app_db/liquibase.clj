@@ -597,9 +597,9 @@
                                                      (.getChangeLogParameters liquibase)
                                                      changelog
                                                      change-listener))
-           (let [remaining-query (-> (sql.helpers/select :id)
+           (let [remaining-query (-> (sql.helpers/select 'id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
-                                     (sql.helpers/where [:in :id ids-to-drop]))
+                                     (sql.helpers/where ['in 'id ids-to-drop]))
                  formatted-sql (sql/format remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)

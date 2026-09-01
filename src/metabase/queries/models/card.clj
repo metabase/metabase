@@ -1651,13 +1651,13 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
+  (-> (base-search-spec) (sql.helpers/where ['= 'this.type "question"])))
 
 (search/define-spec "dataset"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
+  (-> (base-search-spec) (sql.helpers/where ['= 'this.type "model"])))
 
 (search/define-spec "metric"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
+  (-> (base-search-spec) (sql.helpers/where ['= 'this.type "metric"])))
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]

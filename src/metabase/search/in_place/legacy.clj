@@ -160,7 +160,7 @@
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
-    (sql.helpers/where query [:= id :db_id])
+    (sql.helpers/where query ['= id 'db_id])
     query))
 
 (mu/defn- add-card-db-id-clause
@@ -168,7 +168,7 @@
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
-    (sql.helpers/where query [:= id :database_id])
+    (sql.helpers/where query ['= id 'database_id])
     query))
 
 (defn add-table-where-clauses
@@ -210,7 +210,7 @@
         (sql.helpers/where permitted-clause)
         (cond->
          ;; add a JOIN against Collection *unless* the source table is already Collection
-         (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+         (not= model "collection") (sql.helpers/left-join ['collection 'collection] ['= collection-id-col 'collection.id])
          personal-clause           (sql.helpers/where personal-clause)))))
 
 (mu/defn- replace-select :- :map
@@ -243,21 +243,21 @@
   (-> query
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
-      (sql.helpers/left-join [:revision :r]
-                             [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                              [:= :r.most_recent true]
-                              [:= :r.model (search-model->revision-model model)]])))
+      (sql.helpers/left-join ['revision 'r]
+                             ['and ['= 'r.model_id (search.config/column-with-model-alias model :id)]
+                              ['= 'r.most_recent true]
+                              ['= 'r.model (search-model->revision-model model)]])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- :map
    model :- [:enum "card" "dataset" "dashboard"]]
   (-> query
       (replace-select :moderated_status :mr.status)
-      (sql.helpers/left-join [:moderation_review :mr]
-                             [:and
-                              [:= :mr.moderated_item_type (if (= model "dashboard") model "card")]
-                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
-                              [:= :mr.most_recent true]])))
+      (sql.helpers/left-join ['moderation_review 'mr]
+                             ['and
+                              ['= 'mr.moderated_item_type (if (= model "dashboard") model "card")]
+                              ['= 'mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                              ['= 'mr.most_recent true]])))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -542,14 +542,14 @@
   [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where [:= :card.type (name model)])
-      (sql.helpers/left-join [:card_bookmark :bookmark]
-                             [:and
-                              [:= :bookmark.card_id :card.id]
-                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (sql.helpers/where [:or
+      (sql.helpers/where ['= 'card.type (name model)])
+      (sql.helpers/left-join ['card_bookmark 'bookmark]
+                             ['and
+                              ['= 'bookmark.card_id 'card.id]
+                              ['= 'bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/where ['or
                           ;; we'll *always* select non-dashboard questions
-                          [:= nil :card.dashboard_id]
+                          ['= nil 'card.dashboard_id]
                           ;; when we want dashboard questions too, we *only* include those that have a DashboardCard.
                           ;; A DashboardQuestion without a DashboardCard should effectively not exist: it's invisible
                           ;; from the collection picker or when browsing, so it shouldn't be visible in search either.
@@ -566,10 +566,10 @@
 (defmethod search-query-for-model "action"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:report_card :model]
-                             [:= :model.id :action.model_id])
-      (sql.helpers/left-join :query_action
-                             [:= :query_action.action_id :action.id])
+      (sql.helpers/left-join ['report_card 'model]
+                             ['= 'model.id 'action.model_id])
+      (sql.helpers/left-join 'query_action
+                             ['= 'query_action.action_id 'action.id])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
@@ -591,21 +591,21 @@
 (defmethod search-query-for-model "collection"
   [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
-      (sql.helpers/left-join [:collection_bookmark :bookmark]
-                             [:and
-                              [:= :bookmark.collection_id :collection.id]
-                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/left-join ['collection_bookmark 'bookmark]
+                             ['and
+                              ['= 'bookmark.collection_id 'collection.id]
+                              ['= 'bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "document"
   [model search-ctx]
   (-> (base-query-for-model "document" search-ctx)
-      (sql.helpers/left-join [:document_bookmark :bookmark]
-                             [:and
-                              [:= :bookmark.document_id :document.id]
-                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/left-join ['document_bookmark 'bookmark]
+                             ['and
+                              ['= 'bookmark.document_id 'document.id]
+                              ['= 'bookmark.user_id (:current-user-id search-ctx)]])
       ;; documents in Explorations are never searchable
-      (sql.helpers/where [:= nil :document.exploration_id])
+      (sql.helpers/where ['= nil 'document.exploration_id])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "exploration"
@@ -620,7 +620,7 @@
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/where [:= :router_database_id nil])))
+      (sql.helpers/where ['= 'router_database_id nil])))
 
 (defmethod search-query-for-model "transform"
   [model search-ctx]
@@ -629,10 +629,10 @@
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:dashboard_bookmark :bookmark]
-                             [:and
-                              [:= :bookmark.dashboard_id :dashboard.id]
-                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/left-join ['dashboard_bookmark 'bookmark]
+                             ['and
+                              ['= 'bookmark.dashboard_id 'dashboard.id]
+                              ['= 'bookmark.user_id (:current-user-id search-ctx)]])
       (with-moderated-status "dashboard")
       (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
@@ -650,21 +650,21 @@
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:model_index :model-index]
-                             [:= :model-index.id :model-index-value.model_index_id])
-      (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
-      (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
+      (sql.helpers/left-join ['model_index 'model-index]
+                             ['= 'model-index.id 'model-index-value.model_index_id])
+      (sql.helpers/left-join ['report_card 'model] ['= 'model-index.model_id 'model.id])
+      (sql.helpers/left-join ['collection 'collection] ['= 'model.collection_id 'collection.id])
       (add-model-index-permissions-clause search-ctx)))
 
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join ['metabase_table 'table] ['= 'measure.table_id 'table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join ['metabase_table 'table] ['= 'segment.table_id 'table.id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
@@ -672,8 +672,8 @@
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (add-table-where-clauses model search-ctx)
-        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
-        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
+        (sql.helpers/left-join ['collection 'collection] ['and 'table.is_published ['= 'table.collection_id 'collection.id]])
+        (sql.helpers/left-join 'metabase_database ['= 'table.db_id 'metabase_database.id]))))
 
 (defn- extract-and-hoist-ctes
   "Extract :with clauses from a collection of queries and return a map with:

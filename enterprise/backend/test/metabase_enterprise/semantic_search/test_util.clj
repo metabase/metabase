@@ -634,7 +634,7 @@
   "Count the number of documents in the index."
   [index]
   (let [result (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                  (-> (sql.helpers/select [:%count.* :count])
+                                  (-> (sql.helpers/select ['%count.* 'count])
                                       (sql.helpers/from (keyword (:table-name index)))
                                       semantic.index/sql-format-quoted)
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
@@ -647,7 +647,7 @@
   Not used in tests, but useful for debugging."
   []
   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                      (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
+                      (-> (sql.helpers/select 'model 'model_id 'content 'creator_id 'embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
                           semantic.index/sql-format-quoted)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
@@ -659,11 +659,11 @@
   "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
   [{:keys [model model_id]}]
   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                      (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
+                      (-> (sql.helpers/select 'model 'model_id 'content 'creator_id 'embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
-                          (sql.helpers/where :and
-                                             [:= :model model]
-                                             [:= :model_id model_id])
+                          (sql.helpers/where 'and
+                                             ['= 'model model]
+                                             ['= 'model_id model_id])
                           semantic.index/sql-format-quoted)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
@@ -674,12 +674,12 @@
   "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
   [{:keys [model model_id]}]
   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                      (-> (sql.helpers/select :model :model_id :content :creator_id
-                                              :text_search_vector :text_search_with_native_query_vector)
+                      (-> (sql.helpers/select 'model 'model_id 'content 'creator_id
+                                              'text_search_vector 'text_search_with_native_query_vector)
                           (sql.helpers/from (keyword (:table-name mock-index)))
-                          (sql.helpers/where :and
-                                             [:= :model model]
-                                             [:= :model_id model_id])
+                          (sql.helpers/where 'and
+                                             ['= 'model model]
+                                             ['= 'model_id model_id])
                           semantic.index/sql-format-quoted)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv unwrap-tsvectors)))

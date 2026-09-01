@@ -494,10 +494,10 @@
     :offset                  - pagination offset"
   [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
   (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where ['= 'core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
     ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where ['= 'core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
                                                                  :core_user.is_data_analyst
@@ -512,9 +512,9 @@
                                                                   [:not :core_user.is_superuser]
                                                                   [:not (table-metadata-perms-exist-clause)]]))
     (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
+                                             'permissions_group_membership
+                                             ['= 'core_user.id 'permissions_group_membership.user_id])
     (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
+                                             ['in 'permissions_group_membership.group_id group-ids])
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))

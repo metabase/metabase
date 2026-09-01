@@ -203,17 +203,17 @@
                                                         :limit                   (request/limit)
                                                         :offset                  (request/offset)})]
                       (cond
-                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
+                        (not api/*is-superuser?*) (sql.helpers/where clauses ['= 'tenant_id (:tenant_id @api/*current-user*)])
+                        (contains? params :tenant_id) (sql.helpers/where clauses ['= 'tenant_id tenant_id])
                         (= tenancy :all) clauses
-                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
-                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
+                        (= tenancy :external) (sql.helpers/where clauses ['not= 'tenant_id nil])
+                        :else (sql.helpers/where clauses ['= 'tenant_id nil])))]
         {:data   (cond-> (t2/select
                           (vec (cons :model/User (user-visible-columns)))
                           (sql.helpers/order-by clauses
-                                                [:%lower.first_name :asc]
-                                                [:%lower.last_name :asc]
-                                                [:id :asc]))
+                                                ['%lower.first_name 'asc]
+                                                ['%lower.last_name 'asc]
+                                                ['id 'asc]))
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
                    (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -248,19 +248,19 @@
   ;; defining these functions so the branching logic below can be as clear as possible
   (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
-                                                             [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                  (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                  true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                                                             ['= 'tenant_id (:tenant_id @api/*current-user*)])
+                                  (not (perms/use-tenants)) (sql.helpers/where ['= 'tenant_id nil])
+                                  true                      (sql.helpers/order-by ['%lower.last_name 'asc] ['%lower.first_name 'asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses {})
-                                            (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                            (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
-                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                                            (not api/*is-superuser?*) (sql.helpers/where ['= 'tenant_id (:tenant_id @api/*current-user*)])
+                                            (not (perms/use-tenants)) (sql.helpers/where ['= 'tenant_id nil])
+                                            (seq user-ids) (sql.helpers/where ['in 'core_user.id user-ids])
+                                            true           (sql.helpers/order-by ['%lower.last_name 'asc] ['%lower.first_name 'asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)

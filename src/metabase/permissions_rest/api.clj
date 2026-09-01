@@ -310,15 +310,15 @@
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
                                   (sql.helpers/where
-                                   [:in :group_id {'select ['group_id]
+                                   ['in 'group_id {'select ['group_id]
                                                    'from   ['permissions_group_membership]
                                                    'where  ['and
                                                             ['= 'user_id api/*current-user-id*]
                                                             ['= 'is_group_manager true]]}])
                                   (not (premium-features/enable-advanced-permissions?))
-                                  (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])
+                                  (sql.helpers/where ['not= 'group_id (u/the-id (perms/data-analyst-group))])
                                   (not (setting/get :use-tenants))
-                                  (sql.helpers/where [:not-in :group_id                                                       {'select ['id]
+                                  (sql.helpers/where ['not-in 'group_id                                                       {'select ['id]
                                                                                                                                'from   ['permissions_group]
                                                                                                                                'where  ['= 'is_tenant_group true]}])))))
 

@@ -210,7 +210,7 @@
   "Fetches the number of documents in the index table."
   [connectable table-name]
   (->> (jdbc/execute-one! connectable
-                          (-> (sql.helpers/select [:%count.* :count])
+                          (-> (sql.helpers/select ['%count.* 'count])
                               (sql.helpers/from (keyword table-name))
                               (sql.helpers/limit 1)
                               sql-format-quoted))
@@ -346,7 +346,7 @@
        (fn [db-records]
          (-> (sql.helpers/insert-into (keyword (:table-name index)))
              (sql.helpers/values db-records)
-             (sql.helpers/on-conflict :model :model_id)
+             (sql.helpers/on-conflict 'model 'model_id)
              (sql.helpers/do-update-set (db-records->update-set db-records))
              sql-format-quoted))
        batch-documents))))
@@ -361,9 +361,9 @@
   (json/decode (unwrap-pgobject obj) true))
 
 (defn- existing-embedding-query [index texts]
-  (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
+  (-> (sql.helpers/select-distinct-on ['content] 'content 'embedding)
       (sql.helpers/from (keyword (:table-name index)))
-      (sql.helpers/where [:in :content texts])))
+      (sql.helpers/where ['in 'content texts])))
 
 (defn- partition-existing-embeddings [connectable index texts]
   (let [found-embeddings
@@ -456,7 +456,7 @@
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
-  (-> (sql.helpers/drop-table :if-exists (keyword table-name))
+  (-> (sql.helpers/drop-table 'if-exists (keyword table-name))
       sql-format-quoted))
 
 (defn drop-index-table!
@@ -520,8 +520,8 @@
         ;; formatted statement instead: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...` is valid Postgres.
         [sql & params] (sql-format-quoted
                         (sql.helpers/create-index
-                         [(keyword (hnsw-index-name index)) :if-not-exists]
-                         [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]]))
+                         [(keyword (hnsw-index-name index)) 'if-not-exists]
+                         [(keyword table-name) 'using-hnsw [['raw "embedding vector_cosine_ops"]]]))
         sql            (cond-> sql
                          concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
     (jdbc/execute! connectable (into [sql] params))))
@@ -547,7 +547,7 @@
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
       (try
-        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension 'vector 'if-not-exists)))
         (catch Exception e
           ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
           (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
@@ -558,7 +558,7 @@
       (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
-       (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
+       (-> (sql.helpers/create-table (keyword table-name) 'if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
       (when (contains? search.config/hnsw-index-backed-strategies
@@ -567,20 +567,20 @@
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword (fts-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin :text_search_vector])
+            [(keyword (fts-index-name index)) 'if-not-exists]
+            [(keyword table-name) 'using-gin 'text_search_vector])
            sql-format-quoted))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword (fts-native-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin :text_search_with_native_query_vector])
+            [(keyword (fts-native-index-name index)) 'if-not-exists]
+            [(keyword table-name) 'using-gin 'text_search_with_native_query_vector])
            sql-format-quoted))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword (content-index-name index)) :if-not-exists]
-            [(keyword table-name) :content])
+            [(keyword (content-index-name index)) 'if-not-exists]
+            [(keyword table-name) 'content])
            sql-format-quoted)))
     (catch Exception e
       ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
@@ -1387,9 +1387,9 @@
   [model table-name batch-ids]
   (when (seq batch-ids)
     (-> (sql.helpers/delete-from table-name)
-        (sql.helpers/where [:and
-                            [:= :model model]
-                            [:in :model_id (map str batch-ids)]])
+        (sql.helpers/where ['and
+                            ['= 'model model]
+                            ['in 'model_id (map str batch-ids)]])
         sql-format-quoted)))
 
 (defn delete-from-index!

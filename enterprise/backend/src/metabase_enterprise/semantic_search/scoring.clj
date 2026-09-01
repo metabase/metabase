@@ -140,7 +140,7 @@
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [search-ctx scorers qry]
   (-> (search.scoring/with-scores search-ctx scorers qry)
-      (sql.helpers/order-by [:total_score :desc])))
+      (sql.helpers/order-by ['total_score 'desc])))
 
 (defn all-scores
   "Score stats for each scorer"

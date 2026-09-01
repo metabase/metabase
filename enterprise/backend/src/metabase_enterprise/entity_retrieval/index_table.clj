@@ -118,30 +118,30 @@
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- create-meta-table-sql []
-  (-> (sql.helpers/create-table (keyword (meta-table)) :if-not-exists)
+  (-> (sql.helpers/create-table (keyword (meta-table)) 'if-not-exists)
       (sql.helpers/with-columns
-        [[:id :smallint [:primary-key] [:default 1] [:check [:= :id 1]]]
-         [:provider :text :not-null]
-         [:model_name :text :not-null]
-         [:vector_dimensions :int :not-null]
-         [:embedding_space_id :text :not-null]
-         [:schema_version :int :not-null]
-         [:updated_at :timestamp-with-time-zone :not-null]
+        [['id 'smallint ['primary-key] ['default 1] ['check ['= 'id 1]]]
+         ['provider 'text 'not-null]
+         ['model_name 'text 'not-null]
+         ['vector_dimensions 'int 'not-null]
+         ['embedding_space_id 'text 'not-null]
+         ['schema_version 'int 'not-null]
+         ['updated_at 'timestamp-with-time-zone 'not-null]
          ;; Captured immediately before a successful full reconcile reads the appdb. Distinct from updated_at
          ;; (which write-meta! bumps on an empty create/rebuild), so NLQ staleness isn't reset by a rebuild
          ;; that hasn't been reconciled yet. Nullable: null = never reconciled since the (re)build.
-         [:reconciled_at :timestamp-with-time-zone]])
+         ['reconciled_at 'timestamp-with-time-zone]])
       sql-format-quoted))
 
 (defn- create-vectors-table-sql [dims]
-  (-> (sql.helpers/create-table (keyword (vectors-table)) :if-not-exists)
+  (-> (sql.helpers/create-table (keyword (vectors-table)) 'if-not-exists)
       (sql.helpers/with-columns
-        [[:doc_id :text [:primary-key]]
-         [:entity_type :text :not-null]
-         [:entity_local_id :bigint :not-null]
-         [:doc_type :text :not-null]
-         [:doc_text :text :not-null]
-         [:doc_embedding [:raw (format "vector(%d)" dims)] :not-null]])
+        [['doc_id 'text ['primary-key]]
+         ['entity_type 'text 'not-null]
+         ['entity_local_id 'bigint 'not-null]
+         ['doc_type 'text 'not-null]
+         ['doc_text 'text 'not-null]
+         ['doc_embedding ['raw (format "vector(%d)" dims)] 'not-null]])
       sql-format-quoted))
 
 (defn- model-identity
@@ -179,16 +179,16 @@
         (model-identity embedding-model)]
     (jdbc/execute! tx
                    (-> (sql.helpers/insert-into (keyword (meta-table)))
-                       (sql.helpers/values [{:id                1
-                                             :provider          provider
-                                             :model_name        model_name
-                                             :vector_dimensions vector_dimensions
-                                             :embedding_space_id embedding_space_id
-                                             :schema_version    schema_version
-                                             :updated_at        (Instant/now)}])
-                       (sql.helpers/on-conflict :id)
-                       (sql.helpers/do-update-set :provider :model_name :vector_dimensions
-                                                  :embedding_space_id :schema_version :updated_at)
+                       (sql.helpers/values [{'id                1
+                                             'provider          provider
+                                             'model_name        model_name
+                                             'vector_dimensions vector_dimensions
+                                             'embedding_space_id embedding_space_id
+                                             'schema_version    schema_version
+                                             'updated_at        (Instant/now)}])
+                       (sql.helpers/on-conflict 'id)
+                       (sql.helpers/do-update-set 'provider 'model_name 'vector_dimensions
+                                                  'embedding_space_id 'schema_version 'updated_at)
                        sql-format-quoted))))
 
 (defn- create-tables! [tx dims]
@@ -357,7 +357,7 @@
   [pgvector embedding-model]
   (jdbc/with-transaction [tx pgvector]
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
-    (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+    (jdbc/execute! tx (sql/format (sql.helpers/create-extension 'vector 'if-not-exists)))
     (ensure-schema! tx)
     ;; Before any CREATE below: remove the pre-embedding-space tables whose vectors cannot be trusted.
     (drop-legacy-tables! tx)

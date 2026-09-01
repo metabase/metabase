@@ -20,7 +20,7 @@
                                          [:type [:varchar 255] [:not nil]]
                                          [:content :text [:not nil]]]
                   :else (throw (ex-info "Unsupported database type for prototype_data table" {:db-type (mdb/db-type)})))]
-    (-> (sql.helpers/create-table :dev_prototype_data :if-not-exists)
+    (-> (sql.helpers/create-table 'dev_prototype_data 'if-not-exists)
         (sql.helpers/with-columns
           columns))))
 

@@ -112,21 +112,21 @@
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
         schema (:metadata schema-0)]
-    (-> (sql.helpers/create-table (keyword metadata-table-name) :if-not-exists)
+    (-> (sql.helpers/create-table (keyword metadata-table-name) 'if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
 (defn- create-control-table-if-not-exists-sql [index-metadata]
   (let [{:keys [control-table-name]} index-metadata
         schema (:control schema-0)]
-    (-> (sql.helpers/create-table (keyword control-table-name) :if-not-exists)
+    (-> (sql.helpers/create-table (keyword control-table-name) 'if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
 (defn- create-gate-table-if-not-exists-sql [index-metadata]
   (let [{:keys [gate-table-name]} index-metadata
         schema (:gate schema-0)]
-    (-> (sql.helpers/create-table (keyword gate-table-name) :if-not-exists)
+    (-> (sql.helpers/create-table (keyword gate-table-name) 'if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
@@ -157,11 +157,11 @@
          ;; Control table uses hardcoded id=0 to enforce a singleton row.
          ;; This ensures exactly one control row exists, simplifying active index lookups
          ;; and avoiding race conditions when multiple nodes initialize simultaneously.
-         (sql.helpers/values [{:id                0
-                               :version           version
-                               :active_id         nil
-                               :active_updated_at nil}])
-         (sql.helpers/on-conflict :id)
+         (sql.helpers/values [{'id                0
+                               'version           version
+                               'active_id         nil
+                               'active_updated_at nil}])
+         (sql.helpers/on-conflict 'id)
          (sql.helpers/do-nothing)
          (sql/format :quoted true)))
     nil))
@@ -191,8 +191,8 @@
      pgvector
      (sql/format
       (sql.helpers/create-index
-       [(keyword (str (semantic.util/table-name-part (:gate-table-name index-metadata)) "_gated_at")) :if-not-exists]
-       [(keyword (:gate-table-name index-metadata)) :gated_at :id])
+       [(keyword (str (semantic.util/table-name-part (:gate-table-name index-metadata)) "_gated_at")) 'if-not-exists]
+       [(keyword (:gate-table-name index-metadata)) 'gated_at 'id])
       :quoted true))
     (log/info "Creating gate table tombstone cleanup index if not exists")
     ;; Partial index on nil documents in the gate table to optimize identification of old tombstones
@@ -218,15 +218,15 @@
         index-metadata]
     (jdbc/execute!
      pgvector
-     (-> (sql.helpers/drop-table :if-exists (keyword metadata-table-name))
+     (-> (sql.helpers/drop-table 'if-exists (keyword metadata-table-name))
          (sql/format :quoted true)))
     (jdbc/execute!
      pgvector
-     (-> (sql.helpers/drop-table :if-exists (keyword control-table-name))
+     (-> (sql.helpers/drop-table 'if-exists (keyword control-table-name))
          (sql/format :quoted true)))
     (jdbc/execute!
      pgvector
-     (-> (sql.helpers/drop-table :if-exists (keyword gate-table-name))
+     (-> (sql.helpers/drop-table 'if-exists (keyword gate-table-name))
          (sql/format :quoted true)))
     nil))
 
@@ -384,15 +384,15 @@
         embedding-model
 
         insert-sql (-> (sql.helpers/insert-into (keyword metadata-table-name))
-                       (sql.helpers/values [{:provider          provider
-                                             :model_name        model-name
-                                             :model_revision    model-revision
-                                             :vector_dimensions vector-dimensions
-                                             :embedding_space_id embedding-space-id
-                                             :table_name        index-table-name
-                                             :index_version     index-version
-                                             :index_created_at  [:now]}])
-                       (sql.helpers/returning :id)
+                       (sql.helpers/values [{'provider          provider
+                                             'model_name        model-name
+                                             'model_revision    model-revision
+                                             'vector_dimensions vector-dimensions
+                                             'embedding_space_id embedding-space-id
+                                             'table_name        index-table-name
+                                             'index_version     index-version
+                                             'index_created_at  ['now]}])
+                       (sql.helpers/returning 'id)
                        (sql/format :quoted true))
         {:keys [id]} (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     id))

@@ -339,16 +339,16 @@
 
      ;; These joins are always present regardless of the path.
      true
-     (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
-         (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
-         (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
+     (-> (sql.helpers/left-join ['notification_card 'nc] ['= 'nc.id 'notification.payload_id])
+         (sql.helpers/left-join ['report_card 'c]        ['= 'c.id 'nc.card_id])
+         (sql.helpers/left-join ['core_user 'cu]         ['= 'cu.id 'notification.creator_id]))
 
      ;; Window subquery joins — skipped on the detail path (see docstring). Keyed by notification_id
      ;; so each notification gets exactly its own latest run, not the card's (which would bleed
      ;; across every notification sharing the card).
      (not skip-run-joins?)
-     (-> (sql.helpers/left-join [(latest-run-per-notification)       :lc] [:= :lc.notification_id :notification.id])
-         (sql.helpers/left-join [(latest-send-tick-per-notification) :ls] [:= :ls.notification_id :notification.id])))
+     (-> (sql.helpers/left-join [(latest-run-per-notification)       'lc] ['= 'lc.notification_id 'notification.id])
+         (sql.helpers/left-join [(latest-send-tick-per-notification) 'ls] ['= 'ls.notification_id 'notification.id])))
    (list-where-clauses filters)))
 
 (defn- order-by-clauses
@@ -646,7 +646,7 @@
   [id]
   (when-let [row (t2/select-one :model/Notification
                                 (-> (base-list-query {:skip-run-joins? true})
-                                    (sql.helpers/where [:= :notification.id id])))]
+                                    (sql.helpers/where ['= 'notification.id id])))]
     (let [decorated     (-> (models.notification/hydrate-notification [row])
                             first
                             splice-creator-active)

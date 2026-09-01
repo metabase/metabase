@@ -146,11 +146,11 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
+           ['pgm.is_group_manager 'is-group-manager?])
           (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+           ['permissions_group_membership 'pgm] ['and
+                                                 ['= 'pgm.user_id 'user.id]
+                                                 ['is 'pgm.is_group_manager true]]))))))))
 
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
@@ -173,11 +173,11 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
+           ['pgm.is_group_manager 'is-group-manager?])
           (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+           ['permissions_group_membership 'pgm] ['and
+                                                 ['= 'pgm.user_id 'user.id]
+                                                 ['is 'pgm.is_group_manager true]]))))))))
 
 ;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
 ;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
@@ -198,11 +198,11 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
+           ['pgm.is_group_manager 'is-group-manager?])
           (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+           ['permissions_group_membership 'pgm] ['and
+                                                 ['= 'pgm.user_id 'user.id]
+                                                 ['is 'pgm.is_group_manager true]]))))))))
 
 (defn- valid-session-key?
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared

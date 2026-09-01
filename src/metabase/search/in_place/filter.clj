@@ -130,7 +130,7 @@
 (doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:id model]
     [_filter model query ids]
-    (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
+    (sql.helpers/where query ['in (search.config/column-with-model-alias model :id) ids])))
 
 ;; Verified filters
 
@@ -139,12 +139,12 @@
   (assert (true? verified) "filter for non-verified cards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
+        (sql.helpers/join 'moderation_review
+                          ['= 'moderation_review.moderated_item_id
                            (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]))
+        (sql.helpers/where ['= 'moderation_review.status "verified"]
+                           ['= 'moderation_review.moderated_item_type "card"]
+                           ['= 'moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
 
 (defmethod build-optional-filter-query [:verified "dataset"]
@@ -160,12 +160,12 @@
   (assert (true? verified) "filter for non-verified dashboards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
+        (sql.helpers/join 'moderation_review
+                          ['= 'moderation_review.moderated_item_id
                            (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "dashboard"]
-                           [:= :moderation_review.most_recent true]))
+        (sql.helpers/where ['= 'moderation_review.status "verified"]
+                           ['= 'moderation_review.moderated_item_type "dashboard"]
+                           ['= 'moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
 
 ;; Curated filters — the "verified or curated content" setting for Metabot. The canonical rule is
@@ -185,14 +185,14 @@
                      (conj [:= :cur_coll.authority_level "official"]))]
     (-> query
         (cond-> (premium-features/has-feature? :content-verification)
-          (sql.helpers/left-join [:moderation_review :cur_mr]
-                                 [:and
-                                  [:= :cur_mr.moderated_item_id (search.config/column-with-model-alias model :id)]
-                                  [:= :cur_mr.moderated_item_type item-type]
-                                  [:= :cur_mr.most_recent true]]))
+          (sql.helpers/left-join ['moderation_review 'cur_mr]
+                                 ['and
+                                  ['= 'cur_mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                                  ['= 'cur_mr.moderated_item_type item-type]
+                                  ['= 'cur_mr.most_recent true]]))
         (cond-> (premium-features/has-feature? :official-collections)
-          (sql.helpers/left-join [:collection :cur_coll]
-                                 [:= :cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
+          (sql.helpers/left-join ['collection 'cur_coll]
+                                 ['= 'cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
         (sql.helpers/where (if (seq or-clauses) (into [:or] or-clauses) false-clause)))))
 
 (doseq [[model item-type] [["card" "card"] ["dataset" "card"] ["metric" "card"] ["dashboard" "dashboard"]]]
@@ -276,14 +276,14 @@
     (cond-> query
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
-      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+      (-> (sql.helpers/join 'revision ['= 'revision.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where ['= 'revision.most_recent true]
+                             ['= 'revision.model (search-model->revision-model model)]))
       (= 1 (count editor-ids))
-      (sql.helpers/where [:= :revision.user_id (first editor-ids)])
+      (sql.helpers/where ['= 'revision.user_id (first editor-ids)])
 
       (> (count editor-ids) 1)
-      (sql.helpers/where [:in :revision.user_id editor-ids]))))
+      (sql.helpers/where ['in 'revision.user_id editor-ids]))))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
@@ -291,9 +291,9 @@
     (cond-> query
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
-      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+      (-> (sql.helpers/join 'revision ['= 'revision.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where ['= 'revision.most_recent true]
+                             ['= 'revision.model (search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -311,7 +311,7 @@
 (doseq [model ["card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:display-type model]
     [_filter model query display-types]
-    (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
+    (sql.helpers/where query ['in (search.config/column-with-model-alias model :display) display-types])))
 
 ;; Collection filter - filters by collection and all descendants
 (doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document" "exploration"]]
@@ -322,14 +322,14 @@
       ;; Filter by direct match (collection_id = ?) OR descendants (collection.location LIKE '/collection_id/%')
       (cond-> query
         (not= "collection" model)
-        (sql.helpers/where [:or
-                            [:= collection-col collection-id]
-                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])
+        (sql.helpers/where ['or
+                            ['= collection-col collection-id]
+                            ['like 'collection.location (str "%" (collection/location-path collection-id) "%")]])
 
         (= "collection" model)
-        (sql.helpers/where [:or
-                            [:= :collection.id collection-id]
-                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
+        (sql.helpers/where ['or
+                            ['= 'collection.id collection-id]
+                            ['like 'collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
 (defmethod build-optional-filter-query [:collection "table"]
   [_filter model query collection-id]
@@ -337,11 +337,11 @@
   (if (premium-features/has-feature? :library)
     (let [collection-col (search.config/column-with-model-alias model :collection_id)
           published-col  (search.config/column-with-model-alias model :is_published)]
-      (sql.helpers/where query [:and
-                                [:= published-col true]
-                                [:or
-                                 [:= collection-col collection-id]
-                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+      (sql.helpers/where query ['and
+                                ['= published-col true]
+                                ['or
+                                 ['= collection-col collection-id]
+                                 ['like 'collection.location (str "%" (collection/location-path collection-id) "%")]]]))
     ;; OSS: tables don't belong to collections
     (sql.helpers/where query false-clause)))
 
@@ -475,4 +475,4 @@
 
       (= "table" model)
       (sql.helpers/where
-       [:not [:= (search.config/column-with-model-alias "table" :db_id) audit/audit-db-id]]))))
+       ['not ['= (search.config/column-with-model-alias "table" :db_id) audit/audit-db-id]]))))

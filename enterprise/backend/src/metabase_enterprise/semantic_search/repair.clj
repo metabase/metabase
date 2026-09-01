@@ -30,7 +30,7 @@
                               documents)
           insert-sql (-> (sql.helpers/insert-into (keyword repair-table-name))
                          (sql.helpers/values repair-records)
-                         (sql.helpers/on-conflict :model :model_id)
+                         (sql.helpers/on-conflict 'model 'model_id)
                          (sql.helpers/do-nothing)
                          (sql/format :quoted true))]
       (jdbc/execute! pgvector insert-sql)
@@ -141,10 +141,10 @@
 (defn- create-repair-table!
   "Creates an empty temporary table for tracking documents during index repair."
   [pgvector repair-table-name]
-  (let [repair-table-ddl (-> (sql.helpers/create-table :unlogged (keyword repair-table-name) :if-not-exists)
-                             (sql.helpers/with-columns [[:model :text :not-null]
-                                                        [:model_id :text :not-null]
-                                                        [[:primary-key :model :model_id]]])
+  (let [repair-table-ddl (-> (sql.helpers/create-table 'unlogged (keyword repair-table-name) 'if-not-exists)
+                             (sql.helpers/with-columns [['model 'text 'not-null]
+                                                        ['model_id 'text 'not-null]
+                                                        [['primary-key 'model 'model_id]]])
                              (sql/format :quoted true))]
     (log/debugf "Creating repair table: %s" repair-table-name)
     (jdbc/execute! pgvector repair-table-ddl)))
@@ -152,7 +152,7 @@
 (defn- drop-repair-table!
   [pgvector repair-table-name]
   (try
-    (jdbc/execute! pgvector (-> (sql.helpers/drop-table :if-exists (keyword repair-table-name))
+    (jdbc/execute! pgvector (-> (sql.helpers/drop-table 'if-exists (keyword repair-table-name))
                                 (sql/format :quoted true)))
     (log/infof "Cleaned up repair table: %s" repair-table-name)
     (catch Exception e

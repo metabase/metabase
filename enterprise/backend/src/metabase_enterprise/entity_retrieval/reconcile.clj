@@ -332,7 +332,7 @@
         (jdbc/execute! conn
                        (-> (sql.helpers/insert-into (keyword (index-table/vectors-table)))
                            (sql.helpers/values (vec records))
-                           (sql.helpers/on-conflict :doc_id)
+                           (sql.helpers/on-conflict 'doc_id)
                            (sql.helpers/do-nothing)
                            (sql/format {:quoted true}))))
       (count records))))
@@ -341,7 +341,7 @@
   (when (seq doc-ids)
     (jdbc/execute! conn
                    (-> (sql.helpers/delete-from (keyword (index-table/vectors-table)))
-                       (sql.helpers/where [:in :doc_id (vec doc-ids)])
+                       (sql.helpers/where ['in 'doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
 (defn- diff-result [desired to-insert inserted deleted]

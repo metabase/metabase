@@ -79,4 +79,4 @@
   [{:keys [current-user-id] :as search-ctx} scorers qry]
   (-> (search.scoring/with-scores search-ctx scorers qry)
       (search.scoring/join-bookmarks current-user-id)
-      (sql.helpers/order-by [:total_score :desc])))
+      (sql.helpers/order-by ['total_score 'desc])))

@@ -113,7 +113,7 @@
 (defn- drop-table! [table]
   (boolean
    (when table
-     (t2/query (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
+     (t2/query (sql.helpers/drop-table 'if-exists (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)

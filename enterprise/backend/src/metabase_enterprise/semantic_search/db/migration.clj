@@ -41,7 +41,7 @@
 
 (defn- migration-table-sql
   [index-metadata]
-  (-> (sql.helpers/create-table (migration-table-kw index-metadata) :if-not-exists)
+  (-> (sql.helpers/create-table (migration-table-kw index-metadata) 'if-not-exists)
       (sql.helpers/with-columns columns)
       (sql/format)))
 
@@ -68,8 +68,8 @@
 (defn- write-successful-migration!
   [index-metadata tx]
   (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into (migration-table-kw index-metadata))
-                                        (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
-                                                              :status "success"}])))))
+                                        (sql.helpers/values [{'version semantic.db.migration.impl/schema-version
+                                                              'status "success"}])))))
 
 (defn maybe-migrate-schema!
   "Execute schema migration (control, meta, gate, ...) if appropriate."
@@ -140,4 +140,4 @@
 (defn drop-migration-table!
   "Drop migration table."
   [index-metadata connectable]
-  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists (migration-table-kw index-metadata)))))
+  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table 'if-exists (migration-table-kw index-metadata)))))

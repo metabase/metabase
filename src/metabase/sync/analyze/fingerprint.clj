@@ -191,7 +191,7 @@
 
   ([table :- i/TableInstance]
    (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
-                      [:= :table_id (u/the-id table)])))
+                      ['= 'table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
