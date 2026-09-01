@@ -29,7 +29,13 @@
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
                :scopes        (or (:scopes provider-config) ["openid" "email" "profile"])
-               :redirect-uri  (:redirect-uri request)}
+               :redirect-uri  (:redirect-uri request)
+               ;; per-IdP AuthIdentity namespace: every configured IdP shares the :provider/custom-oidc
+               ;; dispatch keyword, so without this their (iss, sub) identities would collide in one row
+               :identity-provider-name (str "oidc-" (:key provider-config))
+               ;; AuthIdentity rows written before per-IdP provider names all used this shared name;
+               ;; verify-or-link-identity! migrates a user's matching legacy row on their first login
+               :legacy-provider-name "custom-oidc"}
         (get attribute-map "email")
         (assoc :attribute-email (get attribute-map "email"))
 

@@ -2344,6 +2344,7 @@
               metabase.sso.settings}
    :friends #{enterprise/sso}
    :uses    #{api
+              app-db
               auth-identity
               config
               permissions

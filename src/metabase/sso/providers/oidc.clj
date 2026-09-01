@@ -3,6 +3,7 @@
    implementations (Auth0, Okta, etc.) can derive from."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.common :as oidc.common]
    [metabase.sso.oidc.discovery :as oidc.discovery]
@@ -111,7 +112,9 @@
                :last_name last-name
                :provider-id provider-id
                :sso_source :oidc}
-        (:iss claims) (assoc :provider-metadata {:iss (:iss claims)})))))
+        (:iss claims) (assoc :provider-metadata {:iss (:iss claims)})
+        ;; carried into the AuthIdentity row and session tracking on the JIT-provisioning path
+        (:identity-provider-name config) (assoc :identity-provider-name (:identity-provider-name config))))))
 
 ;;; -------------------------------------------------- Identity Linking --------------------------------------------------
 
@@ -132,12 +135,28 @@
 (defn- may-auto-link?
   "Whether this token may establish a new link between the email-resolved user and its (iss, sub) identity."
   [claims config email]
-  (or (and (not (false? (:auto-link-verified-email config)))
-           (true? (email-verified-claim claims)))
-      (trusted-email-domain? email (:trusted-email-domains config))))
+  (let [verified (email-verified-claim claims)]
+    (or (and (not (false? (:auto-link-verified-email config)))
+             (or (true? verified)
+                 ;; providers that verify emails out of band (e.g. Slack) may omit the claim entirely
+                 (and (nil? verified) (true? (:assume-email-verified config)))))
+        (trusted-email-domain? email (:trusted-email-domains config)))))
 
-(defn- linked-to-other-user?
-  "True if (provider, iss, sub) is already linked to a user other than `user-id`. Rows without a stored iss count."
+(defn- identity-provider-name
+  "The AuthIdentity provider name for this login. Configs may set :identity-provider-name to give each
+   IdP its own identity namespace (e.g. \"oidc-okta\") so (iss, sub) identities from different IdPs
+   sharing one dispatch keyword can't collide with or overwrite each other."
+  [provider config]
+  (or (:identity-provider-name config) (name provider)))
+
+(def ^:private identity-already-linked-failure
+  {:success? false
+   :error :identity-already-linked
+   :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
+
+(defn linked-to-other-user?
+  "True if (provider, iss, sub) is already linked to a user other than `user-id` (nil: linked to anyone).
+   Rows without a stored iss count. `provider` is a keyword or AuthIdentity provider-name string."
   [provider user-id sub iss]
   (boolean
    (some (fn [row]
@@ -147,33 +166,45 @@
          (t2/select :model/AuthIdentity :provider (name provider) :provider_id sub))))
 
 (defn link-identity!
-  "Point `user-id`'s single AuthIdentity row for `provider` (unique per user+provider) at (iss, sub). Returns
-   {:success? true}, or a failure map when that identity is already linked to another user."
+  "Point `user-id`'s single AuthIdentity row for `provider` (a keyword or provider-name string, unique per
+   user+provider) at (iss, sub). Returns {:success? true}, or a failure map when that identity is already
+   linked to another user."
   [provider user-id auth-identity sub iss]
-  (if (linked-to-other-user? provider user-id sub iss)
-    (do (log/warnf "OIDC login rejected: token identity is already linked to a different user than %d" user-id)
-        {:success? false
-         :error :identity-already-linked
-         :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
-    (do (if auth-identity
-          (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider_id sub})
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    (name provider)
-                                           :provider_id sub
-                                           :metadata    {:iss iss}}))
-        {:success? true})))
+  ;; the uniqueness of (provider, sub, iss) is check-then-write only (iss lives in metadata JSON, so no DB
+  ;; constraint can enforce it); serialize the check and write cluster-wide
+  (cluster-lock/with-cluster-lock ::link-identity
+    (if (linked-to-other-user? provider user-id sub iss)
+      (do (log/warnf "OIDC login rejected: token identity is already linked to a different user than %d" user-id)
+          identity-already-linked-failure)
+      (do (if auth-identity
+            (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider_id sub})
+            (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                             :provider    (name provider)
+                                             :provider_id sub
+                                             :metadata    {:iss iss}}))
+          {:success? true}))))
 
 (defn- verify-or-link-identity!
   "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
    first when the provider's linking policy allows. Returns {:success? true} or a failure map."
   [provider user claims config email]
-  (let [sub (subject claims)
-        iss (:iss claims)]
+  (let [pname (identity-provider-name provider config)
+        sub   (subject claims)
+        iss   (:iss claims)]
     (if (str/blank? sub)
       {:success? false
        :error :invalid-token
        :message "ID token is missing the sub claim"}
-      (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider (name provider))
+      (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider pname)
+            ;; rows written before per-IdP provider names live under the shared :legacy-provider-name; this
+            ;; user's row with the same sub (and no conflicting iss) is the same identity — migrate it in place
+            legacy-identity (when-not auth-identity
+                              (when-let [legacy-name (:legacy-provider-name config)]
+                                (when-let [row (t2/select-one :model/AuthIdentity :user_id (:id user)
+                                                              :provider legacy-name :provider_id sub)]
+                                  (let [legacy-iss (get-in row [:metadata :iss])]
+                                    (when (or (nil? legacy-iss) (= legacy-iss iss))
+                                      row)))))
             stored-sub    (:provider_id auth-identity)
             stored-iss    (get-in auth-identity [:metadata :iss])
             same-sub?     (= stored-sub sub)]
@@ -184,6 +215,11 @@
           ;; rows created before iss tracking have no :iss in metadata; a matching sub backfills it
           (and same-sub? (nil? stored-iss))
           (do (auth-identity/merge-metadata! auth-identity {:iss iss})
+              {:success? true})
+
+          legacy-identity
+          (do (log/infof "OIDC login: migrating user %d's legacy identity to provider %s" (:id user) pname)
+              (auth-identity/merge-metadata! legacy-identity {:iss iss} {:provider pname})
               {:success? true})
 
           (and stored-sub (= stored-iss iss))
@@ -198,7 +234,7 @@
           (do (when stored-sub
                 (log/infof "OIDC login: relinking user %d from %s to the token's identity" (:id user)
                            (if stored-iss (str "issuer " stored-iss) "a legacy identity without issuer")))
-              (link-identity! provider (:id user) auth-identity sub iss))
+              (link-identity! pname (:id user) auth-identity sub iss))
 
           :else
           (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
@@ -250,10 +286,20 @@
                    :message (:error validation-result)}
                   ;; Extract user data from claims
                   (let [claims (:claims validation-result)]
-                    (if (false? (email-verified-claim claims))
+                    (cond
+                      ;; (iss, sub) is the identity everything downstream links against; a token without a
+                      ;; sub could provision an account that can never log in again
+                      (str/blank? (subject claims))
+                      {:success? false
+                       :error :invalid-token
+                       :message "ID token is missing the sub claim"}
+
+                      (false? (email-verified-claim claims))
                       {:success? false
                        :error :email-not-verified
                        :message "Email address is not verified by the identity provider"}
+
+                      :else
                       (let [user-data (extract-user-data claims config)]
                         (if-not user-data
                           {:success? false
@@ -298,15 +344,31 @@
   ;; `user` was resolved by email alone; before provisioning/session creation, require the token's
   ;; (iss, sub) to match (or establish, per policy) that user's linked identity
   (cond
-    ;; failures/redirects, and new users (provisioned with their (iss, sub) by create-user!)
-    (not (and (true? (:success? request)) user))
+    ;; failures and redirects pass through untouched
+    (not (true? (:success? request)))
     (next-method provider request)
 
-    ;; never fall through to email-only login for an existing user without the token's claims
+    ;; never fall through to email-only handling without the token's claims
     (not claims)
     {:success? false
      :error :invalid-token
      :message "ID token claims are missing"}
+
+    ;; JIT provisioning: the token's identity must not already belong to another account
+    (not user)
+    (cluster-lock/with-cluster-lock ::link-identity
+      (if (linked-to-other-user? (identity-provider-name provider (:oidc-config request))
+                                 nil (subject claims) (:iss claims))
+        (do (log/warn "OIDC login rejected: token identity is already linked to an existing user; not provisioning")
+            identity-already-linked-failure)
+        (next-method provider request)))
+
+    ;; a disabled account must not (re)link an identity; the session layer would only refuse the login
+    ;; after the link had already been rewritten
+    (false? (:is_active user))
+    {:success? false
+     :error :account-disabled
+     :message "Your account is disabled. Please contact your administrator."}
 
     :else
     (let [result (verify-or-link-identity! provider user claims (:oidc-config request)
