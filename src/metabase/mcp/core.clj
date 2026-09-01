@@ -6,7 +6,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.v2.registry :as v2.registry]
+   [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,10 +42,18 @@
       false)))
 
 (defn all-scopes
-  "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+  "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata, the
+   scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query).
+   The v1 resource scopes stay in the union until the v1 surface retires."
   []
-  (into (mcp.resources/resource-scopes)
-        (comp (keep #(get-in % [:form :metadata :scope]))
-              (filter string?))
-        (vals (api.macros/ns-routes 'metabase.agent-api.api))))
+  (-> (sorted-set)
+      ;; agent-api scopes from defendpoint metadata
+      (into (comp (keep #(get-in % [:form :metadata :scope]))
+                  (filter string?))
+            (vals (api.macros/ns-routes 'metabase.agent-api.api)))
+      ;; mcp v2 tool scopes
+      (into (v2.registry/registered-scopes))
+      ;; mcp v2 ui-resource scopes
+      (into (v2.resources/resource-scopes))
+      ;; v1 resource scopes (retire with the v1 surface)
+      (into (mcp.resources/resource-scopes))))

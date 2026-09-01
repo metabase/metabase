@@ -32,6 +32,7 @@
    [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.subscription]
    [metabase.mcp.v2.tools.transform]
+   [metabase.mcp.v2.tools.visualize]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.scope :as metabot.scope]))
 
