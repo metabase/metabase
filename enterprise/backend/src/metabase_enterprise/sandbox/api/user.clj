@@ -24,13 +24,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/attributes"
-  "Update the `login_attributes` for a User."
+  "Update the `login_attributes` for a User. Only personal users can have attributes."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
-  (api/check-404 (t2/select-one :model/User :id id))
+  (api/check-404 (t2/select-one :model/User :id id :type :personal))
   (pos? (t2/update! :model/User id {:login_attributes login_attributes})))
 
 (def ^:private max-login-attributes 5000)

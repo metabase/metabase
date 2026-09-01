@@ -23,28 +23,13 @@ import {
   getUserIsAdmin,
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { getMetadata } from "metabase/metadata-store";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
-  closeQB,
-  closeQbNewbModal,
   editSummary,
-  navigateBackToDashboard,
-  onCloseChartSettings,
-  onCloseChartType,
-  onCloseQuestionInfo,
-  onCloseQuestionSettings,
-  onCloseSidebars,
-  onCloseSummary,
-  onCloseTimelines,
-  onOpenChartSettings,
-  onOpenChartType,
-  onOpenQuestionInfo,
-  onOpenQuestionSettings,
-  onOpenTimelines,
   setIsNativeEditorOpen,
-  setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
@@ -56,7 +41,6 @@ import {
   useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
@@ -65,6 +49,7 @@ import {
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,
+  closeQbNewbModal,
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
@@ -120,6 +105,24 @@ import {
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import {
+  closeQB,
+  navigateBackToDashboard,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setParameterValue,
+} from "../store/actions";
+import { getIsObjectDetail, getMode } from "../store/mode-selectors";
+import {
   getCard,
   getDataReferenceStack,
   getDocumentTitle,
@@ -162,8 +165,7 @@ import {
   getVisualizationSettings,
   getZoomedObjectRowIndex,
   isResultsMetadataDirty,
-} from "../selectors";
-import { getIsObjectDetail, getMode } from "../selectors/mode";
+} from "../store/selectors";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -248,7 +250,6 @@ const mapStateToProps = (state: State) => {
 };
 
 const mapDispatchToProps = {
-  // from metabase/redux/query-builder (shared tier)
   closeQB,
   closeQbNewbModal,
   navigateBackToDashboard,
@@ -269,7 +270,6 @@ const mapDispatchToProps = {
   setParameterValue,
   setUIControls,
 
-  // from query_builder/actions
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,

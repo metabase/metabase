@@ -39,7 +39,7 @@ export function visitNewExploration(): void {
  */
 export function startManualExploration(): void {
   cy.findByRole("button", { name: /Manual setup/i }).click();
-  cy.findByRole("button", { name: /Data/ }).should("be.visible");
+  cy.findByRole("button", { name: /Metrics/ }).should("be.visible");
 }
 
 /**
@@ -52,35 +52,23 @@ export function selectAllMetricsTab(): void {
   cy.findByRole("dialog").findByRole("tab", { name: "All" }).click();
 }
 
-export interface AddMetricsAndDimensionsOptions {
+export interface AddMetricsToExplorationOptions {
   metrics: string[];
-  dimensions?: string[];
 }
 
 /**
- * Pick metrics + dimensions through the "+ Data" picker.
+ * Pick metrics through the "+ Metrics" picker.
  */
-export function addMetricsAndDimensions({
+export function addMetricsToExploration({
   metrics,
-  dimensions = [],
-}: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: /Data/ }).click();
-  cy.findByRole("menuitem", { name: "Metrics" }).click();
+}: AddMetricsToExplorationOptions): void {
+  cy.findByRole("button", { name: /Metrics/ }).click();
   cy.wait("@getDimensions");
   selectAllMetricsTab();
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
   cy.findByRole("button", { name: "Add" }).click();
-
-  if (dimensions.length > 0) {
-    cy.findByRole("button", { name: /Data/ }).click();
-    cy.findByRole("menuitem", { name: "Dimensions" }).click();
-    for (const name of dimensions) {
-      cy.findByRole("checkbox", { name }).check({ force: true });
-    }
-    cy.findByRole("button", { name: "Add" }).click();
-  }
 }
 
 /**
@@ -263,7 +251,6 @@ export function createExplorationViaApi({
       });
 
       const blocks = metrics.map((metric) => ({
-        type: "metric" as const,
         metrics: [metric],
         dimensions,
       }));

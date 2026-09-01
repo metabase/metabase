@@ -93,6 +93,8 @@
 }
 
 .card {
+  --card-ring: 0 0 0 0 transparent;
+
   display: flex;
   align-items: flex-start;
   gap: rem(12px);
@@ -100,7 +102,7 @@
   border: 0.5px solid var(--mb-color-border-neutral-strong);
   border-radius: rem(12px);
   background-color: var(--mb-color-background_surface-primary);
-  box-shadow: var(--mantine-shadow-xs);
+  box-shadow: var(--mantine-shadow-xs), var(--card-ring);
   text-align: left;
   overflow-wrap: anywhere;
 
@@ -109,7 +111,9 @@
   }
 
   &[data-checked]:not(:disabled) {
-    border: 1px solid var(--mb-color-border-highlight);
+    --card-ring: inset 0 0 0 0.5px var(--mb-color-border-highlight);
+
+    border-color: var(--mb-color-border-highlight);
   }
 
   &:disabled {

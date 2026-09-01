@@ -16,7 +16,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getUiControls,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,

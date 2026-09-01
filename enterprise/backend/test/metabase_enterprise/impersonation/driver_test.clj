@@ -23,6 +23,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
+   [metabase.secrets.core :as secrets]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -208,6 +209,18 @@
   [_driver]
   "ACCOUNTADMIN")
 
+(defn- snowflake-key-details
+  "`details` with the private key supplied outright rather than by reference.
+
+  Details read back from the app DB carry the key only as a `:private-key-id` pointing at a Secret row owned by that
+  Database. A second Database inserted with the same id shares the row, so deleting either one deletes the key both
+  authenticate with."
+  [driver details]
+  (merge (dissoc details :private-key-id)
+         {:private-key-options "uploaded"
+          :private-key-value   (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw driver :private-key))
+          :use-password        false}))
+
 (defmulti impersonation-granting-details
   "The database details that will be used to create roles and grant them permissions"
   {:arglists '([driver db])}
@@ -219,8 +232,8 @@
   details)
 
 (defmethod impersonation-granting-details :snowflake
-  [_driver {:keys [details]}]
-  (assoc details :role "ACCOUNTADMIN"))
+  [driver {:keys [details]}]
+  (assoc (snowflake-key-details driver details) :role "ACCOUNTADMIN"))
 
 (defmulti impersonation-details
   "The database details that will be used for the impersonation connection"
@@ -238,15 +251,27 @@
 
 (defmethod impersonation-details :snowflake
   [driver {:keys [details]}]
-  (let [priv-key (tx/db-test-env-var-or-throw driver :private-key)]
-    (merge (dissoc details :private-key-id)
-           {:private-key-options "uploaded"
-            :private-key-value (mt/priv-key->base64-uri priv-key)
-            :use-password false})))
+  (snowflake-key-details driver details))
 
 (defmethod impersonation-details :postgres
   [_driver {:keys [details]}]
   details)
+
+(defn- assert-owns-its-secrets
+  "Throw unless `details` reaches its credentials without borrowing `source-db`'s Secret rows.
+
+  Deleting a Database deletes every Secret its details name, so a Database built from another one's `-id` references
+  takes that Database's credentials down with it when it is deleted."
+  [driver details source-db]
+  (when-let [shared (->> (keys (secrets/secret-conn-props-by-name driver))
+                         (map #(keyword (str % "-id")))
+                         (filter #(some? (get details %)))
+                         (filter #(= (get details %) (get (:details source-db) %)))
+                         seq)]
+    (throw (ex-info (str "Impersonation Database details reuse the source Database's Secret rows: " (pr-str shared)
+                         ". Give `impersonation-granting-details` the credential's raw value for this driver so the"
+                         " Database gets Secret rows of its own.")
+                    {:driver driver, :shared-secret-properties shared}))))
 
 (def ^:private impersonation-databases
   "Databases built by [[impersonation-database!]], keyed by `[driver source-database-id]`.
@@ -271,12 +296,14 @@
   (let [source-db (mt/db)
         cache-key [driver (u/the-id source-db)]]
     (or (get @impersonation-databases cache-key)
-        (let [database (first (t2/insert-returning-instances!
+        (let [details  (impersonation-granting-details driver source-db)
+              _        (assert-owns-its-secrets driver details source-db)
+              database (first (t2/insert-returning-instances!
                                :model/Database
                                (merge (t2.with-temp/with-temp-defaults :model/Database)
                                       {:engine  driver
                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
-                                       :details (impersonation-granting-details driver source-db)})))]
+                                       :details details})))]
           (sync/sync-database! database {:scan :schema})
           (t2/update! :model/Database :id (u/the-id database)
                       {:details (cond-> (impersonation-details driver source-db)

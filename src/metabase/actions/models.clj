@@ -54,7 +54,7 @@
 
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
-   :public_uuid            mi/transform-encrypted-text
+   :public_uuid            (mi/transform-encrypted-text "action.public_uuid")
    :parameter_mappings     parameters/transform-parameter-mappings
    :parameters             parameters/transform-parameters
    :visualization_settings transform-action-visualization-settings})

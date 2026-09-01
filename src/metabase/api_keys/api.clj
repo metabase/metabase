@@ -116,7 +116,8 @@
   (t2/delete! :model/ApiKey id)
   api/generic-204-no-content)
 
-#_:clj-kondo/ignore
 (comment
+  (require '[metabase.api.open-api])
+
   ;; check the generated docs
-  (metabase.api.open-api/open-api-spec (metabase.api.macros/ns-handler) "/api/api-key"))
+  (metabase.api.open-api/open-api-spec (api.macros/ns-handler) "/api/api-key"))

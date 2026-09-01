@@ -52,6 +52,7 @@ const DEFAULT_PURE_CALLEES = [
   {
     module: "@reduxjs/toolkit",
     names: [
+      "combineReducers",
       "createSelector",
       "createReducer",
       "createAction",
@@ -60,7 +61,6 @@ const DEFAULT_PURE_CALLEES = [
       "createEntityAdapter",
     ],
   },
-  { module: "reselect", names: ["createSelector", "createStructuredSelector"] },
   {
     module: "redux-actions",
     names: [

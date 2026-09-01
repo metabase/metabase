@@ -356,7 +356,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache}}
 
   appearance
   {:team "UX West"
@@ -438,6 +438,7 @@
    :uses #{api
            app-db
            collections
+           permissions
            queries
            util}
    :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
@@ -577,6 +578,8 @@
            auth-identity
            classloader
            config
+           llm
+           metabot
            models
            query-processor
            search
@@ -626,6 +629,7 @@
    :uses #{api
            app-db
            collections
+           documents
            eid-translation
            events
            lib-be
@@ -654,6 +658,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
+           metabase.comments.core
            metabase.comments.init}
    :uses #{analytics
            api
@@ -1030,7 +1035,9 @@
            api
            app-db
            collections
+           comments
            contextual-interestingness
+           documents
            events
            interestingness
            lib
@@ -1055,6 +1062,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
+                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse
@@ -1366,6 +1374,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.metadata-perms
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
@@ -1446,6 +1455,7 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
+           app-db
            events
            lib
            lib-be
@@ -1598,6 +1608,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request
@@ -1919,6 +1930,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/StoredResult
+                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions
@@ -1960,6 +1973,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.setup
               metabase.query-processor.store
@@ -3799,12 +3813,14 @@
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
+           app-db
            auth-identity
            events
            models
            request
            settings
            system
+           task
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
