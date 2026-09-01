@@ -86,6 +86,7 @@
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
+   - `:extra-scopes` - _optional_ - scopes not required for normal usage but that unlock extra behavior
 
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]
@@ -104,6 +105,16 @@
   []
   (into #{}
         (map :scope)
+        (vals @tools*)))
+
+(defn registered-opt-in-scopes
+  "Every registered tool's `:extra-scopes`.
+
+  A handler gates optional behavior using these, so they are advertised in `scopes_supported` for a token to
+  request. But they should be kept out of the default DCR grant."
+  []
+  (into #{}
+        (mapcat :extra-scopes)
         (vals @tools*)))
 
 ;;; ------------------------------------------------ Manifest ------------------------------------------------------

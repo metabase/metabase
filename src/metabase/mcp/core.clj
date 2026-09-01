@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
@@ -11,6 +12,17 @@
    [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
+
+(defn mcp-canonical-path
+  "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
+  []
+  mcp.paths/canonical-path)
+
+(defn mcp-endpoint-paths
+  "Every path serving MCP, canonical plus back-compat aliases
+   (see [[metabase.mcp.paths/endpoint-paths]])."
+  []
+  mcp.paths/endpoint-paths)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -57,3 +69,18 @@
       (into (v2.resources/resource-scopes))
       ;; v1 resource scopes (retire with the v1 surface)
       (into (mcp.resources/resource-scopes))))
+
+(defn v2-scopes
+  "The scopes the v2 MCP surface itself gates on: its tool registry's scopes plus its resource
+   registry's. Excludes the agent-API endpoint scopes [[all-scopes]] also gathers — those belong
+   to a different resource, and advertising them for v2 is what puts per-entity scopes the v2 tools
+   don't use on a v2 client's consent screen."
+  []
+  (into (v2.registry/registered-scopes) (v2.resources/resource-scopes)))
+
+(defn opt-in-scopes
+  "MCP scopes advertised for a token to request explicitly but excluded from the default DCR
+   grant (see [[metabase.mcp.v2.registry/registered-opt-in-scopes]]). The OAuth server folds these
+   into `scopes_supported` on top of [[all-scopes]]."
+  []
+  (v2.registry/registered-opt-in-scopes))
