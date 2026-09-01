@@ -27,7 +27,7 @@
              (not (product-feedback.settings/follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(system/admin-email)`?
-    (when-let [admin (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
+    (when-let [admin (t2/select-one :model/User 'is_superuser true, 'is_active true, {:order-by [:date_joined]})]
       (try
         (messages/send-follow-up-email! (:email admin))
         (catch Throwable e

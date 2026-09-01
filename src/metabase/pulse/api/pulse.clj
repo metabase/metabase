@@ -123,7 +123,7 @@
        (update pulse :cards
                (fn [cards]
                  (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card 'dataset_query] (:id card)))
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
@@ -337,7 +337,7 @@
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
-                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
+                       (assoc-in [:http :configured] (t2/exists? :model/Channel 'type :channel/http 'active true)))]
     {:channels (cond
                  (perms/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
@@ -413,10 +413,10 @@
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
-                pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (t2/delete! :model/PulseChannelRecipient :id pcr-id))
+  (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse 'id id)
+                pc-id    (t2/select-one-pk :model/PulseChannel 'pulse_id pulse-id 'channel_type "email")
+                pcr-id   (t2/select-one-pk :model/PulseChannelRecipient 'pulse_channel_id pc-id 'user_id api/*current-user-id*)]
+    (t2/delete! :model/PulseChannelRecipient 'id pcr-id))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

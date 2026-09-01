@@ -16,8 +16,8 @@
 (defn- root-container-location
   []
   (collection/children-location
-   (t2/select-one [:model/Collection :location :id]
-                  :id (get-or-create-root-container-collection!))))
+   (t2/select-one [:model/Collection 'location 'id]
+                  'id (get-or-create-root-container-collection!))))
 
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically
@@ -27,8 +27,8 @@
   ([collection-name :- :string
     location        :- :string]
    (t2/select-one-pk :model/Collection
-                     :name     collection-name
-                     :location location)))
+                     'name     collection-name
+                     'location location)))
 
 (defn- create-collection!
   ([collection-name description]
@@ -52,7 +52,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (t2/delete! :model/Card :collection_id collection-id)
+    (t2/delete! :model/Card 'collection_id collection-id)
     (create-collection! name description)))
 
 (mu/defn make-card-for-step! :- ::queries.schema/card

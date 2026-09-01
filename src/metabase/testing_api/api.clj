@@ -214,8 +214,8 @@
                                       {:status 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
-      "card"      (t2/update! :model/Card :id id {:last_used_at date})
-      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
+      "card"      (t2/update! :model/Card 'id id {:last_used_at date})
+      "dashboard" (t2/update! :model/Dashboard 'id id {:last_viewed_at date}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -335,13 +335,13 @@
 
 (defn- e2e-usage-auditing-group-id!
   []
-  (or (t2/select-one-pk :model/PermissionsGroup :name e2e-usage-auditing-group-name)
+  (or (t2/select-one-pk :model/PermissionsGroup 'name e2e-usage-auditing-group-name)
       (t2/insert-returning-pk! :model/PermissionsGroup {:name e2e-usage-auditing-group-name})))
 
 (defn- ensure-seeded-usage-auditing-group-membership!
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
-    (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+    (when-not (t2/exists? :model/PermissionsGroupMembership 'user_id user-id 'group_id group-id)
       (perms/add-user-to-group! user-id group-id))))
 
 (defn- delete-seeded-usage-auditing-data!
@@ -555,7 +555,7 @@
    _query-params
    {:keys [user_id]} :- [:map
                          [:user_id ms/PositiveInt]]]
-  (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
+  (let [deleted (t2/delete! :model/AiUsageLog 'user_id user_id 'source e2e-usage-source)]
     (clear-metabot-limit-cache!)
     {:deleted deleted}))
 

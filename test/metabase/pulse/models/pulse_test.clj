@@ -111,8 +111,8 @@
                               2 card-2
                               3 card-3))]
                 (models.pulse/update-notification-cards! pulse (map models.pulse/card->ref cards)))
-              (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, :pulse_id (u/the-id pulse)))]
-                (t2/select-fn-set :name :model/Card, :id [:in card-ids])))]
+              (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, 'pulse_id (u/the-id pulse)))]
+                (t2/select-fn-set :name :model/Card, 'id ['in card-ids])))]
       (doseq [[cards expected] {[]    nil
                                 [1]   #{"card1"}
                                 [2]   #{"card2"}
@@ -316,7 +316,7 @@
                   :pulse-id         pulse-id
                   :pulse-channel-id pulse-channel-id
                   :archived?        (fn []
-                                      (t2/select-one-fn :archived :model/Pulse :id pulse-id))})))]
+                                      (t2/select-one-fn :archived :model/Pulse 'id pulse-id))})))]
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
@@ -340,8 +340,8 @@
                (is (t2/update! :model/User user-2-id {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
-                 (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
-                 (is (not (t2/exists? :model/PulseChannelRecipient :pulse_channel_id pulse-channel-id))))))))))
+                 (is (not (t2/exists? :model/PulseChannel 'id pulse-channel-id)))
+                 (is (not (t2/exists? :model/PulseChannelRecipient 'pulse_channel_id pulse-channel-id))))))))))
     (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
@@ -439,7 +439,7 @@
                #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Pulse (assoc (mt/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
-            (t2/delete! :model/Pulse :name pulse-name)))))
+            (t2/delete! :model/Pulse 'name pulse-name)))))
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
       (mt/with-temp [:model/Pulse {card-id :id}]
         (is (thrown-with-msg?

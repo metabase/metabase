@@ -183,7 +183,7 @@
     (when (seq to-delete)
       ;; TODO: cascade deletes?
       (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
-      (t2/delete! model id-col [:in (map id-col to-delete)]))
+      (t2/delete! model id-col ['in (map id-col to-delete)]))
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]

@@ -51,7 +51,7 @@
   "Get the human readable (internally mapped) values of the field specified by `field-id`."
   [field-id :- pos-int?]
   (let [{orig :values, remapped :human_readable_values}
-        (t2/select-one [:model/FieldValues :values :human_readable_values]
+        (t2/select-one [:model/FieldValues 'values 'human_readable_values]
                        {:where [:and
                                 [:= :type "full"]
                                 [:= :field_id field-id]

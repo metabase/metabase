@@ -37,11 +37,11 @@
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
       (thunk))
     (finally
-      (t2/delete! :model/User :email (get-in request-body [:user :email]))
+      (t2/delete! :model/User 'email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
-        (t2/delete! :model/User :email invited))
+        (t2/delete! :model/User 'email invited))
       (when-let [db-name (get-in request-body [:database :name])]
-        (t2/delete! :model/Database :name db-name)))))
+        (t2/delete! :model/Database 'name db-name)))))
 
 (defn- default-setup-input []
   {:token (setup/create-token!)
@@ -76,11 +76,11 @@
         (let [email (mt/random-email)]
           (with-setup! {:user {:email email}}
             (testing "new User should be created"
-              (is (t2/exists? :model/User :email email)))
+              (is (t2/exists? :model/User 'email email)))
             (testing "Creating a new admin user should set the `admin-email` Setting"
               (is (= email (system/admin-email))))
             (testing "Should record :user-joined in the Audit Log (#12933)"
-              (let [user-id (u/the-id (t2/select-one :model/User :email email))]
+              (let [user-id (u/the-id (t2/select-one :model/User 'email email))]
                 (is (= {:topic    :user-joined
                         :model_id user-id
                         :user_id  user-id
@@ -234,7 +234,7 @@
       (setting.cache-test/reset-last-update-check!)
       (setting.cache-test/clear-cache!)
       (with-setup! {:user {:email "setupper@setup.net"}}
-        (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User :email "setupper@setup.net")))))))
+        (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User 'email "setupper@setup.net")))))))
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
@@ -291,12 +291,12 @@
                      (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
-                    (t2/exists? :model/User :email user-email))))
+                    (t2/exists? :model/User 'email user-email))))
            (testing "New DB shouldn't exist"
              ;; TODO -- we should also be deleting relevant sync tasks for the DB, but this doesn't matter too much
              ;; for right now.
              (is (= false
-                    (t2/exists? :model/Database :engine "h2", :name db-name))))
+                    (t2/exists? :model/Database 'engine "h2", 'name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
                        (appearance/site-name)))

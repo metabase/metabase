@@ -41,7 +41,7 @@
   "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
   We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
+  (< 1 (t2/count :model/DashboardTab 'dashboard_id (u/the-id dashboard-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -199,13 +199,13 @@
      :or   {spill-budget (new-spill-budget)}}]
    (log/with-context {:card_id card_id}
      (try
-       (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
-         (let [dashboard      (t2/select-one :model/Dashboard :id dashboard_id)
+       (when-let [card (t2/select-one :model/Card 'id card_id 'archived false)]
+         (let [dashboard      (t2/select-one :model/Dashboard 'id dashboard_id)
                multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
                result-fn      (fn [card-id]
                                 (let [card (if (= card-id (:id card))
                                              card
-                                             (t2/select-one :model/Card :id card-id))
+                                             (t2/select-one :model/Card 'id card-id))
                                       attached-result? (and attached? (= card-id card_id))]
                                   {:card     card
                                    :dashcard dashcard
@@ -343,7 +343,7 @@
                              only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
-         (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+         (let [tabs               (t2/hydrate (t2/select :model/DashboardTab 'dashboard_id dashboard-id) :tab-cards)
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))
@@ -355,7 +355,7 @@
                                 (when should-render-tab?
                                   [(tab->part tab)])
                                 (dashcards->part cards parameters opts)))))))
-         (let [dashcards (keep-dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id))]
+         (let [dashcards (keep-dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
            (dashcards->part dashcards parameters opts)))))))
 

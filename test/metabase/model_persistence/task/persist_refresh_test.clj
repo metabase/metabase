@@ -141,10 +141,10 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
                                     (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil))))
             (testing "the PersistedInfo is left in the `refreshing` state"
-              (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
+              (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id persisted-info)))))
             (testing "but a subsequent refresh run will refresh the table"
               (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
-              (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
+              (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id persisted-info)))))))))))
 
 (deftest task-establishes-no-write-connection-context-test
   (testing "The persist-refresh task layer leaves *connection-type* at :default; refresh! and unpersist!
@@ -202,8 +202,8 @@
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 2 :error 0}}
                         (t2/select-one :model/TaskHistory
-                                       :db_id (u/the-id db)
-                                       :task "persist-refresh"
+                                       'db_id (u/the-id db)
+                                       'task "persist-refresh"
                                        {:order-by [[:id :desc]]})))))
       (testing "Handles errors and continues"
         (let [call-count (atom 0)
@@ -220,8 +220,8 @@
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
                         (t2/select-one :model/TaskHistory
-                                       :db_id (u/the-id db)
-                                       :task "persist-refresh"
+                                       'db_id (u/the-id db)
+                                       'task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
     (testing "Deletes any in a deletable state"
       (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
@@ -249,7 +249,7 @@
           ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           (testing "We delete persisted_info records for all of the pruned"
-            (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
+            (let [persisted-records (t2/select :model/PersistedInfo 'id ['in (map :id [parchived punmodeled deletable])])
                   existing (map (comp
                                  (update-keys {parchived 'parchived
                                                punmodeled 'punmodeled
@@ -265,7 +265,7 @@
           (is (partial= {:task "unpersist-tables"
                          :task_details {:success 3 :error 0, :skipped 0}}
                         (t2/select-one :model/TaskHistory
-                                       :task "unpersist-tables"
+                                       'task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
 (deftest save-task-history-test
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -277,7 +277,7 @@
         (is (=? {:task         task-name
                  :task_details {:foo "bar"}
                  :status       :success}
-                (t2/select-one :model/TaskHistory :task task-name)))))))
+                (t2/select-one :model/TaskHistory 'task task-name)))))))
 
 (deftest save-task-history-test-2
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -289,7 +289,7 @@
         (is (=? {:task         task-name
                  :task_details {:error-details ["some-error"]}
                  :status       :failed}
-                (t2/select-one :model/TaskHistory :task task-name)))))))
+                (t2/select-one :model/TaskHistory 'task task-name)))))))
 
 (deftest save-task-history-test-3
   (mt/with-model-cleanup [:model/TaskHistory]

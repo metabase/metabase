@@ -19,7 +19,7 @@
   :type :integer
   :getter (fn []
             (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
-              (when (t2/exists? :model/Database :id id) id))))
+              (when (t2/exists? :model/Database 'id id) id))))
 
 (defsetting dismissed-excel-pivot-exports-banner
   (deferred-tru "Toggle which is true after a user has dismissed the excel pivot exports banner.")

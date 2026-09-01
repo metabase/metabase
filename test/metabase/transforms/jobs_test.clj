@@ -78,7 +78,7 @@
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       (let [result (jobs/run-job! (:id job) {:run-method :cron})]
         (is (nil? result))
-        (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
+        (is (= 0 (t2/count :model/TransformJobRun 'job_id (:id job))))))))
 
 (deftest next-transform-test
   (let [ordering {1 #{2 3}
@@ -324,7 +324,7 @@
                       (is (some? @run-id-atom))
                       (is (=? {:status :failed
                                :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom))))))))))))))
+                              (t2/select-one :model/TransformJobRun 'id @run-id-atom))))))))))))))
 
 (deftest reap-orphaned-runs-test
   (mt/with-premium-features #{:transforms-basic}
@@ -338,13 +338,13 @@
                                                   :is_active  true})]
           ;; push last_heartbeat past the heartbeat-staleness threshold so the reaper fires
           (t2/update! :model/TransformJobRun
-                      :id (:id run)
+                      'id (:id run)
                       {:last_heartbeat #t "2000-01-01T00:00:00Z"})
           (#'jobs/reap-orphaned-runs!)
           (is (=? {:status    :timeout
                    :is_active nil
                    :message   "Timed out: crashed"}
-                  (t2/select-one :model/TransformJobRun :id (:id run)))))))))
+                  (t2/select-one :model/TransformJobRun 'id (:id run)))))))))
 
 (deftest job-run-with-tranform-run-failure-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -420,20 +420,20 @@
                                                                      :position 0}]
                     (let [run-id (jobs/run-job! (:id job) {:run-method :cron})]
                       (is (=? [{:status :succeeded}]
-                              (t2/select :model/TransformRun :transform_id (:id t0))))
+                              (t2/select :model/TransformRun 'transform_id (:id t0))))
                       (is (=? {:status :failed
                                :message string?}
-                              (t2/select-one :model/TransformJobRun :id run-id)))
+                              (t2/select-one :model/TransformJobRun 'id run-id)))
                       ;; will fail because wrong column name
                       (is (=? [{:status :failed
                                 :message string?}]
-                              (t2/select :model/TransformRun :transform_id (:id t1))))
+                              (t2/select :model/TransformRun 'transform_id (:id t1))))
                       ;; will not run
                       (is (= []
-                             (t2/select :model/TransformRun :transform_id (:id t2))))
+                             (t2/select :model/TransformRun 'transform_id (:id t2))))
                       ;; should still succeed
                       (is (=? [{:status :succeeded}]
-                              (t2/select :model/TransformRun :transform_id (:id t3))))
+                              (t2/select :model/TransformRun 'transform_id (:id t3))))
                       (is (= 1 ;; we want to make sure 2 failures send 1 email
                              (count @mt/inbox)))
                       (is (mt/received-email-subject? :crowberto #"The job .* had failures"))

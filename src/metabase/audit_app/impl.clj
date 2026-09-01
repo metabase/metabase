@@ -27,7 +27,7 @@
   (mdb/memoize-for-application-db
    (fn [checksum model entity-id]
      (when checksum
-       (t2/select-one model :entity_id entity-id)))))
+       (t2/select-one model 'entity_id entity-id)))))
 
 (defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.

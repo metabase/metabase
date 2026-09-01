@@ -69,7 +69,7 @@
         (let [{:keys [secret]}         (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
               {:keys [recovery_codes]} (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
                                                   {:code (totp/generate-code secret)})
-              user-id                  (t2/select-one-fn :id :model/User :email email)]
+              user-id                  (t2/select-one-fn :id :model/User 'email email)]
           (testing "enrollment is audited"
             (is (=? {:topic :mfa-enrolled}
                     (mt/latest-audit-log-entry :mfa-enrolled user-id))))

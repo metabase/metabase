@@ -29,7 +29,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table (api/check-404 (t2/select-one :model/Table :id id))
+  (let [table (api/check-404 (t2/select-one :model/Table 'id id))
         thunk (fn [] (schema.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing

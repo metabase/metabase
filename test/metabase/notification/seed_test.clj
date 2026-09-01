@@ -60,21 +60,21 @@
     ;; `new_user_invite`. The seed must be able to read such pre-upgrade rows in order to replace them.
     (mt/with-empty-h2-app-db!
       (notification.seed/seed-notification!)
-      (let [template-id (t2/select-one-pk :model/ChannelTemplate :name "User joined Email template")
-            details     (t2/select-one-fn :details :model/ChannelTemplate :id template-id)
+      (let [template-id (t2/select-one-pk :model/ChannelTemplate 'name "User joined Email template")
+            details     (t2/select-one-fn :details :model/ChannelTemplate 'id template-id)
             legacy-path "metabase/channel/email/new_user_invite.hbs"]
         ;; plant the legacy path with a raw update: rows written by a pre-upgrade version never went
         ;; through the current before-update validation, so neither should this
         (t2/query {:update [:channel_template]
                    :set    {:details (json/encode (assoc details :path legacy-path))}
                    :where  [:= :id template-id]})
-        (is (= legacy-path (t2/select-one-fn (comp :path :details) :model/ChannelTemplate :id template-id)))
+        (is (= legacy-path (t2/select-one-fn (comp :path :details) :model/ChannelTemplate 'id template-id)))
         (testing "seed replaces the stale notification without throwing"
           (is (= 1 (:replace (notification.seed/seed-notification!)))))
         (testing "the recreated template has the current path"
           (is (= "new_user_invite"
                  (t2/select-one-fn (comp :path :details) :model/ChannelTemplate
-                                   :name "User joined Email template"))))))))
+                                   'name "User joined Email template"))))))))
 
 (deftest sync-notification!-test
   (let [internal-id       (mt/random-name)
@@ -94,13 +94,13 @@
       (is (= :create (#'notification.seed/sync-notification! test-notification)))
       (testing "skip if the notification is unchanged"
         (is (= :skip (#'notification.seed/sync-notification! test-notification))))
-      (let [notification-id (t2/select-one-pk :model/Notification :internal_id internal-id)
-            template-id     (t2/select-one-pk :model/ChannelTemplate :name template-name)]
+      (let [notification-id (t2/select-one-pk :model/Notification 'internal_id internal-id)
+            template-id     (t2/select-one-pk :model/ChannelTemplate 'name template-name)]
         (testing "If the notification is changed, delete the old one and replace it with a new one"
           (is (= :replace (#'notification.seed/sync-notification! (assoc test-notification :active false))))
           (testing "both notification and template are deleted"
-            (is (false? (t2/exists? :model/Notification :id notification-id)))
-            (is (false? (t2/exists? :model/ChannelTemplate :id template-id)))))))))
+            (is (false? (t2/exists? :model/Notification 'id notification-id)))
+            (is (false? (t2/exists? :model/ChannelTemplate 'id template-id)))))))))
 
 (def ^:private test-notification
   {:internal_id   "metabase-testing"

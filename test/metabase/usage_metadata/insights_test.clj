@@ -170,7 +170,7 @@
                :count             cnt}))
 
 (defn- cleanup-composite-rows! []
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date composite-test-bucket-date))
+  (t2/delete! :model/SourceSegmentCompositeDaily 'bucket_date composite-test-bucket-date))
 
 (defn- composite-opts [source-id]
   {:source-type  :table

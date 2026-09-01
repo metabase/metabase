@@ -40,7 +40,7 @@
       (mt/with-temp [:model/Transform transform transform-def]
         (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
         (let [table (transforms.tu/wait-for-table table-name 10000)
-              columns (t2/select :model/Field :table_id (:id table) {:order-by [:position]})
+              columns (t2/select :model/Field 'table_id (:id table) {:order-by [:position]})
               column-names (filterv (fn [x] (not= x "_id")) ;; for mongo
                                     (map :name columns))
               rows (transforms.tu/table-rows table-name)]
@@ -143,13 +143,13 @@
                                                      v)) row))
                                               data)}))
     (sync/sync-database! (mt/db) {:scan :schema})
-    (t2/select-one-pk :model/Table :name (name qualified-table-name) :db_id db-id)))
+    (t2/select-one-pk :model/Table 'name (name qualified-table-name) 'db_id db-id)))
 
 (defn- cleanup-table!
   "Drop the test table by table ID."
   [table-id]
   (try
-    (when-let [table (t2/select-one :model/Table :id table-id)]
+    (when-let [table (t2/select-one :model/Table 'id table-id)]
       (let [table-name     (:name table)
             qualified-name (case driver/*driver*
                              :bigquery-cloud-sdk

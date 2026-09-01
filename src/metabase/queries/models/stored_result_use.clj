@@ -39,12 +39,12 @@
   (when (seq pairs)
     (let [distinct-pairs (distinct pairs)
           sr-ids         (into #{} (map second) distinct-pairs)
-          doc-card-ids   (t2/select-pks-set :model/Card :document_id document-id)
+          doc-card-ids   (t2/select-pks-set :model/Card 'document_id document-id)
           reachable      (if (seq doc-card-ids)
                            (t2/select-fn-set :stored_result_id
                                              :model/StoredResultUse
-                                             :card_id [:in doc-card-ids]
-                                             :stored_result_id [:in sr-ids])
+                                             'card_id ['in doc-card-ids]
+                                             'stored_result_id ['in sr-ids])
                            #{})]
       (doseq [[new-card-id sr-id] distinct-pairs
               :when (contains? reachable sr-id)]
@@ -57,7 +57,7 @@
   from."
   [card-id :- ms/PositiveInt]
   (let [snapshots (t2/select :model/StoredResult
-                             :id [:in ^:allow-subquery {:select [:stored_result_id]
+                             'id ['in ^:allow-subquery {:select [:stored_result_id]
                                                         :from   [:stored_result_use]
                                                         :where  [:= :card_id card-id]}])]
     (when (empty? snapshots)

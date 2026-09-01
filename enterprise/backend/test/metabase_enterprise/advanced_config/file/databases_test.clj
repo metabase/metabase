@@ -35,24 +35,24 @@
         (testing "Create a Database if it does not already exist"
           (is (= :ok
                  (advanced-config.file/initialize! config)))
-          (let [db (t2/select-one :model/Database :name test-db-name)]
+          (let [db (t2/select-one :model/Database 'name test-db-name)]
             (is (partial= {:engine db-type}
                           db))
             (is (= 1
-                   (t2/count :model/Database :name test-db-name)))
+                   (t2/count :model/Database 'name test-db-name)))
             (testing "do not duplicate if Database already exists"
               (is (= :ok
                      (advanced-config.file/initialize! config)))
               (is (= 1
-                     (t2/count :model/Database :name test-db-name)))
+                     (t2/count :model/Database 'name test-db-name)))
               (is (partial= {:engine db-type}
-                            (t2/select-one :model/Database :name test-db-name))))
+                            (t2/select-one :model/Database 'name test-db-name))))
             (testing "updates db"
               (is (= :ok
                      (advanced-config.file/initialize!
                       (assoc-in config [:config :databases 0 :description] "foo"))))
               (is (partial= {:description "foo"}
-                            (t2/select-one :model/Database :name test-db-name))))
+                            (t2/select-one :model/Database 'name test-db-name))))
             (testing "does not re-set attached dwh db keys on update"
               (is (= :ok
                      (advanced-config.file/initialize!
@@ -65,9 +65,9 @@
                              :uploads_enabled      false
                              :uploads_schema_name  nil
                              :uploads_table_prefix nil}
-                            (t2/select-one :model/Database :name test-db-name))))))
+                            (t2/select-one :model/Database 'name test-db-name))))))
         (finally
-          (t2/delete! :model/Database :name test-db-name))))))
+          (t2/delete! :model/Database 'name test-db-name))))))
 
 (deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
@@ -95,7 +95,7 @@
                                         :is_attached_dwh true
                                         :details         {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
                 (is (partial= {:is_attached_dwh true}
-                              (t2/select-one :model/Database :name test-db-name)))
+                              (t2/select-one :model/Database 'name test-db-name)))
                 (testing "and updated in place on a later boot"
                   (is (= :ok
                          (advanced-config.file/initialize!
@@ -104,9 +104,9 @@
                                           :is_attached_dwh true
                                           :details         {:host "10.224.7.142", :port 5432, :dbname "dwh"}}))))
                   (is (partial= {:details {:host "10.224.7.142"}}
-                                (t2/select-one :model/Database :name test-db-name)))))
+                                (t2/select-one :model/Database 'name test-db-name)))))
               (finally
-                (t2/delete! :model/Database :name test-db-name)))
+                (t2/delete! :model/Database 'name test-db-name)))
             (testing "an ordinary entry with the same private address is still refused"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -115,7 +115,7 @@
                     (entry->config {:name    "not-the-attached-dwh"
                                     :engine  "postgres"
                                     :details {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
-              (is (nil? (t2/select-one :model/Database :name "not-the-attached-dwh"))))))))))
+              (is (nil? (t2/select-one :model/Database 'name "not-the-attached-dwh"))))))))))
 
 (deftest init-from-config-file-stub-test
   (testing "stub databases skip the connection test and never trigger sync"
@@ -132,11 +132,11 @@
                                               :details {}
                                               :is_stub true}]}}))))
             (testing "row is created with :is_stub true"
-              (is (true? (t2/select-one-fn :is_stub :model/Database :name test-db-name))))
+              (is (true? (t2/select-one-fn :is_stub :model/Database 'name test-db-name))))
             (testing "no sync task is submitted for stubs"
               (is (zero? @submit-calls)))))
         (finally
-          (t2/delete! :model/Database :name test-db-name))))))
+          (t2/delete! :model/Database 'name test-db-name))))))
 
 (deftest init-from-config-file-stub-does-not-clobber-existing-test
   (testing "Stub config entries with the same name+engine as an existing real DB must not overwrite it.
@@ -152,7 +152,7 @@
                                         :engine  "h2"
                                         :details {}
                                         :is_stub true}]}})))
-        (let [reloaded (t2/select-one :model/Database :id (:id existing))]
+        (let [reloaded (t2/select-one :model/Database 'id (:id existing))]
           (testing "existing :details are preserved"
             (is (= {:db "real-details"} (:details reloaded))))
           (testing "existing :is_stub flag is preserved (still false)"
@@ -161,8 +161,8 @@
 (deftest init-from-config-file-sample-recreates-missing-test
   (testing "An is_sample entry triggers recreation of the Sample Database when one is not present."
     (let [delete-existing! (fn []
-                             (when-let [ids (seq (t2/select-pks-vec :model/Database :is_sample true))]
-                               (t2/delete! :model/Database :id [:in ids])))
+                             (when-let [ids (seq (t2/select-pks-vec :model/Database 'is_sample true))]
+                               (t2/delete! :model/Database 'id ['in ids])))
           extract-calls    (atom 0)]
       (delete-existing!)
       (try
@@ -182,7 +182,7 @@
           (testing "extract-and-sync-sample-database! is invoked exactly once"
             (is (= 1 @extract-calls)))
           (testing "a sample DB row now exists"
-            (is (t2/exists? :model/Database :is_sample true))))
+            (is (t2/exists? :model/Database 'is_sample true))))
         (finally
           (delete-existing!))))))
 
@@ -206,7 +206,7 @@
             (is (zero? @extract-calls)))
           (testing "existing sample row is untouched"
             (is (= {:db "preexisting"}
-                   (:details (t2/select-one :model/Database :is_sample true))))))))))
+                   (:details (t2/select-one :model/Database 'is_sample true))))))))))
 
 (deftest init-from-config-file-sample-rejects-wrong-name-test
   (testing "An is_sample entry with a name other than the canonical Sample Database name is rejected."
@@ -242,9 +242,9 @@
                                                                                      :details (:details (mt/db))})]
           (is (future? sync-future))
           (deref sync-future 5000 :timeout)
-          (is (= 1 (t2/count :model/Database :name test-db-name))))
+          (is (= 1 (t2/count :model/Database 'name test-db-name))))
         (finally
-          (t2/delete! :model/Database :name test-db-name))))))
+          (t2/delete! :model/Database 'name test-db-name))))))
 
 (defn- test-cruft-tables! [crufted-table-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
@@ -257,13 +257,13 @@
         (is (future? sync-future))
         ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+        (is (= 1 (t2/count :model/Database 'name test-db-name)))
+        (let [db (t2/select-one :model/Database 'name test-db-name)
+              vis-types (t2/select-fn-vec :visibility_type :model/Table 'db_id (u/the-id db))]
           (is (= freq (frequencies vis-types))
               message)))
       (finally
-        (t2/delete! :model/Database :name test-db-name)))))
+        (t2/delete! :model/Database 'name test-db-name)))))
 
 (deftest sync-cruft-tables-test
   (testing "tables marked crufty should be marked as such in the database"
@@ -281,19 +281,19 @@
         (is (future? sync-future))
         ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+        (is (= 1 (t2/count :model/Database 'name test-db-name)))
+        (let [db (t2/select-one :model/Database 'name test-db-name)
+              _hide_tables-> (t2/update! :model/Table 'db_id (u/the-id db) {:visibility_type :hidden})
+              vis-types (t2/select-fn-vec :visibility_type :model/Table 'db_id (u/the-id db))]
           ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
           ;; and make sure they are still hidden:
           (is (= {:hidden 8} (frequencies vis-types)))
           (sync-metadata/sync-db-metadata! db)
           (testing "Hidden tables stay hidden"
-            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table 'db_id (u/the-id db))]
               (is (= {:hidden 8} (frequencies vis-types)))))))
       (finally
-        (t2/delete! :model/Database :name test-db-name)))))
+        (t2/delete! :model/Database 'name test-db-name)))))
 
 (defn- test-cruft-columns! [crufted-field-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
@@ -306,15 +306,15 @@
         (is (future? sync-future))
         ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              tables (t2/select :model/Table :db_id (u/the-id db))
-              fields (t2/select :model/Field :table_id [:in (map :id tables)])]
+        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database 'name test-db-name))
+        (is (= 1 (t2/count :model/Database 'name test-db-name)))
+        (let [db (t2/select-one :model/Database 'name test-db-name)
+              tables (t2/select :model/Table 'db_id (u/the-id db))
+              fields (t2/select :model/Field 'table_id ['in (map :id tables)])]
           (is (= freq (frequencies (map :visibility_type fields)))
               message)))
       (finally
-        (t2/delete! :model/Database :name test-db-name)))))
+        (t2/delete! :model/Database 'name test-db-name)))))
 
 (deftest sync-cruft-columns-test
   (testing "columns (aka fields) marked crufty should be marked as such in the database"
@@ -333,14 +333,14 @@
                                                                                      :engine  "h2"
                                                                                      :details (:details (mt/db))})]
           (is (nil? sync-future))
-          (let [db (t2/select-one :model/Database :name test-db-name)]
+          (let [db (t2/select-one :model/Database 'name test-db-name)]
             (is (partial= {:engine :h2}
                           db))
-            (is (= 1 (t2/count :model/Database :name test-db-name)))
+            (is (= 1 (t2/count :model/Database 'name test-db-name)))
             (testing "Database should NOT have been synced"
-              (is (zero? (t2/count :model/Table :db_id (u/the-id db)))))))
+              (is (zero? (t2/count :model/Table 'db_id (u/the-id db)))))))
         (finally
-          (t2/delete! :model/Database :name test-db-name))))))
+          (t2/delete! :model/Database 'name test-db-name))))))
 
 (deftest delete-test
   (testing "We should be able to delete Databases from the config file if we pass the confirmation string"
@@ -355,9 +355,9 @@
                                         :engine  "h2"
                                         :details {}
                                         :delete  (format "DELETE_WITH_DEPENDENTS:%s" test-db-name)}]}})))
-        (is (not (t2/exists? :model/Database :name test-db-name)))
+        (is (not (t2/exists? :model/Database 'name test-db-name)))
         (finally
-          (t2/delete! :model/Database :name test-db-name)))))
+          (t2/delete! :model/Database 'name test-db-name)))))
   (testing "We should not delete Databases from the config file if the confirmation string mismatches"
     (mt/with-temp [:model/Database _ {:name   test-db-name
                                       :engine "h2"}]
@@ -372,6 +372,6 @@
                                       :engine  "h2"
                                       :details {}
                                       :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}})))
-        (is (t2/exists? :model/Database :name test-db-name))
+        (is (t2/exists? :model/Database 'name test-db-name))
         (finally
-          (t2/delete! :model/Database :name test-db-name))))))
+          (t2/delete! :model/Database 'name test-db-name))))))

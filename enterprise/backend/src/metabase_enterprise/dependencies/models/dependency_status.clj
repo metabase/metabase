@@ -94,8 +94,8 @@
   "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
   []
   (t2/exists? :model/DependencyStatus
-              :terminal false
-              :next_retry_at [:not= nil]))
+              'terminal false
+              'next_retry_at ['not= nil]))
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,

@@ -61,7 +61,7 @@
                                  ;; and insert a new one to arrive at 10 again, our invariant.
                                  :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (t2/delete! :model/ModerationReview :id [:in ids]))))
+      (t2/delete! :model/ModerationReview 'id ['in ids]))))
 
 (mu/defn create-review!
   "Create a new ModerationReview"
@@ -74,7 +74,7 @@
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (t2/update! :model/ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                         :moderated_item_type (:moderated_item_type params)}
+    (t2/update! :model/ModerationReview {'moderated_item_id   (:moderated_item_id params)
+                                         'moderated_item_type (:moderated_item_type params)}
                 {:most_recent false})
     (first (t2/insert-returning-instances! :model/ModerationReview (assoc params :most_recent true)))))

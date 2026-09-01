@@ -95,7 +95,7 @@
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (t2/select [:model/Table :schema :name], :db_id (:id db))))))))]
+                                                      (u/pprint-to-str (t2/select [:model/Table 'schema 'name], 'db_id (:id db))))))))]
       (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
@@ -253,11 +253,11 @@
           target-table      (get table-name->table target-table-name)
           target-pk-field   (when target-table
                               (t2/select-one :model/Field
-                                             :table_id (:id target-table)
-                                             :semantic_type :type/PK))
+                                             'table_id (:id target-table)
+                                             'semantic_type :type/PK))
           source-field      (t2/select-one :model/Field
-                                           :table_id (:id table)
-                                           :%lower.name (u/lower-case-en field-name))]
+                                           'table_id (:id table)
+                                           '%lower.name (u/lower-case-en field-name))]
       (when (and source-field target-pk-field)
         (t2/update! :model/Field (:id source-field)
                     {:fk_target_field_id (:id target-pk-field)})))))
@@ -317,7 +317,7 @@
                               :connection-details connection-details}
                              e)]
         (log/error e message)
-        (t2/delete! :model/Database :id (u/the-id db))
+        (t2/delete! :model/Database 'id (u/the-id db))
         (throw e)))))
 
 (defn set-test-db-permissions!
@@ -359,7 +359,7 @@
   [driver dbdef db]
   ;; dbdef-infos require only dbdef to be generated, while fk-field-infos get additional information querying app db.
   (when-some [dbdef-infos (not-empty (extract-dbdef-info driver dbdef))]
-    (let [tables (t2/select :model/Table :db_id (:id db))
+    (let [tables (t2/select :model/Table 'db_id (:id db))
           fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
           table-id->table (m/index-by :id tables)
           table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
@@ -393,7 +393,7 @@
   [driver dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
-      (t2/update! :model/Field :id id {:semantic_type :type/FK
+      (t2/update! :model/Field 'id id {:semantic_type :type/FK
                                        :fk_target_field_id fk-target-field-id}))))
 
 (defn- load-dataset-data-if-needed!
@@ -437,7 +437,7 @@
       (add-foreign-key-relationships! driver database-definition db))
     (set-test-db-permissions! (u/the-id db))
     ;; make sure we're returing an up-to-date copy of the DB
-    (t2/select-one :model/Database :id (u/the-id db))))
+    (t2/select-one :model/Database 'id (u/the-id db))))
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -496,7 +496,7 @@
         (.. lock writeLock lock)
         ;; once we acquire the write lock, check that the value of `created_at` hasn't been updated by another thread
         ;; before reloading the data.
-        (when-let [created-at (t2/select-one-fn :created_at :model/Database :id (u/the-id existing-database))]
+        (when-let [created-at (t2/select-one-fn :created_at :model/Database 'id (u/the-id existing-database))]
           (when (t/before? created-at session-init-time)
             (log/infof "Reloading test data for %s %s if needed..." driver (pr-str database-name))
             ;; load the data again if needed.

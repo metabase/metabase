@@ -482,10 +482,10 @@
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
               (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (sync/sync-database! (mt/db) {:scan :schema}))
-              (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
-                    id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+              (let [table    (t2/select-one :model/Table 'schema username, 'name "messages", 'db_id (mt/id))
+                    id-field (t2/select-one :model/Field 'table_id (u/the-id table), 'name "id")]
                 (testing "The CLOB is synced as a text field"
-                  (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                  (let [base-type (t2/select-one-fn :base_type :model/Field 'table_id (u/the-id table), 'name "message")]
                     ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
                     (is (= :type/OracleCLOB base-type))
                     (is (isa? base-type :type/Text))))
@@ -610,7 +610,7 @@
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})
                         ;; should be four tables from test-data
-                        (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                        (is (= 8 (t2/count :model/Table 'db_id (u/the-id database) 'name ['like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
                                   ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
                                   ;; actually the name of the database, and not some variation on the :name specified
@@ -711,8 +711,8 @@
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
         (testing "Synced field is correctly mapped"
           (let [date-field (t2/select-one :model/Field
-                                          :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))
-                                          :name "date_with_time")]
+                                          'table_id (t2/select-one-fn :id :model/Table 'db_id (mt/id))
+                                          'name "date_with_time")]
             (is (=? {:base_type     :type/DateTime
                      :database_type "DATE"}
                     date-field))))))))

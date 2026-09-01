@@ -59,7 +59,7 @@
                        ;; nil = no confirmed enrollment — same message, no oracle semantics
                        (throw (ex-info (tru "Authentication session expired. Please log in again.")
                                        {:status-code 401})))
-        user-email (t2/select-one-fn :email :model/User :id user-id)]
+        user-email (t2/select-one-fn :email :model/User 'id user-id)]
     (try
       (messages/send-mfa-login-code-email! user-email code)
       (catch Throwable e

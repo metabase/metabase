@@ -49,7 +49,7 @@
                                                   :task task-5)]
         ;; When the sync process runs, it creates several TaskHistory rows. We just want to work with the
         ;; temp ones created, so delete any stale ones from previous tests
-        (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
+        (t2/delete! :model/TaskHistory 'id ['not-in (map u/the-id [t1 t2 t3 t4 t5])])
         ;; Delete all but 2 task history rows
         (task-history/cleanup-task-history! 2)
         (is (= #{task-4 task-5}
@@ -66,7 +66,7 @@
                      :model/TaskHistory t2 (assoc (make-10-millis-task t2-start)
                                                   :task task-2)]
         ;; Cleanup any stale TalkHistory entries that are not the two being tested
-        (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2])])
+        (t2/delete! :model/TaskHistory 'id ['not-in (map u/the-id [t1 t2])])
         ;; We're keeping 100 rows, but there are only 2 present, so there should be no affect on running this
         (is (= #{task-1 task-2}
                (set (map :task (t2/select :model/TaskHistory)))))
@@ -84,13 +84,13 @@
                      :started_at (mt/malli=? some?)
                      :ended_at   (mt/malli=? nil?)
                      :duration   (mt/malli=? nil?)}
-                    (t2/select-one :model/TaskHistory :task task-name)))))
+                    (t2/select-one :model/TaskHistory 'task task-name)))))
         (testing "when the task is done, updates status and duration correctly"
           (is (=? {:status     :success
                    :started_at (mt/malli=? some?)
                    :ended_at   (mt/malli=? some?)
                    :duration   (mt/malli=? nat-int?)}
-                  (t2/select-one :model/TaskHistory :task task-name))))))
+                  (t2/select-one :model/TaskHistory 'task task-name))))))
     (testing "failed path:"
       (let [task-name (mt/random-name)]
         (try
@@ -102,7 +102,7 @@
                        :started_at (mt/malli=? some?)
                        :ended_at   (mt/malli=? some?)
                        :duration   (mt/malli=? nat-int?)}
-                      (t2/select-one :model/TaskHistory :task task-name))))))))))
+                      (t2/select-one :model/TaskHistory 'task task-name))))))))))
 
 (deftest with-task-history-using-callback-test
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -121,7 +121,7 @@
         (is (= {:status       :success
                 :task_details {:id     1
                                :result 42}}
-               (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))
+               (t2/select-one [:model/TaskHistory 'status 'task_details] 'task task-name)))))
     (testing "on-fail-info"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -146,7 +146,7 @@
                                 :ex-data       {:reason "test"}
                                 :original-info {:id 1}
                                 :reason         "test"}}
-                (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))))
+                (t2/select-one [:model/TaskHistory 'status 'task_details] 'task task-name)))))))
 
 (deftest log-capture-test
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -157,7 +157,7 @@
             (log/info "info message")
             (log/warn "warning message")
             (log/error "error message")))
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :success status))
           (is (=? [{:level "info",  :msg "info message",    :timestamp "1970-01-01T00:00:01Z", :fqns string?}
                    {:level "warn",  :msg "warning message", :timestamp "1970-01-01T00:00:01Z", :fqns string?}
@@ -169,7 +169,7 @@
           (task-history/with-task-history {:task task-name}
             (log/info "before exception")
             (throw (ex-info "Test failure" {:reason :test}))))
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :failed status))
           (is (=? [{:level "info", :msg "before exception", :timestamp string?, :fqns string?}] logs)))))
     (testing "exception details are captured in logs"
@@ -177,7 +177,7 @@
         (u/ignore-exceptions
           (task-history/with-task-history {:task task-name}
             (log/error (Exception. "Test exception") "error message")))
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :success status))
           (is (=? [{:level     "error"
                     :msg       "error message"
@@ -190,13 +190,13 @@
         (task-history/with-task-history {:task task-name}
           (log/error "error")
           (log/fatal "fatal"))
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :success status))
           (is (=? [{:level "error"} {:level "fatal"}] logs)))))
     (testing "task with no logs"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name})
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :success status))
           (is (= [] logs)))))))
 
@@ -213,7 +213,7 @@
                 (set! task-history/*log-capture-clock* (Clock/fixed (Instant/ofEpochMilli (+ 1000 i)) (ZoneId/of "UTC")))
                 (log/info (str "message " i))
                 (log/warn (str "warning " i))))))
-        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory 'task task-name)]
           (is (= :success status))
           (testing "logs include truncation message plus threshold entries"
             (is (= (inc threshold) (count logs))))

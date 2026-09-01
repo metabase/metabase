@@ -31,7 +31,7 @@
 (defn source-table-entry
   "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
   [alias table-id]
-  (let [{:keys [db_id schema]} (t2/select-one [:model/Table :db_id :schema] :id table-id)]
+  (let [{:keys [db_id schema]} (t2/select-one [:model/Table 'db_id 'schema] 'id table-id)]
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
@@ -44,9 +44,9 @@
    ;; columns haven't propagated yet) that would make the QP throw "Table has no Fields associated with it".
    (source-table-entry alias
                        (t2/select-one-pk :model/Table
-                                         :db_id  (mt/id)
-                                         :active true
-                                         :id     [:in ^:allow-subquery {:select [:table_id]
+                                         'db_id  (mt/id)
+                                         'active true
+                                         'id     ['in ^:allow-subquery {:select [:table_id]
                                                                         :from   [(t2/table-name :model/Field)]
                                                                         ;; Mirror the QP's queryable-column filter (active-column-pred):
                                                                         ;; active, and visibility not sensitive/retired, else the picked
@@ -82,7 +82,7 @@
                      (:schema target) (:name target) driver)))
       ;; Also clean up the Metabase metadata
       (try
-        (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
+        (t2/delete! :model/Table 'name (:name target) 'db_id (:id (mt/db)))
         (catch Exception e
           (log/warnf e "Failed to delete Table metadata for %s" (:name target)))))))
 
@@ -128,8 +128,8 @@
   (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
                (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
                                  (t2/select-one-fn :schema :model/Table products-id))]
-                 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
-                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
+                 (t2/select-one-pk :model/Table 'db_id (mt/id) 'schema schema 'name table-name)
+                 (t2/select-one-pk :model/Table 'db_id (mt/id) 'name table-name)))]
     (->>
      (mt/rows (mt/process-query {:database (mt/id)
                                  :query    {:source-table pk}
@@ -164,9 +164,9 @@
   [^String table-name timeout-ms]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
+      (let [table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name 'active true)]
         (cond
-          (and table (t2/exists? :model/Field :table_id (:id table) :active true))
+          (and table (t2/exists? :model/Field 'table_id (:id table) 'active true))
           table
 
           (> (u/since-ms timer) timeout-ms)
@@ -217,9 +217,9 @@
   [table-name field-name timeout-ms pred timeout-msg]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table (t2/select-one :model/Table :name table-name :db_id (mt/id))
+      (let [table (t2/select-one :model/Table 'name table-name 'db_id (mt/id))
             field (when table
-                    (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
+                    (t2/select-one :model/Field 'table_id (:id table) 'name field-name 'active true))]
         (or (pred field)
             (if (> (u/since-ms timer) timeout-ms)
               (throw (ex-info (format timeout-msg field-name table-name timeout-ms)
@@ -254,7 +254,7 @@
   (or (when (get-method driver.sql/default-schema driver/*driver*)
         (driver.sql/default-schema driver/*driver*))
       (if (= :bigquery-cloud-sdk driver/*driver*)
-        (t2/select-one-fn :schema :model/Table :db_id (mt/id))
+        (t2/select-one-fn :schema :model/Table 'db_id (mt/id))
         "public")))
 
 (defmulti delete-schema!

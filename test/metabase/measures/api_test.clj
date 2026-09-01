@@ -27,7 +27,7 @@
 (defn- mbql5-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
-  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table 'id table-id))
         table (lib.metadata/table metadata-provider table-id)
         query (lib/query metadata-provider table)
         field (lib.metadata/field metadata-provider field-id)]
@@ -128,7 +128,7 @@
                               {:revision_message "move to checkins"
                                :definition       (mbql5-measure-definition (mt/id :checkins) (mt/id :checkins :user_id))})
         (is (= (mt/id :checkins)
-               (t2/select-one-fn :table_id :model/Measure :id id)))))))
+               (t2/select-one-fn :table_id :model/Measure 'id id)))))))
 
 (deftest update-test
   (testing "PUT /api/measure/:id"
@@ -169,7 +169,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived true, :revision_message "Archive the Measure"})))
         (is (true?
-             (t2/select-one-fn :archived :model/Measure :id id)))))))
+             (t2/select-one-fn :archived :model/Measure 'id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/measure/:id"
@@ -180,7 +180,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived false, :revision_message "Unarchive the Measure"})))
         (is (= false
-               (t2/select-one-fn :archived :model/Measure :id id)))))))
+               (t2/select-one-fn :archived :model/Measure 'id id)))))))
 
 ;; ## GET /api/measure/:id
 
@@ -239,7 +239,7 @@
                                                 :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (testing "no dimensions saved initially"
-        (let [initial-measure (t2/select-one :model/Measure :id id)]
+        (let [initial-measure (t2/select-one :model/Measure 'id id)]
           (is (nil? (:dimensions initial-measure)))
           (is (nil? (:dimension_mappings initial-measure)))))
       (testing "response contains dimensions with active status"
@@ -249,7 +249,7 @@
             (is (seq (:dimension_mappings response)))
             (is (every? #(= "status/active" (:status %)) (:dimensions response))))))
       (testing "dimensions persisted to database"
-        (let [updated-measure (t2/select-one :model/Measure :id id)]
+        (let [updated-measure (t2/select-one :model/Measure 'id id)]
           (is (seq (:dimensions updated-measure)))
           (is (seq (:dimension_mappings updated-measure))))))))
 

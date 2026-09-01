@@ -85,7 +85,7 @@
              (let [response (mt/user-http-request :rasta :post "native-query-snippet" snippet-properties)]
                (not= response "You don't have permissions to do that."))
              (finally
-               (t2/delete! :model/NativeQuerySnippet :name snippet-name)))))))))
+               (t2/delete! :model/NativeQuerySnippet 'name snippet-name)))))))))
 
 (deftest edit-test
   (testing "PUT /api/native-query-snippet/:id"
@@ -192,11 +192,11 @@
                                                  :is_remote_synced true}]
           (testing "read-only remote sync blocks writes to the snippet folder"
             (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-only]
-              (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
+              (is (false? (mi/can-write? (t2/select-one :model/Collection 'id (:id folder))))
                   "snippet folder in a remote-synced collection should not be writable when remote-sync-type is read-only")))
           (testing "read-write remote sync allows writes to the snippet folder"
             (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-write]
-              (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
+              (is (true? (mi/can-write? (t2/select-one :model/Collection 'id (:id folder))))
                   "snippet folder should be writable when remote-sync-type is read-write"))))))))
 
 (deftest ee-disabled-snippets-graph-test

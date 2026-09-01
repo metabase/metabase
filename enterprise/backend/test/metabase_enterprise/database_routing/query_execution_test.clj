@@ -32,7 +32,7 @@
                  (qp/userland-query
                   {:database (u/the-id router-db)
                    :type     :query
-                   :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}
+                   :query    {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}}
                   {:context :question})))
               (let [qe (latest-query-execution)]
                 (is (true? (:is_db_routed qe))

@@ -168,9 +168,9 @@
                     session-id (:session_id response)]
                 (is (some? session-id) "Should return session ID")
                 (testing "Session exists in database"
-                  (let [session (t2/select-one :model/Session :key_hashed (session/hash-session-key session-id))]
+                  (let [session (t2/select-one :model/Session 'key_hashed (session/hash-session-key session-id))]
                     (is (some? session) "Session should exist in database")
-                    (is (= "support@example.com" (:email (t2/select-one :model/User :id (:user_id session))))
+                    (is (= "support@example.com" (:email (t2/select-one :model/User 'id (:user_id session))))
                         "Session should be for support user")))))))))))
 
 (deftest reset-password-with-pre-existing-emailed-secret-auth-identity-test
@@ -199,18 +199,18 @@
                 ;; - A consumed support-access-grant AuthIdentity
                 ;; Simulate what happens when the user also gets an emailed-secret-password-reset token
                 ;; (e.g., from a previous forgot-password flow or system migration)
-                (let [support-user (t2/select-one :model/User :email email)]
+                (let [support-user (t2/select-one :model/User 'email email)]
                   ;; Create an emailed-secret-password-reset AuthIdentity directly (simulating prior usage)
                   (let [fake-token (auth-identity/create-password-reset! (:id support-user))]
                     (is (some? fake-token) "Should create emailed-secret-password-reset token")
                     ;; Verify the pre-existing auth identity exists
                     (is (t2/exists? :model/AuthIdentity
-                                    :user_id (:id support-user)
-                                    :provider "emailed-secret-password-reset")
+                                    'user_id (:id support-user)
+                                    'provider "emailed-secret-password-reset")
                         "emailed-secret-password-reset AuthIdentity should exist"))
                   ;; Step 2: Revoke the initial grant so we can create a new one
                   (let [initial-grant-record (t2/select-one :model/SupportAccessGrantLog
-                                                            :ticket_number "TICKET-INITIAL")]
+                                                            'ticket_number "TICKET-INITIAL")]
                     (grants/revoke-grant! creator-id (:id initial-grant-record)))
                   ;; Step 3: Create a NEW support access grant (simulates the production scenario)
                   (let [new-grant (grants/create-grant! creator-id 60 "TICKET-REPRO" "Repro grant")
@@ -274,8 +274,8 @@
       ;; (simulates a user who previously used forgot-password)
       (let [_old-reset-token (auth-identity/create-password-reset! user-id)]
         (is (t2/exists? :model/AuthIdentity
-                        :user_id user-id
-                        :provider "emailed-secret-password-reset")
+                        'user_id user-id
+                        'provider "emailed-secret-password-reset")
             "Pre-existing emailed-secret-password-reset AuthIdentity should exist"))
       ;; Now create the support access reset token
       (let [token (sag.provider/create-support-access-reset! user-id grant)
@@ -288,10 +288,10 @@
             (is (:success? result) "login! should succeed")
             (is (some? (:session result)) "Should create a session")))
         (testing "Password AuthIdentity should have grant expiration"
-          (let [pw-auth (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+          (let [pw-auth (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "password")]
             (is (= grant-end (:expires_at pw-auth)))))
         (testing "Support access grant token should be consumed"
-          (let [sag-auth (t2/select-one :model/AuthIdentity :user_id user-id :provider "support-access-grant")]
+          (let [sag-auth (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "support-access-grant")]
             (is (some? (get-in sag-auth [:credentials :consumed_at])))))))))
 
 (deftest reset-password-with-deactivated-user-test
@@ -308,18 +308,18 @@
                          {:token (:token first-grant) :password "FirstPassword123!"})
               (grants/revoke-grant! creator-id
                                     (:id (t2/select-one :model/SupportAccessGrantLog
-                                                        :ticket_number "TICKET-FIRST"))))
+                                                        'ticket_number "TICKET-FIRST"))))
             ;; Deactivate the support user (simulates admin action or cleanup)
-            (let [support-user (t2/select-one [:model/User :id :is_active] :email email)]
+            (let [support-user (t2/select-one [:model/User 'id 'is_active] 'email email)]
               (t2/update! :model/User (:id support-user) {:is_active false})
-              (is (false? (:is_active (t2/select-one [:model/User :is_active]
-                                                     :id (:id support-user))))
+              (is (false? (:is_active (t2/select-one [:model/User 'is_active]
+                                                     'id (:id support-user))))
                   "User should be deactivated"))
             ;; Create a new grant - this should reactivate the support user
             (let [new-grant (grants/create-grant! creator-id 60 "TICKET-REACTIVATE"
                                                   "Should reactivate user")
                   token (:token new-grant)
-                  support-user (t2/select-one [:model/User :id :is_active] :email email)]
+                  support-user (t2/select-one [:model/User 'id 'is_active] 'email email)]
               (is (some? token) "Token should be created")
               (is (true? (:is_active support-user)) "User should be reactivated by create-grant!")
               (testing "Password reset should succeed"
@@ -341,7 +341,7 @@
         (mt/with-temporary-setting-values [site-url "http://localhost"]
           (mt/with-fake-inbox
             (mt/user-http-request user :post 204 "session/forgot_password" {:email (:email user)})
-            (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            (is (not (t2/exists? :model/AuthIdentity 'user_id (:id user) 'provider "emailed-secret-password-reset"))
                 "Should not create a normal password reset token")
             (is (empty? (password-reset-emails (:email user)))
                 "No email should be sent when the grant has no active credentials")))))))
@@ -369,16 +369,16 @@
                                    (email-body (first emails)))
                           "Email should contain a reset URL")))
                   (testing "No normal password reset token is created"
-                    (let [support-user (t2/select-one :model/User :email "support-forgot@example.com")]
+                    (let [support-user (t2/select-one :model/User 'email "support-forgot@example.com")]
                       (is (not (t2/exists? :model/AuthIdentity
-                                           :user_id (:id support-user)
-                                           :provider "emailed-secret-password-reset"))
+                                           'user_id (:id support-user)
+                                           'provider "emailed-secret-password-reset"))
                           "Should not create a normal password reset token")))
                   (testing "The refreshed token is different from the original"
-                    (let [support-user (t2/select-one :model/User :email "support-forgot@example.com")
+                    (let [support-user (t2/select-one :model/User 'email "support-forgot@example.com")
                           auth-identity (t2/select-one :model/AuthIdentity
-                                                       :user_id (:id support-user)
-                                                       :provider "support-access-grant")]
+                                                       'user_id (:id support-user)
+                                                       'provider "support-access-grant")]
                       (is (nil? (get-in auth-identity [:credentials :consumed_at]))
                           "Token should not be marked as consumed")
                       (is (some? (get-in auth-identity [:credentials :grant_ends_at]))
@@ -407,7 +407,7 @@
                                                  (email-body (first emails)))
                         _               (is (some? reset-token) "Should find reset token in email")
                         new-password    "ResetViaForgot123!"
-                        support-user    (t2/select-one :model/User :email "support-reset@example.com")]
+                        support-user    (t2/select-one :model/User 'email "support-reset@example.com")]
                     ;; Step 3: Use the token to reset the password.
                     (let [response (mt/client :post 200 "session/reset_password"
                                               {:token reset-token :password new-password})]
@@ -416,20 +416,20 @@
                     ;; Step 4: Verify the support-access-grant AuthIdentity is consumed, not replaced.
                     (testing "support-access-grant AuthIdentity is consumed"
                       (let [sag-auth (t2/select-one :model/AuthIdentity
-                                                    :user_id (:id support-user)
-                                                    :provider "support-access-grant")]
+                                                    'user_id (:id support-user)
+                                                    'provider "support-access-grant")]
                         (is (some? sag-auth) "support-access-grant AuthIdentity should still exist")
                         (is (some? (get-in sag-auth [:credentials :consumed_at]))
                             "Token should be marked as consumed")))
                     (testing "No emailed-secret-password-reset AuthIdentity was created"
                       (is (not (t2/exists? :model/AuthIdentity
-                                           :user_id (:id support-user)
-                                           :provider "emailed-secret-password-reset"))
+                                           'user_id (:id support-user)
+                                           'provider "emailed-secret-password-reset"))
                           "Should not create a normal password reset AuthIdentity"))
                     (testing "Password AuthIdentity has grant expiration, not unlimited"
                       (let [pw-auth (t2/select-one :model/AuthIdentity
-                                                   :user_id (:id support-user)
-                                                   :provider "password")]
+                                                   'user_id (:id support-user)
+                                                   'provider "password")]
                         (is (some? (:expires_at pw-auth))
                             "Password AuthIdentity should have an expiration from the grant")))))))))))))
 
@@ -443,7 +443,7 @@
           (let [grant       (grants/create-grant! creator-id 60 "SUPPORT-SESSION-EXPIRY" "Time-boxed access")
                 session-key (:session_id (mt/client :post 200 "session/reset_password"
                                                     {:token (:token grant) :password "SupportPass!2468"}))
-                session     (t2/select-one :model/Session :key_hashed (session/hash-session-key session-key))]
+                session     (t2/select-one :model/Session 'key_hashed (session/hash-session-key session-key))]
             (testing "the session records the grant's end as its own expires_at"
               (is (some? (:expires_at session))))
             (testing "inside the grant window the support session works"

@@ -330,8 +330,8 @@
                                                                       :values_source_config {:card_id category-values-card-id}}]}
                    :model/DashboardCard _ {:dashboard_id dashboard-id
                                            :card_id filtered-card-id}]
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-            dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
+            dashboard (-> (t2/select-one :model/Dashboard 'id dashboard-id)
                           (assoc :dashcards dashcards))]
         (is (= {:card #{filtered-card-id category-values-card-id}
                 :dashboard #{}}
@@ -351,7 +351,7 @@
                                            :visualization_settings {:click_behavior {:type "link"
                                                                                      :linkType "question"
                                                                                      :targetId target-card-id}}}]
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
             dashboard {:id dashboard-id
                        :dashcards dashcards}]
         (is (= {:card #{count-card-id target-card-id}
@@ -374,7 +374,7 @@
                                            :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
                                                                                                                                   :linkType "question"
                                                                                                                                   :targetId target-card-id}}}}}]
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
             dashboard {:id dashboard-id
                        :dashcards dashcards}]
         (is (= {:card #{table-card-id target-card-id}
@@ -395,7 +395,7 @@
                                            :visualization_settings {:click_behavior {:type "link"
                                                                                      :linkType "dashboard"
                                                                                      :targetId target-dashboard-id}}}]
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
             dashboard {:id dashboard-id
                        :dashcards dashcards}]
         (is (= {:card #{count-card-id}
@@ -418,7 +418,7 @@
                                            :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
                                                                                                                                   :linkType "dashboard"
                                                                                                                                   :targetId target-dashboard-id}}}}}]
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
             dashboard {:id dashboard-id
                        :dashcards dashcards}]
         (is (= {:card #{table-card-id}

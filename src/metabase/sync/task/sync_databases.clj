@@ -76,7 +76,7 @@
 (defn- sync-and-analyze-database*!
   [database-id]
   (log/infof "Starting sync task for Database %d." database-id)
-  (when-let [database (or (t2/select-one :model/Database :id database-id)
+  (when-let [database (or (t2/select-one :model/Database 'id database-id)
                           (do
                             (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                             (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
@@ -122,7 +122,7 @@
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
 
-      (t2/select-one-fn :is_stub :model/Database :id database-id)
+      (t2/select-one-fn :is_stub :model/Database 'id database-id)
       (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
 
       :else
@@ -141,7 +141,7 @@
       (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
       (do
         (log/infof "Update Field values task triggered for Database %d." database-id)
-        (when-let [database (or (t2/select-one :model/Database :id database-id)
+        (when-let [database (or (t2/select-one :model/Database 'id database-id)
                                 (do
                                   (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]

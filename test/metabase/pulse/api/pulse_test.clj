@@ -56,7 +56,7 @@
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
      :skip_if_empty :dashboard_id :parameters :disable_links])
-   {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
+   {:creator  (user-details (t2/select-one 'User 'id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
 
@@ -378,7 +378,7 @@
               (api.card-test/with-cards-in-readable-collection! [card]
                 (create-pulse! 200 pulse-name card collection)
                 (is (= {:collection_id (u/the-id collection), :collection_position 1}
-                       (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name)))))))
+                       (mt/derecordize (t2/select-one [:model/Pulse 'collection_id 'collection_position] 'name pulse-name)))))))
           (testing "...but not if we don't have permissions for the Collection"
             (mt/with-non-admin-groups-no-root-collection-perms
               (let [pulse-name (mt/random-name)]
@@ -386,7 +386,7 @@
                                :model/Collection collection] {}
                   (create-pulse! 403 pulse-name card collection)
                   (is (= nil
-                         (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name))))))))))))
+                         (t2/select-one [:model/Pulse 'collection_id 'collection_position] 'name pulse-name))))))))))))
 
 (deftest validate-email-domains-test
   (mt/when-ee-evailable
@@ -555,7 +555,7 @@
                    :model/Collection collection] {}
       (mt/user-http-request :crowberto :put 200 (str "pulse/" (u/the-id pulse))
                             {:collection_id (u/the-id collection)})
-      (is (= (t2/select-one-fn :collection_id :model/Pulse :id (u/the-id pulse))
+      (is (= (t2/select-one-fn :collection_id :model/Pulse 'id (u/the-id pulse))
              (u/the-id collection))))))
 
 (deftest change-collection-test
@@ -568,7 +568,7 @@
         ;; now make an API call to move collections
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)})
         ;; Check to make sure the ID has changed in the DB
-        (is (= (t2/select-one-fn :collection_id :model/Pulse :id (u/the-id pulse))
+        (is (= (t2/select-one-fn :collection_id :model/Pulse 'id (u/the-id pulse))
                (u/the-id new-collection)))))
     (testing "...but if we don't have the Permissions for the old collection, we should get an Exception"
       (pulse-test/with-pulse-in-collection! [_db _collection pulse]
@@ -594,7 +594,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:collection_position 1})
       (is (= 1
-             (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))
+             (t2/select-one-fn :collection_position :model/Pulse 'id (u/the-id pulse)))))
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection! [_ collection pulse]
         (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
@@ -602,19 +602,19 @@
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
         (is (= nil
-               (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))))
+               (t2/select-one-fn :collection_position :model/Pulse 'id (u/the-id pulse))))))
     (testing "...we shouldn't be able to if we don't have permissions for the Collection"
       (pulse-test/with-pulse-in-collection! [_db _collection pulse]
         (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                               {:collection_position 1})
         (is (= nil
-               (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))
+               (t2/select-one-fn :collection_position :model/Pulse 'id (u/the-id pulse))))
         (testing "shouldn't be able to unset (unpin) a Pulse"
           (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
-                 (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))))))
+                 (t2/select-one-fn :collection_position :model/Pulse 'id (u/the-id pulse)))))))))
 
 (deftest archive-test
   (testing "Can we archive a Pulse?"
@@ -623,7 +623,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived true})
       (is (true?
-           (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse)))))))
+           (t2/select-one-fn :archived :model/Pulse 'id (u/the-id pulse)))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Pulse?"
@@ -633,7 +633,7 @@
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false
-             (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse))))))
+             (t2/select-one-fn :archived :model/Pulse 'id (u/the-id pulse))))))
   (testing "Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection            collection {}
@@ -646,8 +646,8 @@
                               {:archived true})
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived false})
-        (is (t2/exists? :model/PulseChannel :id (u/the-id pc)))
-        (is (t2/exists? :model/PulseChannelRecipient :id (u/the-id pcr)))))))
+        (is (t2/exists? :model/PulseChannel 'id (u/the-id pc)))
+        (is (t2/exists? :model/PulseChannelRecipient 'id (u/the-id pcr)))))))
 
 (deftest update-channels-no-op-test
   (testing "PUT /api/pulse/:id"

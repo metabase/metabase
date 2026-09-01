@@ -554,8 +554,8 @@
           (let [orders-table-id (mt/id :orders)
                 ;; Look up database + schema + table name so we can write the portable FK
                 ;; that the representations-format construct_notebook_query expects.
-                orders-table    (t2/select-one :model/Table :id orders-table-id)
-                db-name         (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-table    (t2/select-one :model/Table 'id orders-table-id)
+                db-name         (t2/select-one-fn :name :model/Database 'id (mt/id))
                 orders-fk        [db-name (:schema orders-table) (:name orders-table)]
                 external-query  {:lib/type "mbql/query"
                                  :database db-name

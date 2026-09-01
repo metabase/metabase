@@ -110,7 +110,7 @@
   (testing "Check that a deleted database gets unscheduled"
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-        (t2/delete! :model/Database :id (u/the-id database))
+        (t2/delete! :model/Database 'id (u/the-id database))
         (is (= [(update sync-job :triggers empty)
                 (update fv-job   :triggers empty)]
                (current-tasks-for-db database)))))))
@@ -240,7 +240,7 @@
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
-              (t2/delete! :model/Database :id db-id)
+              (t2/delete! :model/Database 'id db-id)
               (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
                 (sync-fn ctx))
               (is (= [(update sync-job :triggers empty)
@@ -352,7 +352,7 @@
     (mt/with-temp [:model/Database db {:metadata_sync_schedule      sync-default
                                        :cache_field_values_schedule fv-default}]
       (#'task.sync-databases/randomize-db-schedules-if-needed!)
-      (let [after (t2/select-one :model/Database :id (u/the-id db))]
+      (let [after (t2/select-one :model/Database 'id (u/the-id db))]
         (is (not= sync-default (:metadata_sync_schedule after))
             "Sync schedule not randomized")
         (is (not= fv-default (:cache_field_values_schedule after))
@@ -366,7 +366,7 @@
                                          :cache_field_values_schedule custom-fv
                                          :details                     {:let-user-control-scheduling true}}]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
-        (let [after (t2/select-one :model/Database :id (u/the-id db))]
+        (let [after (t2/select-one :model/Database 'id (u/the-id db))]
           (is (= custom-sync (:metadata_sync_schedule after))
               "Sync schedule was erroneously randomized")
           (is (= custom-fv (:cache_field_values_schedule after))
@@ -380,9 +380,9 @@
                                        :details                     {:let-user-control-scheduling true}}]
       (t2/update! :model/Database (u/the-id db) {:details (assoc (:details db)
                                                                  :let-user-control-scheduling true)})
-      (let [before (t2/select-one :model/Database :id (u/the-id db))]
+      (let [before (t2/select-one :model/Database 'id (u/the-id db))]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
-        (let [after (t2/select-one :model/Database :id (u/the-id db))]
+        (let [after (t2/select-one :model/Database 'id (u/the-id db))]
           (is (= sync-default (:metadata_sync_schedule after))
               "Sync schedule erroneously randomized")
           (is (= fv-default (:cache_field_values_schedule after))
@@ -400,9 +400,9 @@
                                                                             :created_at :%now
                                                                             :updated_at :%now
                                                                             :metadata_sync_schedule "0 43 * * * ? *"})
-            before (t2/select-one :model/Database :id db-id)]
+            before (t2/select-one :model/Database 'id db-id)]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
-        (let [after (t2/select :model/Database :id db-id)]
+        (let [after (t2/select :model/Database 'id db-id)]
           (is (not (nil? after)) "Sample db exists")
           ;; Old schedule should be randomized if it existed
           (is (not= (:metadata_sync_schedule before) (:metadata_sync_schedule after))

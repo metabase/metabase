@@ -56,7 +56,7 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (t2/select-one :model/Table 'id (:table_id instance)))]
      (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
@@ -66,7 +66,7 @@
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (t2/select-one :model/Table 'id (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -84,7 +84,7 @@
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (t2/select-one :model/Table 'id (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -109,7 +109,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (t2/select :model/Collection 'id ['in collection-ids]))
                                 {})
         ;; Associate collection info with each measure's table
         measures-with-collection (for [measure measures-with-tables
@@ -151,7 +151,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id measure))))]
+                  (t2/select-one ['Table 'db_id 'schema 'id] 'id (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db

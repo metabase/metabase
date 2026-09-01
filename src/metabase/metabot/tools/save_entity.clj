@@ -87,7 +87,7 @@
   [collection-id]
   (if (nil? collection-id)
     (:name (collection/root-collection-with-ui-details nil))
-    (t2/select-one-fn :name :model/Collection :id collection-id)))
+    (t2/select-one-fn :name :model/Collection 'id collection-id)))
 
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
@@ -128,7 +128,7 @@
                 :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
-       :destination-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+       :destination-name (t2/select-one-fn :name :model/Dashboard 'id dashboard-id)
        :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (defn- save-to-document!

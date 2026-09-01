@@ -54,12 +54,12 @@
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
-  (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info)))
+  (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state :model/PersistedInfo 'id (:id persisted-info)))
     (tracing/with-span :tasks "task.persist.refresh-model" {:db/id           (u/the-id database)
                                                             :persist/card-id (:card_id persisted-info)
                                                             :persist/table   (:table_name persisted-info)}
       (log/infof "Attempting to refresh persisted model %s." (:card_id persisted-info))
-      (let [card                  (t2/select-one :model/Card :id (:card_id persisted-info))
+      (let [card                  (t2/select-one :model/Card 'id (:card_id persisted-info))
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
             _                     (t2/update! :model/PersistedInfo (u/the-id persisted-info)
@@ -100,7 +100,7 @@
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)
-          persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo :id [:in (keys error-details-by-id)])
+          persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo 'id ['in (keys error-details-by-id)])
                                                [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
       (events/publish-event! :event/persisted-model-refresh-error
@@ -128,13 +128,13 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (t2/select :model/Database :id [:in (map :database_id deletables)]))
+    (let [db-id->db    (m/index-by :id (t2/select :model/Database 'id ['in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
-                                   (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [:model/Card :archived :type :card_schema]
-                                                                      :id (:card_id persisted-info))]
+                                   (let [current-state (t2/select-one-fn :state :model/PersistedInfo 'id (:id persisted-info))
+                                         card-info     (t2/select-one [:model/Card 'archived 'type 'card_schema]
+                                                                      'id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
                                              (not= (:type card-info) :model))
@@ -145,7 +145,7 @@
                                            (try
                                              (unpersist! refresher database persisted-info)
                                              (when-not (= "off" current-state)
-                                               (t2/delete! :model/PersistedInfo :id (:id persisted-info)))
+                                               (t2/delete! :model/PersistedInfo 'id (:id persisted-info)))
                                              (update stats :success inc)
                                              (catch Exception e
                                                (log/infof "Error unpersisting model with card-id %s: %s" (:card_id persisted-info) (ex-message e))
@@ -207,7 +207,7 @@
   [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (t2/select-one :model/Database :id database-id)
+  (let [database  (t2/select-one :model/Database 'id database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -220,9 +220,9 @@
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher trigger]
-  (let [persisted-info (t2/select-one :model/PersistedInfo :id persisted-info-id)
+  (let [persisted-info (t2/select-one :model/PersistedInfo 'id persisted-info-id)
         database       (when persisted-info
-                         (t2/select-one :model/Database :id (:database_id persisted-info)))]
+                         (t2/select-one :model/Database 'id (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)

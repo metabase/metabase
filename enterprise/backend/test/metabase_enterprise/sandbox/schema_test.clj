@@ -12,7 +12,7 @@
                                         :group_id             (u/the-id (perms-group/all-users))
                                         :attribute_remappings {"venue_id" ["variable" ["field" (mt/id :venues :id) nil]]}}]
       (is (= {"venue_id" [:variable [:field (mt/id :venues :id) nil]]}
-             (t2/select-one-fn :attribute_remappings :model/Sandbox :id (u/the-id gtap)))))))
+             (t2/select-one-fn :attribute_remappings :model/Sandbox 'id (u/the-id gtap)))))))
 
 (deftest ^:parallel normalize-attribute-remappings-test-2
   (testing "make sure attribute-remappings come back from the DB normalized the way we'd expect"
@@ -22,7 +22,7 @@
                                           :group_id             (u/the-id (perms-group/all-users))
                                           :attribute_remappings {"user" ["variable" ["field" (mt/id :venues :id) nil]]}}]
         (is (= {"user" [:variable [:field (mt/id :venues :id) nil]]}
-               (t2/select-one-fn :attribute_remappings :model/Sandbox :id (u/the-id gtap))))))))
+               (t2/select-one-fn :attribute_remappings :model/Sandbox 'id (u/the-id gtap))))))))
 
 (deftest ^:parallel normalize-attribute-remappings-dimension-targets-test
   (testing "dimension targets (bare, with stage-number, and with field-ref options) round-trip through the normalization transform"
@@ -38,4 +38,4 @@
                                        :group_id             (u/the-id group)
                                        :attribute_remappings {"cat" target}}]
         (is (= {"cat" expected}
-               (t2/select-one-fn :attribute_remappings :model/Sandbox :id (u/the-id g))))))))
+               (t2/select-one-fn :attribute_remappings :model/Sandbox 'id (u/the-id g))))))))

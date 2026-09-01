@@ -133,7 +133,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (t2/select-one :model/PulseChannel :id new-channel-id)
+    (-> (t2/select-one :model/PulseChannel 'id new-channel-id)
         (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -143,7 +143,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (t2/select-one :model/PulseChannel :id id)
+  (-> (t2/select-one :model/PulseChannel 'id id)
       (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
@@ -295,7 +295,7 @@
                  :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id :model/PulseChannelRecipient, 'pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]

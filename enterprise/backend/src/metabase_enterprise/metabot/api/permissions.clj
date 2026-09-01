@@ -77,8 +77,8 @@
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
       (let [perm-type-kw  (keyword perm_type)
             perm-value-kw (keyword perm_value)]
-        (if (t2/exists? :model/MetabotPermissions :group_id group_id :perm_type perm-type-kw)
-          (t2/update! :model/MetabotPermissions {:group_id group_id :perm_type perm-type-kw} {:perm_value perm-value-kw})
+        (if (t2/exists? :model/MetabotPermissions 'group_id group_id 'perm_type perm-type-kw)
+          (t2/update! :model/MetabotPermissions {'group_id group_id 'perm_type perm-type-kw} {:perm_value perm-value-kw})
           (t2/insert! :model/MetabotPermissions {:group_id   group_id
                                                  :perm_type  perm-type-kw
                                                  :perm_value perm-value-kw})))))

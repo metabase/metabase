@@ -64,11 +64,11 @@
   {:created_at     (analytics/instance-creation)
    :plan           (fetch-plan-info)
    :version        (config/mb-version-info :tag)
-   :num_users      (t2/count :model/User :is_active true, :type "personal")
-   :num_dashboards (t2/count :model/Dashboard :archived false)
-   :num_databases  (t2/count :model/Database :is_audit false)
-   :num_questions  (t2/count :model/Card :archived false :type "question")
-   :num_models     (t2/count :model/Card :archived false :type "model")})
+   :num_users      (t2/count :model/User 'is_active true, 'type "personal")
+   :num_dashboards (t2/count :model/Dashboard 'archived false)
+   :num_databases  (t2/count :model/Database 'is_audit false)
+   :num_questions  (t2/count :model/Card 'archived false 'type "question")
+   :num_models     (t2/count :model/Card 'archived false 'type "model")})
 
 (defn- user-instance-info
   "Create a blob of instance/user data to be sent to the creator sentiment survey."

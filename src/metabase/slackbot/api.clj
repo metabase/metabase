@@ -102,9 +102,9 @@
   signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
   identities without an explicit version are treated as version 0."
   [slack-user-id]
-  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                                :provider "slack-connect"
-                                :provider_id slack-user-id
+  (let [identity (t2/select-one [:model/AuthIdentity 'user_id 'metadata]
+                                'provider "slack-connect"
+                                'provider_id slack-user-id
                                 {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
                                  :where    [:= :user.is_active true]
                                  :order-by [[:created_at :desc]]})]
@@ -592,8 +592,8 @@
   (or message_external_id
       (when (and channel_id message_ts)
         (t2/select-one-fn :external_id :model/MetabotMessage
-                          :channel_id   channel_id
-                          :slack_msg_id message_ts))))
+                          'channel_id   channel_id
+                          'slack_msg_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.

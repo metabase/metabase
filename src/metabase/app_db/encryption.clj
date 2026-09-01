@@ -74,7 +74,7 @@
                row, or the plaintext \"unencrypted\" marker (inserted by the v53 migration, and written back when
                the database is decrypted) -- an explicit statement of the same thing a missing row means"
   []
-  (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting :key encryption-check-key))]
+  (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting 'key encryption-check-key))]
     (cond
       (or (nil? raw) (= raw "unencrypted"))
       :absent
@@ -149,7 +149,7 @@
   "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with the
   plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted)."
   [conn encrypt-fn]
-  (t2/delete! :conn conn :setting :key encryption-check-key)
+  (t2/delete! :conn conn :setting 'key encryption-check-key)
   (t2/insert! :conn conn :setting {:key   encryption-check-key
                                    :value (if encrypt-fn
                                             (encrypt-fn (str (random-uuid)))
@@ -265,7 +265,7 @@
                                     "{}")
                                   (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                                                   {:table table, :id id, :column column} e)))))]
-              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))
+              (t2/update! :conn conn table {'id id} {column (encrypt-str-fn decrypted)}))))
         (t2/reducible-select [table :id [column :value]])))
 
 (defn- reencrypt-encrypted-bytes-column!
@@ -281,7 +281,7 @@
                               (catch Throwable e
                                 (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                                                 {:table table, :id id, :column column} e))))]
-              (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
+              (t2/update! :conn conn table {'id id} {column (encrypt-bytes-fn decrypted)}))))
         (t2/reducible-select [table :id [column :value]])))
 
 (defn encrypt-plaintext-columns!
@@ -301,8 +301,8 @@
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
-                  (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
-              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))))))
+                  (t2/update! :conn conn table {'id id} {column (encryption/encrypt value)})))
+              (t2/reducible-select [table 'id [column :value]] {:where [:!= column nil]}))))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -328,10 +328,10 @@
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
-                                    (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
+                                    (t2/update! :conn conn :setting {'key key} {:value current-timestamp-as-string-honeysql}))
           "encryption-check" nil
           (t2/update! :conn conn :setting
-                      {:key key}
+                      {'key key}
                       {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
       (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]

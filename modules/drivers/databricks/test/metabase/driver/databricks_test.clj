@@ -221,7 +221,7 @@
     (mt/dataset
       dataset-with-ntz
       (testing "timestamp_ntz column is synced with correct types"
-        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))
+        (let [columns (t2/select :model/Field 'table_id (t2/select-one-fn :id :model/Table 'db_id (mt/id)))
               col-type-info (into {}
                                   (map (fn [col]
                                          [(:name col)
@@ -363,11 +363,11 @@
             db
             (testing "With multi-level-schema default (off)"
               (sync/sync-database! (mt/db))
-              (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+              (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)))
               (is (= 52 (count (t2/select
                                 :model/Field
-                                :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
-                                :active true))))
+                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
           (testing "With multi-level-schema on"
             (t2/update! :model/Database db-id {:details (assoc details
@@ -378,23 +378,23 @@
               (sync/sync-database! (mt/db))
               (is (= #{(format "%s.%s" (:catalog details) "test-data")
                        (format "%s.%s" multicatalog multicatalog-schema)}
-                     (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+                     (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)))
               ;; Adds four fields for metabase_ci_multicatalog.test_schema.test id,name,ci_venue_id,drivers_venue_id
               (is (= 56 (count (t2/select
                                 :model/Field
-                                :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
-                                :active true))))
+                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
           (testing "With multi-level-schema off"
             (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
             (mt/with-db
               (t2/select-one :model/Database db-id)
               (sync/sync-database! (mt/db))
-              (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
+              (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)))
               (is (= 52 (count (t2/select
                                 :model/Field
-                                :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id) :active true)]
-                                :active true))))
+                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1}))))))))))))
 
 (deftest multi-level-changes-inactive-table-schemas-too
@@ -419,20 +419,20 @@
               (sync/sync-database! (mt/db))
               ;; originally we have unqualified schemas, only in one catalog
               (is (= #{"test-data"}
-                     (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
+                     (t2/select-fn-set :schema :model/Table 'db_id (mt/id))))))
           (testing "With multi-level-schema on, schemas are qualified"
             (t2/update! :model/Database db-id {:details (assoc details
                                                                :multi-level-schema true
                                                                :schema-filters-patterns multi-pattern)})
             ;; Deactivate its tables for testing
-            (t2/update! :model/Table {:db_id db-id} {:active false})
+            (t2/update! :model/Table {'db_id db-id} {:active false})
             (mt/with-db
               (t2/select-one :model/Database db-id)
               (sync/sync-database! (mt/db))
               (is (= #{(format "%s.%s" (:catalog details) "test-data")
                        (format "%s.%s" multicatalog multicatalog-schema)}
                      ;; active` *and* inactive tables both have their schemas changed.
-                     (t2/select-fn-set :schema :model/Table :db_id (mt/id)))))))))))
+                     (t2/select-fn-set :schema :model/Table 'db_id (mt/id)))))))))))
 
 (deftest multi-level-schema-wanted-catalogs-test
   (mt/test-driver
@@ -454,7 +454,7 @@
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
+            (let [table-schemas (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)]
               (is (= schema-filters table-schemas))
               (is (nil? (some #(str/starts-with? % "__databricks") table-schemas))))))))))
 
@@ -482,9 +482,9 @@
                   [t1-id t2-id] (t2/select-fn-vec
                                  :id
                                  :model/Table
-                                 :db_id db-id
+                                 'db_id db-id
                                  [:composite :schema :name]
-                                 [:in [[:composite catalog+schema "venues"]
+                                 ['in [[:composite catalog+schema "venues"]
                                        [:composite multi-catalog+schema "test"]]]
                                  {:order-by [:schema]})
                   t1-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t1-id))

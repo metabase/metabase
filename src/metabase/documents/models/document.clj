@@ -141,7 +141,7 @@
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/check-400 (t2/exists? :model/Collection 'id new-collection-id 'archived false))
     (api/write-check :model/Collection new-collection-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
@@ -149,7 +149,7 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
+   #(-> (t2/select [:model/User 'id 'email 'first_name 'last_name] 'id (keep :creator_id documents))
         (map (juxt :id identity))
         (into {}))
    :creator_id {:default {}}))
@@ -162,8 +162,8 @@
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
                     (t2/select :model/Card
-                               :document_id [:in document-ids]
-                               :archived false))
+                               'document_id ['in document-ids]
+                               'archived false))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)
         cards-maps-by-doc-id (update-vals cards-by-doc-id
@@ -180,7 +180,7 @@
                     :archived (boolean archived)
                     :archived_directly (boolean archived-directly)}]
     (t2/update! :model/Card
-                :document_id document-id
+                'document_id document-id
                 update-map)))
 
 (t2/define-after-update :model/Document
@@ -287,7 +287,7 @@
         node (cond-> node
                (= prose-mirror/card-embed-type type)
                (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
+    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) 'id id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -398,7 +398,7 @@
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]
-  (when-let [document (t2/select-one :model/Document :id id)]
+  (when-let [document (t2/select-one :model/Document 'id id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
        (into {}

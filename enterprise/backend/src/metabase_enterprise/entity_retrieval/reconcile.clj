@@ -214,7 +214,7 @@
         ;; A measure/segment is a member only when its parent table is a current library table.
         (when-let [table-id (t2/select-one-fn :table_id
                                               (if (= entity-type "measure") :model/Measure :model/Segment)
-                                              :id entity-local-id)]
+                                              'id entity-local-id)]
           (when (seq (library-tables lib-ids table-id))
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)
@@ -267,8 +267,8 @@
     ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
     ;; `card` whichever live label (metric/model) drove this targeted run.
     (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
-                                   :entity_local_id entity-local-id
-                                   :entity_type (entity-retrieval/normalize-entity-type entity-type))]
+                                   'entity_local_id entity-local-id
+                                   'entity_type (entity-retrieval/normalize-entity-type entity-type))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 

@@ -193,9 +193,9 @@
   (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)
                    (t2/select-pk->fn identity
-                                     [:model/Card :id :name :description :database_id
-                                      :dataset_query :card_schema :dimensions :dimension_mappings]
-                                     :id [:in card-ids]))
+                                     [:model/Card 'id 'name 'description 'database_id
+                                      'dataset_query 'card_schema 'dimensions 'dimension_mappings]
+                                     'id ['in card-ids]))
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
@@ -351,7 +351,7 @@
   `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params page_id]}]
-  (let [card       (t2/select-one :model/Card :id card_id)
+  (let [card       (t2/select-one :model/Card 'id card_id)
         block      (when page_id
                      (t2/select-one :model/ExplorationBlock
                                     {:join  [[:exploration_page :p]

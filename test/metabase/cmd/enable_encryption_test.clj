@@ -16,7 +16,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- raw-value [k]
-  (t2/select-one-fn :value :setting :key k))
+  (t2/select-one-fn :value :setting 'key k))
 
 (defn- restart! []
   (reset! (:status mdb.connection/*application-db*) ::not-set-up)
@@ -43,7 +43,7 @@
             (enable-encryption!)
             (is (encryption/decryptable-string? (raw-value "encryption-check")))
             (is (encryption/decryptable-string? (raw-value "test-setting")))
-            (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "test-setting")))
+            (is (= "plain value" (t2/select-one-fn :value :model/Setting 'key "test-setting")))
             (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"

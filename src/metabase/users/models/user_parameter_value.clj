@@ -96,8 +96,8 @@
      :last_used_param_values
      (fn [] ;; return a map of {dashboard-id {parameter-id value}}
        (let [upvs (t2/select :model/UserParameterValue
-                             :dashboard_id [:in (map :id dashboards)]
-                             :user_id user-id)]
+                             'dashboard_id ['in (map :id dashboards)]
+                             'user_id user-id)]
          (as-> upvs result
            (group-by :dashboard_id result)
            (update-vals result (fn [upvs]

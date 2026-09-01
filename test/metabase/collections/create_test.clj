@@ -84,7 +84,7 @@
           (try
             (is (pos-int? (:id coll)))
             (is (= "Persist Child" (:name coll)))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id (:id coll))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id (:id coll))))
                 "Persisted child carries the inherited is_remote_synced flag")
             (finally
-              (t2/delete! :model/Collection :id (:id coll)))))))))
+              (t2/delete! :model/Collection 'id (:id coll)))))))))

@@ -68,9 +68,9 @@
              active    true}}]
   {:pre [(string? email) (string? first-name) (string? last-name) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (t2/select-one :model/User :email email)
+  (or (t2/select-one :model/User 'email email)
       (locking create-user-lock
-        (or (t2/select-one :model/User :email email)
+        (or (t2/select-one :model/User 'email email)
             (u/prog1 (t2/insert-returning-instance! :model/User
                                                     {:email        email
                                                      :first_name   first-name
@@ -167,7 +167,7 @@
   [username :- TestUserName]
   (let [session-key  (session/generate-session-key)
         user-id      (user->id username)
-        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
+        auth-id      (t2/select-one-pk :model/AuthIdentity 'user_id user-id 'provider "password")]
     (t2/insert! :model/Session (cond-> {:id (session/generate-session-id)
                                         :key_hashed (session/hash-session-key session-key)
                                         :user_id user-id}
@@ -233,7 +233,7 @@
     (let [user-id (u/the-id user)
           session-key (session/generate-session-key)
           session-id (session/generate-session-id)]
-      (when-not (t2/exists? :model/User :id user-id)
+      (when-not (t2/exists? :model/User 'id user-id)
         (throw (ex-info "User does not exist" {:user user})))
       ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
@@ -249,7 +249,7 @@
       (try
         (apply the-client session-key args)
         (finally
-          (t2/delete! :core_session :id session-id))))))
+          (t2/delete! :core_session 'id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request

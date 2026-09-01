@@ -91,7 +91,7 @@
         table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
         cleanup       (fn []
                         (driver/drop-table! driver (mt/id) table-name)
-                        (t2/delete! :model/Table :name table-name))]
+                        (t2/delete! :model/Table 'name table-name))]
     (try
       (thunk (create-test-table! db table-name column-map create-table-opts))
       (catch Exception e

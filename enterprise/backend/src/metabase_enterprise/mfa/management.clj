@@ -67,7 +67,7 @@
   (boolean
    (when-not (str/blank? password)
      (or (when-let [{:keys [password_hash password_salt]}
-                    (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
+                    (t2/select-one-fn :credentials :model/AuthIdentity 'user_id user-id 'provider "password")]
            (and password_hash (u.password/verify-password password password_salt password_hash)))
          (when (sso/ldap-enabled)
            ;; an unreachable directory fails closed: re-auth is denied (the user retries when the
@@ -131,7 +131,7 @@
                          (fn []
                            (or (enrollment/confirm-enrollment! api/*current-user-id* code)
                                (throw (invalid-code-ex)))))
-        user  (t2/select-one :model/User :id api/*current-user-id*)]
+        user  (t2/select-one :model/User 'id api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
     {:recovery_codes codes}))
@@ -149,7 +149,7 @@
                  (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
                  (enrollment/disable! api/*current-user-id*))))
-  (let [user (t2/select-one :model/User :id api/*current-user-id*)]
+  (let [user (t2/select-one :model/User 'id api/*current-user-id*)]
     (messages/send-mfa-disabled-email! (:email user))
     (events/publish-event! :event/mfa-disabled {:object user}))
   api/generic-204-no-content)
@@ -191,7 +191,7 @@
     (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
                     {:status-code 400})))
   (when (enrollment/disable! user-id)
-    (let [user (t2/select-one :model/User :id user-id)]
+    (let [user (t2/select-one :model/User 'id user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))
       (events/publish-event! :event/mfa-disabled {:object user})))
   api/generic-204-no-content)
@@ -229,7 +229,7 @@
   []
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
-   :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
+   :enrolled_count     (t2/count :model/AuthIdentity 'provider "totp" 'confirmed_at ['not= nil])
    :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})})
 
 ;;; -------------------------------------------------- Admin user lists --------------------------------------------------

@@ -11,4 +11,4 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
-  (t2/delete! :model/Session :user_id user-id))
+  (t2/delete! :model/Session 'user_id user-id))

@@ -151,7 +151,7 @@
                  {:model       "FakedCard"
                   :model_id    card-id
                   :most_recent false}]
-                (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
+                (t2/select :model/Revision 'model "FakedCard" 'model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
 
 (deftest update-revision-does-not-update-timestamp-test
   ;; Realistically this only happens on mysql and mariadb for some reasons
@@ -242,7 +242,7 @@
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
           (testing "now do some updates and new revision should be reocrded"
-            (t2/update! :model/Dashboard :id dash-id {:name "New name"})
+            (t2/update! :model/Dashboard 'id dash-id {:name "New name"})
             (push-revision)
             (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
 
@@ -351,11 +351,11 @@
           (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
           ;; we only have one `most_recent: true`
           (is (= 1 (t2/count :model/Revision
-                             :model_id card-id :model "FakedCard"
-                             :most_recent true)))
+                             'model_id card-id 'model "FakedCard"
+                             'most_recent true)))
           ;; we have the expected total number of revisions
           (is (= 3 (t2/count :model/Revision
-                             :model_id card-id :model "FakedCard"))))))))
+                             'model_id card-id 'model "FakedCard"))))))))
 
 ;;; # REVERT
 
@@ -376,11 +376,11 @@
         (revision/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"}})
         (revision/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"}})
         (is (= "Spots Created By Day"
-               (:name (t2/select-one :model/Card :id card-id))))
+               (:name (t2/select-one :model/Card 'id card-id))))
         (let [[_ {old-revision-id :id}] (revision/revisions :model/Card card-id)]
           (revision/revert! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
           (is (= "Tips Created by Day"
-                 (:name (t2/select-one :model/Card :id card-id)))))))))
+                 (:name (t2/select-one :model/Card 'id card-id)))))))))
 
 (deftest reverting-should-add-revision-test
   (mt/with-model-cleanup [:model/Revision]

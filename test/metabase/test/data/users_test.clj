@@ -8,7 +8,7 @@
   (testing "the session a request borrows is not a login"
     (mt/with-temp [:model/User {user-id :id} {:last_login nil}]
       (mt/user-http-request {:id user-id} :get 200 "user/current")
-      (is (nil? (t2/select-one-fn :last_login :model/User :id user-id))
+      (is (nil? (t2/select-one-fn :last_login :model/User 'id user-id))
           "last_login stays empty, so :event/user-login never fired")
-      (is (false? (t2/exists? :core_session :user_id user-id))
+      (is (false? (t2/exists? :core_session 'user_id user-id))
           "and the borrowed session is deleted"))))

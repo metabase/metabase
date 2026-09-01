@@ -89,7 +89,7 @@
       (testing "can delete glossary entry as superuser"
         (is (= nil
                (mt/user-http-request :crowberto :delete 204 (str "glossary/" gid))))
-        (is (nil? (t2/select-one :model/Glossary :id gid))))
+        (is (nil? (t2/select-one :model/Glossary 'id gid))))
       (testing "returns 404 when deleting non-existent entry"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 "glossary/99999")))))))
@@ -114,7 +114,7 @@
                    (mt/user-http-request :rasta :delete 403 (str "glossary/" gid)))))
           (testing "the entry was not modified"
             (is (=? {:term "Existing" :definition "An existing entry"}
-                    (t2/select-one :model/Glossary :id gid)))))
+                    (t2/select-one :model/Glossary 'id gid)))))
         (testing "regular users can still read the glossary"
           (is (mt/user-http-request :rasta :get 200 "glossary")))))
     (testing "data analysts can mutate the glossary"

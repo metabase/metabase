@@ -228,7 +228,7 @@
   (let [clean-revisions-for-dashboard (fn [dashboard-id]
                                         ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
                                         ;; revisions for an instance, so let's clear everything to make it easier to test
-                                        (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)
+                                        (t2/delete! :model/Revision 'model "Dashboard" 'model_id dashboard-id)
                                         ;; create one before the update
                                         (create-dashboard-revision! dashboard-id true))]
     (testing "dashboard ---"
@@ -268,7 +268,7 @@
                 (t2/update! :model/Dashboard (:id dashboard) changes)
                 (create-dashboard-revision! (:id dashboard) false)
                 (testing (format "we should track when %s changes" col)
-                  (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))
+                  (is (= 2 (t2/count :model/Revision 'model "Dashboard" 'model_id (:id dashboard)))))
                 ;; we don't need a description for made_public_by_id because whenever this field changes public_uuid
                 ;; will changes and we had a description for it. Same is true for `archived_directly` -
                 ;; `archived` will always change with it.
@@ -284,7 +284,7 @@
   (let [clean-revisions-for-dashboard (fn [dashboard-id]
                                         ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
                                         ;; revisions for an instance, so let's clear everything to make it easier to test
-                                        (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)
+                                        (t2/delete! :model/Revision 'model "Dashboard" 'model_id dashboard-id)
                                         ;; create one before the update
                                         (create-dashboard-revision! dashboard-id true))]
     (testing "dashboardcard ---"
@@ -315,13 +315,13 @@
             (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
-              (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
+              (is (= 2 (t2/count :model/Revision 'model "Dashboard" 'model_id (:id dashboard)))))))))))
 
 (deftest record-revision-and-description-completeness-test-3
   (let [clean-revisions-for-dashboard (fn [dashboard-id]
                                         ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
                                         ;; revisions for an instance, so let's clear everything to make it easier to test
-                                        (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)
+                                        (t2/delete! :model/Revision 'model "Dashboard" 'model_id dashboard-id)
                                         ;; create one before the update
                                         (create-dashboard-revision! dashboard-id true))]
     (testing "dashboardtab ---"
@@ -340,7 +340,7 @@
             (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
-              (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
+              (is (= 2 (t2/count :model/Revision 'model "Dashboard" 'model_id (:id dashboard)))))))))))
 
 (deftest revert-dashboard!-test
   (mt/with-temp [:model/Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
@@ -401,7 +401,7 @@
                      :auto_apply_filters false
                      :description        "something"})
         (testing "capture updated Dashboard state"
-          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)]
+          (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)]
             (is (= (assoc empty-dashboard :auto_apply_filters false)
                    (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
@@ -430,18 +430,18 @@
                 :collection_position nil
                 :parameters          []
                 :width               "fixed"}
-               (update (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
+               (update (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard 'id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
         (revision/revert-to-revision! :model/Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))))))))
+               (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard 'id dashboard-id))))))))
 
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   {:object       (t2/select-one :model/Dashboard :id dash-id)
+   {:object       (t2/select-one :model/Dashboard 'id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
     :user-id      (mt/user->id :crowberto)
@@ -455,7 +455,7 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec :model/Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
+  (let [ids (t2/select-pks-vec :model/Revision 'model (name model) 'model_id model-id {:order-by [[:id :desc]]
                                                                                        :limit    n})]
     (assert (= n (count ids)), "There are less revisions than required to revert")
     (mt/with-test-user :crowberto
@@ -484,12 +484,12 @@
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}
                  {:id tab-3-id :name "Tab 3" :position 2}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-2
   (testing "revert renaming tabs"
@@ -510,12 +510,12 @@
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-3
   (testing "revert deleting tabs"
@@ -536,12 +536,12 @@
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
@@ -611,18 +611,18 @@
       ;; revert
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (testing "tab 1 should have 2 cards"
-        (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
+        (is (= 2 (t2/count :model/DashboardCard 'dashboard_tab_id tab-1-id)))
         (testing "and position of first card is (0,0)"
           (is (=? {:row 0
                    :col 0}
                   (t2/select-one :model/DashboardCard card-1-tab-1)))))
       (testing "tab \"Tab 2\" is restored"
-        (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
+        (let [new-tab-2 (t2/select-one :model/DashboardTab 'dashboard_id dashboard-id 'name "Tab 2")]
           (is (= 1 (:position new-tab-2)))
           (testing "with its cards"
-            (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
+            (is (= 2 (t2/count :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id (:id new-tab-2)))))))
       (testing "there are no \"Tab 3\""
-        (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
+        (is (false? (t2/exists? :model/DashboardTab 'dashboard_id dashboard-id 'name "Tab 3")))))))
 
 (deftest revert-dashboard-skip-archived-or-deleted-card-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
@@ -663,10 +663,10 @@
                   :visualization_settings {:text "Metabase"}}])
     (create-dashboard-revision! dashboard-id false)
     ;; 2. delete all the dashcards
-    (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
+    (t2/delete! :model/DashboardCard 'dashboard_id dashboard-id)
     (create-dashboard-revision! dashboard-id false)
     (t2/delete! :model/Card will-be-deleted-card)
-    (t2/update! :model/Card :id will-be-archived-card {:archived true})
+    (t2/update! :model/Card 'id will-be-archived-card {:archived true})
     (testing "revert should not include archived or deleted card ids (#34884)"
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (is (=? #{{:card_id                unchanged-card
@@ -674,7 +674,7 @@
                 {:card_id                nil
                  :visualization_settings {:text "Metabase"}}}
               (t2/select-fn-set #(select-keys % [:card_id :visualization_settings])
-                                :model/DashboardCard :dashboard_id dashboard-id))))))
+                                :model/DashboardCard 'dashboard_id dashboard-id))))))
 
 (deftest revert-dashboard-with-deleted-parameter-card-source-test
   (testing "revert should clean up parameters that reference deleted or archived cards (metabase#UXW-2494)"
@@ -712,7 +712,7 @@
       (t2/delete! :model/Card value-source-card)
       ;; 4. revert to the revision that had parameters referencing the now-deleted card
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
-      (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+      (let [reverted-params (:parameters (t2/select-one :model/Dashboard 'id dashboard-id))]
         (testing "parameter with deleted card source should have its source config removed"
           (let [deleted-source-param (first (filter #(= "deleted-source" (:id %)) reverted-params))]
             (is (some? deleted-source-param) "Parameter should still exist")
@@ -753,7 +753,7 @@
       (t2/update! :model/Card will-be-archived-card {:archived true})
       ;; 4. revert to the revision that had parameters referencing the now-archived card
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
-      (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+      (let [reverted-params (:parameters (t2/select-one :model/Dashboard 'id dashboard-id))]
         (testing "parameter with archived card source should have its source config removed"
           (let [archived-source-param (first reverted-params)]
             (is (some? archived-source-param) "Parameter should still exist")

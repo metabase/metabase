@@ -13,7 +13,7 @@
                            (t2/hydrate :user_group_memberships)
                            :user_group_memberships
                            (->> (map :id)))
-          all-users-id (t2/select-one-pk :model/PermissionsGroup :name "All Users")]
+          all-users-id (t2/select-one-pk :model/PermissionsGroup 'name "All Users")]
       (is all-users-id memberships))))
 
 (deftest internal-user-is-unmodifiable-via-api-test

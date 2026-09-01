@@ -77,7 +77,7 @@
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
+                  (t2/select-one-fn :fingerprint :model/Field 'id (u/the-id field)))))
 
   ([field       :- i/FieldInstance
     {:keys [exists-name]}
@@ -115,10 +115,10 @@
     (let [table-id (:id table)]
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (t2/count :model/Field
-                                            :table_id table-id
-                                            :active true
-                                            :visibility_type [:not-in ["sensitive" "retired"]]
-                                            :semantic_type :type/Name)
+                                            'table_id table-id
+                                            'active true
+                                            'visibility_type ['not-in ["sensitive" "retired"]]
+                                            'semantic_type :type/Name)
               {:keys [fields-failed]}
               (reduce (fn [state field]
                         (let [result (classify! field state)]

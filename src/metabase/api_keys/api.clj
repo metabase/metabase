@@ -55,7 +55,7 @@
   "Get the count of API keys in the DB with the default scope."
   []
   (api/check-superuser)
-  (t2/count :model/ApiKey :scope nil))
+  (t2/count :model/ApiKey 'scope nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -100,7 +100,7 @@
   "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
+  (let [api-keys (t2/hydrate (t2/select :model/ApiKey 'scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

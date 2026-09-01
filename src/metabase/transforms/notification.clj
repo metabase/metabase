@@ -19,7 +19,7 @@
 (defn- recent-failed-cron-job-runs
   "Cron job runs that failed or timed out in `[start, end)`, oldest first."
   [start end]
-  (t2/select [:model/TransformJobRun :job_id :start_time :message]
+  (t2/select [:model/TransformJobRun 'job_id 'start_time 'message]
              {:where    [:and
                          [:= :run_method "cron"]
                          [:in :status ["failed" "timeout"]]
@@ -33,7 +33,7 @@
   (let [runs     (recent-failed-cron-job-runs start end)
         job-ids  (distinct (map :job_id runs))
         id->name (when (seq job-ids)
-                   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))]
+                   (t2/select-pk->fn :name :model/TransformJob 'id ['in job-ids]))]
     (->> (group-by :job_id runs)
          ;; `runs` is oldest-first, and group-by preserves that within each job's group
          (map (fn [[job-id job-runs]]

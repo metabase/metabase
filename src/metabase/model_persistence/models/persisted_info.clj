@@ -107,8 +107,8 @@
   [cards]
   (when (seq cards)
     (let [existing-ids (t2/select-fn-set :card_id :model/PersistedInfo
-                                         :card_id [:in (map :id cards)]
-                                         :state [:in (refreshable-states)])]
+                                         'card_id ['in (map :id cards)]
+                                         'state ['in (refreshable-states)])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
@@ -174,7 +174,7 @@
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
-        existing-persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)
+        existing-persisted-info (t2/select-one :model/PersistedInfo 'card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
                          (first (t2/insert-returning-instances! :model/PersistedInfo (create-row user-id card)))
@@ -183,7 +183,7 @@
                          (do
                            (t2/update! :model/PersistedInfo (u/the-id existing-persisted-info)
                                        {:active false, :state "creating", :state_change_at :%now})
-                           (t2/select-one :model/PersistedInfo :card_id card-id)))]
+                           (t2/select-one :model/PersistedInfo 'card_id card-id)))]
     persisted-info))
 
 (defn ready-database!

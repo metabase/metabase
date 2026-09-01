@@ -898,9 +898,9 @@
                  (fetch-public-dashboard dash)))))
       (testing "dashboard with tabs should return tabs"
         (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+          (t2/update! :model/Dashboard 'id dashboard-id (shared-obj))
           (is (= {:name true, :dashcards 2, :tabs 2}
-                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+                 (fetch-public-dashboard (t2/select-one :model/Dashboard 'id dashboard-id)))))))))
 
 (deftest get-public-dashboard-exposes-auto-apply-filters-test
   (testing "GET /api/public/dashboard/:uuid round-trips the dashboard's auto_apply_filters value"
@@ -1147,7 +1147,7 @@
                 (t2/update! :model/Card card-id {:collection_id collection-id})
                 (mt/with-temporary-setting-values [synchronous-batch-updates true]
                   (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))
-                (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id (:id dash))))))))))))
+                (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard 'id (:id dash))))))))))))
 
 (deftest execute-public-dashcard-params-validation-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -1178,8 +1178,8 @@
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (with-temp-public-card [card-2]
             (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (t2/select-one-pk :model/DashboardCard
-                                                                                             :card_id      (u/the-id card)
-                                                                                             :dashboard_id (u/the-id dash))
+                                                                                             'card_id      (u/the-id card)
+                                                                                             'dashboard_id (u/the-id dash))
                                                          :card_id          (u/the-id card-2)}]
               (is (= [[100]]
                      (mt/rows (client/client :get 202 (dashcard-url dash card-2 dashcard))))))))))))
@@ -1303,9 +1303,9 @@
 
 (deftest double-check-that-the-field-has-fieldvalues
   ;; Manually activate Field values since they are not created during sync (#53387)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :venues :price)))
   (is (= [1 2 3 4]
-         (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
+         (t2/select-one-fn :values :model/FieldValues 'field_id (mt/id :venues :price)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
@@ -2053,7 +2053,7 @@
                      :post 200
                      (format "public/action/%s/execute" public_uuid)
                      {:parameters {:id 1 :name "European"}})
-                    (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
+                    (is (= {:data   {"action_id" (t2/select-one-pk 'Action 'public_uuid public_uuid)
                                      "event"     "action_executed"
                                      "source"    "public_form"
                                      "type"      "query"}

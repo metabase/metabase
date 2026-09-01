@@ -22,13 +22,13 @@
                                              (disj broken-transform-ids edited-transform-id)))
                                (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq transforms-to-report)
-                               (->> (t2/select :model/Transform :id [:in transforms-to-report])
+                               (->> (t2/select :model/Transform 'id ['in transforms-to-report])
                                     (filter mi/can-read?)
                                     (map #(select-keys % [:id :name]))))
         broken-card-ids      (set (keys card-errors))
         cards-to-report      (take *max-reported-broken-transforms* broken-card-ids)
         broken-cards         (when (seq cards-to-report)
-                               (->> (t2/select :model/Card :id [:in cards-to-report])
+                               (->> (t2/select :model/Card 'id ['in cards-to-report])
                                     (filter mi/can-read?)
                                     (map #(select-keys % [:id :name]))))]
     {:success             (empty? broken-transform-ids)
@@ -50,7 +50,7 @@
   :feature :none
   [{:keys [id source]}]
   (try
-    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))
+    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform 'id id))
           _                  (api/read-check transform-to-check)
           result             (if (= (keyword (:type source)) :query)
                                (let [database-id      (-> source :query :database)

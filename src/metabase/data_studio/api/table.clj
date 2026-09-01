@@ -204,7 +204,7 @@
       (t2/update! :model/Table [:in table-ids] set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids])]
+      (let [updated-tables (t2/select :model/Table 'id ['in table-ids])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-update {:object  table
                                                       :user-id api/*current-user-id*}))))
@@ -224,9 +224,9 @@
         upstream-ids      (all-upstream-table-ids where)
         downstream-ids    (all-downstream-table-ids where)
         upstream-tables   (when (seq upstream-ids)
-                            (t2/select fields :id [:in upstream-ids]))
+                            (t2/select fields 'id ['in upstream-ids]))
         downstream-tables (when (seq downstream-ids)
-                            (t2/select fields :id [:in downstream-ids]))]
+                            (t2/select fields 'id ['in downstream-ids]))]
     {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
@@ -246,7 +246,7 @@
   (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
         db-ids (sort (set (map :db_id tables)))]
-    (doseq [database (t2/select :model/Database :id [:in db-ids])]
+    (doseq [database (t2/select :model/Database 'id ['in db-ids])]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true
                   driver.settings/*allow-testing-sqlite-connections* true]
@@ -282,7 +282,7 @@
           {:select [:id]
            :from   [(t2/table-name :model/Field)]
            :where  [:in :table_id (map :id tables)]}]
-      (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
+      (t2/delete! (t2/table-name :model/FieldValues) 'field_id ['in field-ids-to-delete-q]))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

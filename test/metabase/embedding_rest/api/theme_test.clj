@@ -128,9 +128,9 @@
                                              {:name     "Test Theme"
                                               :settings {}})
               theme-id (:id created)]
-          (is (t2/exists? :model/EmbeddingTheme :id theme-id))
+          (is (t2/exists? :model/EmbeddingTheme 'id theme-id))
           (is (nil? (mt/user-http-request :crowberto :delete 204 (format "embed-theme/%s" theme-id))))
-          (is (not (t2/exists? :model/EmbeddingTheme :id theme-id))))))
+          (is (not (t2/exists? :model/EmbeddingTheme 'id theme-id))))))
     (testing "returns 404 for non-existent theme"
       (is (= "Not found."
              (mt/user-http-request :crowberto :delete 404 "embed-theme/999999"))))
@@ -139,7 +139,7 @@
                                                            :settings {}}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "embed-theme/%s" theme-id))))
-        (is (t2/exists? :model/EmbeddingTheme :id theme-id))))))
+        (is (t2/exists? :model/EmbeddingTheme 'id theme-id))))))
 
 (deftest copy-theme-test
   (testing "POST /api/embed-theme/:id/copy"
@@ -159,8 +159,8 @@
           (is (= original-settings (:settings response)))
           (is (not= theme-id (:id response)))
           (testing "both themes exist in the database"
-            (is (t2/exists? :model/EmbeddingTheme :id theme-id))
-            (is (t2/exists? :model/EmbeddingTheme :id (:id response)))))))
+            (is (t2/exists? :model/EmbeddingTheme 'id theme-id))
+            (is (t2/exists? :model/EmbeddingTheme 'id (:id response)))))))
     (testing "returns 404 for non-existent theme"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "embed-theme/999999/copy"))))

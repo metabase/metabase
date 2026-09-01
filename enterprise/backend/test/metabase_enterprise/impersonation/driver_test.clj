@@ -305,13 +305,13 @@
                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
                                        :details details})))]
           (sync/sync-database! database {:scan :schema})
-          (t2/update! :model/Database :id (u/the-id database)
+          (t2/update! :model/Database 'id (u/the-id database)
                       {:details (cond-> (impersonation-details driver source-db)
                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
                                   (assoc :role (impersonation-default-role driver)))})
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
           (driver/notify-database-updated driver database)
-          (let [database (t2/select-one :model/Database :id (u/the-id database))]
+          (let [database (t2/select-one :model/Database 'id (u/the-id database))]
             (swap! impersonation-databases assoc cache-key database)
             database)))))
 
@@ -338,7 +338,7 @@
                             ;; the linter's concern is a fixture racing tests that share the rows it touches; these
                             ;; ids were created by this namespace and are deleted after its last test finishes.
                             #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                            (t2/delete! :model/Database :id [:in ids]))))))
+                            (t2/delete! :model/Database 'id ['in ids]))))))
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -392,7 +392,7 @@
                                                        :write_data_details details}]
                 (mt/with-db database
                   (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                    (t2/update! :model/Database :id (mt/id)
+                    (t2/update! :model/Database 'id (mt/id)
                                 (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                   (sync/sync-database! database {:scan :schema})
                   (impersonation.util-test/with-impersonations!
@@ -790,7 +790,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]}))))
         ;; Update the test database with a default role that has full permissions
-        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
+        (t2/update! :model/Database 'id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
@@ -807,7 +807,7 @@
                     (mt/run-mbql-query venues
                       {:aggregation [[:count]]})))))
           (finally
-            (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))
+            (t2/update! :model/Database 'id (mt/id) (update (mt/db) :details dissoc :role))))))))
 
 (deftest persistence-disabled-when-impersonated-test
   ;; Test explicitly with postgres since it supports persistence and impersonation
@@ -829,8 +829,8 @@
                   (jdbc/execute! spec [statement]))
                 (try
                   (let [persisted-info (t2/select-one :model/PersistedInfo
-                                                      :database_id (mt/id)
-                                                      :card_id (:id model))
+                                                      'database_id (mt/id)
+                                                      'card_id (:id model))
                         query          (mt/mbql-query nil
                                          {:aggregation  [:count]
                                           :source-table (str "card__" (:id model))})
@@ -870,9 +870,9 @@
                 (is (=? {:state  "persisted"
                          :active true
                          :error  nil}
-                        (t2/select-one [:model/PersistedInfo :state :active :error]
-                                       :database_id (mt/id)
-                                       :card_id (:id model))))))))))))
+                        (t2/select-one [:model/PersistedInfo 'state 'active 'error]
+                                       'database_id (mt/id)
+                                       'card_id (:id model))))))))))))
 
 (deftest resilient-connection-options-test
   (testing "resilient connections have the correct role set"

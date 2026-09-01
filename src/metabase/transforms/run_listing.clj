@@ -140,8 +140,8 @@
   (let [by-type         (group-by :run_type rows)
         job-ids         (seq (keep :entity_id (get by-type "job")))
         transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
-        job->name       (when job-ids (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
-        transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))]
+        job->name       (when job-ids (t2/select-pk->fn :name :model/TransformJob 'id ['in job-ids]))
+        transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform 'id ['in transform-ids]))]
     (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
                (assoc :name (or (if (= run_type "job")

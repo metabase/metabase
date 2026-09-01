@@ -41,7 +41,7 @@
                     (->> field-ids
                          (partition-all *invalidate-select-batch-size*)
                          (mapcat (fn [batch]
-                                   (t2/select :model/Field :id [:in batch])))))]
+                                   (t2/select :model/Field 'id ['in batch])))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
@@ -51,7 +51,7 @@
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
   [table-id]
-  (u/prog1 (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (u/prog1 (api/check-404 (t2/select :model/Field 'table_id table-id 'semantic_type :type/PK 'active true))
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
@@ -118,7 +118,7 @@
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
         fields      (when (seq field-names)
-                      (t2/select :model/Field :table_id table-id :name [:in field-names]))
+                      (t2/select :model/Field 'table_id table-id 'name ['in field-names]))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)
@@ -151,7 +151,7 @@
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
                                       old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
-                                                                                 :field_id [:in field-ids]))]]
+                                                                                 'field_id ['in field-ids]))]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]

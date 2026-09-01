@@ -49,11 +49,11 @@
      (if table-name
        (when-let [table-id (t2/select-one-pk :model/Table
                                              ;; TODO: this needs to support schemas
-                                             :db_id  (u/the-id database)
-                                             :name   table-name
-                                             :active true)]
+                                             'db_id  (u/the-id database)
+                                             'name   table-name
+                                             'active true)]
          (if field-name
-           (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
+           (t2/update! :model/Field {'name field-name, 'table_id table-id} {k value})
            (t2/update! :model/Table table-id {k value})))
        (t2/update! :model/Database (u/the-id database) {k value})))))
 

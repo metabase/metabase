@@ -17,8 +17,8 @@
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
           (testing "tenant_collection_id is set and references a valid collection"
             (is (some? tenant-collection-id))
-            (is (t2/exists? :model/Collection :id tenant-collection-id)))
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (is (t2/exists? :model/Collection 'id tenant-collection-id)))
+          (let [coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (testing "collection has correct namespace"
               (is (= :tenant-specific (:namespace coll))))
             (testing "collection has correct type"
@@ -33,7 +33,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "My Company Inc" :slug "mycompany"}]
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (is (= "Tenant Collection: My Company Inc" (:name coll)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -45,7 +45,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection child {:name "Child Collection"
                                                     :namespace :tenant-specific
                                                     :location (collection/children-location tenant-coll)}]
@@ -59,7 +59,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)}
@@ -81,7 +81,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}
                        :model/Collection regular-coll {:name "Regular Collection" :location "/"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (testing "returns true for tenant root collection"
               (is (collection/is-dedicated-tenant-collection-or-descendant? tenant-coll)))
             (testing "returns false for regular collection"
@@ -100,7 +100,7 @@
                                       tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}
                        :model/User {tenant-user-id :id} {:tenant_id tenant-id}
                        :model/User {regular-user-id :id} {}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child"
                                                              :namespace "tenant-specific"
                                                              :location (collection/children-location tenant-coll)}
@@ -126,7 +126,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}
                        :model/User {user-id :id} {}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (testing "tenant root collection has no personal_owner_id"
               (is (nil? (:personal_owner_id tenant-coll))))
             (testing "attempting to set personal_owner_id should fail"
@@ -160,8 +160,8 @@
                        :model/Tenant {tenant2-coll-id :tenant_collection_id} {:name "Tenant Two" :slug "tenant2"}
                        :model/Collection regular-coll {:name "Regular Collection" :location "/"}
                        :model/User {tenant-user-id :id} {:tenant_id tenant1-id}]
-          (let [colls [(t2/select-one :model/Collection :id tenant1-coll-id)
-                       (t2/select-one :model/Collection :id tenant2-coll-id)
+          (let [colls [(t2/select-one :model/Collection 'id tenant1-coll-id)
+                       (t2/select-one :model/Collection 'id tenant2-coll-id)
                        regular-coll]
                 localized-colls (collection/maybe-localize-tenant-collection-names colls)]
             (is (= ["Tenant collection: Tenant One"
@@ -185,10 +185,10 @@
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id
                                       tenant-id :id} {:name "My Tenant" :slug "mytenant"}
                        :model/User {tenant-user :id} {:tenant_id tenant-id}]
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
+          (let [coll (t2/select-one :model/Collection 'id tenant-collection-id)
                 localized-coll (collection/maybe-localize-tenant-collection-name coll)]
             (is (= "Tenant collection: My Tenant" (:name localized-coll))))
           (mt/with-current-user tenant-user
-            (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
+            (let [coll (t2/select-one :model/Collection 'id tenant-collection-id)
                   localized-coll (collection/maybe-localize-tenant-collection-name coll)]
               (is (= "Our data" (:name localized-coll))))))))))

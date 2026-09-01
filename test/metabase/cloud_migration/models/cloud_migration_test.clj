@@ -93,7 +93,7 @@
         (#'cloud-migration/migrate! migration)
         (finally
           (task/stop-scheduler!)))
-      (is (< (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 100))
+      (is (< (:progress (t2/select-one :model/CloudMigration 'id (:id migration))) 100))
       (is (not (cloud-migration.settings/read-only-mode))))))
 
 (deftest read-only-login-test

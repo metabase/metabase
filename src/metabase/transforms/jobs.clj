@@ -103,7 +103,7 @@
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [closure-transforms (if (seq dependencies)
-                                 (t2/select :model/Transform :id [:in (keys dependencies)])
+                                 (t2/select :model/Transform 'id ['in (keys dependencies)])
                                  [])]
         (dependencies->plan dependencies closure-transforms)))))
 
@@ -404,9 +404,9 @@
       :else                         {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
-  (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
+  (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag 'job_id job-id)]
     (if (seq tag-ids)
-      (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids])
+      (or (t2/select-fn-set :transform_id :model/TransformTransformTag 'tag_id ['in tag-ids])
           #{})
       #{})))
 
@@ -493,18 +493,18 @@
   (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
     (let [user-ids (map :user_id revisions)
           distinct-user-ids (distinct user-ids)
-          users (t2/select :model/User :id [:in distinct-user-ids] :is_active true)
+          users (t2/select :model/User 'id ['in distinct-user-ids] 'is_active true)
           by-id (u/index-by :id users)]
       ;; maintain order
       (map by-id distinct-user-ids))))
 
 (defn- active-admins
   []
-  (t2/select :model/User :is_superuser true :is_active true))
+  (t2/select :model/User 'is_superuser true 'is_active true))
 
 (defn- transform-creator
   [transform]
-  (t2/select :model/User :id (:creator_id transform) :is_active true))
+  (t2/select :model/User 'id (:creator_id transform) 'is_active true))
 
 (defn- users-to-notify-of-transform-failure [transform]
   (or (seq (take 1 (active-users-to-edit-transform (:id transform))))

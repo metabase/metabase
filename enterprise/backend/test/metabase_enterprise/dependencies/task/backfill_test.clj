@@ -40,10 +40,10 @@
   "Assert that an entity has been processed (not stale, current version)."
   [entity-type entity-id]
   (is (t2/exists? :model/DependencyStatus
-                  :entity_type entity-type
-                  :entity_id entity-id
-                  :stale false
-                  :dependency_analysis_version dependencies.model/current-dependency-analysis-version)
+                  'entity_type entity-type
+                  'entity_id entity-id
+                  'stale false
+                  'dependency_analysis_version dependencies.model/current-dependency-analysis-version)
       (str "Expected " (name entity-type) " " entity-id " to be processed")))
 
 (deftest ^:synchronized backfill-dependency-analysis-test
@@ -61,9 +61,9 @@
             (mark-stale! :card card3-id)
             (let [stale-count (fn []
                                 (t2/count :model/DependencyStatus
-                                          :entity_type :card
-                                          :entity_id [:in [card1-id card2-id card3-id]]
-                                          :stale true))]
+                                          'entity_type :card
+                                          'entity_id ['in [card1-id card2-id card3-id]]
+                                          'stale true))]
               (is (= 3 (stale-count)))
               ;; first run, should process 2 cards
               (is (true? (backfill-dependencies-single-trigger!)))
@@ -89,17 +89,17 @@
           ;; Mark both as stale
           (mark-stale! :card card-id)
           (mark-stale! :transform transform-id)
-          (is (false? (t2/exists? :model/Dependency :from_entity_type :card      :from_entity_id card-id)))
-          (is (false? (t2/exists? :model/Dependency :from_entity_type :transform :from_entity_id transform-id)))
+          (is (false? (t2/exists? :model/Dependency 'from_entity_type :card      'from_entity_id card-id)))
+          (is (false? (t2/exists? :model/Dependency 'from_entity_type :transform 'from_entity_id transform-id)))
           (backfill-dependencies-single-trigger!)
           (assert-processed :card card-id)
           (assert-processed :transform transform-id)
           (is (t2/exists? :model/Dependency
-                          :from_entity_type :card :from_entity_id card-id
-                          :to_entity_type :table :to_entity_id (mt/id :orders)))
+                          'from_entity_type :card 'from_entity_id card-id
+                          'to_entity_type :table 'to_entity_id (mt/id :orders)))
           (is (t2/exists? :model/Dependency
-                          :from_entity_type :transform :from_entity_id transform-id
-                          :to_entity_type :card :to_entity_id card-id)))))))
+                          'from_entity_type :transform 'from_entity_id transform-id
+                          'to_entity_type :card 'to_entity_id card-id)))))))
 
 (deftest ^:synchronized backfill-snippet-test
   (testing "Test that cards with snippets are correctly backfilled"
@@ -123,14 +123,14 @@
           (mark-stale! :card card-id)
           (mark-stale! :snippet snippet-id)
           (is (false? (t2/exists? :model/Dependency
-                                  :from_entity_type :card :from_entity_id card-id
-                                  :to_entity_type :snippet :to_entity_id snippet-id)))
+                                  'from_entity_type :card 'from_entity_id card-id
+                                  'to_entity_type :snippet 'to_entity_id snippet-id)))
           (backfill-dependencies-single-trigger!)
           (assert-processed :card card-id)
           (assert-processed :snippet snippet-id)
           (is (t2/exists? :model/Dependency
-                          :from_entity_type :card :from_entity_id card-id
-                          :to_entity_type :snippet :to_entity_id snippet-id)))))))
+                          'from_entity_type :card 'from_entity_id card-id
+                          'to_entity_type :snippet 'to_entity_id snippet-id)))))))
 
 (deftest ^:synchronized backfill-snippet-in-snippet-test
   (testing "A snippet referencing another snippet produces a snippet->snippet dependency"
@@ -141,14 +141,14 @@
         (mark-stale! :snippet inner-id)
         (mark-stale! :snippet outer-id)
         (is (false? (t2/exists? :model/Dependency
-                                :from_entity_type :snippet :from_entity_id outer-id
-                                :to_entity_type :snippet :to_entity_id inner-id)))
+                                'from_entity_type :snippet 'from_entity_id outer-id
+                                'to_entity_type :snippet 'to_entity_id inner-id)))
         (backfill-dependencies-single-trigger!)
         (assert-processed :snippet inner-id)
         (assert-processed :snippet outer-id)
         (is (t2/exists? :model/Dependency
-                        :from_entity_type :snippet :from_entity_id outer-id
-                        :to_entity_type :snippet :to_entity_id inner-id))))))
+                        'from_entity_type :snippet 'from_entity_id outer-id
+                        'to_entity_type :snippet 'to_entity_id inner-id))))))
 
 (deftest ^:synchronized backfill-snippet-referencing-card-test
   (testing "A snippet referencing a card produces a snippet->card dependency"
@@ -160,13 +160,13 @@
         (mark-stale! :card card-id)
         (mark-stale! :snippet snippet-id)
         (is (false? (t2/exists? :model/Dependency
-                                :from_entity_type :snippet :from_entity_id snippet-id
-                                :to_entity_type :card :to_entity_id card-id)))
+                                'from_entity_type :snippet 'from_entity_id snippet-id
+                                'to_entity_type :card 'to_entity_id card-id)))
         (backfill-dependencies-single-trigger!)
         (assert-processed :snippet snippet-id)
         (is (t2/exists? :model/Dependency
-                        :from_entity_type :snippet :from_entity_id snippet-id
-                        :to_entity_type :card :to_entity_id card-id))))))
+                        'from_entity_type :snippet 'from_entity_id snippet-id
+                        'to_entity_type :card 'to_entity_id card-id))))))
 
 (deftest ^:synchronized backfill-idempotency-test
   (testing "Running the backfill multiple times should be idempotent"
@@ -175,16 +175,16 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
           (mark-stale! :card card-id)
-          (is (false? (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
-                                  :to_entity_type :table :to_entity_id (mt/id :orders))))
+          (is (false? (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id
+                                  'to_entity_type :table 'to_entity_id (mt/id :orders))))
           ;; First run
           (backfill-dependencies-single-trigger!)
           (assert-processed :card card-id)
           ;; Second run - should not change anything
           (backfill-dependencies-single-trigger!)
           (assert-processed :card card-id)
-          (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
-                          :to_entity_type :table :to_entity_id (mt/id :orders))))))))
+          (is (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id
+                          'to_entity_type :table 'to_entity_id (mt/id :orders))))))))
 
 (defn- wait-for-condition
   [predicate timeout-ms]
@@ -212,10 +212,10 @@
                 (mark-stale! :card card2-id)
                 (let [processed? (fn []
                                    (= 2 (t2/count :model/DependencyStatus
-                                                  :entity_type :card
-                                                  :entity_id [:in [card1-id card2-id]]
-                                                  :stale false
-                                                  :dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
+                                                  'entity_type :card
+                                                  'entity_id ['in [card1-id card2-id]]
+                                                  'stale false
+                                                  'dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
                   (is (not (processed?)))
                   (mt/with-premium-features #{:dependencies}
                     (task/init! ::dependencies.backfill/DependencyBackfill)
@@ -264,12 +264,12 @@
                       (fn [_ _] (throw (ex-info "Simulated error" {})))]
           (backfill-dependencies-single-trigger!))
         ;; Entity should still be stale — not processed, not lost
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+        (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
         ;; No dependencies should have been created
-        (is (empty? (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))
+        (is (empty? (t2/select :model/Dependency 'from_entity_type :card 'from_entity_id card-id)))
         ;; Failure recorded in table
         (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
-                                   :entity_type :card :entity_id card-id)))))))
+                                   'entity_type :card 'entity_id card-id)))))))
 
 (deftest ^:synchronized backfill-partial-batch-failure-test
   (testing "A failure on one entity doesn't prevent other entities from being processed"
@@ -291,11 +291,11 @@
             (backfill-dependencies-single-trigger!)))
         ;; Good card should be processed successfully
         (assert-processed :card good-card-id)
-        (is (seq (t2/select :model/Dependency :from_entity_type :card :from_entity_id good-card-id)))
+        (is (seq (t2/select :model/Dependency 'from_entity_type :card 'from_entity_id good-card-id)))
         ;; Bad card should remain stale with failure recorded
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id bad-card-id :stale true))
+        (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id bad-card-id 'stale true))
         (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
-                                   :entity_type :card :entity_id bad-card-id)))))))
+                                   'entity_type :card 'entity_id bad-card-id)))))))
 
 (deftest ^:synchronized backfill-terminal-failure-test
   (testing "Entities should be marked as terminally broken after MAX_RETRIES failures"
@@ -303,7 +303,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+        (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
         (let [compute-attempts (volatile! 0)
               failures (inc @#'dependencies.backfill/max-retries)]
           (with-redefs [env/env (assoc env/env
@@ -318,10 +318,10 @@
             (while (< @compute-attempts failures)
               (backfill-dependencies-single-trigger!))))
         ;; verify card is still stale (not processed)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+        (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
         ;; verify subsequent runs don't process it
         (backfill-dependencies-single-trigger!)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))))))
+        (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))))))
 
 (deftest ^:synchronized backfill-delayed-retry-test
   (testing "Failed entities should be retried after their delay period expires"
@@ -340,15 +340,15 @@
                               (throw (ex-info "Simulated computation error" {:card-id card-id})))
                             ;; Return valid deps on subsequent attempts
                             {:table #{(mt/id :orders)}}))]
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
             ;; first failure - should be put into retry state
             (while (zero? @compute-attempts)
               (backfill-dependencies-single-trigger!))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
             ;; advance time by less than retry delay - should NOT be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
               (backfill-dependencies-single-trigger!))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id 'stale true))
             ;; advance time by more than retry delay - should be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
               (backfill-dependencies-single-trigger!))
@@ -360,13 +360,13 @@
     (mt/with-premium-features #{:dependencies :audit-app}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
-        (let [revision-count-before (t2/count :model/Revision :model "Card" :model_id card-id)
-              deps-before (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+        (let [revision-count-before (t2/count :model/Revision 'model "Card" 'model_id card-id)
+              deps-before (t2/count :model/Dependency 'from_entity_type :card 'from_entity_id card-id)]
           (is (= 0 revision-count-before))
           (is (= 0 deps-before))
           (backfill-dependencies-single-trigger!)
-          (let [revision-count-after (t2/count :model/Revision :model "Card" :model_id card-id)
-                deps-after (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
+          (let [revision-count-after (t2/count :model/Revision 'model "Card" 'model_id card-id)
+                deps-after (t2/count :model/Dependency 'from_entity_type :card 'from_entity_id card-id)]
             (is (= 0 revision-count-after))
             (assert-processed :card card-id)
             (is (= 1 deps-after))))))))
@@ -387,16 +387,16 @@
           (events/publish-event! :event/serdes-load {})
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale true)))
+                             'entity_type :card
+                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'stale true)))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale false
-                             :dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
+                             'entity_type :card
+                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'stale false
+                             'dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
 
 (deftest ^:synchronized backfill-dependencies-on-token-update-test
   (testing "Token update triggers the backfill job (entities remain stale until job runs)"
@@ -414,16 +414,16 @@
           (events/publish-event! :event/set-premium-embedding-token {})
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale true)))
+                             'entity_type :card
+                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'stale true)))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale false
-                             :dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
+                             'entity_type :card
+                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'stale false
+                             'dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
 
 (deftest ^:synchronized backfill-version-outdated-test
   (testing "Entities with outdated version in dependency_status get reprocessed"
@@ -437,8 +437,8 @@
                                              :stale false})
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)
-        (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
-                        :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+        (is (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id
+                        'to_entity_type :table 'to_entity_id (mt/id :orders)))))))
 
 (deftest ^:synchronized backfill-no-status-row-test
   (testing "Entities with no dependency_status row yet get picked up and processed by the backfill"
@@ -448,12 +448,12 @@
         ;; Precondition: the temp card was inserted directly (no :event/card-create), so it has no
         ;; status row at all. This is the case the left-join in instances-for-dependency-calculation
         ;; must catch — guard it so the test can't silently pass without exercising that branch.
-        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+        (is (not (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id))
             "Expected the temp card to start with no dependency_status row")
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)
-        (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
-                        :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+        (is (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id
+                        'to_entity_type :table 'to_entity_id (mt/id :orders)))))))
 
 (deftest ^:synchronized has-stale-or-outdated?-counts-no-status-row-test
   (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the backfill processes"
@@ -464,7 +464,7 @@
           "Expected no pending work after backfilling all existing entities")
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         ;; A card with no status row is pending work, even though no DependencyStatus row exists.
-        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id)))
+        (is (not (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id)))
         (is (true? (deps.dependency-status/has-stale-or-outdated?))
             "Expected pending work: a card with no status row still needs calculation")
         (backfill-dependencies-single-trigger!)
@@ -537,7 +537,7 @@
                                   (backfill-dependencies-single-trigger!)))))
         (testing "and the failure was recorded first, so the next run backs off instead of replaying the batch"
           (let [{:keys [fail_count next_retry_at terminal]}
-                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+                (t2/select-one :model/DependencyStatus 'entity_type :card 'entity_id card-id)]
             (is (= 1 fail_count))
             (is (some? next_retry_at))
             (is (false? terminal))))))))
@@ -558,8 +558,8 @@
       (backfill-dependencies-single-trigger!)
       (deps.dependency-status/record-failure! :card card-id 5 60)
       (is (t2/exists? :model/DependencyStatus
-                      :entity_type :card :entity_id card-id
-                      :terminal false :next_retry_at [:not= nil])
+                      'entity_type :card 'entity_id card-id
+                      'terminal false 'next_retry_at ['not= nil])
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
                           (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
@@ -580,13 +580,13 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+        (is (not (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id card-id))
             "test setup: the card must have no status row, which is what makes it eligible")
         (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
           (backfill-dependencies-single-trigger!))
         (testing "the failure is recorded, so the entity backs off instead of being reselected unchanged"
           (let [{:keys [fail_count next_retry_at]}
-                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+                (t2/select-one :model/DependencyStatus 'entity_type :card 'entity_id card-id)]
             (is (= 1 fail_count))
             (is (some? next_retry_at))))))))
 

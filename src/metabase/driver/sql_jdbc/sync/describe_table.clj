@@ -752,10 +752,10 @@
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
   (let [fields-with-json-unfolding-disabled
-        (->> (t2/select-fn-set :name [:model/Field :name]
-                               :table_id (u/the-id table)
-                               :base_type :type/JSON
-                               :json_unfolding false)
+        (->> (t2/select-fn-set :name [:model/Field 'name]
+                               'table_id (u/the-id table)
+                               'base_type :type/JSON
+                               'json_unfolding false)
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
     (into #{}

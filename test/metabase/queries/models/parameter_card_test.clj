@@ -36,12 +36,12 @@
                                                     :card_id                   card-id}]
     (testing "deletes all ParameterCards for given object when no exclusions"
       (parameter-card/delete-all-for-parameterized-object! "dashboard" 1)
-      (is (nil? (t2/select-one :model/ParameterCard :id pc1-id)))
-      (is (nil? (t2/select-one :model/ParameterCard :id pc2-id)))
-      (is (some? (t2/select-one :model/ParameterCard :id pc3-id))))
+      (is (nil? (t2/select-one :model/ParameterCard 'id pc1-id)))
+      (is (nil? (t2/select-one :model/ParameterCard 'id pc2-id)))
+      (is (some? (t2/select-one :model/ParameterCard 'id pc3-id))))
     (testing "preserves ParameterCards with parameter IDs still in use"
       (parameter-card/delete-all-for-parameterized-object! "dashboard" 2 ["param3"])
-      (is (some? (t2/select-one :model/ParameterCard :id pc3-id))))))
+      (is (some? (t2/select-one :model/ParameterCard 'id pc3-id))))))
 
 (deftest upsert-from-parameters!-insert-test
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -56,13 +56,13 @@
                          :values_source_config {:card_id card-id-2}}]]
         (#'parameter-card/upsert-from-parameters! "dashboard" 1 parameters)
         (let [pc1 (t2/select-one :model/ParameterCard
-                                 :parameterized_object_type "dashboard"
-                                 :parameterized_object_id 1
-                                 :parameter_id "param1")
+                                 'parameterized_object_type "dashboard"
+                                 'parameterized_object_id 1
+                                 'parameter_id "param1")
               pc2 (t2/select-one :model/ParameterCard
-                                 :parameterized_object_type "dashboard"
-                                 :parameterized_object_id 1
-                                 :parameter_id "param2")]
+                                 'parameterized_object_type "dashboard"
+                                 'parameterized_object_id 1
+                                 'parameter_id "param2")]
           (is (= card-id-1 (:card_id pc1)))
           (is (= card-id-2 (:card_id pc2))))))))
 
@@ -86,9 +86,9 @@
                          :values_source_config {:card_id card-id-2}}]]
         (#'parameter-card/upsert-from-parameters! "dashboard" 1 parameters)
         (let [pc (t2/select-one :model/ParameterCard
-                                :parameterized_object_type "dashboard"
-                                :parameterized_object_id 1
-                                :parameter_id "param1")]
+                                'parameterized_object_type "dashboard"
+                                'parameterized_object_id 1
+                                'parameter_id "param1")]
           (is (= card-id-2 (:card_id pc))))))))
 
 (deftest upsert-or-delete-from-parameters!-test
@@ -110,8 +110,8 @@
                          :values_source_config {:card_id card-id-2}}]]
         (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 parameters)
         (let [pcs (t2/select :model/ParameterCard
-                             :parameterized_object_type "dashboard"
-                             :parameterized_object_id 1)]
+                             'parameterized_object_type "dashboard"
+                             'parameterized_object_id 1)]
           (is (= 2 (count pcs)))
           (is (some #(and (= "param1" (:parameter_id %))
                           (= card-id-1 (:card_id %))) pcs))
@@ -129,21 +129,21 @@
                            :values_source_config {:card_id card-id-1}}]]
           (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 parameters)
           (let [pcs (t2/select :model/ParameterCard
-                               :parameterized_object_type "dashboard"
-                               :parameterized_object_id 1)]
+                               'parameterized_object_type "dashboard"
+                               'parameterized_object_id 1)]
             (is (= 1 (count pcs)))
             (is (= "param1" (:parameter_id (first pcs))))
             (is (= card-id-1 (:card_id (first pcs))))))))
     (testing "handles nil parameters gracefully"
       (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 nil)
       (is (not (t2/exists? :model/ParameterCard
-                           :parameterized_object_type "dashboard"
-                           :parameterized_object_id 1))))
+                           'parameterized_object_type "dashboard"
+                           'parameterized_object_id 1))))
     (testing "handles empty parameters list"
       (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 [])
       (is (not (t2/exists? :model/ParameterCard
-                           :parameterized_object_type "dashboard"
-                           :parameterized_object_id 1))))
+                           'parameterized_object_type "dashboard"
+                           'parameterized_object_id 1))))
     (testing "parameters without required fields"
       (let [parameters [{:id                   "param1"
                          :type                 :test
@@ -168,8 +168,8 @@
                          :values_source_config {:card_id card-id-1}}]]
         (parameter-card/upsert-or-delete-from-parameters! "card" 1 parameters)
         (let [pcs (t2/select :model/ParameterCard
-                             :parameterized_object_type "card"
-                             :parameterized_object_id 1)]
+                             'parameterized_object_type "card"
+                             'parameterized_object_id 1)]
           (is (= 1 (count pcs)))
           (is (= "param1" (:parameter_id (first pcs))))
           (is (= card-id-1 (:card_id (first pcs)))))))))

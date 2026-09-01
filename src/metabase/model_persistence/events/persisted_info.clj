@@ -20,8 +20,8 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (= (:type card) :model)
                (model-persistence.settings/persisted-models-enabled)
-               (get-in (t2/select-one :model/Database :id (:database_id card)) [:settings :persist-models-enabled])
-               (nil? (t2/select-one-fn :id :model/PersistedInfo :card_id (:id card))))
+               (get-in (t2/select-one :model/Database 'id (:database_id card)) [:settings :persist-models-enabled])
+               (nil? (t2/select-one-fn :id :model/PersistedInfo 'card_id (:id card))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
       (log/warnf "Failed to process persisted-info event. %s: %s" topic (ex-message e)))))

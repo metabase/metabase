@@ -448,11 +448,11 @@
         (binding [api/*current-user-id* other-id]
           (metabot.persistence/start-turn! convo-id "slackbot" msg :user-id other-id))
         (is (= owner-id
-               (:user_id (t2/select-one :model/MetabotConversation :id convo-id)))
+               (:user_id (t2/select-one :model/MetabotConversation 'id convo-id)))
             "originator user_id must not be overwritten when a second user writes to the same conversation")
         (finally
-          (t2/delete! :model/MetabotMessage :conversation_id convo-id)
-          (t2/delete! :model/MetabotConversation :id convo-id))))))
+          (t2/delete! :model/MetabotMessage 'conversation_id convo-id)
+          (t2/delete! :model/MetabotConversation 'id convo-id))))))
 
 (deftest fork-conversation-copies-thread-up-to-target-test
   (testing "POST /api/metabot/conversations/:id/fork clones the thread up to and including the target"
@@ -493,7 +493,7 @@
             (testing "only the thread up to and including the target is copied"
               (is (= ["hi" "hello"] (mapv :message (:messages response)))))
             (let [rows        (metabot.persistence/live-messages new-id)
-                  orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage :external_id a1)]
+                  orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage 'external_id a1)]
               (testing "cloned rows are fresh copies"
                 (is (= 2 (count rows)))
                 (is (= [:user :assistant] (mapv :role rows)))
@@ -507,8 +507,8 @@
             (testing "the original conversation is untouched"
               (is (= 4 (count (metabot.persistence/live-messages convo-id)))))
             (finally
-              (t2/delete! :model/MetabotMessage :conversation_id new-id)
-              (t2/delete! :model/MetabotConversation :id new-id))))))))
+              (t2/delete! :model/MetabotMessage 'conversation_id new-id)
+              (t2/delete! :model/MetabotConversation 'id new-id))))))))
 
 (deftest fork-conversation-validation-test
   (testing "POST /api/metabot/conversations/:id/fork rejects invalid fork targets"
@@ -581,20 +581,20 @@
                                                              {:message_id a1}))]
           (try
             (is (= convo-id (t2/select-one-fn :forked_from_conversation_id
-                                              :model/MetabotConversation :id new-id)))
-            (t2/delete! :model/MetabotConversation :id convo-id)
+                                              :model/MetabotConversation 'id new-id)))
+            (t2/delete! :model/MetabotConversation 'id convo-id)
             (testing "the fork outlives its origin"
-              (is (some? (t2/select-one :model/MetabotConversation :id new-id)))
+              (is (some? (t2/select-one :model/MetabotConversation 'id new-id)))
               (is (= 2 (count (metabot.persistence/live-messages new-id)))))
             (testing "the dangling origin link is nulled rather than left pointing at a deleted row"
               (is (nil? (t2/select-one-fn :forked_from_conversation_id
-                                          :model/MetabotConversation :id new-id))))
+                                          :model/MetabotConversation 'id new-id))))
             (testing "copied messages stay marked as copies so analytics keeps excluding them"
               (is (every? :forked_from_message_id
-                          (t2/select :model/MetabotMessage :conversation_id new-id))))
+                          (t2/select :model/MetabotMessage 'conversation_id new-id))))
             (finally
-              (t2/delete! :model/MetabotMessage :conversation_id new-id)
-              (t2/delete! :model/MetabotConversation :id new-id))))))))
+              (t2/delete! :model/MetabotMessage 'conversation_id new-id)
+              (t2/delete! :model/MetabotConversation 'id new-id))))))))
 
 (deftest record-saved-entity-test
   (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with its origin stamped"
@@ -612,8 +612,8 @@
             (is (= {:metabot_conversation_id convo-id
                     :metabot_chart_id        "chart-1"
                     :display                 :bar}
-                   (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id :display]
-                                  :id (:id created))))
+                   (t2/select-one [:model/Card 'metabot_conversation_id 'metabot_chart_id 'display]
+                                  'id (:id created))))
             (testing "the conversation detail lists the saved entity"
               (is (= [{:card_id (:id created) :chart_id "chart-1"}]
                      (:saved_entities
@@ -642,7 +642,7 @@
                                             :display       "bar"
                                             :dashboard_id  dash-id
                                             :collection_id coll-id}})
-          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))))))
+          (is (zero? (t2/count :model/Card 'metabot_conversation_id convo-id))))))))
 
 (deftest record-saved-entity-permissions-test
   (let [user-id (mt/user->id :crowberto)
@@ -657,7 +657,7 @@
           (mt/user-http-request :lucky :post 403
                                 (str "metabot/conversations/" convo-id "/saved-entity")
                                 body)
-          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))
+          (is (zero? (t2/count :model/Card 'metabot_conversation_id convo-id))))
         (testing "a nonexistent conversation 404s"
           (mt/user-http-request :crowberto :post 404
                                 (str "metabot/conversations/" (random-uuid) "/saved-entity")
@@ -675,7 +675,7 @@
                                                :card     {:name          "Venues"
                                                           :dataset_query (assoc (venues-query) :a 1 :a/b 2)
                                                           :display       "bar"}})
-                stored  (:dataset_query (t2/select-one :model/Card :id (:id created)))]
+                stored  (:dataset_query (t2/select-one :model/Card 'id (:id created)))]
             (is (= :mbql/query (:lib/type stored)))
             (is (not (contains? stored :a)))
             (is (not (contains? stored :a/b)))))))))

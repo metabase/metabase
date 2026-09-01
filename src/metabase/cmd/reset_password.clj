@@ -12,7 +12,7 @@
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
   [email-address]
   (let [{user-id :id, active? :is_active}
-        (or (t2/select-one [:model/User :id :is_active], :%lower.email (u/lower-case-en email-address))
+        (or (t2/select-one [:model/User 'id 'is_active], '%lower.email (u/lower-case-en email-address))
             (throw (Exception. (str (deferred-trs "No user found with email address ''{0}''. " email-address)
                                     (deferred-trs "Please check the spelling and try again.")))))]
     (when-not active?

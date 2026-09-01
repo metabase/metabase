@@ -88,7 +88,7 @@
   after-commit path deletes each row once it's published). A non-zero value means publishes are being
   left for the recovery sweep, i.e. the backend couldn't keep up at commit time."
   [ch]
-  (t2/count :queue_message_outbox :queue_name (name ch)))
+  (t2/count :queue_message_outbox 'queue_name (name ch)))
 
 (defn- pct [sorted p]
   (when (seq sorted)

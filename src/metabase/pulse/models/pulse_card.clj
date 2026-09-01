@@ -16,7 +16,7 @@
   "Return the next available `pulse_card.position` for the given `pulse`"
   [pulse-id]
   {:pre [(integer? pulse-id)]}
-  (-> (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id)
+  (-> (t2/select-one [:model/PulseCard [:%max.position :max]] 'pulse_id pulse-id)
       :max
       (some-> inc)
       (or 0)))

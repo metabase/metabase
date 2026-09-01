@@ -90,7 +90,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! :model/Dimension :id dimension-id))))
+      (t2/delete! :model/Dimension 'id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -113,7 +113,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (t2/delete! :model/Dimension :id old-dim-id))))
+      (t2/delete! :model/Dimension 'id old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
@@ -123,8 +123,8 @@
   (when (not= new-json-unfolding (:json_unfolding old-field))
     (if new-json-unfolding
       (let [update-result (t2/update! :model/Field
-                                      :table_id (:table_id old-field)
-                                      :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                                      'table_id (:table_id old-field)
+                                      'nfc_path ['like (str "[\"" (:name old-field) "\",%]")]
                                       {:active true})]
         (when (zero? update-result)
           ;; Sync the table if no nested fields exist. This means the table hasn't previously
@@ -133,8 +133,8 @@
           (let [table (field/table old-field)]
             (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
       (t2/update! :model/Field
-                  :table_id (:table_id old-field)
-                  :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                  'table_id (:table_id old-field)
+                  'nfc_path ['like (str "[\"" (:name old-field) "\",%]")]
                   {:active false})))
   nil)
 
@@ -189,7 +189,7 @@
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
-      (t2/update! :model/Dimension :field_id id {:name display-name}))
+      (t2/update! :model/Dimension 'field_id id {:name display-name}))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
@@ -211,7 +211,7 @@
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (-> (t2/select-one :model/Field :id id)
+    (u/prog1 (-> (t2/select-one :model/Field 'id id)
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
@@ -255,7 +255,7 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (let [existing-dimension (t2/select-one :model/Dimension :field_id id)]
+  (let [existing-dimension (t2/select-one :model/Dimension 'field_id id)]
     (check-can-point-at-field! id human-readable-field-id
                                (:human_readable_field_id existing-dimension)
                                :human_readable_field_id)
@@ -269,7 +269,7 @@
                    :type                    dimension-type
                    :name                    dimension-name
                    :human_readable_field_id human-readable-field-id})))
-  (t2/select-one :model/Dimension :field_id id))
+  (t2/select-one :model/Dimension 'field_id id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -280,7 +280,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
-  (t2/delete! :model/Dimension :field_id id)
+  (t2/delete! :model/Dimension 'field_id id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -293,7 +293,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [field (api/query-check (t2/select-one :model/Field :id id))]
+  (let [field (api/query-check (t2/select-one :model/Field 'id id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -345,7 +345,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
-  (let [field (api/write-check (t2/select-one :model/Field :id id))]
+  (let [field (api/write-check (t2/select-one :model/Field 'id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -365,7 +365,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
+  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field 'id id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -384,8 +384,8 @@
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
-  (let [field        (api/check-404 (t2/select-one :model/Field :id id))
-        search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
+  (let [field        (api/check-404 (t2/select-one :model/Field 'id id))
+        search-field (api/check-404 (t2/select-one :model/Field 'id search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
     (parameters.field/search-values field search-field value (request/limit))))
@@ -414,4 +414,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
+  (-> (t2/select-one :model/Field 'id id) api/read-check xrays/related))

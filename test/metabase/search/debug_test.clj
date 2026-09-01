@@ -56,7 +56,7 @@
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {card-id :id} {:name "Quarterly Revenue"}]
           (search/reindex! {:async? false :in-place? true})
-          (t2/delete! (search.index/active-table) :model "card" :model_id (str card-id))
+          (t2/delete! (search.index/active-table) 'model "card" 'model_id (str card-id))
           (mt/with-test-user :crowberto
             (is (=? {:type :missing-from-index :details {:active-table some?}}
                     (diagnose {:search-string "quarterly"} "card" card-id)))))))))

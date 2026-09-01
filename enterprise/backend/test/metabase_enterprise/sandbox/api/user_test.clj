@@ -33,9 +33,9 @@
         (testing "... even if they are a group manager"
           (mt/with-premium-features #{:advanced-permissions :sandboxes}
             (let [membership (t2/select-one :model/PermissionsGroupMembership
-                                            :group_id (u/the-id &group)
-                                            :user_id (mt/user->id :rasta))]
-              (t2/update! :model/PermissionsGroupMembership :id (:id membership)
+                                            'group_id (u/the-id &group)
+                                            'user_id (mt/user->id :rasta))]
+              (t2/update! :model/PermissionsGroupMembership 'id (:id membership)
                           {:is_group_manager true}))
             (let [result (mt/user-http-request :rasta :get 200 "user/recipients")]
               (is (= ["rasta@metabase.com"]
@@ -103,12 +103,12 @@
         [:model/User {id :id} {}]
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}
-               (t2/select-one-fn :login_attributes :model/User :id id)))))
+               (t2/select-one-fn :login_attributes :model/User 'id id)))))
     (testing "404 for API-key pseudo-users; attributes cannot be set on them (UXW-4240)"
       (mt/with-temp [:model/User {id :id} {:type :api-key}]
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})))
-        (is (nil? (t2/select-one-fn :login_attributes :model/User :id id)))))))
+        (is (nil? (t2/select-one-fn :login_attributes :model/User 'id id)))))))
 
 (deftest attributes-endpoint-includes-jwt-attributes-test
   (testing "GET /api/mt/user/attributes includes keys from jwt_attributes"

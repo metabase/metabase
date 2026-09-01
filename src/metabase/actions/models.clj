@@ -85,7 +85,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (t2/select-one-fn :type [:model/Card :type :card_schema] :id model-id) :model)
+  (when-not (= (t2/select-one-fn :type [:model/Card 'type 'card_schema] 'id model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -98,14 +98,14 @@
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed changes)
     (if archived?
-      (t2/delete! :model/DashboardCard :action_id id)
+      (t2/delete! :model/DashboardCard 'action_id id)
       (check-model-is-not-a-saved-question model-id))))
 
 (mu/defmethod mi/perms-objects-set :model/Action :- [:set {:min 1} :string]
   [instance      :- [:map
                      [:model_id pos-int?]]
    read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (t2/select-one :model/Card 'id (:model_id instance)) read-or-write))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
@@ -180,7 +180,7 @@
               existing-model (type->model (:type existing-action))]
           (if (and (:type updates) (not= (:type updates) (:type existing-action)))
             (let [new-model (type->model (:type updates))]
-              (t2/delete! existing-model :action_id id)
+              (t2/delete! existing-model 'action_id id)
               (t2/insert! new-model (assoc type-row :action_id id)))
             (t2/update! existing-model id type-row)))))))
 
@@ -195,14 +195,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (t2/select :model/QueryAction :action_id [:in (map :id actions)])
+    (let [query-actions (t2/select :model/QueryAction 'action_id ['in (map :id actions)])
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (t2/select :model/HTTPAction :action_id [:in (map :id actions)])
+    (let [http-actions (t2/select :model/HTTPAction 'action_id ['in (map :id actions)])
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -215,7 +215,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (t2/select :model/ImplicitAction :action_id [:in (map :id actions)])
+    (let [implicit-actions (t2/select :model/ImplicitAction 'action_id ['in (map :id actions)])
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -248,7 +248,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :fields))]
+                 (t2/hydrate (t2/select :model/Table 'id ['in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -336,8 +336,8 @@
                                            :type/Temporal :date
                                            :type/Boolean  :boolean
                                            :string)}))
-                        [:model/Field :id :base_type :display_name :description]
-                        :id [:in field-ids]))))
+                        [:model/Field 'id 'base_type 'display_name 'description]
+                        'id ['in field-ids]))))
 
 (defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
   (let [param-ids          (map :id implicit-params)
@@ -386,7 +386,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (t2/select :model/Card :id [:in implicit-action-model-ids])))
+                                          (t2/select :model/Card 'id ['in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -440,7 +440,7 @@
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
-  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard 'id (u/the-id dashcard-or-dashcard-id))
            (select-action :id)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
@@ -502,7 +502,7 @@
    (concat
     (when model_id [[{:model "Card" :id model_id}]])
     (when (= type :query)
-      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction :action_id id)]
+      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction 'action_id id)]
         (concat
          (when database_id [[{:model "Database" :id database_id}]])
          (serdes/mbql-deps true dataset_query)))))))

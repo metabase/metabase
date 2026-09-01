@@ -194,7 +194,7 @@
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
               (testing "child card initially points to old model"
-                (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card 'id child-id)
                                       [:stages 0 :source-card]))))
               (let [progress-log (atom [])
                     progress     (reify replacement.protocols/IRunnerProgress
@@ -207,7 +207,7 @@
                                    (fail-run! [_ _]))]
                 (replacement.runner/run-swap-source! [:card old-id] [:card new-id] progress)
                 (testing "child card's source-card is updated to new model"
-                  (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                  (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card 'id child-id)
                                         [:stages 0 :source-card]))))
                 (testing "progress was tracked"
                   (is (some #(= :set-total (first %)) @progress-log)
@@ -259,10 +259,10 @@
                     (testing "failure details are in ex-data"
                       (is (= 1 (count (:failures (ex-data ex))))))
                     (testing "child-2 was still swapped successfully"
-                      (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-2-id)
+                      (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card 'id child-2-id)
                                             [:stages 0 :source-card]))))
                     (testing "child-1 retains original source (swap failed)"
-                      (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-1-id)
+                      (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card 'id child-1-id)
                                             [:stages 0 :source-card]))))))))))))))
 
 (deftest copy-model-metadata-overrides!-test
@@ -300,16 +300,16 @@
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (testing "Field records are updated with overrides from model metadata"
-        (let [field-1 (t2/select-one :model/Field :id field-1-id)
-              field-2 (t2/select-one :model/Field :id field-2-id)]
+        (let [field-1 (t2/select-one :model/Field 'id field-1-id)
+              field-2 (t2/select-one :model/Field 'id field-2-id)]
           (is (= "Order Total" (:display_name field-1)))
           (is (= "The total amount" (:description field-1)))
           (is (= :type/Currency (:semantic_type field-1)))
           (is (= "Order Date" (:display_name field-2)))
           (is (= :type/CreationTimestamp (:semantic_type field-2)))))
       (testing "FieldUserSettings are created so overrides survive sync"
-        (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
-              fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
+        (let [fus-1 (t2/select-one :model/FieldUserSettings 'field_id field-1-id)
+              fus-2 (t2/select-one :model/FieldUserSettings 'field_id field-2-id)]
           (is (some? fus-1))
           (is (= "Order Total" (:display_name fus-1)))
           (is (= "The total amount" (:description fus-1)))
@@ -343,10 +343,10 @@
                                              :base_type                 "type/Integer"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (let [field (t2/select-one :model/Field :id field-id)]
+      (let [field (t2/select-one :model/Field 'id field-id)]
         (is (= "Product ID" (:display_name field)))
         (is (= "The product identifier" (:description field))))
-      (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
+      (let [fus (t2/select-one :model/FieldUserSettings 'field_id field-id)]
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))
         (is (= "The product identifier" (:description fus)))))))

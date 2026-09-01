@@ -16,17 +16,17 @@
   "Sets the full (unrestricted) FieldValues of `field-id` to `values` for the duration of `thunk`.
   Restores whatever sync left behind, and deletes any per-role FieldValues the body created."
   [field-id values thunk]
-  (let [existing (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+  (let [existing (t2/select-one :model/FieldValues 'field_id field-id 'type :full)]
     (try
       (if existing
         (t2/update! :model/FieldValues (:id existing) {:values values, :last_used_at :%now})
         (t2/insert! :model/FieldValues {:field_id field-id, :type :full, :values values, :last_used_at :%now}))
       (thunk)
       (finally
-        (t2/delete! :model/FieldValues :field_id field-id :type :advanced)
+        (t2/delete! :model/FieldValues 'field_id field-id 'type :advanced)
         (if existing
           (t2/update! :model/FieldValues (:id existing) (select-keys existing [:values :last_used_at]))
-          (t2/delete! :model/FieldValues :field_id field-id :type :full))))))
+          (t2/delete! :model/FieldValues 'field_id field-id 'type :full))))))
 
 (defn- column-comment
   "Returns the DDL comment line `ddl` carries for `col-name`, or nil if there isn't one."
@@ -58,7 +58,7 @@
                      "the price column gets a DDL comment with sample values")
                  (is (not (str/includes? (str comment) "-11"))
                      "values cached for the unrestricted role are not sent to the LLM")
-                 (is (t2/exists? :model/FieldValues :field_id field-id :type :advanced)
+                 (is (t2/exists? :model/FieldValues 'field_id field-id 'type :advanced)
                      "values are fetched and cached per impersonation role instead"))))))))))
 
 (deftest schema-context-omits-fingerprints-for-impersonated-users-test

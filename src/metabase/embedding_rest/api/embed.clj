@@ -80,7 +80,7 @@
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (api.embed.common/unsigned-token->card-id unsigned)]
-    (api.embed.common/check-embedding-enabled-for-card (api/check-404 (t2/select-one [:model/Card :enable_embedding :archived] :id card-id)))
+    (api.embed.common/check-embedding-enabled-for-card (api/check-404 (t2/select-one [:model/Card 'enable_embedding 'archived] 'id card-id)))
     (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn ^:private run-query-for-unsigned-token-async
@@ -164,7 +164,7 @@
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
-    (api.embed.common/check-embedding-enabled-for-dashboard (api/check-404 (t2/select-one [:model/Dashboard :enable_embedding :archived] :id dashboard-id)))
+    (api.embed.common/check-embedding-enabled-for-dashboard (api/check-404 (t2/select-one [:model/Dashboard 'enable_embedding 'archived] 'id dashboard-id)))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 

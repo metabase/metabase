@@ -187,7 +187,7 @@
               (check-impersonation! "row_c" [["c"]]))))))))
 
 (defn- with-ssh-tunnel*! [tunnel-details f]
-  (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
+  (let [base-details (t2/select-one-fn :details 'Database 'id (mt/id))]
     ;; Set up SSH tunnel
     (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
     ;; Discard any existing connection pool to make sure the new one uses it.

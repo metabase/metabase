@@ -74,9 +74,9 @@
         [:model/MetabotConversation {old-id :id} (conversation-attrs user-id (t/minus now (t/days 200)))
          :model/MetabotMessage      {msg-id :id} (message-attrs old-id (t/minus now (t/days 200)))]
         (#'metabot-conversation-trimmer/trim-old-conversations!)
-        (is (empty? (t2/select-fn-set :id :model/MetabotConversation :id old-id))
+        (is (empty? (t2/select-fn-set :id :model/MetabotConversation 'id old-id))
             "expired conversation deleted")
-        (is (empty? (t2/select-fn-set :id :model/MetabotMessage :id msg-id))
+        (is (empty? (t2/select-fn-set :id :model/MetabotMessage 'id msg-id))
             "messages of expired conversation cascaded away")))))
 
 (deftest mixed-age-messages-in-old-conversation-test
@@ -88,6 +88,6 @@
          :model/MetabotMessage      {old-msg :id}     (message-attrs old-id (t/minus now (t/days 200)))
          :model/MetabotMessage      {fresh-msg :id}   (message-attrs old-id now)]
         (#'metabot-conversation-trimmer/trim-old-conversations!)
-        (is (empty? (t2/select-fn-set :id :model/MetabotConversation :id old-id)))
+        (is (empty? (t2/select-fn-set :id :model/MetabotConversation 'id old-id)))
         (is (empty? (t2/select-fn-set :id :model/MetabotMessage
                                       {:where [:in :id [old-msg fresh-msg]]})))))))

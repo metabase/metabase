@@ -31,10 +31,10 @@
       (thunk db))))
 
 (defn- table-id [db table-name]
-  (t2/select-one-pk :model/Table :db_id (:id db) :name table-name))
+  (t2/select-one-pk :model/Table 'db_id (:id db) 'name table-name))
 
 (defn- field-id [db table-name field-name]
-  (t2/select-one-pk :model/Field :table_id (table-id db table-name) :name field-name))
+  (t2/select-one-pk :model/Field 'table_id (table-id db table-name) 'name field-name))
 
 (defn- rows [query]
   (mt/rows (qp/process-query query)))

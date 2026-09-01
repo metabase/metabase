@@ -88,7 +88,7 @@
         ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
         ;; in the database or schema, so they show correctly in the UI.
         tables (when (or (keyword? db-perm) (keyword? schema-perm))
-                 (t2/select [:model/Table :id :db_id :schema]
+                 (t2/select [:model/Table 'id 'db_id 'schema]
                             {:where [:and
                                      [:= :db_id db-id]
                                      (when (keyword? schema-perm)
@@ -142,7 +142,7 @@
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (not-empty (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+     (when-let [result-metadata (not-empty (t2/select-one-fn :result_metadata :model/Card 'id card-id))]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- ::lib.schema.id/table result-metadata-columns]
@@ -181,8 +181,8 @@
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
   Card cannot add fields or change types vs. the original Table."
   [card-id new-result-metadata]
-  (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox :id :table_id] :card_id card-id))]
-    (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+  (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox 'id 'table_id] 'card_id card-id))]
+    (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card 'id card-id)]
       (when-not (= original-result-metadata new-result-metadata)
         (doseq [{table-id :table_id} gtaps-using-this-card]
           (try
@@ -226,7 +226,7 @@
            (t2/update! :model/Sandbox
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (let [updated-sandbox (t2/select-one :model/Sandbox :id id)]
+         (let [updated-sandbox (t2/select-one :model/Sandbox 'id id)]
            (events/publish-event! :event/sandbox-update
                                   {:object updated-sandbox
                                    :user-id api/*current-user-id*})

@@ -26,7 +26,7 @@
                                     {:distinct_count dc})
                                   (when (some? (get-in field [:fingerprint :global :nil%]))
                                     {:nil_percent (get-in field [:fingerprint :global :nil%])}))))))
-        (t2/select :model/Field :table_id table-id :active true)))
+        (t2/select :model/Field 'table_id table-id 'active true)))
 
 (defn- build-table-info
   "Build a table info map with fields from a real table."

@@ -30,8 +30,8 @@
   "Returns the most recent view for a given user and model ID"
   [user-id model-id]
   (t2/select-one :model/ViewLog
-                 :user_id user-id
-                 :model_id model-id
+                 'user_id user-id
+                 'model_id model-id
                  {:order-by [[:id :desc]]}))
 
 (deftest card-read-ee-test
@@ -85,7 +85,7 @@
         (is (nil? (latest-view (u/id user) (u/id question)))))
       (testing "A non-ad-hoc card-query on a model is not recorded (downloads and card-read paths are excluded)"
         (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :csv-download})
-        (is (= 1 (t2/count :model/ViewLog :user_id (u/id user) :model_id (u/id model)))
+        (is (= 1 (t2/count :model/ViewLog 'user_id (u/id user) 'model_id (u/id model)))
             "only the ad-hoc view is recorded")))))
 
 (deftest collection-read-ee-test
@@ -131,7 +131,7 @@
 (deftest table-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User user {}]
-      (let [table (t2/select-one :model/Table :id (mt/id :users))]
+      (let [table (t2/select-one :model/Table 'id (mt/id :users))]
         (testing "A basic table read event is recorded in EE"
           (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
           (is (partial=
@@ -393,7 +393,7 @@
   "Returns the most recent QueryExecution for a given card ID."
   [card-id]
   (t2/select-one :model/QueryExecution
-                 :card_id card-id
+                 'card_id card-id
                  {:order-by [[:id :desc]]}))
 
 (deftest query-execution-tenant-id-test

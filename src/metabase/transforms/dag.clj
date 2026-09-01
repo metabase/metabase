@@ -57,7 +57,7 @@
 
 (defn- full-transforms [ids]
   (if (seq ids)
-    (t2/select :model/Transform :id [:in ids])
+    (t2/select :model/Transform 'id ['in ids])
     []))
 
 (defn- dag-run-plan

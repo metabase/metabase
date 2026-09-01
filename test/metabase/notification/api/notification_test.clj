@@ -477,7 +477,7 @@
             (is (=? {:active     false
                      :payload_id payload-id}
                     (t2/select-one :model/Notification notification-id)))
-            (is (true? (t2/exists? :model/NotificationCard :id payload-id)))))
+            (is (true? (t2/exists? :model/NotificationCard 'id payload-id)))))
         (testing "a body naming a different notification id is ignored - the URL row is updated in place"
           (is (=? {:id notification-id}
                   (put! 200 (assoc notification :id (inc notification-id)))))
@@ -487,9 +487,9 @@
         (testing "a body payload naming a different payload row is ignored - the payload keeps its primary key"
           (is (=? {:id notification-id}
                   (put! 200 (assoc-in notification [:payload :id] (inc payload-id)))))
-          (is (true? (t2/exists? :model/NotificationCard :id payload-id))))
+          (is (true? (t2/exists? :model/NotificationCard 'id payload-id))))
         (testing "no orphan payload rows were created along the way"
-          (is (= 1 (t2/count :model/NotificationCard :card_id card-id))))))))
+          (is (= 1 (t2/count :model/NotificationCard 'card_id card-id))))))))
 
 (deftest put-creator-id-permissions-test
   (testing "PUT /api/notification/:id and creator_id"
@@ -678,7 +678,7 @@
     (mt/with-user-in-groups [group {:name "test notification perm"}
                              user  [group]]
       (notification.tu/with-card-notification
-        [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
+        [notification {:card         {:collection_id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :rasta))}
                        :notification {:creator_id (mt/user->id :rasta)}}]
         (let [update!                     (fn [user-or-id expected-status]
                                             ;; This test exercises card-view + subscription permissions, not owner
@@ -695,7 +695,7 @@
                                             (t2/update! :notification (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card (-> notification :payload :card_id)
-                                                        {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
+                                                        {:collection_id (t2/select-one-pk :model/Collection 'personal_owner_id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
               (update! :crowberto 200))
@@ -777,7 +777,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/ChannelTemplate {system-template-id :id} notification.tu/channel-template-email-with-handlebars-body]
         (notification.tu/with-card-notification
-          [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
+          [notification {:card         {:collection_id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :rasta))}
                          :notification {:creator_id (mt/user->id :rasta)}
                          :handlers     [{:channel_type :channel/email
                                          :template_id  system-template-id

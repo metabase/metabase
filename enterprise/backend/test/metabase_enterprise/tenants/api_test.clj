@@ -21,14 +21,14 @@
       (mt/user-http-request :crowberto :post 200 "ee/tenant/"
                             {:name "My Tenant"
                              :slug "my-tenant"})
-      (is (t2/exists? :model/Tenant :name "My Tenant")))))
+      (is (t2/exists? :model/Tenant 'name "My Tenant")))))
 
 (deftest duplicate-tenant-names-error-test
   (testing "Duplicate names results in an error"
     (mt/with-model-cleanup [:model/Tenant]
       (mt/user-http-request :crowberto :post 200 "ee/tenant/"
                             {:name "My Tenant" :slug "my-tenant"})
-      (is (t2/exists? :model/Tenant :name "My Tenant"))
+      (is (t2/exists? :model/Tenant 'name "My Tenant"))
       (is (= "This tenant name or slug is already taken."
              (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                                    {:name "My Tenant" :slug "foo"})))
@@ -213,7 +213,7 @@
                  :model/User {user-id :id} {:tenant_id tenant-id}
                  :model/User {other-user-id :id} {:tenant_id tenant-id}]
     (let [active? (fn [user-id]
-                    (t2/select-one-fn :is_active :model/User :id user-id))]
+                    (t2/select-one-fn :is_active :model/User 'id user-id))]
       ;; setup: deactivate "other user", do a sanity check to make sure one is active, one is not
       (mt/user-http-request :crowberto :delete 200 (str "user/" other-user-id))
       (testing "Sanity check, user starts activated"
@@ -244,7 +244,7 @@
                                       "key2" "value2"
                                       "environment" "production"}}]
         (mt/user-http-request :crowberto :post 200 "ee/tenant/" tenant-data)
-        (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Attributes")]
+        (let [created-tenant (t2/select-one :model/Tenant 'name "Tenant with Attributes")]
           (is (some? created-tenant))
           (is (= {"key1" "value1"
                   "key2" "value2"
@@ -259,7 +259,7 @@
                          :attributes {:region "us-east"
                                       :tier "premium"}}]
         (mt/user-http-request :crowberto :post 200 "ee/tenant/" tenant-data)
-        (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Keyword Attrs")]
+        (let [created-tenant (t2/select-one :model/Tenant 'name "Tenant with Keyword Attrs")]
           (is (some? created-tenant))
           ;; Keywords are converted to strings in the JSON storage
           (is (= {"region" "us-east"
@@ -278,7 +278,7 @@
         (is (contains? (:specific-errors response) :attributes))
         (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
         (testing "nothing is written"
-          (is (nil? (t2/select-one :model/Tenant :name "Invalid Tenant"))))))))
+          (is (nil? (t2/select-one :model/Tenant 'name "Invalid Tenant"))))))))
 
 (deftest can-update-tenant-attributes-via-put-test
   (testing "Can update tenant attributes via PUT"
@@ -289,7 +289,7 @@
                            "environment" "staging"}
             response (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                                            {:attributes updated-attrs})]
-        (is (= updated-attrs (:attributes (t2/select-one :model/Tenant :id id))))
+        (is (= updated-attrs (:attributes (t2/select-one :model/Tenant 'id id))))
         (is (=? {:id id
                  :name "Tenant Test"
                  :slug "test-tenant"
@@ -307,7 +307,7 @@
                        "new-key" "new-value"}]
         (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                               {:attributes new-attrs})
-        (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id))))))))
+        (is (= new-attrs (:attributes (t2/select-one :model/Tenant 'id id))))))))
 
 (deftest can-clear-tenant-attributes-test
   (testing "Can clear attributes by setting to empty map"
@@ -316,7 +316,7 @@
                                            :attributes {"to-be" "cleared"}}]
       (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                             {:attributes {}})
-      (is (= {} (:attributes (t2/select-one :model/Tenant :id id)))))))
+      (is (= {} (:attributes (t2/select-one :model/Tenant 'id id)))))))
 
 (deftest cannot-update-tenant-with-at-prefix-attributes-test
   (testing "Cannot update with attributes starting with @"
@@ -331,7 +331,7 @@
         (is (contains? (:specific-errors response) :attributes))
         (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
         ;; Original attributes should remain unchanged
-        (is (= {"valid" "value"} (:attributes (t2/select-one :model/Tenant :id id))))))))
+        (is (= {"valid" "value"} (:attributes (t2/select-one :model/Tenant 'id id))))))))
 
 (deftest can-get-tenant-collections-from-tree-api
   (mt/with-premium-features #{:tenants}
@@ -420,14 +420,14 @@
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:archived true}))
           (testing "tenant root collection remains unarchived"
-            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+            (is (false? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))))))))
 
 (deftest can-archive-tenant-collection-descendants-test
   (testing "*Can* archive descendants of tenant-specific collections via API"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)}]
@@ -435,7 +435,7 @@
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-id)
                                       {:archived true}))
               (testing "child collection is archived"
-                (is (t2/select-one-fn :archived :model/Collection :id child-id))))))))))
+                (is (t2/select-one-fn :archived :model/Collection 'id child-id))))))))))
 
 (deftest cannot-delete-tenant-root-collection-test
   (testing "Cannot delete a tenant-specific-root-collection via API"
@@ -445,14 +445,14 @@
           (testing "attempting to delete tenant root collection returns 400"
             (mt/user-http-request :crowberto :delete 400 (str "collection/" tenant-collection-id)))
           (testing "tenant root collection still exists"
-            (is (t2/exists? :model/Collection :id tenant-collection-id))))))))
+            (is (t2/exists? :model/Collection 'id tenant-collection-id))))))))
 
 (deftest cannot-delete-tenant-collection-descendants-test
   (testing "Cannot delete descendants of tenant collections via API"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)
@@ -460,7 +460,7 @@
               (testing "deleting the collection is allowed"
                 (mt/user-http-request :crowberto :delete 200 (str "collection/" child-id)))
               (testing "child collection still exists"
-                (is (not (t2/exists? :model/Collection :id child-id)))))))))))
+                (is (not (t2/exists? :model/Collection 'id child-id)))))))))))
 
 (deftest cannot-move-tenant-root-collection-test
   (testing "Cannot move tenant-specific-root-collection to a different parent"
@@ -474,14 +474,14 @@
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:parent_id target-id}))
           (testing "tenant root collection location remains at root"
-            (is (= "/" (t2/select-one-fn :location :model/Collection :id tenant-collection-id)))))))))
+            (is (= "/" (t2/select-one-fn :location :model/Collection 'id tenant-collection-id)))))))))
 
 (deftest can-move-tenant-descendants-within-tenant-namespace-test
   (testing "Can move tenant collection descendants within the same tenant namespace"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-a-id :id} {:name "Child A"
                                                                :namespace :tenant-specific
                                                                :location (collection/children-location tenant-coll)}
@@ -492,7 +492,7 @@
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-b-id)
                                       {:parent_id child-a-id})
                 (is (= (str "/" tenant-collection-id "/" child-a-id "/")
-                       (t2/select-one-fn :location :model/Collection :id child-b-id)))))))))))
+                       (t2/select-one-fn :location :model/Collection 'id child-b-id)))))))))))
 
 (deftest cannot-move-regular-collection-into-tenant-namespace-test
   (testing "Can move regular collection into tenant namespace via API"
@@ -510,7 +510,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
                        :model/Collection {target-id :id} {:name "Target Collection" :location "/"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)}]
@@ -636,7 +636,7 @@
             (mt/user-http-request tenant-user-id :put 200 (str "card/" card-id)
                                   {:archived true})
             (testing "card is archived"
-              (is (true? (t2/select-one-fn :archived :model/Card :id card-id))))))))))
+              (is (true? (t2/select-one-fn :archived :model/Card 'id card-id))))))))))
 
 (deftest shared-tenant-collections-appear-in-trash-test
   (testing "GET /api/collection/:id/items for trash collection"
@@ -674,7 +674,7 @@
             (testing "every trashed collection is permanently deleted, regardless of namespace"
               (doseq [id [normal-id shared-id tenant-id]]
                 (mt/user-http-request :crowberto :delete 200 (str "collection/" id))
-                (is (not (t2/exists? :model/Collection :id id)))))))))))
+                (is (not (t2/exists? :model/Collection 'id id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Tenant Deactivation Archives Collections Tests                                       |
@@ -687,11 +687,11 @@
         (mt/with-temp [:model/Tenant {tenant-id :id
                                       tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-archive"}]
           (testing "initially the collection is not archived"
-            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+            (is (false? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id))))
           (testing "deactivate the tenant"
             (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false}))
           (testing "tenant collection is now archived"
-            (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+            (is (true? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))))))))
 
 (deftest tenant-collection-children-archived-when-tenant-deactivated-test
   (testing "Children of tenant-specific collection are also archived when tenant is deactivated"
@@ -699,7 +699,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-id :id
                                       tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-children"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)}
@@ -708,15 +708,15 @@
                                                                   :location (str (collection/children-location tenant-coll)
                                                                                  child-id "/")}]
               (testing "initially none of the collections are archived"
-                (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
-                (is (false? (t2/select-one-fn :archived :model/Collection :id child-id)))
-                (is (false? (t2/select-one-fn :archived :model/Collection :id grandchild-id))))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id child-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id grandchild-id))))
               (testing "deactivate the tenant"
                 (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false}))
               (testing "all collections are now archived"
-                (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
-                (is (true? (t2/select-one-fn :archived :model/Collection :id child-id)))
-                (is (true? (t2/select-one-fn :archived :model/Collection :id grandchild-id)))))))))))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id child-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id grandchild-id)))))))))))
 
 (deftest tenant-collection-unarchived-when-tenant-reactivated-test
   (testing "Tenant-specific root collection is unarchived when tenant is reactivated"
@@ -727,11 +727,11 @@
           ;; First deactivate
           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
           (testing "collection is archived after deactivation"
-            (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+            (is (true? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id))))
           ;; Then reactivate
           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
           (testing "collection is unarchived after reactivation"
-            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+            (is (false? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))))))))
 
 (deftest tenant-collection-children-unarchived-when-tenant-reactivated-test
   (testing "Children of tenant-specific collection are also unarchived when tenant is reactivated"
@@ -739,7 +739,7 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-id :id
                                       tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-children-unarchive"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-collection-id)]
             (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
                                                              :namespace :tenant-specific
                                                              :location (collection/children-location tenant-coll)}
@@ -750,15 +750,15 @@
               ;; First deactivate
               (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
               (testing "all collections are archived after deactivation"
-                (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
-                (is (true? (t2/select-one-fn :archived :model/Collection :id child-id)))
-                (is (true? (t2/select-one-fn :archived :model/Collection :id grandchild-id))))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id child-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection 'id grandchild-id))))
               ;; Then reactivate
               (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
               (testing "all collections are unarchived after reactivation"
-                (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
-                (is (false? (t2/select-one-fn :archived :model/Collection :id child-id)))
-                (is (false? (t2/select-one-fn :archived :model/Collection :id grandchild-id)))))))))))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id tenant-collection-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id child-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection 'id grandchild-id)))))))))))
 
 (deftest create-tenant-audit-log-test
   (testing "Creating a tenant records an audit log entry with correct model and details"
@@ -770,8 +770,8 @@
                                               :attributes {"department" "engineering"
                                                            "region" "us-west"}})
               audit-entry (t2/select-one :model/AuditLog
-                                         :topic :tenant-create
-                                         :model_id (:id response))]
+                                         'topic :tenant-create
+                                         'model_id (:id response))]
           (is (= "Tenant" (:model audit-entry)))
           (is (= {:name "Audit Tenant"
                   :slug "audit-tenant"

@@ -566,7 +566,7 @@
            (#'notification.send/send-notification-sync! notification)))
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
-              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+              (t2/select [:model/TaskHistory 'status 'task_details] 'task "notification-send"
                          {:order-by [[:started_at :asc]]}))))))
 
 (deftest orphaned-notification-deactivates-on-send-test

@@ -94,8 +94,8 @@
   (when-not mi/*deserializing?*
     (when-let [wanted (not-empty (values-source-card-ids parameters))]
       (let [existing (t2/select-fn-set :card_id :model/ParameterCard
-                                       :parameterized_object_type parameterized-object-type
-                                       :parameterized_object_id   parameterized-object-id)]
+                                       'parameterized_object_type parameterized-object-type
+                                       'parameterized_object_id   parameterized-object-id)]
         (doseq [card-id wanted
                 :when   (not (contains? existing card-id))]
           (api/read-check :model/Card card-id))))))

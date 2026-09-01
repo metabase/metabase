@@ -97,7 +97,7 @@
  `:metadata/column`s directly or use Metadata Providers."
   [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
   (let [col (if fk-target-field-id
-              (-> (t2/select-one :metadata/column :id fk-target-field-id)
+              (-> (t2/select-one :metadata/column 'id fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
               (lib-be/instance->metadata field :metadata/column))]
     (cond-> col
@@ -117,7 +117,7 @@
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (t2/select-one :model/Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (t2/select-one :model/Field 'id link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
@@ -363,7 +363,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (t2/select-one :model/Database :id ((some-fn :db_id :database_id) source)))
+  (t2/select-one :model/Database 'id ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

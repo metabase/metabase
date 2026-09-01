@@ -86,7 +86,7 @@
                     {:status-code 400
                      :name        (:name database)
                      :engine      (:engine database)})))
-  (if (t2/exists? :model/Database :is_sample true)
+  (if (t2/exists? :model/Database 'is_sample true)
     (log/info "Sample Database already present; ignoring is_sample config entry")
     (do
       (log/info (u/format-color :green "Recreating Sample Database from is_sample config entry"))
@@ -104,7 +104,7 @@
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
-      (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
+      (when-let [existing-database-id (t2/select-one-pk :model/Database 'engine (:engine database), 'name (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s with ID %s" (:engine database) existing-database-id))
         (t2/delete! :model/Database existing-database-id)))
 
@@ -118,7 +118,7 @@
       (when-not (:is_stub database)
         (driver.u/with-database-network-policy database
           (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
-      (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
+      (if-let [existing-database-id (t2/select-one-pk :model/Database 'engine (:engine database), 'name (:name database))]
         (if (:is_stub database)
           ;; A stub entry is just a placeholder to satisfy serdes references. If a real database
           ;; with this name+engine already exists, leave it alone — overwriting it with `:details {}`

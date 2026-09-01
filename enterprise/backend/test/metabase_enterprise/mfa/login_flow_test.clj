@@ -45,7 +45,7 @@
                                             :credentials  {:secret ~secret-binding}})
            ~@body
            (finally
-             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+             (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "totp")))))))
 
 (deftest two-step-login-test
   (with-enrolled-rasta! [secret]
@@ -234,4 +234,4 @@
               (let [login (mt/client :post 200 "session" {:username email :password new-password})]
                 (is (true? (:mfa_required login))))))
           (finally
-            (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp")))))))
+            (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "totp")))))))

@@ -62,7 +62,7 @@
       {:gtaps {:venues {:query (mt/native-query
                                 {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})}}}
       ;; Run the native sandbox source card to populate its result_metadata
-      (let [sandbox (t2/select-one :model/Sandbox :table_id (data/id :venues))]
+      (let [sandbox (t2/select-one :model/Sandbox 'table_id (data/id :venues))]
         (mt/user-http-request :crowberto :post 202 (str "card/" (:card_id sandbox) "/query"))
         (mt/with-temp [:model/Card metric {:name          "Venues Count"
                                            :type          :metric

@@ -16,7 +16,7 @@
                                            [:= :is_audit false]]})
       ;; check for CSV uploads to sample db
       ;; as the sample db is excluded from the above query
-      (when-let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)]
+      (when-let [sample-db-id (t2/select-one-pk :model/Database 'is_sample true)]
         (t2/exists? :model/Table {:where [:and
                                           [:= :active true]
                                           [:= :is_upload true]
@@ -57,7 +57,7 @@
                                     [:is :collection_id nil]]]}))
 
 (defn- has-user-created-tenants? []
-  (t2/exists? :model/Tenant :is_active true))
+  (t2/exists? :model/Tenant 'is_active true))
 
 (defn- has-shared-tenant-collections? []
   (t2/exists? :model/Collection {:where [:and
@@ -90,8 +90,8 @@
 
 (defn- has-published-guest-embed? []
   ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
-  (or (t2/exists? :model/Card :enable_embedding true)
-      (t2/exists? :model/Dashboard :enable_embedding true)))
+  (or (t2/exists? :model/Card 'enable_embedding true)
+      (t2/exists? :model/Dashboard 'enable_embedding true)))
 
 (defn- embedding-hub-checklist []
   (let [enable-tenants?                  (and (perms/use-tenants)

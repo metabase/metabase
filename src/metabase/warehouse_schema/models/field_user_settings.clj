@@ -47,7 +47,7 @@
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldUserSettings.
   (let [field (serdes/load-find-local (pop path))]
-    (t2/select-one :model/FieldUserSettings :field_id (:id field))))
+    (t2/select-one :model/FieldUserSettings 'field_id (:id field))))
 
 (defn- field-path->field-ref [field-values-path]
   (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]

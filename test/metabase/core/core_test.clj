@@ -18,15 +18,15 @@
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! h2-db)
-        (let [before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))]
+        (let [before-tables (t2/select-fn-set :id :model/Table 'db_id (:id h2-db))]
           (#'core/reconcile-sample-database!)
-          (let [after (t2/select-one :model/Database :id (:id h2-db))]
+          (let [after (t2/select-one :model/Database 'id (:id h2-db))]
             (testing "the record is migrated to the bundled engine, details and all"
               (is (= :sqlite (:engine after)))
               (is (= (#'sample-data.impl/try-to-extract-sample-database! :sqlite) (:details after))))
             (testing "the existing database is reused rather than a second one added"
-              (is (= 1 (t2/count :model/Database :is_sample true)))
-              (is (= before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db)))))))))))
+              (is (= 1 (t2/count :model/Database 'is_sample true)))
+              (is (= before-tables (t2/select-fn-set :id :model/Table 'db_id (:id h2-db)))))))))))
 
 (deftest reconcile-sample-database-is-quiet-when-current-test
   (testing "Reconciling a sample database that already matches the bundled one logs no error. Routing this
@@ -42,8 +42,8 @@
                        (#'core/reconcile-sample-database!)
                        (messages))]
         (is (= [] (mapv :message messages)))
-        (is (= 1 (t2/count :model/Database :is_sample true)))
-        (is (= :sqlite (:engine (t2/select-one :model/Database :id (:id db)))))))))
+        (is (= 1 (t2/count :model/Database 'is_sample true)))
+        (is (= :sqlite (:engine (t2/select-one :model/Database 'id (:id db)))))))))
 
 (deftest reconcile-sample-database-adds-missing-database-test
   (testing "With no sample database present the bundled one is added, so fresh installs still get it"
@@ -51,6 +51,6 @@
       (mdb/setup-db! :create-sample-content? false)
       (with-redefs [config/load-sample-content? (constantly true)]
         (#'core/reconcile-sample-database!))
-      (let [sample-db (t2/select-one :model/Database :is_sample true)]
+      (let [sample-db (t2/select-one :model/Database 'is_sample true)]
         (is (some? sample-db))
         (is (= :sqlite (:engine sample-db)))))))

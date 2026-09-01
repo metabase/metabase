@@ -197,12 +197,12 @@
                         {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now})
             (testing "first call should update last_active_at"
               (#'mw.session/maybe-update-session-activity! session-key)
-              (is (some? (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed))))
+              (is (some? (t2/select-one-fn :last_active_at (t2/table-name :model/Session) 'key_hashed key-hashed))))
             (testing "immediate second call should be throttled (no error, just skipped)"
-              (let [first-value (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)]
+              (let [first-value (t2/select-one-fn :last_active_at (t2/table-name :model/Session) 'key_hashed key-hashed)]
                 (#'mw.session/maybe-update-session-activity! session-key)
                 (is (= first-value
-                       (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)))))))))))
+                       (t2/select-one-fn :last_active_at (t2/table-name :model/Session) 'key_hashed key-hashed)))))))))))
 
 ;;; ---------------------------------------- session cleanup idle sessions test ----------------------------------------
 
@@ -232,8 +232,8 @@
                          :created_at :%now})
             (#'session-cleanup/cleanup-sessions!)
             (testing "active session is kept"
-              (is (t2/exists? :model/Session :id active-id)))
+              (is (t2/exists? :model/Session 'id active-id)))
             (testing "idle session is deleted"
-              (is (not (t2/exists? :model/Session :id idle-id))))
+              (is (not (t2/exists? :model/Session 'id idle-id))))
             (testing "session with NULL last_active_at but recent created_at is kept"
-              (is (t2/exists? :model/Session :id no-activity-id)))))))))
+              (is (t2/exists? :model/Session 'id no-activity-id)))))))))

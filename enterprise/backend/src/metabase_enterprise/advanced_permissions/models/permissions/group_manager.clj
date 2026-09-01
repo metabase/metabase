@@ -13,7 +13,7 @@
   Group Membership is a map with 2 keys [:id :is_group_manager]."
   [user-or-id]
   (when user-or-id
-    (t2/select [:model/PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id (u/the-id user-or-id))))
+    (t2/select [:model/PermissionsGroupMembership [:group_id :id] 'is_group_manager] 'user_id (u/the-id user-or-id))))
 
 (defn- user-group-memberships->map
   "Transform user-group-memberships to a map in which keys are group-ids and values are maps containing membership info.
@@ -52,7 +52,7 @@
         (when-not (and api/*is-group-manager?*
                        (set/subset? (set (concat to-remove-group-ids to-add-group-ids))
                                     (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                      :user_id api/*current-user-id* :is_group_manager true)))
+                                                      'user_id api/*current-user-id* 'is_group_manager true)))
           (throw (ex-info (tru "Not allowed to edit group memberships")
                           {:status-code 403}))))
       (t2/with-transaction [_conn]

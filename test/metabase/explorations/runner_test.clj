@@ -68,7 +68,7 @@
     (runner/run-query! row-id)
     (catch Throwable e
       (runner/fail-query! row-id (ex-message e))))
-  (t2/select-one :model/ExplorationQuery :id row-id))
+  (t2/select-one :model/ExplorationQuery 'id row-id))
 
 (defn- stored-result-for
   "Fetch the stored_result row linked from the EQR for `eq-id`. Returns nil when nothing
@@ -87,7 +87,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
             final  (drain-until-terminal! (:id row))
             result (t2/select-one :model/ExplorationQueryResult
-                                  :exploration_query_id (:id row))
+                                  'exploration_query_id (:id row))
             sr     (stored-result-for (:id row))]
         (is (= "done" (:status final)))
         (is (some? (:started_at final)))
@@ -107,13 +107,13 @@
                                      :creator_id (:id u)
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread  (temp-thread! (:id u))
-            expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id (:id thread))
+            expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread 'id (:id thread))
             row     (pending-query! (:id thread) (:id card)
                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
             _       (drain-until-terminal! (:id row))
             sr-id   (:stored_result_id (t2/select-one :model/ExplorationQueryResult
-                                                      :exploration_query_id (:id row)))
-            use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id)]
+                                                      'exploration_query_id (:id row)))
+            use-row (t2/select-one :model/StoredResultUse 'stored_result_id sr-id)]
         (is (some? use-row))
         (is (= expl-id (:exploration_id use-row)))
         (is (nil? (:card_id use-row)))))))
@@ -129,7 +129,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             _      (drain-until-terminal! (:id row))
             result (t2/select-one :model/ExplorationQueryResult
-                                  :exploration_query_id (:id row))
+                                  'exploration_query_id (:id row))
             score  (:interestingness_score result)]
         (is (some? result))
         (is (double? score))
@@ -148,7 +148,7 @@
                                     (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row))
                 result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))
+                                      'exploration_query_id (:id row))
                 sr     (stored-result-for (:id row))]
             (is (= "done" (:status final)))
             (is (some? result))
@@ -169,7 +169,7 @@
                                     (fn [_inputs] {:score 0.73})]
           (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      'exploration_query_id (:id row))]
             (is (= 0.73 (:contextual_interestingness_score result)))))))))
 
 (deftest run-one-iteration-hands-computed-stats-to-the-scorer-test
@@ -186,7 +186,7 @@
                                     (fn [inputs] (reset! seen inputs) {:score 0.5})]
           (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      'exploration_query_id (:id row))]
             (is (some? (:stats @seen))
                 "the scorer receives the already-computed stats")
             (is (= (:chart_stats result) (:stats @seen))
@@ -206,7 +206,7 @@
                                     (fn [_inputs] (swap! calls inc) {:score 0.99})]
           (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      'exploration_query_id (:id row))]
             (is (nil? (:contextual_interestingness_score result)))
             (is (zero? @calls) "lego must not be called when the thread has no prompt")))))))
 
@@ -223,7 +223,7 @@
                                     (fn [& _] (throw (ex-info "boom" {})))]
           (let [final  (drain-until-terminal! (:id row))
                 result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))
+                                      'exploration_query_id (:id row))
                 sr     (stored-result-for (:id row))]
             (is (= "done" (:status final)))
             (is (some? result))
@@ -255,7 +255,7 @@
                                     (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      'exploration_query_id (:id row))]
             (is (zero? @llm-calls)
                 "LLM must not be invoked when creator lacks :permission/metabot-other-tools")
             (is (nil? (:contextual_interestingness_score result)))
@@ -301,7 +301,7 @@
                                     (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
+                                      'exploration_query_id (:id row))]
             (is (zero? @llm-calls)
                 "LLM must not be invoked when usage limit is reached")
             (is (nil? (:contextual_interestingness_score result)))))))))
@@ -321,7 +321,7 @@
         (is (some? (:error_message final)))
         (is (some? (:finished_at final)))
         (is (zero? (t2/count :model/ExplorationQueryResult
-                             :exploration_query_id (:id row))))))))
+                             'exploration_query_id (:id row))))))))
 
 (deftest token-computation-failure-fails-the-query-test
   (testing "a snapshot is NEVER persisted without a data_access_token: when capturing the creator's
@@ -340,7 +340,7 @@
                      (drain-until-terminal! (:id row)))]
         (is (= "error" (:status final)))
         (is (some? (:error_message final)))
-        (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+        (is (zero? (t2/count :model/ExplorationQueryResult 'exploration_query_id (:id row)))
             "no result row — and therefore no snapshot — was written")))))
 
 (defn- deferred-query!
@@ -442,7 +442,7 @@
         (cancel-thread! (:id thread))
         (is (nil? (runner/run-query! (:id row)))
             "run-query! must not execute a query on a canceled thread")
-        (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+        (is (zero? (t2/count :model/ExplorationQueryResult 'exploration_query_id (:id row)))
             "no result was written")))))
 
 (deftest run-query-is-idempotent-under-redelivery-test
@@ -462,8 +462,8 @@
             "a redelivery of an already-done query returns its thread id, so the caller re-runs the
              timeline-pair publish that may have failed after the query was persisted")
         (is (= (:id thread) (runner/run-query! (:id row))))
-        (is (= "done" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
-        (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+        (is (= "done" (:status (t2/select-one :model/ExplorationQuery 'id (:id row)))))
+        (is (= 1 (t2/count :model/ExplorationQueryResult 'exploration_query_id (:id row)))
             "exactly one result row, despite three deliveries")))))
 
 (deftest run-query-returns-thread-id-for-a-terminally-errored-query-test
@@ -478,7 +478,7 @@
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         (runner/fail-query! (:id row) "boom")
-        (is (= "error" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
+        (is (= "error" (:status (t2/select-one :model/ExplorationQuery 'id (:id row)))))
         (is (= (:id thread) (runner/run-query! (:id row)))
             "run-query! returns the thread id for an already-terminal (error) query so completion re-runs")))))
 
@@ -501,9 +501,9 @@
             "the first writer persists")
         (is (false? (#'runner/persist-query-result! row now computed-b))
             "the second writer finds the query already completed and discards its duplicate")
-        (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+        (is (= 1 (t2/count :model/ExplorationQueryResult 'exploration_query_id (:id row)))
             "exactly one result row")
-        (is (= "done" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))))))
+        (is (= "done" (:status (t2/select-one :model/ExplorationQuery 'id (:id row)))))))))
 
 (deftest plan-thread-skips-canceled-test
   (testing "A started thread that was canceled before its plan message was delivered is not planned"
@@ -530,7 +530,7 @@
         (cancel-thread! (:id thread))
         (is (false? (claim-analysis-if-ready! (:id thread)))
             "CAS must not fire on a canceled thread")
-        (is (nil? (:analysis_started_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+        (is (nil? (:analysis_started_at (t2/select-one :model/ExplorationThread 'id (:id thread))))
             "analysis_started_at must remain NULL")))))
 
 (deftest claim-analysis-stamps-completed-at-atomically-test
@@ -543,7 +543,7 @@
         (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
         ;; no pending queries → the claim fires
         (is (true? (claim-analysis-if-ready! (:id thread))))
-        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+        (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
           (is (some? (:analysis_started_at after)))
           (is (some? (:completed_at after))
               "completed_at is stamped atomically with the claim, closing the crash window"))))))
@@ -555,7 +555,7 @@
       (let [thread (temp-thread! (:id u))]
         (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
         (runner/maybe-complete-thread! (:id thread))
-        (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+        (is (some? (:completed_at (t2/select-one :model/ExplorationThread 'id (:id thread))))
             "completed_at is set by the time maybe-complete-thread! returns")))))
 
 (deftest canceled-mid-plan-cleanup-flips-pending-rows-test
@@ -570,7 +570,7 @@
                                        (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         (cancel-thread! (:id thread))
         (canceled-mid-plan-cleanup! (:id thread))
-        (is (= "canceled" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
+        (is (= "canceled" (:status (t2/select-one :model/ExplorationQuery 'id (:id pending-eq))))
             "pending EQ on a canceled thread must be flipped to canceled")))))
 
 (deftest canceled-mid-plan-cleanup-noop-on-uncanceled-test
@@ -583,7 +583,7 @@
             pending-eq (pending-query! (:id thread) (:id card)
                                        (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         (canceled-mid-plan-cleanup! (:id thread))
-        (is (= "pending" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
+        (is (= "pending" (:status (t2/select-one :model/ExplorationQuery 'id (:id pending-eq))))
             "pending EQ on a live thread must be left alone")))))
 
 ;; ---------------------------- Planner idempotency & crash recovery ----------------------------
@@ -649,7 +649,7 @@
       (let [thread (temp-thread! (:id u))]
         (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
         (runner/fail-plan! (:id thread) "the queue gave up")
-        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+        (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
           (is (some? (:completed_at after))
               "the thread is terminally stamped, so the client stops polling")
           (is (some? (:analysis_started_at after))
@@ -671,7 +671,7 @@
         (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
         (runner/fail-plan! (:id thread) "a duplicate delivery ran out of retries")
-        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+        (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
           (is (nil? (:completed_at after))
               "the thread is not completed out from under its pending queries")
           (is (nil? (:analysis_started_at after)))

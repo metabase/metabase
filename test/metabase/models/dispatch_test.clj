@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (defn- a-user []
-  (t2/select-one :model/User :id (mt/user->id :rasta)))
+  (t2/select-one :model/User 'id (mt/user->id :rasta)))
 
 (deftest ^:parallel toucan-instance?-test
   (is (models.dispatch/toucan-instance? (a-user)))

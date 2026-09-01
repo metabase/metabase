@@ -61,10 +61,10 @@
             g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
             g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (let [qrows  (t2/select [:model/ExplorationQuery :id :page_id :card_id :dimension_id]
-                                :exploration_thread_id (:id t))
+        (let [qrows  (t2/select [:model/ExplorationQuery 'id 'page_id 'card_id 'dimension_id]
+                                'exploration_thread_id (:id t))
               page-> (u/index-by :id (t2/select :model/ExplorationPage
-                                                :exploration_block_id [:in [(:id g1) (:id g2)]]))
+                                                'exploration_block_id ['in [(:id g1) (:id g2)]]))
               blk    (partial block-of page->)]
           (testing "every query carries a page under one of the thread's blocks"
             (is (every? :page_id qrows))
@@ -85,10 +85,10 @@
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [by-blk (group-by :exploration_block_id
                                (t2/select :model/ExplorationPage
-                                          :exploration_block_id [:in [(:id g1) (:id g2)]]))
+                                          'exploration_block_id ['in [(:id g1) (:id g2)]]))
               qcount (fn [block-id]
                        (t2/count :model/ExplorationQuery
-                                 :page_id [:in (map :id (by-blk block-id))]))]
+                                 'page_id ['in (map :id (by-blk block-id))]))]
           (is (= #{(:id g1) (:id g2)} (set (keys by-blk))) "a page under each block")
           (is (pos? (qcount (:id g1))))
           (is (pos? (qcount (:id g2)))))))))
@@ -102,10 +102,10 @@
             g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
             g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (let [qrows (t2/select [:model/ExplorationQuery :id :page_id :card_id
-                                :dimension_id :query_type]
-                               :exploration_thread_id (:id t))
-              pages (t2/select :model/ExplorationPage :exploration_block_id [:in [(:id g1) (:id g2)]])
+        (let [qrows (t2/select [:model/ExplorationQuery 'id 'page_id 'card_id
+                                'dimension_id 'query_type]
+                               'exploration_thread_id (:id t))
+              pages (t2/select :model/ExplorationPage 'exploration_block_id ['in [(:id g1) (:id g2)]])
               by-id (u/index-by :id pages)]
           (is (every? :page_id qrows) "every query carries a page_id")
           (is (= (count (distinct (map #(vector (:page_id %) (:card_id %)
@@ -129,16 +129,16 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [g        (mk-block! (:id t) (:id metric) "d1" "Price" "type/Number")
-            page-ids #(set (t2/select-pks-vec :model/ExplorationPage :exploration_block_id (:id g)))]
+            page-ids #(set (t2/select-pks-vec :model/ExplorationPage 'exploration_block_id (:id g)))]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [before (page-ids)]
           (is (seq before))
           ;; mimic reset-thread-for-rerun!: drop queries, keep pages, replan
-          (t2/delete! :model/ExplorationQuery :exploration_thread_id (:id t))
+          (t2/delete! :model/ExplorationQuery 'exploration_thread_id (:id t))
           (is (= :ok (query-plan/generate-query-plan! (:id t))))
           (is (= before (page-ids)) "page ids are stable across the rerun")
-          (is (every? :page_id (t2/select [:model/ExplorationQuery :page_id]
-                                          :exploration_thread_id (:id t)))
+          (is (every? :page_id (t2/select [:model/ExplorationQuery 'page_id]
+                                          'exploration_thread_id (:id t)))
               "regenerated queries are re-stamped onto the surviving pages"))))))
 
 (deftest reconcile-gcs-orphan-pages-test
@@ -153,11 +153,11 @@
                                              :card_id              cid
                                              :dimension_id         "ghost"
                                              :query_type           "default"})]
-        (is (some? (t2/select-one-pk :model/ExplorationPage :id orphan)) "orphan page seeded")
+        (is (some? (t2/select-one-pk :model/ExplorationPage 'id orphan)) "orphan page seeded")
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (is (nil? (t2/select-one-pk :model/ExplorationPage :id orphan))
+        (is (nil? (t2/select-one-pk :model/ExplorationPage 'id orphan))
             "orphan page (no queries) was GC'd")
-        (is (seq (t2/select-pks-vec :model/ExplorationPage :exploration_block_id (:id g)))
+        (is (seq (t2/select-pks-vec :model/ExplorationPage 'exploration_block_id (:id g)))
             "pages for the live selection remain")))))
 
 (defn- comment-on-page!
@@ -199,12 +199,12 @@
             cmt       (comment-on-page! (:id e) commented)]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (testing "the commented orphan page is retained so the comment still resolves"
-          (is (some? (t2/select-one-pk :model/ExplorationPage :id commented)))
+          (is (some? (t2/select-one-pk :model/ExplorationPage 'id commented)))
           (is (= (str commented)
-                 (t2/select-one-fn :child_target_id :model/Comment :id cmt))
+                 (t2/select-one-fn :child_target_id :model/Comment 'id cmt))
               "the comment still anchors to the surviving page"))
         (testing "the orphan page with no comment is GC'd as before"
-          (is (nil? (t2/select-one-pk :model/ExplorationPage :id bare))))))))
+          (is (nil? (t2/select-one-pk :model/ExplorationPage 'id bare))))))))
 
 (deftest reconcile-retains-starred-orphan-page-test
   (testing "a rerun that drops a page's selection retains the page iff it is starred — a star,
@@ -218,9 +218,9 @@
             bare    (orphan-page! (:id g) cid "gone-no-star")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (testing "the starred orphan page survives, star intact"
-          (is (true? (t2/select-one-fn :starred :model/ExplorationPage :id starred))))
+          (is (true? (t2/select-one-fn :starred :model/ExplorationPage 'id starred))))
         (testing "the unstarred orphan page is GC'd as before"
-          (is (nil? (t2/select-one-pk :model/ExplorationPage :id bare))))))))
+          (is (nil? (t2/select-one-pk :model/ExplorationPage 'id bare))))))))
 
 (deftest reconcile-ignores-soft-deleted-comment-anchors-test
   (testing "a page whose only anchor is a soft-deleted comment is GC'd — deleted comments don't count"
@@ -232,7 +232,7 @@
             orphan (orphan-page! (:id g) cid "gone-deleted-comment")]
         (comment-on-page! (:id e) orphan {:deleted_at (t/offset-date-time)})
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (is (nil? (t2/select-one-pk :model/ExplorationPage :id orphan)))))))
+        (is (nil? (t2/select-one-pk :model/ExplorationPage 'id orphan)))))))
 
 (deftest empty-plan-skips-page-gc-test
   (testing "a plan that materializes zero rows leaves existing pages alone — a wholesale
@@ -244,13 +244,13 @@
             g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
             orphan (orphan-page! (:id g) cid "would-be-orphan")]
         (is (= :no-rows (#'query-plan/insert-plan-rows! (:id t) {} [])))
-        (is (some? (t2/select-one-pk :model/ExplorationPage :id orphan))
+        (is (some? (t2/select-one-pk :model/ExplorationPage 'id orphan))
             "no rows materialized → GC skipped → the page id survives")))))
 
 (defn- terminal-stamps
   "The two lifecycle timestamps whose presence tells the client the thread is finished."
   [thread-id]
-  (select-keys (t2/select-one :model/ExplorationThread :id thread-id)
+  (select-keys (t2/select-one :model/ExplorationThread 'id thread-id)
                [:analysis_started_at :completed_at]))
 
 (deftest skip-empty-terminally-stamps-the-thread-test
@@ -281,7 +281,7 @@
       ;; force every plan item to fail to materialize → insert-plan-rows! sees zero rows
       (mt/with-dynamic-fn-redefs [query-plan/materialize-item (fn [_ _] (throw (ex-info "boom" {})))]
         (is (= :skip-empty (query-plan/generate-query-plan! (:id t)))))
-      (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+      (is (zero? (t2/count :model/ExplorationQuery 'exploration_thread_id (:id t)))
           "no queries were inserted")
       (let [{:keys [analysis_started_at completed_at]} (terminal-stamps (:id t))]
         (is (some? completed_at) "completed_at stamped so the client stops polling")
@@ -305,10 +305,10 @@
       (let [cid (:id metric)]
         (mk-block! (:id t) cid "d1" "Price" "type/Number")
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (let [after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t))]
+        (let [after-first (t2/count :model/ExplorationQuery 'exploration_thread_id (:id t))]
           (is (pos? after-first) "the first plan produced rows")
           (query-plan/generate-query-plan! (:id t))
-          (is (= after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+          (is (= after-first (t2/count :model/ExplorationQuery 'exploration_thread_id (:id t)))
               "planning the same thread again must not duplicate its query rows"))))))
 
 (deftest planner-that-loses-the-persist-race-discards-its-rows-test
@@ -353,9 +353,9 @@
                                         (winner))
                                       (orig metric-by-key item))]
           (query-plan/generate-query-plan! (:id t)))
-        (is (= 1 (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+        (is (= 1 (t2/count :model/ExplorationQuery 'exploration_thread_id (:id t)))
             "the losing planner discards its rows instead of appending them")
-        (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id "d1"))
+        (is (= 1 (t2/count :model/ExplorationPage 'exploration_block_id (:id g) 'dimension_id "d1"))
             "and never reaches find-or-create-page!, so the thread's page is not duplicated")))))
 
 (deftest gc-retains-pages-that-still-have-queries-test
@@ -378,8 +378,8 @@
                                               :position              0})]
         ;; an empty used set marks every page orphan; the query must still protect its page
         (#'query-plan/gc-orphan-pages! (:id t) [])
-        (is (some? (t2/select-one-pk :model/ExplorationPage :id page-id)))
-        (is (some? (t2/select-one-pk :model/ExplorationQuery :id q-id)))))))
+        (is (some? (t2/select-one-pk :model/ExplorationPage 'id page-id)))
+        (is (some? (t2/select-one-pk :model/ExplorationQuery 'id q-id)))))))
 
 (deftest reconcile-positions-pages-per-block-test
   (testing "newly-created pages are positioned by first-seen order within their block, not globally"
@@ -403,6 +403,6 @@
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (doseq [block [a b]]
           (let [positions (t2/select-fn-vec :position :model/ExplorationPage
-                                            :exploration_block_id (:id block))]
+                                            'exploration_block_id (:id block))]
             (is (= (range (count positions)) (sort positions))
                 (str "block " (:id block) " pages are numbered 0.." (dec (count positions))))))))))

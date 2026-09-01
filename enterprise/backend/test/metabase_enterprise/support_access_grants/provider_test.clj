@@ -26,8 +26,8 @@
         (is (string? token))
         (is (re-matches (re-pattern (str user-id "_.+")) token))
         (let [auth-identity (t2/select-one :model/AuthIdentity
-                                           :user_id user-id
-                                           :provider "support-access-grant")]
+                                           'user_id user-id
+                                           'provider "support-access-grant")]
           (is (some? auth-identity))
           (is (= "support-access-grant" (:provider auth-identity)))
           (is (= user-id (:user_id auth-identity)))
@@ -76,12 +76,12 @@
                     :revoked_at nil}]
       (let [first-token (sag.provider/create-support-access-reset! user-id grant)
             first-auth-identity (t2/select-one :model/AuthIdentity
-                                               :user_id user-id
-                                               :provider "support-access-grant")
+                                               'user_id user-id
+                                               'provider "support-access-grant")
             second-token (sag.provider/create-support-access-reset! user-id grant)
             auth-identities (t2/select :model/AuthIdentity
-                                       :user_id user-id
-                                       :provider "support-access-grant")]
+                                       'user_id user-id
+                                       'provider "support-access-grant")]
         (is (= 1 (count auth-identities)))
         (is (not= first-token second-token))
         (is (= (:id first-auth-identity) (:id (first auth-identities))))))))
@@ -99,14 +99,14 @@
                     :revoked_at nil}]
       (let [token (sag.provider/create-support-access-reset! user-id grant)
             auth-identity (t2/select-one :model/AuthIdentity
-                                         :user_id user-id
-                                         :provider "support-access-grant")
+                                         'user_id user-id
+                                         'provider "support-access-grant")
             new-password "new-secure-password-123"]
         (provider/login! :provider/support-access-grant {:token token
                                                          :password new-password})
-        (let [updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
-              updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")
-              session (t2/select-one :model/Session :auth_identity_id (:id updated-auth-identity))]
+        (let [updated-pw-auth-identity (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "password")
+              updated-auth-identity (t2/select-one :model/AuthIdentity 'id (:id auth-identity) 'provider "support-access-grant")
+              session (t2/select-one :model/Session 'auth_identity_id (:id updated-auth-identity))]
           (is (some? (:expires_at session)))
           (is (= grant-end (:expires_at updated-pw-auth-identity)))
           (is (u.password/verify-password new-password
@@ -162,8 +162,8 @@
                     :revoked_at nil}]
       (let [token (sag.provider/create-support-access-reset! user-id grant)
             auth-identity (t2/select-one :model/AuthIdentity
-                                         :user_id user-id
-                                         :provider "support-access-grant")]
+                                         'user_id user-id
+                                         'provider "support-access-grant")]
         (t2/update! :model/AuthIdentity (:id auth-identity)
                     {:credentials (assoc (:credentials auth-identity)
                                          :expires_at (t/minus (t/offset-date-time) (t/hours 1)))})

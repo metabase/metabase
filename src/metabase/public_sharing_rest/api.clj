@@ -379,9 +379,9 @@
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
+  (let [card      (api/check-404 (t2/select-one :model/Card 'id card-id 'archived false))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard 'id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -409,9 +409,9 @@
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
+  (let [card      (api/check-404 (t2/select-one :model/Card 'id card-id 'archived false))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard 'id dashcard-id))]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
               :card          card
@@ -435,7 +435,7 @@
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (public-sharing/public-uuid->id :model/Dashboard uuid))]
-    (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+    (api/check-404 (t2/select-one-pk :model/DashboardCard 'id dashcard-id 'dashboard_id dashboard-id))
     (actions/fetch-values
      (api/check-404 (actions/dashcard->action dashcard-id))
      parameters)))
@@ -661,9 +661,9 @@
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
+  (let [card      (api/check-404 (t2/select-one :model/Card 'id card-id 'archived false))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard 'id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -795,8 +795,8 @@
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
   [document-id]
-  (let [document     (-> (api/check-404 (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
-                                                       :id document-id, :archived false))
+  (let [document     (-> (api/check-404 (t2/select-one [:model/Document 'id 'name 'document 'content_type 'created_at 'updated_at]
+                                                       'id document-id, 'archived false))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
                          (t2/hydrate :cards))
         embedded-ids (set (prose-mirror/card-ids document))]
@@ -816,9 +816,9 @@
 
   Returns the loaded `:model/Card` entity so the caller can thread it downstream without re-selecting it."
   [uuid card-id]
-  (let [document (api/check-404 (t2/select-one [:model/Document :id :document :content_type] :id (public-sharing/public-uuid->id :model/Document uuid)))]
+  (let [document (api/check-404 (t2/select-one [:model/Document 'id 'document 'content_type] 'id (public-sharing/public-uuid->id :model/Document uuid)))]
     (api/check-404 (when (contains? (set (prose-mirror/card-ids document)) card-id)
-                     (t2/select-one :model/Card :id card-id :document_id (:id document) :archived false)))))
+                     (t2/select-one :model/Card 'id card-id 'document_id (:id document) 'archived false)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

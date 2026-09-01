@@ -16,7 +16,7 @@
 (defn- by-key
   "Look the row up by its compound key."
   [{:keys [entity_type entity_local_id]}]
-  (t2/select-one :model/OsiAiContext :entity_type entity_type :entity_local_id entity_local_id))
+  (t2/select-one :model/OsiAiContext 'entity_type entity_type 'entity_local_id entity_local_id))
 
 (deftest entity-and-ai-context-roundtrip-test
   (testing "ai_context is a keywordized JSON object and timestamps are populated"
@@ -54,15 +54,15 @@
             (is (= [ref] @nudges) "nudged once, after commit"))
           (testing "update"
             (t2/with-transaction [_conn]
-              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:ai_context {:instructions "changed"}})
+              (t2/update! :model/OsiAiContext 'entity_type "table" 'entity_local_id 42 {:ai_context {:instructions "changed"}})
               (is (= [ref] @nudges) "still only the insert's nudge while open"))
             (is (= [ref ref] @nudges) "nudged again, after commit"))
           (testing "delete"
             (t2/with-transaction [_conn]
-              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)
+              (t2/delete! :model/OsiAiContext 'entity_type "table" 'entity_local_id 42)
               (is (= [ref ref] @nudges) "not nudged while open"))
             (is (= [ref ref ref] @nudges) "nudged again, after commit"))
-          (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))))
+          (finally (t2/delete! :model/OsiAiContext 'entity_type "table" 'entity_local_id 42)))))))
 
 (deftest nudge-not-fired-on-rollback-test
   (testing "a rolled-back write never nudges (and leaves no row)"
@@ -83,7 +83,7 @@
     (mt/with-temp [:model/OsiAiContext _ {:entity_type "metric" :entity_local_id 7
                                           :ai_context {:instructions "x"}}]
       (is (=? {:entity_type "card" :entity_local_id 7 :ai_context {:instructions "x"}}
-              (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id 7))))))
+              (t2/select-one :model/OsiAiContext 'entity_type "card" 'entity_local_id 7))))))
 
 (deftest hooks-never-break-appdb-writes-test
   (testing "insert/update/delete succeed even though the mirror is unavailable in tests"
@@ -92,9 +92,9 @@
     (mt/with-temp [:model/OsiAiContext row (assoc entity :ai_context ai-context)]
       (let [k [(:entity_type row) (:entity_local_id row)]]
         (testing "update"
-          (is (pos? (t2/update! :model/OsiAiContext :entity_type (k 0) :entity_local_id (k 1)
+          (is (pos? (t2/update! :model/OsiAiContext 'entity_type (k 0) 'entity_local_id (k 1)
                                 {:ai_context {:instructions "u"}})))
           (is (= {:instructions "u"} (:ai_context (by-key entity)))))
         (testing "delete"
-          (is (pos? (t2/delete! :model/OsiAiContext :entity_type (k 0) :entity_local_id (k 1))))
+          (is (pos? (t2/delete! :model/OsiAiContext 'entity_type (k 0) 'entity_local_id (k 1))))
           (is (nil? (by-key entity))))))))

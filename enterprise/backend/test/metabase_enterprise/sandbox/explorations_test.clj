@@ -614,7 +614,7 @@
            :data-access-token {}
            :dataset-query     dataset-query}
           (fn [{:keys [query]}]
-            (t2/delete! :model/Card :id (:id base))
+            (t2/delete! :model/Card 'id (:id base))
             (testing "a non-admin viewer is denied"
               (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
             (testing "an admin still streams the snapshot"
@@ -643,4 +643,4 @@
                                              :database_id       (mt/id)
                                              :dataset_query     (venues-count-query)
                                              :data_access_token token}]
-        (is (= token (t2/select-one-fn :data_access_token :model/StoredResult :id (:id sr))))))))
+        (is (= token (t2/select-one-fn :data_access_token :model/StoredResult 'id (:id sr))))))))

@@ -26,7 +26,7 @@
           (let [id (first (t2/insert-returning-pks! :model/StoredResultUse
                                                     {:stored_result_id sr-id :card_id (:id card)}))]
             (is (=? {:card_id (:id card) :exploration_id nil}
-                    (t2/select-one :model/StoredResultUse :id id)))))
+                    (t2/select-one :model/StoredResultUse 'id id)))))
         (testing "neither set is rejected"
           (is (thrown? Exception
                        (t2/insert! :model/StoredResultUse {:stored_result_id sr-id}))))
@@ -45,7 +45,7 @@
             id    (first (t2/insert-returning-pks! :model/StoredResultUse
                                                    {:stored_result_id sr-id :exploration_id (:id expl)}))]
         (is (=? {:card_id nil :exploration_id (:id expl)}
-                (t2/select-one :model/StoredResultUse :id id)))))))
+                (t2/select-one :model/StoredResultUse 'id id)))))))
 
 (deftest carry-pairings-for-document-test
   (testing "carry-pairings-for-document! copies a pairing only when the snapshot is already reachable through the document"
@@ -80,13 +80,13 @@
           (testing "carries when the snapshot is already paired with a card in this document"
             (queries/carry-pairings-for-document! (:id doc) [[(:id new-card) sr-id]])
             (is (some? (t2/select-one :model/StoredResultUse
-                                      :stored_result_id sr-id
-                                      :card_id (:id new-card)))
+                                      'stored_result_id sr-id
+                                      'card_id (:id new-card)))
                 "new card inherits the (document, snapshot) reachability"))
           (testing "refuses when the snapshot is not reachable through the target document"
-            (let [before (t2/count :model/StoredResultUse :card_id (:id hostile-card))]
+            (let [before (t2/count :model/StoredResultUse 'card_id (:id hostile-card))]
               (queries/carry-pairings-for-document! (:id other-doc) [[(:id hostile-card) sr-id]])
-              (is (= before (t2/count :model/StoredResultUse :card_id (:id hostile-card)))
+              (is (= before (t2/count :model/StoredResultUse 'card_id (:id hostile-card)))
                   "hostile document cannot widen reachability to a foreign snapshot"))))))))
 
 ;;; ------------------------------ the cached-read gate over a Card ------------------------------
@@ -134,7 +134,7 @@
         (is (= [:denied :incompatible-context] (gate-verdict! (:id card) :rasta))))
       (testing "the snapshot's own creator is gated too — creating it is not a permanent pass"
         (is (= (mt/user->id :rasta)
-               (t2/select-one-fn :creator_id :model/StoredResult :id unviewable)))
+               (t2/select-one-fn :creator_id :model/StoredResult 'id unviewable)))
         (is (= [:denied :incompatible-context] (gate-verdict! (:id card) :rasta))))
       (testing "superusers pass, by the standing product exemption"
         (is (= :allowed (gate-verdict! (:id card) :crowberto)))))))

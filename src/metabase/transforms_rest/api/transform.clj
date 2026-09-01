@@ -285,7 +285,7 @@
   [{:keys [run-id]} :- [:map
                         [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
+  (let [run (api/check-404 (t2/select-one :model/TransformRun 'id run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
         transforms-base.u/present-run)))
 

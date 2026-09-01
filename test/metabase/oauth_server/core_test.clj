@@ -46,5 +46,5 @@
                        :scopes  #{"openid"}}
                       (oauth-server/resolve-access-token token))))
             (testing "returns nil once the client row is gone — token must not outlive its client"
-              (t2/delete! :model/OAuthClient :client_id client-id)
+              (t2/delete! :model/OAuthClient 'client_id client-id)
               (is (nil? (oauth-server/resolve-access-token token))))))))))

@@ -8,5 +8,5 @@
   :type       :boolean
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
+  :getter     (fn [] (t2/exists? :model/Database, 'is_sample true))
   :doc        false)

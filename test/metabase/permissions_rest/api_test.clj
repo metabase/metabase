@@ -228,7 +228,7 @@
     (testing "happy path"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
-        (is (some? (t2/select :model/PermissionsGroup :name "Test Group")))))
+        (is (some? (t2/select :model/PermissionsGroup 'name "Test Group")))))
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
@@ -239,19 +239,19 @@
     (testing "creates regular group by default"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Regular Group"})
-        (let [group (t2/select-one :model/PermissionsGroup :name "Regular Group")]
+        (let [group (t2/select-one :model/PermissionsGroup 'name "Regular Group")]
           (is (some? group))
           (is (false? (:is_tenant_group group))))))
     (testing "creates regular group when is_tenant_group is explicitly false"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Explicit Regular Group" :is_tenant_group false})
-        (let [group (t2/select-one :model/PermissionsGroup :name "Explicit Regular Group")]
+        (let [group (t2/select-one :model/PermissionsGroup 'name "Explicit Regular Group")]
           (is (some? group))
           (is (false? (:is_tenant_group group))))))
     (testing "creates regular group when is_tenant_group is nil"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Nil Tenant Group" :is_tenant_group nil})
-        (let [group (t2/select-one :model/PermissionsGroup :name "Nil Tenant Group")]
+        (let [group (t2/select-one :model/PermissionsGroup 'name "Nil Tenant Group")]
           (is (some? group))
           (is (false? (:is_tenant_group group))))))))
 
@@ -267,7 +267,7 @@
     (testing "happy path"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
-        (is (= 0 (t2/count :model/PermissionsGroup :name "Test group")))))
+        (is (= 0 (t2/count :model/PermissionsGroup 'name "Test group")))))
     (testing "requires superuser"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (is (= "You don't have permissions to do that."
@@ -281,8 +281,8 @@
           (let [{group-id :id} (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})]
             (is (= (inc initial-audit-count) (t2/count :model/AuditLog)))
             (let [audit-entry (t2/select-one :model/AuditLog
-                                             :topic "group-create"
-                                             :model_id group-id
+                                             'topic "group-create"
+                                             'model_id group-id
                                              {:order-by [[:id :desc]]})]
               (is (some? audit-entry))
               (is (= "PermissionsGroup" (:model audit-entry)))
@@ -297,8 +297,8 @@
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
         (is (= (inc before-delete-count) (t2/count :model/AuditLog)))
         (let [audit-entry (t2/select-one :model/AuditLog
-                                         :topic "group-delete"
-                                         :model_id group-id
+                                         'topic "group-delete"
+                                         'model_id group-id
                                          {:order-by [[:id :desc]]})]
           (is (some? audit-entry))
           (is (= "PermissionsGroup" (:model audit-entry)))
@@ -313,8 +313,8 @@
           (mt/user-http-request :crowberto :put 200 (format "permissions/group/%d" group-id) {:name "Updated Group"})
           (is (= (inc before-update-count) (t2/count :model/AuditLog)))
           (let [audit-entry (t2/select-one :model/AuditLog
-                                           :topic "group-update"
-                                           :model_id group-id
+                                           'topic "group-update"
+                                           'model_id group-id
                                            {:order-by [[:id :desc]]})]
             (is (some? audit-entry))
             (is (= "PermissionsGroup" (:model audit-entry)))
@@ -489,8 +489,8 @@
                    [:groups (u/the-id group) (mt/id) :view-data] :unrestricted))
         (is (= #{:unrestricted}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
-                                      :group_id  (u/the-id group)
-                                      :perm_type :perms/view-data))))
+                                      'group_id  (u/the-id group)
+                                      'perm_type :perms/view-data))))
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
@@ -499,19 +499,19 @@
                     :create-queries :no}))
         (is (= #{:unrestricted}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
-                                      :group_id  (u/the-id group)
-                                      :db_id     (mt/id)
-                                      :perm_type :perms/view-data))))
+                                      'group_id  (u/the-id group)
+                                      'db_id     (mt/id)
+                                      'perm_type :perms/view-data))))
         (is (= #{:no}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
-                                      :group_id  (u/the-id group)
-                                      :db_id     (mt/id)
-                                      :perm_type :perms/create-queries))))
+                                      'group_id  (u/the-id group)
+                                      'db_id     (mt/id)
+                                      'perm_type :perms/create-queries))))
         (is (= #{}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
-                                      :group_id  (u/the-id group)
-                                      :table_id  table-id
-                                      :perm_type :perms/view-data))))))))
+                                      'group_id  (u/the-id group)
+                                      'table_id  table-id
+                                      'perm_type :perms/view-data))))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
@@ -622,10 +622,10 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
-        (is (= 1 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
+        (is (= 1 (t2/count :model/PermissionsGroupMembership 'group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
-        (is (true? (t2/exists? :model/PermissionsGroup :id group-id)))
-        (is (= 0 (t2/count :model/PermissionsGroupMembership :group_id group-id))))
+        (is (true? (t2/exists? :model/PermissionsGroup 'id group-id)))
+        (is (= 0 (t2/count :model/PermissionsGroupMembership 'group_id group-id))))
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
@@ -686,11 +686,11 @@
             (is (= "Not found."
                    (mt/user-http-request :crowberto :put 404 (format "permissions/group/%d" (:id tenant-group))
                                          {:name "Renamed"})))
-            (is (= "Acme Tenant" (t2/select-one-fn :name :model/PermissionsGroup :id (:id tenant-group)))))
+            (is (= "Acme Tenant" (t2/select-one-fn :name :model/PermissionsGroup 'id (:id tenant-group)))))
           (testing "DELETE returns 404 and does not delete the group"
             (is (= "Not found."
                    (mt/user-http-request :crowberto :delete 404 (format "permissions/group/%d" (:id tenant-group)))))
-            (is (t2/exists? :model/PermissionsGroup :id (:id tenant-group)))))
+            (is (t2/exists? :model/PermissionsGroup 'id (:id tenant-group)))))
         (mt/with-temporary-setting-values [use-tenants true]
           (testing "PUT succeeds when use-tenants is on"
             (is (=? {:name "Renamed Tenant"}
@@ -698,7 +698,7 @@
                                           {:name "Renamed Tenant"}))))
           (testing "DELETE succeeds when use-tenants is on"
             (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" (:id tenant-group)))
-            (is (not (t2/exists? :model/PermissionsGroup :id (:id tenant-group))))))))))
+            (is (not (t2/exists? :model/PermissionsGroup 'id (:id tenant-group))))))))))
 
 (deftest update-perms-graph-rejects-tenant-groups-test
   (testing "PUT /api/permissions/graph rejects bodies referencing tenant groups when use-tenants is off"
@@ -792,4 +792,4 @@
               (is (<= num-calls 100)
                   (format "Expected at most 100 database calls, got %d" num-calls)))
             (finally
-              (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))
+              (t2/delete! :model/PermissionsGroup 'id ['in group-ids]))))))))

@@ -18,7 +18,7 @@
 
 (defn- clear-recent-views-for-user
   [test-user]
-  (t2/delete! :model/RecentViews :user_id (mt/user->id test-user)))
+  (t2/delete! :model/RecentViews 'user_id (mt/user->id test-user)))
 
 (deftest most-recently-viewed-dashboard-views-test
   (clear-recent-views-for-user :crowberto)
@@ -68,13 +68,13 @@
   (mt/test-helpers-set-global-values!
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/Collection coll   {:name "Analytics"}
-                     :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
+                     :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :crowberto))}
                      :model/Dashboard  dash-2 {:collection_id (:id coll)}]
         (mt/with-model-cleanup [:model/RecentViews]
           (mt/with-test-user :crowberto
             (testing "view a dashboard in a personal collection"
               (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)})
-              (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+              (let [crowberto-personal-coll (t2/select-one :model/Collection 'personal_owner_id (mt/user->id :crowberto))]
                 (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
                        (mt/user-http-request :crowberto :get 200
                                              "activity/most_recently_viewed_dashboard")))))

@@ -155,12 +155,12 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (t2/select-one-fn :value :model/Setting, :key (name setting-name)))
+  (t2/select-one-fn :value :model/Setting, 'key (name setting-name)))
 
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (t2/select-one :model/Setting :key (name setting-name))))
+  (boolean (t2/select-one :model/Setting 'key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]
@@ -585,7 +585,7 @@
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
-  {:db-value     (t2/select-one-fn :value :model/Setting :key "test-csv-setting")
+  {:db-value     (t2/select-one-fn :value :model/Setting 'key "test-csv-setting")
    :parsed-value (test-csv-setting)})
 
 (deftest csv-setting-test
@@ -690,12 +690,12 @@
 (defn clear-settings-last-updated-value-in-db!
   "Deletes the timestamp for the last updated setting from the DB."
   []
-  (t2/delete! (t2/table-name :model/Setting) :key setting.cache/settings-last-updated-key))
+  (t2/delete! (t2/table-name :model/Setting) 'key setting.cache/settings-last-updated-key))
 
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
   []
-  (t2/select-one-fn :value :model/Setting :key setting.cache/settings-last-updated-key))
+  (t2/select-one-fn :value :model/Setting 'key setting.cache/settings-last-updated-key))
 
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
@@ -711,7 +711,7 @@
              (actual-value-in-db "uncached-setting"))))
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
-      (t2/update! :model/Setting {:key "uncached-setting"}
+      (t2/update! :model/Setting {'key "uncached-setting"}
                   {:value "123456"})
       (is (= "123456"
              (uncached-setting))))
@@ -783,7 +783,7 @@
 (deftest cache-sync-test
   (testing "make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)"
     ;; clear out any existing values of `toucan-name`
-    (t2/delete! (t2/table-name :model/Setting) :key "toucan-name")
+    (t2/delete! (t2/table-name :model/Setting) 'key "toucan-name")
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
@@ -900,14 +900,14 @@
                                            ;; Set the setting directly instead of using
                                            ;; [[mt/with-temporary-setting-values]] because that blows up when the
                                            ;; Setting is Database-local-only
-                                           (t2/delete! :model/Setting :key (name setting-name))
+                                           (t2/delete! :model/Setting 'key (name setting-name))
                                            (when site-wide-value
                                              (t2/insert! :model/Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
                                              (finally
-                                               (t2/delete! :model/Setting :key (name setting-name))
+                                               (t2/delete! :model/Setting 'key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value!
@@ -1781,7 +1781,7 @@
         (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
     (testing "It doesn't do anything when the secret key is not set"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/delete! :setting :key "test-never-encrypted-setting")
+        (t2/delete! :setting 'key "test-never-encrypted-setting")
         (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
       (encryption-test/with-secret-key nil
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
@@ -1827,7 +1827,7 @@
             (is (= before (actual-value-in-db :toucan-name)))))))
     (testing "without an encryption key nothing happens"
       (encryption-test/with-secret-key nil
-        (t2/delete! :setting :key "toucan-name")
+        (t2/delete! :setting 'key "toucan-name")
         (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
         (setting/migrate-encrypted-settings!)
         (is (= "Lenny" (actual-value-in-db :toucan-name)))))))
@@ -1930,13 +1930,13 @@
   `(let [k# (name ~k)]
      (binding [setting/*deprecated-db-key-warned* (atom #{})]
        (try
-         (if (t2/select-one :model/Setting :key k#)
-           (t2/update! :model/Setting :key k# {:value ~v})
+         (if (t2/select-one :model/Setting 'key k#)
+           (t2/update! :model/Setting 'key k# {:value ~v})
            (t2/insert! :model/Setting {:key k# :value ~v}))
          (setting.cache/restore-cache!)
          ~@body
          (finally
-           (t2/delete! (t2/table-name :model/Setting) :key k#)
+           (t2/delete! (t2/table-name :model/Setting) 'key k#)
            (setting.cache/restore-cache!))))))
 
 (deftest deprecated-name-db-fallback-only-legacy-test

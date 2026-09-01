@@ -104,10 +104,10 @@
 
   ;; Using the macro
   (explain
-   (t2/select :model/User :id 1))
+   (t2/select :model/User 'id 1))
 
   ;; Manual start/stop with dynamic binding
   (start!)
   (binding [*analyze-query* true]
-    (t2/select :model/User :id 1))
+    (t2/select :model/User 'id 1))
   (stop!))

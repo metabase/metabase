@@ -51,6 +51,6 @@
             (is (= ["1" "2" "5"]
                    (t2/select-pks-vec (@#'liquibase/changelog-table-name conn) {:order-by [:dateexecuted :id]}))))
           (testing "the custom migration that fails doesn't commit its operation"
-            (is (nil? (t2/select-one :ancient_civilization :name "Greek"))))
+            (is (nil? (t2/select-one :ancient_civilization 'name "Greek"))))
           (testing "the custom migration that success will persists it result successfully"
-            (is (some? (t2/select-one :ancient_civilization :name "Egypt")))))))))
+            (is (some? (t2/select-one :ancient_civilization 'name "Egypt")))))))))

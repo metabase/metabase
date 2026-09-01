@@ -95,13 +95,13 @@
               (is (partial= {:task         "persist-refresh"
                              :task_details {:success 1 :error 0}}
                             (t2/select-one :model/TaskHistory
-                                           :db_id (u/the-id db)
-                                           :task "persist-refresh"
+                                           'db_id (u/the-id db)
+                                           'task "persist-refresh"
                                            {:order-by [[:id :desc]]})))
               (testing "Deletes backing tables of models that have state='off'"
                 (let [unpersisted-ids (atom #{})
                       deleted?        (fn [{id :id}]
-                                        (not (t2/exists? :model/PersistedInfo :id id)))
+                                        (not (t2/exists? :model/PersistedInfo 'id id)))
                       test-refresher
                       ;; prune path only calls unpersist!; leaving refresh! out makes a stray call throw
                       #_{:clj-kondo/ignore [:missing-protocol-method]}
@@ -132,8 +132,8 @@
               (is (partial= {:task "persist-refresh"
                              :task_details {:success 2 :error 0}}
                             (t2/select-one :model/TaskHistory
-                                           :db_id (u/the-id db)
-                                           :task "persist-refresh"
+                                           'db_id (u/the-id db)
+                                           'task "persist-refresh"
                                            {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-3
@@ -159,7 +159,7 @@
               (is (partial= {:task "unpersist-tables"
                              :task_details {:success 2 :error 0, :skipped 0}}
                             (t2/select-one :model/TaskHistory
-                                           :task "unpersist-tables"
+                                           'task "unpersist-tables"
                                            {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-4
@@ -185,7 +185,7 @@
               (is (partial= {:task "unpersist-tables"
                              :task_details {:success 1 :error 0, :skipped 1}}
                             (t2/select-one :model/TaskHistory
-                                           :task "unpersist-tables"
+                                           'task "unpersist-tables"
                                            {:order-by [[:id :desc]]}))))))))))
 
 (deftest event-test
@@ -195,6 +195,6 @@
         (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
                        :model/Card     card {:database_id (u/the-id db)}]
           (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})
-          (is (zero? (count (t2/select :model/PersistedInfo :card_id (u/the-id card)))))
+          (is (zero? (count (t2/select :model/PersistedInfo 'card_id (u/the-id card)))))
           (events/publish-event! :event/card-create {:object (assoc card :type :model) :user-id (mt/user->id :rasta)})
-          (is (= "off" (:state (t2/select-one :model/PersistedInfo :card_id (u/the-id card))))))))))
+          (is (= "off" (:state (t2/select-one :model/PersistedInfo 'card_id (u/the-id card))))))))))

@@ -36,7 +36,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
+  (t2/select-one-fn :average_execution_time :model/Query 'query_hash query-hash))
 
 (defn- int-casting-type
   "Return appropriate type for use in SQL `CAST(x AS type)` statement.
@@ -68,13 +68,13 @@
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
      (pos? (t2/update! :model/Query
-                       {:query_hash query-hash, :query nil}
+                       {'query_hash query-hash, 'query nil}
                        {:query                 (json/encode query)
                         :average_execution_time avg-execution-time}))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
      (pos? (t2/update! :model/Query
-                       {:query_hash query-hash}
+                       {'query_hash query-hash}
                        {:average_execution_time avg-execution-time})))))
 
 (defn- rolling-average-coefficients
@@ -199,7 +199,7 @@
     (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
                      ;; Card may belong to a different Database; fetch from the app DB
-                     (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
+                     (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] 'id source-card-id))]
         (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
       (let [table-id (lib/primary-source-table-id query)]
         {:database-id database-id

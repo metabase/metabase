@@ -176,7 +176,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table))))
+                                      (driver/default-field-order (t2/select-one-fn :engine :model/Database 'id (:db_id table))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -186,7 +186,7 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (t2/delete! :model/Field :table_id (:id table)))
+  (t2/delete! :model/Field 'table_id (:id table)))
 
 (t2/define-before-update :model/Table
   [table]
@@ -374,7 +374,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (t2/select :model/Collection 'id ['in collection-ids]))
                                 {})
         ;; Associate collection info with each table so table-editable? doesn't need to query
         tables-with-collection (for [table tables]
@@ -396,8 +396,8 @@
     tables
     (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in owner-user-ids]))]
+                      (t2/select-pk->fn identity [:model/User 'id 'email 'first_name 'last_name]
+                                        'id ['in owner-user-ids]))]
       (for [table tables]
         (assoc table :owner
                (cond
@@ -436,8 +436,8 @@
    (map-indexed (fn [new-position field]
                   (t2/update! :model/Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [:model/Field :id]
-                           :table_id  (u/the-id table)
+                (t2/select [:model/Field 'id]
+                           'table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
                                         :smart        [[[:case
@@ -454,8 +454,8 @@
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (t2/select-pks-set :model/Field
-                        :table_id (u/the-id table)
-                        :active   true)
+                        'table_id (u/the-id table)
+                        'active   true)
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -477,7 +477,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
+   #(-> (group-by :table_id (t2/select [:model/FieldValues 'field_id 'values 'field.table_id]
                                        {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
                                         :where [:and
                                                 [:in :field.table_id [(map :id tables)]]
@@ -494,7 +494,7 @@
    #(let [transform-ids (->> tables (keep :transform_id) distinct)
           id->transform (when (seq transform-ids)
                           (t2/select-fn->fn :id identity :model/Transform
-                                            :id [:in transform-ids]))]
+                                            'id ['in transform-ids]))]
       (into {}
             (keep (fn [{:keys [id transform_id]}]
                     (when transform_id
@@ -527,7 +527,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Segment 'table_id ['in table-ids], 'archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -536,7 +536,7 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/Measure 'table_id ['in table-ids], 'archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -546,9 +546,9 @@
   (with-objects :metrics
     (fn [table-ids]
       (->> (t2/select :model/Card
-                      :table_id [:in table-ids],
-                      :archived false,
-                      :type :metric,
+                      'table_id ['in table-ids],
+                      'archived false,
+                      'type :metric,
                       {:order-by [[:name :asc]]})
            (filter mi/can-read?)))
     tables))
@@ -559,9 +559,9 @@
   (with-objects :fields
     (fn [table-ids]
       (t2/select :model/Field
-                 :active          true
-                 :table_id        [:in table-ids]
-                 :visibility_type [:not= "retired"]
+                 'active          true
+                 'table_id        ['in table-ids]
+                 'visibility_type ['not= "retired"]
                  {:order-by       field-order-rule}))
     tables))
 
@@ -576,7 +576,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (t2/select-one :model/Database :id (:db_id table)))
+  (t2/select-one :model/Database 'id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
@@ -608,7 +608,7 @@
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
+  (let [db-name (t2/select-one-fn :name :model/Database 'id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -623,8 +623,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (t2/select-one-pk :model/Database :name db-name)]
-    (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (t2/select-one-pk :model/Database 'name db-name)]
+    (t2/select-one :model/Table 'name table-name 'db_id db-id 'schema schema-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema

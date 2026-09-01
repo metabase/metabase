@@ -232,7 +232,7 @@
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
           ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
-          (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+          (t2/update! :model/Table {'db_id (mt/id)} {:is_writable true})
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -292,7 +292,7 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
         ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
-        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+        (t2/update! :model/Table {'db_id (mt/id)} {:is_writable true})
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
@@ -341,7 +341,7 @@
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
         ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
-        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+        (t2/update! :model/Table {'db_id (mt/id)} {:is_writable true})
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
@@ -443,8 +443,8 @@
                         (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                                     :o  [t :null]}
                                                                    {:primary-key [:id]}]]
-                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
-                                field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
+                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table 'name] table-id)
+                                field-id      (t2/select-one-fn :id [:model/Field 'id] 'table_id table-id 'name "o")
                                 driver        driver/*driver*
                                 get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
                                 get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
@@ -523,8 +523,8 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
-        (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
-              _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
+        (let [field-id         (t2/select-one-fn :id :model/Field 'table_id table-id 'name "n")
+              _                (t2/update! :model/Field {'id field-id} {:semantic_type "type/Category"})
               field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
               test-queue       (ArrayBlockingQueue. 100)
               create!          #(action-v2.tu/create-rows! table-id %)
@@ -583,7 +583,7 @@
                                                     :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
-          (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
+          (t2/update! :model/Field {'table_id table-id, 'name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
                   update-id           "data-grid.row/update"
@@ -631,7 +631,7 @@
                                                     :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
-          (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
+          (t2/update! :model/Field {'table_id table-id, 'name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
                   update-id           "data-grid.row/update"
@@ -737,9 +737,9 @@
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
                   (sync/sync-database! database)
-                  (let [writable-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "writable_table")]
+                  (let [writable-id (t2/select-one-fn :id :model/Table 'db_id (:id database) 'name "writable_table")]
                     (testing "the writable table syncs as editable despite the REVOKE on the other table"
-                      (is (true? (t2/select-one-fn :is_writable :model/Table :id writable-id))))
+                      (is (true? (t2/select-one-fn :is_writable :model/Table 'id writable-id))))
                     (testing "rows can actually be inserted through the editing API"
                       (is (=? [{:id 1, :name "Pichu"}]
                               (map :row (:outputs (action-v2.tu/create-rows! writable-id [{:name "Pichu"}])))))
@@ -783,9 +783,9 @@
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
                   (sync/sync-database! database)
-                  (let [table-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "optimistic_table")]
+                  (let [table-id (t2/select-one-fn :id :model/Table 'db_id (:id database) 'name "optimistic_table")]
                     (testing "the table optimistically syncs as writable (the schema-level REVOKE line is ignored)"
-                      (is (true? (t2/select-one-fn :is_writable :model/Table :id table-id))))
+                      (is (true? (t2/select-one-fn :is_writable :model/Table 'id table-id))))
                     (testing "but editing it through the API fails at runtime -- no row is actually inserted"
                       ;; We don't assert a specific status code; the point is simply that the edit does not succeed.
                       (let [resp (mt/user-http-request :crowberto :post action-v2.tu/execute-bulk-url

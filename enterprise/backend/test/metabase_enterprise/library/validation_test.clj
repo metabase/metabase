@@ -110,8 +110,8 @@
           (is (=? {:is_published  false
                    :collection_id nil
                    :id            (:id table)}
-                  (t2/select-one :model/Table :id (:id table))))
-          (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me))))))))
+                  (t2/select-one :model/Table 'id (:id table))))
+          (is (t2/select-one-fn :archived :model/Collection 'id (:id archive-me))))))))
 
 (deftest unpublish-tables-in-archived-collection-recursively-test
   (mt/with-premium-features #{:library}
@@ -135,12 +135,12 @@
                                                    :name          "Child_Table"}]
         (collection/archive-collection! archive-me)
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
-          (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
+          (is (t2/select-one-fn :archived :model/Collection 'id (:id archive-me)))
           (doseq [table [table1 table2 table3]]
             (is (=? {:is_published  false
                      :collection_id nil
                      :id            (:id table)}
-                    (t2/select-one :model/Table :id (:id table))))))))))
+                    (t2/select-one :model/Table 'id (:id table))))))))))
 
 (deftest archive-metrics-subcollection-goes-to-trash-test
   (mt/with-premium-features #{:library}
@@ -151,12 +151,12 @@
                                                    :type          :metric}]
         (collection/archive-collection! archive-me)
         (testing "the collection is archived"
-          (is (true? (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))))
+          (is (true? (t2/select-one-fn :archived :model/Collection 'id (:id archive-me)))))
         (testing "the metric inside is archived"
-          (is (true? (t2/select-one-fn :archived :model/Card :id (:id metric)))))
+          (is (true? (t2/select-one-fn :archived :model/Card 'id (:id metric)))))
         (testing "the metric stays in its original collection (not unpublished/ejected)"
           (is (= (:id archive-me)
-                 (t2/select-one-fn :collection_id :model/Card :id (:id metric)))))))))
+                 (t2/select-one-fn :collection_id :model/Card 'id (:id metric)))))))))
 
 (deftest disallow-cross-type-collection-nesting-test
   (mt/with-premium-features #{:library}

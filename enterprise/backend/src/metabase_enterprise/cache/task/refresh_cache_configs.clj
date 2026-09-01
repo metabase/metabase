@@ -58,12 +58,12 @@
   [refresh-defs]
   (fn []
     (let [card-ids      (into #{} (map :card-id refresh-defs))
-          cards-by-id   (t2/select-pk->fn identity :model/Card :id [:in card-ids])
+          cards-by-id   (t2/select-pk->fn identity :model/Card 'id ['in card-ids])
           all-db-ids    (into #{} (keep (comp :database_id val)) cards-by-id)
           router-db-ids (if (seq all-db-ids)
                           (t2/select-fn-set :database_id
                                             :model/DatabaseRouter
-                                            :database_id [:in all-db-ids])
+                                            'database_id ['in all-db-ids])
                           #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         (let [card (get cards-by-id card-id)]
@@ -146,7 +146,7 @@
 
 (defn- duration-queries-to-rerun
   []
-  (let [cache-configs (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)]
+  (let [cache-configs (t2/select :model/CacheConfig 'strategy :duration 'refresh_automatically true)]
     (when (seq cache-configs)
       (let [base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs false))
             parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
@@ -157,7 +157,7 @@
   to re-run them before the cache has been refreshed. "
   [queries]
   (doseq [batch (partition 1000 1000 nil queries)]
-    (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash batch)])))
+    (t2/delete! :model/QueryCache 'query_hash ['in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
@@ -231,7 +231,7 @@
   [{:keys [model_id model]}]
   (case model
     "question" [model_id]
-    "dashboard" (let [dashboard (-> (t2/select-one :model/Dashboard :id model_id)
+    "dashboard" (let [dashboard (-> (t2/select-one :model/Dashboard 'id model_id)
                                     (t2/hydrate :dashcards))]
                   (distinct (keep :card_id (:dashcards dashboard))))))
 
@@ -266,7 +266,7 @@
   "Fetch whatever cache configs for a given `strategy` are ready to be updated."
   [strategy]
   (t2/select :model/CacheConfig
-             :strategy strategy
+             'strategy strategy
              {:where [:or
                       [:= :next_run_at nil]
                       [:<= :next_run_at (t/offset-date-time)]]}))
@@ -291,7 +291,7 @@
         (reduce
          (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
            (t2/update! :model/CacheConfig
-                       {:id id}
+                       {'id id}
                        {:next_run_at    (calc-next-run (:schedule config) now)
                         :invalidated_at now})
            (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)

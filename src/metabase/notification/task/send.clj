@@ -136,7 +136,7 @@
 (defn- active-cron-subscription-id->subscription
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
-                    :type :notification-subscription/cron
+                    'type :notification-subscription/cron
                     {:select [:ns.*]
                      :from   [[:notification_subscription :ns]]
                      :join   [[:notification :n] [:= :ns.notification_id :n.id]]

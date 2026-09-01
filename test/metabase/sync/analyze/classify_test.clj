@@ -76,9 +76,9 @@
                                                                                        :avg "NaN"}}
                                                                 :global {:distinct-count 3}}
                                           :last_analyzed       nil}]
-      (is (nil? (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))
+      (is (nil? (:semantic_type (t2/select-one :model/Field 'id (u/the-id field)))))
       (classify/classify-fields-for-db! db (constantly nil))
-      (is (= :type/Income (:semantic_type (t2/select-one :model/Field :id (u/the-id field))))))))
+      (is (= :type/Income (:semantic_type (t2/select-one :model/Field 'id (u/the-id field))))))))
 
 (deftest classify-decimal-fields-test
   (testing "We can classify decimal fields that have specially handled infinity values"
@@ -94,9 +94,9 @@
                                                                                        :avg "Infinity"}}
                                                                 :global {:distinct-count 3}}
                                           :last_analyzed       nil}]
-      (is (nil? (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))
+      (is (nil? (:semantic_type (t2/select-one :model/Field 'id (u/the-id field)))))
       (classify/classify-fields-for-db! db (constantly nil))
-      (is (= :type/Income (:semantic_type (t2/select-one :model/Field :id (u/the-id field))))))))
+      (is (= :type/Income (:semantic_type (t2/select-one :model/Field 'id (u/the-id field))))))))
 
 (deftest single-name-field-per-table-test
   (testing "On a new table with multiple eligible fields, only 1 field gets type/Name semantic type"
@@ -117,8 +117,8 @@
                                    :last_analyzed       nil}]
       (classify/classify-fields! table)
       (let [name-fields (t2/select :model/Field
-                                   :table_id (u/the-id table)
-                                   :semantic_type :type/Name)]
+                                   'table_id (u/the-id table)
+                                   'semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
         ;; Should be the first name field encountered, but we can't assume a specific ordering
         (is (#{"lastName" "fullName" "firstName"} (:name (first name-fields))))))))
@@ -149,13 +149,13 @@
                                        :last_analyzed       nil}]
       (classify/classify-fields! table)
       (let [name-fields (t2/select :model/Field
-                                   :table_id (u/the-id table)
-                                   :semantic_type :type/Name)]
+                                   'table_id (u/the-id table)
+                                   'semantic_type :type/Name)]
         (is (= 2 (count name-fields)))
         ;; The original fields should keep their type/Name
         (is (some #(= "firstName" (:name %)) name-fields))
         (is (some #(= "lastName" (:name %)) name-fields))
-        (is (not= :type/Name (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))))))
+        (is (not= :type/Name (:semantic_type (t2/select-one :model/Field 'id (u/the-id field)))))))))
 
 (deftest no-name-field-candidates-test
   (testing "Table with no eligible name fields should not crash during classification"
@@ -166,8 +166,8 @@
                    :model/Field _ {:name "timestamp" :base_type :type/DateTime :table_id (u/the-id table)}]
       (is (not= ::thrown (try (classify/classify-fields! table) (catch Throwable _ ::thrown))))
       (let [name-fields (t2/select :model/Field
-                                   :table_id (u/the-id table)
-                                   :semantic_type :type/Name)]
+                                   'table_id (u/the-id table)
+                                   'semantic_type :type/Name)]
         (is (= 0 (count name-fields)))))))
 
 (deftest reclassification-preserves-name-field-test
@@ -189,8 +189,8 @@
       (classify/classify-fields! table)
       (classify/classify-fields! table)
       (let [name-fields (t2/select :model/Field
-                                   :table_id (u/the-id table)
-                                   :semantic_type :type/Name)]
+                                   'table_id (u/the-id table)
+                                   'semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
         (is (= "userName" (:name (first name-fields))))))))
 
@@ -211,7 +211,7 @@
       (mt/with-dynamic-fn-redefs [classifiers.no-preview-display/infer-no-preview-display
                                   (fn [field _] (assoc field :preview_display false))]
         (classify/classify-fields! table))
-      (let [updated-field (t2/select-one :model/Field :id (u/the-id field))]
+      (let [updated-field (t2/select-one :model/Field 'id (u/the-id field))]
         (is (not= :type/Name (:semantic_type updated-field)))
         (is (false? (:preview_display updated-field)))))))
 
@@ -227,7 +227,7 @@
                                                 :fingerprint_version i/*latest-fingerprint-version*
                                                 :last_analyzed nil}]
       (classify/classify-fields! table)
-      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name-field))]
+      (let [updated-field (t2/select-one :model/Field 'id (u/the-id new-name-field))]
         (is (= :type/Name (:semantic_type updated-field)))))))
 
 (deftest mixed-active-inactive-name-fields-test
@@ -246,8 +246,8 @@
                                                 :fingerprint_version i/*latest-fingerprint-version*
                                                 :last_analyzed nil}]
       (classify/classify-fields! table)
-      (let [updated-field (t2/select-one :model/Field :id (u/the-id potential-name))
-            existing-field (t2/select-one :model/Field :id (u/the-id active-field))]
+      (let [updated-field (t2/select-one :model/Field 'id (u/the-id potential-name))
+            existing-field (t2/select-one :model/Field 'id (u/the-id active-field))]
         (is (not= :type/Name (:semantic_type updated-field)))
         (is (= :type/Name (:semantic_type existing-field)))))))
 
@@ -265,7 +265,7 @@
                                           :fingerprint_version i/*latest-fingerprint-version*
                                           :last_analyzed nil}]
       (classify/classify-fields! table)
-      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
+      (let [updated-field (t2/select-one :model/Field 'id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
 
 (deftest multiple-retired-and-deactivated-name-fields-test
@@ -288,5 +288,5 @@
                                           :fingerprint_version i/*latest-fingerprint-version*
                                           :last_analyzed nil}]
       (classify/classify-fields! table)
-      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
+      (let [updated-field (t2/select-one :model/Field 'id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))

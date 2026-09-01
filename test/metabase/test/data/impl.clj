@@ -150,16 +150,16 @@
 (mu/defn- build-table-lookup-map
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn->pk (juxt (constantly database-id) :name)
-                    [:model/Table :id :name]
-                    :db_id  database-id
-                    :active true))
+                    [:model/Table 'id 'name]
+                    'db_id  database-id
+                    'active true))
 
 (mu/defn- build-field-lookup-map
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn->pk (juxt :parent_id :name)
-                    [:model/Field :id :name :parent_id]
-                    :table_id table-id
-                    :active   true))
+                    [:model/Field 'id 'name 'parent_id]
+                    'table_id table-id
+                    'active   true))
 
 ;; Like the Database ID above, these maps are memoized for the application DB. Bypass the caches within a transaction
 ;; so a rollback cannot leave IDs for Tables and Fields that no longer exist.
@@ -205,14 +205,14 @@
 
 (defn- table-id-from-app-db
   [db-id table-name]
-  (t2/select-one-pk [:model/Table :id] :db_id db-id, :name table-name, :active true))
+  (t2/select-one-pk [:model/Table 'id] 'db_id db-id, 'name table-name, 'active true))
 
 (defn- throw-unfound-table-error [db-id table-name]
-  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
+  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database 'name 'engine] 'id db-id)]
     (throw
      (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                          (pr-str table-name) driver db-id (pr-str db-name)
-                         (u/pprint-to-str (t2/select-pk->fn :name :model/Table, :db_id db-id, :active true)))))))
+                         (u/pprint-to-str (t2/select-pk->fn :name :model/Table, 'db_id db-id, 'active true)))))))
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
@@ -225,22 +225,22 @@
    table-name :- :string]
   (or (cached-table-id db-id table-name)
       (table-id-from-app-db db-id table-name)
-      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database :settings] :id db-id))
+      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database 'settings] 'id db-id))
             qualified-table-name (tx/db-qualified-table-name db-name table-name)]
         (cached-table-id db-id qualified-table-name)
         (table-id-from-app-db db-id qualified-table-name))
       (throw-unfound-table-error db-id table-name)))
 
 (defn- field-id-from-app-db [table-id parent-id field-name]
-  (t2/select-one-pk :model/Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id))
+  (t2/select-one-pk :model/Field, 'active true, 'table_id table-id, 'name field-name, 'parent_id parent-id))
 
 (defn- qualified-field-name [parent-id field-name]
   (if parent-id
     (str (t2/select-one-fn (fn [field]
                              (qualified-field-name (:parent_id field) (:name field)))
-                           [:model/Field :parent_id :name]
-                           :id parent-id
-                           :active true)
+                           [:model/Field 'parent_id 'name]
+                           'id parent-id
+                           'active true)
          \.
          field-name)
     field-name))
@@ -249,12 +249,12 @@
   (t2/select-fn->fn :id
                     (fn [field]
                       (qualified-field-name (:parent_id field) (:name field)))
-                    [:model/Field :id :parent_id :name]
-                    :active true, :table_id table-id))
+                    [:model/Field 'id 'parent_id 'name]
+                    'active true, 'table_id table-id))
 
 (defn- throw-unfound-field-errror
   [table-id parent-id field-name]
-  (let [table-name      (t2/select-one-fn :name [:model/Table :name] :id table-id)
+  (let [table-name      (t2/select-one-fn :name [:model/Table 'name] 'id table-id)
         field-name      (qualified-field-name parent-id field-name)
         all-field-names (all-field-names table-id)]
     (throw
@@ -285,7 +285,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (let [old-fields (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
+  (let [old-fields (t2/select :model/Field 'table_id old-table-id, 'active true, {:order-by [[:id :asc]]})]
     (t2/insert! :model/Field
                 (for [field old-fields]
                   (-> field
@@ -296,7 +296,7 @@
     ;; walks the parent chain (e.g. resolve-fields → bulk-metadata-or-throw).
     ;; (name, nfc_path) uniquely identifies a field within a table, so we match across the old/new copies on that.
     (let [field-key      (juxt :name :nfc_path)
-          new-fields     (t2/select :model/Field :table_id new-table-id, :active true)
+          new-fields     (t2/select :model/Field 'table_id new-table-id, 'active true)
           new-key->id    (into {} (map (juxt field-key :id)) new-fields)
           old-id->new-id (into {}
                                (keep (fn [{old-id :id, :as old-field}]
@@ -312,10 +312,10 @@
     ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
     ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
     ;; up in whatever a test counts.
-    (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
-          new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
+    (let [old-field-id->name (t2/select-pk->fn :name :model/Field 'table_id old-table-id 'active true)
+          new-field-name->id (t2/select-fn->pk :name :model/Field 'table_id new-table-id 'active true)
           old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
-                               (t2/select :model/FieldValues :field_id [:in (set field-ids)] :type :full))]
+                               (t2/select :model/FieldValues 'field_id ['in (set field-ids)] 'type :full))]
       (t2/insert! :model/FieldValues
                   (for [{old-field-id :field_id, :as field-values} old-field-values
                         :let                                       [field-name (get old-field-id->name old-field-id)]]
@@ -328,7 +328,7 @@
                         (update :human_readable_values not-empty)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select :model/Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
+  (let [old-tables    (t2/select :model/Table 'db_id old-db-id, 'active true, {:order-by [[:id :asc]]})
         new-table-ids (sort ; sorting by PK recovers the insertion order, because insert-returning-pks! doesn't guarantee this
                        (t2/insert-returning-pks! :model/Table
                                                  (for [table old-tables]
@@ -376,7 +376,7 @@
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
-      (let [secrets (t2/select [:model/Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+      (let [secrets (t2/select [:model/Secret 'id 'name 'kind 'source 'value] 'id ['in (set (vals prop->old-id))])
             new-ids (t2/insert-returning-pks! :model/Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database
@@ -405,7 +405,7 @@
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (t2/delete! :model/Database :id new-db-id)))))
+        (t2/delete! :model/Database 'id new-db-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |

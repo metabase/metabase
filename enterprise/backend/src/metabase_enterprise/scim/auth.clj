@@ -11,7 +11,7 @@
   in the database with the SCIM scope."
   [api-key]
   (boolean
-   (let [expected-api-key (-> (t2/select-one :model/ApiKey :scope :scim) :key)]
+   (let [expected-api-key (-> (t2/select-one :model/ApiKey 'scope :scim) :key)]
      (if (and api-key expected-api-key)
        (u.password/verify-password api-key "" expected-api-key)
        (mw.session/do-useless-hash)))))

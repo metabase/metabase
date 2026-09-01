@@ -32,7 +32,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (t2/select-one :model/Field :id fk-target-field-id)
+    (t2/select-one :model/Field 'id fk-target-field-id)
     field))
 
 (def ^:private default-max-field-search-limit 1000)
@@ -78,7 +78,7 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
+                                     (api/check-404 (t2/select-one :model/Field 'id remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -90,8 +90,8 @@
   (let [field        (if qp.perms/*param-values-query*
                        ;; When fetching param values for a card/dashboard the user can read, skip the Field
                        ;; read-check which requires create-queries permission on the table.
-                       (api/check-404 (t2/select-one :model/Field :id field-id))
-                       (api/read-check (t2/select-one :model/Field :id field-id)))
+                       (api/check-404 (t2/select-one :model/Field 'id field-id))
+                       (api/read-check (t2/select-one :model/Field 'id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
                          field)]

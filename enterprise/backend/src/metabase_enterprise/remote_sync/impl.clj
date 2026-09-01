@@ -226,13 +226,13 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (t2/select-one :model/Collection :type collection/library-collection-type)]
+        library-conflict (when-let [local-library (t2/select-one :model/Collection 'type collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
                                       (not (t2/exists? :model/RemoteSyncObject
-                                                       :model_type "Collection"
-                                                       :model_id (:id local-library))))
+                                                       'model_type "Collection"
+                                                       'model_id (:id local-library))))
                              {:type :library-conflict
                               :category "Library"
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
@@ -279,7 +279,7 @@
                           opts      {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
                           ;; entity-id models: map local id -> entity_id so we can look up the repo path
                           id->eid   (when (and model-key (= :entity-id (:identity spec)))
-                                      (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
+                                      (t2/select-pk->fn :entity_id model-key 'id ['in (mapv :model_id model-rows)]))]
                       (eduction (keep #(serialize model-type opts id->eid %))
                                 (serdes/extract-query model-type opts)))))
           (group-by :model_type rows))))
@@ -429,7 +429,7 @@
         deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
         ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
         ;; file_path values are long, making an IN clause bulky for marginal gain).
-        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p)) deleted)
+        deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject 'file_path p)) deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
         add-models (if ingestable
@@ -478,14 +478,14 @@
                             ;; N+1: one entity_id query per delete candidate (bounded by deletions in a single
                             ;; pull; batching would need grouping by model-key into per-table IN queries).
                             :let [model-key (:model-key (spec/spec-for-model-type model_type))
-                                  eid (when model-key (t2/select-one-fn :entity_id model-key :id model_id))]
+                                  eid (when model-key (t2/select-one-fn :entity_id model-key 'id model_id))]
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id :model-key model-key})
         sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
     (remote-sync.task/update-progress! task-id 0.8)
     (t2/with-transaction [_conn]
       (doseq [[model-key ds] (group-by :model-key deletes)]
-        (t2/delete! model-key :id [:in (mapv :model_id ds)]))
+        (t2/delete! model-key 'id ['in (mapv :model_id ds)]))
       (when (seq deletes)
         (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
       (when (seq sync-rows)
@@ -518,7 +518,7 @@
   (e.g. a pending local deletion, whose entity is absent from the merged set)."
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
-    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id)]
+    (if-let [existing (t2/select-one :model/RemoteSyncObject 'model_type model_type 'model_id model_id)]
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status :status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
@@ -778,7 +778,7 @@
           (let [pulled (apply + (vals summary))]
             (load-snapshot! merged-snapshot task-id sync-timestamp
                             :finalize! (fn []
-                                         (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                                         (t2/update! :model/RemoteSyncObject {'status "synced" 'status_changed_at sync-timestamp})
                                          (remote-sync.task/set-version! task-id version)))
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
@@ -833,7 +833,7 @@
         (filter (fn [{:keys [model_type model_id]}]
                   (and (not (and (= model_type model-type) (= model_id model-id)))
                        (spec/spec-for-model-type model_type)
-                       (not (t2/exists? :model/RemoteSyncObject :model_type model_type :model_id model_id)))))
+                       (not (t2/exists? :model/RemoteSyncObject 'model_type model_type 'model_id model_id)))))
         (export-closure model-type model-id)))
 
 (defn- ->sized-chunks
@@ -1084,8 +1084,8 @@
   `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
   [exported-rows]
   (let [exported (into #{} (map #(select-keys % [:model_type :model_id])) exported-rows)]
-    (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                    :status [:in ["removed" "delete"]])
+    (->> (t2/select [:model/RemoteSyncObject 'id 'model_type 'model_id]
+                    'status ['in ["removed" "delete"]])
          (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
          (remove #(exported (select-keys % [:model_type :model_id])))
          (map :id))))
@@ -1099,7 +1099,7 @@
     (doseq [id-chunk (partition-all app-db-batch-size ids)
             :let     [hits (filter by-id id-chunk)]]
       (t2/update! :model/RemoteSyncObject
-                  {:id [:in (vec id-chunk)]}
+                  {'id ['in (vec id-chunk)]}
                   (cond-> {:status "synced" :status_changed_at sync-timestamp}
                     (seq hits)
                     (assoc :file_path    (into [:case]
@@ -1147,7 +1147,7 @@
           (when-not (= version :remote-sync/empty-commit)
             (remote-sync.task/set-version! task-id version))
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-            (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+            (t2/delete! :model/RemoteSyncObject 'id ['in removed-ids]))
           (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
         (if (= version :remote-sync/empty-commit)
           (do
@@ -1180,7 +1180,7 @@
           (remote-sync.task/set-version! task-id version))
         ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
-          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+          (t2/delete! :model/RemoteSyncObject 'id ['in removed-ids]))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
@@ -1406,7 +1406,7 @@
   [result task-id & [branch]]
   (let [proceed?
         (t2/with-transaction [_conn]
-          (let [task (t2/select-one :model/RemoteSyncTask :id task-id {:for :update})]
+          (let [task (t2/select-one :model/RemoteSyncTask 'id task-id {:for :update})]
             (cond
               (nil? task)
               (do (log/warnf "Task %s missing during result handling; skipping" task-id)

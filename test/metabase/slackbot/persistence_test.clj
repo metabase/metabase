@@ -288,9 +288,9 @@
         (testing "returns true when a message is soft-deleted"
           (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
         (let [msg (t2/select-one :model/MetabotMessage
-                                 :channel_id   channel-id
-                                 :slack_msg_id slack-ts
-                                 :role         "assistant")]
+                                 'channel_id   channel-id
+                                 'slack_msg_id slack-ts
+                                 'role         "assistant")]
           (testing "deleted_at is set"
             (is (some? (:deleted_at msg))))
           (testing "deleted_by_user_id is set"

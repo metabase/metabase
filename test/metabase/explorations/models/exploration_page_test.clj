@@ -20,7 +20,7 @@
         (is (true? (mi/can-read?  :model/ExplorationPage (:id p))))
         (is (true? (mi/can-write? :model/ExplorationPage (:id p)))))
       (testing "entity_id + timestamps populated"
-        (let [reloaded (t2/select-one :model/ExplorationPage :id (:id p))]
+        (let [reloaded (t2/select-one :model/ExplorationPage 'id (:id p))]
           (is (some? (:entity_id reloaded)))
           (is (some? (:created_at reloaded)))
           (is (some? (:updated_at reloaded))))))))

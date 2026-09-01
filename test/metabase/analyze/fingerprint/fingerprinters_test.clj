@@ -240,7 +240,7 @@
                                       :percent-email  0.0
                                       :percent-state  0.0
                                       :average-length #(< 15 % 16)}}}
-                (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :name))))))))
+                (t2/select-one-fn :fingerprint :model/Field 'id (mt/id :venues :name))))))))
 
 (deftest ^:parallel fingerprints-in-db-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -252,7 +252,7 @@
                           :nil%           0.0}
                  :type   {:type/DateTime {:earliest #(str/starts-with? % "2013-01-03")
                                           :latest   #(str/starts-with? % "2015-12-29")}}}
-                (t2/select-one-fn :fingerprint :model/Field :id (mt/id :checkins :date))))))))
+                (t2/select-one-fn :fingerprint :model/Field 'id (mt/id :checkins :date))))))))
 
 (deftest ^:parallel fingerprints-in-db-test-3
   (mt/test-drivers (mt/normal-drivers)
@@ -266,7 +266,7 @@
                                         :max 4.0
                                         :sd  #(< 0.76 % 0.78)
                                         :avg #(< 2.02 % 2.04)}}}
-                (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :price))))))))
+                (t2/select-one-fn :fingerprint :model/Field 'id (mt/id :venues :price))))))))
 
 (deftest ^:parallel valid-serialized-json?-test
   (testing "recognizes substrings of json"

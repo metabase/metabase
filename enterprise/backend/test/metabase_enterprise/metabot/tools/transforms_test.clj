@@ -65,7 +65,7 @@
   (testing "the tool renders the :source key the transforms-python API actually returns"
     (mt/with-premium-features #{:transforms-python}
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [lib-id (t2/select-one-pk :model/PythonLibrary :path "common.py")]
+        (let [lib-id (t2/select-one-pk :model/PythonLibrary 'path "common.py")]
           (mt/with-temp-vals-in-db :model/PythonLibrary lib-id {:source python-source}
             (is (= rendered-library
                    (:output (ee-transforms/get-transform-python-library-details-tool {:path "common.py"}))))))))))

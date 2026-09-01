@@ -169,9 +169,9 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults :h2) :segments :field_values :metrics :measures)
-            (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
-                                        :view_count]
-                                       :id (mt/id :venues))
+            (t2/hydrate (t2/select-one [:model/Table 'id 'created_at 'updated_at 'initial_sync_status
+                                        'view_count]
+                                       'id (mt/id :venues))
                         :pk_field :collection)
             {:schema       "PUBLIC"
              :name         "VENUES"
@@ -190,9 +190,9 @@
                                                         :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :measures :db)
-                (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
-                                            :view_count]
-                                           :id table-id)
+                (t2/hydrate (t2/select-one [:model/Table 'id 'created_at 'updated_at 'initial_sync_status
+                                            'view_count]
+                                           'id table-id)
                             :pk_field :collection)
                 {:schema       ""
                  :name         "schemaless_table"
@@ -251,14 +251,14 @@
       (testing "Sensitive fields are included"
         (is (= (merge
                 (table-defaults)
-                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                                           :id (mt/id :users))
+                (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status 'view_count]
+                                           'id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
-                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                 :fields       [(assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :id)))
                                        :semantic_type              "type/PK"
                                        :table_id                   (mt/id :users)
                                        :name                       "ID"
@@ -280,7 +280,7 @@
                                                                     :name "NAME",
                                                                     :semantic_type "type/Name",
                                                                     :table_id (mt/id :users)})
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                (assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :name)))
                                        :semantic_type              "type/Name"
                                        :table_id                   (mt/id :users)
                                        :name                       "NAME"
@@ -295,7 +295,7 @@
                                        :database_required          false
                                        :database_is_auto_increment false
                                        :name_field                 nil)
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                (assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :last_login)))
                                        :table_id                   (mt/id :users)
                                        :name                       "LAST_LOGIN"
                                        :display_name               "Last Login"
@@ -309,7 +309,7 @@
                                        :database_required          false
                                        :database_is_auto_increment false
                                        :name_field                 nil)
-                                (assoc (field-details (t2/select-one :model/Field :table_id (mt/id :users), :name "PASSWORD"))
+                                (assoc (field-details (t2/select-one :model/Field 'table_id (mt/id :users), 'name "PASSWORD"))
                                        :semantic_type              "type/Category"
                                        :table_id                   (mt/id :users)
                                        :name                       "PASSWORD"
@@ -334,14 +334,14 @@
       (testing "Sensitive fields should not be included"
         (is (= (merge
                 (table-defaults)
-                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                                           :id (mt/id :users))
+                (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status 'view_count]
+                                           'id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
-                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                 :fields       [(assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :id)))
                                        :table_id         (mt/id :users)
                                        :semantic_type    "type/PK"
                                        :name             "ID"
@@ -362,7 +362,7 @@
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
                                                     :table_id (mt/id :users)})
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                (assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :name)))
                                        :table_id         (mt/id :users)
                                        :semantic_type     "type/Name"
                                        :name             "NAME"
@@ -376,7 +376,7 @@
                                        :database_required false
                                        :database_is_auto_increment false
                                        :name_field        nil)
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                (assoc (field-details (t2/select-one :model/Field 'id (mt/id :users :last_login)))
                                        :table_id                 (mt/id :users)
                                        :name                     "LAST_LOGIN"
                                        :display_name             "Last Login"
@@ -446,7 +446,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/hydrate (t2/select-one [:model/Table 'id 'schema 'name 'created_at 'initial_sync_status] 'id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
@@ -479,7 +479,7 @@
         (mt/with-temp [:model/Table table {:visibility_type "hidden"}]
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {property (mt/random-name)})
-          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (:id table)))))))))
+          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table 'id (:id table)))))))))
 
 (deftest ^:parallel update-table-test-4
   (testing "PUT /api/table/:id"
@@ -492,23 +492,23 @@
     (testing "data_authority field behavior"
       (mt/with-temp [:model/Table table {}]
         (testing "Initially data_authority should be unconfigured"
-          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table 'id (u/the-id table)))))
         (testing "Can save an unrelated change with this field redundantly included"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:active false, :data_authority "unconfigured"})
-          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table 'id (u/the-id table)))))
         (testing "Can set data_authority to authoritative"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "authoritative"})
-          (is (= :authoritative (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :authoritative (t2/select-one-fn :data_authority :model/Table 'id (u/the-id table)))))
         (testing "Can set data_authority between different values"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "computed"})
-          (is (= :computed (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :computed (t2/select-one-fn :data_authority :model/Table 'id (u/the-id table)))))
         (testing "Can set data_authority to ingested"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "ingested"})
-          (is (= :ingested (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :ingested (t2/select-one-fn :data_authority :model/Table 'id (u/the-id table)))))
         (testing "Cannot un-configure again"
           (is (= "Cannot set data_authority back to unconfigured once it has been configured"
                  (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -526,7 +526,7 @@
                      :set    {:data_authority "federated"}
                      :where  [:= :id (:id table)]})
       (testing "Unexpected values are converted to :unknown"
-        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] :id (:id table)))))
+        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table 'data_authority] 'id (:id table)))))
       (testing "API GET endpoint returns :unknown for tables with unknown data_authority"
         (let [api-response (mt/user-http-request :crowberto :get 200 (format "table/%d" (:id table)))]
           (is (= "unknown" (:data_authority api-response))))))))
@@ -605,8 +605,8 @@
 (deftest ^:parallel get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (t2/select-one :model/Field :id (mt/id :checkins :user_id))
-            users-id-field      (t2/select-one :model/Field :id (mt/id :users :id))]
+      (let [checkins-user-field (t2/select-one :model/Field 'id (mt/id :checkins :user_id))
+            users-id-field      (t2/select-one :model/Field 'id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -626,9 +626,9 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics :measures)
                                                             (t2/select-one [:model/Table
-                                                                            :id :created_at :updated_at
-                                                                            :initial_sync_status :view_count]
-                                                                           :id (mt/id :checkins))
+                                                                            'id 'created_at 'updated_at
+                                                                            'initial_sync_status 'view_count]
+                                                                           'id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
@@ -647,9 +647,9 @@
                                             :table            (merge
                                                                (dissoc (table-defaults :h2) :db :segments :field_values :metrics :measures)
                                                                (t2/select-one [:model/Table
-                                                                               :id :created_at :updated_at
-                                                                               :initial_sync_status :view_count]
-                                                                              :id (mt/id :users))
+                                                                               'id 'created_at 'updated_at
+                                                                               'initial_sync_status 'view_count]
+                                                                              'id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
                                                                 :display_name "Users"
@@ -664,13 +664,13 @@
     (testing "GET /api/table/:id/query_metadata"
       (is (= (merge
               (table-defaults)
-              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+              (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status] 'id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
-                               (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
+                               (field-details (t2/select-one :model/Field 'id (mt/id :categories :id)))
                                {:table_id          (mt/id :categories)
                                 :semantic_type     "type/PK"
                                 :name              "ID"
@@ -692,7 +692,7 @@
                                                     :semantic_type "type/Name",
                                                     :table_id (mt/id :categories)}})
                               (merge
-                               (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
+                               (field-details (t2/select-one :model/Field 'id (mt/id :categories :name)))
                                {:table_id                   (mt/id :categories)
                                 :semantic_type              "type/Name"
                                 :name                       "NAME"
@@ -771,7 +771,7 @@
                    :description       nil
                    :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                  with-field-literal-id)
-                                           (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
+                                           (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field 'table_id (mt/id :venues))
                                                  name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
                                              [{:name           "NAME"
                                                :display_name   "NAME"
@@ -875,7 +875,7 @@
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))]
+          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :model/Card 'id (u/the-id card))]
             (is (=? {:display_name      "Users"
                      :schema            "Everything else"
                      :db_id             (:database_id card)
@@ -1066,18 +1066,18 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 url)))
           (testing "FieldValues should still exist"
-            (is (t2/exists? :model/FieldValues :id (u/the-id field-values)))))
+            (is (t2/exists? :model/FieldValues 'id (u/the-id field-values)))))
         (testing "Admins should be able to successfuly delete them"
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"
-            (is (not (t2/exists? :model/FieldValues :id (u/the-id field-values))))))))
+            (is (not (t2/exists? :model/FieldValues 'id (u/the-id field-values))))))))
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
-  (let [original-field-order (t2/select-one-fn :field_order :model/Table :id (mt/id :venues))]
+  (let [original-field-order (t2/select-one-fn :field_order :model/Table 'id (mt/id :venues))]
     (try
       (testing "Can we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -1103,7 +1103,7 @@
           (is (=? {:success true}
                   (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)))
           (is (= custom-field-order
-                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                 (->> (t2/hydrate (t2/select-one :model/Table 'id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
       (testing "Can we set custom field ordering with a wrapped {:field_order [...]} body?"
@@ -1113,7 +1113,7 @@
                   (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                         {:field_order custom-field-order})))
           (is (= custom-field-order
-                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                 (->> (t2/hydrate (t2/select-one :model/Table 'id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
@@ -1397,13 +1397,13 @@
       (testing "updating visibility_type syncs to data_layer"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:visibility_type "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+        (is (= :hidden (t2/select-one-fn :data_layer :model/Table 'id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table 'id (u/the-id table)))))
       (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+        (is (= :internal (t2/select-one-fn :data_layer :model/Table 'id (u/the-id table))))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table 'id (u/the-id table)))))
       (testing "cannot update both visibility_type and data_layer at once"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -1506,7 +1506,7 @@
                    :model/Table {table-2-id :id} {:db_id db-id :name "not_queryable_table" :active true}
                    :model/PermissionsGroup {pg-id :id :as pg} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       ;; Block database-level access
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1527,7 +1527,7 @@
                    :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
                    :model/PermissionsGroup {pg-id :id :as pg} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       ;; Block database-level access
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)

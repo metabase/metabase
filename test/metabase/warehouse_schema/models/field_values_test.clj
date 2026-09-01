@@ -187,13 +187,13 @@
                  :model/Field       {field-id :id} {:table_id table-id}
                  :model/FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
-           (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
+           (t2/select-one-fn :values :model/FieldValues, 'field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
     (is (= nil
-           (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
+           (t2/select-one-fn :values :model/FieldValues, 'field_id field-id)))))
 
 (defn- find-values [field-values-id]
-  (-> (t2/select-one :model/FieldValues :id field-values-id)
+  (-> (t2/select-one :model/FieldValues 'id field-values-id)
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
@@ -211,11 +211,11 @@
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
       (testing "When we have multiple FieldValues rows in the database, "
-        (is (= 3 (count (t2/select :model/FieldValues :field_id field-id :type :full :hash_key nil))))
+        (is (= 3 (count (t2/select :model/FieldValues 'field_id field-id 'type :full 'hash_key nil))))
         (testing "we always return the most recently updated row"
           (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))
           (testing "... and older rows are implicitly deleted"
-            (is (= 1 (count (t2/select :model/FieldValues :field_id field-id :type :full))))
+            (is (= 1 (count (t2/select :model/FieldValues 'field_id field-id 'type :full))))
             ;; double check that we deleted the correct row
             (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
 
@@ -239,21 +239,21 @@
                  field-id-2 {:values ["e" "f"]}}
                 (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
         (testing "and older values are implicitly deleted"
-          (is (= 1 (count (t2/select :model/FieldValues :field_id field-id-1 :type :full)))))))))
+          (is (= 1 (count (t2/select :model/FieldValues 'field_id field-id-1 'type :full)))))))))
 
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"
-      (t2/delete! :model/FieldValues :field_id (mt/id :categories :name) :type :full)
-      (is (= :full (-> (t2/select-one :model/Field :id (mt/id :categories :name))
+      (t2/delete! :model/FieldValues 'field_id (mt/id :categories :name) 'type :full)
+      (is (= :full (-> (t2/select-one :model/Field 'id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type)))
-      (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full)))
+      (is (= 1 (t2/count :model/FieldValues 'field_id (mt/id :categories :name) 'type :full)))
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)
                                              :type     :sandbox
                                              :hash_key "random-hash"}]
-          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
+          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :categories :name))))))))
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
         (t2/query-one {:update :metabase_fieldvalues
                        :where [:and
@@ -261,10 +261,10 @@
                                [:= :type "full"]]
                        :set {:last_used_at (t/offset-date-time 2001 12)}})
         (is (= (t/offset-date-time 2001 12)
-               (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))
-        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))
+               (:last_used_at (t2/select-one :model/FieldValues 'field_id (mt/id :categories :name) 'type :full))))
+        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :categories :name))))))
         (is (not= (t/offset-date-time 2001 12)
-                  (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+                  (:last_used_at (t2/select-one :model/FieldValues 'field_id (mt/id :categories :name) 'type :full))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -274,7 +274,7 @@
                          :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
-             (:human_readable_values (t2/select-one :model/FieldValues :id (:id fv))))))))
+             (:human_readable_values (t2/select-one :model/FieldValues 'id (:id fv))))))))
 
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
@@ -296,11 +296,11 @@
                                           :details      "{\"db\": \"mem:temp\"}"}]
          ;; Sync the database so we have the new table and it's fields
          (sync/sync-database! db)
-         (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
-               field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
+         (let [table-id        (t2/select-one-fn :id :model/Table 'db_id (u/the-id db) 'name "FOO")
+               field-id        (t2/select-one-fn :id :model/Field 'table_id table-id 'name "CATEGORY_ID")
                ;; Manually activate Field values since they are not created during sync (#53387)
-               _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
-               field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
+               _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id field-id))
+               field-values-id (t2/select-one-fn :id :model/FieldValues 'field_id field-id)]
            ;; Add in human readable values for remapping
            (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
            (let [expected-original-values {:values                [1 2 3]
@@ -346,7 +346,7 @@
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (letfn [(field-values []
-                  (t2/select-one :model/FieldValues :field_id (mt/id :orders :product_id)))]
+                  (t2/select-one :model/FieldValues 'field_id (mt/id :orders :product_id)))]
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
@@ -355,7 +355,7 @@
                                              :type                    "external"}]
             (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
-                     (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id (mt/id :orders :product_id)))))
+                     (field-values/create-or-update-full-field-values! (t2/select-one :model/Field 'id (mt/id :orders :product_id)))))
               (is (partial= {:field_id              (mt/id :orders :product_id)
                              :values                [1 2 3 4]
                              :human_readable_values []}
@@ -383,7 +383,7 @@
                               (t2/insert! :model/FieldValues :field_id field-id :type :sandbox :hash_key " ")))
         (finally
           ;; Clean up in case there were any failed assertions, and we ended up inserting values
-          (t2/delete! :model/FieldValues :field_id field-id))))))
+          (t2/delete! :model/FieldValues 'field_id field-id))))))
 
 (deftest update-field-values-hook-test
   (mt/with-temp [:model/FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
@@ -423,7 +423,7 @@
                                                   :type     :sandbox
                                                   :hash_key "random-hash"}]
       (t2/insert! :model/FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
-      (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))))
+      (is (not (t2/exists? :model/FieldValues 'id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp [:model/FieldValues fv         {:field_id (mt/id :venues :id)
@@ -432,7 +432,7 @@
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
     (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
-    (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? :model/FieldValues 'id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
   (mt/with-temp [:model/FieldValues fv         {:field_id (mt/id :venues :id)
@@ -441,21 +441,21 @@
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
     (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
-    (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
+    (is (t2/exists? :model/FieldValues 'id (:id sandbox-fv)))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
     (let [field-id (mt/id :venues :id)]
-      (t2/select :model/FieldValues :field_id field-id)
-      (t2/select :model/FieldValues :field_id field-id :type :full)
+      (t2/select :model/FieldValues 'field_id field-id)
+      (t2/select :model/FieldValues 'field_id field-id 'type :full)
       (is (thrown-with-msg? ExceptionInfo
                             #"Invalid query - :full FieldValues cannot have a hash_key"
-                            (t2/select :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
-      (t2/select :model/FieldValues :field_id field-id :type :sandbox)
-      (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")
+                            (t2/select :model/FieldValues 'field_id field-id 'type :full 'hash_key "12345")))
+      (t2/select :model/FieldValues 'field_id field-id 'type :sandbox)
+      (t2/select :model/FieldValues 'field_id field-id 'type :sandbox 'hash_key "12345")
       (is (thrown-with-msg? ExceptionInfo
                             #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
-                            (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key nil))))))
+                            (t2/select :model/FieldValues 'field_id field-id 'type :sandbox 'hash_key nil))))))
 
 (deftest select-safety-filter-test
   (testing "We do not modify queries that omit type"
@@ -511,7 +511,7 @@
                                                              :has_field_values :list}]
       (is (= ::field-values/fv-created
              (field-values/persist-field-values! field nil ["a" "b"])))
-      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+      (let [fv (t2/select-one :model/FieldValues 'field_id field-id 'type :full)]
         (is (= ["a" "b"] (:values fv)))
         (is (false? (:has_more_values fv)))))))
 
@@ -535,7 +535,7 @@
       (is (= ::field-values/fv-updated
              (field-values/persist-field-values! field fv ["a" "b" "c"])))
       (is (= ["a" "b" "c"]
-             (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))
+             (:values (t2/select-one :model/FieldValues 'field_id field-id 'type :full)))))))
 
 (deftest persist-field-values!-updates-when-row-cap-hits-test
   (testing "Raw count hits the warehouse row LIMIT → has_more_values flips to true → ::fv-updated"
@@ -547,7 +547,7 @@
       (binding [field-values/*distinct-limit* 2]
         (is (= ::field-values/fv-updated
                (field-values/persist-field-values! field fv ["a" "b"])))
-        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues 'field_id field-id 'type :full))))))))
 
 (deftest persist-field-values!-updates-when-char-cap-hits-test
   (testing "Char-length cap fires inside limit-values → has_more_values flips to true → ::fv-updated"
@@ -559,7 +559,7 @@
       (binding [field-values/*total-max-length* 4]
         (is (= ::field-values/fv-updated
                (field-values/persist-field-values! field fv ["aaa" "bbb" "ccc"])))
-        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues 'field_id field-id 'type :full))))))))
 
 (deftest persist-field-values!-deletes-when-empty-test
   (testing "Empty raw-values → ::fv-deleted and the FieldValues row is removed"
@@ -570,7 +570,7 @@
                    :model/FieldValues _  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
       (is (= ::field-values/fv-deleted
              (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [])))
-      (is (false? (t2/exists? :model/FieldValues :field_id field-id :type :full))))))
+      (is (false? (t2/exists? :model/FieldValues 'field_id field-id 'type :full))))))
 
 ;;; ---------------------------------- UNION DISTINCT primitive ----------------------------------
 
@@ -680,7 +680,7 @@
                    :model/Field    {f1-id :id} {:table_id table-id :name "dupe" :base_type :type/Text}
                    :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
                                                 :parent_id parent-id}]
-      (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
+      (let [fields [(t2/select-one :model/Field 'id f1-id) (t2/select-one :model/Field 'id f2-id)]]
         (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
@@ -690,9 +690,9 @@
   (testing "run-distinct-batch returns correct distinct values for each field"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [table   (t2/select-one :model/Table :id (mt/id :people))
-              fields  [(t2/select-one :model/Field :id (mt/id :people :state))
-                       (t2/select-one :model/Field :id (mt/id :people :source))]
+        (let [table   (t2/select-one :model/Table 'id (mt/id :people))
+              fields  [(t2/select-one :model/Field 'id (mt/id :people :state))
+                       (t2/select-one :model/Field 'id (mt/id :people :source))]
               results (distinct-batch/run-distinct-batch table fields)]
           (is (map? results) "Returns a map keyed by field-id")
           (is (= (set (map :id fields)) (set (keys results))))
@@ -714,8 +714,8 @@
     ;; paths/engines without either being wrong.
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [people-table   (t2/select-one :model/Table :id (mt/id :people))
-              products-table (t2/select-one :model/Table :id (mt/id :products))
+        (let [people-table   (t2/select-one :model/Table 'id (mt/id :people))
+              products-table (t2/select-one :model/Table 'id (mt/id :products))
               text-fields    (mapv #(t2/select-one :model/Field :id (mt/id :people %)) [:state :source])
               float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
               expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
@@ -735,9 +735,9 @@
   (testing "run-distinct-batch produces correct results on every supported SQL driver"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [table        (t2/select-one :model/Table :id (mt/id :people))
-              state-field  (t2/select-one :model/Field :id (mt/id :people :state))
-              source-field (t2/select-one :model/Field :id (mt/id :people :source))
+        (let [table        (t2/select-one :model/Table 'id (mt/id :people))
+              state-field  (t2/select-one :model/Field 'id (mt/id :people :state))
+              source-field (t2/select-one :model/Field 'id (mt/id :people :source))
               results      (distinct-batch/run-distinct-batch table [state-field source-field])]
           (testing "Result map is keyed by field-id with :values / :raw-count entries"
             (is (map? results))

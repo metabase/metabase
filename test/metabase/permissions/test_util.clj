@@ -54,7 +54,7 @@
       (finally
         (let [existing-db-ids     (t2/select-pks-set :model/Database)
               existing-table-ids  (t2/select-pks-set :model/Table)
-              destination-db-ids  (t2/select-pks-set :model/Database :router_database_id [:not= nil])
+              destination-db-ids  (t2/select-pks-set :model/Database 'router_database_id ['not= nil])
               still-valid-perms   (filter
                                    (fn [p] (and (contains? existing-db-ids (:db_id p))
                                                 (not (contains? destination-db-ids (:db_id p)))
@@ -88,7 +88,7 @@
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     ;; Skip destination databases: they must never carry data_permissions rows (reached only via routing).
     (doseq [[perm-type _] permissions.schema/data-permissions
-            db-id         (t2/select-pks-set :model/Database :router_database_id nil)]
+            db-id         (t2/select-pks-set :model/Database 'router_database_id nil)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
                                            perm-type
@@ -110,7 +110,7 @@
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     ;; Skip destination databases: they must never carry data_permissions rows (reached only via routing).
     (doseq [[perm-type _] permissions.schema/data-permissions
-            db-id         (t2/select-pks-set :model/Database :router_database_id nil)]
+            db-id         (t2/select-pks-set :model/Database 'router_database_id nil)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
                                            perm-type
@@ -191,7 +191,7 @@
   for the duration of the test, then restores the original value."
   [user-or-id thunk]
   (let [user-id        (u/the-id user-or-id)
-        original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
+        original-value (t2/select-one-fn :is_data_analyst :model/User 'id user-id)]
     (try
       (t2/update! :model/User user-id {:is_data_analyst true})
       (thunk)

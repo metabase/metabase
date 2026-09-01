@@ -50,8 +50,8 @@
               (is (=? {:status "generated" :prompt_count 10}
                       (mt/user-http-request :crowberto :post 200
                                             (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
-            (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
-                                     :metabot_id metabot-id
+            (let [prompts (t2/select [:model/MetabotPrompt 'prompt 'model [:card.name :model_name]]
+                                     'metabot_id metabot-id
                                      {:join     [[:report_card :card] [:= :card.id :card_id]]
                                       :order-by [:metabot_prompt.id]})]
               (is (= 10 (count prompts)))
@@ -60,11 +60,11 @@
               (is (= #{:model :metric}
                      (set (map :model prompts))))))
           (testing "native path prompts are replaced on re-regenerate"
-            (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
+            (let [old-ids (t2/select-pks-set :model/MetabotPrompt 'metabot_id metabot-id)]
               (with-redefs [native-generator/generate-example-questions native-mock]
                 (is (=? {:status "generated" :prompt_count 10}
                         (mt/user-http-request :crowberto :post 200
                                               (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
-              (let [new-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
+              (let [new-ids (t2/select-pks-set :model/MetabotPrompt 'metabot_id metabot-id)]
                 (is (= 10 (count new-ids)))
                 (is (empty? (set/intersection old-ids new-ids)))))))))))

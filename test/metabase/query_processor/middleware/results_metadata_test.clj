@@ -29,7 +29,7 @@
    [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (:result_metadata (t2/select-one :model/Card :id (u/the-id card))))
+  (:result_metadata (t2/select-one :model/Card 'id (u/the-id card))))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
@@ -37,7 +37,7 @@
   (mt/round-all-decimals 2 data))
 
 (defn- default-card-results []
-  (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
+  (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field 'table_id (mt/id :venues))
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
       :display_name   "ID"
@@ -114,7 +114,7 @@
                 (-> card card-metadata round-to-2-decimals)))
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
-               (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
+               (t2/select-one-fn :updated_at :model/Card 'id (u/the-id card))))))))
 
 (defn- test-card-1 []
   (let [eid (u/generate-nano-id)]
@@ -529,19 +529,19 @@
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
-            (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+            (t2/select-one-fn :result_metadata :model/Card 'id card-id))]
       ;; First run establishes baseline metadata
       (run-with-filter! 1)
       ;; Second run with different filter — metadata should update because the query changed
-      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card 'id card-id)
             _           (run-with-filter! 50)
-            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            meta-after  (t2/select-one-fn :result_metadata :model/Card 'id card-id)]
         (is (not= meta-before meta-after)
             "result_metadata should update when the query changes"))
       ;; Third run with original filter — metadata updates again
-      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card 'id card-id)
             _           (run-with-filter! 1)
-            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            meta-after  (t2/select-one-fn :result_metadata :model/Card 'id card-id)]
         (is (not= meta-before meta-after)
             "result_metadata should update when the query changes back")))))
 
@@ -567,13 +567,13 @@
                  :make-run (constantly
                             (fn [query info]
                               (qp/process-query (assoc query :info info)))))))
-            (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            (t2/select-one-fn :result_metadata :model/Card 'id card-id))
           ;; First run establishes baseline metadata
           _           (run-with-parameters! 1)
-          meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+          meta-before (t2/select-one-fn :result_metadata :model/Card 'id card-id)
           ;; Second run with different parameter
           _           (run-with-parameters! 50)
-          meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          meta-after  (t2/select-one-fn :result_metadata :model/Card 'id card-id)]
       (is (some? meta-before)
           "Baseline metadata should be established by first run")
       (is (= meta-before meta-after)

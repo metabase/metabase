@@ -22,7 +22,7 @@
 (deftest export-transform-ignores-a-non-integer-ast-id-test
   (mt/with-temp [:model/Document {doc-id :id} {:content_type prose-mirror/prose-mirror-content-type
                                                :document (ast-with {:model "card" :entityId non-integer-id})}]
-    (let [doc (t2/select-one :model/Document :id doc-id)]
+    (let [doc (t2/select-one :model/Document 'id doc-id)]
       (testing "the stored value round-trips unchanged — the precondition for the rest of the test"
         (is (= non-integer-id (-> doc :document :content first :content first :attrs :entityId))))
       (testing "the export transform performs no lookup for the malformed reference"
@@ -43,7 +43,7 @@
   (testing "omitting attrs.model must not route around the check — id->entity-id defaults model to \"card\""
     (mt/with-temp [:model/Document {doc-id :id} {:content_type prose-mirror/prose-mirror-content-type
                                                  :document (ast-with {:entityId non-integer-id})}]
-      (let [doc (t2/select-one :model/Document :id doc-id)
+      (let [doc (t2/select-one :model/Document 'id doc-id)
             lookups (atom [])]
         (with-redefs [t2/select-one (fn [& args] (swap! lookups conj args) nil)]
           (#'document/export-document-content doc :document nil))
@@ -53,6 +53,6 @@
   (testing "export-time serialization dependencies skip a non-integer smartLink id"
     (mt/with-temp [:model/Document {doc-id :id} {:content_type prose-mirror/prose-mirror-content-type
                                                  :document (ast-with {:model "card" :entityId non-integer-id})}]
-      (let [doc  (t2/select-one :model/Document :id doc-id)
+      (let [doc  (t2/select-one :model/Document 'id doc-id)
             deps (serdes/serialization-dependencies "Document" doc)]
         (is (not-any? (fn [dep] (some (comp map? :id) dep)) deps))))))

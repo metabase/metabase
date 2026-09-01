@@ -36,7 +36,7 @@
   `metabase.metabot.tools.resources/check-resource-database`)."
   [db-ids]
   (when (seq db-ids)
-    (t2/select-fn-set :id :model/Database :id [:in db-ids] :router_database_id [:not= nil])))
+    (t2/select-fn-set :id :model/Database 'id ['in db-ids] 'router_database_id ['not= nil])))
 
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.

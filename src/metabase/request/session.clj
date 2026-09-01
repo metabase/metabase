@@ -15,7 +15,7 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (some-> (t2/select-one current-user-fields, :id user-id)
+    (some-> (t2/select-one current-user-fields, 'id user-id)
             user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
@@ -68,8 +68,8 @@
                     [:is_superuser :is-superuser?]
                     [:is_data_analyst :is-data-analyst?]
                     [:locale :user-locale]
-                    :settings]
-                   :id current-user-id)))
+                    'settings]
+                   'id current-user-id)))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

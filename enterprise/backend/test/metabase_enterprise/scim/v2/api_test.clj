@@ -22,7 +22,7 @@
   (mt/with-additional-premium-features #{:scim}
     (mt/with-temporary-setting-values [scim-enabled true
                                        site-url     "http://localhost:3000"]
-      (let [current-masked-key (-> (t2/select-one :model/ApiKey :scope :scim)
+      (let [current-masked-key (-> (t2/select-one :model/ApiKey 'scope :scim)
                                    (dissoc :masked_key))
             temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
                                    :unmasked_key)]
@@ -30,7 +30,7 @@
           (binding [*scim-api-key* temp-unmasked-key]
             (thunk))
           (finally
-            (t2/delete! :model/ApiKey :scope :scim)
+            (t2/delete! :model/ApiKey 'scope :scim)
             (when current-masked-key
               (t2/insert! :model/ApiKey current-masked-key))))))))
 
@@ -88,12 +88,12 @@
       (mt/with-temp [:model/User                       user  {:email "scim-test@metabase.com" :first_name "Test" :last_name "User"}
                      :model/PermissionsGroup           group {:name "Test Group"}
                      :model/PermissionsGroupMembership _     {:user_id (:id user) :group_id (:id group)}]
-        (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))
+        (let [entity-id (t2/select-one-fn :entity_id :model/User 'id (:id user))
               response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
           (is (malli= scim-api/SCIMUser response))
           (is (=?
                {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
-                :id       (t2/select-one-fn :entity_id :model/User :id (:id user))
+                :id       (t2/select-one-fn :entity_id :model/User 'id (:id user))
                 :userName "scim-test@metabase.com"
                 :name     {:givenName "Test" :familyName "User"}
                 :emails   [{:value "scim-test@metabase.com"}]
@@ -145,7 +145,7 @@
     (testing "Create a new user successfully"
       ;; Generate random user details via with-temp then delete the user so that we can recreate it with SCIM
       (mt/with-temp [:model/User user {}]
-        (t2/delete! :model/User :id (:id user))
+        (t2/delete! :model/User 'id (:id user))
         (try
           (let [new-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                           :userName (:email user)
@@ -156,9 +156,9 @@
             (is (malli= scim-api/SCIMUser response))
             (is (=? (assoc (select-keys user [:email :first_name :last_name :is_active])
                            :sso_source :scim)
-                    (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
-                                   :entity_id (:id response)))))
-          (finally (t2/delete! :model/User :email (:email user))))))
+                    (t2/select-one [:model/User 'email 'first_name 'last_name 'is_active 'sso_source]
+                                   'entity_id (:id response)))))
+          (finally (t2/delete! :model/User 'email (:email user))))))
     (testing "Error when creating a user with an existing email"
       (let [existing-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                            :userName "rasta@metabase.com"
@@ -177,7 +177,7 @@
                                      :first_name "Test"
                                      :last_name "User"
                                      :is_active true}]
-      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))]
+      (let [entity-id (t2/select-one-fn :entity_id :model/User 'id (:id user))]
         (testing "Update an existing user successfully"
           (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                              :id entity-id
@@ -217,7 +217,7 @@
                                      :last_name "User"
                                      :is_active true
                                      :locale "en-US"}]
-      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))]
+      (let [entity-id (t2/select-one-fn :entity_id :model/User 'id (:id user))]
         (testing "Deactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -284,7 +284,7 @@
                                      :last_name "User"
                                      :is_active true
                                      :locale "en-US"}]
-      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))]
+      (let [entity-id (t2/select-one-fn :entity_id :model/User 'id (:id user))]
         (testing "Deactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -367,7 +367,7 @@
         (testing "A single group can be fetched in the SCIM format by entity ID with its members"
           (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
-            (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+            (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup 'id (:id group))
                   response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
               (is (malli= scim-api/SCIMGroup response))
               (is (=?
@@ -392,29 +392,29 @@
       (let [group-name (format "Test SCIM group %s" (random-uuid))
             new-group  {:schemas ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                         :displayName group-name
-                        :members [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))}]}]
+                        :members [{:value (t2/select-one-fn :entity_id :model/User 'id (mt/user->id :rasta))}]}]
         (try
           (let [response (scim-client :post 201 "ee/scim/v2/Groups" new-group)]
             (is (malli= scim-api/SCIMGroup response))
-            (let [mb-group (t2/select-one :model/PermissionsGroup :entity_id (:id response))]
+            (let [mb-group (t2/select-one :model/PermissionsGroup 'entity_id (:id response))]
               (is (= group-name (:name mb-group)))
-              (t2/exists? :model/PermissionsGroupMembership :user_id (mt/user->id :rasta) :group_id (:id mb-group))))
-          (finally (t2/delete! :model/PermissionsGroup :name group-name)))))))
+              (t2/exists? :model/PermissionsGroupMembership 'user_id (mt/user->id :rasta) 'group_id (:id mb-group))))
+          (finally (t2/delete! :model/PermissionsGroup 'name group-name)))))))
 
 (deftest update-group-test
   (with-scim-setup!
     (testing "An existing group can have its name and members updated"
       (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
-        (let [entity-id      (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+        (let [entity-id      (t2/select-one-fn :entity_id :model/PermissionsGroup 'id (:id group))
               new-group-name (format "Updated SCIM group %s" (random-uuid))
-              new-members    [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]
+              new-members    [{:value (t2/select-one-fn :entity_id :model/User 'id (mt/user->id :crowberto))}]
               group-update   {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                               :id          entity-id
                               :displayName new-group-name
                               :members     new-members}]
           (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
-          (let [group (-> (t2/select-one :model/PermissionsGroup :id (:id group))
+          (let [group (-> (t2/select-one :model/PermissionsGroup 'id (:id group))
                           (t2/hydrate :members))]
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
@@ -425,10 +425,10 @@
     (testing "An existing group & memberships can be deleted via SCIM APIs"
       (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
-        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup 'id (:id group))]
           (scim-client :delete 204 (format "ee/scim/v2/Groups/%s" entity-id))
-          (is (not (t2/exists? :model/PermissionsGroup :id (:id group))))
-          (is (not (t2/exists? :model/PermissionsGroupMembership :group_id (:id group)))))))
+          (is (not (t2/exists? :model/PermissionsGroup 'id (:id group))))
+          (is (not (t2/exists? :model/PermissionsGroupMembership 'group_id (:id group)))))))
     (testing "404 is returned when trying to delete a non-existent group"
       (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
     (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"

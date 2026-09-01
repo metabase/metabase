@@ -95,7 +95,7 @@
     (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
                                        :dataset_query (count-metric-query)}]
       (let [cid       (:id metric)
-            card-dq   (t2/select-one-fn :dataset_query :model/Card :id cid)
+            card-dq   (t2/select-one-fn :dataset_query :model/Card 'id cid)
             block     {:id 1
                        :metrics    [{:card_id cid
                                      :dimension_mappings [{:dimension-id "d1" :table-id (mt/id :venues)

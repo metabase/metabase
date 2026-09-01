@@ -642,7 +642,7 @@
                                        :type            :question
                                        :dataset_query   orders-query
                                        :result_metadata (lib/returned-columns orders-query)}]
-        (let [card        (t2/select-one :model/Card :id (:id card))
+        (let [card        (t2/select-one :model/Card 'id (:id card))
               value-field [:field "TOTAL" {:base-type :type/Float}]]
           ;; The 6 batched loads are:
           ;; - the source Card

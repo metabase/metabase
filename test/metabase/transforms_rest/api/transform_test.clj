@@ -1278,10 +1278,10 @@
                                                  ;; Read the updated transform from the DB for accurate comparison
                                                  transform (-> (t2/select-one :model/Transform transform-id)
                                                                (t2/hydrate :transform_tag_ids))]
-                                             (is (= exp-revisions (t2/count :model/Revision :model "Transform"
-                                                                            :model_id transform-id)))
-                                             (let [revision (t2/select-one :model/Revision :model "Transform"
-                                                                           :model_id transform-id :most_recent true)
+                                             (is (= exp-revisions (t2/count :model/Revision 'model "Transform"
+                                                                            'model_id transform-id)))
+                                             (let [revision (t2/select-one :model/Revision 'model "Transform"
+                                                                           'model_id transform-id 'most_recent true)
                                                    rev-transform (:object revision)
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
@@ -1415,7 +1415,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
+            (let [schema (t2/select-one-fn :schema :model/Table 'db_id (mt/id) 'active true)]
               (testing "Can create transform with tags"
                 ;; Create tags via API since we're testing transform creation with existing tags
                 (let [tag1 (mt/user-http-request :lucky :post 200 "transform-tag"
@@ -1432,9 +1432,9 @@
                         (is (= (:name transform-request) (:name transform-response)))
                         (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
                         (finally
-                          (t2/delete! :model/Transform :id (:id transform-response)))))
+                          (t2/delete! :model/Transform 'id (:id transform-response)))))
                     (finally
-                      (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
+                      (t2/delete! :model/TransformTag 'id ['in [(:id tag1) (:id tag2)]])))))
               (testing "Can create transform without tags"
                 (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
                                                   [:target :schema] schema)
@@ -1444,7 +1444,7 @@
                     (is (= (:name transform-request) (:name transform-response)))
                     (is (= [] (:tag_ids transform-response)))
                     (finally
-                      (t2/delete! :model/Transform :id (:id transform-response)))))))))))))
+                      (t2/delete! :model/Transform 'id (:id transform-response)))))))))))))
 
 (deftest update-transform-tags-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1566,7 +1566,7 @@
                   (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
                     (is (= [(:id tag2)] (vec (:tag_ids fetched)))))
                   (finally
-                    (t2/delete! :model/TransformTag :id (:id tag1))))))))))))
+                    (t2/delete! :model/TransformTag 'id (:id tag1))))))))))))
 
 (deftest preserve-tag-order-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1577,7 +1577,7 @@
             (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
                            :model/TransformTag tag2 {:name "order-tag-2"}
                            :model/TransformTag tag3 {:name "order-tag-3"}]
-              (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
+              (let [schema (t2/select-one-fn :schema :model/Table 'db_id (mt/id) 'active true)]
                 (testing "Creating transform with specific tag order preserves that order"
                   (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
                                                      {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
@@ -1599,7 +1599,7 @@
                       (let [fetched-again (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
                         (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
                       (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))
+                        (t2/delete! :model/Transform 'id (:id transform))))))
                 (testing "Duplicate tag IDs are handled correctly"
                   (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
                                                      {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
@@ -1610,7 +1610,7 @@
                       ;; Should only have each tag once, but preserve relative order
                       (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
                       (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))))))))))
+                        (t2/delete! :model/Transform 'id (:id transform))))))))))))))
 
 (deftest root-collection-items-include-transforms-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1689,7 +1689,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)
-                name-field-id (t2/select-one-pk :model/Field :name "name" :table_id (mt/id :transforms_products))]
+                name-field-id (t2/select-one-pk :model/Field 'name "name" 'table_id (mt/id :transforms_products))]
             (testing "Rejects unsupported checkpoint column type (text)"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
                                                    {:name "Invalid Incremental Transform"
@@ -1711,7 +1711,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)
-                category-field-id (t2/select-one-pk :model/Field :name "category" :table_id (mt/id :transforms_products))]
+                category-field-id (t2/select-one-pk :model/Field 'name "category" 'table_id (mt/id :transforms_products))]
             (with-transform-cleanup! [table-name "update_incremental_test"]
               (let [;; Create a non-incremental transform first
                     created (mt/user-http-request :crowberto :post 200 "transform"

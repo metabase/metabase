@@ -161,7 +161,7 @@
           (perms/revoke-collection-permissions! group-id blocked-coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
           ;; user has unrestricted view-data on the db, but no create-queries grants
-          (t2/delete! :model/DataPermissions :db_id db-id)
+          (t2/delete! :model/DataPermissions 'db_id db-id)
           (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
           (perms/set-database-permission! group-id db-id :perms/create-queries :no)
           ;; ...except for plain-allowed, which has both via real data_permissions

@@ -72,14 +72,14 @@
       (let [original-serialized (revision/serialize-instance :model/Document doc-id document)
             _ (t2/update! :model/Document doc-id {:name "Updated Document"
                                                   :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
-            updated-document (t2/select-one :model/Document :id doc-id)]
+            updated-document (t2/select-one :model/Document 'id doc-id)]
         (testing "document was updated"
           (is (= "Updated Document" (:name updated-document)))
           (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}
                  (:document updated-document))))
         (testing "reversion restores original state"
           (revision/revert-to-revision! :model/Document doc-id (mt/user->id :crowberto) original-serialized)
-          (let [reverted-document (t2/select-one :model/Document :id doc-id)]
+          (let [reverted-document (t2/select-one :model/Document 'id doc-id)]
             (is (= "Original Document" (:name reverted-document)))
             (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                    (:document reverted-document)))

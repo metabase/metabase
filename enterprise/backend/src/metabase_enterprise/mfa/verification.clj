@@ -31,7 +31,7 @@
 (defn totp-identity
   "The AuthIdentity row for `user-id`'s TOTP enrollment, or nil."
   [user-id]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name))
+  (t2/select-one :model/AuthIdentity 'user_id user-id 'provider provider-name))
 
 (defn confirmed?
   "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?
@@ -127,8 +127,8 @@
   (t2/with-transaction [_conn]
     (boolean
      (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                             :user_id user-id
-                                             :provider provider-name
+                                             'user_id user-id
+                                             'provider provider-name
                                              {:for :update})]
        (when (and (confirmed? auth-identity)
                   (not (jti-used? (:credentials auth-identity) jti)))
@@ -143,8 +143,8 @@
   [user-id]
   (t2/with-transaction [_conn]
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider provider-name
+                                            'user_id user-id
+                                            'provider provider-name
                                             {:for :update})]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]

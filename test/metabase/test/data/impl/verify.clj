@@ -85,7 +85,7 @@
             (throw (ex-info "Error verifying Field." (params->ex-data params) e)))))
       (log/debugf "All Fields for Table %s.%s loaded correctly." (pr-str actual-schema) (pr-str actual-name))
       (log/debug "Verifying rows...")
-      (let [table-id           (or (t2/select-one-pk :model/Table :db_id (u/the-id database), :name actual-name)
+      (let [table-id           (or (t2/select-one-pk :model/Table 'db_id (u/the-id database), 'name actual-name)
                                    (throw (ex-info (format "Cannot find %s.%s after sync." (pr-str actual-schema) (pr-str actual-name))
                                                    (params->ex-data params))))
             expected-row-count (count rows)

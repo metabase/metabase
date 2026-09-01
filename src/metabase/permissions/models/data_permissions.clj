@@ -329,14 +329,14 @@
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
-    (t2/select-one-fn :is_superuser :model/User :id user-id)))
+    (t2/select-one-fn :is_superuser :model/User 'id user-id)))
 
 (defn is-data-analyst?
   "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-data-analyst?*
-    (t2/select-one-fn :is_data_analyst :model/User :id user-id)))
+    (t2/select-one-fn :is_data_analyst :model/User 'id user-id)))
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
 
@@ -935,7 +935,7 @@
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
   ;; destination databases are reachable only through their router and never carry permissions of their own
-  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database :router_database_id nil))
+  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database 'router_database_id nil))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
@@ -1019,7 +1019,7 @@
   "Whether `db-id` is a destination database — one with `router_database_id` set."
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (t2/exists? :model/Database :id db-id :router_database_id [:not= nil]))))
+     (t2/exists? :model/Database 'id db-id 'router_database_id ['not= nil]))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
@@ -1110,7 +1110,7 @@
   This batches our deletes into groups of `permission-batch-size`."
   [to-delete-ids]
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
-    (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
+    (t2/delete! :model/DataPermissions 'id ['in batched-to-delete-ids])))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
@@ -1125,7 +1125,7 @@
   [group-ids db-ids]
   (when (and (seq group-ids) (seq db-ids))
     (group-by (juxt :group_id :db_id :perm_type)
-              (t2/select :model/DataPermissions :group_id [:in group-ids] :db_id [:in db-ids]))))
+              (t2/select :model/DataPermissions 'group_id ['in group-ids] 'db_id ['in db-ids]))))
 
 (mu/defn set-database-permission!
   "Set a single permission to a specified value for a given group and database. If a permission value already exists
@@ -1180,7 +1180,7 @@
          (let [{:keys [id db_id schema]}
                (if (map? table)
                  table
-                 (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                 (t2/select-one [:model/Table 'id 'db_id 'schema] 'id table))]
            {:perm_type   perm-type
             :group_id    group-id
             :perm_value  value
@@ -1219,7 +1219,7 @@
       {:to-delete [] :to-insert []}
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
-      (let [other-new-perms (->> (t2/select [:model/Table :id :schema]
+      (let [other-new-perms (->> (t2/select [:model/Table 'id 'schema]
                                             {:where
                                              [:and
                                               [:= :db_id db-id]
@@ -1266,7 +1266,7 @@
                                  group-id db-id perm-type (first values))
       ;; Otherwise, just replace the rows for the individual table perm
       ;; only :id is consumed downstream (see [[set-table-permissions-internal!]]), so don't fetch full rows
-      (let [table-perms-to-delete (t2/select [:model/DataPermissions :id]
+      (let [table-perms-to-delete (t2/select [:model/DataPermissions 'id]
                                              {:where [:and
                                                       [:= :perm_type (u/qualified-name perm-type)]
                                                       [:= :group_id group-id]
@@ -1400,7 +1400,7 @@
             :db_id      db-id}))
         ;; Regular groups: compute based on All Users group
         (let [au-id    (t2/select-one-pk :model/PermissionsGroup
-                                         :magic_group_type "all-internal-users")
+                                         'magic_group_type "all-internal-users")
               au-perms (t2/select :model/DataPermissions
                                   {:select-distinct [:db_id :perm_type :perm_value]
                                    :where [:= :group_id au-id]})
@@ -1539,7 +1539,7 @@
      :schema-vals-idx  (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
-     :all-db-tables    (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
+     :all-db-tables    (t2/select [:model/Table 'id 'db_id 'schema] 'db_id db-id 'active true)
      :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
 
 (defn- compute-actual-value
@@ -1632,7 +1632,7 @@
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
-                (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                (t2/select-one [:model/Table 'id 'db_id 'schema] 'id table))]
     (set-default-table-permissions-bulk! (:db_id table) [[table group-perm-defaults]])))
 
 (defenterprise download-perms-level

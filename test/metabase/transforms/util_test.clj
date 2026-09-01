@@ -487,7 +487,7 @@
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
                 (is (= transform-id
-                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+                       (t2/select-one-fn :transform_id :model/Table 'id table-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"

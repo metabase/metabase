@@ -23,20 +23,20 @@
                                       :values                (range 10)
                                       :human_readable_values (map #(str "id_" %) (range 10))})
       (let [categories-id (mt/id :categories :id)
-            f             (t2/select-one :model/Field :id (mt/id :categories :id))
+            f             (t2/select-one :model/Field 'id (mt/id :categories :id))
             card-id       (-> f :table_id (#'ee-params.field-values/table-id->sandbox) :card :id)
             fv            (params.field-values/get-or-create-field-values! f)]
         (is (= [(range 4 6)]
                (t2/select-fn-vec :values :model/FieldValues
-                                 :field_id categories-id :type :advanced
+                                 'field_id categories-id 'type :advanced
                                  {:order-by [:id]})))
         (is (= [4 5] (:values fv)))
         (is (= ["id_4" "id_5"] (:human_readable_values fv)))
         (is (some? (:hash_key fv)))
         (testing "call second time shouldn't create a new FieldValues"
           (params.field-values/get-or-create-field-values!
-           (t2/select-one :model/Field :id (mt/id :categories :id)))
-          (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type :advanced))))
+           (t2/select-one :model/Field 'id (mt/id :categories :id)))
+          (is (= 1 (t2/count :model/FieldValues 'field_id categories-id 'type :advanced))))
         (testing "after changing the question, should create new FieldValues"
           (let [new-query (mt/mbql-query categories
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
@@ -45,11 +45,11 @@
               (t2/update! :model/Card card-id {:dataset_query new-query
                                                :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values!
-           (t2/select-one :model/Field :id (mt/id :categories :id)))
+           (t2/select-one :model/Field 'id (mt/id :categories :id)))
           (is (= [(range 4 6)
                   (range 2 4)]
                  (t2/select-fn-vec :values :model/FieldValues
-                                   :field_id categories-id :type :advanced
+                                   'field_id categories-id 'type :advanced
                                    {:order-by [:id]}))))))))
 
 (deftest advanced-field-values-hash-test
@@ -265,7 +265,7 @@
                         :remappings {"state" [:dimension
                                               [:field (mt/id :people :state)
                                                {:join-alias "People"}]]}}}}
-      (let [field   (t2/select-one :model/Field :id (mt/id :orders :user_id))
+      (let [field   (t2/select-one :model/Field 'id (mt/id :orders :user_id))
             fv-for  (fn [user-kw state]
                       (met/with-user-attributes! user-kw {"state" state}
                         (mt/with-test-user user-kw
@@ -274,7 +274,7 @@
             fv-2    (fv-for :lucky "TX")]
         (testing "each tenant gets their own FieldValues row"
           (is (not= (:hash_key fv-1) (:hash_key fv-2)))
-          (is (= 2 (t2/count :model/FieldValues :field_id (mt/id :orders :user_id) :type :advanced))))
+          (is (= 2 (t2/count :model/FieldValues 'field_id (mt/id :orders :user_id) 'type :advanced))))
         (testing "and the cached values differ, since the joined-table filter differs"
           (is (seq (:values fv-1)))
           (is (seq (:values fv-2)))

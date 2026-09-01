@@ -28,17 +28,17 @@
     (try
       (usage-metadata.store/delete-day! bucket-date)
       (usage-metadata.store/replace-day! bucket-date payload-a)
-      (is (= 2 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
-      (is (= 1 (t2/count :model/SourceMetricDaily :bucket_date bucket-date)))
-      (is (= 1 (t2/count :model/SourceDimensionDaily :bucket_date bucket-date)))
-      (is (= 1 (t2/count :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
+      (is (= 2 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
+      (is (= 1 (t2/count :model/SourceMetricDaily 'bucket_date bucket-date)))
+      (is (= 1 (t2/count :model/SourceDimensionDaily 'bucket_date bucket-date)))
+      (is (= 1 (t2/count :model/SourceDimensionProfileDaily 'bucket_date bucket-date)))
       (usage-metadata.store/replace-day! bucket-date payload-b)
-      (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
-      (is (= 0 (t2/count :model/SourceMetricDaily :bucket_date bucket-date)))
-      (is (= 0 (t2/count :model/SourceDimensionDaily :bucket_date bucket-date)))
-      (is (= 0 (t2/count :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
+      (is (= 1 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
+      (is (= 0 (t2/count :model/SourceMetricDaily 'bucket_date bucket-date)))
+      (is (= 0 (t2/count :model/SourceDimensionDaily 'bucket_date bucket-date)))
+      (is (= 0 (t2/count :model/SourceDimensionProfileDaily 'bucket_date bucket-date)))
       (is (= {:source_type :table, :ownership_mode :projected, :field_id 12, :predicate "pred-b", :count 5}
-             (select-keys (t2/select-one :model/SourceSegmentDaily :bucket_date bucket-date)
+             (select-keys (t2/select-one :model/SourceSegmentDaily 'bucket_date bucket-date)
                           [:source_type :ownership_mode :field_id :predicate :count])))
       (finally
         (usage-metadata.store/delete-day! bucket-date)))))
@@ -62,7 +62,7 @@
                                                 :dimensions []
                                                 :profiles   []})
       (is (= #{"pred-b"}
-             (t2/select-fn-set :predicate :model/SourceSegmentDaily :bucket_date day-b)))
+             (t2/select-fn-set :predicate :model/SourceSegmentDaily 'bucket_date day-b)))
       (finally
         (usage-metadata.store/delete-day! day-a)
         (usage-metadata.store/delete-day! day-b)))))
@@ -80,7 +80,7 @@
         (is (thrown? clojure.lang.ExceptionInfo
                      (usage-metadata.store/replace-day! bucket-date original))))
       (is (= #{"pred-a"}
-             (t2/select-fn-set :predicate :model/SourceSegmentDaily :bucket_date bucket-date)))
+             (t2/select-fn-set :predicate :model/SourceSegmentDaily 'bucket_date bucket-date)))
       (finally
         (usage-metadata.store/delete-day! bucket-date)))))
 

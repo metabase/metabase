@@ -15,7 +15,7 @@
                     :metrics               [{:card_id 7 :dimension_mappings [{:dimension-id "d1"}]}]
                     :dimensions            [{:dimension-id "d1" :display-name "Price"
                                              :effective-type "type/Number"}]}]
-      (let [reloaded (t2/select-one :model/ExplorationBlock :id (:id g))]
+      (let [reloaded (t2/select-one :model/ExplorationBlock 'id (:id g))]
         (is (= [{:card_id 7 :dimension_mappings [{:dimension-id "d1"}]}]
                (:metrics reloaded)))
         (is (= [{:dimension-id "d1" :display-name "Price" :effective-type :type/Number}]

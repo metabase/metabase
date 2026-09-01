@@ -26,7 +26,7 @@
 (deftest to-json-never-includes-the-bundle-bytes-test
   (mt/with-model-cleanup [:model/DataApp]
     (insert-app!)
-    (let [app     (t2/select-one :model/DataApp :name "m")
+    (let [app     (t2/select-one :model/DataApp 'name "m")
           decoded (json/decode (json/encode app))]
       (is (contains? app :bundle) "the selected instance still carries the raw bundle")
       (is (not (contains? decoded "bundle"))
@@ -50,11 +50,11 @@
   (mt/with-model-cleanup [:model/DataApp]
     (testing "a row stored with NULL allowed_hosts reads back as []"
       (insert-app!)
-      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "m")))))
+      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp 'name "m")))))
     (testing "a stored list round-trips through the JSON transform"
       (insert-app! :name "n" :allowed_hosts ["https://a.com" "https://b.com"])
       (is (= ["https://a.com" "https://b.com"]
-             (:allowed_hosts (t2/select-one :model/DataApp :name "n")))))))
+             (:allowed_hosts (t2/select-one :model/DataApp 'name "n")))))))
 
 (deftest permissions-test
   (testing "a superuser can read, write, and create"

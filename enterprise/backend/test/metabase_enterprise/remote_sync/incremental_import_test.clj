@@ -221,7 +221,7 @@
                src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
                deleted (atom [])]
            (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
-           (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
+           (let [b-id (t2/select-one-pk :model/Card 'entity_id b-eid)]
              (with-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
                (import-at! src "v1"))                      ; incremental delete of card_b
              (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)

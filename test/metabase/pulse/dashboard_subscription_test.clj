@@ -167,7 +167,7 @@
                                  :link         {:entity {:id    id
                                                          :model model}}})
         rasta-id              (mt/user->id :rasta)
-        rasta-pc-id           (t2/select-one-fn :id :model/Collection :personal_owner_id rasta-id)]
+        rasta-pc-id           (t2/select-one-fn :id :model/Collection 'personal_owner_id rasta-id)]
     (mt/with-temp
       [:model/Collection    {coll-id :id}      {:name        "Linked collection name"
                                                 :description "Linked collection desc"
@@ -243,7 +243,7 @@
       slack-branding-text]}]
    (apply concat
           (for [card-id card-ids]
-            (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+            (let [id (t2/select-one-pk :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
               [{:type "section"
                 :text {:type "mrkdwn"
                        :text (format "<https://testmb.com/dashboard/%d#scrollTo=%d|Test card>"
@@ -404,7 +404,7 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
-       (let [id (t2/select-one-pk :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+       (let [id (t2/select-one-pk :model/DashboardCard 'card_id card-id 'dashboard_id dashboard-id)]
          (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                   converted to mrkdwn (Slack markup language)"
            (is (= {:channel "#general"
@@ -449,7 +449,7 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
-       (let [id (t2/select-one-pk :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+       (let [id (t2/select-one-pk :model/DashboardCard 'card_id card-id 'dashboard_id dashboard-id)]
          (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown isn't
                   converted to mrkdwn (Slack markup language)"
            (is (= {:channel "#general"
@@ -491,7 +491,7 @@
 
        :slack
        (fn [{:keys [card-id dashboard-id]} [message]]
-         (let [{:keys [id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+         (let [{:keys [id]} (t2/select-one :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
            (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                    converted to mrkdwn (Slack markup language) and truncated appropriately"
              (is (= {:channel "#general"
@@ -628,7 +628,7 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [message]]
-       (let [{:keys [id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+       (let [{:keys [id]} (t2/select-one :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
          (testing "Header card with inline parameters includes parameter values below header"
            (is (= {:channel "#general"
                    :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
@@ -701,7 +701,7 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [message]]
-       (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+       (let [id (t2/select-one-pk :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
          (testing "Dashcard with inline parameters shows State parameter in dashboard fields"
            (is (= {:channel "#general"
                    :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
@@ -732,7 +732,7 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard :id dashboard-id) [_]
+      (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard 'id dashboard-id) [_]
         (thunk)))
 
     :assert
@@ -767,7 +767,7 @@
 
      :slack
      (fn [{:keys [dashboard-id card-id]} [message]]
-       (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+       (let [id (t2/select-one-pk :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
          (is (=? {:channel "#general",
                   :blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                            {:type "section",
@@ -1148,7 +1148,7 @@
                                                        :row                    2
                                                        :visualization_settings {:text "Card 2 tab-2"}}]
         ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
-        (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+        (t2/update! :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
         (thunk)))
     :assert
     {:email
@@ -1170,7 +1170,7 @@
 
      :slack
      (fn [{:keys [dashboard-id card-id]} [pulse-results]]
-       (let [{:keys [dashboard_tab_id id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+       (let [{:keys [dashboard_tab_id id]} (t2/select-one :model/DashboardCard 'dashboard_id dashboard-id 'card_id card-id)]
          (is (=? {:channel "#general"
                   :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
                             {:type "section"

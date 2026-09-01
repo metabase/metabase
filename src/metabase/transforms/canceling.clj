@@ -193,7 +193,7 @@
                                      (try
                                        ;; Skip silently if the run was deleted between cancelation insert and now
                                        ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
-                                       (when-let [run (t2/select-one :model/TransformRun :id id)]
+                                       (when-let [run (t2/select-one :model/TransformRun 'id id)]
                                          (cancel-run! run request-time))
                                        (catch Throwable t
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))

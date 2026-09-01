@@ -94,7 +94,6 @@
    _query-params
    body]
   (api/check-404 (t2/delete! (prototype-table) id))
-
   {:id id})
 
 (api.macros/defendpoint :delete "/:type/all"
@@ -103,6 +102,5 @@
                       [:type ms/NonBlankString]]
    _query-params
    body]
-  (t2/delete! (prototype-table) :type type)
-
+  (t2/delete! (prototype-table) 'type type)
   {:message "All records deleted" :type type})

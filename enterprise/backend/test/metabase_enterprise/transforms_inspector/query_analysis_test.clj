@@ -47,13 +47,13 @@
 (defn- qt
   "Quote a table name for the current driver, with schema qualification."
   [table-key]
-  (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] :id (mt/id table-key))]
+  (let [{:keys [name schema]} (t2/select-one [:model/Table 'name 'schema] 'id (mt/id table-key))]
     (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf
   "Quote a field/column name for the current driver."
   [table-key col-key]
-  (let [col-name (t2/select-one-fn :name :model/Field :id (mt/id table-key col-key))]
+  (let [col-name (t2/select-one-fn :name :model/Field 'id (mt/id table-key col-key))]
     (sql.u/quote-name driver/*driver* :field col-name)))
 
 (defn- make-native-transform
@@ -64,7 +64,7 @@
 (defn- make-sources
   [& table-keys]
   (mapv (fn [k]
-          {:table_name (t2/select-one-fn :name :model/Table :id (mt/id k))
+          {:table_name (t2/select-one-fn :name :model/Table 'id (mt/id k))
            :table_id   (mt/id k)})
         table-keys))
 

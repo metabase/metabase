@@ -17,8 +17,8 @@
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
       ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
-      (mt/with-temp-vals-in-db :model/FieldValues (u/the-id (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :categories :name)))
+      (mt/with-temp-vals-in-db :model/FieldValues (u/the-id (t2/select-one-pk :model/FieldValues 'field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (mt/with-dynamic-fn-redefs [metabase.parameters.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -64,7 +64,7 @@
            (data-perms/set-table-permission! &group (mt/id :venues) :perms/create-queries :query-builder)
            (update-mappings! 200)
            (is (= new-mappings
-                  (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+                  (t2/select-one-fn :parameter_mappings :model/DashboardCard 'dashboard_id dashboard-id, 'card_id card-id)))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"

@@ -29,7 +29,7 @@
 (defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
-  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table 'id table-id))
         table (lib.metadata/table metadata-provider table-id)
         query (lib/query metadata-provider table)
         field (lib.metadata/field metadata-provider field-id)]
@@ -53,7 +53,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (t2/select-one :model/Card :id (get cards card-x)) (t2/select-one :model/Card :id (get cards card-y)))))))))))
+                 (double (#'related/similarity (t2/select-one :model/Card 'id (get cards card-x)) (t2/select-one :model/Card 'id (get cards card-y)))))))))))
 
 (deftest ^:parallel similarity-tolerates-an-unparseable-query-test
   (testing "a Card whose stored query will not parse has no context-bearing forms, and does not stop the ranking"

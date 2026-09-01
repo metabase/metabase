@@ -113,7 +113,7 @@
                                          :group_id group-id}]
           (grant-block-perms! group-id)
           (is (nil? (test-db-perms group-id)))
-          (is (not (t2/exists? :model/Sandbox :group_id group-id))))))))
+          (is (not (t2/exists? :model/Sandbox 'group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions for a table should not delete existing block permissions"
@@ -147,9 +147,9 @@
     (mt/with-temp [:model/Database    {db-id :id} {}]
       (data-perms/set-database-permission! (u/the-id (perms-group/all-users)) db-id :perms/view-data :blocked)
       (letfn [(perms-exist? []
-                (t2/exists? :model/DataPermissions :db_id db-id :perm_value :blocked))]
+                (t2/exists? :model/DataPermissions 'db_id db-id 'perm_value :blocked))]
         (is (perms-exist?))
-        (t2/delete! :model/Database :id db-id)
+        (t2/delete! :model/Database 'id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.
@@ -777,7 +777,7 @@
                         (mt/user-http-request :rasta :put (str "/card/" (:id card))
                                               {:result_metadata results-metadata-mismatched}))))
               (testing "Result_metadata of a card can be updated freely using toucan"
-                (is (= 1 (t2/update! :model/Card :id (:id card)
+                (is (= 1 (t2/update! :model/Card 'id (:id card)
                                      {:result_metadata results-metadata-mismatched}))))
               (testing "POST /dataset: query referencing card with mismatched result_metadata fails"
                 (is (=? {:status "failed"

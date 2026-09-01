@@ -799,10 +799,10 @@
                                               {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))
               (finally
-                (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
-                (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
-                (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
-                (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
+                (when-let [qid @question-id] (t2/delete! :model/Card 'id qid))
+                (when-let [mid @metric-id]   (t2/delete! :model/Card 'id mid))
+                (when-let [did @dash-id]     (t2/delete! :model/Dashboard 'id did))
+                (when-let [cid @coll-id]     (t2/delete! :model/Collection 'id cid))))))))))
 
 (deftest tools-call-visualize-query-direct-test
   (testing "visualize_query returns UI structured content"
@@ -964,9 +964,9 @@
           (is (pos-int? (:id question-data)))
           (is (= "Handle-Path Question" (:name question-data)))
           ;; Card was actually persisted with a dataset_query (handle resolved correctly).
-          (is (some? (t2/select-one-fn :dataset_query :model/Card :id (:id question-data)))))
+          (is (some? (t2/select-one-fn :dataset_query :model/Card 'id (:id question-data)))))
         (finally
-          (when-let [qid @question-id] (t2/delete! :model/Card :id qid)))))))
+          (when-let [qid @question-id] (t2/delete! :model/Card 'id qid)))))))
 
 (deftest tools-call-update-question-accepts-query-handle-test
   (testing "update_question resolves query_handle through the MCP layer"
@@ -988,7 +988,7 @@
             update-data     (call-tool session-id "update_question"
                                        {:id           card-id
                                         :query_handle (:query_handle construct-data)})
-            persisted       (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            persisted       (t2/select-one-fn :dataset_query :model/Card 'id card-id)
             persisted-table (some :source-table (:stages persisted))]
         (is (= card-id (:id update-data)))
         ;; Handle was resolved and applied to the card. Construct sends portable FKs over the
@@ -1019,7 +1019,7 @@
         (is (str/includes? (-> result :content first :text) "Query handle not found")
             "Stale handle should surface the dedicated message from mcp/tools.clj")
         ;; Card should be unchanged - still pointed at orders, not whatever the stale handle would have meant.
-        (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+        (let [persisted (t2/select-one-fn :dataset_query :model/Card 'id card-id)]
           (is (= (mt/id :orders) (some :source-table (:stages persisted)))
               "A stale handle must not mutate the card's source table."))))))
 
@@ -1570,7 +1570,7 @@
                                                       {"mcp-session-id" sid})]
                 (is (=? {:isError true} (get-in response [:body :result]))
                     "update_question is outside agent:search and must be refused")
-                (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
+                (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card 'id card-id))
                     "the card must not have been renamed")))))))))
 
 (defn- insert-expired-oauth-token!

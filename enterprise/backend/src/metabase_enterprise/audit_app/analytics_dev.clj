@@ -52,7 +52,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-name :is_audit false))
+  (t2/select-one :model/Database 'name canonical-db-name 'is_audit false))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -92,7 +92,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (t2/delete! :model/Database :id db-id)
+  (t2/delete! :model/Database 'id db-id)
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -280,12 +280,12 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
+  (t2/select-one [:model/User 'id 'email] 'is_superuser true {:order-by [[:id :asc]]}))
 
 (defn find-analytics-collection
   "Get the analytics collection"
   []
-  (t2/select-one :model/Collection :entity_id audit/default-audit-collection-entity-id))
+  (t2/select-one :model/Collection 'entity_id audit/default-audit-collection-entity-id))
 
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."
@@ -294,8 +294,8 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (t2/delete! :model/Database :is_audit true)
-  (t2/delete! :model/Collection :namespace "analytics"))
+  (t2/delete! :model/Database 'is_audit true)
+  (t2/delete! :model/Collection 'namespace "analytics"))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)

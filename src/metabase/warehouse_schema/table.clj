@@ -70,7 +70,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (t2/select :model/Table :id [:in ids])
+     (let [tables (t2/select :model/Table 'id ['in ids])
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
@@ -93,7 +93,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
+  (fetch-query-metadata* (t2/select-one :model/Table 'id id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
@@ -124,7 +124,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select :model/Field :id [:in ids])
+                                         (-> (t2/select :model/Field 'id ['in ids])
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -163,7 +163,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (t2/select :model/Field :id [:in metadata-field-ids])
+                             (-> (t2/select :model/Field 'id ['in metadata-field-ids])
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]
@@ -196,7 +196,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (t2/select-one :model/Database :id database_id)))]
+                                           (t2/select-one :model/Database 'id database_id)))]
                    (when (mi/can-read? database) database)))
 
       include-fields?
@@ -252,7 +252,7 @@
                                         [:= :r.moderated_item_id :c.id]]
                             :where      [:in :c.id ids]})
           dbs (if (seq cards)
-                (t2/select-pk->fn identity :model/Database :id [:in (into #{} (map :database_id) cards)])
+                (t2/select-pk->fn identity :model/Database 'id ['in (into #{} (map :database_id) cards)])
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]

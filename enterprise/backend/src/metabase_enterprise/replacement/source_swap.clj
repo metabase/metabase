@@ -150,7 +150,7 @@
 
 (defn- dashboard-swap-source!
   [dashboard old-source new-source]
-  (let [dashcards      (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+  (let [dashcards      (t2/select :model/DashboardCard 'dashboard_id (:id dashboard))
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
@@ -160,7 +160,7 @@
                                          (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
+                        (t2/select-pk->fn identity :model/Card 'id ['in all-card-ids])
                         {})
         any-dashcard-changed? (reduce (fn [changed? dashcard]
                                         (or
@@ -175,7 +175,7 @@
       (t2/update! :model/Dashboard (:id dashboard) {:parameters parameters'}))
     (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
-       :event/dashboard-update {:object  (t2/select-one :model/Dashboard :id (:id dashboard))
+       :event/dashboard-update {:object  (t2/select-one :model/Dashboard 'id (:id dashboard))
                                 :user-id api/*current-user-id*}))))
 
 (defn swap-source!
@@ -186,11 +186,11 @@
   ([[entity-type entity-id :as entity-ref] old-source new-source]
    (swap-source! entity-ref
                  (case entity-type
-                   :card      (t2/select-one :model/Card :id entity-id)
-                   :transform (t2/select-one :model/Transform :id entity-id)
-                   :segment   (t2/select-one :model/Segment :id entity-id)
-                   :measure   (t2/select-one :model/Measure :id entity-id)
-                   :dashboard (t2/select-one :model/Dashboard :id entity-id)
+                   :card      (t2/select-one :model/Card 'id entity-id)
+                   :transform (t2/select-one :model/Transform 'id entity-id)
+                   :segment   (t2/select-one :model/Segment 'id entity-id)
+                   :measure   (t2/select-one :model/Measure 'id entity-id)
+                   :dashboard (t2/select-one :model/Dashboard 'id entity-id)
                    nil)
                  old-source new-source))
   ([[entity-type _entity-id] entity old-source new-source]

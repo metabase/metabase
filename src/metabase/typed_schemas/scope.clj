@@ -51,11 +51,11 @@
   (when database-ref
     (let [{:keys [id name]} database-ref]
       (if id
-        (let [database (t2/select-one :model/Database :id id)]
+        (let [database (t2/select-one :model/Database 'id id)]
           (if (and database (mi/can-read? database))
             #{id}
             #{}))
-        (->> (t2/select :model/Database :name name)
+        (->> (t2/select :model/Database 'name name)
              (filter mi/can-read?)
              (map :id)
              set)))))
@@ -83,12 +83,12 @@
                           (mi/can-read? collection)))
         by-id      (when (seq ids)
                      (into {} (map (juxt :id identity))
-                           (t2/select :model/Collection :id [:in ids])))
+                           (t2/select :model/Collection 'id ['in ids])))
         ;; entity_id is a fixed-width char column; some app dbs return it
         ;; space-padded, so key the lookup by the trimmed value.
         by-eid     (when (seq entity-ids)
                      (into {} (map (juxt (comp str/trimr :entity_id) identity))
-                           (t2/select :model/Collection :entity_id [:in entity-ids])))
+                           (t2/select :model/Collection 'entity_id ['in entity-ids])))
         resolved   (for [{:keys [id entity-id] :as collection-ref} collection-refs]
                      [collection-ref
                       (let [collection (if id (get by-id id) (get by-eid entity-id))]

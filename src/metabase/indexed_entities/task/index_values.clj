@@ -41,9 +41,9 @@
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
-  (let [model-index (t2/select-one :model/ModelIndex :id model-index-id)
+  (let [model-index (t2/select-one :model/ModelIndex 'id model-index-id)
         model       (when model-index
-                      (t2/select-one :model/Card :id (:model_id model-index)))]
+                      (t2/select-one :model/Card 'id (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
         (let [trigger-key (model-index-trigger-key model-index-id)]
@@ -114,7 +114,7 @@
                                                (log/warnf "Error fetching existing triggers from Quartz, will recreate all triggers: %s" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
-                                          (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
+                                          (t2/select :model/ModelIndex 'id ['not-in existing-trigger-model-index-ids])
                                           (t2/select :model/ModelIndex))]
       (when (seq missing-trigger-model-indexes)
         (log/infof "Found %d model index(es) without triggers, recreating..."

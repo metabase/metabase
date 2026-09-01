@@ -126,8 +126,8 @@
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field
-                                             :fk_target_field_id [:not= nil]
-                                             :table_id [:in table-ids])))]
+                                             'fk_target_field_id ['not= nil]
+                                             'table_id ['in table-ids])))]
     (->> dimensions
          remove-unqualified
          sort-by-interestingness

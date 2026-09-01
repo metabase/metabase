@@ -21,11 +21,11 @@
 (defn delete-day!
   "Delete all rollup rows for `bucket-date` across the usage metadata daily tables."
   [bucket-date]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date)
+  (t2/delete! :model/SourceSegmentDaily 'bucket_date bucket-date)
+  (t2/delete! :model/SourceSegmentCompositeDaily 'bucket_date bucket-date)
+  (t2/delete! :model/SourceMetricDaily 'bucket_date bucket-date)
+  (t2/delete! :model/SourceDimensionDaily 'bucket_date bucket-date)
+  (t2/delete! :model/SourceDimensionProfileDaily 'bucket_date bucket-date)
   nil)
 
 (defn insert-segment-rollups!

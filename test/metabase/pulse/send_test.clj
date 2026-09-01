@@ -370,7 +370,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
-                                                       :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
+                                                       :pulse_channel_id (t2/select-one-pk :model/PulseChannel 'pulse_id pulse-id)}]
           (thunk)))
 
       :assert

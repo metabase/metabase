@@ -46,7 +46,7 @@
   []
   (if-not config/ee-available?
     #{}
-    (let [colls (->> (t2/select :model/Collection :archived false)
+    (let [colls (->> (t2/select :model/Collection 'archived false)
                      (sort-by (fn [{coll-type :type coll-name :name coll-id :id}]
                                 [coll-type ((fnil u/lower-case-en "") coll-name) coll-id]))
                      (mapv #(select-keys % [:id :name :location :type])))
@@ -72,7 +72,7 @@
       (mt/with-premium-features #{:audit-app}
         (audit-test/with-audit-db-restoration!
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-                crowberto-root (t2/select-one :model/Collection :personal_owner_id admin-user-id)]
+                crowberto-root (t2/select-one :model/Collection 'personal_owner_id admin-user-id)]
             (mt/with-temp [:model/Collection collection          {}
                            :model/Collection {collection-id :id} {:name "Collection with Items"}
                            :model/Collection _                   {:name            "subcollection"

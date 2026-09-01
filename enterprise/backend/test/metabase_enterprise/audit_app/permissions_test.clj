@@ -36,11 +36,11 @@
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!
     (mt/with-premium-features #{:audit-app}
-      (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id audit/audit-db-id))
+      (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database 'id audit/audit-db-id))
           "The sync status should be completed by this point. (In test it is synchronous!)")
       (mt/with-test-user :crowberto
         (testing "A query using a saved audit model as the source table runs successfully"
-          (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model)]
+          (let [audit-card (t2/select-one :model/Card 'database_id audit/audit-db-id 'type :model)]
             (is (partial=
                  {:status :completed}
                  (qp/process-query
@@ -49,7 +49,7 @@
                    :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
         (testing "A non-native query can be run on views in the audit DB"
           (let [audit-view (t2/select-one :model/Table
-                                          :db_id audit/audit-db-id
+                                          'db_id audit/audit-db-id
                                           {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})]
             (when-not (some-> audit-view :name u/lower-case-en (str/starts-with? "v_"))
               (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
@@ -90,7 +90,7 @@
           (mt/with-full-data-perms-for-all-users!
             (mt/with-test-user :rasta
               (binding [api/*current-user-permissions-set* (delay #{})]
-                (let [audit-view (->> (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})
+                (let [audit-view (->> (t2/select-one :model/Table 'db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})
                                       (tu/poll-until 5000))]
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
@@ -132,8 +132,8 @@
   []
   (let [coll (boolean (audit/default-audit-collection))
         default-audit-id (:id (audit/default-audit-collection))
-        cards (t2/exists? :model/Card :collection_id default-audit-id)
-        dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
+        cards (t2/exists? :model/Card 'collection_id default-audit-id)
+        dashboards (t2/exists? :model/Dashboard 'collection_id default-audit-id)]
     (when-not (and coll cards dashboards)
       ;; Force audit db to load, even if the checksum has not changed. Sometimes analytics bits get removed by tests,
       ;; but next time we go to load analytics data, we find the existing checksum and don't bother loading it again.
@@ -152,12 +152,12 @@
 
 (deftest can-write-is-false-for-audit-content-cards-test
   (install-audit-db-if-needed!)
-  (let [audit-cards (t2/select :model/Card :collection_id (:id (audit/default-audit-collection)))]
+  (let [audit-cards (t2/select :model/Card 'collection_id (:id (audit/default-audit-collection)))]
     (is (= #{false} (set (map mi/can-write? audit-cards))))))
 
 (deftest cannot-edit-audit-content-cards-over-api
   (install-audit-db-if-needed!)
-  (let [card (t2/select-one :model/Card :collection_id (:id (audit/default-audit-collection)))]
+  (let [card (t2/select-one :model/Card 'collection_id (:id (audit/default-audit-collection)))]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:name "My new title"})))))
 
@@ -173,12 +173,12 @@
 
 (deftest can-write-is-false-for-audit-content-dashboards-test
   (install-audit-db-if-needed!)
-  (let [audit-dashboards (t2/select :model/Dashboard :collection_id (:id (audit/default-audit-collection)))]
+  (let [audit-dashboards (t2/select :model/Dashboard 'collection_id (:id (audit/default-audit-collection)))]
     (is (= #{false} (set (map mi/can-write? audit-dashboards))))))
 
 (deftest cannot-edit-audit-content-dashboards-over-api
   (install-audit-db-if-needed!)
-  (let [dashboard (t2/select-one :model/Dashboard :collection_id (:id (audit/default-audit-collection)))]
+  (let [dashboard (t2/select-one :model/Dashboard 'collection_id (:id (audit/default-audit-collection)))]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard)) {:name "My new title"})))))
 
@@ -187,7 +187,7 @@
     (mt/with-premium-features #{:audit-app}
       (testing "An ad-hoc aggregation query on top of a saved audit model runs successfully (#43088)"
         (mt/with-test-user :crowberto
-          (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model :name "People")]
+          (let [audit-card (t2/select-one :model/Card 'database_id audit/audit-db-id 'type :model 'name "People")]
             (is (some? audit-card)
                 "Expected the audit DB's 'People' model card to exist after installation")
             (let [mp    (lib.metadata.jvm/application-database-metadata-provider audit/audit-db-id)

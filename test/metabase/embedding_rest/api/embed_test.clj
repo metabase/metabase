@@ -932,7 +932,7 @@
        "/card/" (:card_id dashcard)))
 
 (defn- dashcard->dash-eid [dashcard]
-  (t2/select-one-fn :entity_id :model/Dashboard :id (:dashboard_id dashcard)))
+  (t2/select-one-fn :entity_id :model/Dashboard 'id (:dashboard_id dashcard)))
 
 (deftest it-should-be-possible-to-run-a-card-successfully-if-you-jump-through-the-right-hoops---
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
@@ -1857,11 +1857,11 @@
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true
                                               :last_viewed_at #t "2000-01-01"}}]
-          (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
+          (let [dashboard-id (t2/select-one-fn :id :model/Dashboard 'id (:dashboard_id dashcard))
                 original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
             (mt/with-temporary-setting-values [synchronous-batch-updates true]
               (client/client :get 202 (dashcard-url dashcard))
-              (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
+              (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard 'id dashboard-id))))))))))
 
 (deftest dashboard-param-value-remapping-test
   (mt/dataset test-data

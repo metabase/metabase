@@ -675,7 +675,7 @@
   emitter aggregates across joins to the same table. When multiple joins target the same table-id, `:declared` is the
   union of their inner-stage projections."
   [query]
-  (let [driver    (t2/select-one-fn :engine :model/Database :id (:database query))
+  (let [driver    (t2/select-one-fn :engine :model/Database 'id (:database query))
         sql       (:query (qp.compile/compile query))
         nq        (lib/native-query query sql)
         sql-refs  (reduce (fn [m {:keys [table-id id]}]
@@ -815,7 +815,7 @@
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (take-n-values 3 (chain-filter categories.name nil))))
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full)))))
+            (is (= 1 (t2/count :model/FieldValues 'field_id field-id 'type :full)))))
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
           (field-values/clear-advanced-field-values-for-field! field-id)
@@ -826,7 +826,7 @@
             (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced)))))
+            (is (= 1 (t2/count :model/FieldValues 'field_id field-id 'type :advanced)))))
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
             [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
@@ -844,10 +844,10 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced))))
+            (is (= 1 (t2/count :model/FieldValues 'field_id field-id 'type :advanced))))
           (testing "should search for the values of linked-filter FieldValues"
-            (t2/update! :model/FieldValues {:field_id field-id
-                                            :type     :advanced}
+            (t2/update! :model/FieldValues {'field_id field-id
+                                            'type     :advanced}
                         {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
@@ -857,8 +857,8 @@
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
-              (t2/update! :model/FieldValues {:field_id field-id
-                                              :type     :advanced}
+              (t2/update! :model/FieldValues {'field_id field-id
+                                              'type     :advanced}
                           {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
@@ -932,12 +932,12 @@
   [field-or-field-id thunk]
   (mt/with-model-cleanup [:model/FieldValues]
     (let [field-id         (u/the-id field-or-field-id)
-          has_field_values (t2/select-one-fn :has_field_values :model/Field :id field-id)
-          fvs              (t2/select :model/FieldValues :field_id field-id)]
+          has_field_values (t2/select-one-fn :has_field_values :model/Field 'id field-id)
+          fvs              (t2/select :model/FieldValues 'field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
       (t2/update! :model/Field field-id {:has_field_values "list"})
-      (t2/delete! :model/FieldValues :field_id field-id)
+      (t2/delete! :model/FieldValues 'field_id field-id)
       (try
         (thunk)
         (finally
@@ -1029,23 +1029,23 @@
                    (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
                         (sort-by (comp :field :lhs))))))
           (try
-            (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
+            (t2/update! :model/Field {'id %messages.receiver_id} {:active false})
             (testing "check that it switches to sender only once receiver is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
                        :rhs {:table $$users, :field %users.id}}]
                      (#'chain-filter/find-joins (mt/id) $$messages $$users))))
             (finally
-              (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))
+              (t2/update! :model/Field {'id %messages.receiver_id} {:active true})))
           (try
-            (t2/update! :model/Field {:id %messages.sender_id} {:active false})
+            (t2/update! :model/Field {'id %messages.sender_id} {:active false})
             (testing "check that it switches to receiver only once sender is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                        :rhs {:table $$users, :field %users.id}}]
                      (#'chain-filter/find-joins (mt/id) $$messages $$users))))
             (finally
-              (t2/update! :model/Field {:id %messages.sender_id} {:active true})))
+              (t2/update! :model/Field {'id %messages.sender_id} {:active true})))
           ;; mark field
-          (t2/update! :model/Field {:id %users.id} {:active false})
+          (t2/update! :model/Field {'id %users.id} {:active false})
           (testing "there are no connections when PK is inactive"
             (is (nil? (#'chain-filter/find-joins (mt/id) $$messages $$users)))))))))
 

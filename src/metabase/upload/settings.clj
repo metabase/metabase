@@ -27,13 +27,13 @@
   :type       :json
   :audit      :getter
   :getter     (fn []
-                (let [db (t2/select-one :model/Database :uploads_enabled true)]
+                (let [db (t2/select-one :model/Database 'uploads_enabled true)]
                   {:db_id        (:id db)
                    :schema_name  (:uploads_schema_name db)
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (if (nil? db_id)
-                  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
+                  (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
                                                                      :uploads_table_prefix nil})
                   (do

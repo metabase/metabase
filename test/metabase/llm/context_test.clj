@@ -436,7 +436,7 @@
           (is (= (+ 3 @#'context/max-restricted-field-values-fetches) @calls)
               "3 unrestricted + the restricted cap, not all 40 restricted columns")
           (finally
-            (t2/delete! :model/Field :id [:in (map :id (concat restricted-fields open-fields))])))))))
+            (t2/delete! :model/Field 'id ['in (map :id (concat restricted-fields open-fields))])))))))
 
 (deftest fetch-field-values-applies-cap-after-eligibility-filter-test
   (testing "the restricted-table cap is applied after narrowing to fields that should have FieldValues,
@@ -465,7 +465,7 @@
               "only the one eligible field is fetched -- the ineligible fields ahead of it in the raw
                column list didn't consume its slot in the cap")
           (finally
-            (t2/delete! :model/Field :id [:in (map :id (conj ineligible-fields eligible-field))])))))))
+            (t2/delete! :model/Field 'id ['in (map :id (conj ineligible-fields eligible-field))])))))))
 
 ;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
 

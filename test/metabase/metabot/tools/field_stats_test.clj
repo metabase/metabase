@@ -10,11 +10,11 @@
 
 (defn- ensure-fresh-field-values!
   [field-id]
-  (t2/delete! :model/FieldValues :field_id field-id :type :full)
-  (is (= :full (-> (t2/select-one :model/Field :id field-id)
+  (t2/delete! :model/FieldValues 'field_id field-id 'type :full)
+  (is (= :full (-> (t2/select-one :model/Field 'id field-id)
                    field-values/get-or-create-full-field-values!
                    :type)))
-  (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full))))
+  (is (= 1 (t2/count :model/FieldValues 'field_id field-id 'type :full))))
 
 (deftest field-values-table-test
   (ensure-fresh-field-values! (mt/id :people :state))

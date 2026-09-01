@@ -143,7 +143,7 @@
           (ingest! "transform" [:= :this.id transform-id])
           (is (some? (fetch-one "transform" :model_id (str transform-id)))
               "Transform should be in the search index after ingestion")
-          (t2/delete! :model/Transform :id transform-id)
+          (t2/delete! :model/Transform 'id transform-id)
           (is (nil? (fetch-one "transform" :model_id (str transform-id)))
               "Transform should be removed from the search index after deletion"))))))
 

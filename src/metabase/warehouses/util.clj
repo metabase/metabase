@@ -23,8 +23,8 @@
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
          database               (api/check-404 (if include-destination-databases?
-                                                 (t2/select-one :model/Database :id id)
-                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
+                                                 (t2/select-one :model/Database 'id id)
+                                                 (t2/select-one :model/Database 'id id 'router_database_id nil)))
          router-db-id           (:router_database_id database)]
      (cond-> database
        filter-by-data-access? api/read-check

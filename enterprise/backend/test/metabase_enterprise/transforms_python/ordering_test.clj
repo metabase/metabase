@@ -41,7 +41,7 @@
                                                      (transforms.tu/source-table-entry "products" (mt/id :products))])]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
-             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
+             (transform-deps-for-db (t2/select-one :model/Transform 'id t1)))))))
 
 (deftest python-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -54,7 +54,7 @@
           (t2/update! :model/Transform t1 {:target_table_id table1})
           (is (= {t1 #{}
                   t2 #{t1}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform 'id ['in [t1 t2]]))))))))))
 
 (deftest python-transform-multiple-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -74,7 +74,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]]))))))))))
 
 (deftest mixed-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
@@ -100,4 +100,4 @@
           (is (= {t1 #{}
                   t2 #{t1}
                   t3 #{t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]]))))))))))

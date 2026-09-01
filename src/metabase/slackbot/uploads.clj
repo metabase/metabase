@@ -115,7 +115,7 @@
   [files]
   (when (seq files)
     (if-let [{:keys [db_id schema_name] :as settings} (upload-settings)]
-      (let [db (t2/select-one :model/Database :id db_id)]
+      (let [db (t2/select-one :model/Database 'id db_id)]
         (if-not (upload/can-create-upload? db schema_name)
           {:error "You don't have permission to upload files. Contact your Metabase administrator."}
           (let [result (process-file-uploads settings files)]

@@ -67,12 +67,12 @@
               (is (= 2 deleted-count)))
             ;; Verify only recent tasks remain
             (is (= 4 (t2/count :model/RemoteSyncTask)))
-            (is (some? (t2/select-one :model/RemoteSyncTask :id (:id task-today))))
-            (is (some? (t2/select-one :model/RemoteSyncTask :id (:id task-15-days))))
-            (is (some? (t2/select-one :model/RemoteSyncTask :id (:id task-29-days))))
-            (is (some? (t2/select-one :model/RemoteSyncTask :id (:id task-30-days))))
-            (is (nil? (t2/select-one :model/RemoteSyncTask :id (:id task-31-days))))
-            (is (nil? (t2/select-one :model/RemoteSyncTask :id (:id task-60-days))))))))))
+            (is (some? (t2/select-one :model/RemoteSyncTask 'id (:id task-today))))
+            (is (some? (t2/select-one :model/RemoteSyncTask 'id (:id task-15-days))))
+            (is (some? (t2/select-one :model/RemoteSyncTask 'id (:id task-29-days))))
+            (is (some? (t2/select-one :model/RemoteSyncTask 'id (:id task-30-days))))
+            (is (nil? (t2/select-one :model/RemoteSyncTask 'id (:id task-31-days))))
+            (is (nil? (t2/select-one :model/RemoteSyncTask 'id (:id task-60-days))))))))))
 
 (deftest trim-remote-sync-tasks-handles-empty-table-test
   (testing "handles empty remote_sync_task table gracefully"

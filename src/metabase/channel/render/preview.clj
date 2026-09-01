@@ -83,7 +83,7 @@
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
-        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard         (t2/select-one :model/Dashboard 'id dashboard-id)
         dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr

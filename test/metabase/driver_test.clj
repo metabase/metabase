@@ -272,7 +272,7 @@
 (deftest ^:parallel table-exists-test
   (testing "Make sure checking for table existence works"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
-      (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
+      (let [venues-table (t2/select-one :model/Table 'id (mt/id :venues))
             fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
         (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
             (str "Driver " driver/*driver* " should detect that venues table exists"))
@@ -296,7 +296,7 @@
   (testing "test `describe-fields` or `describe-table` returns some basic metadata"
     (mt/test-drivers (mt/normal-drivers)
       (mt/dataset daily-bird-counts
-        (let [table (t2/select-one :model/Table :id (mt/id :bird-count))
+        (let [table (t2/select-one :model/Table 'id (mt/id :bird-count))
               fmt   #(ddl.i/format-name driver/*driver* %)]
           (is (=? [{:name              (fmt "id")
                     :database-type     string?
@@ -315,7 +315,7 @@
 (deftest ^:parallel describe-fields-returns-nullability-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset nullable-db
-      (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
+      (let [table   (t2/select-one :model/Table 'id (mt/id :nullable))
             fields  (describe-fields-for-table (mt/db) table)
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
@@ -330,7 +330,7 @@
 (deftest ^:parallel describe-fields-returns-default-expr-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset default-expr-db
-      (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
+      (let [table (t2/select-one :model/Table 'id (mt/id :default_expr))
             fields (describe-fields-for-table (mt/db) table)
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
@@ -346,7 +346,7 @@
 (deftest ^:parallel describe-fields-returns-is-generated-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset generated-column-db
-      (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
+      (let [table (t2/select-one :model/Table 'id (mt/id :generated_column))
             fields (describe-fields-for-table (mt/db) table)
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
@@ -362,9 +362,9 @@
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-fks` should be usable in the way we used to use the old `describe-table-fks` method"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
-      (let [orders   (t2/select-one [:model/Table :name :schema] (mt/id :orders))
-            products (t2/select-one [:model/Table :name :schema] (mt/id :products))
-            people   (t2/select-one [:model/Table :name :schema] (mt/id :people))
+      (let [orders   (t2/select-one [:model/Table 'name 'schema] (mt/id :orders))
+            products (t2/select-one [:model/Table 'name 'schema] (mt/id :products))
+            people   (t2/select-one [:model/Table 'name 'schema] (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-table-schema (:schema orders)
                   :fk-table-name   (:name orders)

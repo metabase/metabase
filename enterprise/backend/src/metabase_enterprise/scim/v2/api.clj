@@ -152,7 +152,7 @@
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'pgm.user_id 'pg.name 'pg.entity_id]
                                                              {:from [[:permissions_group_membership :pgm]]
                                                               :join [[:permissions_group :pg] [:= :pg.id :group_id]]
                                                               :where [:and
@@ -205,7 +205,7 @@
   "Fetches a user by entity ID, or throws a 404"
   [entity-id]
   (or (t2/select-one (cons :model/User user-cols)
-                     :entity_id entity-id
+                     'entity_id entity-id
                      {:where [:= :type "personal"]})
       (throw-scim-error 404 "User not found")))
 
@@ -274,12 +274,12 @@
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
-      (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
+      (when (t2/exists? :model/User '%lower.email (u/lower-case-en email))
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
                        (t2/insert! :model/User mb-user)
                        (-> (t2/select-one (cons :model/User user-cols)
-                                          :email (u/lower-case-en email))
+                                          'email (u/lower-case-en email))
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
@@ -303,7 +303,7 @@
           (t2/with-transaction [_conn]
             (t2/update! :model/User (u/the-id current-user) updates)
             (let [user (-> (t2/select-one (cons :model/User user-cols)
-                                          :entity_id id)
+                                          'entity_id id)
                            mb-user->scim)]
               (scim-response user)))
           (catch Exception e
@@ -378,7 +378,7 @@
   "Add to each `group` a list of :members where each item is a map with 2 keys [:email :entity_id]."
   [groups]
   (when (seq groups)
-    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership 'pgm.group_id 'u.email 'u.entity_id]
                                                            {:from [[:permissions_group_membership :pgm]]
                                                             :join [[:core_user :u] [:= :u.id :pgm.user_id]]
                                                             :where [:in :pgm.group_id (map u/the-id groups)]}))
@@ -393,7 +393,7 @@
   static and cannot be managed via SCIM."
   [entity-id]
   (or (t2/select-one (cons :model/PermissionsGroup group-cols)
-                     :entity_id entity-id
+                     'entity_id entity-id
                      {:where
                       [:and
                        [:not= :id (:id (perms/all-users-group))]
@@ -493,7 +493,7 @@
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
-      (when (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name))
+      (when (t2/exists? :model/PermissionsGroup '%lower.name (u/lower-case-en group-name))
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
         (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]

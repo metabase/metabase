@@ -39,7 +39,7 @@
       "US/Pacific")))
 
 (defn- db-timezone [db-or-id]
-  (t2/select-one-fn :timezone :model/Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :timezone :model/Database 'id (u/the-id db-or-id)))
 
 (deftest sync-timezone-test
   (mt/test-drivers #{:h2 :postgres}

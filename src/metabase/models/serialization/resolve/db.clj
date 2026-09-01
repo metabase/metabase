@@ -35,7 +35,7 @@
 (defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity."
   [id model field]
-  (t2/select-one-fn field model :id id))
+  (t2/select-one-fn field model 'id id))
 
 (defn export-user
   "Export a user as their email address."
@@ -46,8 +46,8 @@
   "Given a numeric table_id, return a portable table reference [db-name schema table-name]."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (t2/select-one-fn :name [:model/Database :id :name] :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table 'id 'db_id 'name 'schema] 'id table-id)
+          db-name                     (t2/select-one-fn :name [:model/Database 'id 'name] 'id db_id)]
       [db-name schema name])))
 
 (defn export-field-fk
@@ -104,9 +104,9 @@
          remaining field-names]
     (if-let [field-name (first remaining)]
       (let [field-id (or (t2/select-one-pk :model/Field
-                                           :table_id  table-id
-                                           :name      field-name
-                                           :parent_id parent-id)
+                                           'table_id  table-id
+                                           'name      field-name
+                                           'parent_id parent-id)
                          (t2/insert-returning-pk! :model/Field
                                                   {:table_id      table-id
                                                    :parent_id     parent-id
@@ -122,8 +122,8 @@
   doesn't, synthesize an inactive Table from the path so we can still resolve the reference."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
-      (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
+    (if-let [db-id (t2/select-one-fn :id :model/Database 'name db-name)]
+      (or (t2/select-one-fn :id :model/Table 'name table-name 'schema schema 'db_id db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
                       {:table-id       table-id

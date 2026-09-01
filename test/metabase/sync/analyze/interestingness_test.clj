@@ -37,10 +37,10 @@
     (mt/with-temp [:model/Database database {}
                    :model/Table    table    {:db_id (:id database)}
                    :model/Field    field    {:table_id (:id table)}]
-      (is (nil? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
+      (is (nil? (t2/select-one-fn :dimension_interestingness :model/Field 'id (:id field))))
       (is (= {:fields-scored 1 :fields-failed 0}
              (#'sync.interestingness/score-missing-leftovers! database)))
-      (is (some? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
+      (is (some? (t2/select-one-fn :dimension_interestingness :model/Field 'id (:id field))))
       (testing "once scored, the field is no longer selected"
         (is (= {:fields-scored 0 :fields-failed 0}
                (#'sync.interestingness/score-missing-leftovers! database)))))))

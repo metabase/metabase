@@ -58,8 +58,8 @@
                     (mtx/default-value-transformer)
                     {:name :database}))]
     (t2/with-transaction [_]
-      (if (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key key)
-        (t2/update! :model/UserKeyValue :user_id user-id :namespace namespace :key key {:value value
+      (if (t2/select-one :model/UserKeyValue 'user_id user-id 'namespace namespace 'key key)
+        (t2/update! :model/UserKeyValue 'user_id user-id 'namespace namespace 'key key {:value value
                                                                                         :expires_at expires-at})
         (try
           (t2/insert! :model/UserKeyValue {:user_id user-id
@@ -69,7 +69,7 @@
                                            :expires_at expires-at})
           ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
           (catch Exception _
-            (t2/update! :model/UserKeyValue :user_id user-id :namespace namespace :key key {:value value
+            (t2/update! :model/UserKeyValue 'user_id user-id 'namespace namespace 'key key {:value value
                                                                                             :expires_at expires-at})))))
     value))
 
@@ -78,7 +78,7 @@
   [user-id :- :int
    namespace :- :string
    k :- :string]
-  (t2/delete! :model/UserKeyValue :namespace namespace :user_id user-id :key k))
+  (t2/delete! :model/UserKeyValue 'namespace namespace 'user_id user-id 'key k))
 
 (mu/defn retrieve
   "Retrieves a KV-pair"

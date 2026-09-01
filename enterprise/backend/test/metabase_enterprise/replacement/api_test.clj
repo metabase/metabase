@@ -156,29 +156,29 @@
                 (doseq [[label card-id] [["MBQL Child 1" mbql-child-1-id]
                                          ["MBQL Child 2" mbql-child-2-id]]]
                   (testing label
-                    (let [q (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                    (let [q (t2/select-one-fn :dataset_query :model/Card 'id card-id)]
                       (is (= new-id (lib/primary-source-card-id q)))))))
               (testing "Native child references new model in SQL"
-                (let [q   (t2/select-one-fn :dataset_query :model/Card :id native-child-id)
+                (let [q   (t2/select-one-fn :dataset_query :model/Card 'id native-child-id)
                       sql (get-in q [:stages 0 :native])]
                   (is (re-find (re-pattern (str "\\{\\{#" new-id "[^0-9]")) sql))
                   (is (not (re-find (re-pattern (str "\\{\\{#" old-id "[^0-9]")) sql)))))
               (testing "Grandchild still references its direct parent"
-                (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-id)]
+                (let [q (t2/select-one-fn :dataset_query :model/Card 'id grandchild-id)]
                   (is (= mbql-child-1-id (lib/primary-source-card-id q)))))
               (testing "Grandchild via native still references native child"
-                (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-native-id)]
+                (let [q (t2/select-one-fn :dataset_query :model/Card 'id grandchild-native-id)]
                   (is (= native-child-id (lib/primary-source-card-id q)))))
               (testing "Transform's source query references new model"
-                (let [src (t2/select-one-fn :source :model/Transform :id transform-id)]
+                (let [src (t2/select-one-fn :source :model/Transform 'id transform-id)]
                   (is (= new-id (lib/primary-source-card-id (:query src))))))
               (testing "Dependencies point to new model"
                 (deps.test/synchronously-run-backfill!)
                 (let [edges-to (fn [card-id]
                                  (t2/select-fn-set (juxt :from_entity_type :from_entity_id)
                                                    :model/Dependency
-                                                   :to_entity_type :card
-                                                   :to_entity_id   card-id))]
+                                                   'to_entity_type :card
+                                                   'to_entity_id   card-id))]
                   (is (= #{[:dashboard dashboard-id]}
                          (edges-to old-id)))
                   (is (= #{[:card mbql-child-1-id]
@@ -248,7 +248,7 @@
                 run-id   (:run_id response)
                 final    (poll-run run-id)]
             (is (= "succeeded" (:status final)))
-            (let [child-query (t2/select-one-fn :dataset_query :model/Card :id (:id child-card))]
+            (let [child-query (t2/select-one-fn :dataset_query :model/Card 'id (:id child-card))]
               (is (= new-id (get-in child-query [:stages 0 :source-card]))
                   "Child card should now reference the new source card"))))))))
 
@@ -342,7 +342,7 @@
                 response (mt/user-http-request :crowberto :post 200
                                                (str "ee/replacement/runs/" (:id run) "/cancel"))]
             (is (true? (:success response)))
-            (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+            (let [updated (t2/select-one :model/ReplacementRun 'id (:id run))]
               (is (= :canceled (:status updated)))
               (is (nil? (:is_active updated))))))))))
 
@@ -403,10 +403,10 @@
                         final    (poll-run run-id :timeout-ms 30000)]
                     (is (= "succeeded" (:status final)))
                     (testing "model is converted to a saved question"
-                      (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
+                      (is (= :question (t2/select-one-fn :type :model/Card 'id model-id))))
                     (testing "dependent question now references the output table"
-                      (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
-                            transform      (t2/select-one :model/Transform :name "Orders Transform")
+                      (let [question-query (t2/select-one-fn :dataset_query :model/Card 'id question-id-id)
+                            transform      (t2/select-one :model/Transform 'name "Orders Transform")
                             output-table   (transforms/output-table transform)]
                         (is (some? output-table)
                             "transforms/output-table should return the output table")
@@ -445,7 +445,7 @@
                   (testing "error message is captured"
                     (is (some? (:message final))))
                   (testing "model is NOT converted to a question"
-                    (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))
+                    (is (= :model (t2/select-one-fn :type :model/Card 'id model-id))))
                   (testing "tracks the migration started and failure analytics events, not success"
                     (let [events (tracked-event-names!)]
                       (is (contains? events "model_to_transforms_migration_started"))
@@ -521,19 +521,19 @@
                                                       :target_collection_id nil})
                       run-id   (:run_id response)
                       final    (poll-run run-id :timeout-ms 30000)
-                      transform (t2/select-one :model/Transform :name "Shapes Transform")
+                      transform (t2/select-one :model/Transform 'name "Shapes Transform")
                       output-table (transforms/output-table transform)]
                   (is (= "succeeded" (:status final)))
                   (testing "direct dependent's source is swapped to the transform output table"
-                    (let [q (t2/select-one-fn :dataset_query :model/Card :id direct-id)]
+                    (let [q (t2/select-one-fn :dataset_query :model/Card 'id direct-id)]
                       (is (= (:id output-table) (lib/primary-source-table-id q)))))
                   (testing "nested grandchild's own ref stays untouched (card__direct-id), yet still resolves transitively"
-                    (let [q (t2/select-one-fn :dataset_query :model/Card :id nested-id)]
+                    (let [q (t2/select-one-fn :dataset_query :model/Card 'id nested-id)]
                       (is (= direct-id (lib/primary-source-card-id q)))
                       (is (=? {:status "completed"}
                               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" nested-id))))))
                   (testing "metric aggregating the model is swapped and produces the same result"
-                    (let [q (t2/select-one-fn :dataset_query :model/Card :id metric-id)
+                    (let [q (t2/select-one-fn :dataset_query :model/Card 'id metric-id)
                           expected-count (->> (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                              (lib/count))
                                               qp/process-query
@@ -544,14 +544,14 @@
                       (is (=? {:status "completed" :row_count 1} result))
                       (is (= [[expected-count]] (mt/formatted-rows [int] result)))))
                   (testing "question joining (not sourcing from) the model has its join arm swapped"
-                    (let [q     (t2/select-one-fn :dataset_query :model/Card :id join-id)
+                    (let [q     (t2/select-one-fn :dataset_query :model/Card 'id join-id)
                           joins (lib/joins q)]
                       (is (= 1 (count joins)))
                       (is (= (:id output-table) (-> joins first :stages first :source-table)))
                       (is (=? {:status "completed"}
                               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" join-id))))))
                   (testing "dashboard displaying the model directly keeps working (model's own query is untouched)"
-                    (is (= model-id (t2/select-one-fn :card_id :model/DashboardCard :id dashcard-id)))
+                    (is (= model-id (t2/select-one-fn :card_id :model/DashboardCard 'id dashcard-id)))
                     (is (=? {:status "completed"}
                             (mt/user-http-request :crowberto :post 202
                                                   (format "dashboard/%d/dashcard/%d/card/%d/query"

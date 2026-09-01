@@ -103,7 +103,7 @@
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
-        card      (api/check-404 (t2/select-one :model/Card :id card_id))
+        card      (api/check-404 (t2/select-one :model/Card 'id card_id))
         transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
@@ -148,14 +148,14 @@
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (t2/select-one :model/ReplacementRun :id id)
+  (or (t2/select-one :model/ReplacementRun 'id id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (t2/select-one :model/ReplacementRun :id id)]
+  (let [run (t2/select-one :model/ReplacementRun 'id id)]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
     (when-not (:is_active run)

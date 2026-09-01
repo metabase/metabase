@@ -14,7 +14,7 @@
 
 (defn do-with-dashtab-in-personal-collection [f]
   (let [owner-id (mt/user->id :rasta)
-        coll     (t2/select-one :model/Collection :personal_owner_id owner-id)]
+        coll     (t2/select-one :model/Collection 'personal_owner_id owner-id)]
     (mt/with-temp
       [:model/Card            card     {}
        :model/Dashboard       dash     {:collection_id (:id coll)}
@@ -61,12 +61,12 @@
   (testing "Deleting a dashtab should delete the associated dashboardcards"
     (with-dashtab-in-personal-collection {:keys [dashtab dashcard]}
       (t2/delete! dashtab)
-      (is (= nil (t2/select-one :model/DashboardCard :id (:id dashcard))))))
+      (is (= nil (t2/select-one :model/DashboardCard 'id (:id dashcard))))))
   (testing "Deleting a dashboard will delete all its dashcards"
     (with-dashtab-in-personal-collection {:keys [dashboard dashtab dashcard]}
       (t2/delete! dashboard)
-      (is (= nil (t2/select-one :model/DashboardTab :id (:id dashtab))))
-      (is (= nil (t2/select-one :model/DashboardCard :id (:id dashcard)))))))
+      (is (= nil (t2/select-one :model/DashboardTab 'id (:id dashtab))))
+      (is (= nil (t2/select-one :model/DashboardCard 'id (:id dashcard)))))))
 
 (deftest hydration-test
   (testing "hydrate a dashboard will return all of its tabs"
@@ -115,4 +115,4 @@
                       {:id dash-2-tab2-id}]}
              {:id    empty-tab-id
               :cards []}]
-            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)))))
+            (t2/hydrate (t2/select :model/DashboardTab 'dashboard_id dashboard-id) :tab-cards)))))

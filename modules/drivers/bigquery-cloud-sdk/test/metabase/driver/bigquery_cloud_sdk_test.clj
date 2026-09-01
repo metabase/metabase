@@ -163,9 +163,9 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                       [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                        (t2/select-one :model/Field :id (mt/id :venues :name))]
+             (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table 'id (mt/id :venues))
+                                                       [(t2/select-one :model/Field 'id (mt/id :venues :id))
+                                                        (t2/select-one :model/Field 'id (mt/id :venues :name))]
                                                        (constantly conj))
                   (sort-by first)
                   (take 5)))))))
@@ -180,9 +180,9 @@
             page-callback   (fn [] (swap! pages-retrieved inc))]
         (binding [bigquery/*page-size*     25
                   bigquery/*page-callback* page-callback]
-          (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                                  [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                                   (t2/select-one :model/Field :id (mt/id :venues :name))]
+          (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table 'id (mt/id :venues))
+                                                                  [(t2/select-one :model/Field 'id (mt/id :venues :id))
+                                                                   (t2/select-one :model/Field 'id (mt/id :venues :name))]
                                                                   (constantly conj))
                              (sort-by first)
                              (take 5))]
@@ -776,7 +776,7 @@
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
                      (t2/select-fn->fn :name :database_require_filter :model/Table
-                                       :name [:in (keys table-name->is-filter-required?)]))))
+                                       'name ['in (keys table-name->is-filter-required?)]))))
             (testing "partitioned fields are correctly identified"
               (is (= {["not_partitioned"                 "transaction_id"]   false
                       ["partition_by_range_not_required" "customer_id"]      true
@@ -804,11 +804,11 @@
         (let [table-names   ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
                              "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
               mv-names      ["mv_partition_by_datetime" "mv_partition_by_range"]
-              table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
-              all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+              table-ids     (t2/select-pks-vec :model/Table 'db_id (mt/id) 'name ['in (concat mv-names table-names)])
+              all-field-ids (t2/select-pks-vec :model/Field 'table_id ['in table-ids])]
           (testing "Field values are correctly synced"
             ;; Manually activate Field values since they are not created during sync (#53387)
-            (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+            (doseq [field (t2/select :model/Field 'id ['in all-field-ids])]
               (field-values/get-or-create-full-field-values! field))
             (is (= {"customer_id"   #{1 2 3}
                     "vip_customer"  #{42}
@@ -832,8 +832,8 @@
     (mt/dataset native-dataset
       (testing "Partitioned tables that require a partition filter can be synced"
         (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
-          (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
-                                                                      :name "partition_by_ingestion_time_not_required_2")]
+          (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table 'db_id (mt/id)
+                                                                      'name "partition_by_ingestion_time_not_required_2")]
             (is (=? [{:name           "_PARTITIONTIME"
                       :database_type "TIMESTAMP"
                       :base_type     :type/DateTimeWithLocalTZ
@@ -842,8 +842,8 @@
                       :database_type "DATE"
                       :base_type     :type/Date
                       :database_position 2}]
-                    (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
-                               :database_partitioned true {:order-by [[:name :desc]]}))))
+                    (t2/select :model/Field 'table_id ingestion-time-partitioned-table-id
+                               'database_partitioned true {:order-by [[:name :desc]]}))))
           (testing "and query this table should return the column pseudocolumn as well"
             (is (malli=
                  [:tuple :boolean ms/TemporalString ms/TemporalString]
@@ -861,13 +861,13 @@
                                             (fmt-table-name "partitioned_table")))
               (testing "sanity check that it's not required at first"
                 (sync/sync-database! (mt/db) {:scan :schema})
-                (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
+                (is (false? (t2/select-one-fn :database_require_filter :model/Table 'name table-name))))
               (testing "sync should update require filter and set it to true"
                 (bigquery.tx/execute! (format "ALTER TABLE IF EXISTS %s
                                                SET OPTIONS(require_partition_filter = true);"
                                               (fmt-table-name table-name)))
                 (sync/sync-database! (mt/db) {:scan :schema})
-                (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
+                (is (true? (t2/select-one-fn :database_require_filter :model/Table 'name table-name 'db_id (mt/id)))))
               (finally
                 (drop-table-if-exists! table-name)))))))))
 
@@ -884,18 +884,18 @@
                                        (catch Exception e
                                          (sync/sync-database! (mt/db) {:scan :schema})
                                          (throw e))))
-              category-field    (t2/select-one :model/Field :id category-field-id)
-              table             (t2/select-one :model/Table :id (:table_id category-field))]
+              category-field    (t2/select-one :model/Field 'id category-field-id)
+              table             (t2/select-one :model/Table 'id (:table_id category-field))]
           (testing "Dispatcher identifies this as a non-batch-able table"
             (is (false? (#'sync.field-values/can-batch-distinct? table))))
           (testing "Distinct values come back correctly via the fallback per-field path"
             (t2/update! :model/Field category-field-id {:has_field_values :list})
-            (t2/delete! :model/FieldValues :field_id category-field-id)
+            (t2/delete! :model/FieldValues 'field_id category-field-id)
             (sync.field-values/sync-fields-grouped-by-table! [category-field])
             (is (= #{"coffee" "tea" "matcha"}
                    (set (:values (t2/select-one :model/FieldValues
-                                                :field_id category-field-id
-                                                :type :full)))))))))))
+                                                'field_id category-field-id
+                                                'type :full)))))))))))
 
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"
@@ -911,7 +911,7 @@
                                       (sync/sync-database! (mt/db) {:scan :schema})
                                       (throw e))))]
           (t2/update! :model/Field category-field-id {:has_field_values :search})
-          (t2/delete! :model/FieldValues :field_id category-field-id)
+          (t2/delete! :model/FieldValues 'field_id category-field-id)
           (= [["coffee"]]
              (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
                                    :value "co")))))))
@@ -1039,12 +1039,12 @@
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
-            (let [[tbl & more-tbl] (t2/select :model/Table :db_id db-id)]
+            (let [[tbl & more-tbl] (t2/select :model/Table 'db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
               ;; make sure all the fields for taxi_tips were synced
-              (is (= 23 (t2/count :model/Field :table_id (u/the-id tbl))))))
+              (is (= 23 (t2/count :model/Field 'table_id (u/the-id tbl))))))
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
@@ -1225,16 +1225,16 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset avian-singles
         (try
-          (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
+          (let [synced-tables (t2/select :model/Table 'db_id (mt/id))]
             (is (= 2 (count synced-tables)))
             (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
+            (let [synced-tables (t2/select :model/Table 'db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
-          (finally (t2/delete! :model/Table :db_id (mt/id) :active false)))))))
+          (finally (t2/delete! :model/Table 'db_id (mt/id) 'active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1376,7 +1376,7 @@
 (defn- synced-tables [db-attributes]
   (mt/with-temp [:model/Database db db-attributes]
     (sync/sync-database! db {:scan :schema})
-    (t2/select :model/Table :db_id (u/the-id db))))
+    (t2/select :model/Table 'db_id (u/the-id db))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1448,7 +1448,7 @@
                                                                                 (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
-              (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:details :dataset-id]))))
+              (is (nil? (get-in (t2/select-one :model/Database 'id db-id) [:details :dataset-id]))))
             ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
             ;; that runs at the end of creating the temp object, above ^
             ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
@@ -1458,14 +1458,14 @@
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
           (let [updated? (pos? (t2/update! :model/Database db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
-            (let [updated (t2/select-one :model/Database :id db-id)]
+            (let [updated (t2/select-one :model/Database 'id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
               (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
               ;; and the existing tables should have been updated with that schema
               (is (= ["my-dataset" "my-dataset"]
-                     (t2/select-fn-vec :schema :model/Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
+                     (t2/select-fn-vec :schema :model/Table 'id ['in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
@@ -1535,7 +1535,7 @@
       ;; Must sync field values
       (sync/sync-database! (mt/db))
       (is (= "BIGNUMERIC"
-             (t2/select-one-fn :database_type :model/Field :id (mt/id :bigthings :bd))))
+             (t2/select-one-fn :database_type :model/Field 'id (mt/id :bigthings :bd))))
       (is (= [[12000000000000000000M 1]
               [21000000000000000000M 1]
               [30000000000000000000M 1]]

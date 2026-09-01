@@ -215,7 +215,7 @@
     ;; h2 is not race-proof, but it is also not cross-process
     (when (not= (mdb/db-type) :h2)
       ;; Ensure that we are creating the lock for the first time
-      (t2/delete! :metabase_cluster_lock :lock_name (u/qualified-name ::race-test-lock))
+      (t2/delete! :metabase_cluster_lock 'lock_name (u/qualified-name ::race-test-lock))
       (let [results   (atom [])
             result!   (partial swap! results conj)
             thread!   (fn [id ^CountDownLatch start-latch ^CountDownLatch end-latch thunk]
@@ -273,27 +273,27 @@
     ;; H2 takes an in-process lock and never writes a row.
     (when (not= (mdb/db-type) :h2)
       (let [lock-name (u/qualified-name ::checkout-failure-lock)]
-        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (t2/delete! :metabase_cluster_lock 'lock_name lock-name)
         (mt/with-dynamic-fn-redefs [sut/checkout-connection!
                                     (fn [] (throw (ex-info "checkout timed out" {::sut/checkout-failed true})))]
           ;; An ambient transaction is what sends the insert out of band in the first place.
           (t2/with-transaction [_conn]
             (is (= :ok (sut/with-cluster-lock ::checkout-failure-lock :ok)))
-            (is (t2/exists? :metabase_cluster_lock :lock_name lock-name))))))))
+            (is (t2/exists? :metabase_cluster_lock 'lock_name lock-name))))))))
 
 (deftest out-of-band-insert-commits-without-help-from-the-pool-test
   (testing "the lock row outlives the caller's rollback even when the dedicated connection arrives in a transaction"
     ;; H2 takes an in-process lock and never writes a row.
     (when (not= (mdb/db-type) :h2)
       (let [lock-name (u/qualified-name ::autocommit-off-lock)]
-        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (t2/delete! :metabase_cluster_lock 'lock_name lock-name)
         (mt/with-dynamic-fn-redefs [sut/checkout-connection!
                                     (fn []
                                       (doto (.getConnection (mdb/data-source))
                                         (.setAutoCommit false)))]
           (t2/with-transaction [_conn nil {:rollback-only true}]
             (is (= :ok (sut/with-cluster-lock ::autocommit-off-lock :ok)))))
-        (is (t2/exists? :metabase_cluster_lock :lock_name lock-name)
+        (is (t2/exists? :metabase_cluster_lock 'lock_name lock-name)
             "the dedicated connection committed it, so the caller's rollback cannot take it away")))))
 
 (deftest detached-lock-basic-test
@@ -308,9 +308,9 @@
                               (sut/with-detached-cluster-lock {:lock ::detached-commit}
                                 (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
                                 (throw (ex-info "boom" {})))))
-        (is (t2/exists? :model/User :email email)))
+        (is (t2/exists? :model/User 'email email)))
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest detached-lock-reentry-throws-test
   (testing "re-acquiring a held detached lock throws instead of self-deadlocking"

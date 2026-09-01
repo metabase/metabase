@@ -105,7 +105,7 @@
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
-    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id ['in tag_ids]))]
       (api/check-400 (= (set tag_ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
   (let [job-data {:name            name
@@ -142,7 +142,7 @@
   (log/info "Setting active =" active "on all transform jobs")
   (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb       (if active "activate" "deactivate")
-        candidates (t2/select :model/TransformJob :active (not active))
+        candidates (t2/select :model/TransformJob 'active (not active))
         try-op     (fn [job]
                      (try
                        (op (:id job))
@@ -170,7 +170,7 @@
                                                                   [:active {:optional true} :boolean]
                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
+  (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob 'id job-id) :tag_ids)]
     ;; Check write permission on both current state and final state (with new tags if provided)
     (api/write-check existing-job)
     (when (some? tag-ids)
@@ -181,7 +181,7 @@
                      (deferred-tru "Invalid cron expression: {0}" schedule)))
     ;; Validate tag IDs if provided
     (when (seq tag-ids)
-      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
+      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id ['in tag-ids]))]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
     (let [was-active     (:active existing-job)
@@ -205,7 +205,7 @@
       ;; activate-job! only runs when :active toggled false→true.
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
-      (-> (t2/select-one :model/TransformJob :id job-id)
+      (-> (t2/select-one :model/TransformJob 'id job-id)
           (t2/hydrate :tag_ids :last_run)
           (update :last_run transforms-base.u/present-run)))))
 
@@ -213,8 +213,8 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
-  (t2/delete! :model/TransformJob :id job-id)
+  (api/write-check (t2/hydrate (t2/select-one :model/TransformJob 'id job-id) :tag_ids))
+  (t2/delete! :model/TransformJob 'id job-id)
   (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
 
@@ -231,7 +231,7 @@
    {:keys [run_all]} :- [:map
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (t2/select-one :model/TransformJob :id job-id))
+  (api/write-check (t2/select-one :model/TransformJob 'id job-id))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Job run started")
    :job_run_id
@@ -246,7 +246,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
+  (-> (api/read-check (t2/select-one :model/TransformJob 'id job-id))
       (t2/hydrate :tag_ids :last_run)
       (update :last_run transforms-base.u/present-run)))
 
@@ -261,7 +261,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
+  (api/check-404 (t2/select-one-pk :model/TransformJob 'id job-id))
   (-> (transforms.core/job-transforms job-id)
       (#(do (api/check-403 (every? mi/can-read? %)) %))
       (t2/hydrate :creator)
@@ -331,7 +331,7 @@
                                [:run-id ms/PositiveInt]]
    _query-params]
   (api/read-check :model/TransformJob job-id)
-  (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
+  (api/check-404 (t2/select-one :model/TransformJobRun 'id run-id 'job_id job-id))
   (let [runs (transforms.core/transform-runs-for-job-run run-id)]
     (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
          (map transforms-base.u/present-run))))
@@ -342,7 +342,7 @@
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]]
   (api/write-check :model/TransformJob job-id)
-  (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
+  (api/check-404 (t2/select-one :model/TransformJobRun 'id run-id 'job_id job-id))
   (api/check-400 (transforms.core/cancel-job-run! run-id))
   nil)
 

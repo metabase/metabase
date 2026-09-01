@@ -181,7 +181,7 @@
      (create-in-batches! "tables" num-tables batch-size
                          (fn [start-idx cnt]
                            (create-tables-batch! db-id prefix start-idx cnt)))
-     (let [table-ids (t2/select-pks-vec :model/Table :db_id db-id)]
+     (let [table-ids (t2/select-pks-vec :model/Table 'db_id db-id)]
        {:db-id     db-id
         :table-ids table-ids}))))
 
@@ -196,7 +196,7 @@
                   [:model/Collection {}
                    {:name (format "%s%05d" prefix i)}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Collection :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Collection 'name ['like (str prefix "%")])]
       (println (format "Created %d collections in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -219,7 +219,7 @@
                      :visualization_settings {}
                      :collection_id          (nth collection-ids (mod i num-colls))}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Card :name [:like (str label "%")])]
+    (let [ids (t2/select-pks-vec :model/Card 'name ['like (str label "%")])]
       (println (format "Created %d %s cards in %.2f seconds" (count ids) card-type (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -236,7 +236,7 @@
                       {:name          (format "%s%05d" prefix i)
                        :collection_id (nth collection-ids (mod i num-colls))}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Dashboard :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Dashboard 'name ['like (str prefix "%")])]
       (println (format "Created %d dashboards in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -259,7 +259,7 @@
                                                              :text (format "Perf document content %d" i)}]}]}
                        :content_type  "application/json+vnd.prose-mirror"}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Document :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Document 'name ['like (str prefix "%")])]
       (println (format "Created %d documents in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -277,7 +277,7 @@
                         :table_id   (nth table-ids (mod i num-tables))
                         :definition {}}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Segment :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Segment 'name ['like (str prefix "%")])]
       (println (format "Created %d segments in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -295,7 +295,7 @@
                         :table_id   (nth table-ids (mod i num-tables))
                         :definition {}}]))]
     (add-load/from-script script)
-    (let [ids (t2/select-pks-vec :model/Measure :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Measure 'name ['like (str prefix "%")])]
       (println (format "Created %d measures in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -324,7 +324,7 @@
                                                 :dataset_query {}}]]))
                                          (range cnt)))]
                             (add-load/from-script script))))
-    (let [ids (t2/select-pks-vec :model/Action :name [:like (str prefix "%")])]
+    (let [ids (t2/select-pks-vec :model/Action 'name ['like (str prefix "%")])]
       (println (format "Created %d actions in %.2f seconds" (count ids) (/ (u/since-ms timer) 1000.0)))
       ids)))
 
@@ -343,7 +343,7 @@
                    {:name (str prefix i)}]))
         _          (add-load/from-script script)
         ;; Query for groups with our name pattern
-        group-ids  (t2/select-pks-vec :model/PermissionsGroup :name [:like (str prefix "%")])
+        group-ids  (t2/select-pks-vec :model/PermissionsGroup 'name ['like (str prefix "%")])
         elapsed-ms (u/since-ms timer)]
     (println (format "Created %d groups in %.2f seconds" n (/ elapsed-ms 1000.0)))
     group-ids))
@@ -369,8 +369,7 @@
                          :password   "password123"}]))
         _        (add-load/from-script user-script)
         ;; Query for users by email pattern
-        user-ids (t2/select-pks-vec :model/User :email [:like (str "%@" email-domain)])]
-
+        user-ids (t2/select-pks-vec :model/User 'email ['like (str "%@" email-domain)])]
     ;; Create group memberships - assign each user to some groups
     ;; User i gets assigned to groups where (mod i num-groups) matches certain patterns
     (println "  Assigning users to groups...")
@@ -385,7 +384,6 @@
                :group_id (nth group-ids group-idx)}]))]
       (when (seq membership-script)
         (add-load/from-script membership-script)))
-
     (let [elapsed-ms (u/since-ms timer)]
       (println (format "Created %d users with memberships in %.2f seconds" n (/ elapsed-ms 1000.0))))
     user-ids))
@@ -408,7 +406,7 @@
       (do
         (println (format "Granting database-level permissions to %d groups (too many tables (%d) for table-level grants)..."
                          num-groups num-tables))
-        (let [db-ids (t2/select-fn-vec :db_id [:model/Table :db_id]
+        (let [db-ids (t2/select-fn-vec :db_id [:model/Table 'db_id]
                                        {:group-by [:db_id]})]
           (doseq [[idx group-id] (map-indexed vector group-ids)]
             (doseq [db-id db-ids]
@@ -434,7 +432,7 @@
               table-id->db-id (reduce (fn [acc batch]
                                         (merge acc (into {} (t2/select-fn->fn :id :db_id
                                                                               :model/Table
-                                                                              :id [:in batch]))))
+                                                                              'id ['in batch]))))
                                       {}
                                       (partition-all 10000 table-ids))]
           (doseq [{:keys [group-id table-indices]} assignments]
@@ -475,7 +473,7 @@
                                                               :description (format "Performance test table %d" i)
                                                               :active      true}]))]
                                               (add-load/from-script script))))
-        table-ids     (t2/select-pks-vec :model/Table :db_id [:in db-ids])
+        table-ids     (t2/select-pks-vec :model/Table 'db_id ['in db-ids])
         ;; Cap dependent model counts by parent counts
         seg-count     (min (:segments counts) (count table-ids))
         meas-count    (min (:measures counts) (count table-ids))
@@ -499,7 +497,7 @@
                           (create-actions! (min (:actions counts) (count dataset-ids))
                                            dataset-ids primary-db-id run-id)
                           (t2/select-pks-vec :model/Action
-                                             :name [:like (str "Perf Action " run-id " %")]))
+                                             'name ['like (str "Perf Action " run-id " %")]))
                         [])
         ;; 12. Permission groups & users
         group-ids     (create-permission-groups! (:groups counts) run-id)
@@ -648,13 +646,11 @@
      (println (format "\nRunning search benchmark for: \"%s\" (user-id: %d)" search-string user-id))
      (println (format "  Warmup iterations: %d" warmup))
      (println (format "  Benchmark iterations: %d" iterations))
-
      ;; Warmup
      (when (pos? warmup)
        (println "  Warming up...")
        (dotimes [_ warmup]
          (search! search-string :user-id user-id :models models)))
-
      ;; Benchmark
      (println "  Running benchmark...")
      (let [results (vec (for [i (range iterations)]
@@ -718,7 +714,6 @@
    (println (format "  Permission Groups: %d" num-groups))
    (println (format "  Users: %d" num-users))
    (println (format "  Iterations per query: %d" iterations))
-
    (let [test-env (create-test-environment! {:num-tables num-tables
                                              :num-groups num-groups
                                              :num-users  num-users
@@ -1061,7 +1056,6 @@
                    (search.ingestion/searchable-documents)))
 
          results (remove nil? [layer1 layer1b layer2 layer3 layer4 layer4b layer5])]
-
      (println "\n\n============================================================")
      (println "  COMPARISON")
      (println "============================================================")

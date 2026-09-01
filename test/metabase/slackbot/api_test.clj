@@ -206,7 +206,7 @@
                 (is (empty? @stream-calls))
                 (is (empty? @stop-stream-calls)))
               (testing "assistant message in DB has slack_msg_id backfilled"
-                (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
+                (let [msg (t2/select-one :model/MetabotMessage 'channel_id channel-id 'role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
 (deftest ^:synchronized app-mention-long-answer-fits-slack-blocks-test
@@ -370,8 +370,8 @@
                 (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
                          :done? true?
                          :timeout-ms 5000})
-                (let [user-msg (t2/select-one :model/MetabotMessage :slack_msg_id event-ts :channel_id "C123")
-                      bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123" :channel_id "C123")]
+                (let [user-msg (t2/select-one :model/MetabotMessage 'slack_msg_id event-ts 'channel_id "C123")
+                      bot-msg  (t2/select-one :model/MetabotMessage 'slack_msg_id "stream123" 'channel_id "C123")]
                   (testing "user message has event ts and channel_id"
                     (is (some? user-msg))
                     (is (= event-ts (:slack_msg_id user-msg)))
@@ -886,8 +886,8 @@
 
 (defn- tear-down-slackbot-feedback!
   [conv-id]
-  (t2/delete! :model/MetabotMessage :conversation_id conv-id)
-  (t2/delete! :model/MetabotConversation :id conv-id))
+  (t2/delete! :model/MetabotMessage 'conversation_id conv-id)
+  (t2/delete! :model/MetabotConversation 'id conv-id))
 
 (defn- modal-submission-payload
   "Build a Slack view_submission payload for the feedback modal. Includes
@@ -923,7 +923,7 @@
                 result  (#'slackbot/handle-feedback-modal-submission payload)]
             @result
             (testing "local metabot_feedback row is written under the submitter's user_id"
-              (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+              (let [row (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id rasta-id)]
                 (is (some? row))
                 (is (false? (:positive row)))
                 (is (= "not-factual" (:issue_type row)))
@@ -939,7 +939,7 @@
                                                    :freeform    "Great response!"})
                 result  (#'slackbot/handle-feedback-modal-submission payload)]
             @result
-            (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id))))
+            (is (some? (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id rasta-id))))
           (finally (tear-down-slackbot-feedback! conv-id)))))
     (testing "positive feedback with nil freeform is stored as nil locally"
       (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
@@ -951,7 +951,7 @@
                                                    :freeform    nil})
                 result  (#'slackbot/handle-feedback-modal-submission payload)]
             @result
-            (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+            (let [row (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id rasta-id)]
               (is (some? row))
               (is (nil? (:freeform_feedback row)))))
           (finally (tear-down-slackbot-feedback! conv-id)))))
@@ -966,7 +966,7 @@
                                                    :freeform    nil})
                 result  (#'slackbot/handle-feedback-modal-submission payload)]
             @result
-            (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id))))
+            (is (some? (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id rasta-id))))
           (finally (tear-down-slackbot-feedback! conv-id)))))))
 
 (deftest handle-feedback-modal-submission-multi-user-test
@@ -999,7 +999,7 @@
                                                        :freeform    "not for me"}))]
           @rasta-result
           @lucky-result)
-        (let [rows    (t2/select :model/MetabotFeedback :message_id message-id
+        (let [rows    (t2/select :model/MetabotFeedback 'message_id message-id
                                  {:order-by [[:user_id :asc]]})
               by-user (into {} (map (juxt :user_id identity)) rows)]
           (is (= 2 (count rows)) "both submissions produce distinct rows")
@@ -1022,7 +1022,7 @@
                                               :message-ts  "0.000"})
           result   (#'slackbot/handle-feedback-modal-submission payload)]
       (is (nil? result) "handler returns nil and does not schedule async work")
-      (is (zero? (t2/count :model/MetabotFeedback :user_id rasta-id
+      (is (zero? (t2/count :model/MetabotFeedback 'user_id rasta-id
                            {:where [:in :message_id
                                     ^:allow-subquery {:select [:id] :from [:metabot_message]
                                                       :where [:= :external_id "nothing-to-match"]}]}))
@@ -1042,7 +1042,7 @@
                                                  :positive    true
                                                  :freeform    "lurking"}))]
           @result)
-        (is (nil? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id lucky-id))
+        (is (nil? (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id lucky-id))
             "no feedback row is written for a lurker")
         (finally (tear-down-slackbot-feedback! conv-id))))))
 
@@ -1076,7 +1076,7 @@
                                                     :message-ts  message-ts})
               result     (#'slackbot/handle-feedback-modal-submission payload)]
           @result
-          (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+          (let [row (t2/select-one :model/MetabotFeedback 'message_id message-id 'user_id rasta-id)]
             (is (some? row) "fallback resolved the message and persisted feedback")
             (is (true? (:positive row)))
             (is (= "from a legacy button" (:freeform_feedback row)))))

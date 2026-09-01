@@ -97,7 +97,7 @@
                                               :required     true}}}})
 
 (defn- merge-transform-payload [target-table & {:keys [validate?] :or {validate? true}}]
-  (let [seq-field-id (t2/select-one-pk :model/Field :name "change_seq" :table_id (mt/id :order_status))]
+  (let [seq-field-id (t2/select-one-pk :model/Field 'name "change_seq" 'table_id (mt/id :order_status))]
     {:name               "Merge Transform"
      :source_database_id (mt/id)
      :source             {:type                         "query"
@@ -166,8 +166,8 @@
                                                                               (mt/id :order_status_ts))
                                                   :database (mt/id)}]
             (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
-                  ts-field-id (t2/select-one-pk :model/Field :name "changed_at"
-                                                :table_id (mt/id :order_status_ts))
+                  ts-field-id (t2/select-one-pk :model/Field 'name "changed_at"
+                                                'table_id (mt/id :order_status_ts))
                   source-query {:database (mt/id)
                                 :type     :native
                                 :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
@@ -236,8 +236,8 @@
               (let [reloaded      (t2/select-one :model/Transform (:id transform))
                     unique-key    (-> reloaded :target :target-incremental-strategy :unique-key)
                     target-tbl-id (:target_table_id reloaded)
-                    expected      (t2/select-one-pk :model/Field :name "order_id"
-                                                    :table_id target-tbl-id :active true)]
+                    expected      (t2/select-one-pk :model/Field 'name "order_id"
+                                                    'table_id target-tbl-id 'active true)]
                 (is (= ["order_id"] (mapv :name unique-key)))
                 (is (= expected (:field-id (first unique-key)))
                     "field-id resolved to the target's order_id field")))))))))
@@ -253,8 +253,8 @@
                                                                               (mt/id :order_status_lb))
                                                   :database (mt/id)}]
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
-                  ts-field-id  (t2/select-one-pk :model/Field :name "changed_at"
-                                                 :table_id (mt/id :order_status_lb))
+                  ts-field-id  (t2/select-one-pk :model/Field 'name "changed_at"
+                                                 'table_id (mt/id :order_status_lb))
                   source-query {:database (mt/id)
                                 :type     :native
                                 :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
@@ -325,7 +325,7 @@
                            (read-target))
                         "late order 1 upserted, order 4 inserted, re-read rows not duplicated")
                     (testing "the run's recorded lo is the stored watermark pushed back by the lookback"
-                      (let [run (t2/select-one :model/TransformRun :transform_id (:id transform)
+                      (let [run (t2/select-one :model/TransformRun 'transform_id (:id transform)
                                                {:order-by [[:id :desc]]})]
                         (is (= (u.date/format (t/minus (u.date/parse wm-before) (t/days 1)))
                                (:checkpoint_lo_value run)))))))
@@ -432,8 +432,8 @@
                                                                               (mt/id :order_region_status))
                                                   :database (mt/id)}]
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
-                  seq-field-id (t2/select-one-pk :model/Field :name "change_seq"
-                                                 :table_id (mt/id :order_region_status))
+                  seq-field-id (t2/select-one-pk :model/Field 'name "change_seq"
+                                                 'table_id (mt/id :order_region_status))
                   source-query {:database (mt/id)
                                 :type     :native
                                 :native   {:query         (format "SELECT %s, %s, %s FROM {{t}} AS %s"

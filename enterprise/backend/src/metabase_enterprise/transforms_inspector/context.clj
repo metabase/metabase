@@ -24,7 +24,7 @@
   "Fetch tables by ID and build source info maps."
   [table-ids]
   (when (seq table-ids)
-    (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] :id [:in table-ids])))
+    (t2/select [:model/Table [:id :table-id] [:name :table-name] 'schema [:db_id :db-id]] 'id ['in table-ids])))
 
 (defmulti extract-sources
   "Extract source table information for a transform.
@@ -51,7 +51,7 @@
                     transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (t2/select-one-fn (comp keyword :engine) :model/Database 'id db-id)
           deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
@@ -107,7 +107,7 @@
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
   [table-id]
-  (let [fields (t2/select :model/Field :table_id table-id :active true)]
+  (let [fields (t2/select :model/Field 'table_id table-id 'active true)]
     (mapv (fn [field]
             (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
               (get-field-stats field)
@@ -269,7 +269,7 @@
              :target              target-info
              :db-id               db-id
              :driver              (or (:driver query-info)
-                                      (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
+                                      (t2/select-one-fn (comp keyword :engine) :model/Database 'id db-id))
              :from-table-id       (:from-table-id query-info)
              :has-joins?          (boolean (seq join-structure))
              :visited-fields      (:visited-fields query-info)

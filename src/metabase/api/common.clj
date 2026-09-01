@@ -348,7 +348,7 @@
    obj)
 
   ([entity id]
-   (read-check (t2/select-one entity :id id)))
+   (read-check (t2/select-one entity 'id id)))
 
   ([entity id & other-conditions]
    (read-check (apply t2/select-one entity :id id other-conditions))))
@@ -367,7 +367,7 @@
        (throw e)))
    obj)
   ([entity id]
-   (write-check (t2/select-one entity :id id)))
+   (write-check (t2/select-one entity 'id id)))
   ([entity id & other-conditions]
    (write-check (apply t2/select-one entity :id id other-conditions))))
 
@@ -386,7 +386,7 @@
        (throw e)))
    obj)
   ([entity id]
-   (query-check (t2/select-one entity :id id)))
+   (query-check (t2/select-one entity 'id id)))
   ([entity id & other-conditions]
    (query-check (apply t2/select-one entity :id id other-conditions))))
 
@@ -462,8 +462,8 @@
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse Document]]
-                       (t2/update! model {:collection_id       collection-id
-                                          :collection_position position-update-clause}
+                       (t2/update! model {'collection_id       collection-id
+                                          'collection_position position-update-clause}
                                    {:collection_position [plus-or-minus :collection_position 1]})))]
     (when (not= new-position old-position)
       (cond

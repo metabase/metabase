@@ -97,8 +97,8 @@
     (log/info "Loading sample database")
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
-          db (if (t2/exists? :model/Database :is_sample true)
-               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
+          db (if (t2/exists? :model/Database 'is_sample true)
+               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database 'is_sample true {:details details})))
                (first (t2/insert-returning-instances! :model/Database
                                                       :name      sample-database-name
                                                       :details   details
@@ -113,7 +113,7 @@
 (defn sample-database-id
   "ID of the Sample Database if it exists, otherwise nil."
   []
-  (t2/select-one-pk :model/Database :is_sample true))
+  (t2/select-one-pk :model/Database 'is_sample true))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts
@@ -155,7 +155,7 @@
       (t2/update! :model/Database (:id old-sample-db)
                   (cond-> {:engine engine, :details details}
                     settings (assoc :settings settings)))
-      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
+      (t2/update! :model/Table 'db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
       ;; the model's before-update rejects all updates, and delete+reinsert would churn ids for a rename that
@@ -165,7 +165,7 @@
                  :where  [:and
                           [:= :db_id (:id old-sample-db)]
                           [:not= :table_id nil]]}))
-    (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
+    (sync/sync-database! (t2/select-one :model/Database 'id (:id old-sample-db)))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
@@ -173,7 +173,7 @@
   [[migrate-sample-database-engine-in-place!]]); otherwise we just refresh its connection details in case
   the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
+   (update-sample-database-if-needed! (t2/select-one :model/Database 'is_sample true)))
 
   ([sample-db]
    (when sample-db

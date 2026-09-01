@@ -63,7 +63,7 @@
                                   candidate-sandboxes)]
           (when (seq ids-to-delete)
             (log/debugf "Deleting %d unneeded GTAPs: %s" (count ids-to-delete) (pr-str ids-to-delete))
-            (t2/delete! :model/Sandbox :id [:in ids-to-delete])))))
+            (t2/delete! :model/Sandbox 'id ['in ids-to-delete])))))
     (catch Throwable e
       (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
                       {:changes changes}

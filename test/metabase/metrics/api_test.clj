@@ -16,12 +16,12 @@
   "Temporarily archive any metric cards belonging to the sample database so they
    don't interfere with test assertions. Restores them after `thunk` completes."
   [thunk]
-  (let [sample-db-id   (t2/select-one-pk :model/Database :is_sample true)
+  (let [sample-db-id   (t2/select-one-pk :model/Database 'is_sample true)
         metric-ids     (when sample-db-id
                          (t2/select-pks-vec :model/Card
-                                            :type :metric
-                                            :archived false
-                                            :database_id sample-db-id))]
+                                            'type :metric
+                                            'archived false
+                                            'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
         (t2/query {:update :report_card
@@ -189,7 +189,7 @@
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (testing "no dimensions saved initially"
-        (let [initial-card (t2/select-one :model/Card :id (:id metric))]
+        (let [initial-card (t2/select-one :model/Card 'id (:id metric))]
           (is (nil? (:dimensions initial-card)))
           (is (nil? (:dimension_mappings initial-card)))))
       (testing "response contains dimensions with active status"
@@ -198,7 +198,7 @@
           (is (seq (:dimension_mappings response)))
           (is (every? #(= "status/active" (:status %)) (:dimensions response)))))
       (testing "dimensions persisted to database"
-        (let [updated-card (t2/select-one :model/Card :id (:id metric))]
+        (let [updated-card (t2/select-one :model/Card 'id (:id metric))]
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
 
@@ -210,7 +210,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
       (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
-      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card 'id (:id metric))
             orphan-id      (:id (first dimensions))
             orphan-mapping (some #(when (= orphan-id (:dimension-id %)) %) dimension_mappings)
             mappings       (mapv #(if (= orphan-id (:dimension-id %))
@@ -230,7 +230,7 @@
               orphan   (some #(when (= orphan-id (:id %)) %) (:dimensions response))]
           (is (= "status/orphaned" (:status orphan)))
           (is (some #(= orphan-id (:dimension_id %)) (:dimension_mappings response))))
-        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))]
+        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card 'id (:id metric))]
           (is (= :status/orphaned (:status (some #(when (= orphan-id (:id %)) %) dimensions))))
           (is (some #(= orphan-id (:dimension-id %)) dimension_mappings)))))))
 
@@ -432,7 +432,7 @@
    concurrent tests."
   []
   (t2/select :model/QueryExecution
-             :executor_id (mt/user->id :rasta)
+             'executor_id (mt/user->id :rasta)
              {:order-by [[:started_at :desc]]}))
 
 (deftest dataset-leaf-records-query-execution-test

@@ -86,8 +86,8 @@
   "Insert or update by slug. Never writes `:enabled`, so the admin toggle (and the
    DB default of true for new rows) is preserved across syncs."
   [slug row]
-  (if (t2/exists? :model/DataApp :name slug)
-    (t2/update! :model/DataApp :name slug row)
+  (if (t2/exists? :model/DataApp 'name slug)
+    (t2/update! :model/DataApp 'name slug row)
     (t2/insert! :model/DataApp (assoc row :name slug))))
 
 (defn- app-metadata-changed?
@@ -120,7 +120,7 @@
   [existing slug message]
   (boolean
    (when (and existing (not= (:sync_error existing) message))
-     (t2/update! :model/DataApp :name slug {:sync_error message})
+     (t2/update! :model/DataApp 'name slug {:sync_error message})
      true)))
 
 (defn- sync-app!
@@ -211,7 +211,7 @@
                 ;; `enabled` is deliberately not consulted — see the README's
                 ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
-                          (t2/delete! :model/DataApp :name [:not-in present-slugs])
+                          (t2/delete! :model/DataApp 'name ['not-in present-slugs])
                           (t2/delete! :model/DataApp))]
             {:changed changed, :removed removed}))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"

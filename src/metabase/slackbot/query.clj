@@ -263,7 +263,7 @@
    - `table` and display types not supported by static viz render as native Slack table blocks
    - static viz chart types render as PNG"
   [card-id]
-  (let [card      (t2/select-one :model/Card :id card-id)
+  (let [card      (t2/select-one :model/Card 'id card-id)
         _         (when-not card
                     (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
         card-name (:name card)

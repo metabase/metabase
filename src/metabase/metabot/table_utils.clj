@@ -46,10 +46,10 @@
                                                                                 {:perms/view-data      :unrestricted
                                                                                  :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
-         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
-                                :db_id           database-id
-                                :active          true
-                                :visibility_type nil
+         fill-tables (t2/select [:model/Table 'id 'db_id 'name 'schema 'description]
+                                'db_id           database-id
+                                'active          true
+                                'visibility_type nil
                                 (cond-> {:where    table-where-clause
                                          :order-by [[:view_count :desc]]
                                          :limit    all-tables-limit}
@@ -75,7 +75,7 @@
   This is the handler for the /get-tables tool endpoint."
   [{:keys [database-id]}]
   {:structured-output
-   {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+   {:database (t2/select-one [:model/Database 'id 'name 'description 'engine] database-id)
     :tables   (database-tables database-id)}})
 
 (defn similar?
@@ -141,10 +141,10 @@
         (keep (fn [table]
                 (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
                   (t2.realize/realize table))))
-        (t2/reducible-select [:model/Table :id :name :schema :description]
-                             :db_id database-id
-                             :active true
-                             :visibility_type nil
+        (t2/reducible-select [:model/Table 'id 'name 'schema 'description]
+                             'db_id database-id
+                             'active true
+                             'visibility_type nil
                              (cond-> (assoc (visible-filter-clause)
                                             :limit 10000)
                                (seq used-ids) (update :where #(if %
@@ -158,11 +158,11 @@
   [database-id table-ids]
   (if-not (seq table-ids)
     []
-    (t2/select [:model/Table :id :name :schema :description]
-               :db_id database-id
-               :id [:in table-ids]
-               :active true
-               :visibility_type nil
+    (t2/select [:model/Table 'id 'name 'schema 'description]
+               'db_id database-id
+               'id ['in table-ids]
+               'active true
+               'visibility_type nil
                (visible-filter-clause))))
 
 (defn used-tables
@@ -252,10 +252,10 @@
   ([query]
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
-   (let [tables (t2/select [:model/Table :id :name :schema]
-                           :db_id database
-                           :active true
-                           :visibility_type nil
+   (let [tables (t2/select [:model/Table 'id 'name 'schema]
+                           'db_id database
+                           'active true
+                           'visibility_type nil
                            {:limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)

@@ -30,7 +30,7 @@
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
-                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+                   (for [coll (t2/select [:model/Collection 'id 'name] 'namespace "snippets")]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
@@ -49,13 +49,13 @@
 (defn disable-snippet-tracking!
   "Remove all snippet-related tracking entries."
   []
-  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
+  (let [snippet-coll-ids (t2/select-pks-set :model/Collection 'namespace "snippets")]
     (t2/delete! :model/RemoteSyncObject
-                :model_type "NativeQuerySnippet")
+                'model_type "NativeQuerySnippet")
     (when (seq snippet-coll-ids)
       (t2/delete! :model/RemoteSyncObject
-                  :model_type "Collection"
-                  :model_id [:in snippet-coll-ids]))))
+                  'model_type "Collection"
+                  'model_id ['in snippet-coll-ids]))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -86,7 +86,7 @@
    - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
                          and optionally :display, :table_id, :table_name"
   [model-type model-id status hydrate-details-fn]
-  (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
+  (let [existing (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)]
     (cond
       (not existing)
       (let [model-details (hydrate-details-fn model-id)]
@@ -123,7 +123,7 @@
   "Re-checks `model-id`'s eligibility against current DB state. The eligibility that got us here was computed
    from an event payload, which a concurrent change may have invalidated in the meantime."
   [model-spec model-id]
-  (boolean (when-let [instance (t2/select-one (:model-key model-spec) :id model-id)]
+  (boolean (when-let [instance (t2/select-one (:model-key model-spec) 'id model-id)]
              (spec/check-eligibility model-spec instance))))
 
 (defn- create-or-update-sync-object-from-spec!
@@ -205,9 +205,9 @@
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
         (doseq [child-rso (t2/select :model/RemoteSyncObject
-                                     :model_type (:model-type child-spec)
-                                     :model_table_id model-id
-                                     :status [:not-in ["removed" "delete"]])]
+                                     'model_type (:model-type child-spec)
+                                     'model_table_id model-id
+                                     'status ['not-in ["removed" "delete"]])]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec
@@ -217,7 +217,7 @@
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
         eligible?      (spec/check-eligibility model-spec object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
+        existing-entry (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
       eligible?
@@ -266,13 +266,13 @@
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
   [id]
-  (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))
+  (t2/select-one [:model/Collection 'name [:id :collection_id]] 'id id))
 
 (defn- handle-library-sync-status-change!
   "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
    This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject :model_type "NativeQuerySnippet")]
+  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject 'model_type "NativeQuerySnippet")]
     (cond
       (and is-now-synced? (not snippets-already-tracked?))
       (do
@@ -288,7 +288,7 @@
   (let [{:keys [object]} event
         should-sync? (spec/should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
+        existing-entry (t2/select-one :model/RemoteSyncObject 'model_type "Collection" 'model_id (:id object))
         status (if (:archived object)
                  "delete"
                  (case topic
@@ -321,13 +321,13 @@
   (let [field-id  (:id object)
         eligible? (spec/check-eligibility field-spec object)]
     (cond
-      (and eligible? (t2/exists? :model/FieldUserSettings :field_id field-id))
+      (and eligible? (t2/exists? :model/FieldUserSettings 'field_id field-id))
       (create-or-update-remote-sync-object-entry!
        "FieldUserSettings" field-id "update"
        (fn [id] (spec/hydrate-model-details field-spec id)))
 
       (and (not eligible?)
-           (t2/exists? :model/RemoteSyncObject :model_type "FieldUserSettings" :model_id field-id))
+           (t2/exists? :model/RemoteSyncObject 'model_type "FieldUserSettings" 'model_id field-id))
       (create-or-update-remote-sync-object-entry!
        "FieldUserSettings" field-id "removed"
        (fn [id] (spec/hydrate-model-details field-spec id))))))

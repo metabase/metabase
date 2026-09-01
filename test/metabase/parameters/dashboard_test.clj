@@ -121,7 +121,7 @@
                 (data-perms/disable-perms-cache
                  (binding [api/*current-user-id*         (mt/user->id :rasta)
                            qp.perms/*param-values-query* true]
-                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                   (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                          parameter (first (:parameters dashboard))]
                      (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
                        (is (= [1 "Rustic Paper Wallet"]
@@ -157,7 +157,7 @@
           (mt/with-column-remappings [orders.product_id products.title
                                       reviews.product_id products.title]
             (binding [api/*current-user-id* (mt/user->id :rasta)]
-              (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+              (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                     parameter (first (:parameters dashboard))]
                 (testing "With restricted permissions (view-data only, no create-queries)"
                   ;; Set up restricted permissions: no create-queries on any of the tables:
@@ -180,7 +180,7 @@
                       (data-perms/disable-perms-cache
                        ;; Mimicks the API endpoint (required):
                        (binding [qp.perms/*param-values-query* true]
-                         (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                         (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                                parameter (first (:parameters dashboard))]
                            (is (thrown-with-msg?
                                 Exception #"Error executing"
@@ -215,7 +215,7 @@
               (mt/with-column-remappings [messages.sender_id   users.name
                                           messages.receiver_id users.name]
                 (binding [api/*current-user-id* (mt/user->id :rasta)]
-                  (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                  (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                         parameter (first (:parameters dashboard))]
                     ;; Mimicks the API endpoint (required):
                     (binding [qp.perms/*param-values-query* true]
@@ -262,7 +262,7 @@
                                              reviews.product_id products.category ; Different remapping
                                              products.id products.title] ; PK remapping (ignored)
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                     (let [dashboard       (t2/select-one :model/Dashboard 'id dashboard-id)
                            parameter       (first (:parameters dashboard))
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1] remapped-values)
@@ -272,7 +272,7 @@
                                              reviews.product_id products.title ; Same remapping as FK1
                                              products.id products.category] ; Different PK remapping
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                     (let [dashboard       (t2/select-one :model/Dashboard 'id dashboard-id)
                            parameter       (first (:parameters dashboard))
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1 "Rustic Paper Wallet"] remapped-values)
@@ -282,7 +282,7 @@
                  (mt/with-column-remappings [reviews.product_id products.title
                                              products.id products.category]
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                     (let [dashboard       (t2/select-one :model/Dashboard 'id dashboard-id)
                            parameter       (first (:parameters dashboard))
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1] remapped-values)
@@ -290,7 +290,7 @@
                (testing "Scenario 4: No remappings at all should return raw value"
                  ;; No remappings set up
                  (binding [api/*current-user-id* (mt/user->id :rasta)]
-                   (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                   (let [dashboard       (t2/select-one :model/Dashboard 'id dashboard-id)
                          parameter       (first (:parameters dashboard))
                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                      (is (= [1] remapped-values)
@@ -298,7 +298,7 @@
                (testing "Scenario 5: Only PK remapping should return raw value (PK ignored)"
                  (mt/with-column-remappings [products.id products.title]
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                     (let [dashboard       (t2/select-one :model/Dashboard 'id dashboard-id)
                            parameter       (first (:parameters dashboard))
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1] remapped-values)
@@ -364,7 +364,7 @@
            ;; Mimicks the API endpoint (required):
            (binding [api/*current-user-id*         (mt/user->id :rasta)
                      qp.perms/*param-values-query* true]
-             (let [dashboard        (t2/select-one :model/Dashboard :id dashboard-id)
+             (let [dashboard        (t2/select-one :model/Dashboard 'id dashboard-id)
                    {:keys [values]} (parameters.dashboard/param-values dashboard "p1" {})]
                (is (= #{["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]}
                       (set values)))))))))))
@@ -392,7 +392,7 @@
             (data-perms/disable-perms-cache
              (binding [api/*current-user-id*         (mt/user->id :rasta)
                        qp.perms/*param-values-query* true]
-               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+               (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                      parameter (first (:parameters dashboard))]
                  (is (= [1 "Rustic Paper Wallet"]
                         (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))
@@ -424,7 +424,7 @@
             (data-perms/disable-perms-cache
              (binding [api/*current-user-id*         (mt/user->id :rasta)
                        qp.perms/*param-values-query* true]
-               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+               (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
                      parameter (first (:parameters dashboard))]
                  (is (= [1 person-name]
                         (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))

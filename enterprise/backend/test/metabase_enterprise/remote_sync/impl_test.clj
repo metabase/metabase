@@ -259,7 +259,7 @@
         (impl/handle-task-result! {:status :success
                                    :outcome {:kind "pulled" :count 3 :branch "main"}}
                                   task-id)
-        (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+        (let [task (t2/select-one :model/RemoteSyncTask 'id task-id)]
           (is (some? (:ended_at task)))
           (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
           (is (= :successful (:status (t2/hydrate task :status)))))))))
@@ -376,16 +376,16 @@
             (is (not-empty files-after-export))
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
-          (t2/delete! :model/RemoteSyncTask :id (:id export-task))
+          (t2/delete! :model/RemoteSyncTask 'id (:id export-task))
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "pulled" (get-in import-result [:outcome :kind])))
-            (is (t2/exists? :model/Collection :id coll-id))
-            (is (t2/exists? :model/Card :id card-id))
-            (let [collection (t2/select-one :model/Collection :id coll-id)
-                  card (t2/select-one :model/Card :id card-id)]
+            (is (t2/exists? :model/Collection 'id coll-id))
+            (is (t2/exists? :model/Card 'id card-id))
+            (let [collection (t2/select-one :model/Collection 'id coll-id)
+                  card (t2/select-one :model/Card 'id card-id)]
               (is (= "Test Collection" (:name collection)))
               (is (true? (:is_remote_synced collection)))
               (is (= "test-collection-1xxxx" (:entity_id collection)))
@@ -409,16 +409,16 @@
           (let [task   (new-task!)
                 result (impl/import! (source.p/snapshot mock-main) (:id task))]
             (is (= :conflict (:status result)))
-            (is (t2/exists? :model/Card :id card2-id) "the unsynced local card is preserved")
-            (is (t2/exists? :model/Collection :id coll2-id))
+            (is (t2/exists? :model/Card 'id card2-id) "the unsynced local card is preserved")
+            (is (t2/exists? :model/Collection 'id coll2-id))
             ;; free the running-task guard so the next import can start
             (remote-sync.task/complete-sync-task! (:id task))))
         (testing "with force-deletion? the cleanup proceeds and removes content not present in the import"
           (let [result (impl/import! (source.p/snapshot mock-main) (:id (new-task!)) :force-deletion? true)]
             (is (= :success (:status result)))
-            (is (t2/exists? :model/Card :id card1-id))
-            (is (not (t2/exists? :model/Collection :id coll2-id)))
-            (is (not (t2/exists? :model/Card :id card2-id)))))))))
+            (is (t2/exists? :model/Card 'id card1-id))
+            (is (not (t2/exists? :model/Collection 'id coll2-id)))
+            (is (not (t2/exists? :model/Card 'id card2-id)))))))))
 
 (deftest import!-records-file-path-test
   (testing "import! records each entity's actual repo file_path on its RemoteSyncObject row, so later
@@ -433,9 +433,9 @@
               mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
               result    (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
-          (is (= coll-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+          (is (= coll-path (t2/select-one-fn :file_path :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id))
               "the collection's row records the file it was imported from")
-          (is (= card-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-id))
+          (is (= card-path (t2/select-one-fn :file_path :model/RemoteSyncObject 'model_type "Card" 'model_id card-id))
               "the card's row records the file it was imported from"))))))
 
 (deftest error-handling-propagation-through-private-functions-test
@@ -544,18 +544,18 @@
                         [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "updated" :status_changed_at (t/offset-date-time)}
                          {:model_type "Card" :model_id card-id :model_name "Test Card" :status "created" :status_changed_at (t/offset-date-time)}
                          {:model_type "Dashboard" :model_id dash-id :model_name "Test Dashboard" :status "removed" :status_changed_at (t/offset-date-time)}])
-            (is (= "updated" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
-            (is (= "created" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
-            (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))
+            (is (= "updated" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id))))
+            (is (= "created" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id card-id))))
+            (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Dashboard" 'model_id dash-id))))
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
               (is (= :success (:status result)))
               (let [entries (t2/select :model/RemoteSyncObject)]
                 (is (= 3 (count entries)))
                 (is (every? #(= "synced" (:status %)) entries))
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))))))))))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id))))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id card-id))))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Dashboard" 'model_id dash-id))))))))))))
 
 (deftest export!-deletes-files-for-removed-top-level-collections-test
   (testing "export! deletes files from git source for collections with location '/' that have been removed"
@@ -760,7 +760,7 @@
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :success (:status result)))
-          (let [imported-collection (t2/select-one :model/Collection :entity_id v57-entity-id)]
+          (let [imported-collection (t2/select-one :model/Collection 'entity_id v57-entity-id)]
             (is (some? imported-collection)
                 "Collection should be imported")
             (is (true? (:is_remote_synced imported-collection))
@@ -782,8 +782,8 @@
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :success (:status result)))
-          (let [parent-collection (t2/select-one :model/Collection :entity_id parent-entity-id)
-                child-collection (t2/select-one :model/Collection :entity_id child-entity-id)]
+          (let [parent-collection (t2/select-one :model/Collection 'entity_id parent-entity-id)
+                child-collection (t2/select-one :model/Collection 'entity_id child-entity-id)]
             (testing "parent collection"
               (is (some? parent-collection) "Parent collection should be imported")
               (is (true? (:is_remote_synced parent-collection)) "Parent is_remote_synced should be true")
@@ -880,10 +880,10 @@
               (is (= :success (:status result)))
               (is (= 4 (t2/count :model/RemoteSyncObject))
                   "All RemoteSyncObject entries should remain after export")
-              (let [table-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id table-id)
-                    field-entry (t2/select-one :model/RemoteSyncObject :model_type "Field" :model_id field-id)
-                    segment-entry (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id segment-id)
-                    coll-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)]
+              (let [table-entry (t2/select-one :model/RemoteSyncObject 'model_type "Table" 'model_id table-id)
+                    field-entry (t2/select-one :model/RemoteSyncObject 'model_type "Field" 'model_id field-id)
+                    segment-entry (t2/select-one :model/RemoteSyncObject 'model_type "Segment" 'model_id segment-id)
+                    coll-entry (t2/select-one :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id)]
                 (is (= "synced" (:status table-entry))
                     "Table entry should be updated to synced after export")
                 (is (= "synced" (:status field-entry))
@@ -989,7 +989,7 @@
                 (is (not (some #(str/includes? % "archived_segment") (keys files-after-export)))
                     "Archived segment files should be deleted after export"))
               (testing "RemoteSyncObject entry is cleaned up after export"
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id segment-id)))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Segment" 'model_id segment-id)))
                     "RemoteSyncObject entry for archived segment should have synced status")))))))))
 
 ;; Import Table/Field/Segment tracking tests
@@ -1013,14 +1013,14 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Collection"
-                            :model_id coll-id
-                            :status "synced")
+                            'model_type "Collection"
+                            'model_id coll-id
+                            'status "synced")
                 "Collection should be tracked in RemoteSyncObject")
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Table"
-                            :model_id table-id
-                            :status "synced")
+                            'model_type "Table"
+                            'model_id table-id
+                            'status "synced")
                 "Table should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-tracks-fields-in-remote-sync-object-test
@@ -1042,9 +1042,9 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Field"
-                            :model_id field-id
-                            :status "synced")
+                            'model_type "Field"
+                            'model_id field-id
+                            'status "synced")
                 "Field should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-tracks-segments-in-remote-sync-object-test
@@ -1078,9 +1078,9 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Segment"
-                            :model_id segment-id
-                            :status "synced")
+                            'model_type "Segment"
+                            'model_id segment-id
+                            'status "synced")
                 "Segment should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-tracks-tables-with-schema-in-remote-sync-object-test
@@ -1101,9 +1101,9 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Table"
-                            :model_id table-id
-                            :status "synced")
+                            'model_type "Table"
+                            'model_id table-id
+                            'status "synced")
                 "Table with schema should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-includes-actions-attached-to-models-test
@@ -1129,7 +1129,7 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result))
                 "Import should succeed when actions/ directory is included in path filters")
-            (let [imported-action (t2/select-one :model/Action :entity_id "test-action-xxxxxxxxx")]
+            (let [imported-action (t2/select-one :model/Action 'entity_id "test-action-xxxxxxxxx")]
               (is (some? imported-action)
                   "Action should be imported successfully")
               (is (= "Test Action" (:name imported-action))
@@ -1164,9 +1164,9 @@
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Measure"
-                            :model_id measure-id
-                            :status "synced")
+                            'model_type "Measure"
+                            'model_id measure-id
+                            'status "synced")
                 "Measure should be tracked in RemoteSyncObject")))))))
 
 (deftest export!-deletes-files-for-removed-measures-test
@@ -1263,7 +1263,7 @@
                 (is (not (some #(str/includes? % "archived_measure") (keys files-after-export)))
                     "Archived measure files should be deleted after export"))
               (testing "RemoteSyncObject entry is cleaned up after export"
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Measure" :model_id measure-id)))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Measure" 'model_id measure-id)))
                     "RemoteSyncObject entry for archived measure should have synced status")))))))))
 
 ;; Auto-enable transforms tests
@@ -1375,7 +1375,7 @@ serdes/meta:
 
 (deftest import!-blocks-if-it-encounters-library-conflicts
   (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-    (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+    (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
     (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
                                         :type "library"
                                         :entity_id collection/library-entity-id
@@ -1410,7 +1410,7 @@ serdes/meta:
 (deftest import!-reports-multiple-conflicts
   (testing "when multiple conflict types exist, all are reported in the :conflicts set"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
       (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
                                           :type "library"
                                           :entity_id collection/library-entity-id
@@ -1431,7 +1431,7 @@ serdes/meta:
 (deftest import!-force-bypasses-conflicts
   (testing "force?: true allows import to proceed despite conflicts"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
       (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
                                           :type "library"
                                           :entity_id collection/library-entity-id
@@ -1445,7 +1445,7 @@ serdes/meta:
 (deftest import!-conflicts-only-block-initial-import
   (testing "when last-imported-version is set, conflicts do not block subsequent imports"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
       (mt/with-temp [:model/Collection _ {:name "Local Library"
                                           :type "library"
                                           :entity_id collection/library-entity-id
@@ -1475,7 +1475,7 @@ serdes/meta:
 (deftest import!-library-conflict-requires-correct-type
   (testing "a Collection with library entity_id but type!=library does not trigger conflict"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
       (mt/with-temp [:model/Collection _ {:name "Not A Library"
                                           :type nil
                                           :entity_id collection/library-entity-id
@@ -1491,7 +1491,7 @@ serdes/meta:
 (deftest import!-returns-conflict-details-test
   (testing "import! returns detailed conflict information in :conflict-details"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (t2/delete! :model/Collection 'entity_id collection/library-entity-id)
       (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
                                           :type "library"
                                           :entity_id collection/library-entity-id
@@ -1523,9 +1523,9 @@ serdes/meta:
                                                        :collection_id coll-id
                                                        :exploration_id explo-id}]
       (#'impl/remove-unsynced! [coll-id] {:by-entity-id {}})
-      (is (not (t2/exists? :model/Document :id plain-doc-id))
+      (is (not (t2/exists? :model/Document 'id plain-doc-id))
           "plain doc should be deleted because it's not in the imported set")
-      (is (t2/exists? :model/Document :id explo-doc-id)
+      (is (t2/exists? :model/Document 'id explo-doc-id)
           "exploration doc should be preserved by the :exploration_id condition"))))
 
 (deftest import!-transforms-conflict-test
@@ -1599,9 +1599,9 @@ serdes/meta:
                                                   :model_name "Local Transforms"
                                                   :status "synced"
                                                   :status_changed_at (t/offset-date-time)}]
-          (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])
+          (doseq [coll-id (t2/select-pks-vec :model/Collection 'namespace ['in ["transforms" "snippets"]])
                   :when (not= coll-id (:id coll))]
-            (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+            (when-not (t2/exists? :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id)
               (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
                                                    :model_id coll-id
                                                    :model_name "synced"
@@ -1622,8 +1622,8 @@ serdes/meta:
   (testing "no conflict when import has namespace collections but local has none (or all are synced)"
     (mt/with-model-cleanup [:model/Collection :model/RemoteSyncObject :model/RemoteSyncTask]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-        (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])]
-          (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+        (doseq [coll-id (t2/select-pks-vec :model/Collection 'namespace ['in ["transforms" "snippets"]])]
+          (when-not (t2/exists? :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id)
             (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
                                                  :model_id coll-id
                                                  :model_name "pre-existing"
@@ -1655,7 +1655,7 @@ serdes/meta:
             result      (impl/import! (source.p/snapshot mock-source) task-id)]
         (is (= :success (:status result))
             "import should succeed with old-format paths")
-        (is (t2/exists? :model/Collection :entity_id coll-eid)
+        (is (t2/exists? :model/Collection 'entity_id coll-eid)
             "collection should have been imported from old-format path")))))
 
 ;; ---------- GHY-3505: captured-branch race ---------------------------------------------------------
@@ -1777,7 +1777,7 @@ serdes/meta:
         (impl/handle-task-result! {:status :success :version "abc"} task-id "feature-x")
         (is (= "dev" (remote-sync.settings/remote-sync-branch))
             "setting must remain unchanged — already-terminated task must not write it")
-        (let [task-after (t2/select-one :model/RemoteSyncTask :id task-id)]
+        (let [task-after (t2/select-one :model/RemoteSyncTask 'id task-id)]
           (is (true? (:cancelled task-after))
               "cancellation bookkeeping must be preserved")
           (is (= "Cancelled by admin" (:error_message task-after))
@@ -1804,7 +1804,7 @@ serdes/meta:
                        :last_progress_report_at old-time
                        :progress                0.5})
           new-task (impl/create-task-with-lock! "import")]
-      (let [stale-after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
+      (let [stale-after (t2/select-one :model/RemoteSyncTask 'id (:id stale-task))]
         (is (true? (:cancelled stale-after))
             "stale task must be marked cancelled")
         (is (some? (:ended_at stale-after))
@@ -1869,7 +1869,7 @@ serdes/meta:
             (is (= {:added 2 :updated 1 :removed 0} (:merge-summary result)))
             (is (= "written-version" @reconciled)
                 "the merged result is loaded back into the local app DB (the pull half)")
-            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask 'id task-id))))))))))
 
 (deftest export!-empty-merge-reports-pull-test
   (testing "when the merge matches the remote tip (nothing to push), export! folds in remote changes, reports a pull, and advances to the tip"
@@ -1895,7 +1895,7 @@ serdes/meta:
                 "an empty merge pushed nothing, so it is reported as a pull rather than a merge")
             (is (= 1 (get-in result [:outcome :count])) "the pulled count comes from the merge summary")
             (is (= "remote-R" @reconciled) "the fold-in pull loads from the remote tip")
-            (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+            (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))
                 "the version advances to the remote tip")))))))
 
 (deftest export!-blocks-on-genuine-conflict-test
@@ -1918,7 +1918,7 @@ serdes/meta:
             (is (= :conflict (:status result)))
             (is (= ["Card A (collections/a.yaml)"] (:conflicts result)))
             (is (false? @reconciled?) "no reconcile happens on conflict")
-            (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+            (is (nil? (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))
                 "the task version is not advanced on conflict")))))))
 
 (deftest export!-merge-fails-when-merged-commit-unresolvable-test
@@ -1944,7 +1944,7 @@ serdes/meta:
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :error (:status result)))
             (is (false? @reconciled?) "no reconcile load happens when the merged commit can't be resolved")
-            (is (= "base-B" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+            (is (= "base-B" (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))
                 "the version is not advanced past the un-reconciled state, so a retry re-merges")))))))
 
 (deftest export!-conflict-when-merge-base-unreachable-test
@@ -1972,7 +1972,7 @@ serdes/meta:
             (is (= :conflict (:status result)))
             (is (false? @merged?) "no merge without the merge flag")
             ;; :conflict short-circuits before any write — the version is never advanced
-            (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            (is (nil? (:version (t2/select-one :model/RemoteSyncTask 'id task-id))))))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"
@@ -1988,7 +1988,7 @@ serdes/meta:
             (is (= :success (:status result)))
             (is (false? @merged?) "force? skips the merge path")
             ;; force? routes through full-export!, which commits via the snapshot and advances the version
-            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask 'id task-id))))))))))
 
 (deftest export!-no-merge-when-not-diverged-test
   (testing "when the remote has not advanced, export! takes the normal (non-merge) export path"
@@ -2078,7 +2078,7 @@ serdes/meta:
                     ;; the in-transaction finalize (restore-dirty + set-version)
                     impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
                                            (t2/update! :model/RemoteSyncObject
-                                                       :model_id [:in [9991 9992]]
+                                                       'model_id ['in [9991 9992]]
                                                        {:status "synced"})
                                            (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
@@ -2086,12 +2086,12 @@ serdes/meta:
                                    :base-snapshot (export-test-snapshot "base-B"))]
           (is (= :success (:status result)))
           (is (= {:added 1 :updated 0 :removed 0} (:merge-summary result)))
-          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))
               "version advances to the remote tip; local changes remain to be pushed")
           (testing "the un-pushed local change is restored to dirty after the merge"
-            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9991))))
+            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 9991))))
           (testing "remote-originated content stays synced"
-            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9992)))))))))
+            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 9992)))))))))
 
 (deftest import!-merge-restores-pending-deletion-test
   (testing "a pending local deletion (no app-db row) is re-inserted as dirty after a merge"
@@ -2103,13 +2103,13 @@ serdes/meta:
                     ;; simulate the load wiping and not re-inserting the deleted entity's row, then the
                     ;; in-transaction finalize (restore-dirty + set-version)
                     impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
-                                           (t2/delete! :model/RemoteSyncObject :model_id 8881)
+                                           (t2/delete! :model/RemoteSyncObject 'model_id 8881)
                                            (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
                                    :merge? true
                                    :base-snapshot (export-test-snapshot "base-B"))]
           (is (= :success (:status result)))
-          (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 8881))
+          (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 8881))
               "the pending deletion is preserved so it can be pushed later"))))))
 
 (deftest import!-merge-folds-remote-change-and-keeps-local-deletion-test
@@ -2127,8 +2127,8 @@ serdes/meta:
                     ;; simulate the load: the remote change is applied (9992 stays synced), the deleted
                     ;; entity's row is wiped (the load doesn't re-create it), then the finalize runs.
                     impl/load-snapshot! (fn [_ _ _ & {:keys [finalize!]}]
-                                          (t2/delete! :model/RemoteSyncObject :model_id 8881)
-                                          (t2/update! :model/RemoteSyncObject :model_id 9992 {:status "synced"})
+                                          (t2/delete! :model/RemoteSyncObject 'model_id 8881)
+                                          (t2/update! :model/RemoteSyncObject 'model_id 9992 {:status "synced"})
                                           (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
                                    :merge? true
@@ -2136,10 +2136,10 @@ serdes/meta:
           (is (= :success (:status result)))
           (is (= {:added 0 :updated 1 :removed 0} (:merge-summary result)))
           (testing "the unrelated remote change is folded in (stays synced)"
-            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9992))))
+            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 9992))))
           (testing "the pending local deletion is preserved as dirty (re-inserted by restore-dirty-objects!)"
-            (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 8881))))
-          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+            (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 8881))))
+          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))
               "the version advances to the remote tip"))))))
 
 (deftest import!-merge-conflict-test
@@ -2157,7 +2157,7 @@ serdes/meta:
                                    :base-snapshot (export-test-snapshot "base-B"))]
           (is (= :conflict (:status result)))
           (is (= ["Card A (collections/a.yaml)"] (:conflicts result)))
-          (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id)))))))))
+          (is (nil? (:version (t2/select-one :model/RemoteSyncTask 'id task-id)))))))))
 
 (deftest import!-merge-history-rewritten-test
   (testing "a local-only merge with no reachable base returns :conflict"

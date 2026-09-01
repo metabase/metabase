@@ -152,7 +152,7 @@
      :user-id user-id}
     (try
       (when (and (= context :ad-hoc)
-                 (= :model (t2/select-one-fn :type :model/Card :id card-id)))
+                 (= :model (t2/select-one-fn :type :model/Card 'id card-id)))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id

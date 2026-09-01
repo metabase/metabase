@@ -80,7 +80,7 @@
         ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
-        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (t2/update! :model/Card {'name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
         ;; Delete hooks are remove for now, over performance concerns.
@@ -92,8 +92,8 @@
   (with-index
     (testing "The index is updated when model dependencies change"
       (let [index-table    (search.index/active-table)
-            table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
-            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
+            table-id       (t2/select-one-pk :model/Table 'name "Indexed Table")
+            legacy-input   #(-> (t2/select-one [index-table 'legacy_input] 'model "table" 'model_id (str table-id))
                                 :legacy_input
                                 json/decode+kw)
             db-id          (t2/select-one-fn :db_id :model/Table table-id)
@@ -463,7 +463,7 @@
                                                            :state      "initial"
                                                            :creator_id (mt/user->id :rasta)}]
         (model-index/add-values! model-index)
-        (let [miv (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+        (let [miv (t2/select-one :model/ModelIndexValue 'model_index_id (:id model-index))]
           (testing "Adding values indexes them"
             (is (=? [(index-entity
                       {:model         "indexed-entity"
@@ -478,7 +478,7 @@
                                                                                  (-> query
                                                                                      (lib/filter (lib/!= products-id (:model_pk miv))))))))
             (model-index/add-values! model-index)
-            (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+            (let [miv2 (t2/select-one :model/ModelIndexValue 'model_index_id (:id model-index))]
               (is (=? [(index-entity
                         {:model         "indexed-entity"
                          :model_id      (model-id miv2)
@@ -585,7 +585,7 @@
           (testing "But eventually we refresh"
             (is (= active-after (active-table-after period)))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
+          (t2/delete! :model/SearchIndexMetadata 'version "auto-refresh-test")
           (#'search.index/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
@@ -602,7 +602,7 @@
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
           (t2/update! :model/SearchIndexMetadata
-                      {:index_name (name pending-old)}
+                      {'index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
           (#'search.index/sync-tracking-atoms!)
           (testing "Active table is returned"
@@ -617,7 +617,7 @@
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
+          (t2/delete! :model/SearchIndexMetadata 'version "pending-timeout-test")
           (#'search.index/delete-obsolete-tables!))))))
 
 (deftest strip-junk-chars-test
@@ -686,7 +686,7 @@
   ;; pair in one upsert batch tripped a unique constraint, failing the batch (and the whole reindex).
   (when (search/supports-index?)
     (with-index
-      (let [card-id (t2/select-one-pk :model/Card :name "Customer Satisfaction")
+      (let [card-id (t2/select-one-pk :model/Card 'name "Customer Satisfaction")
             insert-rev! (fn []
                           ;; Raw SQL to bypass the before/after-insert hooks that would normally
                           ;; demote older revisions to most_recent=false.
@@ -702,10 +702,10 @@
         (insert-rev!)
         (insert-rev!)
         (testing "two revision rows with most_recent=true exist for the card"
-          (is (= 2 (t2/count :model/Revision :model "Card" :model_id card-id :most_recent true))))
+          (is (= 2 (t2/count :model/Revision 'model "Card" 'model_id card-id 'most_recent true))))
         (testing "reindex completes and writes a single row for the card"
           (search.engine/reindex! :search.engine/appdb {:in-place? true})
-          (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
+          (is (= 1 (t2/count (search.index/active-table) 'model "card" 'model_id (str card-id)))))))))
 
 (deftest reindex-does-not-misdirect-writes-to-active-when-pending-tracking-lost-test
   ;; Regression for the reindex write-misdirection race. A full reindex resolved its destination table
@@ -782,11 +782,11 @@
               (search-index-metadata/create-pending! :appdb version table-name)
               (search-index-metadata/active-pending! :appdb version)
               (t2/update! :model/SearchIndexMetadata
-                          :index_name  (name table-name)
+                          'index_name  (name table-name)
                           {:created_at  update-time})
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
+          (t2/delete! :model/SearchIndexMetadata 'version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))
 
 (deftest missing-index-table-does-not-abort-enclosing-transaction-test

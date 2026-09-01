@@ -37,8 +37,8 @@
      (and (= (:dashboard_id dashcard) dashboard-id)
           (or (= (:card_id dashcard) card-id)
               (t2/exists? :model/DashboardCardSeries
-                          :card_id          card-id
-                          :dashboardcard_id dashcard-id))))))
+                          'card_id          card-id
+                          'dashboardcard_id dashcard-id))))))
 
 (defn- current-dimension-mapping?
   [provider query mapping]

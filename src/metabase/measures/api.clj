@@ -62,9 +62,9 @@
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Measure :id id))
+  (api/read-check (t2/select-one :model/Measure 'id id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure 'id id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
@@ -91,10 +91,10 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
+  (let [measures  (t2/select :model/Measure, 'archived false, {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (t2/select-fn-set :db_id :model/Table 'id ['in table-ids]))
                                     :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))

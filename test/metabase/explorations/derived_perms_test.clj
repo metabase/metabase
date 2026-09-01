@@ -123,7 +123,7 @@
       (testing "an incompatible lens is blocked while the thread's queries are intact"
         (is (false? (visible? thread :rasta))))
       (testing "and stays blocked once they are gone — the state restart leaves behind"
-        (t2/delete! :model/ExplorationQuery :exploration_thread_id thread)
+        (t2/delete! :model/ExplorationQuery 'exploration_thread_id thread)
         (is (false? (visible? thread :rasta))
             "the drilled value outlives the queries, so the verdict protecting it must too")
         (is (true? (visible? thread :crowberto)) "superuser")))))
@@ -136,15 +136,15 @@
             drop the thread from adjudication — dropping it reads as \"nothing to hide\", the same
             absence-means-visible mistake this namespace exists to avoid."
     (let [thread  (drilled-thread! {:sandbox {1 "creators-sandbox-digest"}})
-          card-id (-> (t2/select-one :model/ExplorationBlock :exploration_thread_id thread)
+          card-id (-> (t2/select-one :model/ExplorationBlock 'exploration_thread_id thread)
                       :metrics first :card_id)]
       (testing "control — blocked while the Card is intact"
         (is (false? (visible? thread :rasta))))
       (testing "and stays blocked once the Card (and with it every query row) is gone"
-        (t2/delete! :model/Card :id card-id)
-        (is (empty? (t2/select :model/ExplorationQuery :exploration_thread_id thread))
+        (t2/delete! :model/Card 'id card-id)
+        (is (empty? (t2/select :model/ExplorationQuery 'exploration_thread_id thread))
             "sanity: the card FK cascaded the query rows away")
-        (is (some? (t2/select-one-fn :name :model/ExplorationThread :id thread))
+        (is (some? (t2/select-one-fn :name :model/ExplorationThread 'id thread))
             "sanity: the drilled name survived, so there is still something to protect")
         (is (false? (visible? thread :rasta))
             "deleting a Card is not a permission change; it must not unblock the drilled value")
@@ -254,7 +254,7 @@
             (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
             (testing "sanity: rasta can query venues but cannot read the joined card"
               (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                     (mi/can-read? (t2/select-one :model/Card :id joined)))))))
+                                     (mi/can-read? (t2/select-one :model/Card 'id joined)))))))
             (testing "control: the plain query alone is visible"
               (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])]
                 (is (true? (visible? thread :rasta)))))
@@ -310,31 +310,31 @@
 (deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
   (testing "a Summary document whose exploration the viewer may not see"
     (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
-          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread 'id thread)]
       (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
         (testing "is denied when the instance carries :exploration_id"
-          (is (false? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta)))))
+          (is (false? (boolean (doc-content-visible? (t2/select-one :model/Document 'id doc-id) :rasta)))))
         (testing "is denied on a partial select too — the shape `collection-children-query` produces, which omits :exploration_id"
-          (is (false? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))
+          (is (false? (boolean (doc-content-visible? (t2/select-one [:model/Document 'id 'name] 'id doc-id) :rasta)))))
         (testing "is denied for an instance carrying neither :exploration_id nor :id — nothing left to adjudicate on"
           (is (false? (boolean (doc-content-visible? {:name "Summary"} :rasta)))))))))
 
 (deftest doc-content-gate-leaves-ordinary-documents-alone-test
   (testing "a document with no owning exploration is visible, on a full or partial select"
     (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
-      (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
-      (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+      (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document 'id doc-id) :rasta))))
+      (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document 'id 'name] 'id doc-id) :rasta)))))))
 
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
 (defn- card-readable? [card-id user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (boolean (mi/can-read? (t2/select-one :model/Card :id card-id)))))
+    (boolean (mi/can-read? (t2/select-one :model/Card 'id card-id)))))
 
 (deftest card-scoped-to-a-gated-document-is-not-readable-test
   (testing "a Card scoped to an exploration Summary document"
     (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
-          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread 'id thread)]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Document   {doc-id :id}  {:exploration_id expl
                                                       :collection_id  coll-id
@@ -352,7 +352,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (testing "sanity: the owning Summary document is itself gated for this viewer"
           (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                 (mi/can-read? (t2/select-one :model/Document :id doc-id)))))))
+                                 (mi/can-read? (t2/select-one :model/Document 'id doc-id)))))))
         (testing "is not readable by a viewer whose data-access lens is incompatible, even though they can read the collection"
           (is (false? (card-readable? card-id :rasta))))
         (testing "is still readable by a superuser, matching the gate's standing exemption"
@@ -388,7 +388,7 @@
 (deftest exploration-comment-context-is-gated-test
   (testing "a comment anchored to a chart point of an exploration the viewer is gated out of"
     (let [thread  (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
-          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)
+          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread 'id thread)
           page-id (page-id-for-thread thread)]
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         ;; Put the exploration somewhere the viewer can read, so anything withheld below is withheld
@@ -421,7 +421,7 @@
             themselves; see the callers of `with-content-gate-cache`."
     (let [thread  (thread-with-snapshots! (repeat 5 {:creator-id (mt/user->id :lucky)
                                                      :table :venues :token {}}))
-          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+          expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread 'id thread)]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Document   {doc-id :id} {:exploration_id expl-id
                                                      :collection_id  coll-id
@@ -435,7 +435,7 @@
                                                         :display "table" :visualization_settings {}
                                                         :collection_id coll-id :document_id doc-id})))]
           (request/with-current-user (mt/user->id :rasta)
-            (let [cards (t2/select :model/Card :id [:in card-ids])
+            (let [cards (t2/select :model/Card 'id ['in card-ids])
                   measure (fn [instances]
                             (documents/with-content-gate-cache
                               (t2/with-call-count [call-count]

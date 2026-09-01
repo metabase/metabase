@@ -26,7 +26,7 @@
         (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
         (is (= 0
                (t2/count :model/PulseChannel)))
-        (is (:archived (t2/select-one :model/Pulse :id pulse-id)))))
+        (is (:archived (t2/select-one :model/Pulse 'id pulse-id)))))
     (testing "emails"
       (testing "keep if has PulseChannelRecipient"
         (mt/with-temp [:model/Pulse                 {pulse-id :id} {}

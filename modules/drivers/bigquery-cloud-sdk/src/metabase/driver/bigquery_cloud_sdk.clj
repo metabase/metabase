@@ -764,7 +764,7 @@
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
-  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+  (t2/exists? :model/Field 'table_id table-id 'name partitioned-time-field-name 'database_partitioned true 'active true))
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]

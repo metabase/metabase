@@ -63,7 +63,7 @@
   (testing "chart_stats survives the EDN transform with its keyword and string-keyed shape intact"
     (let [id (query-result-row! stats-with-warehouse-values)]
       (is (= stats-with-warehouse-values
-             (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))
+             (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))
 
 (deftest chart-stats-is-encrypted-at-rest-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -83,7 +83,7 @@
                 "top-category names were stored in plaintext"))
           (testing "and it still decrypts back to the original stats"
             (is (= stats-with-warehouse-values
-                   (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))))
+                   (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id)))))))))
 
 (deftest chart-stats-rejects-plaintext-when-key-set-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -93,12 +93,12 @@
       (encryption-test/with-secret-key "chart-stats-encryption-test-key"
         (let [id (query-result-row! stats-with-warehouse-values)]
           (is (= stats-with-warehouse-values
-                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
+                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id)))
           (t2/query-one {:update :exploration_query_result
                          :set    {:chart_stats (pr-str stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (thrown? clojure.lang.ExceptionInfo
-                       (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+                       (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))
 
 (deftest chart-stats-plaintext-allowed-without-key-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -111,4 +111,4 @@
                          :set    {:chart_stats (pr-str stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (= stats-with-warehouse-values
-                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+                 (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))

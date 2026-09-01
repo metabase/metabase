@@ -215,7 +215,7 @@
                          :model/Card       {model-card-id :id} {:name "Model" :type :model :database_id db-id}
                          :model/Card       {embed-card-id :id} {:name "Embedded" :database_id db-id}]
         (let [deps (fn [model id]
-                     (serdes/serialization-dependencies model (t2/select-one (keyword "model" model) :id id)))]
+                     (serdes/serialization-dependencies model (t2/select-one (keyword "model" model) 'id id)))]
           (testing "Collection derives its parent from the raw :location path"
             (is (= #{[{:model "Collection" :id parent-id}]} (deps "Collection" child-id)))
             (is (empty? (deps "Collection" parent-id)) "a root collection has no parent dependency"))

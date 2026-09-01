@@ -23,10 +23,10 @@
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
     (->> (t2/select :model/MetabotMessage
-                    :conversation_id conversation-id
-                    :role "assistant"
-                    :deleted_at nil
-                    :slack_msg_id [:in slack-msg-ids])
+                    'conversation_id conversation-id
+                    'role "assistant"
+                    'deleted_at nil
+                    'slack_msg_id ['in slack-msg-ids])
          ;; A failed turn's state is dropped by [[metabase.metabot.persistence/conversation-state]], so
          ;; replaying its tool calls would announce queries the seeded state does not contain.
          (filter metabot.persistence/replayable-assistant-row?)
@@ -41,10 +41,10 @@
   (when (seq slack-msg-ids)
     (t2/select-fn-set :slack_msg_id
                       :model/MetabotMessage
-                      :conversation_id conversation-id
-                      :role "assistant"
-                      :deleted_at [:not= nil]
-                      :slack_msg_id [:in slack-msg-ids])))
+                      'conversation_id conversation-id
+                      'role "assistant"
+                      'deleted_at ['not= nil]
+                      'slack_msg_id ['in slack-msg-ids])))
 
 (defn state-messages
   "The assistant rows of a Slack thread in reader order, for feeding
@@ -54,10 +54,10 @@
   `data` blobs aren't loaded just to get at `state`. Not usable for history replay —
   see [[message-history]] for that."
   [conversation-id]
-  (t2/select [:model/MetabotMessage :id :role :state :error :finished]
-             :conversation_id conversation-id
-             :role "assistant"
-             :deleted_at nil
+  (t2/select [:model/MetabotMessage 'id 'role 'state 'error 'finished]
+             'conversation_id conversation-id
+             'role "assistant"
+             'deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (defn response-owner-user-id
@@ -66,9 +66,9 @@
   [channel-id slack-msg-id]
   (t2/select-one-fn :user_id
                     :model/MetabotMessage
-                    :channel_id   channel-id
-                    :slack_msg_id slack-msg-id
-                    :role         "assistant"))
+                    'channel_id   channel-id
+                    'slack_msg_id slack-msg-id
+                    'role         "assistant"))
 
 (defn soft-delete-response!
   "Mark the stored assistant response for this Slack channel/message as soft-deleted."

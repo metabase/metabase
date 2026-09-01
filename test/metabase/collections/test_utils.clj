@@ -22,20 +22,20 @@
      (mt/initialize-if-needed! :db)
      ;; Clear existing library collections
      (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-collection-type
+                 'type collection/library-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-data-collection-type
+                 'type collection/library-data-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-metrics-collection-type
+                 'type collection/library-metrics-collection-type
                  {:type nil})
      (try
        ~@body
        (finally
          ;; Clean up any created library collections
          (t2/delete! :model/Collection
-                     :type [:in [collection/library-collection-type
+                     'type ['in [collection/library-collection-type
                                  collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))
 
@@ -87,9 +87,9 @@
     (let [loc (str "/" (:id library) "/")]
       (f {:library library
           :data    (t2/select-one :model/Collection
-                                  :type collection/library-data-collection-type :location loc)
+                                  'type collection/library-data-collection-type 'location loc)
           :metrics (t2/select-one :model/Collection
-                                  :type collection/library-metrics-collection-type :location loc)}))
+                                  'type collection/library-metrics-collection-type 'location loc)}))
     ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
     (mt/with-temp [:model/Collection library {:name     "Library"
                                               :type     collection/library-collection-type

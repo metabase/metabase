@@ -37,12 +37,12 @@
 
 (defn- select-api-key
   [name]
-  (t2/select-one :model/ApiKey :name name))
+  (t2/select-one :model/ApiKey 'name name))
 
 (defn- get-admin-user-by-email
   "Find an admin user by email. Throws an exception if the user doesn't exist or isn't an admin."
   [email]
-  (let [user (t2/select-one :model/User :email email)]
+  (let [user (t2/select-one :model/User 'email email)]
     (when-not user
       (throw (ex-info (format "User with email %s not found" email)
                       {:email email})))
@@ -70,7 +70,7 @@
             prefix       (api-key/prefix (u.secret/expose unhashed-key))
             creator      (get-admin-user-by-email creator)]
         ;; Check if there's an existing API key with the same prefix
-        (when (t2/exists? :model/ApiKey :key_prefix prefix)
+        (when (t2/exists? :model/ApiKey 'key_prefix prefix)
           (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
                           {:name name :prefix prefix})))
         (log/info (u/format-color :green "Creating new API key"))

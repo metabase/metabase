@@ -430,7 +430,7 @@
     ;; the collection row is missing (stale Metabot scope value). If we dropped the filter here,
     ;; the :metabot catalog would overcount and drift back toward :universe.
     (let [ghost-id Integer/MAX_VALUE]
-      (is (nil? (t2/select-one :model/Collection :id ghost-id))
+      (is (nil? (t2/select-one :model/Collection 'id ghost-id))
           "pre-check: the phantom id isn't actually a real collection")
       (is (= #{ghost-id}
              (#'complexity/metabot-collection-scope-ids ghost-id))))))
@@ -1174,7 +1174,7 @@
     (let [other-fingerprint "latest-score-test/other"
           fingerprint       "latest-score-test/current"]
       (try
-        (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
+        (t2/delete! :model/DataComplexityScore 'fingerprint ['in [other-fingerprint fingerprint]])
         (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
         (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
         (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
@@ -1182,7 +1182,7 @@
           (is (= "newer" (get-in score [:meta :label])))
           (is (some? (get-in score [:meta :calculated-at]))))
         (finally
-          (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
+          (t2/delete! :model/DataComplexityScore 'fingerprint ['in [other-fingerprint fingerprint]]))))))
 
 (deftest ^:synchronized latest-score-filters-by-source-test
   (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
@@ -1194,7 +1194,7 @@
     (mt/initialize-if-needed! :db)
     (let [fingerprint "latest-score-source-test/shared"]
       (try
-        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (t2/delete! :model/DataComplexityScore 'fingerprint fingerprint)
         (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
         (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
         (is (= "appdb-row"
@@ -1204,7 +1204,7 @@
                (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
             "an explicit representation source still resolves its own row")
         (finally
-          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
+          (t2/delete! :model/DataComplexityScore 'fingerprint fingerprint))))))
 
 (deftest ^:synchronized scored-within-cooldown-uses-db-time-test
   (testing "scored-within-cooldown? counts only same-fingerprint, same-source rows inside the window"
@@ -1220,7 +1220,7 @@
                     (t2/insert! :model/DataComplexityScore
                                 {:fingerprint f :source source :score_data {} :created_at created-at}))]
       (try
-        (t2/delete! :model/DataComplexityScore :fingerprint [:in [fp other]])
+        (t2/delete! :model/DataComplexityScore 'fingerprint ['in [fp other]])
         (insert! other "appdb" recent)
         (is (not (data-complexity-score/scored-within-cooldown? fp "appdb" 12))
             "a fresh row for a different fingerprint doesn't count")
@@ -1234,7 +1234,7 @@
         (is (data-complexity-score/scored-within-cooldown? fp "appdb" 12)
             "a fresh same-fingerprint appdb row counts")
         (finally
-          (t2/delete! :model/DataComplexityScore :fingerprint [:in [fp other]]))))))
+          (t2/delete! :model/DataComplexityScore 'fingerprint ['in [fp other]]))))))
 
 (deftest ^:synchronized run-scoring-persists-latest-score-snapshot-test
   (testing "every successful computation persists a fresh snapshot for the overview endpoint"
@@ -1441,7 +1441,7 @@
                 (is (= "republish-fp" (settings/data-complexity-scoring-last-fingerprint))
                     "fingerprint advances on a confirmed re-publish")))
             (finally
-              (t2/delete! :model/DataComplexityScore :fingerprint "republish-fp")))))
+              (t2/delete! :model/DataComplexityScore 'fingerprint "republish-fp")))))
       (testing "failed re-publish leaves the fingerprint stale for the next retry"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
                                            data-complexity-scoring-last-fingerprint "stale"]
@@ -1452,7 +1452,7 @@
               (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                   "fingerprint preserved when the re-publish fails"))
             (finally
-              (t2/delete! :model/DataComplexityScore :fingerprint "republish-fail-fp")))))
+              (t2/delete! :model/DataComplexityScore 'fingerprint "republish-fail-fp")))))
       (testing "cooldown saw a row that's since gone → falls back to a full recompute"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
                                            data-complexity-scoring-last-fingerprint "stale"]
@@ -1505,7 +1505,7 @@
               ;; The row is written under the *real* current-fingerprint with created_at=now — delete it
               ;; so a later :sequential test exercising the real cooldown path doesn't see a spurious row.
               (finally
-                (t2/delete! :model/DataComplexityScore :fingerprint current :source "appdb")))))))))
+                (t2/delete! :model/DataComplexityScore 'fingerprint current 'source "appdb")))))))))
 
 (deftest ^:synchronized publish-tagging-test
   (testing "::snowplow-published? metadata records publish success/failure for schedule/boot callers"
@@ -1560,7 +1560,7 @@
                                   :text-variant      :names-split
                                   :embedding-model   {:provider :ai-service :model-name "minilm" :model-dimensions 384}}}]
       (try
-        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (t2/delete! :model/DataComplexityScore 'fingerprint fingerprint)
         (data-complexity-score/record-score! fingerprint "appdb" score)
         (snowplow-test/with-fake-snowplow-collector
           (snowplow-test/pop-event-data-and-user-id!)   ; drain startup/setting events
@@ -1580,4 +1580,4 @@
                    (get-in (first events) ["parameters" "embedding_model"]))
                 "nested :embedding-model survives the recursive snake-keys walk over round-tripped data")))
         (finally
-          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
+          (t2/delete! :model/DataComplexityScore 'fingerprint fingerprint))))))

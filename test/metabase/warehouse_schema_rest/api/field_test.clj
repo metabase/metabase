@@ -31,14 +31,14 @@
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (=? (merge
-             (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
-                             :database_position :database_required :database_is_auto_increment]
-                            :id (mt/id :users :name))
+             (t2/select-one [:model/Field 'created_at 'updated_at 'last_analyzed 'fingerprint 'fingerprint_version
+                             'database_position 'database_required 'database_is_auto_increment]
+                            'id (mt/id :users :name))
              {:table_id         (mt/id :users)
               :table            (merge
-                                 (t2/select-one [:model/Table :created_at :updated_at
-                                                 :initial_sync_status :view_count]
-                                                :id (mt/id :users))
+                                 (t2/select-one [:model/Table 'created_at 'updated_at
+                                                 'initial_sync_status 'view_count]
+                                                'id (mt/id :users))
                                  {:description             nil
                                   :entity_type             "entity/UserTable"
                                   :visibility_type         nil
@@ -127,7 +127,7 @@
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (let [original-val (simple-field-details (t2/select-one :model/Field :id field-id))]
+        (let [original-val (simple-field-details (t2/select-one :model/Field 'id field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
                     :display_name       "Field Test"
@@ -148,7 +148,7 @@
                                                 :json_unfolding  true
                                                 :visibility_type :sensitive
                                                 :nfc_path        ["bob" "dobbs"]})
-                updated-val (simple-field-details (t2/select-one :model/Field :id field-id))]
+                updated-val (simple-field-details (t2/select-one :model/Field 'id field-id))]
             (testing "response body should be the updated field"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
@@ -182,7 +182,7 @@
                       :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           nil}
-                     (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
+                     (simple-field-details (t2/select-one :model/Field 'id field-id)))))))))))
 
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"
@@ -218,18 +218,18 @@
       (testing "Refingerprints field when updated"
         (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
-            (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
+            (sync/sync-database! (t2/select-one :model/Database 'id (mt/id)))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                         {:coercion_strategy strategy}))]
               ;; ensure that there is no coercion strategy from previous tests
               (set-strategy! nil)
-              (let [field (t2/select-one :model/Field :id field-id)]
+              (let [field (t2/select-one :model/Field 'id field-id)]
                 (is (= :type/Integer (:effective_type field)))
                 (is (contains? (get-in field [:fingerprint :type]) :type/Number)))
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
-              (let [field (t2/select-one :model/Field :id field-id)]
+              (let [field (t2/select-one :model/Field 'id field-id)]
                 (is (= :type/Instant (:effective_type field)))
                 (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
 
@@ -253,7 +253,7 @@
     (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
       (mt/with-temp [:model/Field {fk-field-id :id} {}
                      :model/Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
-        (let [original-val (boolean (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id))]
+        (let [original-val (boolean (t2/select-one-fn :fk_target_field_id :model/Field, 'id field-id))]
           (testing "before API call"
             (is (true?
                  original-val)))
@@ -261,7 +261,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"
             (is (= nil
-                   (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id)))))))))
+                   (t2/select-one-fn :fk_target_field_id :model/Field, 'id field-id)))))))))
 
 (deftest update-fk-target-field-id-test
   (testing "PUT /api/field/:id"
@@ -270,12 +270,12 @@
         (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
                               {:semantic_type :type/Quantity})
         (is (= :type/Quantity
-               (t2/select-one-fn :semantic_type :model/Field, :id field-id)))))))
+               (t2/select-one-fn :semantic_type :model/Field, 'id field-id)))))))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
   [table-kw field-kw]
-  (t2/select-one :model/FieldValues :field_id (mt/id table-kw field-kw)))
+  (t2/select-one :model/FieldValues 'field_id (mt/id table-kw field-kw)))
 
 (defn- field-values-id [table-key field-key]
   (:id (field->field-values table-key field-key)))
@@ -359,7 +359,7 @@
                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                                      {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
-               (into {} (t2/select-one [:model/FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
+               (into {} (t2/select-one [:model/FieldValues 'values 'human_readable_values, 'has_more_values] 'field_id field-id))))
         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
@@ -405,7 +405,7 @@
                                      {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
-  (-> (t2/select-one :model/Field :id field-id)
+  (-> (t2/select-one :model/Field 'id field-id)
       (t2/hydrate :dimensions)
       :dimensions
       first))
@@ -640,7 +640,7 @@
                 :fk_target_field_id true
                 :json_unfolding     false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
       (testing "after change"
         (is (= {:name               "Field Test 2"
@@ -651,7 +651,7 @@
                 :fk_target_field_id false
                 :json_unfolding     false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2)))))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2)))))))))
 
 (deftest update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
@@ -660,7 +660,7 @@
                    :model/Field {field-id-3 :id} {:name               "Field Test 3"
                                                   :semantic_type      :type/FK
                                                   :fk_target_field_id field-id-1}]
-      (let [before-change (simple-field-details (t2/select-one :model/Field :id field-id-3))]
+      (let [before-change (simple-field-details (t2/select-one :model/Field 'id field-id-3))]
         (testing "before change"
           (is (= {:name               "Field Test 3"
                   :display_name       "Field Test 3"
@@ -673,7 +673,7 @@
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
         (testing "after change"
-          (let [after-change (simple-field-details (t2/select-one :model/Field :id field-id-3))]
+          (let [after-change (simple-field-details (t2/select-one :model/Field 'id field-id-3))]
             (is (= {:name               "Field Test 3"
                     :display_name       "Field Test 3"
                     :description        nil
@@ -699,7 +699,7 @@
                 :fk_target_field_id false
                 :json_unfolding     false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
                                                                                 :fk_target_field_id field-id-1})
       (testing "after change"
@@ -711,7 +711,7 @@
                 :fk_target_field_id true
                 :json_unfolding     false
                 :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2)))))))))
+               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2)))))))))
 
 (deftest fk-target-field-id-shouldnt-change-test
   (testing "PUT /api/field/:id"
@@ -729,7 +729,7 @@
                   :fk_target_field_id true
                   :json_unfolding     false
                   :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
+                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
         (testing "after change"
           (is (= {:name               "Field Test 2"
@@ -740,7 +740,7 @@
                   :fk_target_field_id true
                   :json_unfolding     false
                   :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))))))
+                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field 'id field-id-2))))))))))
 
 (deftest update-field-type-dimension-test
   (testing "PUT /api/field/:id"
@@ -841,13 +841,13 @@
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
-        (let [database (t2/select-one :model/Database :id (mt/id))]
+        (let [database (t2/select-one :model/Database 'id (mt/id))]
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding true)}]
             (mt/with-db database
               ;; Sync the new database
               (sync/sync-database! database)
-              (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
-                    get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
+              (let [field (t2/select-one :model/Field 'id (mt/id :json :json_bit))
+                    get-database (fn [] (t2/select-one :model/Database 'id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
                                                                           (assoc field :json_unfolding v)))
@@ -856,7 +856,7 @@
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                          updated-db)))
                     nested-fields          (fn []
-                                             (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                             (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                 (testing "json_unfolding is enabled by default at the field level"
                   (is (true? (:json_unfolding field))))
@@ -881,15 +881,15 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
-        (let [database (t2/select-one :model/Database :id (mt/id))]
+        (let [database (t2/select-one :model/Database 'id (mt/id))]
           (testing "When json_unfolding is disabled at the DB level on the first sync"
             ;; Create a new database with the same details as the json dataset, with json unfolding disabled
             (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding false)}]
               (mt/with-db database
                 ;; Sync the new database
                 (sync/sync-database! database)
-                (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
-                      get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
+                (let [get-field (fn [] (t2/select-one :model/Field 'id (mt/id :json :json_bit)))
+                      get-database (fn [] (t2/select-one :model/Database 'id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
                                                       (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
                                                                             (assoc (get-field) :json_unfolding v)))
@@ -898,7 +898,7 @@
                                                      (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                            updated-db)))
                       nested-fields (fn []
-                                      (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                      (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
                                            (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                   (testing "nested fields are not created"
                     (is (empty? (nested-fields))))
@@ -928,12 +928,12 @@
     (mt/with-temp-copy-of-db
       (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
                             {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
-      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+      (let [field (t2/select-one :model/Field 'id (mt/id :venues :price))]
         (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
         (is (isa? (:effective_type field) :type/DateTime)))
       (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
                             {:settings {:time_enabled "minutes"}})
-      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+      (let [field (t2/select-one :model/Field 'id (mt/id :venues :price))]
         (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
         (is (isa? (:effective_type field) :type/DateTime))
         (is (= "minutes" (-> field :settings :time_enabled)))))))
@@ -963,7 +963,7 @@
         (testing (format "has_field_values = %s" v)
           (mt/user-http-request :crowberto :put 200 (format "field/%d" fid) {:has_field_values v})
           (is (= (keyword v)
-                 (t2/select-one-fn :has_field_values :model/Field :id fid))))))))
+                 (t2/select-one-fn :has_field_values :model/Field 'id fid))))))))
 
 (deftest discard-field-values-test
   (testing "POST /api/field/:id/discard_values"
@@ -972,8 +972,8 @@
       (testing "requires metadata write permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "field/%d/discard_values" fid))))
-        (is (t2/exists? :model/FieldValues :id fv)))
+        (is (t2/exists? :model/FieldValues 'id fv)))
       (testing "an admin can discard the cached field values"
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
-        (is (not (t2/exists? :model/FieldValues :id fv)))))))
+        (is (not (t2/exists? :model/FieldValues 'id fv)))))))

@@ -27,18 +27,18 @@
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
-              (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
+              (is (false? (mi/can-write? (t2/select-one :model/Card 'id card-id)))
                   "Card in remote-synced collection should not be writable when remote-sync-type is read-only")))
           (testing "Dashboards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
-              (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
+              (is (false? (mi/can-write? (t2/select-one :model/Dashboard 'id dashboard-id)))
                   "Dashboard in remote-synced collection should not be writable when remote-sync-type is read-only")))
           (testing "Documents in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
-              (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
+              (is (false? (mi/can-write? (t2/select-one :model/Document 'id document-id)))
                   "Document in remote-synced collection should not be writable when remote-sync-type is read-only"))))))))
 
 (deftest remote-synced-permissions-with-remote-sync-type-export-test
@@ -51,18 +51,18 @@
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
-              (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
+              (is (true? (mi/can-write? (t2/select-one :model/Card 'id card-id)))
                   "Card in remote-synced collection should be writable when remote-sync-type is read-write")))
           (testing "Dashboards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
-              (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
+              (is (true? (mi/can-write? (t2/select-one :model/Dashboard 'id dashboard-id)))
                   "Dashboard in remote-synced collection should be writable when remote-sync-type is read-write")))
           (testing "Documents in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
-              (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
+              (is (true? (mi/can-write? (t2/select-one :model/Document 'id document-id)))
                   "Document in remote-synced collection should be writable when remote-sync-type is read-write"))))))))
 
 (deftest non-remote-synced-permissions-unaffected-by-remote-sync-type-test
@@ -77,18 +77,18 @@
                 (mt/with-temp [:model/Card {card-id :id} {:name "Regular Card"
                                                           :collection_id regular-coll-id
                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}]
-                  (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
+                  (is (true? (mi/can-write? (t2/select-one :model/Card 'id card-id)))
                       "Card in regular collection should always be writable regardless of remote-sync-type")))
               (testing "Dashboards in regular collections have can_write=true"
                 (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Regular Dashboard"
                                                                     :collection_id regular-coll-id}]
-                  (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
+                  (is (true? (mi/can-write? (t2/select-one :model/Dashboard 'id dashboard-id)))
                       "Dashboard in regular collection should always be writable regardless of remote-sync-type")))
               (testing "Documents in regular collections have can_write=true"
                 (mt/with-temp [:model/Document {document-id :id} {:name "Regular Document"
                                                                   :document (text->prose-mirror-ast "Regular content")
                                                                   :collection_id regular-coll-id}]
-                  (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
+                  (is (true? (mi/can-write? (t2/select-one :model/Document 'id document-id)))
                       "Document in regular collection should always be writable regardless of remote-sync-type"))))))))))
 
 (deftest nested-remote-synced-collection-permissions-test
@@ -105,18 +105,18 @@
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
-                (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Card 'id card-id)))
                     "Card in nested remote-synced collection should not be writable when remote-sync-type is read-only")))
             (testing "Dashboards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
-                (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Dashboard 'id dashboard-id)))
                     "Dashboard in nested remote-synced collection should not be writable when remote-sync-type is read-only")))
             (testing "Documents in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
-                (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Document 'id document-id)))
                     "Document in nested remote-synced collection should not be writable when remote-sync-type is read-only")))))
         (testing "When remote-sync-type is read-write"
           (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
@@ -124,18 +124,18 @@
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
-                (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Card 'id card-id)))
                     "Card in nested remote-synced collection should be writable when remote-sync-type is read-write")))
             (testing "Dashboards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
-                (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Dashboard 'id dashboard-id)))
                     "Dashboard in nested remote-synced collection should be writable when remote-sync-type is read-write")))
             (testing "Documents in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
-                (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Document 'id document-id)))
                     "Document in nested remote-synced collection should be writable when remote-sync-type is read-write")))))))))
 
 (deftest mixed-collection-types-permissions-test
@@ -164,17 +164,17 @@
                              :model/Document {regular-document-id :id} {:name "Regular Document"
                                                                         :document (text->prose-mirror-ast "Regular content")
                                                                         :collection_id regular-coll-id}]
-                (is (false? (mi/can-write? (t2/select-one :model/Card :id library-card-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Card 'id library-card-id)))
                     "Library card should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Card :id regular-card-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Card 'id regular-card-id)))
                     "Regular card should be writable")
-                (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id library-dashboard-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Dashboard 'id library-dashboard-id)))
                     "Library dashboard should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id regular-dashboard-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Dashboard 'id regular-dashboard-id)))
                     "Regular dashboard should be writable")
-                (is (false? (mi/can-write? (t2/select-one :model/Document :id library-document-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Document 'id library-document-id)))
                     "Library document should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Document :id regular-document-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Document 'id regular-document-id)))
                     "Regular document should be writable")))))))))
 
 (deftest mixed-collection-types-permissions-superuser-test
@@ -203,17 +203,17 @@
                              :model/Document {regular-document-id :id} {:name "Regular Document"
                                                                         :document (text->prose-mirror-ast "Regular content")
                                                                         :collection_id regular-coll-id}]
-                (is (false? (mi/can-write? (t2/select-one :model/Card :id library-card-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Card 'id library-card-id)))
                     "Library card should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Card :id regular-card-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Card 'id regular-card-id)))
                     "Regular card should be writable")
-                (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id library-dashboard-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Dashboard 'id library-dashboard-id)))
                     "Library dashboard should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id regular-dashboard-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Dashboard 'id regular-dashboard-id)))
                     "Regular dashboard should be writable")
-                (is (false? (mi/can-write? (t2/select-one :model/Document :id library-document-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Document 'id library-document-id)))
                     "Library document should not be writable")
-                (is (true? (mi/can-write? (t2/select-one :model/Document :id regular-document-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Document 'id regular-document-id)))
                     "Regular document should be writable")))))))))
 
 (deftest remote-synced-collection-itself-permissions-test
@@ -223,14 +223,14 @@
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta))
-          (is (false? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
+          (is (false? (mi/can-write? (t2/select-one :model/Collection 'id library-coll-id)))
               "Library collection itself should not be writable when remote-sync-type is read-only"))))
     (testing "When remote-sync-type is read-write"
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta)
-            (is (true? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
+            (is (true? (mi/can-write? (t2/select-one :model/Collection 'id library-coll-id)))
                 "Library collection itself should be writable when remote-sync-type is read-write")))))
     (testing "Regular collections are always writable regardless of remote-sync-type"
       (doseq [remote-sync-setting [:read-only :read-write]]
@@ -238,7 +238,7 @@
           (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                                   :type nil}]
             (mt/with-current-user (mt/user->id :rasta)
-              (is (true? (mi/can-write? (t2/select-one :model/Collection :id regular-coll-id)))
+              (is (true? (mi/can-write? (t2/select-one :model/Collection 'id regular-coll-id)))
                   (str "Regular collection should always be writable when remote-sync-type is " remote-sync-setting)))))))))
 
 ;;; ------------------------------------------------ Tenant Collection Remote Sync Tests ------------------------------------------------
@@ -250,7 +250,7 @@
                                          settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
                                                                :namespace collections/shared-tenant-ns}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-coll-id)]
             (testing "remote-synced-collection? returns false for tenant collections by default"
               (is (false? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should NOT be remote-synced by default"))
@@ -267,7 +267,7 @@
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
                                                                :namespace collections/shared-tenant-ns
                                                                :is_remote_synced true}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-coll-id)]
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
@@ -284,7 +284,7 @@
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
                                                                :namespace collections/shared-tenant-ns
                                                                :is_remote_synced true}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
+          (let [tenant-coll (t2/select-one :model/Collection 'id tenant-coll-id)]
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
@@ -305,8 +305,8 @@
                                                                 :namespace collections/shared-tenant-ns
                                                                 :location (format "/%d/" parent-tenant-id)
                                                                 :is_remote_synced true}]
-          (let [parent-coll (t2/select-one :model/Collection :id parent-tenant-id)
-                child-coll (t2/select-one :model/Collection :id child-tenant-id)]
+          (let [parent-coll (t2/select-one :model/Collection 'id parent-tenant-id)
+                child-coll (t2/select-one :model/Collection 'id child-tenant-id)]
             (testing "Parent tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? parent-coll))
                   "Parent tenant collection should be remote-synced"))
@@ -334,9 +334,9 @@
                                                                   :namespace collections/shared-tenant-ns
                                                                   :is_remote_synced false}
                        :model/Collection {regular-coll-id :id} {:name "Regular Collection"}]
-          (let [remote-synced-tenant (t2/select-one :model/Collection :id remote-synced-tenant-id)
-                regular-tenant (t2/select-one :model/Collection :id regular-tenant-id)
-                regular-coll (t2/select-one :model/Collection :id regular-coll-id)]
+          (let [remote-synced-tenant (t2/select-one :model/Collection 'id remote-synced-tenant-id)
+                regular-tenant (t2/select-one :model/Collection 'id regular-tenant-id)
+                regular-coll (t2/select-one :model/Collection 'id regular-coll-id)]
             (testing "Remote-synced tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? remote-synced-tenant))
                   "Remote-synced tenant collection should be remote-synced"))
@@ -370,7 +370,7 @@
                         {:is_published true
                          :collection_id library-coll-id})
             (try
-              (is (false? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+              (is (false? (mi/can-write? (t2/select-one :model/Table 'id (mt/id :venues))))
                   "Published table in remote-synced collection should not be writable when remote-sync-type is read-only")
               (finally
                 (t2/update! :model/Table (mt/id :venues)
@@ -388,7 +388,7 @@
                         {:is_published true
                          :collection_id library-coll-id})
             (try
-              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+              (is (true? (mi/can-write? (t2/select-one :model/Table 'id (mt/id :venues))))
                   "Published table in remote-synced collection should be writable when remote-sync-type is read-write")
               (finally
                 (t2/update! :model/Table (mt/id :venues)
@@ -406,7 +406,7 @@
                         {:is_published false
                          :collection_id library-coll-id})
             (try
-              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+              (is (true? (mi/can-write? (t2/select-one :model/Table 'id (mt/id :venues))))
                   "Unpublished table in remote-synced collection should be writable even when remote-sync-type is read-only")
               (finally
                 (t2/update! :model/Table (mt/id :venues)
@@ -426,7 +426,7 @@
                             {:is_published true
                              :collection_id regular-coll-id})
                 (try
-                  (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  (is (true? (mi/can-write? (t2/select-one :model/Table 'id (mt/id :venues))))
                       "Published table in regular collection should be writable regardless of remote-sync-type")
                   (finally
                     (t2/update! :model/Table (mt/id :venues)
@@ -448,7 +448,7 @@
                           {:is_published true
                            :collection_id library-coll-id})
               (try
-                (is (false? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                (is (false? (mi/can-write? (t2/select-one :model/Field 'id field-id)))
                     "Field on published table in remote-synced collection should not be writable when remote-sync-type is read-only")
                 (finally
                   (t2/update! :model/Table table-id
@@ -468,7 +468,7 @@
                           {:is_published true
                            :collection_id library-coll-id})
               (try
-                (is (true? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                (is (true? (mi/can-write? (t2/select-one :model/Field 'id field-id)))
                     "Field on published table in remote-synced collection should be writable when remote-sync-type is read-write")
                 (finally
                   (t2/update! :model/Table table-id
@@ -493,7 +493,7 @@
                 (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
                                                                 :table_id table-id
                                                                 :definition {}}]
-                  (is (false? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                  (is (false? (mi/can-write? (t2/select-one :model/Segment 'id segment-id)))
                       "Segment on published table in remote-synced collection should not be writable when remote-sync-type is read-only"))
                 (finally
                   (t2/update! :model/Table table-id
@@ -516,7 +516,7 @@
                 (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
                                                                 :table_id table-id
                                                                 :definition {}}]
-                  (is (true? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                  (is (true? (mi/can-write? (t2/select-one :model/Segment 'id segment-id)))
                       "Segment on published table in remote-synced collection should be writable when remote-sync-type is read-write"))
                 (finally
                   (t2/update! :model/Table table-id
@@ -536,7 +536,7 @@
                            :collection_id library-coll-id})
               (try
                 ;; Pass the table directly to can-create? so it uses the updated values
-                (let [table (t2/select-one :model/Table :id table-id)]
+                (let [table (t2/select-one :model/Table 'id table-id)]
                   (is (false? (mi/can-create? :model/Segment {:table_id table-id
                                                               :table table
                                                               :name "New Segment"
@@ -567,7 +567,7 @@
                                                                      :type "table"
                                                                      :schema "public"
                                                                      :name "target_table"}}]
-          (is (true? (mi/can-read? (t2/select-one :model/Transform :id transform-id)))
+          (is (true? (mi/can-read? (t2/select-one :model/Transform 'id transform-id)))
               "Superuser should be able to read transforms"))))))
 
 (deftest transform-non-superuser-cannot-read-test
@@ -586,7 +586,7 @@
                                                                      :type "table"
                                                                      :schema "public"
                                                                      :name "target_table"}}]
-          (is (false? (mi/can-read? (t2/select-one :model/Transform :id transform-id)))
+          (is (false? (mi/can-read? (t2/select-one :model/Transform 'id transform-id)))
               "Non-superuser should not be able to read transforms"))))))
 
 (deftest transform-globally-read-only-when-remote-sync-enabled-test
@@ -607,7 +607,7 @@
                                                                        :type "table"
                                                                        :schema "public"
                                                                        :name "target_table"}}]
-            (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+            (is (false? (mi/can-write? (t2/select-one :model/Transform 'id transform-id)))
                 "All transforms should be read-only when remote-sync is enabled and type is read-only")))))))
 
 (deftest transform-writable-when-remote-sync-read-write-test
@@ -628,7 +628,7 @@
                                                                        :type "table"
                                                                        :schema "public"
                                                                        :name "target_table"}}]
-            (is (true? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+            (is (true? (mi/can-write? (t2/select-one :model/Transform 'id transform-id)))
                 "Transforms should be writable when remote-sync-type is read-write")))))))
 
 (deftest transform-writable-when-remote-sync-disabled-test
@@ -650,7 +650,7 @@
                                                                        :type "table"
                                                                        :schema "public"
                                                                        :name "target_table"}}]
-            (is (true? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+            (is (true? (mi/can-write? (t2/select-one :model/Transform 'id transform-id)))
                 "Transforms should be writable when remote-sync is not enabled")))))))
 
 (deftest transform-creation-blocked-in-read-only-mode-test
@@ -710,7 +710,7 @@
                                                                        :type "table"
                                                                        :schema "public"
                                                                        :name "target_table"}}]
-            (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
+            (is (false? (mi/can-write? (t2/select-one :model/Transform 'id transform-id)))
                 "Non-superuser should not be able to write transforms even when remote-sync-type is read-write")))))))
 
 (deftest transform-write-endpoints-return-403-in-read-only-remote-sync-test
@@ -735,7 +735,7 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id)))))
           (testing "transform is untouched"
-            (is (= "Read-only Transform" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
+            (is (= "Read-only Transform" (t2/select-one-fn :name :model/Transform 'id transform-id)))))))))
 
 (deftest transform-non-superuser-cannot-create-test
   (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"

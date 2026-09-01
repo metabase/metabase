@@ -177,11 +177,11 @@
                                                (conj gids group-id)])
                                             [#{} #{}]))
           group-id->tenant? (t2/select-pk->fn (comp boolean :is_tenant_group)
-                                              [:model/PermissionsGroup :id :is_tenant_group]
-                                              :id [:in group-ids])
+                                              [:model/PermissionsGroup 'id 'is_tenant_group]
+                                              'id ['in group-ids])
           user-id->tenant? (t2/select-pk->fn (comp (complement nil?) :tenant_id)
-                                             [:model/User :id :tenant_id]
-                                             :id [:in user-ids])
+                                             [:model/User 'id 'tenant_id]
+                                             'id ['in user-ids])
 
           bad-user-group-pairs (->> (keys user-id-group-id->is-group-manager?)
                                     (keep (fn [[user-id group-id]]
@@ -225,9 +225,9 @@
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+          (t2/update! :model/User 'id ['in new-admin-ids] {:is_superuser true}))
         (when (seq new-data-analyst-ids)
-          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
+          (t2/update! :model/User 'id ['in new-data-analyst-ids] {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create
@@ -258,10 +258,10 @@
     (let [user-id (u/the-id user-id-or-user)
           group-ids (map u/the-id group-ids-or-groups)
           memberships (t2/select :model/PermissionsGroupMembership
-                                 :user_id user-id
-                                 :group_id [:in group-ids])]
+                                 'user_id user-id
+                                 'group_id ['in group-ids])]
       (binding [*allow-direct-deletion* true]
-        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
+        (t2/delete! :model/PermissionsGroupMembership 'user_id user-id 'group_id ['in group-ids]))
       (doseq [membership memberships]
         (events/publish-event! :event/group-membership-delete {:object membership
                                                                :user-id api/*current-user-id*})))))
@@ -274,9 +274,9 @@
 (defn remove-all-users-from-group!
   "Removes all users from a group."
   [group-id]
-  (let [memberships (t2/select :model/PermissionsGroupMembership :group_id group-id)]
+  (let [memberships (t2/select :model/PermissionsGroupMembership 'group_id group-id)]
     (binding [*allow-direct-deletion* true]
-      (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+      (t2/delete! :model/PermissionsGroupMembership 'group_id group-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))
@@ -284,9 +284,9 @@
 (defn remove-user-from-all-groups!
   "Removes a user from all groups."
   [user-id]
-  (let [memberships (t2/select :model/PermissionsGroupMembership :user_id user-id)]
+  (let [memberships (t2/select :model/PermissionsGroupMembership 'user_id user-id)]
     (binding [*allow-direct-deletion* true]
-      (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
+      (t2/delete! :model/PermissionsGroupMembership 'user_id user-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))

@@ -283,7 +283,7 @@
          :channel-id channel-id
          :slack-thread-ts thread-ts
          :slack-msg-id "1712785577.123456"))
-      (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+      (let [conversation (t2/select-one :model/MetabotConversation 'id conversation-id)]
         (is (= (mt/user->id :rasta) (:user_id conversation)))
         (is (= team-id (:slack_team_id conversation)))
         (is (= channel-id (:slack_channel_id conversation)))
@@ -382,10 +382,10 @@
            :slack-thread-ts thread-ts
            :slack-msg-id slack-msg-id
            :user-id user-id))
-        (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)
+        (let [conversation (t2/select-one :model/MetabotConversation 'id conversation-id)
               [user-msg
                asst-msg]   (t2/select :model/MetabotMessage
-                                      :conversation_id conversation-id
+                                      'conversation_id conversation-id
                                       {:order-by [[:created_at :asc] [:id :asc]]})]
           (is (= user-id (:user_id conversation)))
           (is (= team-id (:slack_team_id conversation)))
@@ -420,7 +420,7 @@
            :slack-team-id "T-SECOND"
            :channel-id "C-SECOND"
            :slack-thread-ts "1700000000.999999"))
-        (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+        (let [conversation (t2/select-one :model/MetabotConversation 'id conversation-id)]
           (is (= "T-FIRST" (:slack_team_id conversation)))
           (is (= "C-FIRST" (:slack_channel_id conversation)))
           (is (= "1700000000.000001" (:slack_thread_ts conversation))))))))
@@ -434,7 +434,7 @@
           (let [{:keys [assistant-msg-id assistant-external-id]}
                 (metabot-persistence/start-turn!
                  conversation-id "internal" {:role "user" :content "hi"})
-                rows (t2/select :model/MetabotMessage :conversation_id conversation-id
+                rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
                                 {:order-by [[:created_at :asc] [:id :asc]]})]
             (is (pos-int? assistant-msg-id))
             (is (string? assistant-external-id))
@@ -464,7 +464,7 @@
                                               :usage {:promptTokens 10 :completionTokens 5}}])
                 row                        (t2/select-one :model/MetabotMessage assistant-msg-id)
                 rows                       (t2/select :model/MetabotMessage
-                                                      :conversation_id conversation-id)]
+                                                      'conversation_id conversation-id)]
             (is (= 2 (count rows))                 "no extra row inserted on finalize")
             (is (= created-at-before (:created_at row)) "created_at is not changed on UPDATE")
             (is (true? (:finished row))            "default :finished? is true")
@@ -523,7 +523,7 @@
               (metabot-persistence/finalize-assistant-turn!
                b-pk
                [{:type :text :text "reply-B"}])
-              (let [rows (t2/select :model/MetabotMessage :conversation_id conversation-id
+              (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
                                     {:order-by [[:created_at :asc] [:id :asc]]})]
                 (is (= [:user :assistant :user :assistant] (mapv :role rows)))
                 (is (= ["A" "partial-A" "B" "reply-B"]
@@ -538,7 +538,7 @@
           (metabot-persistence/start-turn!
            conversation-id "internal" {:role "user" :content "hi"}))
         (let [[u a] (t2/select :model/MetabotMessage
-                               :conversation_id conversation-id
+                               'conversation_id conversation-id
                                {:order-by [[:id :asc]]})]
           (is (= :user      (:role u)))
           (is (= :assistant (:role a)))
@@ -706,7 +706,7 @@
             (is (string? user-external-id))
             (is (= user-external-id
                    (t2/select-one-fn :external_id :model/MetabotMessage
-                                     :conversation_id conversation-id :role "user")))))))))
+                                     'conversation_id conversation-id 'role "user")))))))))
 
 (deftest start-turn-honors-client-minted-external-ids-test
   (testing "start-turn! persists the turn's rows under client-supplied external ids"
@@ -722,7 +722,7 @@
                  :assistant-external-id assistant-id)))
         (is (= {:user user-id :assistant assistant-id}
                (t2/select-fn->fn :role :external_id :model/MetabotMessage
-                                 :conversation_id conversation-id)))))))
+                                 'conversation_id conversation-id)))))))
 
 (deftest retry-turn-honors-client-minted-external-id-test
   (testing "retry-turn! inserts the fresh placeholder under a client-supplied external id"
@@ -733,7 +733,7 @@
             _        (metabot-persistence/finalize-assistant-turn!
                       a-pk [{:type :text :text "reply"}])
             user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                       :conversation_id conversation-id :role "user")
+                                       'conversation_id conversation-id 'role "user")
             retry-id (str (random-uuid))]
         (is (= retry-id
                (:assistant-external-id
@@ -776,7 +776,7 @@
                 _        (metabot-persistence/finalize-assistant-turn!
                           a-pk [{:type :text :text "reply"}])
                 user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                           :conversation_id conversation-id :role "user")
+                                           'conversation_id conversation-id 'role "user")
                 {:keys [assistant-msg-id assistant-external-id user-external-id]}
                 (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                                  :delete-message-ids [a-pk])]
@@ -788,7 +788,7 @@
                       (t2/select-one :model/MetabotMessage a-pk))))
             (testing "prompt row stays live"
               (is (=? {:deleted_at nil}
-                      (t2/select-one :model/MetabotMessage :external_id user-ext))))
+                      (t2/select-one :model/MetabotMessage 'external_id user-ext))))
             (testing "fresh placeholder is the new leaf"
               (is (=? {:finished nil :data [] :deleted_at nil}
                       (t2/select-one :model/MetabotMessage assistant-msg-id)))
@@ -822,7 +822,7 @@
                            :finished        true
                            :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
                 user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                           :conversation_id conversation-id :role "user")]
+                                           'conversation_id conversation-id 'role "user")]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                              :delete-message-ids [a-pk extra-pk])
             (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage a-pk)))
@@ -840,11 +840,11 @@
                       a-pk []
                       :error {:message "boom"})
                 u-pk (t2/select-one-fn :id :model/MetabotMessage
-                                       :conversation_id conversation-id :role "user")]
+                                       'conversation_id conversation-id 'role "user")]
             (metabot-persistence/start-turn!
              conversation-id "internal" {:role "user" :content "replacement"}
              :delete-message-ids [u-pk a-pk])
-            (let [rows (t2/select :model/MetabotMessage :conversation_id conversation-id
+            (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
                                   {:order-by [[:created_at :asc] [:id :asc]]})
                   live (remove :deleted_at rows)]
               (is (= [:user :assistant] (mapv :role live)))
@@ -862,7 +862,7 @@
                 _ (metabot-persistence/soft-delete-messages! {:id a-pk} (mt/user->id :rasta))
                 {:keys [assistant-external-id]}
                 (metabot-persistence/retry-turn! conversation-id "internal" user-ext)
-                rows (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+                rows (t2/select :model/MetabotMessage 'conversation_id conversation-id)]
             (is (= [a-pk] (map :id (filter :deleted_at rows)))
                 "retry soft-deleted nothing new")
             (is (= assistant-external-id
@@ -1127,7 +1127,7 @@
            (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id))))
         (is (=? [{:message_id assistant-msg-id
                   :table_id table-id}]
-                (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))
+                (t2/select :model/MetabotUsedTable 'message_id assistant-msg-id)))))))
 
 (deftest finalize-records-used-tables-in-background-test
   (testing "with the default (non-synchronous) path, finalize-assistant-turn! eventually records used tables on the background worker"
@@ -1147,11 +1147,11 @@
           (is (=? [{:message_id assistant-msg-id
                     :table_id   table-id}]
                   (tu/poll-until 5000
-                                 (seq (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))
+                                 (seq (t2/select :model/MetabotUsedTable 'message_id assistant-msg-id)))))
           (finally
             ;; CASCADE from metabot_message cleans up the used-table row.
-            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
-            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
+            (t2/delete! :model/MetabotMessage 'conversation_id conversation-id)
+            (t2/delete! :model/MetabotConversation 'id conversation-id)))))))
 
 (defn- ->transform-python-parts
   "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table.
@@ -1213,7 +1213,7 @@
            (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id))))
         (is (=? [{:message_id assistant-msg-id
                   :table_id   table-id}]
-                (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))
+                (t2/select :model/MetabotUsedTable 'message_id assistant-msg-id)))))))
 
 (deftest finalize-records-used-tables-for-sql-transform-test
   (testing "finalize-assistant-turn! parses the SQL transform's native query."
@@ -1231,7 +1231,7 @@
              (into [{:type :text :text "ok"}]
                    (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders")))))
         (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
-                (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))
+                (t2/select :model/MetabotUsedTable 'message_id assistant-msg-id)))))))
 
 (deftest finalize-records-nothing-without-query-tools-test
   (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"
@@ -1253,7 +1253,7 @@
             {:type      :tool-output
              :id        "n1"
              :result    {:output "ok"}}]))
-        (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id)))))))
+        (is (zero? (t2/count :model/MetabotUsedTable 'message_id assistant-msg-id)))))))
 
 (deftest insert-failure-does-not-fail-finalize-test
   (testing "a failed used-table INSERT is logged and finalize still completes"
@@ -1389,7 +1389,7 @@
       (let [conversation-id (str (random-uuid))]
         (seed-turn! conversation-id "question" [{:type :text :text "old answer"}])
         (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                         :conversation_id conversation-id :role "user")
+                                         'conversation_id conversation-id 'role "user")
               {:keys [assistant-msg-id]} (metabot-persistence/retry-turn!
                                           conversation-id "internal" user-ext)]
           (testing "before finalize, only prior (pre-retry-prompt) turns are present"
@@ -1461,7 +1461,7 @@
                                :turn-state {:queries {"q2" {:database 2}}})]
         (is (= {:queries {:q2 {:database 2}}}
                (t2/select-one-fn :state :model/MetabotMessage msg-id)))
-        (is (nil? (t2/select-one-fn :state :model/MetabotConversation :id conversation-id)))))))
+        (is (nil? (t2/select-one-fn :state :model/MetabotConversation 'id conversation-id)))))))
 
 (deftest finalize-skips-empty-turn-state-test
   (testing "a turn that produced no state leaves the row's state NULL"
@@ -1481,8 +1481,8 @@
         (let [two-pk (seed-turn! conversation-id "two" [] :turn-state {:todos [{:id "b"}]})]
           (is (= {:todos [{:id "b"}]} (cstate)))
           (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                           :conversation_id conversation-id
-                                           :role "user"
+                                           'conversation_id conversation-id
+                                           'role "user"
                                            {:order-by [[:created_at :desc] [:id :desc]]})]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                              :delete-message-ids [two-pk])

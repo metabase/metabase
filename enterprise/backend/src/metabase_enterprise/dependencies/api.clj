@@ -372,7 +372,7 @@
                        (keep #(when (= (first %) :card)
                                 (second %))))
         card->type (when (seq all-cards)
-                     (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
+                     (t2/select-fn->fn :id :type [:model/Card 'id 'type 'card_schema] 'id ['in all-cards]))]
     (update-vals children-map
                  (fn [children]
                    (->> children
@@ -460,7 +460,7 @@
                   (when (seq entity-ids)
                     (let [model (deps.dependency-types/dependency-type->model entity-type)
                           fields (entity-select-fields entity-type)]
-                      (->> (t2/select (into [model] fields) :id [:in entity-ids])
+                      (->> (t2/select (into [model] fields) 'id ['in entity-ids])
                            (hydrate-entities entity-type)
                            (map (fn [entity]
                                   [[entity-type (:id entity)] entity])))))))
@@ -743,8 +743,8 @@
                           (case entity-type
                             (:card :dashboard :document :snippet)
                             (let [personal-ids (t2/select-pks-vec :model/Collection
-                                                                  :personal_owner_id [:not= nil]
-                                                                  :location "/")]
+                                                                  'personal_owner_id ['not= nil]
+                                                                  'location "/")]
                               (when (seq personal-ids)
                                 {:filter [:or
                                           [:= :entity.collection_id nil]
@@ -957,7 +957,7 @@
         fetch-entity (fn [entity-type entity-id]
                        (let [model (deps.dependency-types/dependency-type->model entity-type)
                              fields (entity-select-fields entity-type)]
-                         (t2/select-one (into [model] fields) :id entity-id)))
+                         (t2/select-one (into [model] fields) 'id entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
                            (when-let [entity (fetch-entity entity-type entity-id)]

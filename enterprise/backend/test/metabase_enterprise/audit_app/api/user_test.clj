@@ -43,10 +43,10 @@
                                                                          :recipients [{:type :notification-recipient/user
                                                                                        :user_id user-id}]}]}]
             (letfn [(describe-objects []
-                      {:num-subscriptions                (+ (t2/count :model/PulseChannelRecipient :user_id user-id)
-                                                            (t2/count :model/NotificationRecipient :user_id user-id))
+                      {:num-subscriptions                (+ (t2/count :model/PulseChannelRecipient 'user_id user-id)
+                                                            (t2/count :model/NotificationRecipient 'user_id user-id))
                        :alert-archived?                  (t2/select-one-fn (comp not :active) :model/Notification (:id alert))
-                       :dashboard-subscription-archived? (t2/select-one-fn :archived :model/Pulse :id dash-sub-id)})
+                       :dashboard-subscription-archived? (t2/select-one-fn :archived :model/Pulse 'id dash-sub-id)})
                     (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
                       (mt/user-http-request request-user-name-or-id
                                             :delete expected-status-code

@@ -25,7 +25,7 @@
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
         (finally
-          (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+          (t2/delete! :model/FieldValues 'field_id field-id 'type :advanced))))))
 
 (deftest refingerprint-skipped-for-sandboxed-user-test
   (testing "Metabot must not compute or return a fingerprint for a sandboxed user: fingerprints are global
@@ -34,7 +34,7 @@
     (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
       (let [field-id    (mt/id :categories :name)
             table-id    (mt/id :categories)
-            original-fp (t2/select-one-fn :fingerprint :model/Field :id field-id)]
+            original-fp (t2/select-one-fn :fingerprint :model/Field 'id field-id)]
         (try
           ;; Clear the fingerprint -- pre-#436 (and pre this fix, for this call site) this would have
           ;; forced an unsandboxed on-demand refingerprint via get-or-create-fingerprint!.
@@ -44,7 +44,7 @@
             (testing "no fingerprint statistics are returned to the sandboxed user"
               (is (nil? (get-in result [:structured-output :value_metadata :statistics]))))
             (testing "no fingerprint was computed or saved to the shared Field row"
-              (is (nil? (t2/select-one-fn :fingerprint :model/Field :id field-id)))))
+              (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id field-id)))))
           (finally
             (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
 
@@ -54,7 +54,7 @@
     (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
       (let [field-id (mt/id :categories :name)
             table-id (mt/id :categories)]
-        (is (some? (t2/select-one-fn :fingerprint :model/Field :id field-id))
+        (is (some? (t2/select-one-fn :fingerprint :model/Field 'id field-id))
             "precondition: the field already has a fingerprint")
         (let [result (metabot.tools.field-stats/field-values
                       {:entity-type "table", :entity-id table-id, :field-id field-id})]
@@ -98,7 +98,7 @@
          :attributes     {"impersonation_attr" "impersonation_role"}}
         (let [field-id    (mt/id :venues :price)
               table-id    (mt/id :venues)
-              original-fp (t2/select-one-fn :fingerprint :model/Field :id field-id)]
+              original-fp (t2/select-one-fn :fingerprint :model/Field 'id field-id)]
           (is (some? original-fp) "precondition: the field already has a fingerprint")
           (testing "an existing fingerprint is withheld"
             (let [result (metabot.tools.field-stats/field-values
@@ -109,7 +109,7 @@
               (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
               (metabot.tools.field-stats/field-values
                {:entity-type "table", :entity-id table-id, :field-id field-id})
-              (is (nil? (t2/select-one-fn :fingerprint :model/Field :id field-id)))
+              (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id field-id)))
               (finally
                 (t2/update! :model/Field field-id {:fingerprint original-fp})))))))))
 
@@ -132,7 +132,7 @@
             (t2/update! :model/Field (:id field) {:fingerprint nil :fingerprint_version 0})
             (metabot.tools.field-stats/field-values
              {:entity-type "table", :entity-id (:id table), :field-id (:id field)})
-            (is (nil? (t2/select-one-fn :fingerprint :model/Field :id (:id field))))))))))
+            (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id (:id field))))))))))
 
 (deftest fingerprint-returned-for-unrestricted-user-test
   (testing "A non-sandboxed, non-impersonated, non-routed user still gets fingerprint statistics -- this
@@ -140,7 +140,7 @@
     (mt/as-admin
       (let [field-id (mt/id :categories :name)
             table-id (mt/id :categories)]
-        (is (some? (t2/select-one-fn :fingerprint :model/Field :id field-id))
+        (is (some? (t2/select-one-fn :fingerprint :model/Field 'id field-id))
             "precondition: the field already has a fingerprint")
         (let [result (metabot.tools.field-stats/field-values
                       {:entity-type "table", :entity-id table-id, :field-id field-id})]

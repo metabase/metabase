@@ -53,8 +53,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                     [(t2/select-one :model/Field :id (mt/id :venues :name))]
+           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table 'id (mt/id :venues))
+                                                     [(t2/select-one :model/Field 'id (mt/id :venues :name))]
                                                      (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -69,7 +69,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (t2/select-one :model/Table :id (mt/id :venues)))))]
+                                                                 (t2/select-one :model/Table 'id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)

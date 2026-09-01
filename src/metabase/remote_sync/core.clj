@@ -72,8 +72,8 @@
     (let [collection-ids (into #{} (keep :collection_id) instances)
           remote-synced-coll-ids (when (seq collection-ids)
                                    (t2/select-pks-set :model/Collection
-                                                      :id [:in collection-ids]
-                                                      :is_remote_synced true))]
+                                                      'id ['in collection-ids]
+                                                      'is_remote_synced true))]
       (into {}
             (map (fn [inst]
                    [(:id inst)

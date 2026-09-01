@@ -258,7 +258,7 @@
   [card-or-question :- [:map
                         [:dataset_query ::ads/query]]]
   (when-let [source-card-id (source-card-id card-or-question)]
-    (t2/select-one :model/Card :id source-card-id)))
+    (t2/select-one :model/Card 'id source-card-id)))
 
 (mu/defn- table-like?
   [{query :dataset_query, :as _card-or-question} :- [:map
@@ -408,9 +408,9 @@
   [table]
   (let [fields (field/with-targets
                  (t2/select :model/Field
-                            :table_id           (u/the-id table)
-                            :fk_target_field_id [:not= nil]
-                            :active             true))]
+                            'table_id           (u/the-id table)
+                            'fk_target_field_id ['not= nil]
+                            'active             true))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
     (for [{:keys [id target]} fields
           :when (some-> target mi/can-read?)]
@@ -420,7 +420,7 @@
   (let [db-id (or ((some-fn :db_id :database_id) source)
                   (throw (ex-info "Source is missing Database ID"
                                   {:source source})))]
-    (t2/select-one :model/Database :id db-id)))
+    (t2/select-one :model/Database 'id db-id)))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."
@@ -428,10 +428,10 @@
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
       (comp (->> (-> (t2/select :model/Field
-                                :table_id [:in (map u/the-id tables)]
-                                :visibility_type "normal"
-                                :preview_display true
-                                :active true)
+                                'table_id ['in (map u/the-id tables)]
+                                'visibility_type "normal"
+                                'preview_display true
+                                'active true)
                      (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
                  field/with-targets
                  (map #(assoc % :db db))
@@ -935,7 +935,7 @@
   Filters out tables that are link-tables"
   [clauses]
   (->>
-   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+   (t2/select [:model/Table 'id 'schema 'display_name 'entity_type 'db_id
                [:ts.count :num-fields]
                [[:and
                  [:>= :ts.count 2]

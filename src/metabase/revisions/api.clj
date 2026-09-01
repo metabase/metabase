@@ -35,7 +35,7 @@
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it
     (t2.model/resolve-model model)
-    [model (t2/select-one model :id id)]))
+    [model (t2/select-one model 'id id)]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -65,13 +65,13 @@
 (defn- stored-card-references
   [model id]
   (let [parameter-cards (set (t2/select-fn-vec :card_id :model/ParameterCard
-                                               :parameterized_object_type (if (= model :model/Dashboard)
+                                               'parameterized_object_type (if (= model :model/Dashboard)
                                                                             "dashboard"
                                                                             "card")
-                                               :parameterized_object_id   id))]
+                                               'parameterized_object_id   id))]
     (if (= model :model/Dashboard)
       (into parameter-cards
-            (concat (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id id)
+            (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id id)
                     (t2/select-fn-vec :card_id :model/DashboardCardSeries
                                       {:where [:in :dashboardcard_id
                                                ^:allow-subquery {:select [:id]
@@ -95,7 +95,7 @@
                              mapping)
             card-ids       (into #{} (keep :card_id) mappings)
             card-id->query (when (seq card-ids)
-                             (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))]
+                             (t2/select-pk->fn :dataset_query :model/Card 'id ['in card-ids]))]
         (into [] (keep (fn [{:keys [target card_id]}]
                          (resolve-target target (card-id->query card_id))))
               mappings))
@@ -123,7 +123,7 @@
                                                      [:revision_id ms/PositiveInt]]]
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision-id))]
+        revision         (api/check-404 (t2/select-one :model/Revision 'model (name model), 'model_id id, 'id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards

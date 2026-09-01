@@ -65,8 +65,8 @@
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
   (->> (t2/select :model/RecentViews
-                  :user_id user-id
-                  :context context
+                  'user_id user-id
+                  'context context
                   {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
@@ -158,7 +158,7 @@
                                       :context (name context)})
       (let [prune-ids (ids-to-prune user-id context)]
         (when (seq prune-ids)
-          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
+          (t2/delete! :model/RecentViews 'id ['in prune-ids]))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."

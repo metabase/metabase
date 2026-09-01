@@ -322,7 +322,7 @@
                            :subject "Your Slack connection stopped working",
                            :body [{"Your Slack connection stopped working." true}]}
                           (-> recipient->emails (get "crowberto@metabase.com") first)))
-                  (is (= (t2/select-fn-set :email :model/User :is_superuser true)
+                  (is (= (t2/select-fn-set :email :model/User 'is_superuser true)
                          (set (keys recipient->emails)))))
                 (is (false? (channel.settings/slack-token-valid?))))))
           (testing "If `slack-token-valid?` is already false, no email should be sent"

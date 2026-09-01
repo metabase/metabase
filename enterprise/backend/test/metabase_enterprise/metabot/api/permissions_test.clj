@@ -77,8 +77,8 @@
             (is (= "yes" (get (by-type perms-a) "permission/metabot-sql-generation")))
             (is (= "yes" (get (by-type perms-a) "permission/metabot-nlq")))
             (is (= "yes" (get (by-type perms-b) "permission/metabot-other-tools")))
-            (is (= 1 (t2/count :model/MetabotPermissions :group_id group-a
-                               :perm_type :permission/metabot-sql-generation))))))
+            (is (= 1 (t2/count :model/MetabotPermissions 'group_id group-a
+                               'perm_type :permission/metabot-sql-generation))))))
       (testing "returns full permissions for all groups with defaults filled in"
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
@@ -224,7 +224,7 @@
               (mt/user-http-request :crowberto :delete 500 "ee/ai-controls/permissions/advanced"))
             (is (true? (metabot-settings/metabot-advanced-permissions))
                 "the cached mode goes back to the one the database still holds")
-            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+            (is (t2/exists? :model/MetabotPermissions 'group_id group-id)
                 "the rows the switch would have deleted are rolled back with it")))))))
 
 (deftest mode-switch-rejected-under-env-var-test
@@ -239,5 +239,5 @@
             (let [msg "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable."]
               (is (= msg (mt/user-http-request :crowberto :delete 400 "ee/ai-controls/permissions/advanced")))
               (is (= msg (mt/user-http-request :crowberto :post 400 "ee/ai-controls/permissions/advanced"))))
-            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+            (is (t2/exists? :model/MetabotPermissions 'group_id group-id)
                 "no rows are deleted by the refused switch")))))))

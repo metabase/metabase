@@ -433,7 +433,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (t2/select [:model/Table :name] :db_id (u/the-id database)))))))))))
+                        (t2/select [:model/Table 'name] 'db_id (u/the-id database)))))))))))
 
 (defn- do-with-dynamic-table!
   [thunk]
@@ -465,12 +465,12 @@
       (with-dynamic-table!
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
-                 (t2/select-fn-set :name :model/Table :db_id (mt/id))))
+                 (t2/select-fn-set :name :model/Table 'db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
                      {:name "id" :base_type :type/BigInteger}}
-                   (set (t2/select-fn-set identity [:model/Field :name :base_type]
-                                          :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+                   (set (t2/select-fn-set identity [:model/Field 'name 'base_type]
+                                          'table_id (t2/select-one-pk :model/Table 'name "metabase_fan" 'db_id (mt/id))))))))))))
 
 (deftest dynamic-table-helpers-test
   (testing "test to make sure various methods called on dynamic tables work"
@@ -481,9 +481,9 @@
          (mt/db)
          nil
          (fn [conn]
-           (let [dynamic-table (or (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
+           (let [dynamic-table (or (t2/select-one :model/Table 'name "metabase_fan" 'db_id (mt/id))
                                    (throw (ex-info "Failed to find dynamic table" {:database-id (mt/id)})))
-                 normal-table  (or (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+                 normal-table  (or (t2/select-one :model/Table 'name "metabase_users" 'db_id (mt/id))
                                    (throw (ex-info "Failed to find normal table" {:database-id (mt/id)})))
                  db-name       (-> (mt/db) :details :db)]
              (testing "dynamic-table?"
@@ -595,9 +595,9 @@
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             ;; step 2: sync — Metabase creates Table + Field rows for our new table
             (sync/sync-database! (mt/db))
-            (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+            (let [original-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)
                   _              (is (some? original-table) "table should be synced")
-                  original-field (t2/select-one :model/Field :table_id (:id original-table) :name "text_column")]
+                  original-field (t2/select-one :model/Field 'table_id (:id original-table) 'name "text_column")]
               (testing "sanity check: text_column is text"
                 (is (=? {:base_type      :type/Text
                          :effective_type :type/Text}
@@ -608,7 +608,7 @@
                                  qualified qualified)])
               ;; step 4: sync again
               (sync/sync-database! (mt/db))
-              (let [new-field (t2/select-one :model/Field :id (:id original-field))]
+              (let [new-field (t2/select-one :model/Field 'id (:id original-field))]
                 (testing "after sync, base_type and effective_type both reflect the new numeric column,
                        and stale coercion/semantic type are cleared"
                   ;; TRY_TO_NUMBER with no precision returns NUMBER(38,0) -> :type/BigInteger
@@ -623,8 +623,8 @@
               ;; user observes the cast feature does not appear here — i.e. effective_type vs base_type
               ;; should be consistent and not stuck as text.)
               (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
-              (t2/delete! :model/Field :table_id (:id original-table))
-              (t2/delete! :model/Table :id (:id original-table)))
+              (t2/delete! :model/Field 'table_id (:id original-table))
+              (t2/delete! :model/Table 'id (:id original-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             (sync/sync-database! (mt/db))
@@ -632,8 +632,8 @@
                                     "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
                                qualified qualified)])
             (sync/sync-database! (mt/db))
-            (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-                  fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
+            (let [fresh-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)
+                  fresh-field (t2/select-one :model/Field 'table_id (:id fresh-table) 'name "text_column")]
               (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
                      both reflect the new numeric column"
                 ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Number on Snowflake
@@ -648,13 +648,13 @@
               ;; and reset effective_type to match the new base_type. If sync leaves the coercion
               ;; sticky, effective_type will diverge from base_type — the observable GHY-3388 symptom.
               (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
-              (t2/delete! :model/Field :table_id (:id fresh-table))
-              (t2/delete! :model/Table :id (:id fresh-table)))
+              (t2/delete! :model/Field 'table_id (:id fresh-table))
+              (t2/delete! :model/Table 'id (:id fresh-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             (sync/sync-database! (mt/db))
-            (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-                  pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
+            (let [pre-coerce-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)
+                  pre-coerce-field (t2/select-one :model/Field 'table_id (:id pre-coerce-table) 'name "text_column")]
               ;; user enables coercion: this TEXT column is really an integer
               (t2/update! :model/Field (:id pre-coerce-field)
                           {:coercion_strategy :Coercion/String->Integer
@@ -663,7 +663,7 @@
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
               (sync/sync-database! (mt/db))
-              (let [after-field (t2/select-one :model/Field :id (:id pre-coerce-field))]
+              (let [after-field (t2/select-one :model/Field 'id (:id pre-coerce-field))]
                 (testing "after the underlying TEXT column becomes a native number, the previously
                        user-set coercion strategy should be cleared and effective_type should
                        match the new base_type"
@@ -679,14 +679,14 @@
             ;; field changes). v3 wrote only to metabase_field and so bypassed this
             ;; overlay; v4 exercises the real UI cast-toggle path.
             (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
-            (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
-              (t2/delete! :model/Field :table_id (:id stale-table))
-              (t2/delete! :model/Table :id (:id stale-table)))
+            (when-let [stale-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)]
+              (t2/delete! :model/Field 'table_id (:id stale-table))
+              (t2/delete! :model/Table 'id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             (sync/sync-database! (mt/db))
-            (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-                  v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
+            (let [v4-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)
+                  v4-field (t2/select-one :model/Field 'table_id (:id v4-table) 'name "text_column")]
               (field-user-settings/upsert-user-settings v4-field
                                                         {:coercion_strategy :Coercion/String->Integer
                                                          :effective_type    :type/Integer})
@@ -697,8 +697,8 @@
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
               (sync/sync-database! (mt/db))
-              (let [after-field         (t2/select-one :model/Field :id (:id v4-field))
-                    after-user-settings (t2/select-one :model/FieldUserSettings :field_id (:id v4-field))]
+              (let [after-field         (t2/select-one :model/Field 'id (:id v4-field))
+                    after-user-settings (t2/select-one :model/FieldUserSettings 'field_id (:id v4-field))]
                 (testing "after CREATE OR REPLACE to numeric, the user-set coercion stored in
                        metabase_field_user_settings (via upsert-user-settings) should be
                        cleared so it doesn't overlay back on top of the synced field"
@@ -718,19 +718,19 @@
             ;; the OP's repro instructions said "Now sync the table" (singular), so this rules
             ;; out a code-path-specific bug at the entry point.
             (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
-            (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
-              (t2/delete! :model/Field :table_id (:id stale-table))
-              (t2/delete! :model/Table :id (:id stale-table)))
+            (when-let [stale-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)]
+              (t2/delete! :model/Field 'table_id (:id stale-table))
+              (t2/delete! :model/Table 'id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             (sync/sync-database! (mt/db))
-            (let [v5-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-                  v5-field (t2/select-one :model/Field :table_id (:id v5-table) :name "text_column")]
+            (let [v5-table (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)
+                  v5-field (t2/select-one :model/Field 'table_id (:id v5-table) 'name "text_column")]
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
               (sync/sync-table! v5-table)
-              (let [after-field (t2/select-one :model/Field :id (:id v5-field))]
+              (let [after-field (t2/select-one :model/Field 'id (:id v5-field))]
                 (testing "sync-table! (the per-table UI button) should also reset effective_type
                        when the underlying column type changes"
                   (is (=? {:base_type         :type/BigInteger
@@ -739,10 +739,10 @@
                            :semantic_type     nil}
                           after-field)))))
             (finally
-              (let [t (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+              (let [t (t2/select-one :model/Table 'db_id (mt/id) 'name table-name)]
                 (when t
-                  (u/ignore-exceptions (t2/delete! :model/Field :table_id (:id t)))
-                  (u/ignore-exceptions (t2/delete! :model/Table :id (:id t)))))
+                  (u/ignore-exceptions (t2/delete! :model/Field 'table_id (:id t)))
+                  (u/ignore-exceptions (t2/delete! :model/Table 'id (:id t)))))
               (u/ignore-exceptions
                 (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])))))))))
 
@@ -768,13 +768,13 @@
                          :database-is-nullable       false
                          :database-required          true
                          :json-unfolding             false}]}
-              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table 'id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
 (deftest ^:synchronized describe-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
-      (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
+      (let [table (t2/select-one [:model/Table 'schema 'name] 'id (mt/id :venues))]
         (is (= [{:fk-table-schema "PUBLIC"
                  :fk-table-name   "venues"
                  :fk-column-name  "category_id"
@@ -919,7 +919,7 @@
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
                 (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (when (not= (:id updated-secret) secret-id)
-                    (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
+                    (t2/update! :model/Secret 'id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
@@ -1001,9 +1001,9 @@
                        :details))
         ;; As the request is asynchronous, wait for sync to complete.
         (Thread/sleep 7000))
-      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
-            [table :as tables] (t2/select :model/Table :db_id (:id db))
-            fields             (t2/select :model/Field :table_id (:id table))]
+      (let [[db :as dbs]       (t2/select :model/Database 'name "Snowflake RSA test DB custom")
+            [table :as tables] (t2/select :model/Table 'db_id (:id db))
+            fields             (t2/select :model/Field 'table_id (:id table))]
         (testing "Created database is correctly synced"
           (testing "Application database contains one database, one table and one new field"
             (is (= 1 (count dbs)))
@@ -1017,8 +1017,8 @@
         ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Field 'id ['in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id ['in (map :id fields)]))))))
 
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
@@ -1049,9 +1049,9 @@
                        :details))
         ;; As the request is asynchronous, wait for sync to complete.
         (Thread/sleep 7000))
-      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
-            [table :as tables] (t2/select :model/Table :db_id (:id db))
-            fields             (t2/select :model/Field :table_id (:id table))]
+      (let [[db :as dbs]       (t2/select :model/Database 'name "Snowflake RSA test DB default")
+            [table :as tables] (t2/select :model/Table 'db_id (:id db))
+            fields             (t2/select :model/Field 'table_id (:id table))]
         (testing "Created database is correctly synced"
           (testing "Application database contains one database, one table and one new field"
             (is (= 1 (count dbs)))
@@ -1065,8 +1065,8 @@
         ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Field 'id ['in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id ['in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake

@@ -70,7 +70,7 @@
     :type          "query"
     :model_id      card-id
     :dataset_query (lib/native-query (mt/metadata-provider) "update users set name = 'foo' where id = {{x}}")
-    :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
+    :database_id   (t2/select-one-fn :database_id :model/Card 'id card-id)
     :parameters    [{:id "x" :type "number"}]}
    {:name       "Implicit example"
     :type       "implicit"
@@ -414,9 +414,9 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived :model/Action 'id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (t2/select-one-fn :archived :model/Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived :model/Action 'id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (=? {:errors {:name "string"},
@@ -560,7 +560,7 @@
             (mt/with-actions [{:keys [action-id]} unshared-action-opts]
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
-                (is (t2/exists? :model/Action :id action-id, :public_uuid uuid))
+                (is (t2/exists? :model/Action 'id action-id, 'public_uuid uuid))
                 (testing "Test that if an Action has already been shared we reuse the existing UUID"
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
@@ -602,7 +602,7 @@
             (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
-                     (t2/exists? :model/Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+                     (t2/exists? :model/Action 'id action-id, 'public_uuid (:public_uuid action-opts)))))))
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
             (mt/with-actions [{:keys [action-id]} action-opts]
@@ -652,7 +652,7 @@
 (deftest execute-action-by-entity-id-test
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+      (let [entity-id (t2/select-one-fn :entity_id :model/Action 'id action-id)]
         (testing "Action can be executed by entity_id"
           (is (=? {:rows-affected 1}
                   (mt/user-http-request :crowberto

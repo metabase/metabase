@@ -26,7 +26,7 @@
                                                     :updated_at   old-time
                                                     :process_uuid config/local-process-uuid}]
           (heartbeat/send-heartbeat!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (t/after? (:updated_at run) old-time) "updated_at was bumped")))))))
 
 (deftest send-heartbeat-ignores-other-processes-test
@@ -43,7 +43,7 @@
                                                     :updated_at   old-time
                                                     :process_uuid other-uuid}]
           (heartbeat/send-heartbeat!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             ;; Compare truncated to millis due to DB precision differences
             (is (= (t/truncate-to old-time :millis)
                    (t/truncate-to (:updated_at run) :millis))
@@ -62,7 +62,7 @@
                                                     :ended_at     old-time
                                                     :process_uuid config/local-process-uuid}]
           (heartbeat/send-heartbeat!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             ;; Compare truncated to millis due to DB precision differences
             (is (= (t/truncate-to old-time :millis)
                    (t/truncate-to (:updated_at run) :millis))
@@ -84,7 +84,7 @@
                                                     :updated_at   old-time
                                                     :process_uuid "dead-process"}]
           (heartbeat/mark-orphaned-runs!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (= :abandoned (:status run)) "status changed to :abandoned")
             (is (some? (:ended_at run)) "ended_at was set")))))))
 
@@ -100,7 +100,7 @@
                                                     :updated_at   recent-time
                                                     :process_uuid "some-process"}]
           (heartbeat/mark-orphaned-runs!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (= :started (:status run)) "status unchanged")
             (is (nil? (:ended_at run)) "ended_at still nil")))))))
 
@@ -117,7 +117,7 @@
                                                     :ended_at     old-time
                                                     :process_uuid "dead-process"}]
           (heartbeat/mark-orphaned-runs!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (= :success (:status run)) "status unchanged")))))))
 
 (deftest mark-orphaned-runs-marks-long-running-runs-test
@@ -133,7 +133,7 @@
                                                     :updated_at   recent-time   ; but has recent heartbeat
                                                     :process_uuid config/local-process-uuid}]
           (heartbeat/mark-orphaned-runs!)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (= :abandoned (:status run)) "status changed to :abandoned for long-running run")
             (is (some? (:ended_at run)) "ended_at was set")))))))
 
@@ -158,7 +158,7 @@
                                                          :status     :started
                                                          :started_at old-time}]
           (heartbeat/mark-orphaned-tasks! #{run-id})
-          (let [task (t2/select-one :model/TaskHistory :id task-id)]
+          (let [task (t2/select-one :model/TaskHistory 'id task-id)]
             (is (= :unknown (:status task)) "task status changed to :unknown")
             (is (some? (:ended_at task)) "task ended_at was set")))))))
 
@@ -181,7 +181,7 @@
                                                          :ended_at   old-time
                                                          :duration   100}]
           (heartbeat/mark-orphaned-tasks! #{run-id})
-          (let [task (t2/select-one :model/TaskHistory :id task-id)]
+          (let [task (t2/select-one :model/TaskHistory 'id task-id)]
             (is (= :success (:status task)) "task status unchanged")))))))
 
 (deftest mark-orphaned-tasks-ignores-other-runs-test
@@ -201,7 +201,7 @@
                                                          :started_at recent-time}]
           ;; Pass empty set - no runs should be affected
           (heartbeat/mark-orphaned-tasks! #{})
-          (let [task (t2/select-one :model/TaskHistory :id task-id)]
+          (let [task (t2/select-one :model/TaskHistory 'id task-id)]
             (is (= :started (:status task)) "task status unchanged")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -240,15 +240,15 @@
           (let [orphaned-run-ids (heartbeat/mark-orphaned-runs!)]
             (heartbeat/mark-orphaned-tasks! orphaned-run-ids))
           ;; Live run should have updated heartbeat, dead run should be orphaned
-          (let [live-run (t2/select-one :model/TaskRun :id live-run-id)
-                dead-run (t2/select-one :model/TaskRun :id dead-run-id)]
+          (let [live-run (t2/select-one :model/TaskRun 'id live-run-id)
+                dead-run (t2/select-one :model/TaskRun 'id dead-run-id)]
             (is (= :started (:status live-run)) "live run still started")
             (is (t/after? (:updated_at live-run) old-time) "live run got heartbeat")
             (is (= :abandoned (:status dead-run)) "dead run marked abandoned")
             (is (some? (:ended_at dead-run)) "dead run has ended_at"))
           ;; Live task should be unchanged, dead task should be marked unknown
-          (let [live-task (t2/select-one :model/TaskHistory :id live-task-id)
-                dead-task (t2/select-one :model/TaskHistory :id dead-task-id)]
+          (let [live-task (t2/select-one :model/TaskHistory 'id live-task-id)
+                dead-task (t2/select-one :model/TaskHistory 'id dead-task-id)]
             (is (= :started (:status live-task)) "live task still started")
             (is (= :unknown (:status dead-task)) "dead task marked unknown")
             (is (some? (:ended_at dead-task)) "dead task has ended_at")))))))

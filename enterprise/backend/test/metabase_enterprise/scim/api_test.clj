@@ -19,14 +19,14 @@
 
 (deftest refresh-scim-api-key!-test
   (testing "Can create a new SCIM API key"
-    (t2/delete! :model/ApiKey :scope :scim)
+    (t2/delete! :model/ApiKey 'scope :scim)
     (let [key1 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
       (is (=? (scim-api-key-shape :crowberto) key1))
       (testing "The same function will refresh an existing SCIM API key"
         (let [key2 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
           (is (=? (scim-api-key-shape :crowberto) key2))
           (is (not= (:key key1) (:key key2)))
-          (is (= 1 (t2/count :model/ApiKey :scope :scim))))))))
+          (is (= 1 (t2/count :model/ApiKey 'scope :scim))))))))
 
 (deftest get-api-key-test
   (testing "GET /api/ee/scim/api_key"
@@ -39,7 +39,7 @@
       (testing "A non-admin cannot fetch the SCIM API key"
         (mt/user-http-request :rasta :get 403 "ee/scim/api_key"))
       (testing "A 404 is returned if the key has not yet been created"
-        (t2/delete! :model/ApiKey :scope :scim)
+        (t2/delete! :model/ApiKey 'scope :scim)
         (mt/user-http-request :crowberto :get 404 "ee/scim/api_key")))))
 
 (deftest post-api-key-test

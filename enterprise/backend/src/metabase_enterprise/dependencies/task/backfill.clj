@@ -52,11 +52,11 @@
 (defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
   (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
-                                               :from_entity_type :table
-                                               :to_entity_type   :transform
-                                               :to_entity_id     id)
+                                               'from_entity_type :table
+                                               'to_entity_type   :transform
+                                               'to_entity_id     id)
         downstream-tables    (when (seq downstream-table-ids)
-                               (t2/select :model/Table :id [:in downstream-table-ids]))
+                               (t2/select :model/Table 'id ['in downstream-table-ids]))
         outdated-tables      (remove (fn [table]
                                        (and (= (:schema table) (:schema target))
                                             (= (:name   table) (:name   target))
@@ -68,10 +68,10 @@
     (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
                                                         (map :id) outdated-tables))]
       (t2/delete! :model/Dependency
-                  :from_entity_type :table
-                  :from_entity_id   [:in outdated-downstream-table-ids]
-                  :to_entity_type   :transform
-                  :to_entity_id     id))))
+                  'from_entity_type :table
+                  'from_entity_id   ['in outdated-downstream-table-ids]
+                  'to_entity_type   :transform
+                  'to_entity_id     id))))
 
 ;;; ------------------------------ Backfill orchestration ------------------------------
 
@@ -110,8 +110,8 @@
                             entity-type id max-retries
                             (deps.settings/dependency-backfill-delay-minutes))
                            (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
-                                                                              :entity_type entity-type
-                                                                              :entity_id id)]
+                                                                              'entity_type entity-type
+                                                                              'entity_id id)]
                              (if terminal
                                (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
                                            type-name id fail_count (ex-message e))

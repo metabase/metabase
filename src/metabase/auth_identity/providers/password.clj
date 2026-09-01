@@ -40,10 +40,10 @@
 (mu/defn- find-auth-identity-by-email
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
-  (when-let [user (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
+  (when-let [user (t2/select-one :model/User '%lower.email (u/lower-case-en email))]
     (t2/select-one :model/AuthIdentity
-                   :user_id (:id user)
-                   :provider "password")))
+                   'user_id (:id user)
+                   'provider "password")))
 
 (methodical/defmethod provider/authenticate :provider/password
   "Authenticate a user with email and password.

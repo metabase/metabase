@@ -112,22 +112,22 @@
 (defn- metrics-for-table
   [table]
   (filter-visible (t2/select :model/Card
-                             :table_id (:id table)
-                             :type :metric
-                             :archived false)))
+                             'table_id (:id table)
+                             'type :metric
+                             'archived false)))
 
 (defn- segments-for-table
   [table]
   (filter-visible (t2/select :model/Segment
-                             :table_id (:id table)
-                             :archived false)))
+                             'table_id (:id table)
+                             'archived false)))
 
 (defn- linking-to
   [table]
   (->> (t2/select-fn-set :fk_target_field_id :model/Field
-                         :table_id           (:id table)
-                         :fk_target_field_id [:not= nil]
-                         :active             true)
+                         'table_id           (:id table)
+                         'fk_target_field_id ['not= nil]
+                         'active             true)
        (map (comp (partial t2/select-one :model/Table :id)
                   :table_id
                   (partial t2/select-one :model/Field :id)))
@@ -138,11 +138,11 @@
 (defn- linked-from
   [table]
   (if-let [fields (not-empty (t2/select-fn-set :id :model/Field
-                                               :table_id (:id table)
-                                               :active   true))]
+                                               'table_id (:id table)
+                                               'active   true))]
     (->> (t2/select-fn-set :table_id :model/Field
-                           :fk_target_field_id [:in fields]
-                           :active             true)
+                           'fk_target_field_id ['in fields]
+                           'active             true)
          (map (partial t2/select-one :model/Table :id))
          filter-visible
          (take max-matches))
@@ -151,10 +151,10 @@
 (defn- cards-sharing-dashboard
   [card]
   (if-let [dashboards (not-empty (t2/select-fn-set :dashboard_id :model/DashboardCard
-                                                   :card_id (:id card)))]
+                                                   'card_id (:id card)))]
     (->> (t2/select-fn-set :card_id :model/DashboardCard
-                           :dashboard_id [:in dashboards]
-                           :card_id      [:not= (:id card)])
+                           'dashboard_id ['in dashboards]
+                           'card_id      ['not= (:id card)])
          (map (partial t2/select-one :model/Card :id))
          filter-visible
          (take max-matches))
@@ -163,9 +163,9 @@
 (defn- similar-questions
   [card]
   (->> (t2/select :model/Card
-                  :table_id (:table_id card)
-                  :type [:in [:model :question]]
-                  :archived false)
+                  'table_id (:table_id card)
+                  'type ['in [:model :question]]
+                  'archived false)
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
@@ -173,9 +173,9 @@
 (defn- similar-metrics
   [card]
   (->> (t2/select :model/Card
-                  :table_id (:table_id card)
-                  :type :metric
-                  :archived false)
+                  'table_id (:table_id card)
+                  'type :metric
+                  'archived false)
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
@@ -183,10 +183,10 @@
 (defn- recently-modified-dashboards
   []
   (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id :model/Revision
-                                                        :model     "Dashboard"
-                                                        :user_id   api/*current-user-id*
+                                                        'model     "Dashboard"
+                                                        'user_id   api/*current-user-id*
                                                         {:order-by [[:timestamp :desc]]}))]
-    (->> (t2/select :model/Dashboard :id [:in dashboard-ids])
+    (->> (t2/select :model/Dashboard 'id ['in dashboard-ids])
          filter-visible
          (take max-serendipity-matches))))
 
@@ -206,7 +206,7 @@
                            (map :dashboard_id)
                            distinct)
         best          (when (seq dashboard-ids)
-                        (->> (t2/select :model/Dashboard :id [:in dashboard-ids])
+                        (->> (t2/select :model/Dashboard 'id ['in dashboard-ids])
                              filter-visible
                              (take max-best-matches)))]
     (concat best recent)))
@@ -226,7 +226,7 @@
 
 (defmethod related :model/Card
   [card]
-  (let [table             (t2/select-one :model/Table :id (:table_id card))
+  (let [table             (t2/select-one :model/Table 'id (:table_id card))
         similar-questions (similar-questions card)
         similar-metrics   (similar-metrics card)]
     {:table             table
@@ -245,7 +245,7 @@
 
 (defmethod related :xrays/Metric
   [metric]
-  (let [table (t2/select-one :model/Table :id (:table_id metric))]
+  (let [table (t2/select-one :model/Table 'id (:table_id metric))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -254,7 +254,7 @@
 
 (defmethod related :model/Segment
   [segment]
-  (let [table (t2/select-one :model/Table :id (:table_id segment))]
+  (let [table (t2/select-one :model/Table 'id (:table_id segment))]
     {:table       table
      :metrics     (metrics-for-table table)
      :segments    (->> table
@@ -272,18 +272,18 @@
      :linking-to  linking-to
      :linked-from linked-from
      :tables      (->> (t2/select :model/Table
-                                  :db_id           (:db_id table)
-                                  :schema          (:schema table)
-                                  :id              [:not= (:id table)]
-                                  :visibility_type nil
-                                  :active          true)
+                                  'db_id           (:db_id table)
+                                  'schema          (:schema table)
+                                  'id              ['not= (:id table)]
+                                  'visibility_type nil
+                                  'active          true)
                        (remove (set (concat linking-to linked-from)))
                        filter-visible
                        interesting-mix)}))
 
 (defmethod related :model/Field
   [field]
-  (let [table (t2/select-one :model/Table :id (:table_id field))]
+  (let [table (t2/select-one :model/Table 'id (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -295,17 +295,17 @@
                     (filter (comp pos? :similarity))
                     interesting-mix)
      :fields   (->> (t2/select :model/Field
-                               :table_id        (:id table)
-                               :id              [:not= (:id field)]
-                               :visibility_type "normal"
-                               :active          true)
+                               'table_id        (:id table)
+                               'id              ['not= (:id field)]
+                               'visibility_type "normal"
+                               'active          true)
                     filter-visible
                     interesting-mix)}))
 
 (defmethod related :model/Dashboard
   [dashboard]
   (let [cards (map (partial t2/select-one :model/Card :id) (t2/select-fn-set :card_id :model/DashboardCard
-                                                                             :dashboard_id (:id dashboard)))]
+                                                                             'dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat similar-questions)
                  (remove (set cards))

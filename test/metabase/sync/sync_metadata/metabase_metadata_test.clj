@@ -11,7 +11,7 @@
 (deftest sync-metabase-metadata-test
   (testing ":Test that the `_metabase_metadata` table can be used to populate values for things like descriptions"
     (letfn [(get-table-and-fields-descriptions [table-or-id]
-              (-> (t2/select-one [:model/Table :id :name :description], :id (u/the-id table-or-id))
+              (-> (t2/select-one [:model/Table 'id 'name 'description], 'id (u/the-id table-or-id))
                   (t2/hydrate :fields)
                   (update :fields #(for [field %]
                                      (select-keys field [:name :description])))
@@ -33,7 +33,7 @@
                     :id          true
                     :fields      [{:name "filming", :description nil}]}
                    (get-table-and-fields-descriptions table)))
-            (is (nil? (:description (t2/select-one :model/Database :id (u/the-id db))))))
+            (is (nil? (:description (t2/select-one :model/Database 'id (u/the-id db))))))
           (metabase-metadata/sync-metabase-metadata! db)
           (testing "after"
             (is (= {:name        "movies"
@@ -41,4 +41,4 @@
                     :id          true
                     :fields      [{:name "filming", :description "If the movie is currently being filmed."}]}
                    (get-table-and-fields-descriptions table)))
-            (is (= "Information about movies" (:description (t2/select-one :model/Database :id (u/the-id db)))))))))))
+            (is (= "Information about movies" (:description (t2/select-one :model/Database 'id (u/the-id db)))))))))))

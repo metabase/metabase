@@ -212,9 +212,9 @@
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (t2/select [:model/Card :id :dimensions]
-                                             :type "metric"
-                                             :database_id database-id)
+  (doseq [{:keys [id dimensions]} (t2/select [:model/Card 'id 'dimensions]
+                                             'type "metric"
+                                             'database_id database-id)
           :when (empty? dimensions)]
     (try
       (sync-dimensions! :metadata/metric id)

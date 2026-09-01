@@ -20,7 +20,7 @@
     (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
       (mt/dataset
         json
-        (let [table (t2/select-one :model/Table :id (mt/id :json))]
+        (let [table (t2/select-one :model/Table 'id (mt/id :json))]
           (sql-jdbc.execute/do-with-connection-with-options
            driver/*driver*
            (mt/db)
@@ -130,7 +130,7 @@
     :druid-jdbc
     (mt/dataset
       json
-      (let [database (t2/select-one :model/Database :id (mt/id))]
+      (let [database (t2/select-one :model/Database 'id (mt/id))]
         (testing "When json_unfolding is disabled at the DB level on the first sync"
           ;; Create a new database with the same details as the json dataset, with json unfolding disabled
           (mt/with-temp [:model/Database database {:engine driver/*driver*
@@ -138,8 +138,8 @@
             (mt/with-db database
               ;; Sync the new database
               (sync/sync-database! database)
-              (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
-                    get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
+              (let [get-field (fn [] (t2/select-one :model/Field 'id (mt/id :json :json_bit)))
+                    get-database (fn [] (t2/select-one :model/Database 'id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
                                                                           (assoc (get-field) :json_unfolding v)))
@@ -148,7 +148,7 @@
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                          updated-db)))
                     nested-fields (fn []
-                                    (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                    (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
                                          (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                 (testing "nested fields are not created"
                   (is (empty? (nested-fields))))
@@ -179,14 +179,14 @@
     (mt/dataset
       json
       ;; Create a new database with the same details as the json dataset, with json unfolding enabled
-      (let [database (t2/select-one :model/Database :id (mt/id))]
+      (let [database (t2/select-one :model/Database 'id (mt/id))]
         (mt/with-temp [:model/Database database {:engine driver/*driver*
                                                  :details (assoc (:details database) :json-unfolding true)}]
           (mt/with-db database
             ;; Sync the new database
             (sync/sync-database! database)
-            (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
-                  get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
+            (let [field (t2/select-one :model/Field 'id (mt/id :json :json_bit))
+                  get-database (fn [] (t2/select-one :model/Database 'id (mt/id)))
                   set-json-unfolding-for-field! (fn [v]
                                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
                                                                         (assoc field :json_unfolding v)))
@@ -195,7 +195,7 @@
                                                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                        updated-db)))
                   nested-fields          (fn []
-                                           (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                           (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
                                                 (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
               (testing "json_unfolding is enabled by default at the field level"
                 (is (true? (:json_unfolding field))))

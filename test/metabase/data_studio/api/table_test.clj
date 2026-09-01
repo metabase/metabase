@@ -25,25 +25,25 @@
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id table-2-id]
                                :data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
+        (is (= :internal (t2/select-one-fn :data_layer :model/Table 'id table-1-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table 'id table-1-id)))
+        (is (= :internal (t2/select-one-fn :data_layer :model/Table 'id table-2-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table 'id table-2-id))))
       (testing "updating data_layer to hidden syncs to hidden visibility_type"
         ;; Update one table back to hidden, which should sync to :hidden
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id]
                                :data_layer "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
+        (is (= :hidden (t2/select-one-fn :data_layer :model/Table 'id table-1-id)))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table 'id table-1-id))))
       (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids       [table-1-id]
                                :visibility_type "hidden"
                                :data_layer      "final"})
         ;; had visibility_type been honoured, the model would have refused to update both at once
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))))))
+        (is (= :final (t2/select-one-fn :data_layer :model/Table 'id table-1-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table 'id table-1-id)))))))
 
 (deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
   (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
@@ -52,7 +52,7 @@
       (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
                             {:table_ids   [table-id]
                              :data_source "ingested"})
-      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table 'id table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
@@ -304,9 +304,9 @@
                                :data_layer     "hidden"
                                :data_authority "authoritative"
                                :data_source    "ingested"})
-        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
+        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table 'db_id ['in [clojure jvm]])))
+        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table 'db_id ['in [clojure jvm]])))
+        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table 'db_id ['in [clojure jvm]]))))
       (testing "updating with all selectors"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids  [clojure]
@@ -319,9 +319,9 @@
                 classes    :internal
                 gc         :internal
                 jit        :internal}
-               (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :data_layer :model/Table 'db_id ['in [clojure jvm]]))))
       (testing "can update owner_email"
-        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table 'db_id ['in [clojure jvm]])))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids [clojure]
                                :owner_email  "clojure-owner@example.com"})
@@ -331,9 +331,9 @@
                 classes    nil
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :owner_email :model/Table 'db_id ['in [clojure jvm]]))))
       (testing "can update owner_user_id"
-        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table 'db_id ['in [clojure jvm]])))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids      [beans classes]
                                :owner_user_id  (mt/user->id :rasta)})
@@ -343,7 +343,7 @@
                 classes    (mt/user->id :rasta)
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]])))))))
+               (t2/select-pk->fn :owner_user_id :model/Table 'db_id ['in [clojure jvm]])))))))
 
 ;;; ------------------------------------------------- Selection Tests -------------------------------------------------
 

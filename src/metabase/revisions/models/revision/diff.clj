@@ -9,7 +9,7 @@
 (defn- readable-name
   [model id]
   (when id
-    (when-let [instance (t2/select-one model :id id)]
+    (when-let [instance (t2/select-one model 'id id)]
       (when (mi/can-read? instance)
         (:name instance)))))
 

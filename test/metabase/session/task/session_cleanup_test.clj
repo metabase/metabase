@@ -19,10 +19,10 @@
                                                :user_id    user-id
                                                :created_at (t/minus (t/local-date-time) (t/hours 5))}]
       (testing "session-cleanup deletes old sessions and keeps new enough ones"
-        (is (t2/select-one :model/Session :id (old-session :id)))
+        (is (t2/select-one :model/Session 'id (old-session :id)))
         (#'session-cleanup/cleanup-sessions!)
-        (is (not (t2/exists? :model/Session :id (:id old-session))))
-        (is (t2/exists? :model/Session :id (:id new-session)))))))
+        (is (not (t2/exists? :model/Session 'id (:id old-session))))
+        (is (t2/exists? :model/Session 'id (:id new-session)))))))
 
 (deftest clean-expired-sessions-test
   (mt/with-temp-env-var-value! [:max-session-age (str (* 60 24))] ;; one day
@@ -44,8 +44,8 @@
                                                        :created_at recently}]
         (testing "session-cleanup reaps sessions past their expires_at, even when they are within max-session-age"
           (#'session-cleanup/cleanup-sessions!)
-          (is (not (t2/exists? :model/Session :id (:id expired-session))))
-          (is (t2/exists? :model/Session :id (:id unexpired-session)))
-          (is (t2/exists? :model/Session :id (:id no-expiry-session))))))))
+          (is (not (t2/exists? :model/Session 'id (:id expired-session))))
+          (is (t2/exists? :model/Session 'id (:id unexpired-session)))
+          (is (t2/exists? :model/Session 'id (:id no-expiry-session))))))))
 
 ;; cleanup-idle-sessions-test is in metabase-enterprise.api.session-test because it requires EE features.

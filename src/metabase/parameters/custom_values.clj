@@ -202,7 +202,7 @@
   (case (:values_source_type parameter)
     :static-list (static-list-values parameter query-string)
     :card        (let [config (:values_source_config parameter)
-                       card   (t2/select-one :model/Card :id (:card_id config))]
+                       card   (t2/select-one :model/Card 'id (:card_id config))]
                    (when-not (mi/can-read? card)
                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                    (or (when-not (:archived card)
@@ -222,7 +222,7 @@
   [field-ids]
   (when (and (seq field-ids) (every? pos-int? field-ids))
     (let [field-id-set (set field-ids)
-          fields (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-id-set])]
+          fields (t2/select [:model/Field 'id 'fk_target_field_id 'semantic_type] 'id ['in field-id-set])]
       ;; when every field could be found and all are keys
       (when (and (= (count field-id-set) (count fields))
                  (every? (fn [{:keys [semantic_type fk_target_field_id]}]
@@ -252,7 +252,7 @@
   field, the card is unreadable/archived, or no matching row is found."
   [{config :values_source_config :as _param} value]
   (when-let [label-field (:label_field config)]
-    (when-let [card (t2/select-one :model/Card :id (:card_id config))]
+    (when-let [card (t2/select-one :model/Card 'id (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
         (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
           (when (can-get-card-values? query (:value_field config))

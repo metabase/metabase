@@ -20,8 +20,8 @@
   []
   (let [now (t/instant)]
     (t2/exists? :model/SupportAccessGrantLog
-                :revoked_at nil
-                :grant_end_timestamp [:> now])))
+                'revoked_at nil
+                'grant_end_timestamp ['> now])))
 
 (defn create-grant!
   "Create a new support access grant.
@@ -80,7 +80,7 @@
   - Grant doesn't exist
   - Grant is already revoked"
   [user-id grant-id]
-  (let [grant (t2/select-one :model/SupportAccessGrantLog :id grant-id)]
+  (let [grant (t2/select-one :model/SupportAccessGrantLog 'id grant-id)]
     (when-not grant
       (throw (ex-info (tru "Grant not found")
                       {:status-code 404})))
@@ -91,7 +91,7 @@
       (t2/update! :model/SupportAccessGrantLog grant-id
                   {:revoked_at now
                    :revoked_by_user_id user-id})
-      (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)
+      (-> (t2/select-one :model/SupportAccessGrantLog 'id grant-id)
           (t2/hydrate :user_info)))))
 
 (defn expire-ended-grants!
@@ -100,8 +100,8 @@
   A no-op when there is no support user, when a grant is still running, or when access is already torn down."
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
-             (t2/select-one [:model/User :id :is_superuser] :email (sag.settings/support-access-grant-email))]
-    (when (or superuser? (t2/exists? :model/Session :user_id support-user-id))
+             (t2/select-one [:model/User 'id 'is_superuser] 'email (sag.settings/support-access-grant-email))]
+    (when (or superuser? (t2/exists? :model/Session 'user_id support-user-id))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.

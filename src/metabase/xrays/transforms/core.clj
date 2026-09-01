@@ -35,7 +35,7 @@
     field-name
 
     [:field (id :guard integer?) _]
-    (t2/select-one-fn :name :model/Field :id id)))
+    (t2/select-one-fn :name :model/Field 'id id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
@@ -189,7 +189,7 @@
 (mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (-> (t2/select :model/Table :db_id db-id :schema schema)
+  (-> (t2/select :model/Table 'db_id db-id 'schema schema)
       de/with-domain-entity
       (t2/hydrate :fields)))
 

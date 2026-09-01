@@ -118,7 +118,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :starburst (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
+           (driver/describe-table :starburst (mt/db) (t2/select-one :model/Table 'id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :starburst
@@ -127,9 +127,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                     [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                      (t2/select-one :model/Field :id (mt/id :venues :name))]
+           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table 'id (mt/id :venues))
+                                                     [(t2/select-one :model/Field 'id (mt/id :venues :id))
+                                                      (t2/select-one :model/Field 'id (mt/id :venues :name))]
                                                      (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -235,7 +235,7 @@
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
-                   (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
+                   (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table 'db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
 

@@ -252,9 +252,9 @@
       (sso.test-helpers/with-slack-default-setup!
         (mt/with-model-cleanup [:model/User]
           (with-successful-oidc!
-            (t2/delete! :model/User :email "example@slack.com")
+            (t2/delete! :model/User 'email "example@slack.com")
             (letfn [(new-user-exists? []
-                      (boolean (seq (t2/select :model/User :%lower.email "example@slack.com"))))]
+                      (boolean (seq (t2/select :model/User '%lower.email "example@slack.com"))))]
               (is (false? (new-user-exists?)))
               ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
@@ -272,7 +272,7 @@
                                                       :state "test-state")]
                 ;; Complete callback
                 (is (sso.test-helpers/successful-login? response))
-                (let [new-user (t2/select-one :model/User :email "example@slack.com")]
+                (let [new-user (t2/select-one :model/User 'email "example@slack.com")]
                   (testing "new user"
                     (is
                      (=

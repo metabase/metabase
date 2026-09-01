@@ -227,7 +227,7 @@
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
-  (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+  (let [attached-dwh (t2/select-one-fn :id :model/Database 'is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
@@ -256,7 +256,7 @@
   []
   (or (gsheets)
       (do (log/warn "CACHE MISS ON GSHEETS")
-          (some-> (t2/select-one :model/Setting :key "gsheets")
+          (some-> (t2/select-one :model/Setting 'key "gsheets")
                   :value
                   json/decode+kw))))
 
@@ -401,4 +401,4 @@
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (t2/select-one :model/Database :is_attached_dwh true))))
+     (t2/select-one :model/Database 'is_attached_dwh true))))

@@ -447,7 +447,7 @@
                                           {:db_id (u/the-id database-or-id)}))}
         ids (t2/select-fn-vec :id :model/Table where-clause)]
     (reduce (fn [acc ids']
-              (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
+              (+ acc (t2/update! :model/Table 'id ['in ids'] {:initial_sync_status "complete"})))
             0
             (partition-all *batch-size* ids))))
 
@@ -483,7 +483,7 @@
    & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
-                                 :db_id (u/the-id database-or-id)
+                                 'db_id (u/the-id database-or-id)
                                  {:where [:and sync-tables-clause
                                           (when (seq schema-names) [:in :schema schema-names])
                                           (when (seq table-names) [:in :name table-names])]
@@ -493,7 +493,7 @@
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."
   [database-or-id]
-  (t2/count :model/Table :db_id (u/the-id database-or-id) {:where sync-tables-clause}))
+  (t2/count :model/Table 'db_id (u/the-id database-or-id) {:where sync-tables-clause}))
 
 (defn refingerprint-reducible-sync-tables
   "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the

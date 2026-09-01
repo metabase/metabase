@@ -42,7 +42,7 @@
           (trc/mark-cancel-started-run! run-id)
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
-          (is (some? (t2/select-one :model/TransformRunCancelation :run_id run-id)))))
+          (is (some? (t2/select-one :model/TransformRunCancelation 'run_id run-id)))))
       (testing "no cancel-chan registered: cancel-run! is a no-op with no completion metric"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
@@ -72,7 +72,7 @@
             (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
             (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "success"}))))
             (is (zero? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "error"}))))
-            (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id id))))))
+            (is (= :canceled (t2/select-one-fn :status :model/TransformRun 'id id))))))
       (testing "cancel-old-transform-runs! sweep bumps {outcome=timeout} for stale canceling runs"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (prometheus/clear! :metabase-transforms/cancelation-latency-ms)
@@ -88,10 +88,10 @@
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "timeout"}))))
-          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id run-id)))
+          (is (= :canceled (t2/select-one-fn :status :model/TransformRun 'id run-id)))
           (let [audit (t2/select-one :model/AuditLog
-                                     :topic "transform-run-canceled"
-                                     :model_id run-id
+                                     'topic "transform-run-canceled"
+                                     'model_id run-id
                                      {:order-by [[:id :desc]]})]
             (is (some? audit))
             (is (= "canceled" (get-in audit [:details :status])))
@@ -111,11 +111,11 @@
             (t2/insert! :model/TransformRunCancelation {:run_id r1 :time old})
             (t2/insert! :model/TransformRunCancelation {:run_id r2 :time old}))
           ;; Simulate r2 already finished by a concurrent path before the sweep fires.
-          (t2/update! :model/TransformRun :id r2 {:is_active nil :status :canceled})
+          (t2/update! :model/TransformRun 'id r2 {:is_active nil :status :canceled})
           (@#'canceling/cancel-old-transform-runs! nil)
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
-          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id r1)))))
+          (is (= :canceled (t2/select-one-fn :status :model/TransformRun 'id r1)))))
       (testing "cancel-old-transform-runs! bumps a single {outcome=error} when the transactional update throws"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}

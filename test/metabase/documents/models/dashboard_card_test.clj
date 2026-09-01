@@ -62,4 +62,4 @@
                 :row          0
                 :col          8}])))
         ;; Verify that no cards were added due to transaction rollback
-        (is (= 0 (t2/count :model/DashboardCard :dashboard_id (:id dashboard))))))))
+        (is (= 0 (t2/count :model/DashboardCard 'dashboard_id (:id dashboard))))))))

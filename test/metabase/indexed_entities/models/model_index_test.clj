@@ -50,7 +50,7 @@
                                                          :name "model index test"
                                                          :visualization_settings {}
                                                          :display "table"))
-                model       (t2/select-one :model/Card :id (u/the-id response))
+                model       (t2/select-one :model/Card 'id (u/the-id response))
                 model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                   {:model_id  (u/the-id model)
                                                    :pk_ref    pk_ref
@@ -64,13 +64,13 @@
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
             (testing "We can invoke the task ourself manually"
               (model-index/add-values! model-index)
-              (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
+              (is (= 9 (count (t2/select :model/ModelIndexValue 'model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
                                                                       :filter [:and
                                                                                [:> $id 0]
                                                                                [:< $id 10]]}))))
-                     (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index)))))
+                     (t2/select-fn-set :name :model/ModelIndexValue 'model_index_id (:id model-index)))))
             (testing "When the values change the indexed values change"
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
@@ -80,16 +80,16 @@
                                                       [:> $id 10]
                                                       [:< $id 20]]})})
               (model-index/add-values! model-index)
-              (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
+              (is (= 9 (count (t2/select :model/ModelIndexValue 'model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
                                                                       :filter [:and
                                                                                [:> $id 10]
                                                                                [:< $id 20]]}))))
-                     (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index))))
+                     (t2/select-fn-set :name :model/ModelIndexValue 'model_index_id (:id model-index))))
               (is (=? {:error nil
                        :state "indexed"}
-                      (t2/select-one :model/ModelIndex :id (u/the-id model-index)))))
+                      (t2/select-one :model/ModelIndex 'id (u/the-id model-index)))))
             (let [index-trigger! #(->> (task/scheduler-info)
                                        :jobs
                                        (by-key "metabase.task.IndexValues.job")
@@ -103,7 +103,7 @@
                   (is (= {"model-index-id" (:id model-index)}
                          (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
-                (t2/delete! :model/ModelIndex :id (u/the-id model-index))
+                (t2/delete! :model/ModelIndex 'id (u/the-id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def ^:private empty-changes "empty state map for find changes"
@@ -242,11 +242,11 @@
         ;; post most likely creates this, but duplicate to be sure
         (model-index/add-values! model-index)
         (is (= "indexed"
-               (t2/select-one-fn :state :model/ModelIndex :id (u/the-id model-index))))
+               (t2/select-one-fn :state :model/ModelIndex 'id (u/the-id model-index))))
         (is (= quantity
-               (t2/count :model/ModelIndexValue :model_index_id (:id model-index))))
+               (t2/count :model/ModelIndexValue 'model_index_id (:id model-index))))
         (is (set/subset? subset (t2/select-fn-set :name :model/ModelIndexValue
-                                                  :model_index_id (:id model-index))))
+                                                  'model_index_id (:id model-index))))
         (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
 (deftest model-index-test
@@ -307,7 +307,7 @@
                                              :schedule   "0 0 23 * * ? *"
                                              :state      "initial"}]
           (model-index/add-values! mi)
-          (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
+          (let [bad-attempt (t2/select-one :model/ModelIndex 'id (u/the-id mi))]
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))

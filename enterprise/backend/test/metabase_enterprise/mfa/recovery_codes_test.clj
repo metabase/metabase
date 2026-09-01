@@ -37,7 +37,7 @@
       (is (= recovery-codes/num-codes (count codes)))
       (is (= recovery-codes/num-codes (enrollment/recovery-codes-remaining user-id)))
       (testing "only hashes are stored"
-        (let [stored (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "totp")
+        (let [stored (get-in (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "totp")
                              [:credentials :recovery_codes])]
           (is (every? #(.startsWith ^String % "$2a$") stored))
           (is (empty? (set/intersection (set codes) (set stored)))))))))

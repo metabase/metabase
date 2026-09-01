@@ -41,7 +41,7 @@
                           (not (:card_schema serialized-card)) (assoc :card_schema queries/starting-card-schema-version))
         restored        (apply dissoc serialized-card excluded-columns-for-card-revision)]
     (queries/check-new-parameter-source-card-permissions "card" id (:parameters restored))
-    (queries/maybe-unverify! (t2/hydrate (t2/select-one :model/Card :id id)
+    (queries/maybe-unverify! (t2/hydrate (t2/select-one :model/Card 'id id)
                                          [:moderation_reviews :moderator_details])
                              restored
                              {:id user-id})

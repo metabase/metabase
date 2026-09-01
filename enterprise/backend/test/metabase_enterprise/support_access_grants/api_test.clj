@@ -211,4 +211,4 @@
                                           :grant_duration_minutes 2880
                                           :notes "Custom notes"})]
       (is (= "Custom notes" (:notes response)))
-      (is (= "Custom notes" (:notes (t2/select-one :model/SupportAccessGrantLog :id (:id response))))))))
+      (is (= "Custom notes" (:notes (t2/select-one :model/SupportAccessGrantLog 'id (:id response))))))))

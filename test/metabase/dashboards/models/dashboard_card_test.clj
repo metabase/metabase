@@ -95,8 +95,8 @@
                  :model/Card          {card-id3 :id} {:name "card3"}]
     (let [upd-series (fn [series]
                        (dashboard-card/update-dashboard-cards-series! {dashcard-id series})
-                       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries, :dashboardcard_id dashcard-id)]
-                              (t2/select-one-fn :name :model/Card, :id card-id))))]
+                       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries, 'dashboardcard_id dashcard-id)]
+                              (t2/select-one-fn :name :model/Card, 'id card-id))))]
       (is (= #{}
              (upd-series [])))
       (is (= #{"card1"}
@@ -270,7 +270,7 @@
       (is (= [{:parameter_id "22486e00"
                :card_id      (u/the-id card)
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
-             (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (u/the-id dashcard)))))))
+             (t2/select-one-fn :parameter_mappings :model/DashboardCard 'id (u/the-id dashcard)))))))
 
 (deftest ^:parallel normalize-visualization-settings-test
   (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
@@ -282,7 +282,7 @@
                                                        :card_id                (u/the-id card)
                                                        :visualization_settings original}]
            (is (= expected
-                  (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
+                  (t2/select-one-fn :visualization_settings :model/DashboardCard 'id (u/the-id dashcard))))))))))
 
 (deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
@@ -301,7 +301,7 @@
                                                   :col                    3}]
       ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
       ;; transformed by `from-parsed-json`
-      (let [dashcard     (dissoc (t2/select-one :model/DashboardCard :id (u/the-id dashcard))
+      (let [dashcard     (dissoc (t2/select-one :model/DashboardCard 'id (u/the-id dashcard))
                                  :created_at :updated_at)
             serialized   (json/encode dashcard)
             deserialized (json/decode+kw serialized)
@@ -321,7 +321,7 @@
                                                                    :settings             {"graph.dimensions" ["A"]
                                                                                           "graph.metrics"    ["B"]}}}}]
       (is (= {:graph.dimensions ["A"] :graph.metrics ["B"]}
-             (-> (t2/select-one :model/DashboardCard :id (:id dashcard))
+             (-> (t2/select-one :model/DashboardCard 'id (:id dashcard))
                  :visualization_settings :visualization :settings))))))
 
 (deftest ^:parallel after-select-tolerates-dangling-visualizer-ref-test
@@ -336,7 +336,7 @@
                        :set    {:visualization_settings (json/encode dangling)}
                        :where  [:= :id (:id dc)]})
         (testing "the read does not throw and the unresolved ref is left untouched"
-          (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
+          (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
             (is (= [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]
                    (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1])))))))))
 
@@ -350,7 +350,7 @@
         (t2/query-one {:update (t2/table-name :model/DashboardCard)
                        :set    {:visualization_settings (json/encode viz)}
                        :where  [:= :id (:id dc)]})
-        (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
+        (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
           (is (= [{:sourceId (str "card:" (:id src))}]
                  (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))
 

@@ -62,8 +62,8 @@
   card flavors; storage keys on the canonical `card`, so normalize before matching."
   [entity-type entity-local-id]
   (t2/select-one :model/OsiAiContext
-                 :entity_type (entity-retrieval/normalize-entity-type entity-type)
-                 :entity_local_id entity-local-id))
+                 'entity_type (entity-retrieval/normalize-entity-type entity-type)
+                 'entity_local_id entity-local-id))
 
 (def ^:private logical-key-route-schema
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
@@ -154,6 +154,6 @@
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
   (t2/delete! :model/OsiAiContext
-              :entity_type (entity-retrieval/normalize-entity-type entity-type)
-              :entity_local_id entity-local-id)
+              'entity_type (entity-retrieval/normalize-entity-type entity-type)
+              'entity_local_id entity-local-id)
   api/generic-204-no-content)

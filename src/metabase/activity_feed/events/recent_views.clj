@@ -52,7 +52,7 @@
       ;; we don't want to count pinned card views or document cards
       (when (and user-id
                  (not (#{:collection :dashboard :dashboard-subscription} context))
-                 (not (t2/select-one-fn :document_id :model/Card :id card-id)))
+                 (not (t2/select-one-fn :document_id :model/Card 'id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
@@ -78,7 +78,7 @@
   (let [user-id (or user-id api/*current-user-id*)]
     (when (and user-id
                (= context :question)
-               (nil? (t2/select-one-fn :document_id :model/Card :id object-id)))
+               (nil? (t2/select-one-fn :document_id :model/Card 'id object-id)))
       (try
         (recent-views/update-users-recent-views! user-id :model/Card object-id :view)
         (catch Throwable e

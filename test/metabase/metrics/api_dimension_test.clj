@@ -52,7 +52,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
+      (let [hydrated-metric (t2/select-one :model/Card 'id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
         (let [response (mt/user-http-request :rasta :get 200
@@ -91,7 +91,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
+      (let [hydrated-metric (t2/select-one :model/Card 'id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "NAME")]
         (is (some? dim-id) "NAME dimension should exist")
         (let [response (mt/user-http-request :rasta :get 200
@@ -131,7 +131,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
+      (let [hydrated-metric (t2/select-one :model/Card 'id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
         (let [response (mt/user-http-request :rasta :get 200
@@ -167,7 +167,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
+      (let [hydrated-metric (t2/select-one :model/Card 'id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
         (is (some? (mt/user-http-request :rasta :get 400
@@ -264,7 +264,7 @@
 (deftest list-dimensions-excludes-orphaned-dimensions-test
   (testing "GET /api/metric/:id/dimension synchronizes and optionally includes orphaned dimensions"
     (with-seeded-metric [metric]
-      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card 'id (:id metric))
             orphan-id (:id (first dimensions))
             mappings  (mapv #(if (= orphan-id (:dimension-id %))
                                (assoc-in % [:target 2] (mt/id :users :name))
@@ -283,19 +283,19 @@
 (deftest remove-dimensions-test
   (testing "POST /api/metric/:id/dimension/remove removes dimensions by id and persists"
     (with-seeded-metric [metric]
-      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+      (let [price-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "PRICE")
             resp     (mt/user-http-request :crowberto :post 200
                                            (str "metric/" (:id metric) "/dimension/remove")
                                            {:dimension_ids [price-id]})]
         (is (not (contains? (set (map :id resp)) price-id))
             "removed dimension is gone from the response")
-        (is (not (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) price-id))
+        (is (not (contains? (set (map :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))) price-id))
             "removal is persisted")))))
 
 (deftest remove-default-dimension-test
   (testing "removing the default dimension leaves the metric without a default"
     (with-seeded-metric [metric]
-      (let [dimension-id (:id (first (:dimensions (t2/select-one :model/Card :id (:id metric)))))]
+      (let [dimension-id (:id (first (:dimensions (t2/select-one :model/Card 'id (:id metric)))))]
         (mt/user-http-request :crowberto :post 200
                               (str "metric/" (:id metric) "/dimension/set-default")
                               {:dimension_id dimension-id})
@@ -308,17 +308,17 @@
 (deftest remove-all-dimensions-test
   (testing "removing all dimensions leaves the metric without a default"
     (with-seeded-metric [metric]
-      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))
+      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))
             resp          (mt/user-http-request :crowberto :post 200
                                                 (str "metric/" (:id metric) "/dimension/remove")
                                                 {:dimension_ids dimension-ids})]
         (is (empty? resp))
-        (is (empty? (:dimensions (t2/select-one :model/Card :id (:id metric)))))))))
+        (is (empty? (:dimensions (t2/select-one :model/Card 'id (:id metric)))))))))
 
 (deftest add-dimensions-test
   (testing "POST /api/metric/:id/dimension/add adds a full dimension object and preserves the default"
     (with-seeded-metric [metric]
-      (let [default-id (:id (first (:dimensions (t2/select-one :model/Card :id (:id metric)))))
+      (let [default-id (:id (first (:dimensions (t2/select-one :model/Card 'id (:id metric)))))
             addable    (-> (mt/user-http-request :crowberto :get 200
                                                  (str "metric/" (:id metric) "/dimension") :with-addable true)
                            :addable first :dimensions first)]
@@ -334,7 +334,7 @@
               "added dimension keeps the posted UUID")
           (is (contains? field-ids (-> addable :sources first :field-id))
               "added dimension targets the chosen column")
-          (is (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) (:id addable))
+          (is (contains? (set (map :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))) (:id addable))
               "the addition is persisted")
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
@@ -383,7 +383,7 @@
                                     (str "metric/" (:id metric) "/dimension/add")
                                     {:dimensions [selected]})
               (let [stored-mapping (->> (t2/select-one-fn :dimension_mappings
-                                                          :model/Card :id (:id metric))
+                                                          :model/Card 'id (:id metric))
                                         (m/find-first #(= (:id selected) (:dimension-id %))))
                     remaining     (->> (mt/user-http-request :crowberto :get 200
                                                              (str "metric/" (:id metric) "/dimension")
@@ -398,7 +398,7 @@
 (deftest update-dimension-display-name-test
   (testing "POST /api/metric/:id/dimension/:id updates display_name"
     (with-seeded-metric [metric]
-      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+      (let [price-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "PRICE")
             resp     (mt/user-http-request :crowberto :post 200
                                            (str "metric/" (:id metric) "/dimension/" price-id)
                                            {:display_name "Cost"})]
@@ -415,14 +415,14 @@
                                        :table_id      (mt/id :orders)
                                        :dataset_query (orders-metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "CREATED_AT")
             path          (str "metric/" (:id metric) "/dimension/" created-at-id)
             topics        (atom [])
             resp          (with-redefs [events/publish-event! (fn [topic _event]
                                                                 (swap! topics conj topic))]
                             (mt/user-http-request :crowberto :post 200 path
                                                   {:default_temporal_unit "week"}))
-            stored        (->> (t2/select-one :model/Card :id (:id metric))
+            stored        (->> (t2/select-one :model/Card 'id (:id metric))
                                :dimensions
                                (m/find-first #(= created-at-id (:id %))))
             fetched       (->> (mt/user-http-request :crowberto :get 200
@@ -438,7 +438,7 @@
 (deftest update-dimension-default-temporal-unit-validation-test
   (testing "default_temporal_unit must be visible and compatible with the dimension type"
     (with-seeded-metric [metric]
-      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+      (let [price-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "PRICE")
             path     (str "metric/" (:id metric) "/dimension/" price-id)]
         (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit "week"})))
     (mt/with-temp [:model/Card metric {:name          "Orders CRUD Metric"
@@ -447,7 +447,7 @@
                                        :table_id      (mt/id :orders)
                                        :dataset_query (orders-metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "CREATED_AT")
             path          (str "metric/" (:id metric) "/dimension/" created-at-id)]
         (doseq [unit ["default" "millisecond" "not-a-unit"]]
           (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))
@@ -458,7 +458,7 @@
                                        :table_id      (mt/id :people)
                                        :dataset_query (people-metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [birth-date-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "BIRTH_DATE")
+      (let [birth-date-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "BIRTH_DATE")
             path          (str "metric/" (:id metric) "/dimension/" birth-date-id)]
         (doseq [unit ["hour" "year-of-era"]]
           (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))))))
@@ -466,7 +466,7 @@
 (deftest update-dimension-validation-test
   (testing "POST /api/metric/:id/dimension/:id validates names and descriptions"
     (with-seeded-metric [metric]
-      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+      (let [price-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "PRICE")
             path     (str "metric/" (:id metric) "/dimension/" price-id)]
         (doseq [display-name [nil "" " "]]
           (mt/user-http-request :crowberto :post 400 path {:display_name display-name}))
@@ -478,7 +478,7 @@
 (deftest update-dimension-source-type-mismatch-test
   (testing "POST /api/metric/:id/dimension/:id rejects a source column of a different type"
     (with-seeded-metric [metric]
-      (let [name-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "NAME")
+      (let [name-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "NAME")
             resp    (mt/user-http-request :crowberto :post 400
                                           (str "metric/" (:id metric) "/dimension/" name-id)
                                           {:source {:type "field" :field-id (mt/id :venues :price)}})]
@@ -515,7 +515,7 @@
             defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
         (t2/update! :model/Card (:id metric)
                     {:dimensions (mapv #(assoc % :default true)
-                                       (t2/select-one-fn :dimensions :model/Card :id (:id metric)))})
+                                       (t2/select-one-fn :dimensions :model/Card 'id (:id metric)))})
         (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
                                                     (str "metric/" (:id metric) "/dimension/set-default")
                                                     {:dimension_id a})))
@@ -597,12 +597,12 @@
 (deftest update-dimension-preserves-other-mappings-test
   (testing "updating one dimension leaves every dimension mapping intact"
     (with-seeded-metric [metric]
-      (let [before   (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))
-            price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")]
+      (let [before   (:dimension_mappings (t2/select-one :model/Card 'id (:id metric)))
+            price-id (get-dimension-id (t2/select-one :model/Card 'id (:id metric)) "PRICE")]
         (mt/user-http-request :crowberto :post 200
                               (str "metric/" (:id metric) "/dimension/" price-id)
                               {:display_name "Cost"})
-        (let [after (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))]
+        (let [after (:dimension_mappings (t2/select-one :model/Card 'id (:id metric)))]
           (is (= (count before) (count after)) "no mappings dropped")
           (is (every? some? after) "no nil mappings")
           (is (= (set (map :dimension-id before)) (set (map :dimension-id after)))

@@ -157,7 +157,7 @@
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
+                       :index-metadata     (t2/select :model/SearchIndexMetadata 'engine :appdb)}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
@@ -231,7 +231,7 @@
   (let [active (search.index/active-table)]
     (if (nil? active)
       {:type :missing-from-index :details {:reason :no-active-index}}
-      (let [index-row (t2/select-one active :model model :model_id (str id))]
+      (let [index-row (t2/select-one active 'model model 'model_id (str id))]
         (cond
           (nil? index-row)
           {:type :missing-from-index :details {:active-table active}}

@@ -25,7 +25,7 @@
   (let [user-1                    (mt/random-email)
         user-2                    (mt/random-email)
         user-exists?              (fn [email]
-                                    (t2/exists? :model/User :email email))
+                                    (t2/exists? :model/User 'email email))
         create-user!              (fn [email]
                                     (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
         transaction-exception     (Exception. "(Abort the current transaction)")
@@ -226,12 +226,12 @@
                (mdb.connection/do-after-commit (fn [] (swap! calls conj :after)))
                :result))
           "a requested rollback returns the transaction body's result")
-      (is (not (t2/exists? :model/User :email email))
+      (is (not (t2/exists? :model/User 'email email))
           "a successful rollback-only transaction does not commit its writes")
       (is (= [] @calls)
           "neither before- nor after-commit callbacks run when no commit occurs")
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest with-temp-rollback-boundary-discards-after-commit-callback-test
   (let [calls (atom [])]
@@ -255,15 +255,15 @@
                  (mdb.connection/do-before-commit (fn [] (swap! calls conj :nested-before)))
                  (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-after)))
                  :nested-result)))
-        (is (not (t2/exists? :model/User :email email))
+        (is (not (t2/exists? :model/User 'email email))
             "the nested write is rolled back to its savepoint")
         (is (= {:outer "kept"} @mdb.connection/*transaction-state*)
             "transaction state is restored to its pre-savepoint value"))
       (is (= [:outer-before :outer-after] @calls)
           "only callbacks registered outside the rolled-back nested transaction run")
-      (is (not (t2/exists? :model/User :email email)))
+      (is (not (t2/exists? :model/User 'email email)))
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest unsupported-transaction-options-are-rejected-test
   (t2/with-connection [conn]
@@ -460,10 +460,10 @@
         (is (= [:body] @order) "before-commit callback has not run during the body"))
       (is (= [:body :before-commit] @order)
           "before-commit runs after the body returns, as part of the commit sequence")
-      (is (t2/exists? :model/User :email email)
+      (is (t2/exists? :model/User 'email email)
           "a row inserted from a before-commit callback commits with the transaction")
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest before-commit-callbacks-not-run-on-rollback-test
   (let [calls (atom [])]
@@ -481,12 +481,12 @@
            Exception #"boom"
            (t2/with-transaction [_conn]
              (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
-             (is (t2/exists? :model/User :email email) "row is visible inside the transaction")
+             (is (t2/exists? :model/User 'email email) "row is visible inside the transaction")
              (mdb.connection/do-before-commit (fn [] (throw (ex-info "boom" {})))))))
-      (is (not (t2/exists? :model/User :email email))
+      (is (not (t2/exists? :model/User 'email email))
           "the business write rolls back when a before-commit callback throws")
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest before-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
   (let [calls (atom [])]
@@ -563,9 +563,9 @@
                     (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
                   nil
                   (t2/reducible-query conn ["select 1 as x"])))
-        (is (t2/exists? :model/User :email email)))
+        (is (t2/exists? :model/User 'email email)))
       (finally
-        (t2/delete! :model/User :email email)))))
+        (t2/delete! :model/User 'email email)))))
 
 (deftest unshared-connection-postgres-portal-survival-test
   ;; postgres streams a result set through a portal that dies if anything commits on the connection
@@ -615,9 +615,9 @@
           (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
                                           lock-name]))))))
       (testing "the uncommitted write vanished at pool check-in"
-        (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
+        (is (not (t2/exists? :metabase_cluster_lock 'lock_name lock-name))))
       (finally
-        (t2/delete! :metabase_cluster_lock :lock_name lock-name)))))
+        (t2/delete! :metabase_cluster_lock 'lock_name lock-name)))))
 
 (deftest quartz-data-source-pool-construction-test
   (testing "with :create-pool? true, the Quartz job store gets its own (smaller) c3p0 pool"

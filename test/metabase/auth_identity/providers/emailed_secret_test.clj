@@ -14,8 +14,8 @@
     (mt/with-temp [:model/User {user-id :id email :email} {}]
       (emailed-secret/create-password-reset! user-id)
       (let [auth-identity (t2/select-one :model/AuthIdentity
-                                         :user_id user-id
-                                         :provider "emailed-secret-password-reset")]
+                                         'user_id user-id
+                                         'provider "emailed-secret-password-reset")]
         (is (some? auth-identity))
         (is (= "emailed-secret-password-reset" (:provider auth-identity)))
         (is (= user-id (:user_id auth-identity)))
@@ -29,12 +29,12 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [first-token (emailed-secret/create-password-reset! user-id)
             first-auth-identity (t2/select-one :model/AuthIdentity
-                                               :user_id user-id
-                                               :provider "emailed-secret-password-reset")
+                                               'user_id user-id
+                                               'provider "emailed-secret-password-reset")
             second-token (emailed-secret/create-password-reset! user-id)
             auth-identities (t2/select :model/AuthIdentity
-                                       :user_id user-id
-                                       :provider "emailed-secret-password-reset")]
+                                       'user_id user-id
+                                       'provider "emailed-secret-password-reset")]
         (is (= 1 (count auth-identities)))
         (is (not= first-token second-token))
         (is (= (:id first-auth-identity) (:id (first auth-identities))))))))
@@ -52,8 +52,8 @@
       (let [before-create (t/instant)]
         (emailed-secret/create-password-reset! user-id)
         (let [auth-identity (t2/select-one :model/AuthIdentity
-                                           :user_id user-id
-                                           :provider "emailed-secret-password-reset")
+                                           'user_id user-id
+                                           'provider "emailed-secret-password-reset")
               expires-at (get-in auth-identity [:credentials :expires_at])]
           (is (inst? expires-at))
           (is (t/after? expires-at before-create)))))))

@@ -49,9 +49,9 @@
                   :analysis_version *current-analysis-finding-version*
                   :result result
                   :stale false}
-          existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                                        :analyzed_entity_type type
-                                        :analyzed_entity_id instance-id)]
+          existing-id (t2/select-one-fn :id [:model/AnalysisFinding 'id]
+                                        'analyzed_entity_type type
+                                        'analyzed_entity_id instance-id)]
       (if existing-id
         (t2/update! :model/AnalysisFinding existing-id update)
         (t2/insert! :model/AnalysisFinding
@@ -73,20 +73,20 @@
   [entity-type entity-ids]
   (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
     (t2/update! :model/AnalysisFinding
-                :analyzed_entity_type entity-type
-                :analyzed_entity_id [:in batch]
+                'analyzed_entity_type entity-type
+                'analyzed_entity_id ['in batch]
                 {:stale true})))
 
 (defn has-stale-entities?
   "Check if there are any stale analysis records."
   []
-  (t2/exists? :model/AnalysisFinding :stale true))
+  (t2/exists? :model/AnalysisFinding 'stale true))
 
 (defn stale-entity-count
   "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
   detect whether it is still making progress."
   []
-  (t2/count :model/AnalysisFinding :stale true))
+  (t2/count :model/AnalysisFinding 'stale true))
 
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,

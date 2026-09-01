@@ -56,7 +56,7 @@
                 :model    "Card"
                 :model_id card-id
                 :details  {:name "Test card"}}
-               (t2/select-one :model/AuditLog :model_id card-id)))))
+               (t2/select-one :model/AuditLog 'model_id card-id)))))
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
@@ -70,7 +70,7 @@
                 :model    "Card"
                 :model_id card-id
                 :details  {:name "Test card"}}
-               (t2/select-one :model/AuditLog :model_id card-id)))))
+               (t2/select-one :model/AuditLog 'model_id card-id)))))
       (testing "Test that `record-event!` records an event with arbitrary data and no model specified"
         (audit-log/record-event! :event/test-event {:details {:foo "bar"}})
         (is (partial=
@@ -79,4 +79,4 @@
               :model nil
               :model_id nil
               :details {:foo "bar"}}
-             (t2/select-one :model/AuditLog :topic :test-event)))))))
+             (t2/select-one :model/AuditLog 'topic :test-event)))))))

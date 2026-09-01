@@ -76,7 +76,7 @@
                                                     :credentials {:secret       secret
                                                                   :used_jtis    [{:jti "stale" :exp (- now 10)}]}}]
       (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
-      (let [jtis (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:credentials :used_jtis])]
+      (let [jtis (get-in (t2/select-one :model/AuthIdentity 'id ai-id) [:credentials :used_jtis])]
         (testing "the expired jti is gone; the fresh one is recorded"
           (is (= 1 (count jtis)))
           (is (not= "stale" (:jti (first jtis)))))))))
@@ -129,7 +129,7 @@
                 (binding [t2.conn/*current-connectable* nil]
                   (is (= 0 (count (filter #(u.password/bcrypt-verify code %)
                                           (get-in (t2/select-one :model/AuthIdentity
-                                                                 :user_id user-id :provider "totp")
+                                                                 'user_id user-id 'provider "totp")
                                                   [:credentials :recovery_codes]))))))))))))))
 
 (deftest concurrent-totp-code-single-use-test
@@ -181,8 +181,8 @@
                                              :provider    "totp"
                                              :confirmed_at (t/instant)
                                              :credentials  {:secret secret}}))
-          (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
-                raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
+          (let [ai-id     (t2/select-one-fn :id :auth_identity 'user_id user-id 'provider "totp")
+                raw       (t2/select-one-fn :credentials :auth_identity 'id ai-id)
                 plaintext (encryption-test/with-secret-key k1
                             (encryption/maybe-decrypt-accepting-plaintext raw))
                 rotated   (encryption-test/with-secret-key k2
@@ -197,7 +197,7 @@
             ;; timestamp-parsing transform then blows up — either way the old key can't read the row
             (is (thrown? Exception
                          (t2/select-one-fn :credentials :model/AuthIdentity
-                                           :user_id user-id :provider "totp"))
+                                           'user_id user-id 'provider "totp"))
                 "sanity: the old key can no longer read the row")))))))
 
 (deftest lost-encryption-key-fails-closed-test
@@ -220,7 +220,7 @@
               (is (thrown? Exception
                            (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
             (testing "the enrollment row survives the failed attempt"
-              (is (= 1 (t2/count :auth_identity :user_id user-id :provider "totp"))))
+              (is (= 1 (t2/count :auth_identity 'user_id user-id 'provider "totp"))))
             (testing "disable! deletes without decrypting, so the admin escape hatch works"
               (is (true? (enrollment/disable! user-id)))
-              (is (zero? (t2/count :auth_identity :user_id user-id :provider "totp"))))))))))
+              (is (zero? (t2/count :auth_identity 'user_id user-id 'provider "totp"))))))))))

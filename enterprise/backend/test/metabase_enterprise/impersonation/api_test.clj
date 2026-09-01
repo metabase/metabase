@@ -20,7 +20,7 @@
                 graph         (assoc (data-perms.graph/api-graph) :impersonations [impersonation])]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
             (is (=? [impersonation]
-                    (t2/select :model/ConnectionImpersonation :group_id (u/the-id group)))))
+                    (t2/select :model/ConnectionImpersonation 'group_id (u/the-id group)))))
           (testing "A connection impersonation policy can be updated via the permissions graph endpoint"
             (let [impersonation {:group_id  (u/the-id group)
                                  :db_id     (mt/id)
@@ -32,8 +32,8 @@
                      :db_id     (mt/id)
                      :attribute "New Attribute Name"}]
                    (t2/select :model/ConnectionImpersonation
-                              :group_id (u/the-id group))))
-              (is (= 1 (t2/count :model/ConnectionImpersonation :group_id (u/the-id group)))))))))))
+                              'group_id (u/the-id group))))
+              (is (= 1 (t2/count :model/ConnectionImpersonation 'group_id (u/the-id group)))))))))))
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"
@@ -70,7 +70,7 @@
                                                                               :db_id    (mt/id)
                                                                               :attribute "Attribute Name"}]
           (mt/user-http-request :crowberto :delete 204 (format "ee/advanced-permissions/impersonation/%d" impersonation-id))
-          (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
+          (is (nil? (t2/select-one :model/ConnectionImpersonation 'id impersonation-id)))))
       (testing "Test that a non-admin cannot delete a Connection Impersonation"
         (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}
                        :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
@@ -78,7 +78,7 @@
                         :db_id    (mt/id)
                         :attribute "Attribute Name"}]
           (mt/user-http-request :rasta :delete 403 (format "ee/advanced-permissions/impersonation/%d" impersonation-id))
-          (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))
+          (is (= impersonation (t2/select-one :model/ConnectionImpersonation 'id impersonation-id))))))
     (testing "Test that the :advanced-permissions flag is required to delete a Connection Impersonation"
       (mt/with-premium-features #{}
         (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}
@@ -87,7 +87,7 @@
                         :db_id    (mt/id)
                         :attribute "Attribute Name"}]
           (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation")
-          (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
+          (is (= impersonation (t2/select-one :model/ConnectionImpersonation 'id impersonation-id))))))))
 
 (deftest delete-impersonation-policy-after-permissions-change-test
   (mt/with-premium-features #{:advanced-permissions}
@@ -102,7 +102,7 @@
                               [:groups group-id (mt/id) :view-data]
                               :unrestricted)]
           (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
-        (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
+        (is (nil? (t2/select-one :model/ConnectionImpersonation 'id impersonation-id)))))
     (testing "A connection impersonation policy is not deleted if unrelated permissions are changed"
       (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}
                      :model/ConnectionImpersonation {impersonation-id :id}
@@ -114,4 +114,4 @@
                               [:groups group-id (mt/id) :details]
                               :yes)]
           (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
-        (is (not (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
+        (is (not (nil? (t2/select-one :model/ConnectionImpersonation 'id impersonation-id))))))))

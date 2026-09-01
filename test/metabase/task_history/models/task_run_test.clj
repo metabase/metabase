@@ -26,7 +26,7 @@
                                    :entity_type :database
                                    :entity_id   1}
         (is (some? (task-history/current-run-id)) "run-id is bound")
-        (let [run (t2/select-one :model/TaskRun :id (task-history/current-run-id))]
+        (let [run (t2/select-one :model/TaskRun 'id (task-history/current-run-id))]
           (is (= :started (:status run)) "status is :started during execution")
           (is (= :sync (:run_type run)))
           (is (= :database (:entity_type run)))
@@ -44,7 +44,7 @@
             :done)
           (task-history/with-task-history {:task "test-task-2"}
             :done))
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
+        (let [run (t2/select-one :model/TaskRun 'id @run-id)]
           (is (= :success (:status run)))
           (is (some? (:ended_at run))))))))
 
@@ -62,7 +62,7 @@
             (task-history/with-task-history {:task "test-task-2"}
               (throw (Exception. "fail"))))
           (catch Exception _))
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
+        (let [run (t2/select-one :model/TaskRun 'id @run-id)]
           (is (= :failed (:status run)))
           (is (some? (:ended_at run))))))))
 
@@ -77,12 +77,12 @@
           (reset! run-id (task-history/current-run-id))
           (task-history/with-task-history {:task "test-task"}
             :done))
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
+        (let [run (t2/select-one :model/TaskRun 'id @run-id)]
           (is (= :started (:status run)) "status remains :started")
           (is (nil? (:ended_at run)) "ended_at is nil"))
         ;; Manual completion
         (task-history/complete-task-run! @run-id)
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
+        (let [run (t2/select-one :model/TaskRun 'id @run-id)]
           (is (= :success (:status run)))
           (is (some? (:ended_at run))))))))
 
@@ -127,7 +127,7 @@
           (task-history/with-task-history {:task "t1"} :ok)
           (task-history/with-task-history {:task "t2"} :ok))
         (task-history/complete-task-run! run-id)
-        (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))))
+        (is (= :success (:status (t2/select-one :model/TaskRun 'id run-id))))))
     (testing "complete-task-run! derives :failed when any child failed"
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
@@ -139,7 +139,7 @@
               (throw (Exception. "fail")))
             (catch Exception _)))
         (task-history/complete-task-run! run-id)
-        (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))))
+        (is (= :failed (:status (t2/select-one :model/TaskRun 'id run-id))))))))
 
 (deftest complete-task-run-idempotent-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
@@ -151,8 +151,8 @@
           (task-history/with-task-history {:task "t1"} :ok))
         ;; First completion
         (task-history/complete-task-run! run-id)
-        (let [first-ended-at (:ended_at (t2/select-one :model/TaskRun :id run-id))]
-          (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))
+        (let [first-ended-at (:ended_at (t2/select-one :model/TaskRun 'id run-id))]
+          (is (= :success (:status (t2/select-one :model/TaskRun 'id run-id))))
           ;; Add a failing task and try to complete again
           (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
             (try
@@ -161,7 +161,7 @@
               (catch Exception _)))
           ;; Second completion should be no-op
           (task-history/complete-task-run! run-id)
-          (let [run (t2/select-one :model/TaskRun :id run-id)]
+          (let [run (t2/select-one :model/TaskRun 'id run-id)]
             (is (= :success (:status run)) "status unchanged")
             (is (= first-ended-at (:ended_at run)) "ended_at unchanged")))))))
 
@@ -204,13 +204,13 @@
                                      :entity_id   1}
           (task-history/with-task-history {:task task-name}
             :done))
-        (let [th (t2/select-one :model/TaskHistory :task task-name)]
+        (let [th (t2/select-one :model/TaskHistory 'task task-name)]
           (is (some? (:run_id th)) "run_id is set"))))
     (testing "task history created outside with-task-run has nil run_id"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name}
           :done)
-        (let [th (t2/select-one :model/TaskHistory :task task-name)]
+        (let [th (t2/select-one :model/TaskHistory 'task task-name)]
           (is (nil? (:run_id th)) "run_id is nil"))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -225,7 +225,7 @@
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
         (sync-util/sync-operation :sync-metadata mock-db "Test sync"
           (sync-util/run-sync-operation "test-sync" mock-db sync-steps))
-        (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 999)]
+        (let [run (t2/select-one :model/TaskRun 'entity_type :database 'entity_id 999)]
           (is (some? run) "task run was created")
           (is (= :sync (:run_type run)))
           (is (= :database (:entity_type run)))
@@ -240,7 +240,7 @@
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
         (sync-util/sync-operation :analyze mock-db "Test analyze"
           (sync-util/run-sync-operation "test-analyze" mock-db sync-steps))
-        (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 998)]
+        (let [run (t2/select-one :model/TaskRun 'entity_type :database 'entity_id 998)]
           (is (some? run) "task run was created")
           (is (= :fingerprint (:run_type run)))
           (is (= :success (:status run))))))))
@@ -261,7 +261,7 @@
                                                        {:outer true}))]]
         (sync-util/sync-operation :sync mock-db "Outer sync"
           (sync-util/run-sync-operation "outer" mock-db outer-steps))
-        (is (= 1 (t2/count :model/TaskRun :entity_id 997))
+        (is (= 1 (t2/count :model/TaskRun 'entity_id 997))
             "only one task run created for nested operations")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -298,7 +298,7 @@
             (notification.tu/with-javascript-visualization-stub
               (pulse.tu/with-captured-channel-send-messages!
                 (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
-            (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+            (let [run (t2/select-one :model/TaskRun 'entity_type :dashboard 'entity_id dash-id)]
               (is (some? run) "task run was created")
               (is (= :subscription (:run_type run)))
               (is (= :dashboard (:entity_type run)))
@@ -321,7 +321,7 @@
               (notification.tu/with-javascript-visualization-stub
                 (notification.tu/with-mock-inbox-email!
                   (notification.send/send-notification! notification :notification/sync? true)))
-              (let [run (t2/select-one :model/TaskRun :entity_type :card :entity_id card-id)]
+              (let [run (t2/select-one :model/TaskRun 'entity_type :card 'entity_id card-id)]
                 (is (some? run) "task run was created")
                 (is (= :alert (:run_type run)))
                 (is (= :card (:entity_type run)))

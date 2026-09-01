@@ -41,8 +41,8 @@
   "Get the collection_id for the target entity of a CacheConfig."
   [{:keys [model model_id]}]
   (case model
-    "dashboard" (:collection_id (t2/select-one [:model/Dashboard :collection_id] :id model_id))
-    "question"  (:collection_id (t2/select-one [:model/Card :collection_id] :id model_id))
+    "dashboard" (:collection_id (t2/select-one [:model/Dashboard 'collection_id] 'id model_id))
+    "question"  (:collection_id (t2/select-one [:model/Card 'collection_id] 'id model_id))
     nil))
 
 (defmethod mi/can-write? :model/CacheConfig
@@ -103,7 +103,7 @@
 (defn root-strategy
   "Returns root strategy, if it's defined."
   []
-  (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
+  (t2/select-one :model/CacheConfig 'model "root" 'model_id 0 'strategy :ttl))
 
 (defn row->config
   "Transform from how cache config is stored to how it's used/exposed in the API."
@@ -215,7 +215,7 @@
   [user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
-          current (t2/select-one :model/CacheConfig :model model :model_id model_id {:for :update})]
+          current (t2/select-one :model/CacheConfig 'model model 'model_id model_id {:for :update})]
       (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
                                          (constantly data))
         (audit-caching-change! user-id <> current data)))))
@@ -223,8 +223,8 @@
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
   [user-id model model-ids]
-  (when-let [current (seq (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))]
-    (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids])
+  (when-let [current (seq (t2/select :model/CacheConfig 'model model 'model_id ['in model-ids]))]
+    (t2/delete! :model/CacheConfig 'model model 'model_id ['in model-ids])
     (doseq [item current]
       (audit-caching-change! user-id
                              (:id item)
@@ -237,12 +237,12 @@
   (let [card-ids (concat
                   questions
                   (when (seq databases)
-                    (t2/select-fn-vec :id [:model/Card :id] :database_id [:in databases]))
+                    (t2/select-fn-vec :id [:model/Card 'id] 'database_id ['in databases]))
                   (when (seq dashboards)
-                    (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboards])))]
+                    (t2/select-fn-vec :card_id [:model/DashboardCard 'card_id] 'dashboard_id ['in dashboards])))]
     (if (empty? card-ids)
       -1
-      (t2/update! :model/Card :id [:in card-ids]
+      (t2/update! :model/Card 'id ['in card-ids]
                   {:cache_invalidated_at (t/offset-date-time)}))))
 
 (defn- invalidate-cache-configs [databases dashboards questions]

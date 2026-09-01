@@ -5,4 +5,4 @@
 (defn current-database
   "The database being used for uploads."
   []
-  (t2/select-one :model/Database :uploads_enabled true))
+  (t2/select-one :model/Database 'uploads_enabled true))

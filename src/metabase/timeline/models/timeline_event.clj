@@ -45,7 +45,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (t2/select-one 'Timeline :id (:timeline_id event)))]
+                     (t2/select-one 'Timeline 'id (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent
@@ -113,8 +113,8 @@
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
   (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
+                             'collection_id collection_id
+                             'archived false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 

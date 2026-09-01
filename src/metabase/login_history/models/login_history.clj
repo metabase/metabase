@@ -67,14 +67,14 @@
 (defn first-login-ever?
   "Return true if this is the first login ever for the given user-id."
   [{user-id :user_id}]
-  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id {:limit 2})
+  (some-> (t2/select [:model/LoginHistory 'id] 'user_id user-id {:limit 2})
           count
           (= 1)))
 
 (defn first-login-on-this-device?
   "Return true if this is the first login for the given user-id on the device"
   [{user-id :user_id, device-id :device_id}]
-  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
+  (some-> (t2/select [:model/LoginHistory 'id] 'user_id user-id, 'device_id device-id, {:limit 2})
           count
           (= 1)))
 

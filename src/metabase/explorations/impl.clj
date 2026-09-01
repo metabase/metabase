@@ -38,8 +38,8 @@
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
    to the top of the /dimensions response."
   []
-  (when-let [root (t2/select-one [:model/Collection :id :location]
-                                 :type collection/library-metrics-collection-type)]
+  (when-let [root (t2/select-one [:model/Collection 'id 'location]
+                                 'type collection/library-metrics-collection-type)]
     (conj (or (collection/descendant-ids root) #{}) (:id root))))
 
 (defn- metric-query
@@ -113,7 +113,7 @@
         where       (if (seq metric-ids)
                       [:and base-where [:in :id (vec metric-ids)]]
                       base-where)]
-    (->> (t2/select [:model/Card :id]
+    (->> (t2/select [:model/Card 'id]
                     {:where    where
                      :order-by [[[:case
                                   [:in :collection_id (or (seq library-ids) [-1])] 0
@@ -129,8 +129,8 @@
   [card-ids]
   (when (seq card-ids)
     (let [rows   (t2/select (into [:model/Card] metric-card-cols)
-                            :id [:in card-ids]
-                            :type "metric")
+                            'id ['in card-ids]
+                            'type "metric")
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
@@ -155,7 +155,7 @@
             (catch Throwable e
               (log/warnf e "Failed to sync dimensions for metric card %d" id))))
         (let [healed (u/index-by :id (t2/select (into [:model/Card] metric-card-cols)
-                                                :id [:in broken-ids]))]
+                                                'id ['in broken-ids]))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 
 (defn- simple-table-query?

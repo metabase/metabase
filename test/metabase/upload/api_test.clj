@@ -35,7 +35,7 @@
           (is (= 200
                  status))
           (is (= body
-                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
+                 (t2/select-one-pk :model/Card 'database_id (mt/id)))))))))
 
 (def ^:private multipart-request-options
   {:request-options {:headers {"content-type" "multipart/form-data"}}})

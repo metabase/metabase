@@ -79,7 +79,7 @@
   [pcs]
   (when (seq pcs)
     (let [pc-id->recipients (group-by :pulse_channel_id
-                                      (t2/select :pulse_channel_recipient :pulse_channel_id [:in (map :id pcs)]))]
+                                      (t2/select :pulse_channel_recipient 'pulse_channel_id ['in (map :id pcs)]))]
       (map (fn [pc]
              (assoc pc :recipients (get pc-id->recipients (:id pc))))
            pcs))))
@@ -96,9 +96,9 @@
   Return the created notifications."
   [scheduler pulse]
   (let [pulse-id   (:id pulse)
-        pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id :enabled true))
+        pcs        (hydrate-recipients (t2/select :pulse_channel 'pulse_id pulse-id 'enabled true))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
-        pulse-card (t2/select-one :pulse_card :pulse_id pulse-id {:order-by [[:id :desc]]})]
+        pulse-card (t2/select-one :pulse_card 'pulse_id pulse-id {:order-by [[:id :desc]]})]
     ;; the old schema allow one alert to have multiple pulse-channels. Practically they all have the same schedule
     ;; but to be safe we group them by schedule and create a notification for each group
     (doall

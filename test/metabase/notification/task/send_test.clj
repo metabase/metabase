@@ -21,7 +21,7 @@
   [task-name]
   (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
                     :model/TaskHistory
-                    :task (name task-name)
+                    'task (name task-name)
                     {:order-by [[:started_at :desc]]}))
 
 (deftest e2e-test
@@ -76,7 +76,7 @@
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
-                                                          :notification_id (:id notification)))]
+                                                          'notification_id (:id notification)))]
             (t2/delete! :notification_subscription subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))

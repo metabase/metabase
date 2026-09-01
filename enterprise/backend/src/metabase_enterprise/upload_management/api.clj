@@ -16,8 +16,8 @@
   google sheets uploads. Excludes tables with is_upload=true since those are already included in the main query."
   []
   (when (premium-features/has-feature? :attached-dwh)
-    (when-let [dw-db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
-      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true :is_upload false)]
+    (when-let [dw-db-id (t2/select-one-fn :id :model/Database 'is_attached_dwh true)]
+      (when-let [dw-tables (t2/select :model/Table 'db_id dw-db-id 'active true 'is_upload false)]
         dw-tables))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -27,7 +27,7 @@
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
-  (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+  (as-> (t2/select :model/Table, 'active true, 'is_upload true, {:order-by [[:name :asc]]}) tables
     ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)

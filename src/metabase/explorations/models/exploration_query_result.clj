@@ -67,8 +67,8 @@
   still pending/errored)."
   [eq-id]
   (when-let [sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                     :exploration_query_id eq-id)]
-    (t2/select-one :model/StoredResult :id sr-id)))
+                                     'exploration_query_id eq-id)]
+    (t2/select-one :model/StoredResult 'id sr-id)))
 
 (defn- deserialize-stored-result
   "Inverse of [[qp/do-with-serialization]] for a stored_result's
@@ -98,11 +98,11 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (t2/select-one :model/ExplorationQuery :id eq-id)
+     (let [eq        (api/check-404 (t2/hydrate (t2/select-one :model/ExplorationQuery 'id eq-id)
                                                 :segment_name))
            eqr       (api/check-404 (t2/select-one :model/ExplorationQueryResult
-                                                   :exploration_query_id eq-id))
-           sr        (api/check-404 (t2/select-one :model/StoredResult :id (:stored_result_id eqr)))
+                                                   'exploration_query_id eq-id))
+           sr        (api/check-404 (t2/select-one :model/StoredResult 'id (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
@@ -162,8 +162,8 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                       :id card-id))
+                        (t2/select-one [:model/Card 'name 'description 'display 'visualization_settings]
+                                       'id card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]

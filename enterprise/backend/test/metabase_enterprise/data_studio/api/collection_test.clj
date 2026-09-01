@@ -57,7 +57,7 @@
                                                                    :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-          (t2/delete! :model/DataPermissions :db_id (mt/id))
+          (t2/delete! :model/DataPermissions 'db_id (mt/id))
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (testing "with collection read but no view-data, user should not see published table"
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
@@ -96,7 +96,7 @@
                                                 :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-          (t2/delete! :model/DataPermissions :db_id (mt/id))
+          (t2/delete! :model/DataPermissions 'db_id (mt/id))
           (perms/revoke-collection-permissions! (perms/all-users-group) collection)
           (data-perms/set-table-permission! group-id table :perms/view-data :unrestricted)
           (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
@@ -108,7 +108,7 @@
                                                               :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-          (t2/delete! :model/DataPermissions :db_id (mt/id))
+          (t2/delete! :model/DataPermissions 'db_id (mt/id))
           (testing "with no view-data, user should not see published table in root"
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
             (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)

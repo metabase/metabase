@@ -178,4 +178,4 @@
                                                               :type     :query
                                                               :query    {:source-table (mt/id :venues)}
                                                               :a/b      1}}]
-      (is (not (contains? (:dataset_query (t2/select-one :model/Card :id card-id)) :a/b))))))
+      (is (not (contains? (:dataset_query (t2/select-one :model/Card 'id card-id)) :a/b))))))

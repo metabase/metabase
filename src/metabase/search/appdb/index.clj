@@ -108,7 +108,7 @@
   briefly stale relative to what has been dropped)."
   [table]
   (when table
-    (t2/exists? :information_schema.tables :table_name (table-name table))))
+    (t2/exists? :information_schema.tables 'table_name (table-name table))))
 
 (defn- drop-table! [table]
   (boolean
@@ -222,7 +222,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
+                        (t2/delete! :conn safe-conn :model/SearchIndexMetadata 'index_name (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -434,10 +434,10 @@
   []
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
-                    :engine :appdb
-                    :version (search.spec/index-version-hash)
-                    :lang_code (i18n/site-locale-string)
-                    :status :active
+                    'engine :appdb
+                    'version (search.spec/index-version-hash)
+                    'lang_code (i18n/site-locale-string)
+                    'status :active
                     {:order-by [[:created_at :desc]]}))
 
 (defn search-query
@@ -506,4 +506,4 @@
            ~@body
            (finally
              (#'drop-table! table-name#)
-             (t2/delete! :model/SearchIndexMetadata :version version#)))))))
+             (t2/delete! :model/SearchIndexMetadata 'version version#)))))))

@@ -16,7 +16,7 @@
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (t2/select-one :model/Table 'id (:table_id instance)))]
     (and (remote-sync/table-editable? table)
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
@@ -92,7 +92,7 @@
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
   (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
-                    :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
+                    'user_id api/*current-user-id* 'group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
@@ -173,14 +173,14 @@
     {}
     (let [all-users-group-id (u/the-id (perms/all-users-group))
           blocked-db-ids     (t2/select-fn-set :db_id :model/DataPermissions
-                                               :perm_type :perms/view-data
-                                               :perm_value :blocked
-                                               :group_id all-users-group-id
-                                               :db_id [:in db-ids]
+                                               'perm_type :perms/view-data
+                                               'perm_value :blocked
+                                               'group_id all-users-group-id
+                                               'db_id ['in db-ids]
                                                {:select-distinct [:db_id]})
           impersonation-db-ids (t2/select-fn-set :db_id :model/ConnectionImpersonation
-                                                 :group_id all-users-group-id
-                                                 :db_id [:in db-ids])
+                                                 'group_id all-users-group-id
+                                                 'db_id ['in db-ids])
           sandbox-db-ids     (into #{}
                                    (map :db_id)
                                    (t2/query {:select [[:t.db_id :db_id]]
@@ -200,14 +200,14 @@
   (if (empty? group-ids)
     {}
     (let [blocked-group-ids   (t2/select-fn-set :group_id :model/DataPermissions
-                                                :perm_type :perms/view-data
-                                                :perm_value :blocked
-                                                :group_id [:in group-ids]
+                                                'perm_type :perms/view-data
+                                                'perm_value :blocked
+                                                'group_id ['in group-ids]
                                                 {:select-distinct [:group_id]})
           impersonation-group-ids (t2/select-fn-set :group_id :model/ConnectionImpersonation
-                                                    :group_id [:in group-ids])
+                                                    'group_id ['in group-ids])
           sandbox-group-ids   (t2/select-fn-set :group_id :model/Sandbox
-                                                :group_id [:in group-ids])
+                                                'group_id ['in group-ids])
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
@@ -221,10 +221,10 @@
     ;; We don't check for connection impersonations here, because impersonations are set at the
     ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
     (let [blocked-group-ids (t2/select-fn-set :group_id :model/DataPermissions
-                                              :db_id db-id
-                                              :perm_type :perms/view-data
-                                              :perm_value :blocked
-                                              :group_id [:in group-ids]
+                                              'db_id db-id
+                                              'perm_type :perms/view-data
+                                              'perm_value :blocked
+                                              'group_id ['in group-ids]
                                               {:select-distinct [:group_id]})
           sandbox-group-ids (into #{}
                                   (map :group_id)

@@ -30,7 +30,7 @@
                                                       :collection_id (:id collection)})]
                   (is (= "You don't have permissions to do that." response)
                       "Should get 403 forbidden when trying to create snippet in read-only mode")
-                  (is (not (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+                  (is (not (t2/exists? :model/NativeQuerySnippet 'name snippet-name))
                       "Snippet should not have been created"))))))))))
 
 (deftest create-snippet-allowed-in-read-write-mode-test
@@ -54,7 +54,7 @@
                       (is (= snippet-name (:name response))
                           "Response should contain the created snippet"))
                     (finally
-                      (t2/delete! :model/NativeQuerySnippet :name snippet-name))))))))))))
+                      (t2/delete! :model/NativeQuerySnippet 'name snippet-name))))))))))))
 
 (deftest create-snippet-allowed-when-library-not-synced-test
   (testing "POST /api/native-query-snippet"
@@ -77,7 +77,7 @@
                       (is (= snippet-name (:name response))
                           "Response should contain the created snippet"))
                     (finally
-                      (t2/delete! :model/NativeQuerySnippet :name snippet-name))))))))))))
+                      (t2/delete! :model/NativeQuerySnippet 'name snippet-name))))))))))))
 
 ;;; ------------------------------------------- Update Snippet API Tests -------------------------------------------
 
@@ -99,7 +99,7 @@
                                                      {:name "Updated Name"})]
                   (is (= "You don't have permissions to do that." response)
                       "Should get 403 forbidden when trying to update snippet in read-only mode")
-                  (is (= "Original Name" (:name (t2/select-one :model/NativeQuerySnippet :id (:id snippet))))
+                  (is (= "Original Name" (:name (t2/select-one :model/NativeQuerySnippet 'id (:id snippet))))
                       "Snippet name should not have been updated"))))))))))
 
 (deftest update-snippet-allowed-in-read-write-mode-test
@@ -206,5 +206,5 @@
                                                      {:archived true})]
                   (is (= "You don't have permissions to do that." response)
                       "Should get 403 forbidden when trying to archive snippet in read-only mode")
-                  (is (false? (:archived (t2/select-one :model/NativeQuerySnippet :id (:id snippet))))
+                  (is (false? (:archived (t2/select-one :model/NativeQuerySnippet 'id (:id snippet))))
                       "Snippet should not have been archived"))))))))))

@@ -125,7 +125,7 @@
   This is the main cluster coordination mechanism for migrations, since any instance
   can cancel the migration, not just the one that initiated it."
   [id state progress]
-  (when (= 0 (t2/update! :model/CloudMigration :id id :state [:not-in terminal-states]
+  (when (= 0 (t2/update! :model/CloudMigration 'id id 'state ['not-in terminal-states]
                          {:state state :progress progress}))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
@@ -221,7 +221,7 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (t2/update! :model/CloudMigration :id id {:state :init}))
+        (t2/update! :model/CloudMigration 'id id {:state :init}))
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -302,4 +302,4 @@
   (migrate! mig :retry? true)
 
   ;; cancel all
-  (t2/update! :model/CloudMigration {:state [:not-in terminal-states]} {:state :cancelled}))
+  (t2/update! :model/CloudMigration {'state ['not-in terminal-states]} {:state :cancelled}))

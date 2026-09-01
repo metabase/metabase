@@ -99,7 +99,7 @@
        :private  true} db-id->router-db-id
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (t2/select-one-fn :router_database_id :model/Database :id db-id))))
+     (t2/select-one-fn :router_database_id :model/Database 'id db-id))))
 
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
@@ -185,7 +185,7 @@
         (not is_attached_dwh)))
   ([_model pk]
    (and (can-write? pk)
-        (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
+        (not (:is_attached_dwh (t2/select-one :model/Database 'id pk))))))
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
@@ -350,7 +350,7 @@
                                            [:= :router_database_id nil]]
                                 :group-by [:engine]}))]
     (when (seq ids)
-      (t2/select :model/Database :id [:in ids]))))
+      (t2/select :model/Database 'id ['in ids]))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool. Only one database per unique
@@ -430,7 +430,7 @@
     ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
     ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
     ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
-    (when (t2/exists? :model/Field :table_id [:in table-ids-query])
+    (when (t2/exists? :model/Field 'table_id ['in table-ids-query])
       (let [no-children-clause (if (= (mdb/db-type) :mysql)
                                  ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                                  ;; DELETE target
@@ -490,7 +490,7 @@
   "This function maintains the invariant that only one database can have uploads_enabled=true."
   [db]
   (when (:uploads_enabled db)
-    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
   db)
 
 (defn- assert-router-database-id-not-mutated!
@@ -634,7 +634,7 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table 'db_id id 'active true {:order-by [[:%lower.display_name :asc]]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :tables]
   "Batch hydrate `Tables` for the given `Database`."
@@ -644,8 +644,8 @@
    #(group-by :db_id
               ;; TODO - do we want to include tables that should be `:hidden`?
               (t2/select :model/Table
-                         :db_id  [:in (map :id databases)]
-                         :active true
+                         'db_id  ['in (map :id databases)]
+                         'active true
                          {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
    :id
    {:default []}))
@@ -653,9 +653,9 @@
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
-  (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
+  (let [table-ids (t2/select-pks-set 'Table, 'db_id id, 'active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))))
+      (t2/select 'Field, 'table_id ['in table-ids], 'semantic_type (mdb/isa :type/PK)))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
@@ -771,7 +771,7 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (t2/select-one :model/Database :name id))
+  (t2/select-one :model/Database 'name id))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; directory for the database with same-named file inside.
@@ -798,7 +798,7 @@
   (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
-     (t2/select-one-fn :db_id :model/Table, :id table-id))))
+     (t2/select-one-fn :db_id :model/Table, 'id table-id))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

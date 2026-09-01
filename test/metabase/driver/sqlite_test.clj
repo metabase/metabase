@@ -139,7 +139,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select :model/Table 'db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -175,7 +175,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (t2/hydrate (t2/select :model/Table :db_id db-id
+                 (->> (t2/hydrate (t2/select :model/Table 'db_id db-id
                                              {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                               :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
@@ -215,7 +215,7 @@
                                    :database-is-auto-increment false
                                    :database-is-nullable       true
                                    :database-is-generated      false}]}
-                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                        (-> (driver/describe-table driver db (t2/select-one :model/Table 'id (mt/id :timestamp_table)))
                             (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime

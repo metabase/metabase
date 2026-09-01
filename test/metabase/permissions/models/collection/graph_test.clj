@@ -565,7 +565,7 @@
 (deftest mega-graph-test
   (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
     (with-n-temp-users-with-personal-collections 2000
-      (is (>= (t2/count :model/Collection :personal_owner_id [:not= nil]) 2000))
+      (is (>= (t2/count :model/Collection 'personal_owner_id ['not= nil]) 2000))
       (is (map? (graph/graph))))))
 
 (deftest async-perm-graph-revisions

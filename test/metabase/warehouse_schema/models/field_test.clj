@@ -30,7 +30,7 @@
                        :set    {column (u/qualified-name unknown-type)}
                        :where  [:= :id (u/the-id field)]})
         (is (= fallback-type
-               (t2/select-one-fn column :model/Field :id (u/the-id field))))))
+               (t2/select-one-fn column :model/Field 'id (u/the-id field))))))
     (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -66,7 +66,7 @@
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -84,7 +84,7 @@
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -103,7 +103,7 @@
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       ;; Grant both view-data and create-queries permissions to the table
@@ -136,7 +136,7 @@
                               :database_position 0}))]
         (is (=? {:base_type      :type/Number
                  :effective_type :type/Number}
-                (t2/select-one :model/Field :id field-id)))))))
+                (t2/select-one :model/Field 'id field-id)))))))
 
 (deftest effective-type-guard-on-update-test
   (testing "GHY-3388: updating a field to set effective_type ≠ base_type with no coercion_strategy
@@ -151,7 +151,7 @@
                                          :coercion_strategy nil})
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
-              (t2/select-one :model/Field :id field-id))))))
+              (t2/select-one :model/Field 'id field-id))))))
 
 (deftest effective-type-guard-preserves-legitimate-coercion-test
   (testing "GHY-3388: a field with a real coercion_strategy keeps its custom effective_type — the
@@ -167,7 +167,7 @@
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
                :coercion_strategy :Coercion/String->Number}
-              (t2/select-one :model/Field :id field-id))))))
+              (t2/select-one :model/Field 'id field-id))))))
 
 (deftest effective-type-guard-clearing-coercion-resets-effective-type-test
   (testing "GHY-3388: clearing coercion_strategy without explicitly setting effective_type to
@@ -184,13 +184,13 @@
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
-              (t2/select-one :model/Field :id field-id))))))
+              (t2/select-one :model/Field 'id field-id))))))
 
 (defn- assert-coercion-effective-type-invariant!
   "Reads the field row and asserts the GHY-3388 invariant:
    coercion_strategy is nil ⇒ effective_type = base_type."
   [field-id label]
-  (let [{:keys [base_type effective_type coercion_strategy]} (t2/select-one :model/Field :id field-id)]
+  (let [{:keys [base_type effective_type coercion_strategy]} (t2/select-one :model/Field 'id field-id)]
     (when (nil? coercion_strategy)
       (is (= base_type effective_type)
           (format "GHY-3388 invariant violated after %s: base_type=%s effective_type=%s coercion_strategy=nil"

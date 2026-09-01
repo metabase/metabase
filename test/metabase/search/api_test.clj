@@ -84,7 +84,7 @@
    {:table_id true, :database_id true}
    (t2/select-one [:model/Table [:name :table_name] [:schema :table_schema]
                    [:display_name :table_display_name] [:description :table_description]]
-                  :id (mt/id :checkins))))
+                  'id (mt/id :checkins))))
 
 (defn- clean-result [result]
   (cond-> (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
@@ -1165,7 +1165,7 @@
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp [:model/Collection _c1 {:name "Normal Collection"}
                    :model/Collection _c2 {:name "Coin Collection" :namespace "currency"}]
-      (assert (not (t2/exists? :model/Collection :name "Coin Collection", :namespace nil)))
+      (assert (not (t2/exists? :model/Collection 'name "Coin Collection", 'namespace nil)))
       (is (=? [{:name "Normal Collection"}]
               (->> (search-request-data :crowberto :q "Collection")
                    (filter #(and (= (:model %) "collection")
@@ -1545,7 +1545,7 @@
        :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
       (is (= :native
-             (t2/select-one-fn :query_type :model/Card :id native-card-in-query)))
+             (t2/select-one-fn :query_type :model/Card 'id native-card-in-query)))
       (mt/with-actions
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
@@ -1625,8 +1625,8 @@
 
 (deftest filter-items-in-personal-collection-test
   (let [search-term "filter-items-in-personal-collection"
-        rasta-personal-coll-id     (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
-        crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))
+        rasta-personal-coll-id     (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :rasta))
+        crowberto-personal-coll-id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :crowberto))
         search                      (fn [user filter-type]
                                       (->> (mt/user-http-request user :get 200 "search" :q search-term
                                                                  :filter_items_in_personal_collection filter-type)
@@ -1765,7 +1765,7 @@
       (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
       (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
-        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
+        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection 'id collection-id)
                                                      {:archived true}))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
@@ -2100,8 +2100,8 @@
             (is (some #(= (:id %) card-id) (:data search-results))
                 "Card should be found in search results before database deletion")))
         (testing "Card should be hidden from search after database deletion"
-          (t2/delete! :model/Database :id db-id)
-          (is (not (t2/exists? :model/Card :id card-id)))
+          (t2/delete! :model/Database 'id db-id)
+          (is (not (t2/exists? :model/Card 'id card-id)))
           (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
             (is (not (some #{card-id}
                            (mapv :id (:data search-results))))

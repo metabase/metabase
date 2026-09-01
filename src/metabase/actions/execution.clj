@@ -54,20 +54,20 @@
 
 (mu/defn- implicit-action-table
   [card-id :- ::lib.schema.id/card]
-  (let [query              (t2/select-one-fn :dataset_query :model/Card :id card-id)
+  (let [query              (t2/select-one-fn :dataset_query :model/Card 'id card-id)
         {:keys [table-id]} (query/query->database-and-table-ids query)]
-    (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
+    (t2/hydrate (t2/select-one :model/Table 'id table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
-    (let [model (t2/select-one :model/Card :id (:model_id action))
+    (let [model (t2/select-one :model/Card 'id (:model_id action))
           ;; the query executes against its own :database; fall back to the derived column if absent
           action-db-id (or (:database (:dataset_query action)) (:database_id action))]
       (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (t2/select-one :model/Database :id action-db-id))))
+         (t2/select-one :model/Database 'id action-db-id))))
     (try
       (case action-type
         :query
@@ -230,8 +230,8 @@
     request-parameters :- [:maybe [:map-of :string :any]]
     opts]
    (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                                :id dashcard-id
-                                                :dashboard_id dashboard-id))
+                                                'id dashcard-id
+                                                'dashboard_id dashboard-id))
          action (api/check-404 (action/select-action :id (:action_id dashcard)))]
      (analytics/track-event! :snowplow/action
                              {:event     :action-executed
@@ -250,7 +250,7 @@
         info {:executed-by api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
-        card (t2/select-one :model/Card :id (:model_id action))
+        card (t2/select-one :model/Card 'id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query

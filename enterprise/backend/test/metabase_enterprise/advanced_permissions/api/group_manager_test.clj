@@ -34,8 +34,8 @@
                       [:model/PermissionsGroup           {group-id :id} {:name "Test delete group"}
                        :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
                       (when group-manager?
-                        (t2/update! :model/PermissionsGroupMembership {:user_id  user-id
-                                                                       :group_id group-id}
+                        (t2/update! :model/PermissionsGroupMembership {'user_id  user-id
+                                                                       'group_id group-id}
                                     {:is_group_manager true}))
                       (mt/user-http-request user
                                             :delete status
@@ -62,8 +62,8 @@
               (update-group :crowberto 200 group)
               (delete-group :crowberto 204 false))
             (testing "succeed if users access group that they are manager of"
-              (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                             :group_id (:id group)}
+              (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
+                                                             'group_id (:id group)}
                           {:is_group_manager true})
               (testing "non-admin user can only view groups that are manager of"
                 (is (= #{(:id group)}
@@ -72,7 +72,7 @@
               (update-group user 200 group)
               (delete-group user 204 true)
               (testing "admins could view all groups"
-                (is (= (t2/select-fn-set :name :model/PermissionsGroup :is_tenant_group false)
+                (is (= (t2/select-fn-set :name :model/PermissionsGroup 'is_tenant_group false)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (defn- get-membership [user status]
@@ -157,8 +157,8 @@
             [group-2  {:name "New Group 2"}
              user-2   [group-2]]
             (testing "succeed if users access group that they are manager of"
-              (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user-2)
-                                                             :group_id (:id group-2)}
+              (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user-2)
+                                                             'group_id (:id group-2)}
                           {:is_group_manager true})
               (get-membership user-2 200)
               (add-membership! user-2 200 group-2 false)
@@ -178,8 +178,8 @@
       (testing "if advanced-permissions is enabled, "
         (mt/with-premium-features #{:advanced-permissions}
           (testing "succeed if users access group that they are manager of,"
-            (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                           :group_id (:id group)}
+            (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
+                                                           'group_id (:id group)}
                         {:is_group_manager true})
             (testing "can set is_group_manager=true"
               (add-membership! :crowberto 200 group true)
@@ -218,8 +218,8 @@
               (get-users user 403)
               (get-users :crowberto 200))
             (testing "succeed if users is a group manager and returns additional fields"
-              (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                             :group_id (:id group)}
+              (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
+                                                             'group_id (:id group)}
                           {:is_group_manager true})
               (is (subset? (set user/group-manager-visible-columns)
                            (-> (:data (get-users user 200))
@@ -271,8 +271,8 @@
               (get-user user 403)
               (get-user :crowberto 200))
             (testing "succeed if users is a group manager and returns additional fields"
-              (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                             :group_id (:id group)}
+              (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
+                                                             'group_id (:id group)}
                           {:is_group_manager true})
               (is (= [{:id               (:id (perms-group/all-users))
                        :is_group_manager false}]
@@ -293,8 +293,8 @@
                     ;; ensure `user-to-update` is not in `group-to-add`
                     (perms-group-membership/with-allow-direct-deletion
                       (t2/delete! :model/PermissionsGroupMembership
-                                  :user_id (:id user-to-update)
-                                  :group_id (:id group-to-add)))
+                                  'user_id (:id user-to-update)
+                                  'group_id (:id group-to-add)))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership (conj current-user-group-membership
                                                           {:id               (:id group-to-add)
@@ -304,8 +304,8 @@
                                               {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
                     (binding [perms-group-membership/*allow-direct-deletion* true]
                       (t2/delete! :model/PermissionsGroupMembership
-                                  :user_id (:id user-to-update)
-                                  :group_id (:id group-to-add)))
+                                  'user_id (:id user-to-update)
+                                  'group_id (:id group-to-add)))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (conj current-user-group-membership
                                                               {:id               (:id group-to-add)
@@ -335,15 +335,15 @@
             (testing "if `advanced-permissions` is enabled"
               (mt/with-premium-features #{:advanced-permissions}
                 (testing "Group Managers"
-                  (t2/update! :model/PermissionsGroupMembership {:user_id  (:id user)
-                                                                 :group_id (:id group)}
+                  (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
+                                                                 'group_id (:id group)}
                               {:is_group_manager true})
                   (testing "Can't edit users' info"
-                    (let [current-user-first-name (t2/select-one-fn :first_name :model/User :id (:id user))]
+                    (let [current-user-first-name (t2/select-one-fn :first_name :model/User 'id (:id user))]
                       (update-user-firstname! user 200)
                       ;; call still success but first name won't get updated
                       (is (= current-user-first-name
-                             (t2/select-one-fn :first_name :model/User :id (:id user))))))
+                             (t2/select-one-fn :first_name :model/User 'id (:id user))))))
                   (testing "Can add/remove user to groups they're manager of"
                     (is (= (set [{:id               (:id (perms-group/all-users))
                                   :is_group_manager false}

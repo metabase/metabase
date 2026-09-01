@@ -110,7 +110,7 @@
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
     (when-not (sso-settings/saml-slo-enabled)
-      (t2/delete! :model/Session :key_hashed metabase-session-key-hashed))
+      (t2/delete! :model/Session 'key_hashed metabase-session-key-hashed))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))

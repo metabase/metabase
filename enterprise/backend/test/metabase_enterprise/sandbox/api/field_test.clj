@@ -105,9 +105,9 @@
   (testing "GET /api/field/:id/values should returns correct human readable mapping if exists"
     (mt/with-temp-copy-of-db
       ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :venues :price)))
       (let [field-id   (mt/id :venues :price)
-            full-fv-id (t2/select-one-pk :model/FieldValues :field_id field-id :type :full)]
+            full-fv-id (t2/select-one-pk :model/FieldValues 'field_id field-id 'type :full)]
         (t2/update! :model/FieldValues full-fv-id
                     {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
@@ -144,7 +144,7 @@
                      {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                       :query      (mt.tu/restricted-column-query (mt/id))}}
                     :attributes {:cat 50}}
-    (let [field (t2/select-one :model/Field :id (mt/id :venues :name))]
+    (let [field (t2/select-one :model/Field 'id (mt/id :venues :name))]
       ;; Make sure FieldValues are populated
       (field-values/get-or-create-full-field-values! field)
       ;; Warm up the cache
@@ -153,8 +153,8 @@
         (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
           (is (= 1 (t2/count :model/FieldValues
-                             :field_id (:id field)
-                             :type :advanced)))))
+                             'field_id (:id field)
+                             'type :advanced)))))
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
           (mt/with-temp [:model/User another-user]
@@ -166,12 +166,12 @@
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
               ;; create another one for the new user
               (is (= 2 (t2/count :model/FieldValues
-                                 :field_id (:id field)
-                                 :type :advanced)))))))
+                                 'field_id (:id field)
+                                 'type :advanced)))))))
       (testing "Do we invalidate the cache when full FieldValues change"
         (try
           (let [;; Updating FieldValues which should invalidate the cache
-                fv-id      (t2/select-one-pk :model/FieldValues :field_id (:id field) :type :full)
+                fv-id      (t2/select-one-pk :model/FieldValues 'field_id (:id field) 'type :full)
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
@@ -188,11 +188,11 @@
         (#'field-values/clear-advanced-field-values-for-field! field)
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
-        (let [old-sandbox-fv-id (t2/select-one-pk :model/FieldValues :field_id (:id field) :type :advanced)]
+        (let [old-sandbox-fv-id (t2/select-one-pk :model/FieldValues 'field_id (:id field) 'type :advanced)]
           (mt/with-dynamic-fn-redefs [field-values/advanced-field-values-expired? (fn [fv]
                                                                                     (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
-            (is (not (t2/exists? :model/FieldValues :id old-sandbox-fv-id)))
+            (is (not (t2/exists? :model/FieldValues 'id old-sandbox-fv-id)))
             ;; make sure we created a new one
-            (is (= 1 (t2/count :model/FieldValues :field_id (:id field) :type :advanced)))))))))
+            (is (= 1 (t2/count :model/FieldValues 'field_id (:id field) 'type :advanced)))))))))

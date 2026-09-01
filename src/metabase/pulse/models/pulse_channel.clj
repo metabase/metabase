@@ -130,7 +130,7 @@
   [_model _k pcs]
   (when (seq pcs)
     (let [pcid->recipients (-> (group-by :pulse_channel_id
-                                         (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
+                                         (t2/select [:model/User 'id 'email 'first_name 'last_name 'pcr.pulse_channel_id]
                                                     {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
                                                      :where     [:and
                                                                  [:in :pcr.pulse_channel_id (map :id pcs)]
@@ -157,7 +157,7 @@
   ;; This function is called by [[metabase.pulse.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to
   ;; be deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (t2/count :model/PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+    (let [other-channels-count (t2/count :model/PulseChannel 'pulse_id pulse-id, 'id ['not= pulse-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! :model/Pulse pulse-id {:archived true}))))
   ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
@@ -188,7 +188,7 @@
       ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
       ;; addresses
       (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
-        (let [user-id->email (t2/select-pk->fn :email :model/User, :id [:in user-ids])]
+        (let [user-id->email (t2/select-pk->fn :email :model/User, 'id ['in user-ids])]
           (doseq [{:keys [id email]} user-recipients
                   :let               [correct-email (get user-id->email id)]]
             (when-not correct-email
@@ -243,7 +243,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id :model/PulseChannelRecipient, 'pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -252,8 +252,8 @@
         (t2/insert! :model/PulseChannelRecipient vs)))
     (when (seq recipients-)
       (t2/delete! (t2/table-name :model/PulseChannelRecipient)
-                  :pulse_channel_id id
-                  :user_id          [:in recipients-]))))
+                  'pulse_channel_id id
+                  'user_id          ['in recipients-]))))
 
 (defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as

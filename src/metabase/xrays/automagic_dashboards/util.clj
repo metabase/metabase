@@ -84,7 +84,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (t2/select-one :model/Field :id id-or-name))
+       (t2/select-one :model/Field 'id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata

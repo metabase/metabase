@@ -22,8 +22,8 @@
             (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
             (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
             (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-only')")
-            (let [router-table (t2/select-one :model/Table :db_id (u/the-id router-db))
-                  str-field    (t2/select-one :model/Field :table_id (u/the-id router-table))
+            (let [router-table (t2/select-one :model/Table 'db_id (u/the-id router-db))
+                  str-field    (t2/select-one :model/Field 'table_id (u/the-id router-table))
                   all-users    (perms/all-users-group)]
               (mt/with-no-data-perms-for-all-users!
                 (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)

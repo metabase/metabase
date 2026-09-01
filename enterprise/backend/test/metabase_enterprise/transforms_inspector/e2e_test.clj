@@ -19,7 +19,7 @@
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
 (defn- default-schema []
-  (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
+  (t2/select-one-fn :schema :model/Table 'id (mt/id :orders)))
 
 (defn- execute-card
   "Execute a card's dataset_query and return the first row."
@@ -85,14 +85,14 @@
   "Quote a table name for the current driver, with schema qualification.
    Uses actual physical table name from metadata."
   [s]
-  (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] :id (mt/id (keyword s)))]
+  (let [{:keys [name schema]} (t2/select-one [:model/Table 'name 'schema] 'id (mt/id (keyword s)))]
     (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf
   "Quote a field/column name for the current driver.
    Uses actual physical column name from metadata."
   [table-key col-key]
-  (let [col-name (t2/select-one-fn :name :model/Field :id (mt/id table-key col-key))]
+  (let [col-name (t2/select-one-fn :name :model/Field 'id (mt/id table-key col-key))]
     (sql.u/quote-name driver/*driver* :field col-name)))
 
 (defn- native-multi-join-query

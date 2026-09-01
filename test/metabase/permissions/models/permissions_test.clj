@@ -146,7 +146,7 @@
          #"You cannot edit permissions for a Personal Collection or its descendants."
          (perms/revoke-collection-permissions!
           (perms-group/all-users)
-          (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
+          (u/the-id (t2/select-one :model/Collection 'personal_owner_id (mt/user->id :lucky))))))
     (testing "(should apply to descendants as well)"
       (mt/with-temp [:model/Collection collection {:location (collection/children-location
                                                               (collection/user->personal-collection
@@ -161,7 +161,7 @@
     (mt/with-temp [:model/Collection {collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
-        (is (some? (t2/select-one :model/Collection :id collection-id)))))))
+        (is (some? (t2/select-one :model/Collection 'id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
   (mt/with-temp [:model/Collection collection {:location (collection/children-location
@@ -174,7 +174,7 @@
         (is (thrown?
              Exception
              (f (perms-group/all-users)
-                (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
+                (u/the-id (t2/select-one :model/Collection 'personal_owner_id (mt/user->id :lucky))))))
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception

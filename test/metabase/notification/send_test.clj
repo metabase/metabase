@@ -134,7 +134,7 @@
                                  :template_id     nil
                                  :notification_id (:id n)
                                  :recipient_ids   (mt/malli=? [:sequential :int])}}]
-                (t2/select [:model/TaskHistory :task :task_details] :task [:in ["channel-send" "notification-send"]]
+                (t2/select [:model/TaskHistory 'task 'task_details] 'task ['in ["channel-send" "notification-send"]]
                            {:order-by [[:started_at :asc]]})))))))
 
 (deftest notification-send-retrying-test

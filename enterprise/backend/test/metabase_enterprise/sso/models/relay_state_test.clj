@@ -41,9 +41,9 @@
                          :origin       "https://app.example.com"
                          :embedding?   true})]
         (testing "the plaintext key is NOT stored; the row is keyed by its hash"
-          (is (false? (t2/exists? :model/SsoRelayState :id key)))
-          (is (true? (t2/exists? :model/SsoRelayState :id (stored-id key)))))
-        (let [row (t2/select-one :model/SsoRelayState :id (stored-id key))]
+          (is (false? (t2/exists? :model/SsoRelayState 'id key)))
+          (is (true? (t2/exists? :model/SsoRelayState 'id (stored-id key)))))
+        (let [row (t2/select-one :model/SsoRelayState 'id (stored-id key))]
           (is (= "http://localhost:3000/auth/sso" (:continue_url row)))
           (is (= "https://app.example.com" (:origin row)))
           (is (true? (:embedding row)))
@@ -52,7 +52,7 @@
   (testing "persist! defaults embedding to false for a regular login"
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [key (store! {:continue-url "http://localhost:3000/dashboard/1"})
-            row (t2/select-one :model/SsoRelayState :id (stored-id key))]
+            row (t2/select-one :model/SsoRelayState 'id (stored-id key))]
         (is (= "http://localhost:3000/dashboard/1" (:continue_url row)))
         (is (nil? (:origin row)))
         (is (false? (:embedding row)))))))
@@ -65,7 +65,7 @@
         (is (= "https://app.example.com" (:origin (relay-state/find-unexpired key))))
         ;; a second look-up still finds it — it is not consumed on read
         (is (some? (relay-state/find-unexpired key)))
-        (is (true? (t2/exists? :model/SsoRelayState :id (stored-id key)))))))
+        (is (true? (t2/exists? :model/SsoRelayState 'id (stored-id key)))))))
   (testing "find-unexpired returns nil for an expired entry"
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [key (store! {:continue-url "http://localhost:3000/auth/sso"})]
@@ -80,7 +80,7 @@
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [key (store! {:continue-url "http://localhost:3000/auth/sso"})]
         (is (= 1 (relay-state/delete! key)))
-        (is (false? (t2/exists? :model/SsoRelayState :id (stored-id key))))
+        (is (false? (t2/exists? :model/SsoRelayState 'id (stored-id key))))
         (is (= 0 (relay-state/delete! key))))))
   (testing "delete! ignores values that aren't our keys"
     (is (nil? (relay-state/delete! "aHR0cDovL2xvY2FsaG9zdA==")))))
@@ -94,5 +94,5 @@
         ;; delete-expired! operates globally, so don't assert an exact count (other tests may leave rows) —
         ;; just confirm our expired entry is purged and the live one survives.
         (is (pos? (relay-state/delete-expired!)))
-        (is (true? (t2/exists? :model/SsoRelayState :id (stored-id live))))
-        (is (false? (t2/exists? :model/SsoRelayState :id (stored-id expired))))))))
+        (is (true? (t2/exists? :model/SsoRelayState 'id (stored-id live))))
+        (is (false? (t2/exists? :model/SsoRelayState 'id (stored-id expired))))))))

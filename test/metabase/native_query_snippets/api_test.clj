@@ -106,16 +106,16 @@
                   [:updated_at  (ms/InstanceOfClass java.time.OffsetDateTime)]]
                  snippet-from-api)))
           (finally
-            (t2/delete! :model/NativeQuerySnippet :name "test-snippet"))))))
+            (t2/delete! :model/NativeQuerySnippet 'name "test-snippet"))))))
   (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
     (try
       (mt/with-temp [:model/NativeQuerySnippet _ {:name "test-snippet-1", :content "1"}]
         (is (= "A snippet with that name already exists. Please pick a different name."
                (mt/user-http-request :crowberto :post 400 (snippet-url) {:name "test-snippet-1", :content "2"})))
         (is (= 1
-               (t2/count :model/NativeQuerySnippet :name "test-snippet-1"))))
+               (t2/count :model/NativeQuerySnippet 'name "test-snippet-1"))))
       (finally
-        (t2/delete! :model/NativeQuerySnippet :name "test-snippet-1"))))
+        (t2/delete! :model/NativeQuerySnippet 'name "test-snippet-1"))))
   (testing "Shouldn't be able to specify non-default creator_id"
     (try
       (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
@@ -123,7 +123,7 @@
         (is (= (mt/user->id :crowberto)
                (:creator_id snippet))))
       (finally
-        (t2/delete! :model/NativeQuerySnippet :name "test-snippet")))))
+        (t2/delete! :model/NativeQuerySnippet 'name "test-snippet")))))
 
 (deftest create-snippet-in-collection-test
   (mt/with-full-data-perms-for-all-users!
@@ -136,7 +136,7 @@
                       {:response response
                        :db       (some->> (:id response) (t2/select-one :model/NativeQuerySnippet :id))})
                     (finally
-                      (t2/delete! :model/NativeQuerySnippet :name "test-snippet"))))]
+                      (t2/delete! :model/NativeQuerySnippet 'name "test-snippet"))))]
           (mt/with-temp [:model/Collection {collection-id :id} {:namespace "snippets"}]
             (let [{:keys [response db]} (create! 200 collection-id)]
               (testing "\nAPI response"
@@ -174,7 +174,7 @@
             (is (= "A snippet with that name already exists. Please pick a different name."
                    (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet-2)) {:name "test-snippet-1"})))
             (is (= 1
-                   (t2/count :model/NativeQuerySnippet :name "test-snippet-1")))
+                   (t2/count :model/NativeQuerySnippet 'name "test-snippet-1")))
             (testing "Passing in the existing name (no change) shouldn't cause an error"
               (is (= {:id (:id snippet-2), :name "test-snippet-2"}
                      (select-keys (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet-2)) {:name "test-snippet-2"})
@@ -183,7 +183,7 @@
           (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
             (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
             (is (= (mt/user->id :lucky)
-                   (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id (:id snippet))))))))))
+                   (t2/select-one-fn :creator_id :model/NativeQuerySnippet 'id (:id snippet))))))))))
 
 (deftest update-snippet-collection-test
   (mt/with-full-data-perms-for-all-users!
@@ -203,7 +203,7 @@
                                (select-keys [:collection_id :errors])))))
                   (testing "\nvalue in app DB"
                     (is (= (:id dest)
-                           (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))))
+                           (t2/select-one-fn :collection_id :model/NativeQuerySnippet 'id snippet-id)))))))))
         (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
           (mt/with-temp [:model/Collection         {collection-id :id} {}
                          :model/NativeQuerySnippet {snippet-id :id}    {}]

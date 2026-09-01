@@ -58,7 +58,7 @@
          :select   [:id]
          :order-by :ordering
          :limit    [:inline 1]}
-        item (t2/select-one :model/CacheConfig :id q)]
+        item (t2/select-one :model/CacheConfig 'id q)]
     (cache/card-strategy item card)))
 
 ;;; Strategy execution

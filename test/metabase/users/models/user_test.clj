@@ -71,7 +71,7 @@
           (sent-emails new-user-email new-user-first-name new-user-last-name)
           ;; Clean up after ourselves
           (finally
-            (t2/delete! :model/User :email new-user-email)))))))
+            (t2/delete! :model/User 'email new-user-email)))))))
 
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
@@ -206,7 +206,7 @@
                 "PermissionsGroupMembership object")
     (mt/with-temp [:model/User user {:is_superuser true}]
       (is (true?
-           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+           (t2/exists? :model/PermissionsGroupMembership 'user_id (u/the-id user), 'group_id (u/the-id (perms-group/admin))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |
@@ -214,7 +214,7 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (t2/select-fn-set :name :model/PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
+    (t2/select-fn-set :name :model/PermissionsGroup 'id ['in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group! [group-properties group-members f]
   (mt/with-temp [:model/PermissionsGroup group group-properties]
@@ -271,7 +271,7 @@
                                                          (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (t2/hydrate (t2/select-one :model/User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (t2/hydrate (t2/select-one :model/User 'id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
         (testing "for multiple Users"
           (is (= '[(user/add-group-ids <users>)
@@ -328,7 +328,7 @@
                (user-group-names user)))
         (testing "their is_superuser flag should be set to true"
           (is (true?
-               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+               (t2/select-one-fn :is_superuser :model/User 'id (u/the-id user)))))))
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp [:model/User user {:is_superuser true}]
         (user/set-permissions-groups! user #{(perms-group/all-users)})
@@ -336,7 +336,7 @@
                (user-group-names user)))
         (testing "their is_superuser flag should be set to false"
           (is (= false
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser :model/User 'id (u/the-id user)))))))
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
@@ -346,7 +346,7 @@
             (u/ignore-exceptions
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
             (is (true?
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser :model/User 'id (u/the-id user)))))))
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
         (mt/with-temp [:model/User _]
@@ -363,7 +363,7 @@
       (testing "valid locale"
         (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
           (is (= "en_US"
-                 (t2/select-one-fn :locale :model/User :id user-id)))))
+                 (t2/select-one-fn :locale :model/User 'id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
              Throwable
@@ -374,7 +374,7 @@
         (testing "valid locale"
           (t2/update! :model/User user-id {:locale "en_GB"})
           (is (= "en_GB"
-                 (t2/select-one-fn :locale :model/User :id user-id))))
+                 (t2/select-one-fn :locale :model/User 'id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
@@ -386,11 +386,11 @@
     (mt/with-temp [:model/User {user-id :id} {:locale "EN-us"}]
       (testing "creating a new User"
         (is (= "en_US"
-               (t2/select-one-fn :locale :model/User :id user-id))))
+               (t2/select-one-fn :locale :model/User 'id user-id))))
       (testing "updating a User"
         (t2/update! :model/User user-id {:locale "en-GB"})
         (is (= "en_GB"
-               (t2/select-one-fn :locale :model/User :id user-id)))))))
+               (t2/select-one-fn :locale :model/User 'id user-id)))))))
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
@@ -399,7 +399,7 @@
                    :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
       (letfn [(subscription-exists? []
-                (t2/exists? :model/PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+                (t2/exists? :model/PulseChannelRecipient 'pulse_channel_id pulse-channel-id, 'user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
@@ -420,7 +420,7 @@
           (setting/set! :last-acknowledged-version new-version)
           (is (= new-version (setting/get :last-acknowledged-version)))
           ;; Ensure it's saved on the user, not globally:
-          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings :model/User :id (mt/user->id :rasta)))))
+          (is (= new-version (:last-acknowledged-version (t2/select-one-fn :settings :model/User 'id (mt/user->id :rasta)))))
           (finally
             (setting/set! :last-acknowledged-version old-version)))))))
 
@@ -437,18 +437,18 @@
                                      :last_name  "Smith"
                                      :email      "john.smith@gmail.com"}]
       (is (= "John Smith"
-             (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
+             (:common_name (t2/select-one [:model/User 'first_name 'last_name] (:id user)))))
       (is (= "John Smith"
              (:common_name (t2/select-one :model/User (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
+      (is (nil? (:common_name (t2/select-one [:model/User 'first_name 'email] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User 'email] (:id user)))))))
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
                                      :last_name  nil
                                      :email      "john.smith@gmail.com"}]
       (is (= "john.smith@gmail.com"
-             (:common_name (t2/select-one [:model/User :email :first_name :last_name] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user))))))))
+             (:common_name (t2/select-one [:model/User 'email 'first_name 'last_name] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User 'first_name 'last_name] (:id user))))))))
 
 (deftest block-sso-provisioning-if-instance-not-set-up
   (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"

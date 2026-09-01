@@ -11,4 +11,4 @@
       (is (= nil
              last-login))
       (events/publish-event! :event/user-login {:user-id user-id})
-      (is (some? (t2/select-one-fn :last_login :model/User :id user-id))))))
+      (is (some? (t2/select-one-fn :last_login :model/User 'id user-id))))))

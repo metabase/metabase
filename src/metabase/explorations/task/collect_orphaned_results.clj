@@ -85,7 +85,7 @@
             total)
         ;; Selected and deleted as two statements: MySQL/MariaDB reject deleting from a table that a
         ;; subquery in the same statement reads (error 1093).
-        (let [deleted (t2/delete! :model/StoredResult :id [:in ids])]
+        (let [deleted (t2/delete! :model/StoredResult 'id ['in ids])]
           (if (pos? deleted)
             (recur (+ total (long deleted)))
             ;; Nothing deleted despite finding rows — another writer got there first. Stop rather

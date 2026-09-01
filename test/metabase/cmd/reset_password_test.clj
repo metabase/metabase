@@ -27,6 +27,6 @@
              (#'reset-password/set-reset-token! email)))
         (testing "and leaves no reset token behind"
           (is (not (t2/exists? :model/AuthIdentity
-                               :user_id  user-id
-                               :provider "emailed-secret-password-reset")))
-          (is (nil? (t2/select-one-fn :reset_token :model/User :id user-id))))))))
+                               'user_id  user-id
+                               'provider "emailed-secret-password-reset")))
+          (is (nil? (t2/select-one-fn :reset_token :model/User 'id user-id))))))))

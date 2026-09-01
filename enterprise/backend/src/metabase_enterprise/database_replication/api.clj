@@ -147,7 +147,7 @@
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
-  (let [database (t2/select-one :model/Database :id database-id)
+  (let [database (t2/select-one :model/Database 'id database-id)
         secret (->secret database)
         replication-schema-filters (m->schema-filter replicationSchemaFilters)]
     (u/recursive-map-keys u/->camelCaseEn (preview-replication (premium-features/quotas) (preview-tables secret replication-schema-filters)))))
@@ -160,7 +160,7 @@
   "Create a new PG replication connection for the specified database."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
-  (let [database   (t2/select-one :model/Database :id database-id)
+  (let [database   (t2/select-one :model/Database 'id database-id)
         db-details (:details database)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")

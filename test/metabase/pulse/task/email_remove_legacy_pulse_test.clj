@@ -18,7 +18,7 @@
       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
         (#'email-remove-legacy-pulse/email-remove-legacy-pulse)
         (testing "all receivers are superuser"
-          (is (every? true? (t2/select-fn-vec :is_superuser  :model/User :email [:in (keys @mt/inbox)]))))
+          (is (every? true? (t2/select-fn-vec :is_superuser  :model/User 'email ['in (keys @mt/inbox)]))))
         (let [found-regexes  [#"Hi Ngoc Khuat,"
                               #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Legacy pulse<\/a></li>"]
               not-found-re   #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Archived pulse<\/a></li>"
@@ -34,7 +34,7 @@
     [:model/User _admin  {:is_superuser true}
      :model/Pulse _      {:name "Archived pulse" :dashboard_id nil :alert_condition nil :archived true}]
     ;; delete legacy pulse if any make sure this won't flake
-    (t2/delete! :model/Pulse :dashboard_id nil :alert_condition nil)
+    (t2/delete! :model/Pulse 'dashboard_id nil 'alert_condition nil)
     (mt/with-fake-inbox
       (#'email-remove-legacy-pulse/email-remove-legacy-pulse)
       (is (zero? (count @mt/inbox))))))

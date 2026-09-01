@@ -200,7 +200,7 @@
                        :database-required
                        :database-is-auto-increment
                        (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table 'id (mt/id :venues))))))))))
 
 (deftest ^:parallel describe-fields-shared-attributes-test-2
   (testing "common metadata attributes"
@@ -215,7 +215,7 @@
            (sort-by
             :first
             (map (juxt :database-position (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table 'id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -229,7 +229,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
+               (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table 'id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
                             :base-type (if (or
@@ -248,7 +248,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
+             (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table 'id (mt/id :venues)))
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
@@ -301,7 +301,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
         (mt/dataset json
-          (let [table (t2/select-one :model/Table :id (mt/id :json))]
+          (let [table (t2/select-one :model/Table 'id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
              (mt/db)
@@ -441,7 +441,7 @@
                     {:name "string_col"
                      :base_type :type/JSON}})
                 (t2/select-fn-set #(select-keys % [:name :base_type])
-                                  :model/Field :table_id (mt/id "json_table"))))))))
+                                  :model/Field 'table_id (mt/id "json_table"))))))))
 
 (mt/defdataset big-json
   [["big_json_table"
@@ -498,8 +498,8 @@
           (mt/dataset long-json
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                  table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
-                  json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
+                  table       (t2/select-one :model/Table 'db_id (mt/id) 'name "long_json_table")
+                  json-fields (t2/select :model/Field 'table_id (:id table) 'name ['in ["short_json" "long_json"]])
                   pks         ["id"]
                   sample      (fn []
                                 (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
@@ -528,7 +528,7 @@
                          "short_json → a"
                          "short_json → b"
                          "long_json → a"} ; note there is no "long_json → b" because it was excluded from the sample
-                       (t2/select-fn-set :name :model/Field :table_id (:id table), :active true)))))))))))
+                       (t2/select-fn-set :name :model/Field 'table_id (:id table), 'active true)))))))))))
 
 (mt/defdataset json-unwrap-bigint-and-boolean
   "Used for testing mysql json value unwrapping"
@@ -567,7 +567,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
-                  (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one :model/Table 'db_id (mt/id) 'name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
@@ -620,7 +620,7 @@
                      (into [] (sql-jdbc.sync/describe-nested-field-columns
                                driver/*driver*
                                (mt/db)
-                               (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
+                               (t2/select-one :model/Table 'db_id (mt/id) 'name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
                          :database-type     "decimal"
@@ -632,7 +632,7 @@
                        (into [] (sql-jdbc.sync/describe-nested-field-columns
                                  driver/*driver*
                                  (mt/db)
-                                 (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
+                                 (t2/select-one :model/Table 'db_id (mt/id) 'name "json_without_pk")))))))))))))
 
 (defn- describe-table-indexes
   [table]
@@ -830,12 +830,12 @@
                   non-view-fields (t2/select-fn-vec
                                    (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                    :model/Field
-                                   :table_id orders-id
+                                   'table_id orders-id
                                    {:order-by [:database_position]})
                   view-fields (t2/select-fn-vec
                                (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                :model/Field
-                               :table_id orders-m-id
+                               'table_id orders-m-id
                                {:order-by [:database_position]})]
               (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
                              (:name view-instance)))

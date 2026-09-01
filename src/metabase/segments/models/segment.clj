@@ -91,7 +91,7 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (t2/select-one :model/Table 'id (:table_id instance)))]
      (and (or (mi/superuser?)
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -111,7 +111,7 @@
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (t2/select-one :model/Table 'id (:table_id instance)))]
     (and (or (mi/superuser?)
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -136,7 +136,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (t2/select :model/Collection 'id ['in collection-ids]))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables
@@ -157,7 +157,7 @@
   [{:keys [definition], table-id :table_id}]
   (when (some? definition)
     (let [database-id (when table-id
-                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+                        (t2/select-one-fn :db_id :model/Table 'id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
@@ -184,7 +184,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (t2/select-one ['Table 'db_id 'schema 'id] 'id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

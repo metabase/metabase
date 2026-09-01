@@ -183,13 +183,13 @@
                                                  {:active false})]
               (is (false? (:active response))))
             (is (false? (:active (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
-            (is (false? (t2/select-one-fn :active :model/TransformJob :id (:id job)))))
+            (is (false? (t2/select-one-fn :active :model/TransformJob 'id (:id job)))))
           (testing "Can be set back to true"
             (let [response (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
                                                  {:active true})]
               (is (true? (:active response))))
             (is (true? (:active (mt/user-http-request :lucky :get 200 (str "transform-job/" (:id job))))))
-            (is (true? (t2/select-one-fn :active :model/TransformJob :id (:id job))))))))))
+            (is (true? (t2/select-one-fn :active :model/TransformJob 'id (:id job))))))))))
 
 (deftest update-all-jobs-active-test
   (testing "PUT /api/transform-job/active flips every job's active flag"
@@ -198,14 +198,14 @@
                      :model/TransformJob job-2 {:name "Job 2" :schedule "0 0 0 * * ?" :active false}
                      :model/TransformJob job-3 {:name "Job 3" :schedule "0 0 0 * * ?"}]
         (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
-              active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
+              active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob 'id ['in job-ids]))]
           (testing "Deactivates all jobs"
-            (let [pending (t2/count :model/TransformJob :active true)]
+            (let [pending (t2/count :model/TransformJob 'active true)]
               (is (=? {:updated pending :failed zero?}
                       (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false}))))
             (is (every? false? (vals (active-by-id)))))
           (testing "Reactivates all jobs"
-            (let [pending (t2/count :model/TransformJob :active false)]
+            (let [pending (t2/count :model/TransformJob 'active false)]
               (is (=? {:updated pending :failed zero?}
                       (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true}))))
             (is (every? true? (vals (active-by-id))))))))))
@@ -259,7 +259,7 @@
                                       {:schedule "0 0 1 * * ?"})
                 (is (nil? (transforms.schedule/existing-trigger (:id job))))
                 (testing "but the new schedule is persisted in the DB"
-                  (is (= "0 0 1 * * ?" (t2/select-one-fn :schedule :model/TransformJob :id (:id job)))))
+                  (is (= "0 0 1 * * ?" (t2/select-one-fn :schedule :model/TransformJob 'id (:id job)))))
                 (testing "and reactivating builds a trigger using the updated schedule"
                   (mt/user-http-request :lucky :put 200 (str "transform-job/" (:id job))
                                         {:active true})
@@ -304,7 +304,7 @@
         (mt/with-temp [:model/TransformJob job {:name "To Delete" :schedule "0 0 0 * * ?"}]
           (testing "Deletes job"
             (mt/user-http-request :lucky :delete 204 (str "transform-job/" (:id job)))
-            (is (nil? (t2/select-one :model/TransformJob :id (:id job)))))
+            (is (nil? (t2/select-one :model/TransformJob 'id (:id job)))))
           (testing "Returns 404 for non-existent job"
             (mt/user-http-request :lucky :delete 404 "transform-job/999999")))))))
 
@@ -327,7 +327,7 @@
                     (is (= "Job run started" (:message response)))
                     (is (pos-int? (:job_run_id response)))
                     (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
-                    (let [run (t2/select-one :model/TransformJobRun :id (:job_run_id response))]
+                    (let [run (t2/select-one :model/TransformJobRun 'id (:job_run_id response))]
                       (is (= (:id job) (:job_id run)))
                       (testing "the job's name and entity_id are snapshotted on the run"
                         (is (= "To Execute" (:job_name run)))
@@ -559,12 +559,12 @@
                                                               :start_time   (parse-instant "2025-09-01T10:00:00")
                                                               :end_time     nil}]
             (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
-            (let [run (t2/select-one :model/TransformJobRun :id run-id)]
+            (let [run (t2/select-one :model/TransformJobRun 'id run-id)]
               (is (= :canceled (:status run)))
               (is (nil? (:is_active run)))
               (is (some? (:end_time run))))
             (testing "a cancelation row is recorded for the still-running member"
-              (is (t2/exists? :model/TransformRunCancelation :run_id member-id)))))
+              (is (t2/exists? :model/TransformRunCancelation 'run_id member-id)))))
         (testing "returns 400 when the run has already finished"
           (mt/with-temp [:model/TransformJob {job-id :id} {:name "Cancel Job" :schedule "0 0 0 * * ?"}
                          :model/TransformJobRun {run-id :id} {:job_id     job-id
@@ -573,7 +573,7 @@
                                                               :start_time (parse-instant "2025-09-01T10:00:00")
                                                               :end_time   (parse-instant "2025-09-01T10:05:00")}]
             (mt/user-http-request :lucky :post 400 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
-            (is (= :succeeded (:status (t2/select-one :model/TransformJobRun :id run-id)))
+            (is (= :succeeded (:status (t2/select-one :model/TransformJobRun 'id run-id)))
                 "a finished run is never resurrected into a canceled state")))
         (testing "returns 404 for a non-existent job or run, or a run of another job"
           (mt/with-temp [:model/TransformJob {job-id :id} {:name "Cancel Job" :schedule "0 0 0 * * ?"}
@@ -611,10 +611,10 @@
                                  ["Daily job"   "daily"]
                                  ["Weekly job"  "weekly"]
                                  ["Monthly job" "monthly"]]]
-      (let [job (t2/select-one :model/TransformJob :name job-name)
-            tag (t2/select-one :model/TransformTag :name tag-name)]
+      (let [job (t2/select-one :model/TransformJob 'name job-name)
+            tag (t2/select-one :model/TransformTag 'name tag-name)]
         (is (some? job) (str "missing built-in job " job-name))
         (is (some? tag) (str "missing built-in tag " tag-name))
         (is (seq (:schedule job)) (str job-name " should carry a schedule"))
-        (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
+        (is (t2/exists? :model/TransformJobTransformTag 'job_id (:id job) 'tag_id (:id tag))
             (str job-name " should be linked to the " tag-name " tag"))))))

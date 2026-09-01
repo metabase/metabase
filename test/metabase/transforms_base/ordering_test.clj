@@ -35,7 +35,7 @@
                                              :type     "query",
                                              :query    {:source-table (mt/id :orders)}})]
     (is (= {t1 #{}}
-           (:dependencies (ordering/transform-ordering #{t1} (t2/select :model/Transform :id t1)))))))
+           (:dependencies (ordering/transform-ordering #{t1} (t2/select :model/Transform 'id t1)))))))
 
 (deftest dependency-ordering-test
   (mt/with-temp [:model/Table {table :id} {:schema (default-schema-or-public)
@@ -55,7 +55,7 @@
                                                "orders_3")]
     (is (= {parent #{}
             child  #{parent}}
-           (:dependencies (ordering/transform-ordering #{parent child} (t2/select :model/Transform :id [:in [parent child]])))))))
+           (:dependencies (ordering/transform-ordering #{parent child} (t2/select :model/Transform 'id ['in [parent child]])))))))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
@@ -96,7 +96,7 @@
                 t2 #{}
                 t3 #{t1}
                 t4 #{t1 t2}}
-               (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform :id [:in [t1 t2 t3 t4]])))))))
+               (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform 'id ['in [t1 t2 t3 t4]])))))))
     (testing "dependencies are correctly identified when some transform have been run and some haven't"
       (mt/with-temp [:model/Transform {t1 :id :as transform1} (make-transform
                                                                {:database (mt/id),
@@ -118,15 +118,15 @@
                                                 "venues_transform_2")]
         (try
           (transforms.execute/execute! transform1 {:run-method :manual})
-          (let [table1 (t2/select-one-pk :model/Table :name "checkins_transform")]
+          (let [table1 (t2/select-one-pk :model/Table 'name "checkins_transform")]
             (is (= #{{:table table1} {:transform t2}}
                    (transform-deps-for-db (t2/select-one :model/Transform  t3)))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]])))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]])))))
           (finally
-            (t2/delete! :model/Table :name "checkins_transform")))))))
+            (t2/delete! :model/Table 'name "checkins_transform")))))))
 
 (deftest bigquery-native-transform-dependency-ordering-test
   (mt/test-driver :biquery-cloud-sdk
@@ -157,7 +157,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]]))))))))))
 
 (deftest ^:parallel basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -165,7 +165,7 @@
                                              :type "query",
                                              :query {:source-table (mt/id :orders)}})]
     (is (= #{{:table (mt/id :orders)}}
-           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
+           (transform-deps-for-db (t2/select-one :model/Transform 'id t1))))))
 
 (deftest ^:parallel joined-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -190,7 +190,7 @@
                                                :parameters []})]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
-             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
+             (transform-deps-for-db (t2/select-one :model/Transform 'id t1)))))))
 
 (deftest card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
@@ -222,7 +222,7 @@
                                                :parameters []})]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
-             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
+             (transform-deps-for-db (t2/select-one :model/Transform 'id t1)))))))
 
 (deftest native-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -233,7 +233,7 @@
                                                          :type     "query",
                                                          :query    {:source-table (mt/id :orders)}})})]
     (is (= #{{:table (mt/id :orders)}}
-           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
+           (transform-deps-for-db (t2/select-one :model/Transform 'id t1))))))
 
 (deftest native-card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
@@ -272,7 +272,7 @@
                                                           :card-id card}}}})]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
-             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
+             (transform-deps-for-db (t2/select-one :model/Transform 'id t1)))))))
 
 (defn- rotations
   [v]
@@ -308,7 +308,7 @@
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_1"
               :cycle     [t1]}
-             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+             (ordering/get-transform-cycle (t2/select-one :model/Transform 'id t1)))))))
 
 (deftest get-transform-cycle-test-2
   (testing "cycle is caught in 2 transforms referencing each other"
@@ -332,7 +332,7 @@
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1",
               :cycle     [t1 t2]}
-             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+             (ordering/get-transform-cycle (t2/select-one :model/Transform 'id t1)))))))
 
 (deftest get-transform-cycle-test-3
   (testing "cycle is detected in 3 transforms referencing each other"
@@ -368,7 +368,7 @@
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
               :cycle     [t1 t3 t2]}
-             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+             (ordering/get-transform-cycle (t2/select-one :model/Transform 'id t1)))))))
 
 ;;; --------------------------------------- Precomputed table_dependencies ---------------------------------------
 ;;; These exercise the read side in isolation (no driver / SQL parser): transforms carry their deps in the

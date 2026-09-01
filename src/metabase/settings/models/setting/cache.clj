@@ -76,7 +76,7 @@
   (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
                                                        (h2x/current-datetime-honeysql-form (mdb/db-type)))]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
+    (or (pos? (t2/update! :setting  {'key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
@@ -91,7 +91,7 @@
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting 'key settings-last-updated-key)))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."

@@ -145,7 +145,7 @@
                             (mapcat (fn [[entity-type model]]
                                       (when-let [entity-runs (grouped entity-type)]
                                         (let [ids   (map :entity_id entity-runs)
-                                              names (t2/select-pk->fn :name model :id [:in ids])]
+                                              names (t2/select-pk->fn :name model 'id ['in ids])]
                                           (map (fn [[id name]] [[entity-type id] name]) names))))
                                     entity-type->model))]
       (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
@@ -255,8 +255,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+  (let [run   (api/check-404 (t2/select-one :model/TaskRun 'id id))
+        tasks (t2/select :model/TaskHistory 'run_id id {:order-by [[:started_at :asc]]})]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts

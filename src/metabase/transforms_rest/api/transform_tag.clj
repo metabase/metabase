@@ -42,19 +42,19 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
-  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
+  (api/write-check (t2/select-one :model/TransformTag 'id tag-id))
   (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/update! :model/TransformTag tag-id {:name name})
-  (t2/select-one :model/TransformTag :id tag-id))
+  (t2/select-one :model/TransformTag 'id tag-id))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
-  (t2/delete! :model/TransformTag :id tag-id)
+  (api/write-check (t2/select-one :model/TransformTag 'id tag-id))
+  (t2/delete! :model/TransformTag 'id tag-id)
   nil)
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]

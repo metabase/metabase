@@ -47,7 +47,7 @@
 
 (deftest ^:parallel simple-select-probe-query-test-3
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (t2/select-one :model/Table :id (mt/id :venues))]
+    (let [{:keys [name schema]} (t2/select-one :model/Table 'id (mt/id :venues))]
       (is (= []
              (mt/rows
               (qp/process-query
@@ -133,8 +133,8 @@
 (defn- count-active-tables-in-db
   [db-id]
   (t2/count :model/Table
-            :db_id  db-id
-            :active true))
+            'db_id  db-id
+            'active true))
 
 (deftest sync-only-accessable
   (one-off-dbs/with-blank-db
@@ -160,7 +160,7 @@
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp [:model/Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
+    (let [tables (t2/select :model/Table 'db_id (u/the-id db-filtered))]
       (doseq [table tables]
         (assert-table-fn table)))))
 
@@ -277,8 +277,8 @@
                                 [{:field-name "citizen\\id" :base-type :type/Integer :pk? true}
                                  {:field-name "race\\id" :base-type :type/Integer :fk "human\\race"}]
                                 [[1 1]]]]
-        (let [tables            (t2/select :model/Table :db_id (mt/id))
-              field-name->field (t2/select-fn->fn :name identity :model/Field :table_id [:in (map :id tables)])]
+        (let [tables            (t2/select :model/Table 'db_id (mt/id))
+              field-name->field (t2/select-fn->fn :name identity :model/Field 'table_id ['in (map :id tables)])]
           (is (= #{"human\\race" "citizen"} (set (map :name tables))))
           (is (= #{"humanraceid" "citizen\\id" "race" "race\\id"}
                  (set (keys field-name->field))))

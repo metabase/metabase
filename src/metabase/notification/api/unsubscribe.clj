@@ -27,7 +27,7 @@
 (defn- notification-name-by-handler-id
   [notification-handler-id]
   (let [notification (t2/hydrate (t2/select-one :model/Notification
-                                                :id [:in ^:allow-subquery {:select [:notification_id]
+                                                'id ['in ^:allow-subquery {:select [:notification_id]
                                                                            :from  :notification_handler
                                                                            :where [:= :id notification-handler-id]}])
                                  :payload)]
@@ -54,8 +54,8 @@
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
     (let [recipients (t2/select :model/NotificationRecipient
-                                :notification_handler_id notification-handler-id
-                                :type :notification-recipient/raw-value)
+                                'notification_handler_id notification-handler-id
+                                'type :notification-recipient/raw-value)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
         (t2/delete! :model/NotificationRecipient (:id matching-recipient))
@@ -79,8 +79,8 @@
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (let [recipients         (t2/select :model/NotificationRecipient :notification_handler_id notification-handler-id
-                                        :type :notification-recipient/raw-value)
+    (let [recipients         (t2/select :model/NotificationRecipient 'notification_handler_id notification-handler-id
+                                        'type :notification-recipient/raw-value)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
         (t2/insert! :model/NotificationRecipient {:type                    :notification-recipient/raw-value

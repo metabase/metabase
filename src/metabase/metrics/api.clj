@@ -54,7 +54,7 @@
   (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card :id :name :description :collection_id]
+  (-> (t2/select [:model/Card 'id 'name 'description 'collection_id]
                  {:where    (queries/visible-metric-cards-where-clause)
                   :order-by [[:name :asc]]
                   :limit    limit
@@ -84,9 +84,9 @@
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+  (api/read-check (t2/select-one :model/Card 'id id 'type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
-  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+  (cond-> (-> (t2/select-one :model/Card 'id id 'type "metric")
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
               (update :dimension_mappings #(or % [])))
@@ -174,10 +174,10 @@
                       source-id   (lib-metric/expression-leaf-id leaf)]
                   (case source-type
                     :metric  (do
-                               (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+                               (api/read-check (t2/select-one :model/Card 'id source-id 'type "metric"))
                                [(lib-metric/expression-leaf-uuid leaf) source-id])
                     :measure (do
-                               (api/query-check (t2/select-one :model/Measure :id source-id))
+                               (api/query-check (t2/select-one :model/Measure 'id source-id))
                                nil))))
               (lib-metric/expression-leaves expression))))
 
@@ -345,10 +345,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- read-check-metric! [id]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/read-check (t2/select-one :model/Card 'id id 'type "metric")))
 
 (defn- write-check-metric! [id]
-  (api/write-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/write-check (t2/select-one :model/Card 'id id 'type "metric")))
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)

@@ -290,8 +290,8 @@
 
 (defn- unset-entity-key! [table-id]
   (t2/update! :model/Field
-              {:table_id      table-id
-               :semantic_type :type/PK}
+              {'table_id      table-id
+               'semantic_type :type/PK}
               {:semantic_type nil}))
 
 (deftest table-row-create-no-pk
@@ -611,7 +611,7 @@
           (with-actions-test-data-and-actions-permissively-enabled!
             (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
-              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
+              (let [details (t2/select-one-fn :details 'Database 'id (mt/id))]
                 (t2/update! 'Database (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
@@ -785,7 +785,7 @@
                                                                                                                            :database-enable-table-editing true}}]
                 ;; Sync the database to get table metadata
                 (sync/sync-database! test-database)
-                (let [table-id (t2/select-one-pk :model/Table :db_id (:id test-database) :name "categories")]
+                (let [table-id (t2/select-one-pk :model/Table 'db_id (:id test-database) 'name "categories")]
                   (testing (str "INSERT permission denied for " driver/*driver*)
                     (let [result (try
                                    (actions/perform-action-v2!

@@ -70,12 +70,12 @@
                   {:stored_result_id orphan :exploration_id exploration-id})
       (testing "control: while the exploration lives, the blob is reachable and kept"
         (collect/collect-orphaned-results!)
-        (is (true? (t2/exists? :model/StoredResult :id orphan))))
-      (t2/delete! :model/Exploration :id exploration-id)
-      (is (true? (t2/exists? :model/StoredResult :id orphan))
+        (is (true? (t2/exists? :model/StoredResult 'id orphan))))
+      (t2/delete! :model/Exploration 'id exploration-id)
+      (is (true? (t2/exists? :model/StoredResult 'id orphan))
           "sanity: the delete itself leaves the blob behind — that is the bug being swept up")
       (collect/collect-orphaned-results!)
-      (is (false? (t2/exists? :model/StoredResult :id orphan))))))
+      (is (false? (t2/exists? :model/StoredResult 'id orphan))))))
 
 (deftest collects-blobs-stranded-by-a-restart-test
   (testing "restarting a thread deletes its query rows, taking the `exploration_query_result` rows
@@ -89,11 +89,11 @@
       (t2/insert! :model/StoredResultUse
                   {:stored_result_id orphan :exploration_id exploration-id})
       ;; what `reset-thread-for-rerun!` does
-      (t2/delete! :model/ExplorationQuery :id query-id)
-      (is (= 1 (t2/count :model/StoredResultUse :stored_result_id orphan))
+      (t2/delete! :model/ExplorationQuery 'id query-id)
+      (is (= 1 (t2/count :model/StoredResultUse 'stored_result_id orphan))
           "sanity: the use row survives a restart, so it cannot be the keep-alive signal")
       (collect/collect-orphaned-results!)
-      (is (false? (t2/exists? :model/StoredResult :id orphan))))))
+      (is (false? (t2/exists? :model/StoredResult 'id orphan))))))
 
 (deftest keeps-reachable-and-too-recent-blobs-test
   (testing "a blob an `exploration_query_result` still points at is reachable and must be kept"
@@ -102,12 +102,12 @@
       (t2/insert! :model/ExplorationQueryResult
                   {:exploration_query_id query-id :stored_result_id live})
       (collect/collect-orphaned-results!)
-      (is (true? (t2/exists? :model/StoredResult :id live)))))
+      (is (true? (t2/exists? :model/StoredResult 'id live)))))
   (testing "an unreferenced blob inside the grace period is left alone, so a writer that links its
             result row in a later transaction can never have it collected mid-flight"
     (let [fresh (blob! :fresh? true)]
       (collect/collect-orphaned-results!)
-      (is (true? (t2/exists? :model/StoredResult :id fresh))))))
+      (is (true? (t2/exists? :model/StoredResult 'id fresh))))))
 
 (deftest collecting-a-blob-cascades-its-use-rows-test
   (testing "deleting the blob takes its `stored_result_use` bookkeeping with it, so the sweep leaves
@@ -117,8 +117,8 @@
       (t2/insert! :model/StoredResultUse
                   {:stored_result_id orphan :exploration_id exploration-id})
       (collect/collect-orphaned-results!)
-      (is (false? (t2/exists? :model/StoredResult :id orphan)))
-      (is (zero? (t2/count :model/StoredResultUse :stored_result_id orphan))))))
+      (is (false? (t2/exists? :model/StoredResult 'id orphan)))
+      (is (zero? (t2/count :model/StoredResultUse 'stored_result_id orphan))))))
 
 (defn- summary-embed-card!
   "The ephemeral `report_card` a Summary `cardEmbed` renders through, scoped to an exploration's
@@ -148,7 +148,7 @@
       (t2/insert! :model/StoredResultUse
                   {:stored_result_id composite :card_id card})
       (collect/collect-orphaned-results!)
-      (is (true? (t2/exists? :model/StoredResult :id composite))))))
+      (is (true? (t2/exists? :model/StoredResult 'id composite))))))
 
 (deftest keeps-single-query-embed-blobs-past-a-restart-test
   (testing "a single-query embed reuses the source snapshot rather than copying it, so after a
@@ -161,9 +161,9 @@
                   {:exploration_query_id query-id :stored_result_id shared})
       (t2/insert! :model/StoredResultUse
                   {:stored_result_id shared :card_id card})
-      (t2/delete! :model/ExplorationQuery :id query-id)
+      (t2/delete! :model/ExplorationQuery 'id query-id)
       (collect/collect-orphaned-results!)
-      (is (true? (t2/exists? :model/StoredResult :id shared))))))
+      (is (true? (t2/exists? :model/StoredResult 'id shared))))))
 
 (deftest collects-composite-blobs-once-the-summary-card-is-gone-test
   (testing "deleting the embed's Card cascades its use row away, and with the last referent gone
@@ -174,8 +174,8 @@
           composite                (blob!)]
       (t2/insert! :model/StoredResultUse
                   {:stored_result_id composite :card_id card})
-      (t2/delete! :model/Card :id card)
-      (is (zero? (t2/count :model/StoredResultUse :stored_result_id composite))
+      (t2/delete! :model/Card 'id card)
+      (is (zero? (t2/count :model/StoredResultUse 'stored_result_id composite))
           "sanity: the card_id FK cascade takes the use row with the Card")
       (collect/collect-orphaned-results!)
-      (is (false? (t2/exists? :model/StoredResult :id composite))))))
+      (is (false? (t2/exists? :model/StoredResult 'id composite))))))

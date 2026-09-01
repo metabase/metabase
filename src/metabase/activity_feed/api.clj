@@ -71,8 +71,8 @@
   [views-limit card-runs-limit]
   (let [dashboard-and-table-views (t2/select [:model/RecentViews
                                               [[:min :recent_views.user_id] :user_id]
-                                              :model
-                                              :model_id
+                                              'model
+                                              'model_id
                                               [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
@@ -156,9 +156,9 @@
                                         [:context  [:enum :selection]]]]
   (let [model-id model_id
         model-type (recent-views/rv-model->model model)]
-    (when-not (t2/exists? model-type :id model-id)
+    (when-not (t2/exists? model-type 'id model-id)
       (throw (ex-info "Model not found" {:model model :model_id model-id})))
-    (api/read-check (t2/select-one model-type :id model-id))
+    (api/read-check (t2/select-one model-type 'id model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -173,7 +173,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
-    (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
+    (let [dashboard (-> (t2/select-one :model/Dashboard 'id dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)

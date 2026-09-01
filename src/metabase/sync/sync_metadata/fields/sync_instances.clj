@@ -59,10 +59,10 @@
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
     (t2/select     :model/Field
-                   :table_id    (u/the-id table)
-                   :%lower.name [:in (map common/canonical-name new-field-metadatas)]
-                   :parent_id   parent-id
-                   :active      false)))
+                   'table_id    (u/the-id table)
+                   '%lower.name ['in (map common/canonical-name new-field-metadatas)]
+                   'parent_id   parent-id
+                   'active      false)))
 
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
@@ -125,7 +125,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (t2/update! :model/Field {:id [:in (map u/the-id fields-to-reactivate)]}
+      (t2/update! :model/Field {'id ['in (map u/the-id fields-to-reactivate)]}
                   {:active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
@@ -133,7 +133,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (t2/select :model/Field :id [:in new-and-updated-fields])))))
+        (t2/select :model/Field 'id ['in new-and-updated-fields])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          SYNCING INSTANCES OF 'ACTIVE' FIELDS (FIELDS IN DB METADATA)                          |

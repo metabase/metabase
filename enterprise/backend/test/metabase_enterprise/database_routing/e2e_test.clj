@@ -113,7 +113,7 @@
                              :model/Card card {:name          "Some Name"
                                                :dataset_query {:database (u/the-id router-db)
                                                                :type     :query
-                                                               :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
+                                                               :query    {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}}}]
                 (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
                 (execute-statement! destination-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-1')")
                 (execute-statement! destination-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-2')")
@@ -158,7 +158,7 @@
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                     :user_attribute "db_name"}]
               (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('secret')")
-              (let [table-id      (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
+              (let [table-id      (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))
                     ;; native (the reported exploit) and MBQL. MBQL exercises the setup-layer check:
                     ;; the destination has no synced tables, so without an early reject the query would
                     ;; die later with a confusing "table not found" instead of a clean 403.
@@ -231,19 +231,19 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anonymous users cannot access a database with routing enabled."
                                     (qp/process-query {:database (u/the-id router-db)
                                                        :type :query
-                                                       :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))
+                                                       :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}}))))
             (testing "No destination database matches"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database Routing error: No Destination Database with slug `nonexistent_database_name` found."
                                     (mt/with-test-user :crowberto
                                       (qp/process-query {:database (u/the-id router-db)
                                                          :type :query
-                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))
+                                                         :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}})))))
             (testing "User attribute is missing"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Required user attribute is missing. Cannot route to a Destination Database."
                                     (mt/with-test-user :rasta
                                       (qp/process-query {:database (u/the-id router-db)
                                                          :type :query
-                                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}})))))))))))
+                                                         :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}})))))))))))
 
 (deftest caching-works
   (mt/with-premium-features #{:database-routing}
@@ -263,7 +263,7 @@
                 (is (= [["router"]]
                        (-> (qp/process-query {:database (u/the-id router-db)
                                               :type :query
-                                              :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
+                                              :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}
                                               :cache-strategy {:type             :ttl
                                                                :multiplier       60
                                                                :avg-execution-ms 1000
@@ -275,7 +275,7 @@
                          :data {:rows [["router"]]}}
                         (qp/process-query {:database (u/the-id router-db)
                                            :type :query
-                                           :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
+                                           :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
@@ -284,7 +284,7 @@
                 (is (=? {:data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
                                            :type :query
-                                           :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
+                                           :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
@@ -293,7 +293,7 @@
                          :data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
                                            :type :query
-                                           :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
+                                           :query {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
@@ -316,8 +316,8 @@
               ;; Configure the router database and set up a card that uses it.
               (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                       :user_attribute "db_name"}]
-                (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
-                      field-id (t2/select-one-pk :model/Field :table_id table-id)]
+                (let [table-id (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))
+                      field-id (t2/select-one-pk :model/Field 'table_id table-id)]
                   (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
                   (execute-statement! destination-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-1')")
                   (execute-statement! destination-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-2')")
@@ -427,7 +427,7 @@
           (t2/update! :model/Database (u/the-id router)
                       {:details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
-          (let [router (t2/select-one :model/Database :id (u/the-id router))]
+          (let [router (t2/select-one :model/Database 'id (u/the-id router))]
             (sync/sync-database! router {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
@@ -485,7 +485,7 @@
         (let [router (mt/db)]
           (t2/update! :model/Database (u/the-id router)
                       {:details (assoc (:details router) :dbname nil)})
-          (let [router (t2/select-one :model/Database :id (u/the-id router))]
+          (let [router (t2/select-one :model/Database 'id (u/the-id router))]
             (sync/sync-database! router {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.

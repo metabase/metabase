@@ -49,7 +49,7 @@
   "Wraps the original build-table-query to add ORDER BY for deterministic test results."
   [original-fn table-id source-incremental-strategy transform-id limit checkpoint-field]
   (let [query (original-fn table-id source-incremental-strategy transform-id limit)
-        db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+        db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) 'id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         ;; Find the checkpoint field in the table metadata
         checkpoint-col (->> (lib.metadata/fields metadata-provider table-id)
@@ -122,7 +122,7 @@
   checkpoint-config should be from checkpoint-configs"
   [transform-name target-table transform-type checkpoint-config]
   (let [{:keys [field-name]} checkpoint-config
-        checkpoint-filter-field (fn [] (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products)))]
+        checkpoint-filter-field (fn [] (t2/select-one-pk :model/Field 'name field-name 'table_id (mt/id :transforms_products)))]
     {:name transform-name
      :source_database_id (mt/id)
      :source (case transform-type
@@ -146,7 +146,7 @@
 (defn- get-table-row-count
   "Get the row count of a table by name."
   [{table-name :name}]
-  (let [table          (t2/select-one :model/Table :name table-name)
+  (let [table          (t2/select-one :model/Table 'name table-name)
         mp             (mt/metadata-provider)
         table-metadata (lib.metadata/table mp (:id table))
         count-query    (lib/aggregate (lib/query mp table-metadata) (lib/count))
@@ -253,7 +253,7 @@
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name]} checkpoint-config
-                      expected-field-id (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products))
+                      expected-field-id (t2/select-one-pk :model/Field 'name field-name 'table_id (mt/id :transforms_products))
                       transform-payload (make-incremental-transform-payload "Test Incremental Transform" target-table :native checkpoint-config)]
                   (testing "Transform is created successfully"
                     (mt/with-temp [:model/Transform transform transform-payload]
@@ -513,7 +513,7 @@
           (let [db-id   (mt/id)
                 db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
                 table-id (mt/id :transforms_products)
-                checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
+                checkpoint-field-id (t2/select-one-pk :model/Field 'name "id" 'table_id table-id)
                 ;; Query that returns no rows but has the checkpoint column
                 source  {:type                        "query"
                          :query                       {:database db-id
@@ -537,7 +537,7 @@
               (testing "still creates target table"
                 (is (= 1 (count (next.jdbc/execute! db-spec ["SELECT true FROM information_schema.tables WHERE table_name = ?" target-table])))))
               (testing "sync has picked up table"
-                (is (=? {:name target-table} (t2/select-one :model/Table :name target-table))))
+                (is (=? {:name target-table} (t2/select-one :model/Table 'name target-table))))
               (testing "checkpoint is set from source table MAX even though query returned no rows"
                 (let [transform (t2/select-one :model/Transform (:id transform))]
                   (is (some? (:last_checkpoint_value transform))
@@ -623,7 +623,7 @@
           (let [db-id   (mt/id)
                 db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
                 table-id (mt/id :transforms_products)
-                checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
+                checkpoint-field-id (t2/select-one-pk :model/Field 'name "id" 'table_id table-id)
                 make-source (fn [query-sql]
                               {:type "query"
                                :query {:database db-id
@@ -675,7 +675,7 @@
               (with-transform-cleanup! [target-table (target-table-gen "native_table_tag")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name expected-initial-checkpoint]} checkpoint-config
-                      checkpoint-filter-field-id (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products))
+                      checkpoint-filter-field-id (t2/select-one-pk :model/Field 'name field-name 'table_id (mt/id :transforms_products))
                       transform-payload {:name "Native With Table Tag"
                                          :source {:type "query"
                                                   :query (make-incremental-source-query-with-table-tag checkpoint-config)
@@ -784,8 +784,8 @@
                       (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
                       (is (contains? (physical-indexes (mt/db) (:schema target) table-name) "mid_run_idx"))
                       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex
-                                                          :transform_id (:id transform)
-                                                          :index_name "mid_run_idx")))))
+                                                          'transform_id (:id transform)
+                                                          'index_name "mid_run_idx")))))
                   (testing "once settled, the run after that appends again"
                     (let [transform (t2/select-one :model/Transform (:id transform))]
                       (is (not (transforms-base.u/full-incremental-run? transform))))))))))))))

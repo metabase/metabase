@@ -26,7 +26,7 @@
 (defn- validate-database-access
   "Check if the current user has access to the database."
   [database-id]
-  (when-not (t2/exists? :model/Database :id database-id)
+  (when-not (t2/exists? :model/Database 'id database-id)
     (throw (ex-info (tru "Database {0} not found" database-id)
                     {:agent-error? true
                      :database-id database-id})))

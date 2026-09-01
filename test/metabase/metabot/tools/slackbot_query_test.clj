@@ -204,7 +204,7 @@
                 "step 14 - any future regression in the slackbot contract should surface here\n"
                 "without needing a live LLM loop.")
     (mt/with-current-user (test.users/user->id :crowberto)
-      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+      (let [db-name (t2/select-one-fn :name :model/Database 'id (mt/id))
             ;; Canonical DB name (per `repr-plan.md` step 13); `Sample` alone would
             ;; short-circuit with :unknown-database.
             external-query {:lib/type "mbql/query"

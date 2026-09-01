@@ -84,17 +84,17 @@
                 paths (serialization/ingest-list wrapped)
                 total-paths (count paths)]
             (is (seq paths) "Should have paths to ingest")
-            (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
+            (let [initial-task (t2/select-one :model/RemoteSyncTask 'id task-id)]
               (is (nil? (:progress initial-task)) "Progress should be nil initially"))
             (serialization/ingest-one wrapped (first paths))
-            (let [task-after-first (t2/select-one :model/RemoteSyncTask :id task-id)]
+            (let [task-after-first (t2/select-one :model/RemoteSyncTask 'id task-id)]
               (is (some? (:progress task-after-first)) "Progress should be updated after first item")
               (is (< (abs (- (:progress task-after-first) (double (* (/ 1 total-paths) normalize)))) 0.01)
                   "Progress should reflect one item ingested")
               (is (some? (:last_progress_report_at task-after-first))
                   "last_progress_report_at should be set"))
             (serialization/ingest-one wrapped (second paths))
-            (let [task-after-second (t2/select-one :model/RemoteSyncTask :id task-id)]
+            (let [task-after-second (t2/select-one :model/RemoteSyncTask 'id task-id)]
               (is (< (abs (- (:progress task-after-second) (double (* (/ 2 total-paths) normalize)))) 0.01)
                   "Progress should reflect two items ingested"))))
         (testing "progress reaches normalize value when all items ingested"
@@ -102,7 +102,7 @@
                 paths (serialization/ingest-list wrapped)]
             (doseq [path paths]
               (serialization/ingest-one wrapped path))
-            (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
+            (let [final-task (t2/select-one :model/RemoteSyncTask 'id task-id)]
               (is (< (abs (- (:progress final-task) (double normalize))) 0.01)
                   "Progress should equal normalize value when all items ingested"))))))))
 

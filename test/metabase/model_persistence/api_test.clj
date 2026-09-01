@@ -169,22 +169,22 @@
         (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "persist/card/%d/unpersist" (u/the-id model)))
           (is (= "persisted"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+                 (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id pmodel))))))
       (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
         (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/unpersist" (u/the-id model)))
           (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+                 (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id pmodel))))))
       (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
         (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "persist/card/%d/persist" (u/the-id model)))
           (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+                 (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id pmodel))))))
       (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
         (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/persist" (u/the-id model)))
           (is (= "creating"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
+                 (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id pmodel)))))))
     (mt/with-temp
       [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}
        :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
@@ -192,7 +192,7 @@
         (testing "Allows unpersisting non-model cards"
           (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/unpersist" (u/the-id notmodel)))
           (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
+                 (t2/select-one-fn :state :model/PersistedInfo 'id (u/the-id pnotmodel)))))
         (testing "Can't re-persist non-model cards"
           (is (= "Card is not a model"
                  (mt/user-http-request :crowberto :post 400 (format "persist/card/%d/persist" (u/the-id notmodel))))))))
@@ -223,11 +223,11 @@
           (testing "should be able to persit an database"
             (mt/user-http-request :crowberto :post 204 (str "persist/database/" db-id "/persist"))
             (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
-                                                :database_id db-id
-                                                :card_id     (:id card))))
+                                                'database_id db-id
+                                                'card_id     (:id card))))
             (is (t2/select-one-fn (comp :persist-models-enabled :settings)
                                   :model/Database
-                                  :id db-id))
+                                  'id db-id))
             (is (get-in (mt/user-http-request :crowberto :get 200
                                               (str "database/" db-id))
                         [:settings :persist-models-enabled])))
@@ -249,6 +249,6 @@
             (mt/user-http-request :crowberto :post 204 (str "persist/database/" db-id "/unpersist"))
             (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                         :model/Database
-                                        :id db-id))))
+                                        'id db-id))))
           (testing "it's okay to unpersist even though the database is not persisted"
             (mt/user-http-request :crowberto :post 204 (str "persist/database/" db-id "/unpersist"))))))))

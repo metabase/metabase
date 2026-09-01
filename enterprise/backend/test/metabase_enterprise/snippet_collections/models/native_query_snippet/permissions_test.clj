@@ -189,7 +189,7 @@
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
               (mt/with-test-user :rasta
                 (let [snippets (mt/with-current-user nil
-                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2) (:id snippet3)]]))
+                                 (t2/select :model/NativeQuerySnippet 'id ['in [(:id snippet1) (:id snippet2) (:id snippet3)]]))
                       hydrated (t2/hydrate snippets :can_write)]
                   (testing "all snippets should have :can_write = false in read-only mode"
                     (is (every? #(false? (:can_write %)) hydrated)
@@ -208,7 +208,7 @@
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
               (mt/with-test-user :rasta
                 (let [snippets (mt/with-current-user nil
-                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2)]]))
+                                 (t2/select :model/NativeQuerySnippet 'id ['in [(:id snippet1) (:id snippet2)]]))
                       hydrated (t2/hydrate snippets :can_write)]
                   (testing "all snippets should have :can_write = true in read-write mode"
                     (is (every? :can_write hydrated)
@@ -227,7 +227,7 @@
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
               (mt/with-test-user :rasta
                 (let [snippets (mt/with-current-user nil
-                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2)]]))
+                                 (t2/select :model/NativeQuerySnippet 'id ['in [(:id snippet1) (:id snippet2)]]))
                       hydrated (t2/hydrate snippets :can_write)]
                   (testing "all snippets should have :can_write = true when library is not synced"
                     (is (every? :can_write hydrated)

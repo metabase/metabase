@@ -65,9 +65,9 @@
     (try
       (f {:user user :card card :exploration expl :thread thread})
       (finally
-        (t2/delete! :model/Exploration :id (:id expl))
-        (t2/delete! :model/Card :id (:id card))
-        (t2/delete! :model/User :id (:id user))))))
+        (t2/delete! :model/Exploration 'id (:id expl))
+        (t2/delete! :model/Card 'id (:id card))
+        (t2/delete! :model/User 'id (:id user))))))
 
 (defn- insert-query!
   "Stand in for the planner: insert one pending query row, the way `insert-plan-rows!` would."
@@ -89,7 +89,7 @@
                               :position              0})))
 
 (defn- status [query-id]
-  (:status (t2/select-one :model/ExplorationQuery :id query-id)))
+  (:status (t2/select-one :model/ExplorationQuery 'id query-id)))
 
 (deftest plan-message-plans-then-runs-every-query-test
   (testing "publishing a plan message runs the planner, enqueues the queries it produced, and each
@@ -106,11 +106,11 @@
                (explorations.queues/start-thread! (:id thread)))
              (mq.tu/eventually! ctx #(when-let [qid @planned] (= "done" (status qid))) 60000)))
          (is (some? @planned) "the plan handler ran and inserted a query")
-         (let [row (t2/select-one :model/ExplorationQuery :id @planned)]
+         (let [row (t2/select-one :model/ExplorationQuery 'id @planned)]
            (is (= "done" (:status row))
                "the query handler picked up the message the plan handler published, and ran it")
            (is (some? (:finished_at row)))
-           (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id @planned)))))))))
+           (is (= 1 (t2/count :model/ExplorationQueryResult 'exploration_query_id @planned)))))))))
 
 (deftest query-that-keeps-failing-ends-up-terminally-error-test
   (testing "a query that fails every attempt ends up in the user-visible error state — the row must
@@ -128,12 +128,12 @@
            (mq.tu/with-test-mq [ctx]
              (#'explorations.queues/publish-pending-queries! (:id thread))
              (mq.tu/eventually! ctx #(= "error" (status qid)) 60000))
-           (let [row (t2/select-one :model/ExplorationQuery :id qid)]
+           (let [row (t2/select-one :model/ExplorationQuery 'id qid)]
              (is (= "error" (:status row))
                  "retries exhausted → :on-error recorded the terminal failure")
              (is (some? (:error_message row)) "and the message the UI shows")
              (is (some? (:finished_at row)))
-             (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id qid))
+             (is (zero? (t2/count :model/ExplorationQueryResult 'exploration_query_id qid))
                  "no partial result was written"))))))))
 
 (deftest completion-check-failure-in-error-path-is-retried-not-swallowed-test
@@ -160,10 +160,10 @@
                (#'explorations.queues/publish-pending-queries! (:id thread))
                (mq.tu/eventually! ctx
                                   #(some? (:completed_at (t2/select-one :model/ExplorationThread
-                                                                        :id (:id thread))))
+                                                                        'id (:id thread))))
                                   60000)))
            (is (= "error" (status qid)) "the query is terminally errored")
-           (is (some? (:completed_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+           (is (some? (:completed_at (t2/select-one :model/ExplorationThread 'id (:id thread))))
                "and the thread completed despite the completion check failing on its first attempt")))))))
 
 (deftest plan-that-keeps-failing-terminally-stamps-the-thread-test
@@ -181,9 +181,9 @@
                (explorations.queues/start-thread! (:id thread)))
              (mq.tu/eventually! ctx
                                 #(some? (:completed_at (t2/select-one :model/ExplorationThread
-                                                                      :id (:id thread))))
+                                                                      'id (:id thread))))
                                 60000)))
-         (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+         (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
            (is (some? (:completed_at after))
                "the thread completes, releasing the client from its polling loop")
            (is (= :error (:outcome (:query_plan_transcript after)))
@@ -200,7 +200,7 @@
            (#'explorations.queues/publish-pending-queries! (:id thread))
            (mq.tu/eventually! ctx #(= "done" (status qid)) 60000))
          (is (= "done" (status qid)))
-         (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id qid))
+         (is (= 1 (t2/count :model/ExplorationQueryResult 'exploration_query_id qid))
              "exactly one result despite doubled delivery"))))))
 
 (deftest queues-declare-their-batching-and-concurrency-test
@@ -252,10 +252,10 @@
                                 60000))
            (is (= "done" (status good))
                "the good query ran, despite sharing a batch with a query that failed ahead of it")
-           (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id good)))
+           (is (= 1 (t2/count :model/ExplorationQueryResult 'exploration_query_id good)))
            (is (= "error" (status poison))
                "and the query that really did fail is terminally errored, on its own")
-           (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id poison)))))))))
+           (is (zero? (t2/count :model/ExplorationQueryResult 'exploration_query_id poison)))))))))
 
 (deftest failing-terminal-write-does-not-strand-its-batch-mates-test
   (testing "if recording one message's terminal-failure state itself throws — a racing duplicate

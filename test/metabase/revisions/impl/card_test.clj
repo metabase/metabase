@@ -85,7 +85,7 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
   (revision/push-revision!
-   {:object       (t2/select-one :model/Card :id card-id)
+   {:object       (t2/select-one :model/Card 'id card-id)
     :entity       :model/Card
     :id           card-id
     :user-id      (mt/user->id :crowberto)
@@ -140,11 +140,11 @@
                 changes {col (update-col col (get card col))}]
             ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
             ;; revisions for an instance, so let's clear everything to make it easier to test
-            (t2/delete! :model/Revision :model "Card" :model_id (:id card))
+            (t2/delete! :model/Revision 'model "Card" 'model_id (:id card))
             (t2/update! :model/Card (:id card) changes)
             (create-card-revision! (:id card) false)
             (testing (format "we should track when %s changes" col)
-              (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
+              (is (= 1 (t2/count :model/Revision 'model "Card" 'model_id (:id card)))))
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
                          :table_id :database_id :query_type :source_card_id
@@ -181,7 +181,7 @@
         (t2/update! :model/Card (:id card) changes)
         (create-card-revision! (:id card) false)
         (testing "we should track when :result_metadata changes on model"
-          (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
+          (is (= 1 (t2/count :model/Revision 'model "Card" 'model_id (:id card)))))
         (testing "we should have a revision description for :result_metadata on model"
           (is (some? (u/build-sentence
                       (revision/diff-strings
@@ -202,7 +202,7 @@
                                               :dataset_query (mt/mbql-query venues)
                                               :display       :table}]
       ;; Get the full card and serialize it
-      (let [full-card       (t2/select-one :model/Card :id card-id)
+      (let [full-card       (t2/select-one :model/Card 'id card-id)
             serialized-card (revision/serialize-instance :model/Card card-id full-card)
             ;; Remove card_schema to simulate pre-v0.55 revision
             old-card-data   (dissoc serialized-card :card_schema)]
@@ -220,8 +220,8 @@
                    (-> revisions first :message)))))
         (testing "Revision object has card_schema added with legacy default after after-select"
           (let [revision     (t2/select-one :model/Revision
-                                            :model "Card"
-                                            :model_id card-id
+                                            'model "Card"
+                                            'model_id card-id
                                             {:order-by [[:id :desc]]})
                 ;; The after-select should have added `:card_schema`
                 revision-obj (:object revision)]

@@ -522,14 +522,14 @@
   "Look up a single setting key in the DB or cache. Returns the raw (possibly empty) string, or nil."
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
-    (t2/select-one-fn :value :model/Setting :key setting-name-str)
+    (t2/select-one-fn :value :model/Setting 'key setting-name-str)
     (do
       ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
       (setting.cache/restore-cache-if-needed!)
       (let [cache (setting.cache/cache)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
-          (t2/select-one-fn :value :model/Setting :key setting-name-str)
+          (t2/select-one-fn :value :model/Setting 'key setting-name-str)
           (core/get cache setting-name-str))))))
 
 (def ^:dynamic *deprecated-db-key-warned*
@@ -781,7 +781,7 @@
   (assert (not= setting-name setting.cache/settings-last-updated-key)
           (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (t2/update! :model/Setting :key setting-name {:value new-value}))
+  (t2/update! :model/Setting 'key setting-name {:value new-value}))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
@@ -858,11 +858,11 @@
             (cond
               (nil? new-value)
               (do
-                (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+                (t2/delete! (t2/table-name :model/Setting) 'key setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (t2/delete! (t2/table-name :model/Setting) :key deprecated-key)
+                    (t2/delete! (t2/table-name :model/Setting) 'key deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
@@ -1750,13 +1750,13 @@
                                                             ;; these are *definitely* decrypted already, let's not bother looking
                                                             [:not [:in :value ["true" "false"]]]]})
                   :when (encryption/decryptable-string? v)]
-            (t2/update! :setting :key k {:value (encryption/decrypt v)}))
+            (t2/update! :setting 'key k {:value (encryption/decrypt v)}))
           (doseq [{v :value k :key}
                   (t2/select :setting {:for :update :where [:and
                                                             [:in :key (map setting-name encrypting)]
                                                             [:!= :value nil]]})
                   :when (not (encryption/decryptable-string? v))]
-            (t2/update! :setting :key k {:value (encryption/encrypt v)})))))))
+            (t2/update! :setting 'key k {:value (encryption/encrypt v)})))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't

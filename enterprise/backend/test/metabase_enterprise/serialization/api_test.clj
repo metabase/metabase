@@ -103,7 +103,7 @@
                         :model/Card       ~card  {:collection_id (:id ~coll), :name "frobinate", :type :model
                                                   :query_type    :native
                                                   :dataset_query {:type     :native
-                                                                  :database (t2/select-one-pk :model/Database :is_audit false)
+                                                                  :database (t2/select-one-pk :model/Database 'is_audit false)
                                                                   :native   {:query "SELECT 1"}}}]
            ~@body)))))
 
@@ -293,7 +293,7 @@
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
         ;; Modify entities in the database
-        (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
+        (t2/update! :model/Dashboard {'id (:id dash)} {:name "urquan"})
         (t2/delete! :model/Card (:id card))
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
@@ -301,8 +301,8 @@
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
           (testing "Entities are restored in the database"
-            (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
-            (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
+            (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard 'entity_id (:entity_id dash))))
+            (is (= (:name card) (t2/select-one-fn :name :model/Card 'entity_id (:entity_id card)))))
           (testing "Snowplow import event was sent"
             (is (=? {"event"         "serialization"
                      "direction"     "import"
@@ -579,7 +579,7 @@
       (let [db-name (str "h2-" (u.random/random-name))
             log     (import-archive! (database-archive! db-name :h2 {"details" {"db" "mem:imported"}}))]
         (is (re-find #"h2 is not supported for serialization import" log))
-        (is (nil? (t2/select-one :model/Database :name db-name)))))))
+        (is (nil? (t2/select-one :model/Database 'name db-name)))))))
 
 (deftest import-drops-low-level-connection-keys-test
   (testing "imported connection details keep the driver's own keys and drop the low-level JDBC ones"
@@ -597,11 +597,11 @@
                                                                            low-level)
                                                "write_data_details" low-level
                                                "admin_details"      low-level}))
-          (let [db (t2/select-one :model/Database :name db-name)]
+          (let [db (t2/select-one :model/Database 'name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
             (doseq [k [:details :write_data_details :admin_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))
           (finally
-            (t2/delete! :model/Database :name db-name)))))))
+            (t2/delete! :model/Database 'name db-name)))))))

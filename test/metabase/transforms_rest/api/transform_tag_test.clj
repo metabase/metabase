@@ -25,7 +25,7 @@
               (is (some? (:updated_at response)))
               ;; Clean up
               (finally
-                (t2/delete! :model/TransformTag :id (:id response))))))
+                (t2/delete! :model/TransformTag 'id (:id response))))))
         (testing "Returns 400 for duplicate tag name"
           (mt/with-temp [:model/TransformTag tag {}]
             (is (string? (mt/user-http-request :lucky :post 400 "transform-tag"
@@ -70,9 +70,9 @@
       (mt/with-premium-features #{:transforms-basic}
         (testing "Deletes tag successfully"
           (mt/with-temp [:model/TransformTag tag {}]
-            (is (t2/exists? :model/TransformTag :id (:id tag)))
+            (is (t2/exists? :model/TransformTag 'id (:id tag)))
             (mt/user-http-request :lucky :delete 204 (str "transform-tag/" (:id tag)))
-            (is (not (t2/exists? :model/TransformTag :id (:id tag))))))
+            (is (not (t2/exists? :model/TransformTag 'id (:id tag))))))
         (testing "Returns 404 for non-existent tag"
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404

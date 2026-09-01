@@ -280,8 +280,8 @@
         (is (= 50 (count (distinct names))))))))
 
 (defn last-audit-event [topic]
-  (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                 :topic topic
+  (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
+                 'topic topic
                  {:order-by [[:id :desc]]}))
 
 (defn create-from-csv-and-sync-with-defaults!
@@ -325,7 +325,7 @@
    f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
+    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
       (let [file        (or file (csv-file-with
@@ -357,9 +357,9 @@
                 (finally
                   (let [model-id (u/the-id uploaded-model)
                         table-id (u/the-id (:table_id uploaded-model))
-                        table    (t2/select-one :model/Table :id table-id)]
-                    (t2/delete! :model/Card :id model-id)
-                    (t2/delete! :model/Table :id table-id)
+                        table    (t2/select-one :model/Table 'id table-id)]
+                    (t2/delete! :model/Card 'id model-id)
+                    (t2/delete! :model/Table 'id table-id)
                     (driver/drop-table! driver/*driver*
                                         (u/the-id (:db_id table))
                                         (#'upload/table-identifier table))))))))))))
@@ -380,7 +380,7 @@
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
+    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
@@ -398,7 +398,7 @@
                                    (#'upload/table-identifier table))))))
 
 (defn- table->card [table]
-  (t2/select-one :model/Card :table_id (:id table)))
+  (t2/select-one :model/Card 'table_id (:id table)))
 
 (defn- card->table [card]
   (t2/select-one :model/Table (:table_id card)))
@@ -560,7 +560,7 @@
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
-  (t2/select-one-fn :database_position :model/Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
+  (t2/select-one-fn :database_position :model/Field '%lower.name (u/lower-case-en column-name) 'table_id (:id table)))
 
 (deftest create-from-csv-test
   (doseq [[separator lines] example-files]
@@ -583,11 +583,11 @@
                         (auto-pk-column?)
                         (cons ["_mb_row_id" {:semantic_type :type/PK
                                              :base_type     :type/BigInteger}]))
-                      (->> (t2/select :model/Field :table_id (:id table))
+                      (->> (t2/select :model/Field 'table_id (:id table))
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
             (testing "Check that table can be written via data-editing"
-              (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] (:id table))))
+              (true? (t2/select-one-fn :is_writable [:model/Table 'is_writable] (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
@@ -711,7 +711,7 @@
           (testing "Fields exists after sync"
             (testing "Check the datetime column the correct base_type"
               (is (=? :type/DateTime
-                      (t2/select-one-fn :base_type :model/Field :%lower.name "datetime" :table_id (:id table)))))
+                      (t2/select-one-fn :base_type :model/Field '%lower.name "datetime" 'table_id (:id table)))))
             (is (some? table))))))))
 
 (deftest create-from-csv-offset-datetime-test
@@ -738,7 +738,7 @@
                             :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
                     (testing "Check the offset datetime column the correct base_type"
                       (is (=? :type/DateTimeWithLocalTZ
-                              (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                              (t2/select-one-fn :base_type :model/Field '%lower.name "offset_datetime" 'table_id (:id table)))))
                     (let [position (column-position table "offset_datetime")
                           values   (map #(nth % position) (rows-for-table table))]
                       (is (= expected
@@ -772,7 +772,7 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the boolean column has a boolean base_type"
               (is (= :type/Boolean
-                     (t2/select-one-fn :base_type :model/Field :%lower.name "bool" :table_id (:id table)))))
+                     (t2/select-one-fn :base_type :model/Field '%lower.name "bool" 'table_id (:id table)))))
             (testing "Check the data was uploaded into the table correctly"
               (let [position    (column-position table "bool")
                     bool-column (map #(nth % position) (rows-for-table table))
@@ -912,7 +912,7 @@
                      :base_type                  :type/BigInteger
                      :database_is_auto_increment false}
                     (let [pos (if (auto-pk-column?) 1 0)]
-                      (t2/select-one :model/Field :database_position pos :table_id (:id table)))))))))))
+                      (t2/select-one :model/Field 'database_position pos 'table_id (:id table)))))))))))
 
 (deftest create-from-csv-auto-pk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
@@ -1158,7 +1158,7 @@
                         :creator_id    (mt/user->id :rasta)
                         :name          #"(?i)example csv file(.*)"
                         :collection_id nil}
-                       (t2/select-one :model/Card :table_id (:id new-table)))
+                       (t2/select-one :model/Card 'table_id (:id new-table)))
                    "A new model is created")
                (is (=? {:name      #"(?i)example(.*)"
                         :schema    (re-pattern (str "(?i)" schema-name))
@@ -1168,7 +1168,7 @@
                (is (= "complete"
                       (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
                    "The table is synced and marked as complete")
-               (is (t2/exists? :model/Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+               (is (t2/exists? :model/Field 'table_id (:id new-table) '%lower.name "name" 'semantic_type :type/Name)
                    "The sync actually runs")))))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
@@ -1200,7 +1200,7 @@
        {}
        (fn [model]
          (with-upload-table! [table (card->table model)]
-           (let [new-field (t2/select-one :model/Field :table_id (:id table) :name "_mb_row_id")]
+           (let [new-field (t2/select-one :model/Field 'table_id (:id table) 'name "_mb_row_id")]
              (is (= "_mb_row_id"
                     (:name new-field)
                     (:display_name new-field))))))))))
@@ -1425,11 +1425,11 @@
     (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)]
       ;; ensure we have the same display name for the auto-pk-column that a real upload would have
       (t2/update! :model/Field
-                  {:table_id (:id table), :name upload/auto-pk-column-name}
+                  {'table_id (:id table), 'name upload/auto-pk-column-name}
                   {:display_name upload/auto-pk-column-name})
       ;; and preserve the other display names from the CSV
       (doseq [[nm dn] name->display]
-        (t2/update! :model/Field {:table_id (:id table), :name nm} {:display_name dn}))
+        (t2/update! :model/Field {'table_id (:id table), 'name nm} {:display_name dn}))
       table)))
 
 (defn catch-ex-info* [f]
@@ -1492,7 +1492,7 @@
       (testing (action-testing-str action)
         (mt/with-discard-model-updates! [:model/Database]
           ;; start with uploads disabled for all databases
-          (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
+          (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
           (testing "Updates fail if uploads are disabled for all databases."
             (is (= {:message "Uploads are not enabled."
                     :data    {:status-code 422}}
@@ -1714,7 +1714,7 @@
                                :base_type     :type/BigInteger
                                :name          "_mb_row_id"
                                :display_name  "_mb_row_id"}
-                              (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+                              (t2/select-one :model/Field 'table_id (:id table) 'name upload/auto-pk-column-name))))
                     (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
                       (case action
                         :metabase.upload/append
@@ -1750,7 +1750,7 @@
             (let [csv-rows    ["bool_column" "not a bool"]
                   file        (csv-file-with csv-rows)
                   get-auto-pk (fn []
-                                (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))]
+                                (t2/select-one :model/Field 'table_id (:id table) 'name upload/auto-pk-column-name))]
               (is (nil? (get-auto-pk)))
               (is (thrown? Exception
                            (update-csv! action {:file file, :table-id (:id table)})))
@@ -1883,8 +1883,8 @@
         ;; We use the primary keys as the join fields as we know they will exist and have compatible types.
         pk-metadata         (fn [table]
                               (let [field-id (t2/select-one-pk :model/Field
-                                                               :table_id (:id table)
-                                                               :semantic_type :type/PK)]
+                                                               'table_id (:id table)
+                                                               'semantic_type :type/PK)]
                                 (lib.metadata/field mp field-id)))
         base-id-metadata         (pk-metadata base-table)
         join-id-metadata         (pk-metadata join-table)]
@@ -1894,7 +1894,7 @@
                                            (lib/ref join-id-metadata))])))))
 
 (defn- cached-model-ids []
-  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
+  (into #{} (map :card_id) (t2/select [:model/PersistedInfo 'card_id] 'active true)))
 
 (deftest update-invalidate-model-cache-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
@@ -1914,7 +1914,7 @@
                            :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
                            :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
               (is (= #{question-id model-id complex-model-id}
-                     (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
+                     (into #{} (map :id) (t2/select :model/Card 'table_id table-id 'archived false))))
               (mt/with-persistence-enabled! [persist-models!]
                 (persist-models!)
                 (let [cached-before (cached-model-ids)
@@ -2441,21 +2441,21 @@
                                   :rows [[1, 1]])]
         (testing "The upload table and the expected application data are created\n"
           (is (upload-table-exists? table))
-          (is (seq (t2/select :model/Table :id (:id table))))
+          (is (seq (t2/select :model/Table 'id (:id table))))
           (testing "The expected metadata is synchronously sync'd"
-            (is (seq (t2/select :model/Field :table_id (:id table))))))
+            (is (seq (t2/select :model/Field 'table_id (:id table))))))
         (mt/with-temp [:model/Card {card-id :id} {:table_id (:id table)}]
-          (is (false? (:archived (t2/select-one :model/Card :id card-id))))
+          (is (false? (:archived (t2/select-one :model/Card 'id card-id))))
           (upload/delete-upload! table :archive-cards? archive-cards?)
           (testing (format "We %s the related cards if archive-cards? is %s"
                            (if archive-cards? "archive" "do not archive")
                            archive-cards?)
-            (is (= archive-cards? (:archived (t2/select-one :model/Card :id card-id)))))
+            (is (= archive-cards? (:archived (t2/select-one :model/Card 'id card-id)))))
           (testing "The upload table and related application data are deleted\n"
             (is (not (upload-table-exists? table)))
-            (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
+            (is (= [false] (mapv :active (t2/select :model/Table 'id (:id table)))))
             (testing "We do not clean up any of the child resources synchronously (yet?)"
-              (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
+              (is (seq (t2/select :model/Field 'table_id (:id table)))))))))))
 
 (deftest create-csv-from-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -2520,7 +2520,7 @@
               (is (= (header-with-auto-pk ["A"])
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
-              (t2/update! :model/Field {:name "a" :table_id (:id table)}
+              (t2/update! :model/Field {'name "a" 'table_id (:id table)}
                           {:display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])
                      (column-display-names-for-table table))))
@@ -2609,7 +2609,7 @@
                      :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
                      :model/PermissionsGroup pg                      {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         ;; Set database-level defaults to blocked
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)

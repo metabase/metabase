@@ -56,15 +56,15 @@
                       (snapshot (app-files "a" (merge {:name "A" :path "index.js" :bundle "V1"} app)))))]
       (testing "an app that declares no description syncs with a nil one"
         (sync-app)
-        (is (nil? (t2/select-one-fn :description :model/DataApp :name "a"))))
+        (is (nil? (t2/select-one-fn :description :model/DataApp 'name "a"))))
       (testing "adding one counts as a change and is materialized"
         (is (=? {:changed 1} (sync-app :description "What this app does")))
-        (is (= "What this app does" (t2/select-one-fn :description :model/DataApp :name "a"))))
+        (is (= "What this app does" (t2/select-one-fn :description :model/DataApp 'name "a"))))
       (testing "re-syncing the same description is not a change"
         (is (=? {:changed 0} (sync-app :description "What this app does"))))
       (testing "dropping it from the config clears the column"
         (is (=? {:changed 1} (sync-app)))
-        (is (nil? (t2/select-one-fn :description :model/DataApp :name "a")))))))
+        (is (nil? (t2/select-one-fn :description :model/DataApp 'name "a")))))))
 
 (deftest metadata-edits-count-while-an-app-keeps-failing-test
   (testing "an app whose bundle is missing still stores metadata edits, so they count as changes"
@@ -76,12 +76,12 @@
                                         (when-let [d (:description app)]
                                           (format "description: %s\n" d)))})))]
         (is (=? {:changed 1} (sync-app :description "First")) "the first failure is a change")
-        (is (some? (t2/select-one-fn :sync_error :model/DataApp :name "a")))
+        (is (some? (t2/select-one-fn :sync_error :model/DataApp 'name "a")))
         (testing "re-syncing the same failing app unchanged is not a change"
           (is (=? {:changed 0} (sync-app :description "First"))))
         (testing "editing the description is a change even though the bundle still fails"
           (is (=? {:changed 1} (sync-app :description "Second")))
-          (is (= "Second" (t2/select-one-fn :description :model/DataApp :name "a"))
+          (is (= "Second" (t2/select-one-fn :description :model/DataApp 'name "a"))
               "the edit is stored, which is why the pull cannot report it as a no-op"))))))
 
 (deftest switching-repos-prunes-old-apps-overrides-shared-adds-new-test
@@ -100,7 +100,7 @@
                                 (app-files "baz" {:name "Baz" :path "index.js" :bundle "BAZ"}))))))
       (is (= #{"bar" "baz"} (t2/select-fn-set :name :model/DataApp))
           "Foo (only in repo A) is dropped; Baz (from repo B) is added")
-      (let [bar (t2/select-one :model/DataApp :name "bar")]
+      (let [bar (t2/select-one :model/DataApp 'name "bar")]
         (is (= "Bar B" (:display_name bar))
             "Bar is overridden in place by repo B (shared slug)")
         (is (= "BAR-B" (String. ^bytes (:bundle bar) "UTF-8"))
@@ -121,7 +121,7 @@
     (mt/with-model-cleanup [:model/DataApp]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "app" {:name "App" :path "index.js" :bundle "GOOD"})))
-      (is (= "GOOD" (String. ^bytes (:bundle (t2/select-one :model/DataApp :name "app")) "UTF-8")))
+      (is (= "GOOD" (String. ^bytes (:bundle (t2/select-one :model/DataApp 'name "app")) "UTF-8")))
       ;; Same directory, but its config no longer parses. The dir is still present,
       ;; so the app is kept — not treated as a removal — and its cached bundle stays.
       (let [result (data-app.sync/import-from-snapshot!
@@ -131,7 +131,7 @@
         (is (= 1 (count (:config-errors result))))
         (is (=? {:changed 1} result)
             "marking the app failed counts as a change, so the pull isn't reported as a no-op"))
-      (let [app (t2/select-one :model/DataApp :name "app")]
+      (let [app (t2/select-one :model/DataApp 'name "app")]
         (is (some? app) "the app survives a transiently broken config")
         (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
             "its last-good cached bundle is retained")
@@ -157,7 +157,7 @@
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "big" {:name "Big" :path "index.js"
                                    :bundle (oversized-bundle)})))
-      (let [app (t2/select-one :model/DataApp :name "big")]
+      (let [app (t2/select-one :model/DataApp 'name "big")]
         (is (some? app) "the app still appears in the list")
         (is (nil? (:bundle app)) "no oversized bundle was cached")
         (is (str/includes? (:sync_error app) "MiB"))))))
@@ -170,7 +170,7 @@
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "app" {:name "App" :path "index.js"
                                    :bundle (oversized-bundle)})))
-      (let [app (t2/select-one :model/DataApp :name "app")]
+      (let [app (t2/select-one :model/DataApp 'name "app")]
         (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
             "the previously cached bundle is retained")
         (is (str/includes? (:sync_error app) "MiB"))))))

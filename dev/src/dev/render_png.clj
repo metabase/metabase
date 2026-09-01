@@ -35,7 +35,7 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card :id card-id)
+  (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card 'id card-id)
         query-results (qp/process-query
                        (cond-> dataset_query
                          (= card-type :model)
@@ -49,7 +49,7 @@
 (defn render-pulse-card
   "Render a pulse card as a data structure"
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
+  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card 'id card-id)
         query-results (qp/process-query dataset_query)]
     (channel.render/render-pulse-card
      :inline (channel.render/defaulted-timezone card)
@@ -75,7 +75,7 @@
   "Given a dashboard ID, renders each dashcard, including Markdown, to its own temporary png image, and opens each one."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
-        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard         (t2/select-one :model/Dashboard 'id dashboard-id)
         dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)]
     (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
       (let [render    (if card
@@ -158,7 +158,7 @@
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
-        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard         (t2/select-one :model/Dashboard 'id dashboard-id)
         dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr

@@ -220,7 +220,7 @@
                                                 :iss "https://slack.com"
                                                 :aud "test-client-id"
                                                 :email "link-only-no-session@example.com"}})]
-          (let [initial-session-count (t2/count :model/Session :user_id (:id user))
+          (let [initial-session-count (t2/count :model/Session 'user_id (:id user))
                 request {:code "test-code"
                          :state "test-state"
                          :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
@@ -230,7 +230,7 @@
             (is (true? (:success? result)) "Login should succeed")
             (is (nil? (:session result)) "Result should not contain a session")
             (is (nil? (:user result)) "Result should not contain a user (dissoc'd by :after method)")
-            (is (= initial-session-count (t2/count :model/Session :user_id (:id user)))
+            (is (= initial-session-count (t2/count :model/Session 'user_id (:id user)))
                 "No new session should be created in the database")))))))
 
 ;;; -------------------------------------------------- AuthIdentity Creation Tests --------------------------------------------------
@@ -246,7 +246,7 @@
       (let [test-email "newuser-slack@example.com"
             slack-user-id "U_NEW_12345"]
         ;; Ensure user doesn't exist
-        (t2/delete! :model/User :email test-email)
+        (t2/delete! :model/User 'email test-email)
         (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                     (fn [_issuer] slack-discovery-doc)
                                     oidc.state/validate-oidc-callback
@@ -277,16 +277,16 @@
               (is (true? (:success? result)) "Login should succeed")
               (is (some? (:user result)) "Result should contain a user")
               ;; Verify AuthIdentity was created
-              (let [user (t2/select-one :model/User :email test-email)
+              (let [user (t2/select-one :model/User 'email test-email)
                     auth-identity (t2/select-one :model/AuthIdentity
-                                                 :user_id (:id user)
-                                                 :provider "slack-connect")]
+                                                 'user_id (:id user)
+                                                 'provider "slack-connect")]
                 (is (some? user) "User should be created")
                 (is (some? auth-identity) "AuthIdentity should be created")
                 (is (= slack-user-id (:provider_id auth-identity))
                     "AuthIdentity should have correct provider_id")))
             (finally
-              (t2/delete! :model/User :email test-email))))))))
+              (t2/delete! :model/User 'email test-email))))))))
 
 (deftest sso-mode-creates-auth-identity-for-existing-user-test
   (testing "SSO mode creates AuthIdentity when an existing user logs in via Slack"
@@ -300,7 +300,7 @@
                                          :first_name "Existing"
                                          :last_name "User"}]
           ;; Ensure no AuthIdentity exists for this user
-          (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
+          (t2/delete! :model/AuthIdentity 'user_id (:id user) 'provider "slack-connect")
           (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                       (fn [_issuer] slack-discovery-doc)
                                       oidc.state/validate-oidc-callback
@@ -328,8 +328,8 @@
               (is (true? (:success? result)) "Login should succeed")
               ;; Verify AuthIdentity was created
               (let [auth-identity (t2/select-one :model/AuthIdentity
-                                                 :user_id (:id user)
-                                                 :provider "slack-connect")]
+                                                 'user_id (:id user)
+                                                 'provider "slack-connect")]
                 (is (some? auth-identity) "AuthIdentity should be created for existing user")
                 (is (= slack-user-id (:provider_id auth-identity))
                     "AuthIdentity should have correct provider_id")))))))))
@@ -346,7 +346,7 @@
                                          :first_name "Link"
                                          :last_name "User"}]
           ;; Ensure no AuthIdentity exists for this user
-          (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
+          (t2/delete! :model/AuthIdentity 'user_id (:id user) 'provider "slack-connect")
           (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                       (fn [_issuer] slack-discovery-doc)
                                       oidc.state/validate-oidc-callback
@@ -366,7 +366,7 @@
                                                   :iss "https://slack.com"
                                                   :aud "test-client-id"
                                                   :email "linkuser@example.com"}})]
-            (let [initial-session-count (t2/count :model/Session :user_id (:id user))
+            (let [initial-session-count (t2/count :model/Session 'user_id (:id user))
                   request {:code "test-code"
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
@@ -377,13 +377,13 @@
               (is (nil? (:session result)) "No session should be created in link-only mode")
               ;; Verify AuthIdentity was created
               (let [auth-identity (t2/select-one :model/AuthIdentity
-                                                 :user_id (:id user)
-                                                 :provider "slack-connect")]
+                                                 'user_id (:id user)
+                                                 'provider "slack-connect")]
                 (is (some? auth-identity) "AuthIdentity should be created in link-only mode")
                 (is (= slack-user-id (:provider_id auth-identity))
                     "AuthIdentity should have correct provider_id"))
               ;; Verify no new session was created
-              (is (= initial-session-count (t2/count :model/Session :user_id (:id user)))
+              (is (= initial-session-count (t2/count :model/Session 'user_id (:id user)))
                   "No new session should be created"))))))))
 
 ;;; -------------------------------------------------- Settings Validation Tests --------------------------------------------------

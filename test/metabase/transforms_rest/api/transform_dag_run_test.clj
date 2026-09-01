@@ -126,12 +126,12 @@
                                                                   :run_method   "manual"
                                                                   :start_time   (parse-instant "2025-09-01T10:00:00")}]
                 (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
-                (let [run (t2/select-one :model/TransformDagRun :id run-id)]
+                (let [run (t2/select-one :model/TransformDagRun 'id run-id)]
                   (is (= :canceled (:status run)))
                   (is (nil? (:is_active run)))
                   (is (some? (:end_time run))))
                 (testing "a cancelation row is recorded for the still-running member"
-                  (is (t2/exists? :model/TransformRunCancelation :run_id member-id)))))
+                  (is (t2/exists? :model/TransformRunCancelation 'run_id member-id)))))
             (testing "returns 400 when the run has already finished"
               (mt/with-temp [:model/Transform {seed-id :id} {:name "Seed"}
                              :model/TransformDagRun {run-id :id} {:source_transform_id seed-id
@@ -140,7 +140,7 @@
                                                                   :start_time          (parse-instant "2025-09-01T10:00:00")
                                                                   :end_time            (parse-instant "2025-09-01T10:05:00")}]
                 (mt/user-http-request :lucky :post 400 (str "transform-dag-run/" run-id "/cancel"))
-                (is (= :succeeded (:status (t2/select-one :model/TransformDagRun :id run-id)))
+                (is (= :succeeded (:status (t2/select-one :model/TransformDagRun 'id run-id)))
                     "a finished run is never resurrected into a canceled state")))
             (testing "returns 404 for a non-existent DAG run"
               (mt/user-http-request :lucky :post 404 "transform-dag-run/999999/cancel"))))))))
@@ -157,7 +157,7 @@
                                                               :is_active             true
                                                               :start_time            (parse-instant "2025-09-01T10:00:00")}]
             (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
-            (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))))))))
+            (is (= :canceled (:status (t2/select-one :model/TransformDagRun 'id run-id))))))))))
 
 (deftest cancel-dag-run-requires-write-permission-test
   (testing "POST /api/transform-dag-run/:run-id/cancel requires write permission on the seed transform"

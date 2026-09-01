@@ -103,12 +103,12 @@
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] :id field-id)]
-    [(t2/select-one-fn :name :model/Table :id table-id) field-name]))
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field 'name 'table_id] 'id field-id)]
+    [(t2/select-one-fn :name :model/Table 'id table-id) field-name]))
 
 (defn- add-table-id-name [table-id]
   (list 'do
-        (symbol (format "#_%s" (pr-str (t2/select-one-fn :name :model/Table :id table-id))))
+        (symbol (format "#_%s" (pr-str (t2/select-one-fn :name :model/Table 'id table-id))))
         table-id))
 
 (defn add-names
@@ -328,7 +328,7 @@
 
       (:and m {:source-table (_ :guard pos-int?)})
       (-> (update m :source-table (fn [table-id]
-                                    [::$$ (some-> (t2/select-one-fn :name :model/Table :id table-id) u/lower-case-en)]))
+                                    [::$$ (some-> (t2/select-one-fn :name :model/Table 'id table-id) u/lower-case-en)]))
           (expand table))
 
       (:and m {:fk-field-id (_ :guard pos-int?)})
@@ -368,7 +368,7 @@
 (defn- query-table-name [{:keys [source-table source-query], :as inner-query}]
   (cond
     (pos-int? source-table)
-    (u/lower-case-en (or (t2/select-one-fn :name :model/Table :id source-table)
+    (u/lower-case-en (or (t2/select-one-fn :name :model/Table 'id source-table)
                          (throw (ex-info (format "Table %d does not exist!" source-table)
                                          {:source-table source-table, :inner-query inner-query}))))
 

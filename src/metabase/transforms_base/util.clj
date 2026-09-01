@@ -641,7 +641,7 @@
   [transform-id index ^Throwable t]
   (when transform-id
     (t2/update! :model/TableIndex
-                :transform_id transform-id :index_name (reconcile/index-name index)
+                'transform_id transform-id 'index_name (reconcile/index-name index)
                 {:status :failed :error_message (ex-message t) :last_executed_at :%now})))
 
 (defn- apply-standalone-indexes!
@@ -682,8 +682,8 @@
   [by-outcome]
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
-      (t2/delete! :model/TableIndex :id [:in (map :id rows)])
-      (t2/update! :model/TableIndex :id [:in (map :id rows)]
+      (t2/delete! :model/TableIndex 'id ['in (map :id rows)])
+      (t2/update! :model/TableIndex 'id ['in (map :id rows)]
                   (cond-> {:status           status
                            :last_executed_at :%now}
                     (= status :succeeded)
@@ -750,7 +750,7 @@
 (defn output-table
   "Return the output table created by a transform, looked up via `transform_id`."
   [transform]
-  (t2/select-one :model/Table :transform_id (:id transform)))
+  (t2/select-one :model/Table 'transform_id (:id transform)))
 
 (defn merge-target-unique-key
   "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
@@ -762,8 +762,8 @@
   "Physical column names of a transform's synced target table, ordered by position, or nil."
   [transform]
   (when-let [table (output-table transform)]
-    (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
-                                 :table_id (:id table) :active true
+    (not-empty (t2/select-fn-vec :name [:model/Field 'name 'position]
+                                 'table_id (:id table) 'active true
                                  {:order-by [[:position :asc]]}))))
 
 (defn validate-merge-unique-key!
@@ -798,7 +798,7 @@
                          [:= :name table-name]])
           fetch-batch (fn [batch]
                         (t2/select-fn->fn (juxt :db_id :schema :name) :id
-                                          [:model/Table :id :db_id :schema :name]
+                                          [:model/Table 'id 'db_id 'schema 'name]
                                           {:where (into [:or] (map ref->clause batch))}))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
@@ -834,8 +834,8 @@
                            (let [ids (into #{} (map :table_id) needs-metadata)]
                              (t2/select-pk->fn (fn [{:keys [db_id schema name]}]
                                                  {:database_id db_id :schema schema :table name})
-                                               [:model/Table :id :db_id :schema :name]
-                                               :id [:in ids])))
+                                               [:model/Table 'id 'db_id 'schema 'name]
+                                               'id ['in ids])))
         missing-ids      (when (seq needs-metadata)
                            (let [ids (into #{} (map :table_id) needs-metadata)]
                              (remove (or int-id->metadata {}) ids)))

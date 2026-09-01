@@ -275,7 +275,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table 'id (mt/id :venues)))))
     (mt/dataset uuid-dogs
       (testing "binData uuid fields are identified as type/MongoBinData"
         (is (= {:schema nil,
@@ -285,7 +285,7 @@
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
                   {:name "person_id", :database-type "binData", :base-type :type/MongoBinData, :database-position 3}
                   {:name "id", :database-type "binData", :base-type :type/MongoBinData, :database-position 1}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table 'id (mt/id :dogs)))))))
     (mt/dataset nested-bindata-coll
       (testing "nested fields with mixed binData subtypes are identified as type/*"
         (is (= {:schema nil, :name "nested-bindata",
@@ -304,7 +304,7 @@
                            :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5,
                                              :nfc-path ["nested_mixed_not_uuid" "nested_data_2"]}}
                            :visibility-type :details-only}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table 'id (mt/id :nested-bindata)))))))))
 
 (deftest describe-table-respects-sync-max-fields-per-table-test
   (mt/test-driver :mongo
@@ -314,7 +314,7 @@
       (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
         (is (= 2 (count (:fields (driver/describe-table
                                   :mongo (mt/db)
-                                  (t2/select-one :model/Table :id (mt/id :venues)))))))))))
+                                  (t2/select-one :model/Table 'id (mt/id :venues)))))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
 #_(deftest sync-indexes-info-test
@@ -345,8 +345,8 @@
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
             (sync/sync-database! (mt/db))
-            (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
-            (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
+            (is (false? (t2/select-one-fn :database_indexed :model/Field 'name "url")))
+            (is (true? (t2/select-one-fn :database_indexed :model/Field 'name "small"))))
           (finally
             (t2/delete! :model/Database (mt/id)))))))
 
@@ -368,8 +368,8 @@
             (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "top level indexed, nested not"
-            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                         :table_id (mt/id :top-level-indexed) :name "name")]
+            (let [name-fields (t2/select [:model/Field 'name 'parent_id 'database_indexed]
+                                         'table_id (mt/id :top-level-indexed) 'name "name")]
               (testing "sanity check that we have 2 `name` fields"
                 (is (= 2 (count name-fields))))
               (testing "only the top level field is indexed"
@@ -381,8 +381,8 @@
                           :database_indexed false}]
                         (sort-by :parent_id name-fields))))))
           (testing "nested field indexed, top level not"
-            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                         :table_id (mt/id :nested-indexed) :name "name")]
+            (let [name-fields (t2/select [:model/Field 'name 'parent_id 'database_indexed]
+                                         'table_id (mt/id :nested-indexed) 'name "name")]
               (testing "sanity check that we have 2 `name` fields"
                 (is (= 2 (count name-fields))))
               (testing "only the nested field is indexed"
@@ -511,8 +511,8 @@
               {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (t2/select [:model/Field :name :database_type :base_type :semantic_type]
-                         :table_id (mt/id :bird_species)
+              (t2/select [:model/Field 'name 'database_type 'base_type 'semantic_type]
+                         'table_id (mt/id :bird_species)
                          {:order-by [:name]})))))))
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
@@ -538,14 +538,14 @@
                    {:name "max_wingspan",   :database_type "long",   :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (t2/select [:model/Field :name :database_type :base_type :semantic_type]
-                                  :table_id (mt/id :bird_species)
+                       (t2/select [:model/Field 'name 'database_type 'base_type 'semantic_type]
+                                  'table_id (mt/id :bird_species)
                                   {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (t2/select-one :model/Table :id (mt/id :venues))
+      (let [table (t2/select-one :model/Table 'id (mt/id :venues))
             fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
         (with-redefs [table-rows-sample/nested-field-sample-limit 5]
@@ -567,8 +567,8 @@
             {:active true, :name "reviews"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (t2/select [:model/Table :name :active]
-                                  :db_id (mt/id)
+           (for [field (t2/select [:model/Table 'name 'active]
+                                  'db_id (mt/id)
                                   {:order-by [:name]})]
              (into {} field)))
         "Test that Tables got synced correctly")))
@@ -596,9 +596,9 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (t2/select [:model/Field :name :base_type :semantic_type]
-                                                :active   true
-                                                :table_id (mt/id table-name)
+                    (vec (for [field (t2/select [:model/Field 'name 'base_type 'semantic_type]
+                                                'active   true
+                                                'table_id (mt/id table-name)
                                                 {:order-by [:name]})]
                            (into {} field))))))))))
 
@@ -710,7 +710,7 @@
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (nil?
            (match/match-one
-             (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
+             (->> (magic/automagic-analysis (t2/select-one :model/Field 'id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ {:binning &truthy}] true))))))
@@ -757,7 +757,7 @@
                            :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
-  (or (t2/select-one :model/Database :engine "mongo", :name database-name)
+  (or (t2/select-one :model/Database 'engine "mongo", 'name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
         (tx/destroy-db! :mongo dbdef)
@@ -796,9 +796,9 @@
       (sync/sync-database! (missing-fields-db))
       (testing "Test that fields with missing or null values get synced correctly"
         (let [results (map #(into {} %)
-                           (t2/select [:model/Field :id :name :database_type :base_type :semantic_type :parent_id]
-                                      :active   true
-                                      :table_id (mt/id :coll)
+                           (t2/select [:model/Field 'id 'name 'database_type 'base_type 'semantic_type 'parent_id]
+                                      'active   true
+                                      'table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
           (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
@@ -1038,7 +1038,7 @@
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table 'id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))

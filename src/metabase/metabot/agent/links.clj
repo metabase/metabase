@@ -146,7 +146,7 @@
          (do
            (log/warn "Invalid table id for link resolution" {:table-id table-id})
            nil)
-         (if-let [db-id (t2/select-one-fn :db_id :model/Table :id parsed-id)]
+         (if-let [db-id (t2/select-one-fn :db_id :model/Table 'id parsed-id)]
            (let [mp    (lib-be/application-database-metadata-provider db-id)
                  table (lib.metadata/table mp parsed-id)
                  query (lib/query mp table)]

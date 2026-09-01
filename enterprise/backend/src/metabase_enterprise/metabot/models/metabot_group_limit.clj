@@ -18,7 +18,7 @@
 (defn group-limit
   "Returns the limit for a specific group, or nil if none is set."
   [group-id]
-  (t2/select-one :model/MetabotGroupLimit :group_id group-id))
+  (t2/select-one :model/MetabotGroupLimit 'group_id group-id))
 
 (defn limit-for-user
   "Returns the maximum `max_usage` across all group limits for groups the user belongs to.
@@ -38,7 +38,7 @@
    Returns the updated row, or nil if removed."
   [group-id max-usage]
   (if (nil? max-usage)
-    (t2/delete! :model/MetabotGroupLimit :group_id group-id)
+    (t2/delete! :model/MetabotGroupLimit 'group_id group-id)
     (if-let [existing (group-limit group-id)]
       (t2/update! :model/MetabotGroupLimit (:id existing) {:max_usage max-usage})
       (t2/insert! :model/MetabotGroupLimit {:group_id group-id :max_usage max-usage})))

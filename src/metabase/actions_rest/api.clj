@@ -58,7 +58,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Action 'name 'id 'public_uuid 'model_id], 'public_uuid ['not= nil], 'archived false))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
@@ -81,7 +81,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id}))
-  (t2/delete! :model/Action :id action-id)
+  (t2/delete! :model/Action 'id action-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -108,7 +108,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one :model/Database :id db-id))))
+       (t2/select-one :model/Database 'id db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created

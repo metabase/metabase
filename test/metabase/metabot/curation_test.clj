@@ -34,7 +34,7 @@
                                     :moderator_id        (mt/user->id :crowberto)
                                     :status              "verified"})
         ;; re-ingest the now-verified card so the index reflects it
-        (search/update! (t2/select-one :model/Card :id vq) true)
+        (search/update! (t2/select-one :model/Card 'id vq) true)
         (let [items    [["card" vq] ["card" oq] ["card" pq]
                         ["table" pt] ["table" at] ["table" xt] ["table" ult]]
               source   (metabot.curation/curated-ids items)

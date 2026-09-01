@@ -21,7 +21,7 @@
                           {:transform_id transform-id
                            :index_name   "by_cat"
                            :structured   {:kind :btree :name "by_cat" :columns [{:name "category" :direction :asc}]}})
-            back (t2/select-one :model/TableIndex :id id)]
+            back (t2/select-one :model/TableIndex 'id id)]
         (is (= :create-pending (:status back)) "before-insert defaults status to :create-pending")
         (is (= :btree (get-in back [:structured :kind])) "kind re-keywordized on read")
         (is (= :asc (get-in back [:structured :columns 0 :direction])))))))
@@ -204,6 +204,6 @@
       (t2/insert! :model/TableIndex {:transform_id transform-id
                                      :index_name   "idx"
                                      :structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
-      (is (t2/exists? :model/TableIndex :transform_id transform-id))
+      (is (t2/exists? :model/TableIndex 'transform_id transform-id))
       (t2/delete! :model/Transform transform-id)
-      (is (not (t2/exists? :model/TableIndex :transform_id transform-id))))))
+      (is (not (t2/exists? :model/TableIndex 'transform_id transform-id))))))

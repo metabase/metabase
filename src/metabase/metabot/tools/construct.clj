@@ -265,7 +265,7 @@
   (detect-metabase-uri-source-table! parsed-query)
   (if-let [table-fk (first-stage-source-table-fk parsed-query)]
     (let [db-name (nth table-fk 0)
-          ids     (t2/select-pks-vec :model/Database :name db-name)]
+          ids     (t2/select-pks-vec :model/Database 'name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
                                     "reported by search / `read_resource` (it appears "

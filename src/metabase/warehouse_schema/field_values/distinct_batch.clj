@@ -137,7 +137,7 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (t2/select-one :model/Database :id db-id))
+        driver         (:engine (t2/select-one :model/Database 'id db-id))
         fields         (vec fields)
         hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)

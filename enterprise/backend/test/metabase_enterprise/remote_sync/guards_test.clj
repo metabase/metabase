@@ -59,7 +59,7 @@
                           :last_progress_report_at two-hours-ago
                           :progress                0.5})]
       (guards/ensure-no-active-task!)
-      (let [after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
+      (let [after (t2/select-one :model/RemoteSyncTask 'id (:id stale-task))]
         (is (true? (:cancelled after))
             "stale task must be marked cancelled by ensure-no-active-task!")
         (is (some? (:ended_at after))

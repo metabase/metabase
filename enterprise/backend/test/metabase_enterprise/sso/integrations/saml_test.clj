@@ -328,7 +328,7 @@
 
 (defn- saml-login-attributes [email]
   (let [attribute-keys (keys (some-saml-attributes nil))]
-    (-> (t2/select-one-fn :login_attributes :model/User :email email)
+    (-> (t2/select-one-fn :login_attributes :model/User 'email email)
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test
@@ -525,11 +525,11 @@
          (fn []
            (with-saml-default-setup!
              (try
-               (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+               (is (not (t2/exists? :model/User '%lower.email "newuser@metabase.com")))
                (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
-               (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
+               (let [new-user (t2/select-one :model/User 'email "newuser@metabase.com")]
                  (is (=? {:email        "newuser@metabase.com"
                           :first_name   "New"
                           :is_qbnewb    true
@@ -549,7 +549,7 @@
                  (is (= (some-saml-attributes "newuser")
                         (saml-login-attributes "newuser@metabase.com"))))
                (finally
-                 (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))
+                 (t2/delete! :model/User '%lower.email "newuser@metabase.com"))))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
@@ -558,7 +558,7 @@
        (fn []
          (with-saml-default-setup!
            (try
-             (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+             (is (not (t2/exists? :model/User '%lower.email "newuser@metabase.com")))
              ;; login with a user with no givenname or surname attributes
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
@@ -572,7 +572,7 @@
                          :date_joined  true
                          :common_name  "newuser@metabase.com"
                          :tenant_id    false}]
-                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User 'email "newuser@metabase.com"))
                             (map #(dissoc % :last_login))))))
              ;; login with the same user, but now givenname and surname attributes exist
              (let [req-options (saml-post-request-options (new-user-saml-test-response)
@@ -587,10 +587,10 @@
                          :date_joined  true
                          :common_name  "New User"
                          :tenant_id    false}]
-                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User 'email "newuser@metabase.com"))
                             (map #(dissoc % :last_login))))))
              (finally
-               (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
+               (t2/delete! :model/User '%lower.email "newuser@metabase.com")))))))))
 
 (deftest existing-user-reactivated-if-provisioning-is-on
   (testing "An existing user will be reactivated upon login"
@@ -599,20 +599,20 @@
        (fn []
          (with-saml-default-setup!
            (try
-             (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+             (is (not (t2/exists? :model/User '%lower.email "newuser@metabase.com")))
              ;; login once to create the user
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
              ;; deactivate the user
-             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User '%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can reactivate a user with a new login"
                (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
-                 (is (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))
+                 (is (t2/select-one-fn :is_active [:model/User 'is_active] 'email "newuser@metabase.com"))))
              ;; deactivate the user again
-             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User '%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
                ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
@@ -623,13 +623,13 @@
                                                               default-redirect-uri)]
                    ;; we get a `401`
                    (is (client/client-real-response :post 401 "/auth/sso" req-options))
-                   (is (not (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))))
+                   (is (not (t2/select-one-fn :is_active [:model/User 'is_active] 'email "newuser@metabase.com"))))))
              (finally
-               (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
+               (t2/delete! :model/User '%lower.email "newuser@metabase.com")))))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
-    (t2/select-fn-set :name :model/PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (u/the-id user-or-id)))]
+    (t2/select-fn-set :name :model/PermissionsGroup 'id ['in group-ids])))
 
 (deftest login-should-sync-single-group-membership
   (testing "saml group sync works when there's just a single group, which gets interpreted as a string"
@@ -643,16 +643,16 @@
                                                 saml-attribute-group "GroupMembership"]
                (try
                  ;; user doesn't exist until SAML request
-                 (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com")))
+                 (is (not (t2/select-one-pk :model/User '%lower.email "newuser@metabase.com")))
                  (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                    (is (successful-login? response))
                    (is (= #{"All Users"
                             ":metabase-enterprise.sso.integrations.saml-test/group-1"}
-                          (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
+                          (group-memberships (t2/select-one-pk :model/User 'email "newuser@metabase.com")))))
                  (finally
-                   (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))))
+                   (t2/delete! :model/User '%lower.email "newuser@metabase.com")))))))))))
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
@@ -669,7 +669,7 @@
                                                   saml-attribute-group "GroupMembership"]
                  (try
                    (testing "user doesn't exist until SAML request"
-                     (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com"))))
+                     (is (not (t2/select-one-pk :model/User '%lower.email "newuser@metabase.com"))))
                    (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -677,9 +677,9 @@
                      (is (= #{"All Users"
                               ":metabase-enterprise.sso.integrations.saml-test/group-1"
                               ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                            (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
+                            (group-memberships (t2/select-one-pk :model/User 'email "newuser@metabase.com")))))
                    (finally
-                     (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))))
+                     (t2/delete! :model/User '%lower.email "newuser@metabase.com"))))))))))))
 
 (deftest login-should-sync-multiple-group-membership-2
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
@@ -696,7 +696,7 @@
                                                   saml-attribute-group "GroupMembership"]
                  (try
                    (testing "user doesn't exist until SAML request"
-                     (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com"))))
+                     (is (not (t2/select-one-pk :model/User '%lower.email "newuser@metabase.com"))))
                    (let [req-options (saml-post-request-options (new-user-with-groups-in-separate-attribute-nodes-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -704,9 +704,9 @@
                      (is (= #{"All Users"
                               ":metabase-enterprise.sso.integrations.saml-test/group-1"
                               ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                            (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
+                            (group-memberships (t2/select-one-pk :model/User 'email "newuser@metabase.com")))))
                    (finally
-                     (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))))
+                     (t2/delete! :model/User '%lower.email "newuser@metabase.com"))))))))))))
 
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
@@ -786,7 +786,7 @@
             (mt/with-temporary-setting-values [saml-slo-enabled true
                                                saml-identity-provider-issuer "http://localhost:9090/realms/master"
                                                saml-identity-provider-certificate slo-idp-cert]
-              (is (t2/exists? :model/Session :key_hashed session-key-hashed))
+              (is (t2/exists? :model/Session 'key_hashed session-key-hashed))
               (let [req-options (-> (saml-post-request-options
                                      (saml-slo-test-response)
                                      default-redirect-uri)
@@ -795,7 +795,7 @@
                     response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
-                (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))
+                (is (not (t2/exists? :model/Session 'key_hashed session-key-hashed))
                     "After a successful log-out, the session is deleted")))))))))
 
 (deftest logout-should-delete-session-test-slo-disabled
@@ -807,7 +807,7 @@
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                          :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
             (with-saml-default-setup!
-              (is (t2/exists? :model/Session :key_hashed session-key-hashed))
+              (is (t2/exists? :model/Session 'key_hashed session-key-hashed))
               (let [req-options (-> (saml-post-request-options
                                      (saml-slo-test-response)
                                      default-redirect-uri)
@@ -816,7 +816,7 @@
                     response    (client/client-real-response :post 403 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
-                (is (t2/exists? :model/Session :key_hashed session-key-hashed)
+                (is (t2/exists? :model/Session 'key_hashed session-key-hashed)
                     "After a successful log-out, the session is deleted")))))))))
 
 (deftest logout-should-delete-session-when-idp-slo-conf-missing-test
@@ -827,10 +827,10 @@
               session-key-hashed (session/hash-session-key session-key)]
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                          :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
-            (is (t2/exists? :model/Session :key_hashed session-key-hashed))
+            (is (t2/exists? :model/Session 'key_hashed session-key-hashed))
             (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)]
               (client/client :post "/auth/sso/logout" req-options)
-              (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))))))))))
+              (is (not (t2/exists? :model/Session 'key_hashed session-key-hashed))))))))))
 
 (deftest saml-embedding-sdk-integration-returns-idp-url-tests
   (testing "should return IdP URL and method info when embedding SDK header is present"
@@ -1013,7 +1013,7 @@
                ;; and client-full-response doesn't work with the saml lib
 
                (testing "only string attributes are saved to login_attributes"
-                 (let [user-attrs (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")]
+                 (let [user-attrs (t2/select-one-fn :login_attributes :model/User 'email "rasta@metabase.com")]
                    (is (=? {"string_attr" "valid-string"
                             "number_attr" "42"
                             "boolean_attr" "true"} user-attrs))))))))))))
@@ -1037,8 +1037,8 @@
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                    (is (successful-login? response))
-                   (is (some? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))
-                   (is (t2/exists? :model/Tenant :slug "tenant-mctenantson")))
+                   (is (some? (t2/select-one-fn :tenant_id :model/User 'email "newuser@metabase.com")))
+                   (is (t2/exists? :model/Tenant 'slug "tenant-mctenantson")))
                  (testing "they should be able to log in again"
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
@@ -1060,13 +1060,13 @@
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                    (is (successful-login? response))
-                   (is (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))
+                   (is (= tenant-id (t2/select-one-fn :tenant_id :model/User 'email "newuser@metabase.com"))))
                  (testing "they should be able to log in again"
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response))
-                     (is (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))))))
+                     (is (= tenant-id (t2/select-one-fn :tenant_id :model/User 'email "newuser@metabase.com"))))))))))))))
 
 (deftest new-users-are-not-assigned-a-tenant-if-tenants-is-not-enabled-via-saml
   (with-other-sso-types-disabled!
@@ -1085,14 +1085,14 @@
                    (testing "They are able to log in"
                      (is (successful-login? response)))
                    (testing "But don't get assigned a tenant"
-                     (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))
+                     (is (nil? (t2/select-one-fn :tenant_id :model/User 'email "newuser@metabase.com"))))))
                (testing "they should be able to log in without the tenant attribute configured"
                  (mt/with-temporary-setting-values [saml-attribute-tenant nil]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response))
-                     (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))))))
+                     (is (nil? (t2/select-one-fn :tenant_id :model/User 'email "newuser@metabase.com"))))))))))))))
 
 (deftest a-user-can-log-into-deactivated-tenant-via-saml
   (with-other-sso-types-disabled!

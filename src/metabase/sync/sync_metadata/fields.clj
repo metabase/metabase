@@ -128,9 +128,9 @@
                             (map (fn [table-metadata]
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
                                          table   (->> (t2/select :model/Table
-                                                                 :db_id (:id database)
-                                                                 :%lower.name (t2.util/lower-case-en table-name)
-                                                                 :%lower.schema (some-> table-schema t2.util/lower-case-en)
+                                                                 'db_id (:id database)
+                                                                 '%lower.name (t2.util/lower-case-en table-name)
+                                                                 '%lower.schema (some-> table-schema t2.util/lower-case-en)
                                                                  {:where sync-util/sync-tables-clause})
                                                       (sort-by (select-best-matching-name table-schema table-name))
                                                       first)

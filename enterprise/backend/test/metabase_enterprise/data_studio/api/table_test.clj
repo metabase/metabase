@@ -24,7 +24,7 @@
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
         (t2/delete! :model/Transform (:id transform))
         (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
-          (is (nil? (t2/select-one-fn :transform_id :model/Table :id table-id))))
+          (is (nil? (t2/select-one-fn :transform_id :model/Table 'id table-id))))
         (testing "GET /api/table/:id does not crash"
           (is (=? {:id table-id} (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))
         (testing "GET /api/table (list, which hydrates :transform when transforms are enabled) does not crash"
@@ -52,7 +52,7 @@
                         {:display_name "Venues"
                          :collection_id collection-id
                          :is_published true}]
-                       (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+                       (t2/select :model/Table 'id ['in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
              (testing "audit log entries are created for publish"
                (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
                        (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
@@ -231,10 +231,10 @@
                                :collection_id coll-y})
         (testing "the selected table is published into the target collection"
           (is (=? {:is_published true :collection_id coll-y}
-                  (t2/select-one [:model/Table :is_published :collection_id] orders-id))))
+                  (t2/select-one [:model/Table 'is_published 'collection_id] orders-id))))
         (testing "the already-published upstream table stays in its original collection"
           (is (=? {:is_published true :collection_id coll-x}
-                  (t2/select-one [:model/Table :is_published :collection_id] products-id))))))))
+                  (t2/select-one [:model/Table 'is_published 'collection_id] products-id))))))))
 
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:library}
@@ -372,7 +372,7 @@
     (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
-          (t2/delete! :model/Collection :id coll-a)
+          (t2/delete! :model/Collection 'id coll-a)
           (testing "Table X (in the deleted collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"
@@ -385,7 +385,7 @@
         (fn [{:keys [coll-a x-id y-id]}]
           (mt/with-current-user (mt/user->id :crowberto)
             (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+             (t2/select-one :model/Collection 'id coll-a) {:archived true}))
           (testing "Table X (in the archived collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

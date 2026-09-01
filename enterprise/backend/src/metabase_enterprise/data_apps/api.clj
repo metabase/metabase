@@ -154,7 +154,7 @@
    {:keys [enabled]} :- [:map [:enabled :boolean]]]
   (api/check-superuser)
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
+    (t2/update! :model/DataApp 'id (:id app) {:enabled enabled})
     (data-app/select-one-non-blob :id (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
@@ -165,7 +165,7 @@
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
-  (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
+  (api/check-404 (pos? (t2/delete! :model/DataApp 'name slug)))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
@@ -195,7 +195,7 @@
         (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
 
         :else
-        (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
+        (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp 'id (:id row))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers

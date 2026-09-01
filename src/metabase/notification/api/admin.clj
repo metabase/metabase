@@ -125,8 +125,8 @@
     (into #{}
           (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
                 (map :notification_handler_id))
-          (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
-                               :type :notification-recipient/raw-value))))
+          (t2/reducible-select [:model/NotificationRecipient 'notification_handler_id 'details]
+                               'type :notification-recipient/raw-value))))
 
 (defn- notification-ids-with-recipient-email
   "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
@@ -599,7 +599,7 @@
   "Up to `:result-limit` most-recent terminal alert TaskRuns for `notification-id`, newest first, as
   `::run-summary` maps. Attributed directly via `task_run.notification_id`."
   [notification-id & {:keys [result-limit] :or {result-limit 10}}]
-  (let [runs       (t2/select [:model/TaskRun :id :status :started_at]
+  (let [runs       (t2/select [:model/TaskRun 'id 'status 'started_at]
                               {:where    [:and
                                           [:= :run_type run-type-alert]
                                           [:= :notification_id notification-id]
@@ -699,13 +699,13 @@
     ;; archive action, whose update-map never touches creator_id.)
     (t2/with-transaction [_conn]
       (let [before (-> (t2/select :model/Notification
-                                  :id           [:in ids]
-                                  :payload_type :notification/card)
+                                  'id           ['in ids]
+                                  'payload_type :notification/card)
                        models.notification/hydrate-notification
                        vec)]
         (t2/update! :model/Notification
-                    :id           [:in ids]
-                    :payload_type :notification/card
+                    'id           ['in ids]
+                    'payload_type :notification/card
                     update-map)
         before))))
 
@@ -724,7 +724,7 @@
   (api/check-superuser)
   (let [update-map (action->update-map action creator_id)
         before     (bulk-update! update-map notification_ids)
-        after      (->> (t2/select :model/Notification :id [:in (mapv :id before)])
+        after      (->> (t2/select :model/Notification 'id ['in (mapv :id before)])
                         models.notification/hydrate-notification
                         (m/index-by :id))]
     (doseq [b    before

@@ -25,7 +25,7 @@
                                            [(:id field)
                                             (lib/infer-has-field-values
                                              (lib-be/instance->metadata field :metadata/column))]))
-                                    (t2/select :model/Field :id [:in col-ids])))]
+                                    (t2/select :model/Field 'id ['in col-ids])))]
       (perf/mapv (fn [col]
                    (if-let [hfv (get field-values-map (:id col))]
                      (assoc col :has-field-values hfv)
@@ -92,7 +92,7 @@
           (lib-metric.provider/database-provider-for-table mp table-id))
         (when-let [card-id (lib.util/source-card-id query-with-mp)]
           (when-let [{:keys [table_id database_id]}
-                     (t2/select-one [:model/Card :table_id :database_id] card-id)]
+                     (t2/select-one [:model/Card 'table_id 'database_id] card-id)]
             (or (when table_id
                   (lib-metric.provider/database-provider-for-table mp table_id))
                 (when database_id

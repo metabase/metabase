@@ -15,10 +15,10 @@
                               (thunk)))))))
 
 (defn- api-key-exists? [name]
-  (t2/exists? :model/ApiKey :name name))
+  (t2/exists? :model/ApiKey 'name name))
 
 (defn- api-key-user-exists? [name]
-  (t2/exists? :model/User :first_name name :type :api-key))
+  (t2/exists? :model/User 'first_name name 'type :api-key))
 
 (deftest create-api-keys-test
   (is (= :ok (config.file/initialize!
@@ -82,14 +82,14 @@
                          :key "mb_3testapikey123"
                          :creator (:email (mt/fetch-user :crowberto))
                          :group "admin"}]}})
-  (let [first-key (t2/select-one :model/ApiKey :name "Test API Key")
+  (let [first-key (t2/select-one :model/ApiKey 'name "Test API Key")
         _ (config.file/initialize!
            {:version 1
             :config {:api-keys [{:name "Test API Key"
                                  :key "mb_4testapikey123"
                                  :creator "admin@test.com"
                                  :group "admin"}]}})
-        second-key (t2/select-one :model/ApiKey :name "Test API Key")]
+        second-key (t2/select-one :model/ApiKey 'name "Test API Key")]
     (is (= (:id first-key) (:id second-key)))))
 
 (deftest validate-group-values-test
@@ -140,7 +140,7 @@
                          :group "admin"}]}})
   (testing "Original API key is created"
     (is (api-key-exists? "Duplicate Name Key"))
-    (let [original-key (t2/select-one :model/ApiKey :name "Duplicate Name Key")
+    (let [original-key (t2/select-one :model/ApiKey 'name "Duplicate Name Key")
           original-key-prefix (:key_prefix original-key)]
       ;; Now attempt to create another key with the same name but different prefix
       (config.file/initialize!
@@ -150,6 +150,6 @@
                              :creator "admin@test.com"
                              :group "admin"}]}})
       (testing "Second key with same name is skipped (no error about duplicate prefix)"
-        (let [key-after-attempt (t2/select-one :model/ApiKey :name "Duplicate Name Key")]
+        (let [key-after-attempt (t2/select-one :model/ApiKey 'name "Duplicate Name Key")]
           (is (= (:id original-key) (:id key-after-attempt)))
           (is (= original-key-prefix (:key_prefix key-after-attempt))))))))

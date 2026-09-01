@@ -37,7 +37,7 @@
   [card-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     (t2/select-one :model/Card :id card-id) :api
+     (t2/select-one :model/Card 'id card-id) :api
      :parameters parameters
      :make-run (constantly
                 (fn [query info]
@@ -47,9 +47,9 @@
   [card-id dashboard-id dashcard-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     (t2/select-one :model/Card :id card-id) :api
+     (t2/select-one :model/Card 'id card-id) :api
      :dashboard-id dashboard-id
-     :dashcard (t2/select-one :model/DashboardCard :id dashcard-id)
+     :dashcard (t2/select-one :model/DashboardCard 'id dashcard-id)
      :parameters parameters
      :make-run (constantly
                 (fn [query info]
@@ -61,12 +61,12 @@
 
 (defn- delete-cache-entry!
   [entry]
-  (t2/delete! :model/QueryCache :query_hash (:query_hash entry)))
+  (t2/delete! :model/QueryCache 'query_hash (:query_hash entry)))
 
 (defn- expire-cache-entry!
   "Manually expire a cache entry by setting its updated_at back by 24 hours"
   [cache-entry]
-  (t2/update! :model/QueryCache :query_hash (:query_hash cache-entry)
+  (t2/update! :model/QueryCache 'query_hash (:query_hash cache-entry)
               (update cache-entry :updated_at #(t/minus % (t/days 1)))))
 
 (defn- expire-most-recent-cache-entry!

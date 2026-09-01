@@ -29,7 +29,7 @@
   `model-key` is `:model/Measure` or `:model/Segment`."
   [model-key id]
   (when id
-    (t2/select-one-fn :entity_id model-key :id id)))
+    (t2/select-one-fn :entity_id model-key 'id id)))
 
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
@@ -74,10 +74,10 @@
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
-  (let [review (t2/select-one [:model/ModerationReview :status]
-                              :moderated_item_id id
-                              :moderated_item_type item-type
-                              :most_recent true
+  (let [review (t2/select-one [:model/ModerationReview 'status]
+                              'moderated_item_id id
+                              'moderated_item_type item-type
+                              'most_recent true
                               {:order-by [[:id :desc]]})]
     (= (:status review) "verified")))
 
@@ -107,7 +107,7 @@
   [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
+               (t2/select-one [:model/User 'id 'email 'first_name 'last_name] api/*current-user-id*))]
     {:structured-output (merge {:id id
                                 :type :user
                                 :name (str first_name " " last_name)
@@ -122,7 +122,7 @@
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
-  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
+  (if-let [dashboard (t2/select-one [:model/Dashboard 'id 'description 'name 'collection_id] dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
          (-> dashboard
@@ -137,7 +137,7 @@
   [id->values id]
   (if-some [field-values (get id->values id)]
     (:values field-values)
-    (let [field (t2/select-one :model/Field :id id)]
+    (let [field (t2/select-one :model/Field 'id id)]
       (when (and field
                  (params.field-values/current-user-can-fetch-field-values? field))
         (:values (params.field-values/get-or-create-field-values! field))))))
@@ -838,7 +838,7 @@
   [kind :- [:enum :measure :segment]
    id   :- :int]
   (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
-        row (t2/select-one [model :id :table_id] :id id)]
+        row (t2/select-one [model 'id 'table_id] 'id id)]
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))

@@ -34,7 +34,7 @@
 
 (defn- select-user
   [email]
-  (t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) :email email))
+  (t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) 'email email))
 
 (defn- init-from-config-file!
   [user]

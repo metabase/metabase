@@ -23,7 +23,7 @@
                                                    "\"last_name\":\"Era\","
                                                    "\"email\":\"camera@metabase.com\"}")})]
               (mt/client :post 200 "session/google_auth" {:token "foo"})
-              (is (some? (t2/select-one :model/User :email "camera@metabase.com")))))
+              (is (some? (t2/select-one :model/User 'email "camera@metabase.com")))))
           (testing "Google auth works with an @example.com account"
             (with-redefs [http/post (constantly
                                      {:status 200
@@ -33,4 +33,4 @@
                                                    "\"last_name\":\"Era\","
                                                    "\"email\":\"camera@example.com\"}")})]
               (mt/client :post 200 "session/google_auth" {:token "foo"})
-              (is (some? (t2/select-one :model/User :email "camera@example.com"))))))))))
+              (is (some? (t2/select-one :model/User 'email "camera@example.com"))))))))))

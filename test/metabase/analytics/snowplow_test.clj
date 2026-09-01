@@ -124,7 +124,7 @@
       (testing "Data sent into [[analytics/track-event!]] for each event type is propagated to the Snowplow collector,
                with keys converted into snake-case strings, and the subject's user ID being converted to a string."
         ;; Trigger instance-creation event by calling the `instance-creation` setting function for the first time
-        (t2/delete! :model/Setting :key "instance-creation")
+        (t2/delete! :model/Setting 'key "instance-creation")
         (analytics/instance-creation)
         (is (= [{:data    {"event" "new_instance_created"}
                  :user-id nil}]

@@ -23,7 +23,7 @@
 
 (deftest has-user-setup-ignores-internal-user-test
   (mt/with-empty-h2-app-db!
-    (is (t2/exists? :model/User :id config/internal-mb-user-id)
+    (is (t2/exists? :model/User 'id config/internal-mb-user-id)
         "Sense check the internal user exists")
     (testing "`has-user-setup` should return false for an empty instance with only an internal user"
       (is (false? (setup/has-user-setup))))
@@ -101,17 +101,17 @@
 (deftest sample-content-permissions-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
-    (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)
+    (let [dashboard  (t2/select-one :model/Dashboard 'creator_id config/internal-mb-user-id)
           collection (t2/select-one :model/Collection (:collection_id dashboard))
-          card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
+          card       (t2/select-one :model/Card 'creator_id config/internal-mb-user-id)]
       (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
         (mt/with-current-user (mt/user->id :rasta)
           (is (true? (mi/can-write? dashboard)))
           (is (true? (mi/can-write? card)))
           (is (true? (mi/can-write? collection))))))
-    (let [sample-db       (t2/select-one :model/Database :is_sample true)
-          sample-db-table (t2/select-one :model/Table :db_id (:id sample-db))
-          sample-db-field (t2/select-one :model/Field :table_id (:id sample-db-table))]
+    (let [sample-db       (t2/select-one :model/Database 'is_sample true)
+          sample-db-table (t2/select-one :model/Table 'db_id (:id sample-db))
+          sample-db-field (t2/select-one :model/Field 'table_id (:id sample-db-table))]
       (testing "Rasta (as a member of 'All Users') should have read but not write privileges to the sample database"
         (mt/with-current-user (mt/user->id :rasta)
           (is (true? (mi/can-read? sample-db)))
@@ -135,7 +135,7 @@
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
-            (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+            (is (= "unencrypted" (t2/select-one-fn :value "setting" 'key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
             (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
@@ -143,12 +143,12 @@
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
-                (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+                (is (= "unencrypted" (t2/select-one-fn :value "setting" 'key "encryption-check")))
                 (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
                 (is (= 1 (t2/count :model/QueryCache)))
                 (testing "after `enable-encryption` the database is encrypted and starts"
                   (mdb/encrypt-db driver/*driver* (mdb/data-source) nil)
-                  (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check"))))
+                  (is (encryption/decryptable-string? (:value (t2/select-one "setting" 'key "encryption-check"))))
                   (is (encryption/decryptable-string? (:details (t2/select-one "metabase_database"))))
                   (testing "Cache is cleared on encryption"
                     (is (= 0 (t2/count :model/QueryCache))))
@@ -158,23 +158,23 @@
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
-          (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
+          (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" 'key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
-            (is (encryption/decryptable-string? (:value (t2/select-one "setting" :key "encryption-check")))))
+            (is (encryption/decryptable-string? (:value (t2/select-one "setting" 'key "encryption-check")))))
           (testing "A missing sentinel on a database whose content decrypts with the key is written back on startup"
-            (t2/delete! :setting :key "encryption-check")
+            (t2/delete! :setting 'key "encryption-check")
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" 'key "encryption-check")))))
           (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
-            (t2/delete! :setting :key "encryption-check")
+            (t2/delete! :setting 'key "encryption-check")
             (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" 'key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -184,11 +184,11 @@
             (encryption-test/with-secret-key "different-key"
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
               (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
-              (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
+              (let [setting-value (:value (t2/select-one "setting" 'key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
                 (is (not (string/valid-uuid? setting-value)))))))))))
 
 (defn- set-encryption-check-raw! [value]
-  (t2/delete! :setting :key "encryption-check")
+  (t2/delete! :setting 'key "encryption-check")
   (when value
     (t2/insert! :setting {:key "encryption-check", :value value})))
 
@@ -204,15 +204,15 @@
                            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                            (mdb/setup-db! :create-sample-content? false))]
           (is (encryption/decryptable-string? (raw-detail)))
-          (t2/update! :metabase_database {:id db-id} {:details plaintext})
+          (t2/update! :metabase_database {'id db-id} {:details plaintext})
           (testing "with the sentinel deleted"
             (set-encryption-check-raw! nil)
             (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
             (testing "the plaintext row is untouched and still rejected by the strict read"
               (is (= plaintext (raw-detail)))
-              (is (thrown? Exception (:details (t2/select-one :model/Database :id db-id)))))
+              (is (thrown? Exception (:details (t2/select-one :model/Database 'id db-id)))))
             (testing "no sentinel was written"
-              (is (nil? (t2/select-one-fn :value :setting :key "encryption-check")))))
+              (is (nil? (t2/select-one-fn :value :setting 'key "encryption-check")))))
           (testing "\na plaintext random-uuid sentinel is rejected as a wrong key"
             (set-encryption-check-raw! (str (random-uuid)))
             (is (thrown-with-msg? Exception #"encrypted with a different key" (restart!)))
@@ -222,7 +222,7 @@
             (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
             (is (= plaintext (raw-detail)))
             (testing "and no sentinel was written"
-              (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check"))))))))))
+              (is (= "unencrypted" (t2/select-one-fn :value :setting 'key "encryption-check"))))))))))
 
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
@@ -231,12 +231,12 @@
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
-                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
+                  {:keys [id value]} (t2/select [table 'id [column :value]] {:where [:!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-string? value)))))
         (testing "encrypted-at-rest bytes columns"
           (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns
-                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
+                  {:keys [id value]} (t2/select [table 'id [column :value]] {:where [:!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-bytes? (#'mdb.encryption/maybe-blob->bytes value))))))
         (testing "settings that are encrypted at rest"

@@ -312,7 +312,7 @@
   [changes]
   (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
         library-collection-ids (t2/select-pks-set :model/Collection
-                                                  :type [:in ["library" "library-data" "library-metrics"]])]
+                                                  'type ['in ["library" "library-data" "library-metrics"]])]
     (when-let [group-changes (get changes data-analyst-group-id)]
       (let [changed-collection-ids (set (keys group-changes))
             library-changes (set/intersection changed-collection-ids library-collection-ids)]

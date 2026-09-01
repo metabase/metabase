@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- default-schema []
-  (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
+  (t2/select-one-fn :schema :model/Table 'id (mt/id :orders)))
 
 (defn- make-mbql-transform
   "Create a transform map for testing with an MBQL query."

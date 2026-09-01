@@ -60,7 +60,7 @@
               (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil 1)]
                 (is (pos-int? run-id-2))))
             (finally
-              (t2/delete! :model/TransformDagRun :source_transform_id tid))))))))
+              (t2/delete! :model/TransformDagRun 'source_transform_id tid))))))))
 
 (deftest run-dag-start-race-test
   (testing "run-dag! treats losing the unique-active-run insert race as already-running"
@@ -76,7 +76,7 @@
               (is (nil? (deref start-promise 100 :timed-out))
                   "start-promise is delivered nil so a waiting caller doesn't hang"))
             (finally
-              (t2/delete! :model/TransformDagRun :id run-id))))))))
+              (t2/delete! :model/TransformDagRun 'id run-id))))))))
 
 ;;; ------------------------------------------- Model lifecycle -------------------------------------------
 
@@ -98,29 +98,29 @@
             (is (= run-id (:id (dag-run/running-run-for-source-transform-id tid)))))
           (testing "succeed-started-run! makes it terminal and inactive"
             (is (= 1 (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)))
-            (is (= :succeeded (:status (t2/select-one :model/TransformDagRun :id run-id))))
-            (is (nil? (:is_active (t2/select-one :model/TransformDagRun :id run-id))))
+            (is (= :succeeded (:status (t2/select-one :model/TransformDagRun 'id run-id))))
+            (is (nil? (:is_active (t2/select-one :model/TransformDagRun 'id run-id))))
             (is (nil? (dag-run/running-run-for-source-transform-id tid))))
           (finally
-            (t2/delete! :model/TransformDagRun :id run-id)))))
+            (t2/delete! :model/TransformDagRun 'id run-id)))))
     (testing "cancel-started-run! cancels an active run but is a no-op once terminal"
       (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil 1)]
         (try
           (is (= 1 (coordinated-run/cancel-started-run! :model/TransformDagRun run-id)))
-          (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
+          (is (= :canceled (:status (t2/select-one :model/TransformDagRun 'id run-id))))
           (is (zero? (coordinated-run/cancel-started-run! :model/TransformDagRun run-id))
               "a finished run is never resurrected into a canceled state")
           (finally
-            (t2/delete! :model/TransformDagRun :id run-id)))))
+            (t2/delete! :model/TransformDagRun 'id run-id)))))
     (testing "fail-started-run! records the failure message"
       (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/fail-started-run! :model/TransformDagRun run-id {:message "boom"})
-          (let [row (t2/select-one :model/TransformDagRun :id run-id)]
+          (let [row (t2/select-one :model/TransformDagRun 'id run-id)]
             (is (= :failed (:status row)))
             (is (= "boom" (:message row))))
           (finally
-            (t2/delete! :model/TransformDagRun :id run-id)))))))
+            (t2/delete! :model/TransformDagRun 'id run-id)))))))
 
 (deftest dag-run-survives-transform-deletion-test
   (testing "deleting the seed transform nulls source_transform_id but preserves the DAG run and its snapshot"
@@ -128,13 +128,13 @@
       (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
-          (t2/delete! :model/Transform :id tid)
-          (let [run (t2/select-one :model/TransformDagRun :id run-id)]
+          (t2/delete! :model/Transform 'id tid)
+          (let [run (t2/select-one :model/TransformDagRun 'id run-id)]
             (is (some? run) "the run row survives (FK is SET NULL, not CASCADE)")
             (is (nil? (:source_transform_id run)))
             (is (= "doomed seed" (:source_transform_name run))))
           (finally
-            (t2/delete! :model/TransformDagRun :id run-id)))))))
+            (t2/delete! :model/TransformDagRun 'id run-id)))))))
 
 (deftest dag-run-member-runs-test
   ;; two distinct member transforms: transform_run enforces one active run per transform
@@ -151,11 +151,11 @@
                    (set (map :id (dag-run/transform-runs-for-dag-run run-id))))))
           (testing "cancel! cancels the run and requests cancelation of only the still-active members"
             (is (true? (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id)))
-            (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
-            (is (t2/exists? :model/TransformRunCancelation :run_id active-run))
-            (is (not (t2/exists? :model/TransformRunCancelation :run_id done-run)))
+            (is (= :canceled (:status (t2/select-one :model/TransformDagRun 'id run-id))))
+            (is (t2/exists? :model/TransformRunCancelation 'run_id active-run))
+            (is (not (t2/exists? :model/TransformRunCancelation 'run_id done-run)))
             (is (false? (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id))
                 "canceling an already-terminal run is a no-op")))
         (finally
-          (t2/delete! :model/TransformRun :dag_run_id run-id)
-          (t2/delete! :model/TransformDagRun :id run-id))))))
+          (t2/delete! :model/TransformRun 'dag_run_id run-id)
+          (t2/delete! :model/TransformDagRun 'id run-id))))))

@@ -80,7 +80,7 @@
   (when user-or-user-id
     (or
      (if (integer? user-or-user-id)
-       (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
+       (:settings (t2/select-one [:model/User 'settings] 'id user-or-user-id))
        (:settings user-or-user-id))
      {})))
 
@@ -158,7 +158,7 @@
   "Clean up user subscriptions when user is archived."
   [user-id active?]
   (when (false? active?)
-    (t2/delete! 'PulseChannelRecipient :user_id user-id)))
+    (t2/delete! 'PulseChannelRecipient 'user_id user-id)))
 
 (defn- prepare-archival-timestamp
   "Return a map with deactivated_at field based on is_active status.
@@ -216,8 +216,8 @@
          superuser? :is_superuser
          active? :is_active} changes
         in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
-                                              :group_id (:id (perms/admin-group))
-                                              :user_id id)]
+                                              'group_id (:id (perms/admin-group))
+                                              'user_id id)]
     (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
@@ -274,7 +274,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (u/the-id user-or-id))))
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
@@ -288,8 +288,8 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
-                                                             :user_id [:in (set (map u/the-id users))]))
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'user_id [:group_id :id] 'is_group_manager]
+                                                             'user_id ['in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
                                               [:id (when (premium-features/enable-advanced-permissions?)
@@ -307,8 +307,8 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
-                                                             :user_id [:in (set (map u/the-id users))]))]
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'user_id 'group_id]
+                                                             'user_id ['in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -345,7 +345,7 @@
           tenant-ids            (set (map :tenant_id users-with-tenant-ids))
           tenant-id->collection-id (when (seq tenant-ids)
                                      (t2/select-pk->fn :tenant_collection_id :model/Tenant
-                                                       :id [:in tenant-ids]))]
+                                                       'id ['in tenant-ids]))]
       ;; now for each User, try to find the corresponding tenant collection ID
       (for [user users]
         (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]

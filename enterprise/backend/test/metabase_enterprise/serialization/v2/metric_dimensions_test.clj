@@ -127,12 +127,12 @@
     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")))
 
 (defn- assert-remapped-import! [source]
-  (let [sales     (t2/select-one :model/Table :name "sales")
-        products  (t2/select-one :model/Table :name "products")
-        category  (t2/select-one :model/Field :table_id (:id sales) :name "category")
-        product-fk (t2/select-one :model/Field :table_id (:id sales) :name "product_id")
-        title      (t2/select-one :model/Field :table_id (:id products) :name "title")
-        card       (t2/select-one :model/Card :name "Total Amount")]
+  (let [sales     (t2/select-one :model/Table 'name "sales")
+        products  (t2/select-one :model/Table 'name "products")
+        category  (t2/select-one :model/Field 'table_id (:id sales) 'name "category")
+        product-fk (t2/select-one :model/Field 'table_id (:id sales) 'name "product_id")
+        title      (t2/select-one :model/Field 'table_id (:id products) 'name "title")
+        card       (t2/select-one :model/Card 'name "Total Amount")]
     (is (not= (-> source :sales :id) (:id sales)))
     (is (not= (-> source :category :id) (:id category)))
     (is (not= (-> source :title :id) (:id title)))
@@ -175,6 +175,6 @@
                                                     (-> source :card :dimension_mappings))}))
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory (extract-source)))
-          (let [card (t2/select-one :model/Card :name "Total Amount")]
+          (let [card (t2/select-one :model/Card 'name "Total Amount")]
             (is (= [dim-a-id] (mapv :id (:dimensions card))))
             (is (= [dim-a-id] (mapv :dimension-id (:dimension_mappings card))))))))))

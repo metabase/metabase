@@ -89,7 +89,7 @@
                   (transforms.tu/wait-for-table table-name 10000)
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
                   (let [db-id (mt/id)
-                        tables (t2/select :model/Table :db_id db-id :active true)]
+                        tables (t2/select :model/Table 'db_id db-id 'active true)]
                     (is (not-any? transforms.u/is-temp-transform-table? tables)
                         "No temp tables should remain after successful Python transform")
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
@@ -123,9 +123,9 @@
                                              (catch Exception _
                                                ;; We expect this to fail due to timeout
                                                {:run_id (t2/select-one-fn :id :model/TransformRun
-                                                                          :transform_id (:id transform)
+                                                                          'transform_id (:id transform)
                                                                           {:order-by [[:start_time :desc]]})}))
-                          run-status (t2/select-one-fn :status :model/TransformRun :id run_id)]
+                          run-status (t2/select-one-fn :status :model/TransformRun 'id run_id)]
                       (testing "Transform run should have timeout status"
                         (is (= :timeout run-status)
                             "Transform run status should be :timeout when Python script times out")))))))))))))

@@ -601,7 +601,7 @@
      (mt/with-model-cleanup [:model/Collection]
        (collection/create-library-collection!)
        (with-library-not-synced
-         (let [data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
+         (let [data-coll    (t2/select-one :model/Collection 'entity_id @#'collection/library-data-entity-id)
                _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "My Data Subcollection" :parent_id (:id data-coll)})
                response     (mt/user-http-request :crowberto :get 200 "collection/tree" :include-library true)
@@ -626,12 +626,12 @@
      (mt/with-model-cleanup [:model/Collection]
        (collection/create-library-collection!)
        (with-library-not-synced
-         (let [library      (t2/select-one :model/Collection :type collection/library-collection-type)
-               data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
+         (let [library      (t2/select-one :model/Collection 'type collection/library-collection-type)
+               data-coll    (t2/select-one :model/Collection 'entity_id @#'collection/library-data-entity-id)
                _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "My Metrics Subcollection" :parent_id
                                                    (:id (t2/select-one :model/Collection
-                                                                       :entity_id @#'collection/library-metrics-entity-id))})
+                                                                       'entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
            (testing "System library children (Data, Metrics) have is_library_root true"
@@ -650,7 +650,7 @@
                    subcoll    (first (filter #(= "My Metrics Subcollection" (:name %)) data-items))]
                (is (nil? subcoll)
                    "Subcollection created under Metrics should not appear under Data"))
-             (let [metrics-coll (t2/select-one :model/Collection :entity_id @#'collection/library-metrics-entity-id)
+             (let [metrics-coll (t2/select-one :model/Collection 'entity_id @#'collection/library-metrics-entity-id)
                    metrics-items (:data (mt/user-http-request :crowberto :get 200
                                                               (str "collection/" (:id metrics-coll) "/items")))
                    subcoll       (first (filter #(= "My Metrics Subcollection" (:name %)) metrics-items))]
@@ -1927,7 +1927,7 @@
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
     (let [root-owner-id   (u/the-id (test.users/fetch-user :rasta))
-          root-collection (t2/select-one :model/Collection :personal_owner_id root-owner-id)]
+          root-collection (t2/select-one :model/Collection 'personal_owner_id root-owner-id)]
       (mt/with-temp [:model/Collection collection {:name     "Som Test Child Collection"
                                                    :location (collection/location-path root-collection)}]
         (is (= [{:metabase.collections.models.collection.root/is-root? true,
@@ -2969,7 +2969,7 @@
                                          :description "My SQL Snippets"
                                          :namespace  "snippets"})))
           (finally
-            (t2/delete! :model/Collection :name collection-name)))))))
+            (t2/delete! :model/Collection 'name collection-name)))))))
 
 (deftest create-child-collection-namespace-inheritance-test
   (testing "POST /api/collection"
@@ -3043,7 +3043,7 @@
           (doseq [[entity-id collection-type] [[@#'collection/library-data-entity-id    "library-data"]
                                                [@#'collection/library-metrics-entity-id "library-metrics"]]]
             (let [;; Create a parent collection with snippets namespace
-                  lib-root         (t2/select-one :model/Collection :entity_id entity-id)
+                  lib-root         (t2/select-one :model/Collection 'entity_id entity-id)
                   child-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                          ;; Deliberately not setting `:type` here - it's automatic.
                                                          {:name      "Child Collection"
@@ -3125,7 +3125,7 @@
                          :subject "One of your alerts has stopped working"
                          :body    [{"the question was archived by Crowberto Corv" true}]}
                         (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
-              (= nil (t2/select-one :model/Notification :id (:id notification))))))))))
+              (= nil (t2/select-one :model/Notification 'id (:id notification))))))))))
 
 (deftest archive-collection-perms-test
   (testing "PUT /api/collection/:id"
@@ -3257,10 +3257,10 @@
   (testing "PUT /api/collection/:id rejects moving a collection into its own descendant, without actually moving it"
     ;; Pinning current (dubious) behavior: this returns a 500 today; a 4xx status would be the correct response.
     (with-collection-hierarchy! [a b]
-      (let [location-before (t2/select-one-fn :location :model/Collection :id (u/the-id a))]
+      (let [location-before (t2/select-one-fn :location :model/Collection 'id (u/the-id a))]
         (mt/user-http-request :crowberto :put 500 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
         (is (= location-before
-               (t2/select-one-fn :location :model/Collection :id (u/the-id a))))))))
+               (t2/select-one-fn :location :model/Collection 'id (u/the-id a))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
@@ -3488,13 +3488,13 @@
                  :model/Card card {}]
     (testing "Collections can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Collection :id (u/the-id collection) :location (collection/trash-path)))))
+      (is (not (t2/exists? :model/Collection 'id (u/the-id collection) 'location (collection/trash-path)))))
     (testing "Dashboards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))
+      (is (not (t2/exists? :model/Dashboard 'collection_id (collection/trash-collection-id)))))
     (testing "Cards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
+      (is (not (t2/exists? :model/Card 'collection_id (collection/trash-collection-id)))))))
 
 (deftest trashed-items-respect-collection-permissions-test
   (testing "GET /api/collection/<trash-id>/items does not show trashed items from collections the user can't access"
@@ -3644,9 +3644,9 @@
             (is (partial= {:archived true}
                           (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id parent-collection)) {:archived true})))
             ;; Verify the collections were actually archived
-            (is (t2/exists? :model/Collection :id (u/the-id parent-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))
+            (is (t2/exists? :model/Collection 'id (u/the-id parent-collection) 'archived true))
+            (is (t2/exists? :model/Collection 'id (u/the-id child-collection) 'archived true))
+            (is (t2/exists? :model/Collection 'id (u/the-id grandchild-collection) 'archived true))))))))
 
 (deftest collections-can-be-deleted
   (mt/with-temp [:model/Collection {coll-a-id :id :as coll-a} {}
@@ -3664,9 +3664,9 @@
     ;; - but collections A and C appear in the Trash (because they were archived separately)
     (mt/user-http-request :crowberto :delete 200 (str "/collection/" coll-a-id))
     (testing "B was deleted along with A, because it only appeared in the trash under A"
-      (is (not (t2/exists? :model/Collection :id coll-b-id))))
+      (is (not (t2/exists? :model/Collection 'id coll-b-id))))
     (testing "C was NOT deleted"
-      (is (t2/exists? :model/Collection :id coll-c-id)))
+      (is (t2/exists? :model/Collection 'id coll-c-id)))
     (testing "C was moved to the root collection (a's parent)"
       (is (= "/" (:location (t2/select-one :model/Collection coll-c-id)))))
     (testing "C is still archived"
@@ -3690,9 +3690,9 @@
     (mt/user-http-request :rasta :put 200 (str "/collection/" b-id) {:archived true})
     (mt/user-http-request :crowberto :delete 200 (str "/collection/" b-id))
     (testing "b is gone"
-      (is (not (t2/exists? :model/Collection :id b-id))))
+      (is (not (t2/exists? :model/Collection 'id b-id))))
     (testing "c survives + is still archived"
-      (is (t2/exists? :model/Collection :id c-id))
+      (is (t2/exists? :model/Collection 'id c-id))
       (is (:archived (t2/select-one :model/Collection c-id))))
     (testing "c hoisted under a"
       (is (= (str "/" a-id "/")
@@ -3707,8 +3707,8 @@
     (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
     (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
     (testing "a and b nuked"
-      (is (not (t2/exists? :model/Collection :id a-id)))
-      (is (not (t2/exists? :model/Collection :id b-id))))
+      (is (not (t2/exists? :model/Collection 'id a-id)))
+      (is (not (t2/exists? :model/Collection 'id b-id))))
     (testing "c at root"
       (is (= "/" (:location (t2/select-one :model/Collection c-id)))))
     (testing "d still under c"
@@ -3726,11 +3726,11 @@
     (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
     (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
     (testing "b branches deleted"
-      (is (not (t2/exists? :model/Collection :id b1-id)))
-      (is (not (t2/exists? :model/Collection :id b2-id))))
+      (is (not (t2/exists? :model/Collection 'id b1-id)))
+      (is (not (t2/exists? :model/Collection 'id b2-id))))
     (testing "c leaves survive, both at root and still archived"
       (doseq [cid [c1-id c2-id]]
-        (is (t2/exists? :model/Collection :id cid))
+        (is (t2/exists? :model/Collection 'id cid))
         (is (= "/" (:location (t2/select-one :model/Collection cid))))
         (is (:archived (t2/select-one :model/Collection cid)))))))
 
@@ -3925,7 +3925,7 @@
                                               :collection_id (:id coll)}]
         (revision/push-revision! {:entity       :model/Exploration
                                   :id           (:id e)
-                                  :object       (t2/select-one :model/Exploration :id (:id e))
+                                  :object       (t2/select-one :model/Exploration 'id (:id e))
                                   :user-id      (mt/user->id :crowberto)
                                   :is-creation? true})
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
@@ -3964,7 +3964,7 @@
                        :model_id    (:id e)
                        :user_id     (mt/user->id :crowberto)
                        :object      (revision/serialize-instance :model/Exploration (:id e)
-                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                                                                 (t2/select-one :model/Exploration 'id (:id e)))
                        :timestamp   (.minusSeconds t 60)
                        :is_creation true})
           (t2/insert! :model/Revision
@@ -3972,7 +3972,7 @@
                        :model_id  (:id doc)
                        :user_id   (mt/user->id :rasta)
                        :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
+                                                               (t2/select-one :model/Document 'id (:id doc)))
                        :timestamp t}))
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))

@@ -75,7 +75,7 @@
                        {:name              "Mark's Personal Collection"
                         :personal_owner_id mark-id}]
       (testing "a top-level collection is extracted correctly"
-        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id coll-id))]
+        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection 'id coll-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id coll-eid :label coll-slug}]}
                   ser))
           (is (not (contains? ser :personal_owner_id)))
@@ -83,7 +83,7 @@
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
       (testing "a nested collection is extracted with the right parent_id"
-        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id child-id))]
+        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection 'id child-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id child-eid :label child-slug}]
                    :parent_id  coll-eid}
                   ser))
@@ -91,7 +91,7 @@
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
       (testing "personal collections are extracted with email as key"
-        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id pc-id))]
+        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection 'id pc-id))]
           (is (=? {:serdes/meta       [{:model "Collection" :id pc-eid :label pc-slug}]
                    :personal_owner_id "mark@direstrai.ts"}
                   ser))
@@ -315,7 +315,7 @@
                        {:action_id    action-id
                         :dashboard_id other-dash-id}]
       (testing "table and database are extracted as [db schema table] triples"
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
@@ -332,7 +332,7 @@
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c2-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id c2-id))]
           (is (=? {:serdes/meta        [{:model "Card" :id c2-eid :label "second_question"}]
                    :creator_id         "mark@direstrai.ts"
                    :collection_id      coll-eid
@@ -351,7 +351,7 @@
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id c3-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c3-eid :label "third_question"}]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
@@ -385,7 +385,7 @@
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Cards can be based on other cards"
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id c5-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c5-eid :label "dependent_question"}]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
@@ -634,7 +634,7 @@
                                                                                             :type         :number}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
-          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
+          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet 'id s1-id))]
             (is (=? {:serdes/meta   [{:model "NativeQuerySnippet"
                                       :id    s1-eid
                                       :label "snippet_1"}]
@@ -650,7 +650,7 @@
               (is (= {["Collection" coll-id] {"NativeQuerySnippet" s1-id}}
                      (serdes/required "NativeQuerySnippet" s1-id))))))
         (testing "or can be outside collections"
-          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s2-id))]
+          (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet 'id s2-id))]
             (is (malli= [:map
                          [:serdes/meta [:= [{:model "NativeQuerySnippet"
                                              :id    s2-eid
@@ -753,14 +753,14 @@
           (let [extraction (extract/extract {:targets       [["Collection" coll-id]]
                                              :skip-archived true})
                 card-ids   (into #{} (map (comp :id last :serdes/meta)) (by-model "Card" extraction))]
-            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id active-card-id))))
-            (is (not (contains? card-ids (:entity_id (t2/select-one :model/Card :id archived-card-id)))))))
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card 'id active-card-id))))
+            (is (not (contains? card-ids (:entity_id (t2/select-one :model/Card 'id archived-card-id)))))))
         (testing "archived cards are included in extraction with skip-archived: false"
           (let [extraction (extract/extract {:targets       [["Collection" coll-id]]
                                              :skip-archived false})
                 card-ids   (into #{} (map (comp :id last :serdes/meta)) (by-model "Card" extraction))]
-            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id active-card-id))))
-            (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id archived-card-id))))))))))
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card 'id active-card-id))))
+            (is (contains? card-ids (:entity_id (t2/select-one :model/Card 'id archived-card-id))))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db!
@@ -837,7 +837,7 @@
                         :definition {:source-table no-schema-id
                                      :filter       [:< [:field field-id nil] 18]}}]
       (testing "segment"
-        (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment :id s1-id))]
+        (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment 'id s1-id))]
           (is (=? {:serdes/meta [{:model "Segment" :id s1-eid :label "my_segment"}]
                    :creator_id  "ann@heart.band"
                    :definition  {:database "My Database",
@@ -880,7 +880,7 @@
                             :definition definition}]
           ;; Uncomment to regenerate measure baseline: (round-trip-test/add-to-baseline!)
           (testing "measure"
-            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m1-id))]
+            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure 'id m1-id))]
               (is (=? {:serdes/meta [{:model "Measure" :id m1-eid :label "my_measure"}]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
@@ -924,7 +924,7 @@
                                 :table_id   table-id
                                 :definition derived-definition}]
               (testing "measure referencing another measure"
-                (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m2-id))]
+                (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure 'id m2-id))]
                   (is (=? {:serdes/meta [{:model "Measure" :id m2-eid :label "derived_measure"}]
                            :creator_id  "ann@heart.band"
                            :definition  {:database "My Database"
@@ -966,7 +966,7 @@
                             :table_id   table-id
                             :definition measure-definition}]
           (testing "measure referencing a segment"
-            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m-id))]
+            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure 'id m-id))]
               (is (=? {:serdes/meta [{:model "Measure" :id m-eid :label "expensive_item_count"}]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
@@ -1119,7 +1119,7 @@
                                  "Diner" "Indian" "Italian" "Japanese" "Mexican" "Middle Eastern" "Pizza"
                                  "Seafood" "Steakhouse" "Tea Room" "Winery"]}]
       (testing "field values"
-        (let [ser (serdes/extract-one "FieldValues" {} (t2/select-one :model/FieldValues :id fv-id))]
+        (let [ser (serdes/extract-one "FieldValues" {} (t2/select-one :model/FieldValues 'id fv-id))]
           (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
@@ -1152,7 +1152,7 @@
                        {:field_id              field-id
                         :description "Some custom Description"}]
       (testing "field values"
-        (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
+        (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings 'field_id field-id))]
           (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
@@ -1190,7 +1190,7 @@
         (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
           (is (= #{["FieldUserSettings" f2-id]}
                  (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-        (t2/delete! :model/FieldUserSettings :field_id f2-id))
+        (t2/delete! :model/FieldUserSettings 'field_id f2-id))
       (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
         (t2/insert! :model/FieldUserSettings {:field_id f1-id})
         (t2/insert! :model/FieldUserSettings {:field_id f2-id})
@@ -1271,7 +1271,7 @@
                          :values_source_config {:card_id     card-id-1
                                                 :value_field [:field field-id nil]}}]}]
       (testing "Cards with parameter's source is another question"
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id card-id-2))]
           (is (= [{:id                   "abc",
                    :type                 :category,
                    :name                 "CATEGORY",
@@ -1287,7 +1287,7 @@
                    [{:model "Card"       :id card-eid-1}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "Nullable transformations are omitted"
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card 'id card-id-2))]
           (is (not (contains? ser :made_public_by_id))))))))
 
 (deftest parameters-with-deleted-source-card-test
@@ -1316,8 +1316,8 @@
                                                              :values_source_type   "card"
                                                              :values_source_config {:card_id source-id}}]}]
         ;; deleting a Database hard-deletes its Cards, leaving the parameters above pointing at a row that is gone
-        (t2/delete! :model/Database :id db-id)
-        (is (not (t2/exists? :model/Card :id source-id))
+        (t2/delete! :model/Database 'id db-id)
+        (is (not (t2/exists? :model/Card 'id source-id))
             "deleting the Database should have taken its Card with it")
         (let [ser      (into [] (extract/extract {:targets       [["Collection" coll-id]]
                                                   :no-settings   true
@@ -1762,7 +1762,7 @@
       (testing "sanity check that the analytics content exists"
         (is (some? (audit/default-audit-collection)))
         ;; Find the Query log model (entity_id: QOtZaiTLf2FDD4AT6Oinb)
-        (let [query-log-card (t2/select-one :model/Card :entity_id "QOtZaiTLf2FDD4AT6Oinb")]
+        (let [query-log-card (t2/select-one :model/Card 'entity_id "QOtZaiTLf2FDD4AT6Oinb")]
           (is (some? query-log-card) "Query log model should exist in analytics")
           (when query-log-card
             ;; Create a card that depends on the analytics model (simulating an x-ray)
@@ -2069,7 +2069,7 @@
                        :model/Card linked-card {:name "Linked Card"}
                        :model/Dashboard dashboard {:name "Smart Linked Dashboard"}
                        :model/Table table {:name "linked_table"}]
-      (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
+      (t2/update! :model/Document 'id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
                                                                                  :attrs {:id (u/the-id card)}}
                                                                                 {:type "smartLink"
@@ -2158,7 +2158,7 @@
   (testing "Glossary entries are extracted well"
     (mt/with-temp [:model/Glossary _ {:term       "foobar"
                                       :definition "It's foobar2000 actually"}]
-      (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
+      (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary 'term "foobar"))]
         (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
                  :term        "foobar"}
                 ser))))))
@@ -2183,7 +2183,7 @@
                             custom-tag-eid :entity_id}
                            {:name "custom-etl"}]
           (testing "built-in tags extract correctly"
-            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id hourly-tag-id) :tags))]
+            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag 'id hourly-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id hourly-tag-eid}]
                        :name "hourly"
@@ -2193,7 +2193,7 @@
               (is (not (contains? ser :id)))
               (is (empty? (serdes/deserialization-dependencies ser)))))
           (testing "custom tags extract correctly"
-            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
+            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag 'id custom-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id custom-tag-eid}]
                        :name "custom-etl"
@@ -2288,7 +2288,7 @@
                            {:transform_id transform-id
                             :tag_id daily-tag-id
                             :position 2}]
-          (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes))]
+          (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform 'id transform-id) :tags :indexes))]
             (testing "basic Transform structure"
               (is (=? {:serdes/meta [{:model "Transform"
                                       :id transform-eid}]
@@ -2319,7 +2319,7 @@
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
           (testing "python transform source-tables export"
-            (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id python-transform-id) :tags :indexes))]
+            (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform 'id python-transform-id) :tags :indexes))]
               (is (=? {:source {:type :python
                                 :source-database "My Database"
                                 :source-tables [{:alias       "orders"
@@ -2351,7 +2351,7 @@
                                      :name "orphan_target"}}]
           ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
           (t2/delete! :model/Database db-id)
-          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes)
+          (let [reloaded (t2/hydrate (t2/select-one :model/Transform 'id transform-id) :tags :indexes)
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
                 "Database deletion should have nulled the column")
@@ -2459,7 +2459,7 @@
                             :tag_id daily-tag-id
                             :position 1}]
           (testing "built-in job extracts correctly"
-            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id hourly-job-id) :job_tags))]
+            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob 'id hourly-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
                                       :id hourly-job-eid}]
                        :name "Hourly job"
@@ -2477,7 +2477,7 @@
                 (is (= #{[{:model "TransformTag" :id hourly-tag-eid}]}
                        (set (serdes/deserialization-dependencies ser)))))))
           (testing "custom job extracts correctly"
-            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id custom-job-id) :job_tags))]
+            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob 'id custom-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
                                       :id custom-job-eid}]
                        :name "Custom ETL Job"
@@ -2566,12 +2566,12 @@
               field-ids   (->> extracted
                                (filter #(= "Field" (-> % :serdes/meta last :model)))
                                (map #(t2/select-one-pk :model/Field
-                                                       :table_id (t2/select-one-pk :model/Table :name (-> % :serdes/meta butlast last :id))
+                                                       :table_id (t2/select-one-pk :model/Table 'name (-> % :serdes/meta butlast last :id))
                                                        :name (-> % :serdes/meta last :id)))
                                set)
               segment-ids (->> extracted
                                (filter #(= "Segment" (-> % :serdes/meta last :model)))
-                               (map #(:id (t2/select-one :model/Segment :entity_id (:entity_id %))))
+                               (map #(:id (t2/select-one :model/Segment 'entity_id (:entity_id %))))
                                set)]
           (testing "fields from published table are exported"
             (is (contains? field-ids field1-id))
@@ -2588,7 +2588,7 @@
     (ts/with-temp-dpc [:model/PythonLibrary {lib-id :id lib-entity-id :entity_id} {:path   "common"
                                                                                    :source "def helper():\n    return 42"}]
       (testing "python library extraction"
-        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary :id lib-id))]
+        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary 'id lib-id))]
           (is (=? {:serdes/meta [{:model "PythonLibrary"
                                   :id    lib-entity-id}]
                    :path        "common.py"
@@ -2612,7 +2612,7 @@
       ;; Uncomment to regenerate baseline:
       ;; (round-trip-test/add-to-baseline!)
       (testing "custom viz plugin extraction"
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin 'id plugin-id))]
           (is (=? {:serdes/meta [{:model "CustomVizPlugin"
                                   :id    "test-plugin"}]
                    :display_name "Test Plugin"
@@ -2884,7 +2884,7 @@
                        {:name "Dark"
                         :settings {}}]
       (testing "embedding theme extracts correctly"
-        (let [ser (serdes/extract-one "EmbeddingTheme" {} (t2/select-one :model/EmbeddingTheme :id light-id))]
+        (let [ser (serdes/extract-one "EmbeddingTheme" {} (t2/select-one :model/EmbeddingTheme 'id light-id))]
           (is (=? {:serdes/meta [{:model "EmbeddingTheme"
                                   :id    light-eid
                                   :label "light"}]

@@ -22,7 +22,7 @@
           (let [child (mt/user-http-request :crowberto :post 200 "collection"
                                             {:name "Child"
                                              :parent_id (:id parent)})]
-            (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child))))))))))
+            (is (true? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id child))))))))))
 
 (deftest update-collection-is-remote-synced-to-false-cascades-test
   (testing "PUT /api/collection/:id"
@@ -37,8 +37,8 @@
                                                          :is_remote_synced true}]
           (mt/user-http-request :crowberto :put 200 (str "collection/" parent-id)
                                 {:parent_id nil})
-          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id)))
-          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id child-id))))))))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id parent-id)))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id child-id))))))))
 
 (deftest api-move-collection-into-remote-synced-dependency-checking-success-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
@@ -49,7 +49,7 @@
                                              {:parent_id (:id remote-parent)})]
           (is (= (:id remote-parent) (:parent_id response)))
           (is (true? (:is_remote_synced response)))
-          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id regular-collection)))))))))
 
 (deftest api-move-collection-into-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
@@ -62,8 +62,8 @@
         (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                                              {:parent_id (:id remote-parent)})]
           (is (str/includes? (str response) "remote-synced"))
-          (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id regular-collection))))
-          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
+          (is (nil? (t2/select-one-fn :parent_id :model/Collection 'id (:id regular-collection))))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id regular-collection)))))))))
 
 (deftest api-move-collection-into-remote-synced-dependency-checking-transaction-rollback-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
@@ -77,9 +77,9 @@
                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" up-card-id)})}]
         (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                               {:parent_id (:id remote-parent)})
-        (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id regular-collection))))
-        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection))))
-        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child-collection))))))))
+        (is (nil? (t2/select-one-fn :parent_id :model/Collection 'id (:id regular-collection))))
+        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id regular-collection))))
+        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id child-collection))))))))
 
 (deftest api-move-collection-outside-remote-synced-no-dependency-checking-test
   (testing "PUT /api/collection/:id - move collection out of remote-synced"
@@ -90,10 +90,10 @@
                                                          :is_remote_synced true}
                      :model/Card _ {:collection_id (:id child-collection)
                                     :document_id nil}]
-        (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child-collection))))
+        (is (true? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id child-collection))))
         (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (:id child-collection))
                                              {:parent_id nil})]
           (is (nil? (:parent_id response)))
           (is (false? (:is_remote_synced response)))
-          (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id child-collection))))
-          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child-collection)))))))))
+          (is (nil? (t2/select-one-fn :parent_id :model/Collection 'id (:id child-collection))))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection 'id (:id child-collection)))))))))

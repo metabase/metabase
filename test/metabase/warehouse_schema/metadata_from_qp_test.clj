@@ -19,14 +19,14 @@
 (deftest ^:parallel field-distinct-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 100
-           (warehouse-schema.metadata-from-qp/field-distinct-count (t2/select-one :model/Field :id (mt/id :checkins :venue_id)))))))
+           (warehouse-schema.metadata-from-qp/field-distinct-count (t2/select-one :model/Field 'id (mt/id :checkins :venue_id)))))))
 
 (deftest ^:parallel field-distinct-count-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 15
-           (warehouse-schema.metadata-from-qp/field-distinct-count (t2/select-one :model/Field :id (mt/id :checkins :user_id)))))))
+           (warehouse-schema.metadata-from-qp/field-distinct-count (t2/select-one :model/Field 'id (mt/id :checkins :user_id)))))))
 
 (deftest ^:parallel field-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 1000
-           (warehouse-schema.metadata-from-qp/field-count (t2/select-one :model/Field :id (mt/id :checkins :venue_id)))))))
+           (warehouse-schema.metadata-from-qp/field-count (t2/select-one :model/Field 'id (mt/id :checkins :venue_id)))))))

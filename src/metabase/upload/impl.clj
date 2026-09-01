@@ -123,7 +123,7 @@
 (defn- table-id->auto-pk-column [driver table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name driver (:name field)) auto-pk-column-name))
-                 (t2/select :model/Field :table_id table-id :active true))))
+                 (t2/select :model/Field 'table_id table-id 'active true))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -628,7 +628,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (t2/select-one :model/Database :id db-id)
+  (let [database (or (t2/select-one :model/Database 'id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
@@ -783,10 +783,10 @@
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
-  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query :card_schema]
-                                       :table_id (:id table)
-                                       :type     :model
-                                       :archived false)
+  (when-let [model-ids (->> (t2/select [:model/Card 'id 'dataset_query 'card_schema]
+                                       'table_id (:id table)
+                                       'type     :model
+                                       'archived false)
                             (filter (comp #{(:id table)} only-table-id))
                             (map :id)
                             seq)]
@@ -794,7 +794,7 @@
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
-      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] id)
+      (let [card     (t2/select-one [:model/Card 'dataset_query 'result_metadata 'card_schema] id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
             fix-name #(update % :display_name humanization/name->human-readable-name)
@@ -820,7 +820,7 @@
                 [header & rows]    (cond-> (parse reader)
                                      auto-pk?
                                      without-auto-pk-columns)
-                name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
+                name->field        (m/index-by :name (t2/select :model/Field 'table_id (:id table) 'active true))
                 ;; Match colliding columns to existing fields by display name so reordering them between
                 ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
                 column-names       (match-column-names driver header name->field)
@@ -956,7 +956,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (t2/update! :model/Table :id (:id table) {:active false})
+    (t2/update! :model/Table 'id (:id table) {:active false})
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
@@ -971,7 +971,7 @@
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
       (t2/update-returning-pks! :model/Card
-                                {:table_id (:id table) :archived false}
+                                {'table_id (:id table) 'archived false}
                                 {:archived true}))
     :done))
 
@@ -989,7 +989,7 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
-  (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
+  (let [table    (api/check-404 (t2/select-one :model/Table 'id table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
     (check-can-update database table)
@@ -1004,7 +1004,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+         (->> (t2/hydrate (t2/select :model/Table 'id ['in table-ids]) :db)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

@@ -111,8 +111,8 @@
                                        (count all-transitive-dependents))) ;; phase 2: swap
 
   (let [db-id      (case (first old-source)
-                     :card  (t2/select-one-fn :database_id :model/Card :id (second old-source))
-                     :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
+                     :card  (t2/select-one-fn :database_id :model/Card 'id (second old-source))
+                     :table (t2/select-one-fn :db_id :model/Table 'id (second old-source)))
         batch-size 500]
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
@@ -173,9 +173,9 @@
   "Copy user-edited metadata from a model's result_metadata onto the Fields of the
    output table. Writes to both Field and FieldUserSettings so overrides survive sync."
   [card-id table-id]
-  (let [card            (t2/select-one :model/Card :id card-id)
+  (let [card            (t2/select-one :model/Card 'id card-id)
         result-metadata (:result_metadata card)
-        fields          (t2/select :model/Field :table_id table-id :active true)
+        fields          (t2/select :model/Field 'table_id table-id 'active true)
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
             :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
@@ -194,7 +194,7 @@
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress & {:keys [user-id]}]
-   (let [transform (or (t2/select-one :model/Transform :id transform-id)
+   (let [transform (or (t2/select-one :model/Transform 'id transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
      ;; phase 1: execute the transform
      (transforms/execute! transform (cond-> {:run-method :manual}
@@ -206,7 +206,7 @@
        (copy-model-metadata-overrides! card-id (:id table))
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
-     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+     (when-let [persisted-info (t2/select-one :model/PersistedInfo 'card_id card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
      ;; phase 4: convert the model to a saved question
      (t2/update! :model/Card card-id {:type :question}))))

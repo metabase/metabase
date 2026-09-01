@@ -46,7 +46,7 @@
                              :content_hash      hash
                              :status_changed_at (t/offset-date-time)}))
      (events/publish-event! topic (merge {:object object :user-id (mt/user->id :rasta)} extra-payload))
-     (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))))
+     (:status (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)))))
 
 ;;; ------------------------------------------- entity-id models -------------------------------------------
 
@@ -161,7 +161,7 @@
       (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
                                            :status "synced" :status_changed_at (t/offset-date-time)})
       (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
           "A null content_hash baseline must be treated as dirty"))))
 
 (deftest changed-content-marks-dirty-test
@@ -174,10 +174,10 @@
                                            :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                                            :status_changed_at (t/offset-date-time)})
       (t2/update! :model/Card (:id card) {:name "Renamed"})
-      (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
+      (events/publish-event! :event/card-update {:object (t2/select-one :model/Card 'id (:id card))
                                                  :previous-object card
                                                  :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
           "A changed serialization must mark the row dirty"))))
 
 (deftest revert-to-baseline-resyncs-test
@@ -190,7 +190,7 @@
                                            :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                                            :status_changed_at (t/offset-date-time)})
       (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
           "Content matching the baseline must clear a stale dirty flag")
       (is (not (sync-object/dirty?))))))
 
@@ -225,7 +225,7 @@
               (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
               (doseq [{:keys [model_type model_id] :as row} rows]
                 (is (= (source/row->content-hash row)
-                       (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
+                       (t2/select-one-fn :content_hash :model/RemoteSyncObject 'model_type model_type 'model_id model_id))
                     (str "written hash should match per-row hash for " model_type))))))))))
 
 (deftest mark-rows-synced!-chunks-rows-test
@@ -247,7 +247,7 @@
           (#'impl/mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced (t/offset-date-time))))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-               (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
+               (t2/select-one-fn :content_hash :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card)))
             (str "every chunked row should get its hash: " (:name card)))))))
 
 (deftest insert-with-metadata!-chunks-rows-test
@@ -265,7 +265,7 @@
           (#'impl/insert-with-metadata! rows [])))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-               (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
+               (t2/select-one-fn :content_hash :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card)))
             (str "every chunked row should be inserted with its hash: " (:name card)))))))
 
 ;;; ------------------------------------------- export integration -------------------------------------------
@@ -286,10 +286,10 @@
       (let [mock-source (test-helpers/create-mock-source)
             result      (impl/export! (source.p/snapshot mock-source) task-id "Initial export")]
         (is (= :success (:status result)) (str "export should succeed: " result))
-        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)))
             (str model-type " should be synced after export")))
       (events/publish-event! topic (merge {:object object :user-id (mt/user->id :rasta)} payload))
-      (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))))
+      (:status (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)))))
 
 (deftest card-export-then-noop-stays-synced-test
   (testing "After a real export, a no-op Card update stays synced (GHY-3933)"
@@ -382,14 +382,14 @@
             (let [mock-source (test-helpers/create-mock-source)
                   result      (impl/export! (source.p/snapshot mock-source) task-id "Full export" :force? true)]
               (is (= :success (:status result)) (str "forced full export should succeed: " result))
-              (let [row (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
+              (let [row (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))]
                 (is (= "synced" (:status row)))
                 (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
                 (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization"))
-              (is (nil? (t2/select-one :model/RemoteSyncObject :id (:id leftover)))
+              (is (nil? (t2/select-one :model/RemoteSyncObject 'id (:id leftover)))
                   "removed/delete row dropped by full export (as the incremental path does)"))
             (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-            (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
                 "a no-op update after a full export stays synced")))))))
 
 ;;; ------------------------------------------- import integration -------------------------------------------
@@ -409,11 +409,11 @@
       (is (= :success (:status result)) (str "import should succeed: " result))
       (let [entity   (lookup)
             model-id (:id entity)]
-        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id)))
             (str model-type " should be synced after import"))
         (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
                                             (when payload-fn (payload-fn entity))))
-        (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))))
+        (:status (t2/select-one :model/RemoteSyncObject 'model_type model-type 'model_id model-id))))))
 
 (deftest transform-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"

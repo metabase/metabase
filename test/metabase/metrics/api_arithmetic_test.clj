@@ -311,7 +311,7 @@
           ;; Get dimension UUIDs from each entity
           (let [metric-response  (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
                 dim-metric-uuid  (:id (first (:dimensions metric-response)))
-                measure-entity   (t2/select-one :model/Measure :id (:id measure))
+                measure-entity   (t2/select-one :model/Measure 'id (:id measure))
                 dim-measure-uuid (:id (first (:dimensions measure-entity)))
                 response         (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                        {:definition

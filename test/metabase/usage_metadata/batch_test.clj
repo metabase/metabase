@@ -77,7 +77,7 @@
                                          :started_at started-at)))
 
 (defn- delete-query! [query-hash]
-  (t2/delete! :model/Query :query_hash query-hash))
+  (t2/delete! :model/Query 'query_hash query-hash))
 
 (defn- delete-day! [bucket-date]
   (usage-metadata.store/delete-day! bucket-date))
@@ -114,11 +114,11 @@
         query-hash    (lib-be.hash/query-hash valid-query)
         execution-at  (t/offset-date-time "2026-04-13T12:00Z")
         user-id-field (mt/id :orders :user_id)
-        original-fp   (t2/select-one-fn :fingerprint :model/Field :id user-id-field)]
+        original-fp   (t2/select-one-fn :fingerprint :model/Field 'id user-id-field)]
     (try
       (delete-query-executions-for-day! bucket-date)
       (delete-day! bucket-date)
-      (t2/update! :model/Field :id user-id-field {:fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
+      (t2/update! :model/Field 'id user-id-field {:fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
       (insert-query! query-hash valid-query)
       (insert-query-execution! query-hash execution-at)
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-13T13:00Z"))
@@ -130,18 +130,18 @@
         (is (= 2 (:metric-tuples result)))
         (is (= 4 (:dimension-tuples result)))
         (is (= 1 (:profile-observations result)))
-        (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
-        (is (= 1 (t2/count :model/SourceMetricDaily :bucket_date bucket-date)))
-        (is (= 2 (t2/count :model/SourceDimensionDaily :bucket_date bucket-date)))
-        (is (= 1 (t2/count :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
+        (is (= 1 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
+        (is (= 1 (t2/count :model/SourceMetricDaily 'bucket_date bucket-date)))
+        (is (= 2 (t2/count :model/SourceDimensionDaily 'bucket_date bucket-date)))
+        (is (= 1 (t2/count :model/SourceDimensionProfileDaily 'bucket_date bucket-date)))
         (is (= :fingerprint
-               (t2/select-one-fn :source_basis :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
+               (t2/select-one-fn :source_basis :model/SourceDimensionProfileDaily 'bucket_date bucket-date)))
         (is (= :single-value
-               (t2/select-one-fn :observation_type :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
+               (t2/select-one-fn :observation_type :model/SourceDimensionProfileDaily 'bucket_date bucket-date)))
         (is (= "2026-04-13"
                (usage-metadata.settings/usage-metadata-last-completed-day))))
       (finally
-        (t2/update! :model/Field :id user-id-field {:fingerprint original-fp})
+        (t2/update! :model/Field 'id user-id-field {:fingerprint original-fp})
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
         (delete-day! bucket-date)))))
@@ -171,9 +171,9 @@
           (is (= 2 (:segment-tuples result)))
           (is (= 1 (:composite-tuples result))
               "one composite fact per execution for the two-atom :and clause")
-          (is (= 2 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
-          (is (= 1 (t2/count :model/SourceSegmentCompositeDaily :bucket_date bucket-date)))
-          (let [composite (t2/select-one :model/SourceSegmentCompositeDaily :bucket_date bucket-date)]
+          (is (= 2 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
+          (is (= 1 (t2/count :model/SourceSegmentCompositeDaily 'bucket_date bucket-date)))
+          (let [composite (t2/select-one :model/SourceSegmentCompositeDaily 'bucket_date bucket-date)]
             (is (= :direct (:ownership_mode composite)))
             (is (= 2 (:atom_count composite)))
             (is (= 1 (:count composite)))))
@@ -194,8 +194,8 @@
       (insert-query-execution! query-hash execution-at)
       (usage-metadata.batch/process-day! bucket-date)
       (is (= #{:mixed :projected}
-             (t2/select-fn-set :ownership_mode :model/SourceSegmentDaily :bucket_date bucket-date)))
-      (is (= 3 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
+             (t2/select-fn-set :ownership_mode :model/SourceSegmentDaily 'bucket_date bucket-date)))
+      (is (= 3 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
       (finally
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
@@ -216,7 +216,7 @@
           (is (false? (:watermark-advanced? result)))
           (is (= "2026-04-12"
                  (usage-metadata.settings/usage-metadata-last-completed-day)))
-          (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))))
+          (is (= 1 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))))
       (finally
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
@@ -264,11 +264,11 @@
           (is (= 1 (get-in summary [:skipped-rows :missing-query])))
           (is (= 1 (get-in summary [:skipped-rows :unsupported-query])))
           (is (= 1
-                 (t2/count :model/SourceSegmentDaily :bucket_date day-a)))
+                 (t2/count :model/SourceSegmentDaily 'bucket_date day-a)))
           (is (= 1
-                 (t2/count :model/SourceSegmentDaily :bucket_date day-b)))
+                 (t2/count :model/SourceSegmentDaily 'bucket_date day-b)))
           (is (= 0
-                 (t2/count :model/SourceSegmentDaily :bucket_date old-day)))
+                 (t2/count :model/SourceSegmentDaily 'bucket_date old-day)))
           (is (= "2026-04-14"
                  (usage-metadata.settings/usage-metadata-last-completed-day)))))
       (finally
@@ -313,7 +313,7 @@
                                   :last-completed-day nil
                                   :retention-days     2})))
           (testing "retention cleanup runs even when the processing loop fails"
-            (is (= 0 (t2/count :model/SourceSegmentDaily :bucket_date old-day))))))
+            (is (= 0 (t2/count :model/SourceSegmentDaily 'bucket_date old-day))))))
       (finally
         (delete-query! query-hash)
         (doseq [day [day-a day-b old-day]]
@@ -345,8 +345,8 @@
               (testing "the bad row is recorded as :normalize-error skip"
                 (is (= 1 (get-in result [:skipped-rows :normalize-error]))))
               (testing "the good row's rollups still landed"
-                (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
-                (is (= 1 (t2/count :model/SourceMetricDaily :bucket_date bucket-date))))
+                (is (= 1 (t2/count :model/SourceSegmentDaily 'bucket_date bucket-date)))
+                (is (= 1 (t2/count :model/SourceMetricDaily 'bucket_date bucket-date))))
               (testing "the watermark advances despite the per-row failure"
                 (is (true? (:watermark-advanced? result)))
                 (is (= "2026-04-13"
@@ -381,8 +381,8 @@
                                  {:today              (t/local-date "2026-04-15")
                                   :last-completed-day nil
                                   :retention-days     2})))
-          (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date day-a)))
-          (is (= 0 (t2/count :model/SourceSegmentDaily :bucket_date day-b)))
+          (is (= 1 (t2/count :model/SourceSegmentDaily 'bucket_date day-a)))
+          (is (= 0 (t2/count :model/SourceSegmentDaily 'bucket_date day-b)))
           (is (= "2026-04-13"
                  (usage-metadata.settings/usage-metadata-last-completed-day)))))
       (finally

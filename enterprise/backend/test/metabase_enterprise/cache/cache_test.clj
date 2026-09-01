@@ -11,8 +11,8 @@
    [toucan2.core :as t2]))
 
 (defn last-audit-event []
-  (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                 :topic :cache-config-update
+  (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
+                 'topic :cache-config-update
                  {:order-by [[:id :desc]]}))
 
 (deftest cache-config-test
@@ -123,7 +123,7 @@
                                      :strategy {:type "duration" :duration 24 :unit "hours" :refresh_automatically true}}))
           (testing "flag is persisted to the top-level CacheConfig column"
             (is (true? (t2/select-one-fn :refresh_automatically :model/CacheConfig
-                                         :model "question" :model_id (:id card)))))
+                                         'model "question" 'model_id (:id card)))))
           (testing "GET re-nests the flag under strategy"
             (is (=? {:data [{:model    "question"
                              :model_id (:id card)

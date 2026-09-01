@@ -109,7 +109,7 @@
                                                                                           [:= :table.schema nil]]]
                                                                                         [:= :self_table.name [:lower :table.name]]]}]]]})]
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
+      (t2/update! :model/Table 'id ['in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
   (let [field-ids-to-update (t2/query {:select [:field.id]
                                        :from [[(t2/table-name :model/Field) :field]]
@@ -131,7 +131,7 @@
                                                                                           [:= :table.schema nil]]]
                                                                                         [:= :self_field.name [:lower :field.name]]]}]]]})]
     (when (seq field-ids-to-update)
-      (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
+      (t2/update! :model/Field 'id ['in (map :id field-ids-to-update)]
                   {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
@@ -148,7 +148,7 @@
              (.setInt stmt 2 (:id card))
              (.addBatch stmt))))
        nil
-       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id audit-db-id))
+       (t2/reducible-select [(t2/table-name :model/Card) 'id 'result_metadata] 'database_id audit-db-id))
       (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
@@ -158,14 +158,14 @@
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
     (case (mdb/db-type)
       :mysql
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
+      (t2/update! :model/Table {'db_id audit-db-id} {:schema nil})
 
       :h2
       (do
-        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Table {'db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
         (t2/update! :model/Field
-                    {:table_id
-                     [:in
+                    {'table_id
+                     ['in
                       ^:allow-subquery {:select [:id]
                                         :from   [(t2/table-name :model/Table)]
                                         :where  [:= :db_id audit-db-id]}]}
@@ -264,7 +264,7 @@
   half-applied state left by an interrupted `adjust-audit-db-to-host!`."
   [audit-db-id]
   (and (not= :postgres (mdb/db-type))
-       (t2/exists? :model/Table :db_id audit-db-id :schema "public" :active true)))
+       (t2/exists? :model/Table 'db_id audit-db-id 'schema "public" 'active true)))
 
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
@@ -294,7 +294,7 @@
            (if loaded?
              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
              (log/info (str "Error Loading Analytics Content: " (pr-str report))))
-           (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+           (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database 'is_audit true)]
              (let [original-engine engine]
                (adjust-audit-db-to-host! audit-db)
                ;; GHY-3974 Mode B: advance the checksum only after the host-adjust completes, so an
@@ -305,7 +305,7 @@
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (t2/select-one :model/Database :is_audit true)
+  (let [audit-db (t2/select-one :model/Database 'is_audit true)
         result   (cond
                    (not (audit-app.settings/install-analytics-database))
                    (u/prog1 ::blocked
@@ -324,7 +324,7 @@
                    :else
                    ::no-op)]
     (when (contains? #{::installed ::updated} result)
-      (when-let [db (t2/select-one :model/Database :is_audit true)]
+      (when-let [db (t2/select-one :model/Database 'is_audit true)]
         (log/info "Syncing Audit DB")
         (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
     result))
@@ -383,12 +383,12 @@
   [orphan-table-id survivor-table-id]
   (let [survivor-by-name (into {}
                                (map (juxt (comp u/lower-case-en :name) :id))
-                               (t2/select [:model/Field :id :name] :table_id survivor-table-id))]
+                               (t2/select [:model/Field 'id 'name] 'table_id survivor-table-id))]
     (into {}
           (keep (fn [{:keys [id name]}]
                   (when-let [survivor-field-id (survivor-by-name (u/lower-case-en name))]
                     [id survivor-field-id])))
-          (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
+          (t2/select [:model/Field 'id 'name] 'table_id orphan-table-id))))
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
@@ -423,7 +423,7 @@
    when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
   [orphan-table-id survivor-table-id]
   (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
-    (doseq [card (t2/select :model/Card :table_id orphan-table-id)]
+    (doseq [card (t2/select :model/Card 'table_id orphan-table-id)]
       (t2/update! :model/Card (:id card)
                   (cond-> {:dataset_query (-> (:dataset_query card)
                                               (lib/replace-table-ids {orphan-table-id survivor-table-id})
@@ -443,7 +443,7 @@
   [audit-db-id]
   ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
   ;; group-by preserves this order within each group
-  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id
+  (let [groups (->> (t2/select [:model/Table 'id 'name 'schema 'active] 'db_id audit-db-id
                                {:order-by [[:id :asc]]})
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
@@ -504,7 +504,7 @@
   (try
     (cluster-lock/with-detached-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
       (u/prog1 (maybe-install-audit-db!)
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+        (when-let [audit-db (t2/select-one :model/Database 'is_audit true)]
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []

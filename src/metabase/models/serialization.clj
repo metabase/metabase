@@ -175,7 +175,7 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (t2/select-one-fn pk [model pk] 'entity_id eid)))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -791,7 +791,7 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (t2/select-one model 'entity_id id-str))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
@@ -1931,7 +1931,7 @@
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
+                                (do (t2/delete! model backward-fk parent-id 'entity_id ['not-in (map :entity_id lst)])
                                     (doseq [ingested lst
                                             :let [ingested (enrich ingested)
                                                   local    (lookup-by-id model (entity-id model-name ingested))]]

@@ -618,8 +618,8 @@
                :collection_path personal-name
                :description     nil}
               create-resp))
-      (is (t2/exists? :model/Card :id (:id create-resp)))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (is (t2/exists? :model/Card 'id (:id create-resp)))
+      (t2/delete! :model/Card 'id (:id create-resp))))
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -637,7 +637,7 @@
                  :collection_path "Our analytics / Agent Question Collection"
                  :description     "A test question"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp)))))
+        (t2/delete! :model/Card 'id (:id create-resp)))))
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
     ;; to save a card whose query references data the user cannot run.
@@ -694,11 +694,11 @@
                                                {:name  "Native Agent Question"
                                                 :query (:query construct-resp)})]
       (is (=? {:id pos? :name "Native Agent Question" :display "table"} create-resp))
-      (let [card (t2/select-one :model/Card :id (:id create-resp))]
+      (let [card (t2/select-one :model/Card 'id (:id create-resp))]
         (is (= :native (:query_type card)))
         (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1 AS n"}]}
                 (:dataset_query card))))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (t2/delete! :model/Card 'id (:id create-resp))))
   (testing "Returns 403 when the caller lacks native-query permission"
     (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
                                                {:database_id (mt/id)
@@ -769,7 +769,7 @@
       (is (=? {:collection_id   nil
                :collection_path "Our analytics"}
               create-resp))
-      (t2/delete! :model/Card :id (:id create-resp)))))
+      (t2/delete! :model/Card 'id (:id create-resp)))))
 
 (deftest create-question-collection-path-test
   (testing "collection_path is the full breadcrumb, mirroring the app's location"
@@ -782,7 +782,7 @@
                                                   :query         (:query construct-resp)
                                                   :collection_id child-id})]
         (is (= "Our analytics / Parent Coll / Child Coll" (:collection_path create-resp)))
-        (t2/delete! :model/Card :id (:id create-resp)))))
+        (t2/delete! :model/Card 'id (:id create-resp)))))
   (testing "Personal-collection subtrees breadcrumb under the owner's personal collection, not Our analytics"
     (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
           personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
@@ -793,7 +793,7 @@
                                                 :query         (:query construct-resp)
                                                 :collection_id personal-id})]
       (is (= personal-name (:collection_path create-resp)))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (t2/delete! :model/Card 'id (:id create-resp))))
   (testing "collection_path omits ancestors the caller can't read — no hidden-name leak"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {a-id :id} {:name "Visible Parent"}
@@ -811,7 +811,7 @@
           ;; rasta can't read the root collection here either, so "Our analytics" is dropped too —
           ;; the point is that the unreadable middle parent never appears.
           (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
-          (t2/delete! :model/Card :id (:id create-resp)))))))
+          (t2/delete! :model/Card 'id (:id create-resp)))))))
 
 ;;; ------------------------------------------------ Create Metric Tests --------------------------------------------
 
@@ -831,8 +831,8 @@
                :collection_path personal-name
                :description     nil}
               create-resp))
-      (is (=? {:type :metric} (t2/select-one :model/Card :id (:id create-resp))))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (is (=? {:type :metric} (t2/select-one :model/Card 'id (:id create-resp))))
+      (t2/delete! :model/Card 'id (:id create-resp))))
   (testing "Creates a metric with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Metric Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -850,7 +850,7 @@
                  :collection_path "Our analytics / Agent Metric Collection"
                  :description     "A test metric"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp))))))
+        (t2/delete! :model/Card 'id (:id create-resp))))))
 
 (deftest create-metric-rejects-invalid-metric-test
   (testing "Returns 400 when the query is not a valid metric (no aggregation)"
@@ -896,7 +896,7 @@
       (is (=? {:collection_id   nil
                :collection_path "Our analytics"}
               create-resp))
-      (t2/delete! :model/Card :id (:id create-resp)))))
+      (t2/delete! :model/Card 'id (:id create-resp)))))
 
 ;;; ------------------------------------------------ Update Metric Tests --------------------------------------------
 
@@ -914,7 +914,7 @@
                  :description "Set by agent"
                  :archived    false}
                 resp)))
-      (is (= "Renamed Metric" (t2/select-one-fn :name :model/Card :id card-id))))))
+      (is (= "Renamed Metric" (t2/select-one-fn :name :model/Card 'id card-id))))))
 
 (deftest update-metric-move-test
   (testing "Moving a metric sets collection_id"
@@ -928,7 +928,7 @@
         (is (=? {:collection_id   dest-coll-id
                  :collection_path "Our analytics / Agent Metric Move Dest"}
                 resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card 'id card-id))))))
 
 (deftest update-metric-archive-test
   (testing "Archiving a metric also sets :archived_directly so it lands in the Trash"
@@ -939,14 +939,14 @@
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
                                        {:archived true})]
         (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card 'id card-id)))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card 'id card-id)))
       (testing "archival is a soft delete: archived: false reverses it"
         (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
                                          {:archived false})]
           (is (false? (:archived resp))))
-        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
-        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
+        (is (false? (t2/select-one-fn :archived :model/Card 'id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card 'id card-id)))))))
 
 (deftest update-metric-replace-query-test
   (testing "Replacing the underlying query via :query keeps a valid metric"
@@ -962,7 +962,7 @@
                                                                     :aggregation  [["count" {}]]}]}})
             _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
                                                {:query (:query construct)})
-            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            persisted    (t2/select-one-fn :dataset_query :model/Card 'id card-id)
             source-table (some :source-table (:stages persisted))]
         (is (some? persisted))
         (is (= products-id source-table)
@@ -982,7 +982,7 @@
                                    {:query (:query construct)})
              "metric"))
         ;; query untouched after the rejected update — still the original count aggregation
-        (is (seq (:aggregation (first (:stages (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))))
+        (is (seq (:aggregation (first (:stages (t2/select-one-fn :dataset_query :model/Card 'id card-id))))))))))
 
 (deftest update-metric-rejects-non-metric-card-test
   (testing "Returns 400 when the target card is not a metric"
@@ -1027,7 +1027,7 @@
                :description     nil
                :dashcard_ids    []}
               resp))
-      (t2/delete! :model/Dashboard :id (:id resp))))
+      (t2/delete! :model/Dashboard 'id (:id resp))))
   (testing "Creates a dashboard with questions"
     (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
                                                :dataset_query (orders-count-query)
@@ -1045,12 +1045,12 @@
                  :dashcard_ids #(= 2 (count %))}
                 resp))
         ;; Verify dashcards reference the correct cards and have valid positions
-        (let [dashcards (t2/select :model/DashboardCard :dashboard_id (:id resp))]
+        (let [dashcards (t2/select :model/DashboardCard 'dashboard_id (:id resp))]
           (is (= #{card1-id card2-id} (set (map :card_id dashcards))))
           (is (every? #(and (nat-int? (:col %)) (nat-int? (:row %))
                             (pos? (:size_x %)) (pos? (:size_y %)))
                       dashcards)))
-        (t2/delete! :model/Dashboard :id (:id resp)))))
+        (t2/delete! :model/Dashboard 'id (:id resp)))))
   (testing "Creates a dashboard in a specific collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
       (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
@@ -1059,7 +1059,7 @@
         (is (=? {:collection_id   coll-id
                  :collection_path "Our analytics / Agent Dashboard Collection"}
                 resp))
-        (t2/delete! :model/Dashboard :id (:id resp)))))
+        (t2/delete! :model/Dashboard 'id (:id resp)))))
   (testing "Returns 404 when a question_id does not exist"
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
@@ -1073,7 +1073,7 @@
       (is (=? {:collection_id   nil
                :collection_path "Our analytics"}
               resp))
-      (t2/delete! :model/Dashboard :id (:id resp)))))
+      (t2/delete! :model/Dashboard 'id (:id resp)))))
 
 (deftest create-entity-url-test
   (testing "create question/dashboard return a frontend URL"
@@ -1086,13 +1086,13 @@
               d         (mt/user-http-request :rasta :post 200 "agent/v1/dashboard" {:name "URL D"})]
           (is (= (str "https://mb.example.com/question/" (:id q)) (:url q)))
           (is (= (str "https://mb.example.com/dashboard/" (:id d)) (:url d)))
-          (t2/delete! :model/Card :id (:id q))
-          (t2/delete! :model/Dashboard :id (:id d)))))
+          (t2/delete! :model/Card 'id (:id q))
+          (t2/delete! :model/Dashboard 'id (:id d)))))
     (testing "relative when site-url is unset (no \"null\" prefix)"
       (mt/with-temporary-setting-values [site-url nil]
         (let [d (mt/user-http-request :rasta :post 200 "agent/v1/dashboard" {:name "Relative URL D"})]
           (is (= (str "/dashboard/" (:id d)) (:url d)))
-          (t2/delete! :model/Dashboard :id (:id d)))))))
+          (t2/delete! :model/Dashboard 'id (:id d)))))))
 
 (deftest create-collection-test
   (testing "Creates a root-level collection"
@@ -1105,7 +1105,7 @@
                  :location    "/"
                  :description nil}
                 resp))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (t2/delete! :model/Collection 'id (:id resp)))))
   (testing "Creates a nested collection under a parent"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
@@ -1119,7 +1119,7 @@
                 resp))
         ;; location should encode the parent's id in the materialized path
         (is (= (str "/" parent-id "/") (:location resp)))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (t2/delete! :model/Collection 'id (:id resp)))))
   (testing "Returns 404 when parent_collection_id does not exist"
     (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
                           {:name                 "Bad Parent Coll"
@@ -1154,8 +1154,8 @@
                  :archived    false}
                 resp)))
       ;; verify persisted
-      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card :id card-id)))
-      (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id))))))
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card 'id card-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Card 'id card-id))))))
 
 (deftest update-question-move-test
   (testing "Moving a card sets collection_id (subsumes move_card)"
@@ -1168,7 +1168,7 @@
         (is (=? {:collection_id   dest-coll-id
                  :collection_path "Our analytics / Agent Move Dest"}
                 resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card 'id card-id))))))
 
 (deftest update-question-archive-test
   (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
@@ -1178,16 +1178,16 @@
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                        {:archived true})]
         (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card 'id card-id)))
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card 'id card-id)))
       (testing "archival is a soft delete: archived: false reverses it"
         (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                          {:archived false})]
           (is (false? (:archived resp))))
-        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
-        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
+        (is (false? (t2/select-one-fn :archived :model/Card 'id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card 'id card-id)))))))
 
 (deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
@@ -1204,7 +1204,7 @@
             base64-query (:query new-query)
             _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                                {:query base64-query})
-            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            persisted    (t2/select-one-fn :dataset_query :model/Card 'id card-id)
             stages       (:stages persisted)
             source-table (some :source-table stages)]
         ;; Query was replaced - source-table changed from orders to products.
@@ -1271,7 +1271,7 @@
         (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
                               {:query base64-query}))
       ;; Persisted query unchanged - source-table still the orders table id, not the card.
-      (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+      (let [persisted (t2/select-one-fn :dataset_query :model/Card 'id card-id)]
         (is (= (mt/id :orders) (some :source-table (:stages persisted)))
             "dataset_query should not have been swapped to a card__ reference")))))
 
@@ -1301,7 +1301,7 @@
             (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                                   {:query base64-query}))
           ;; Persisted query unchanged - dataset_query.stages[0].source-table is the orders table id.
-          (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+          (let [persisted (t2/select-one-fn :dataset_query :model/Card 'id card-id)]
             (is (= (mt/id :orders) (some :source-table (:stages persisted)))
                 "dataset_query should not have been swapped")))))))
 
@@ -1318,8 +1318,8 @@
                  :description "Set by agent"
                  :archived    false}
                 resp)))
-      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
-      (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard 'id dash-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard 'id dash-id)))))
   (testing "Moving a dashboard sets collection_id and moves its cards"
     (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Dash Dest"}
                    :model/Dashboard  {dash-id :id}      {:name "Dash To Move"}
@@ -1332,9 +1332,9 @@
         (is (=? {:collection_id   dest-coll-id
                  :collection_path "Our analytics / Agent Dash Dest"}
                 resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard 'id dash-id)))
       ;; cards on the dashboard should follow
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card 'id card-id)))))
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
@@ -1366,14 +1366,14 @@
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                                        {:archived true})]
         (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard 'id dash-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card 'id card-id)))
       (testing "archival is a soft delete: archived: false reverses it, cards included"
         (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                                          {:archived false})]
           (is (false? (:archived resp))))
-        (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))
+        (is (false? (t2/select-one-fn :archived :model/Dashboard 'id dash-id)))
+        (is (false? (t2/select-one-fn :archived :model/Card 'id card-id)))))))
 
 (deftest update-dashboard-dashcards-add-test
   (testing "Add a card to the dashboard (autoplaced)"
@@ -1384,7 +1384,7 @@
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                                        {:dashcards [{:action "add" :card_id card-id}]})]
         (is (= 1 (count (:dashcard_ids resp))))
-        (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)]
+        (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id)]
           (is (= 1 (count dashcards)))
           (is (= card-id (:card_id (first dashcards))))
           ;; Autoplaced - row and col are set even though we didn't provide them.
@@ -1399,7 +1399,7 @@
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add" :card_id c1}
                                          {:action "add" :card_id c2}]})
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id)
             positions (map (juxt :row :col) dashcards)]
         (is (= 2 (count dashcards)))
         (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col")))))
@@ -1418,7 +1418,7 @@
                  :visualization_settings {:virtual_card         {:display "heading"}
                                           :text                 "Revenue"
                                           :dashcard.background  false}}
-                (t2/select-one :model/DashboardCard :dashboard_id dash-id)))))))
+                (t2/select-one :model/DashboardCard 'dashboard_id dash-id)))))))
 
 (deftest update-dashboard-dashcards-add-text-test
   (testing "Add a Markdown text card - a virtual dashcard with no backing card"
@@ -1431,13 +1431,13 @@
                  :size_y                 3
                  :visualization_settings {:virtual_card {:display "text"}
                                           :text         "Orders *grew 12%*."}}
-                (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+                (t2/select-one :model/DashboardCard 'dashboard_id dash-id))))))
   (testing "display_size overrides the default text-card size"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Size Target"}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_text" :text "Full width" :display_size "full"}]})
       (is (=? {:size_x 24 :size_y 9}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+              (t2/select-one :model/DashboardCard 'dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-narrative-layout-test
   (testing "Interleaved heading + card + text mutations autoplace in order without overlap"
@@ -1449,7 +1449,7 @@
                             {:dashcards [{:action "add_heading" :text "Section 1"}
                                          {:action "add" :card_id card-id}
                                          {:action "add_text" :text "Narrative under the chart."}]})
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id {:order-by [[:row :asc]]})
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id {:order-by [[:row :asc]]})
             heading   (first dashcards)
             chart     (second dashcards)]
         (is (= 3 (count dashcards)))
@@ -1466,12 +1466,12 @@
                             {:dashcards [{:action "add_text"}]})
       (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_heading" :text ""}]})
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+      (is (not (t2/exists? :model/DashboardCard 'dashboard_id dash-id)))))
   (testing "add_heading rejects display_size instead of silently ignoring it (headings are always full-width)"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Heading Size Validation"}]
       (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_heading" :text "KPIs" :display_size "wide"}]})
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
+      (is (not (t2/exists? :model/DashboardCard 'dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-add-then-move-top-test
   (testing "A card added earlier in the batch reflows when a later move-to-top shifts the tab"
@@ -1485,7 +1485,7 @@
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_text" :text "note"}
                                          {:action "move" :dashcard_id dc-id :position "top"}]})
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id)
             moved     (first (filter (comp #{dc-id} :id) dashcards))
             text-card (first (remove (comp #{dc-id} :id) dashcards))]
         (is (= [0 0] ((juxt :row :col) moved)))
@@ -1508,15 +1508,15 @@
       (is (=? {:dashboard_tab_id tab1-id
                ;; the full-width card on tab 2 must not block row 0 of tab 1
                :row              0}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil)))
+              (t2/select-one :model/DashboardCard 'dashboard_id dash-id 'card_id nil)))
       (testing "an explicit tab_id overrides the first-tab default and collides with that tab's cards"
         (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "add_text" :text "On tab two" :tab_id tab2-id}]})
         (is (=? {:dashboard_tab_id tab2-id
                  ;; placed below tab 2's existing full-width 4-row card
                  :row              4}
-                (t2/select-one :model/DashboardCard :dashboard_id dash-id
-                               :card_id nil :dashboard_tab_id tab2-id))))
+                (t2/select-one :model/DashboardCard 'dashboard_id dash-id
+                               'card_id nil 'dashboard_tab_id tab2-id))))
       (testing "a tab_id that isn't a tab on this dashboard is a 404"
         (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "add_heading" :text "Nope" :tab_id 999999}]})))))
@@ -1534,7 +1534,7 @@
                             {:dashcards [{:action "add_heading" :text "Below the legacy card"}]})
       (is (=? {:dashboard_tab_id tab1-id
                :row              4}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))
+              (t2/select-one :model/DashboardCard 'dashboard_id dash-id 'card_id nil))
           "the heading must land below the nil-tab card, not on top of it"))))
 
 (deftest update-dashboard-restore-and-edit-test
@@ -1543,8 +1543,8 @@
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:archived  false
                              :dashcards [{:action "add_heading" :text "Back from the trash"}]})
-      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+      (is (false? (t2/select-one-fn :archived :model/Dashboard 'id dash-id)))
+      (is (t2/exists? :model/DashboardCard 'dashboard_id dash-id)))))
 
 (deftest update-dashboard-lifecycle-checks-test
   (testing "dashcard mutations on an archived dashboard are rejected"
@@ -1558,7 +1558,7 @@
                                                    :display :table :archived true}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add" :card_id card-id}]})
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+      (is (not (t2/exists? :model/DashboardCard 'dashboard_id dash-id)))))
   (testing "adding a question internal to another dashboard is rejected"
     (mt/with-temp [:model/Dashboard {other-dash :id} {:name "Owner Dash"}
                    :model/Dashboard {dash-id :id}    {:name "Target Dash"}
@@ -1574,13 +1574,13 @@
                                                        :row 0 :col 0 :size_x 12 :size_y 4}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dc-id}]})
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id))
+      (is (true? (t2/select-one-fn :archived :model/Card 'id card-id))
           "removing the last dashcard archives the internal dashboard question")
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add" :card_id card-id}]})
-      (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
+      (is (false? (t2/select-one-fn :archived :model/Card 'id card-id))
           "re-adding it unarchives the internal dashboard question")
-      (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+      (is (= 1 (t2/count :model/DashboardCard 'dashboard_id dash-id)))))
   (testing "archiving and mutating dashcards in one request is rejected"
     ;; the post-mutation internal-question sync could otherwise unarchive dashboard questions
     ;; on the dashboard this same request just archived
@@ -1594,14 +1594,14 @@
       (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
                             {:archived  true
                              :dashcards [{:action "add" :card_id add-id}]})
-      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id))
+      (is (false? (t2/select-one-fn :archived :model/Dashboard 'id dash-id))
           "the rejected request must not have archived the dashboard")
-      (is (t2/exists? :model/DashboardCard :id dc-id))))
+      (is (t2/exists? :model/DashboardCard 'id dc-id))))
   (testing "archiving via the agent endpoint records archived_directly, like the REST path"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "To Archive"}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:archived true})
-      (is (true? (t2/select-one-fn :archived_directly :model/Dashboard :id dash-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Dashboard 'id dash-id))))))
 
 (deftest update-dashboard-dashcards-move-bottom-test
   (testing "Moving a card to the bottom places it below the tab's bottom edge, not back into its old slot"
@@ -1615,8 +1615,8 @@
                                                        :row 4 :col 0 :size_x 12 :size_y 4}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "move" :dashcard_id a-dc :position "bottom"}]})
-      (let [a (t2/select-one :model/DashboardCard :id a-dc)
-            b (t2/select-one :model/DashboardCard :id b-dc)]
+      (let [a (t2/select-one :model/DashboardCard 'id a-dc)
+            b (t2/select-one :model/DashboardCard 'id b-dc)]
         (is (>= (:row a) (+ (:row b) (:size_y b)))
             "the moved card must land below the other card's bottom edge")))))
 
@@ -1649,7 +1649,7 @@
                :size_y                 3
                :visualization_settings {:virtual_card {:display "text"}
                                         :text         "New narrative."}}
-              (t2/select-one :model/DashboardCard :id dc-id)))))
+              (t2/select-one :model/DashboardCard 'id dc-id)))))
   (testing "update_text works on headings too"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retitle Target"}]
       (let [resp  (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
@@ -1659,7 +1659,7 @@
                               {:dashcards [{:action "update_text" :dashcard_id dc-id :text "New Title"}]})
         (is (=? {:visualization_settings {:virtual_card {:display "heading"}
                                           :text         "New Title"}}
-                (t2/select-one :model/DashboardCard :id dc-id))))))
+                (t2/select-one :model/DashboardCard 'id dc-id))))))
   (testing "update_text works on a legacy text card that predates virtual_card settings"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Legacy Retext"}
                    :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id nil
@@ -1668,7 +1668,7 @@
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "update_text" :dashcard_id dc-id :text "fresh words"}]})
       (is (=? {:visualization_settings {:text "fresh words"}}
-              (t2/select-one :model/DashboardCard :id dc-id)))))
+              (t2/select-one :model/DashboardCard 'id dc-id)))))
   (testing "update_text on a card-backed dashcard is a 400"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Chart"}
                    :model/Card          {card-id :id} {:name "chart" :dataset_query (orders-count-query) :display :table}
@@ -1695,7 +1695,7 @@
             dashcard-id (first (:dashcard_ids resp))]
         (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-        (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))))
+        (is (not (t2/exists? :model/DashboardCard 'dashboard_id dash-id)))))))
 
 (deftest update-dashboard-dashcards-remove-test
   (testing "Remove a dashcard"
@@ -1705,7 +1705,7 @@
                                                            :row 0 :col 0 :size_x 12 :size_y 9}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
+      (is (not (t2/exists? :model/DashboardCard 'dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-move-top-test
   (testing "Move a dashcard to the top"
@@ -1715,7 +1715,7 @@
                                                            :row 5 :col 3 :size_x 12 :size_y 9}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "move" :dashcard_id dashcard-id :position "top"}]})
-      (let [moved (t2/select-one :model/DashboardCard :id dashcard-id)]
+      (let [moved (t2/select-one :model/DashboardCard 'id dashcard-id)]
         (is (= 0 (:row moved)))
         (is (= 0 (:col moved)))))))
 
@@ -1732,8 +1732,8 @@
                                                           :row 6 :col 0 :size_x 12 :size_y 6}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "move" :dashcard_id b-dc :position "top"}]})
-      (let [a (t2/select-one :model/DashboardCard :id a-dc)
-            b (t2/select-one :model/DashboardCard :id b-dc)]
+      (let [a (t2/select-one :model/DashboardCard 'id a-dc)
+            b (t2/select-one :model/DashboardCard 'id b-dc)]
         ;; b lands at row 0; a shifts down by b's :size_y (6).
         (is (= 0 (:row b)))
         (is (= 6 (:row a)))
@@ -1755,11 +1755,11 @@
                             {:description "Mixed patch"
                              :dashcards [{:action "remove" :dashcard_id drop-dc}
                                          {:action "add"    :card_id add-card}]})
-      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id)
             card-ids  (set (map :card_id dashcards))]
         (is (= #{keep-card add-card} card-ids))
         (is (some #(= keep-dc (:id %)) dashcards) "Untouched dashcard survives")
-        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))))
+        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard 'id dash-id)))))))
 
 (deftest update-dashboard-dashcards-add-missing-card-test
   (testing "Returns 404 when add references a missing card"

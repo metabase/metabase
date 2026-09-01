@@ -204,7 +204,7 @@
   (perms/check-manager-of-group id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
   (api/check-404
-   (some-> (t2/select-one :model/PermissionsGroup :id id)
+   (some-> (t2/select-one :model/PermissionsGroup 'id id)
            (t2/hydrate :members)
            (maybe-fix-name (setting/get :use-tenants)))))
 
@@ -263,12 +263,12 @@
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+  (let [group (t2/select-one :model/PermissionsGroup 'id group-id)]
     (api/check-404 group)
     (t2/update! :model/PermissionsGroup group-id
                 {:name name})
     ;; return the updated group
-    (u/prog1 (t2/select-one :model/PermissionsGroup :id group-id)
+    (u/prog1 (t2/select-one :model/PermissionsGroup 'id group-id)
       (events/publish-event! :event/group-update
                              {:user-id api/*current-user-id*
                               :object <>
@@ -284,8 +284,8 @@
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
-    (t2/delete! :model/PermissionsGroup :id group-id)
+  (let [group (t2/select-one :model/PermissionsGroup 'id group-id)]
+    (t2/delete! :model/PermissionsGroup 'id group-id)
     (events/publish-event! :event/group-delete {:object group
                                                 :user-id api/*current-user-id*}))
   api/generic-204-no-content)
@@ -305,7 +305,7 @@
                  :is_group_manager boolean}]}"
   []
   (perms/check-group-manager)
-  (group-by :user_id (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
+  (group-by :user_id (t2/select [:model/PermissionsGroupMembership [:id :membership_id] 'group_id 'user_id 'is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
@@ -342,7 +342,7 @@
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
       (api/check
-       (t2/exists? :model/User :id user_id :is_superuser false)
+       (t2/exists? :model/User 'id user_id 'is_superuser false)
        [400 (tru "Admin cannot be a group manager.")]))
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
@@ -365,16 +365,16 @@
   (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
   (perms/check-group-manager)
-  (let [old (t2/select-one :model/PermissionsGroupMembership :id id)]
+  (let [old (t2/select-one :model/PermissionsGroupMembership 'id id)]
     (api/check-404 old)
     (perms/check-tenant-groups-visible! [(:group_id old)])
     (perms/check-manager-of-group (:group_id old))
     (api/check
-     (t2/exists? :model/User :id (:user_id old) :is_superuser false)
+     (t2/exists? :model/User 'id (:user_id old) 'is_superuser false)
      [400 (tru "Admin cannot be a group manager.")])
     (t2/update! :model/PermissionsGroupMembership (:id old)
                 {:is_group_manager is_group_manager})
-    (t2/select-one :model/PermissionsGroupMembership :id (:id old))))
+    (t2/select-one :model/PermissionsGroupMembership 'id (:id old))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -385,7 +385,7 @@
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
-  (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
+  (api/check-404 (t2/exists? :model/PermissionsGroup 'id group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible! [group-id])
   (perms/remove-all-users-from-group! group-id)
@@ -399,7 +399,7 @@
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
+  (let [membership (t2/select-one :model/PermissionsGroupMembership 'id id)]
     (api/check-404 membership)
     (perms/check-tenant-groups-visible! [(:group_id membership)])
     (perms/check-manager-of-group (:group_id membership))

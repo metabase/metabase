@@ -18,7 +18,7 @@
 
 (defn- latest-query-execution [embedding-client]
   (t2/select-one :model/QueryExecution
-                 :embedding_client embedding-client
+                 'embedding_client embedding-client
                  {:order-by [[:id :desc]]}))
 
 (deftest query-execution-embedding-client-test

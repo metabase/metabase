@@ -38,7 +38,7 @@
                                            {:user_id (mt/user->id :crowberto)})))
         (is (= :totp (enrollment/enrolled-method (mt/user->id :crowberto)))))
       (finally
-        (t2/delete! :model/AuthIdentity :user_id (mt/user->id :crowberto) :provider "totp")))))
+        (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :crowberto) 'provider "totp")))))
 
 (deftest admin-remove-is-audited-test
   ;; audit rows require the :audit-app feature at event time (premium-features/log-enabled?)

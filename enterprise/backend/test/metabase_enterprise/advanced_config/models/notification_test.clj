@@ -73,11 +73,11 @@
             (testing "POST /api/notification/unsubscribe/undo with a disallowed email fails"
               (is (= "The following email addresses are not allowed: cam@disallowed-domain.com"
                      (api:unsubscribe-undo 403 handler-id "cam@disallowed-domain.com")))
-              (is (not (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id))))
+              (is (not (t2/exists? :model/NotificationRecipient 'notification_handler_id handler-id))))
             (testing "POST /api/notification/unsubscribe/undo with an allowed email succeeds"
               (is (=? {:status "success"}
                       (api:unsubscribe-undo 200 handler-id "cam@metabase.com")))
-              (is (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))))))))
+              (is (t2/exists? :model/NotificationRecipient 'notification_handler_id handler-id)))))))))
 
 (deftest validate-email-handlers!-test
   (testing "the send-time check reuses validate-email-handlers!, which throws on a disallowed raw external recipient"

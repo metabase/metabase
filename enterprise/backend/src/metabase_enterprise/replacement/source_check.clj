@@ -17,17 +17,17 @@
   "Returns true if any sandbox (GTAP) policy references `table-id`, either directly
   via `sandbox.table_id` or indirectly via a scoping card whose `table_id` matches."
   [table-id :- ::lib.schema.id/table]
-  (or (t2/exists? :model/Sandbox :table_id table-id)
-      (let [sandbox-card-ids (t2/select-fn-set :card_id :model/Sandbox :card_id [:not= nil])]
+  (or (t2/exists? :model/Sandbox 'table_id table-id)
+      (let [sandbox-card-ids (t2/select-fn-set :card_id :model/Sandbox 'card_id ['not= nil])]
         (boolean
          (when (seq sandbox-card-ids)
-           (t2/exists? :model/Card :id [:in sandbox-card-ids] :table_id table-id))))))
+           (t2/exists? :model/Card 'id ['in sandbox-card-ids] 'table_id table-id))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (if-let [field-ids (not-empty (t2/select-pks-set :model/Field :table_id table-id :active true))]
-    (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true)
+  (if-let [field-ids (not-empty (t2/select-pks-set :model/Field 'table_id table-id 'active true))]
+    (t2/exists? :model/Field 'fk_target_field_id ['in field-ids] 'active true)
     false))
 
 (mu/defn- format-column :- ::replacement.schema/column
@@ -44,8 +44,8 @@
   [entity-type :- ::replacement.schema/source-entity-type
    entity-id   :- ::replacement.schema/source-entity-id]
   (case entity-type
-    :card  (t2/select-one-fn :database_id :model/Card :id entity-id)
-    :table (t2/select-one-fn :db_id :model/Table :id entity-id)))
+    :card  (t2/select-one-fn :database_id :model/Card 'id entity-id)
+    :table (t2/select-one-fn :db_id :model/Table 'id entity-id)))
 
 (mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."

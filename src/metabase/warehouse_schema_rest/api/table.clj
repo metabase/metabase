@@ -171,7 +171,7 @@
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
-  (let [table (t2/select-one :model/Table :id table-id)
+  (let [table (t2/select-one :model/Table 'id table-id)
         db-id (:db_id table)]
     (api/query-check table)
     (qp.store/with-metadata-provider db-id
@@ -210,7 +210,7 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (t2/update! :model/Table id changes))
-  (let [updated-table        (t2/select-one :model/Table :id id)
+  (let [updated-table        (t2/select-one :model/Table 'id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -242,14 +242,14 @@
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
   (api/check-data-analyst)
-  (let [collection (api/check-404 (t2/select-one :model/Collection :id collection-id))]
+  (let [collection (api/check-404 (t2/select-one :model/Collection 'id collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Library/Data collections."))
     (api/check-403 (every? mi/can-query? tables))))
 
 (defn- update-tables!
   [ids {:keys [collection_id visibility_type] :as body}]
-  (let [existing-tables (t2/select :model/Table :id [:in ids])]
+  (let [existing-tables (t2/select :model/Table 'id ['in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (when collection_id
@@ -381,8 +381,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
-  (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
+  (when-let [field-ids (seq (t2/select-pks-set :model/Field, 'table_id id, 'visibility_type ['not= "retired"], 'active true))]
+    (for [origin-field (t2/select :model/Field, 'fk_target_field_id ['in field-ids], 'active true)
           :let [origin-field (t2/hydrate origin-field [:table :db])]
           :when (and (-> origin-field :table :active)
                      (mi/can-read? origin-field))
@@ -392,7 +392,7 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (t2/select-one :model/Field 'id (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -406,7 +406,7 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))]
+  (let [table (api/write-check (t2/select-one :model/Table 'id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -430,9 +430,9 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/write-check (t2/select-one :model/Table :id id))
-  (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
-    (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
+  (api/write-check (t2/select-one :model/Table 'id id))
+  (when-let [field-ids (t2/select-pks-set :model/Field 'table_id id)]
+    (t2/delete! (t2/table-name :model/FieldValues) 'field_id ['in field-ids]))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -443,7 +443,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
+  (-> (t2/select-one :model/Table 'id id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
@@ -456,7 +456,7 @@
             [:sequential ms/PositiveInt]
             [:map [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
+    (-> (t2/select-one :model/Table 'id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
@@ -547,10 +547,10 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table    (api/check-404 (t2/select-one :model/Table :id id))
+  (let [table    (api/check-404 (t2/select-one :model/Table 'id id))
         database (api/check-404 (t2/select-one :model/Database
-                                               :id (:db_id table)
-                                               :router_database_id nil))]
+                                               'id (:db_id table)
+                                               'router_database_id nil))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

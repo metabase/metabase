@@ -44,13 +44,13 @@
   (let [existing-ids (t2/select-pks-set :model/SecurityAdvisory)]
     (try
       (when (seq existing-ids)
-        (t2/update! :model/SecurityAdvisory {:id [:in existing-ids]}
+        (t2/update! :model/SecurityAdvisory {'id ['in existing-ids]}
                     {:acknowledged_at (mi/now)
                      :acknowledged_by (mt/user->id :crowberto)}))
       (f)
       (finally
         (when (seq existing-ids)
-          (t2/update! :model/SecurityAdvisory {:id [:in existing-ids]}
+          (t2/update! :model/SecurityAdvisory {'id ['in existing-ids]}
                       {:acknowledged_at nil
                        :acknowledged_by nil}))))))
 

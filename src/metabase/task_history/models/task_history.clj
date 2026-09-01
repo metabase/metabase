@@ -51,7 +51,7 @@
   (when-let [clean-before-date (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
                                                                                :offset   num-rows-to-keep
                                                                                :order-by [[:ended_at :desc]]})]
-    (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= clean-before-date])))
+    (t2/delete! (t2/table-name :model/TaskHistory) 'ended_at ['<= clean-before-date])))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -134,7 +134,7 @@
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (vec (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
+  (vec (t2/select-fn-vec :task [:model/TaskHistory 'task] {:group-by [:task]
                                                            :order-by [:task]})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

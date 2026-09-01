@@ -97,7 +97,7 @@
                                                    :document (documents.test-util/text->prose-mirror-ast "content")
                                                    :view_count 0}]
         (testing "Document has initial state"
-          (let [doc (t2/select-one :model/Document :id doc-id)]
+          (let [doc (t2/select-one :model/Document 'id doc-id)]
             (is (= 0 (:view_count doc)))
             ;; The migration gives `last_viewed_at` a non-nil default timestamp.
             (is (some? (:last_viewed_at doc)))))

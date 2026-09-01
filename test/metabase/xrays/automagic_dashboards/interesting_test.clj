@@ -11,7 +11,7 @@
 ;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
 
 (defn field [table column]
-  (or (t2/select-one :model/Field :id (mt/id table column))
+  (or (t2/select-one :model/Field 'id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
 

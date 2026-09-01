@@ -24,7 +24,7 @@
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (:field_values name-field)))))
         (finally
-          (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+          (t2/delete! :model/FieldValues 'field_id field-id 'type :advanced))))))
 
 (deftest sandboxed-model-fields-test
   (testing "get-table-details for a model over a column-sandboxed table only returns allowed fields"
@@ -94,6 +94,6 @@
             (is (= #{"CATEGORY_ID" "ID" "NAME"}
                    (source-names (metric-dimensions)))))
           (testing "missing sandbox metadata fails closed"
-            (let [sandbox (t2/select-one :model/Sandbox :table_id (mt/id :venues))]
-              (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil})
+            (let [sandbox (t2/select-one :model/Sandbox 'table_id (mt/id :venues))]
+              (t2/update! :model/Card 'id (:card_id sandbox) {:result_metadata nil})
               (is (empty? (metric-dimensions))))))))))

@@ -360,7 +360,7 @@
                              :catalog catalog)]
           (mt/with-temp [:model/Database db {:engine :athena, :details details}]
             (sync/sync-database! db {:scan :schema})
-            (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
+            (let [table (t2/select-one :model/Table 'db_id (:id db) 'name "airport")]
               (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
@@ -379,7 +379,7 @@
     (mt/test-driver :athena
       (mt/dataset airports
         (let [db                 (mt/db)
-              table              (t2/select-one :model/Table :db_id (:id db) :name "airport")
+              table              (t2/select-one :model/Table 'db_id (:id db) 'name "airport")
               get-columns-called (volatile! false)]
           (mt/with-dynamic-fn-redefs [athena/get-columns (fn [& _]
                                                            (vreset! get-columns-called true)

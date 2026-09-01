@@ -56,7 +56,7 @@
   (when task-id
     (dh/with-retry {:max-retries 10
                     :delay-ms 500}
-      (u/prog1 (t2/select-one :model/RemoteSyncTask :id task-id)
+      (u/prog1 (t2/select-one :model/RemoteSyncTask 'id task-id)
         (when (nil? (:ended_at <>))
           (throw (ex-info "Not finished" {:task-id task-id
                                           :result <>})))))))
@@ -274,14 +274,14 @@
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-            (let [before            (t2/count :model/AuditLog :topic "remote-sync-import")
+            (let [before            (t2/count :model/AuditLog 'topic "remote-sync-import")
                   {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})]
               (wait-for-task-completion task_id)
               ;; the audit event publishes after the task's ended_at is set, so poll for the row
               (let [entry (dh/with-retry {:max-retries 10
                                           :delay-ms 200}
-                            (u/prog1 (t2/select-one :model/AuditLog :topic "remote-sync-import" {:order-by [[:id :desc]]})
-                              (when (<= (t2/count :model/AuditLog :topic "remote-sync-import") before)
+                            (u/prog1 (t2/select-one :model/AuditLog 'topic "remote-sync-import" {:order-by [[:id :desc]]})
+                              (when (<= (t2/count :model/AuditLog 'topic "remote-sync-import") before)
                                 (throw (ex-info "Audit log entry not written yet" {})))))]
                 (testing "attributed to the user who triggered it"
                   (is (= (mt/user->id :crowberto) (:user_id entry))))
@@ -396,7 +396,7 @@
                   completed-task (wait-for-task-completion task_id)]
               (is (remote-sync.task/successful? completed-task)
                   "a merge pull with nothing new on the remote succeeds instead of failing as a history-rewritten conflict")
-              (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 1))
+              (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 1))
                   "the un-pushed local change is left untouched (still dirty)"))))))))
 
 ;;; --------------------------- async-import!/async-export! base-snapshot resolution ---------------------------
@@ -425,7 +425,7 @@
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
             (is (empty? @loaded) "no reconcile load happens when there is nothing to fold in")
-            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9001))
+            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject 'model_id 9001))
                 "the un-pushed local change is left dirty")))))))
 
 (deftest async-import-diverged-resolves-base-test
@@ -765,7 +765,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "ee/remote-sync/current-task/cancel")))
       (testing "task is not cancelled by the non-superuser request"
-        (is (not (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))))
+        (is (not (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask 'id id))))))))
 
 (deftest cancel-task-errors-when-no-tasks-test
   (testing "POST /api/ee/remote-sync/current-task/cancel errors when there are no tasks"
@@ -799,7 +799,7 @@
                :cancelled true
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
-      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
+      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask 'id id))))))
 
 ;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
 
@@ -1100,7 +1100,7 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll-id true}})]
             (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id))))))))))
 
 (deftest settings-collections-disables-remote-sync-on-single-collection-test
   (testing "PUT /api/ee/remote-sync/settings with collections disables remote sync on a single collection"
@@ -1111,7 +1111,7 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll-id false}})]
             (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id))))))))))
 
 (deftest settings-collections-enables-multiple-collections-test
   (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on multiple collections"
@@ -1123,8 +1123,8 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll1-id true coll2-id true}})]
             (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll2-id))))))))))
 
 (deftest settings-collections-mixed-enable-disable-test
   (testing "PUT /api/ee/remote-sync/settings with collections handles mixed enable/disable operations"
@@ -1136,8 +1136,8 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll1-id true coll2-id false}})]
             (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll2-id))))))))))
 
 (deftest settings-collections-cascades-to-descendants-test
   (testing "PUT /api/ee/remote-sync/settings with collections cascades to descendants"
@@ -1150,9 +1150,9 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {parent-id true}})]
             (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id child-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id grandchild-id))))))))))
 
 (deftest settings-collections-cascades-disable-to-descendants-test
   (testing "PUT /api/ee/remote-sync/settings with collections cascades disable to descendants"
@@ -1165,9 +1165,9 @@
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {parent-id false}})]
             (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id child-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id grandchild-id))))))))))
 
 (deftest settings-collections-errors-on-non-remote-synced-dependencies-test
   (testing "PUT /api/ee/remote-sync/settings with collections errors when enabling a collection with non-remote-synced dependencies"
@@ -1239,7 +1239,7 @@
         (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                              {:collections {}})]
           (is (= {:success true} response))
-          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+          (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))))
 
 (deftest settings-collections-requires-superuser-test
   (testing "PUT /api/ee/remote-sync/settings with collections requires superuser permissions"
@@ -1317,19 +1317,19 @@
                                                {:remote-sync-type :read-write
                                                 :collections {coll-id true}})]
             (is (= {:success true} response))
-            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id))))))
         (testing "allows disabling collections when remote-sync-type is explicitly read-write"
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:remote-sync-type :read-write
                                                 :collections {coll-id false}})]
             (is (= {:success true} response))
-            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id))))))
         (testing "allows collection changes when remote-sync-type is already read-write"
           (mt/with-temporary-setting-values [remote-sync-type :read-write]
             (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                  {:collections {coll-id true}})]
               (is (= {:success true} response))
-              (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))))
+              (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))))))
 
 (deftest create-branch
   (testing "POST /api/ee/remote-sync/create-branch creates a new branch"
@@ -1658,14 +1658,14 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms false]
-          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
+          (let [built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil])]
             (testing "can enable transforms sync"
               (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                      {:remote-sync-transforms true})]
                 (wait-for-task-completion task_id)
                 (is (=? {:success true} resp))
                 (is (true? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil]))
                     "Built-in transform tags should not be deleted by sync")))
             (testing "can disable transforms sync"
               (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
@@ -1673,7 +1673,7 @@
                 (wait-for-task-completion task_id)
                 (is (=? {:success true} resp))
                 (is (false? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil]))
                     "Built-in transform tags should not be deleted by sync")))))))))
 
 (deftest settings-preserves-transforms-when-not-specified-test
@@ -1753,7 +1753,7 @@
                                 {:remote-sync-url   "https://github.com/test/private-repo.git"
                                  :remote-sync-type  :read-write
                                  :collections       {coll-id true}})
-          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+          (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))))
 
 ;; ---------- API-level guard sweep --------------------------------------------------------------
 ;;

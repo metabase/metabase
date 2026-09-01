@@ -42,7 +42,7 @@
   ([job-id run-method]
    ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
    ;; LocalizedString into the snapshot
-   (let [job (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id)]
+   (let [job (t2/select-one [:model/TransformJob 'name 'entity_id 'built_in_type] 'id job-id)]
      (t2/insert-returning-instance! :model/TransformJobRun
                                     {:job_id        job-id
                                      :job_name      (some-> (:name job) str)
@@ -61,8 +61,8 @@
   "Return a single active job run or nil."
   [id]
   (t2/select-one :model/TransformJobRun
-                 :job_id id
-                 :is_active true))
+                 'job_id id
+                 'is_active true))
 
 (defn paged-job-runs
   "Return a page of the list of job runs.

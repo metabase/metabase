@@ -406,7 +406,7 @@
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
                (next.jdbc/execute! conn [sql]))))
           (t2/delete! :model/Table (:table_id original-field))
-          (t2/delete! :model/Field :table_id (:table_id original-field))
+          (t2/delete! :model/Field 'table_id (:table_id original-field))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            (mt/db)
@@ -426,7 +426,7 @@
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
           (sync/sync-database! (mt/db))
-          (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
+          (let [new-field (t2/select-one :model/Field 'name "TEXT_COLUMN")]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
               (is (=? {:base_type         :type/Decimal

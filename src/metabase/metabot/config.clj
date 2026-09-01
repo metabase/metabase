@@ -59,7 +59,7 @@
   Returns nil if no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
-  (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
+  (t2/select-one-pk :model/Metabot 'entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
 
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs

@@ -25,7 +25,7 @@
   ([fingerprint] (latest-entry fingerprint "appdb"))
   ([fingerprint source]
    (t2/select-one :model/DataComplexityScore
-                  :fingerprint fingerprint :source source {:order-by [[:id :desc]]})))
+                  'fingerprint fingerprint 'source source {:order-by [[:id :desc]]})))
 
 (defn latest-score
   "Return the latest persisted Data Complexity Score payload for `fingerprint`, or nil if none exist."
@@ -54,5 +54,5 @@
                                      :source      source
                                      :score_data  score})]
     (if id
-      (score-with-calculated-at (t2/select-one :model/DataComplexityScore :id id))
+      (score-with-calculated-at (t2/select-one :model/DataComplexityScore 'id id))
       (latest-score fingerprint source))))

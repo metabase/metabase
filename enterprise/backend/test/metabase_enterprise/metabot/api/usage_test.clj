@@ -13,7 +13,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "ee/ai-controls/usage/instance"))))
       (testing "returns max_usage: null when no limit is set"
-        (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+        (t2/delete! :model/MetabotInstanceLimit 'tenant_id nil)
         (is (= {:max_usage nil}
                (mt/user-http-request :crowberto :get 200 "ee/ai-controls/usage/instance"))))
       (testing "returns max_usage when set"
@@ -28,10 +28,10 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ee/ai-controls/usage/instance" {:max_usage 500}))))
       (testing "creates a new limit when none exists"
-        (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+        (t2/delete! :model/MetabotInstanceLimit 'tenant_id nil)
         (is (= {:max_usage 500}
                (mt/user-http-request :crowberto :put 200 "ee/ai-controls/usage/instance" {:max_usage 500})))
-        (t2/delete! :model/MetabotInstanceLimit :tenant_id nil))
+        (t2/delete! :model/MetabotInstanceLimit 'tenant_id nil))
       (testing "updates an existing limit"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1000}]
           (is (= {:max_usage 2000}
@@ -40,7 +40,7 @@
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1000}]
           (is (= {:max_usage nil}
                  (mt/user-http-request :crowberto :put 200 "ee/ai-controls/usage/instance" {:max_usage nil})))
-          (is (nil? (t2/select-one :model/MetabotInstanceLimit :tenant_id nil))))))))
+          (is (nil? (t2/select-one :model/MetabotInstanceLimit 'tenant_id nil))))))))
 
 ;;; ------------------------------------------------- Tenant limits --------------------------------------------------
 
@@ -91,7 +91,7 @@
                  (mt/user-http-request :crowberto :put 200
                                        (format "ee/ai-controls/usage/tenant/%d" tenant-id)
                                        {:max_usage 300})))
-          (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id)))
+          (t2/delete! :model/MetabotInstanceLimit 'tenant_id tenant-id)))
       (testing "updates an existing limit"
         (mt/with-temp [:model/Tenant {tenant-id :id} {}
                        :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 300}]
@@ -106,7 +106,7 @@
                  (mt/user-http-request :crowberto :put 200
                                        (format "ee/ai-controls/usage/tenant/%d" tenant-id)
                                        {:max_usage nil})))
-          (is (nil? (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))))))))
+          (is (nil? (t2/select-one :model/MetabotInstanceLimit 'tenant_id tenant-id))))))))
 
 ;;; -------------------------------------------------- Group limits ---------------------------------------------------
 
@@ -157,7 +157,7 @@
                  (mt/user-http-request :crowberto :put 200
                                        (format "ee/ai-controls/usage/group/%d" group-id)
                                        {:max_usage 300})))
-          (t2/delete! :model/MetabotGroupLimit :group_id group-id)))
+          (t2/delete! :model/MetabotGroupLimit 'group_id group-id)))
       (testing "updates an existing limit"
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Update Limit Group"}
                        :model/MetabotGroupLimit _ {:group_id group-id :max_usage 300}]
@@ -172,4 +172,4 @@
                  (mt/user-http-request :crowberto :put 200
                                        (format "ee/ai-controls/usage/group/%d" group-id)
                                        {:max_usage nil})))
-          (is (nil? (t2/select-one :model/MetabotGroupLimit :group_id group-id))))))))
+          (is (nil? (t2/select-one :model/MetabotGroupLimit 'group_id group-id))))))))

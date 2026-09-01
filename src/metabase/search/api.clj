@@ -378,7 +378,7 @@
                                         expected-result-type expected-result-id))]
     (if (and for-user-id (not= for-user-id api/*current-user-id*))
       ;; Build the context and run every permission/visibility check from the target user's perspective.
-      (do (api/check-404 (t2/exists? :model/User :id for-user-id))
+      (do (api/check-404 (t2/exists? :model/User 'id for-user-id))
           (request/with-current-user for-user-id (diagnose)))
       (diagnose))))
 

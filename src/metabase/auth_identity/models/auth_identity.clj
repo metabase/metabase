@@ -119,16 +119,16 @@
    (t2/with-transaction [_]
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
-       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "password")]
          (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
          (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
-     (t2/delete! :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
-     (t2/delete! :model/Session :user_id user-id))))
+     (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "emailed-secret-password-reset")
+     (t2/delete! :model/Session 'user_id user-id))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
   without reading the legacy `core_user.reset_token` column."
   [user-id :- ms/PositiveInt]
-  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
+  (get-in (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "emailed-secret-password-reset")
           [:credentials :token_hash]))

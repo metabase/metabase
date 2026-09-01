@@ -19,8 +19,8 @@
                        :source-entity-id 100}]]
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors)
           (let [stored (t2/select :model/AnalysisFindingError
-                                  :analyzed_entity_type :card
-                                  :analyzed_entity_id 1)]
+                                  'analyzed_entity_type :card
+                                  'analyzed_entity_id 1)]
             (is (= 2 (count stored)))
             (is (= #{:missing-column} (set (map :error_type stored))))
             (is (= #{"CATEGORY" "PRICE"} (set (map :error_detail stored))))
@@ -38,12 +38,12 @@
                            :source-entity-id nil}]]
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 old-errors)
           (is (= 1 (t2/count :model/AnalysisFindingError
-                             :analyzed_entity_type :card
-                             :analyzed_entity_id 1)))
+                             'analyzed_entity_type :card
+                             'analyzed_entity_id 1)))
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 new-errors)
           (let [stored (t2/select-one :model/AnalysisFindingError
-                                      :analyzed_entity_type :card
-                                      :analyzed_entity_id 1)]
+                                      'analyzed_entity_type :card
+                                      'analyzed_entity_id 1)]
             (is (= :syntax-error (:error_type stored)))
             (is (nil? (:error_detail stored)))
             (is (nil? (:source_entity_type stored)))
@@ -56,12 +56,12 @@
                        :source-entity-id 100}]]
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors)
           (is (= 1 (t2/count :model/AnalysisFindingError
-                             :analyzed_entity_type :card
-                             :analyzed_entity_id 1)))
+                             'analyzed_entity_type :card
+                             'analyzed_entity_id 1)))
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 [])
           (is (= 0 (t2/count :model/AnalysisFindingError
-                             :analyzed_entity_type :card
-                             :analyzed_entity_id 1))))))))
+                             'analyzed_entity_type :card
+                             'analyzed_entity_id 1))))))))
 
 (deftest errors-by-source-test
   (mt/with-premium-features #{:dependencies}

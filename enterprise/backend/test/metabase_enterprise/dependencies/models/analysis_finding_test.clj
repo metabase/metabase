@@ -22,14 +22,14 @@
                        :stale                true})
           ;; Verify it's stale
           (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                       :analyzed_entity_type :card
-                                       :analyzed_entity_id card-id)))
+                                       'analyzed_entity_type :card
+                                       'analyzed_entity_id card-id)))
           ;; Now upsert a new analysis
           (models.analysis-finding/upsert-analysis! :card card-id true [])
           ;; Verify stale is now false
           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id card-id))))))))
+                                        'analyzed_entity_type :card
+                                        'analyzed_entity_id card-id))))))))
 
 (deftest upsert-analysis-new-finding-has-stale-false-test
   (testing "upsert-analysis! creates new findings with stale = false"
@@ -40,8 +40,8 @@
           (models.analysis-finding/upsert-analysis! :card card-id true [])
           ;; Verify stale is false
           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id card-id))))))))
+                                        'analyzed_entity_type :card
+                                        'analyzed_entity_id card-id))))))))
 
 (deftest ^:synchronized instances-for-analysis-serves-oldest-analyzed-first-test
   (testing "Among stale entities, instances-for-analysis returns the oldest-analyzed first."

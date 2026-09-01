@@ -155,7 +155,7 @@
       (is (= "Unauthenticated"
              (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" "mb_not_an_api_key"}}})))
       (let [user-id (:id (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))]
-        (is (not (t2/exists? :model/Collection :personal_owner_id user-id))))
+        (is (not (t2/exists? :model/Collection 'personal_owner_id user-id))))
       (testing "A deleted API Key can no longer be used"
         (mt/user-http-request :crowberto :delete 204 (format "api-key/%s" id))
         (is (= "Unauthenticated"
@@ -172,11 +172,11 @@
                                  :name     (str (random-uuid))})
           _                (assert (t2/exists? :model/ApiKey id))
           _                (is (= "Cool Friends" (-> create-resp :group :name)))
-          api-user-id      (t2/select-one-fn :user_id :model/ApiKey :id id)
+          api-user-id      (t2/select-one-fn :user_id :model/ApiKey 'id id)
           member-of-group? (fn [group-id]
                              (t2/exists? :model/PermissionsGroupMembership
-                                         :user_id api-user-id
-                                         :group_id group-id))]
+                                         'user_id api-user-id
+                                         'group_id group-id))]
       (is (member-of-group? group-id-1))
       (is (not (member-of-group? group-id-2)))
       (testing "You can change the group of an API key"
@@ -196,7 +196,7 @@
                                               :post 200 "api-key"
                                               {:group_id group-id-1
                                                :name     name-1})
-            api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
+            api-user-id (-> (t2/select-one :model/ApiKey 'id id) (t2/hydrate :user) :user :id)]
         (testing "before the change..."
           (is (= name-1 (:common_name (t2/select-one :model/User api-user-id)))))
         (testing "after the change..."
@@ -388,7 +388,7 @@
                                                  :creator_id             (mt/user->id :crowberto)
                                                  :updated_by_id          (mt/user->id :crowberto)}]
     (is (nil? (mt/user-http-request :crowberto :delete 204 (format "api-key/%d" api-key-id))))
-    (is (true? (t2/select-one-fn :is_active :model/User :id (mt/user->id :crowberto))))))
+    (is (true? (t2/select-one-fn :is_active :model/User 'id (mt/user->id :crowberto))))))
 
 (deftest api-key-endpoints-are-admin-only-test
   (testing "every /api/api-key endpoint rejects non-admins with a 403"
@@ -410,9 +410,9 @@
       (let [{k :unmasked_key, api-key-id :id} (mt/user-http-request :crowberto :post 200 "api-key"
                                                                     {:group_id (:id (perms-group/admin))
                                                                      :name     (str (random-uuid))})
-            api-user-id (t2/select-one-fn :user_id :model/ApiKey :id api-key-id)
+            api-user-id (t2/select-one-fn :user_id :model/ApiKey 'id api-key-id)
             dashboard   (client/client :post 200 "dashboard"
                                        {:request-options {:headers {"x-api-key" k}}}
                                        {:name "API key dashboard"})]
         (is (= api-user-id
-               (t2/select-one-fn :user_id :model/Revision :model "Dashboard" :model_id (:id dashboard))))))))
+               (t2/select-one-fn :user_id :model/Revision 'model "Dashboard" 'model_id (:id dashboard))))))))

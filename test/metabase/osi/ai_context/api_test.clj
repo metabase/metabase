@@ -63,14 +63,14 @@
               (mt/user-http-request :crowberto :put 200 "osi/ai-context/metric/42"
                                     {:ai_context {:instructions "Use the Revenue metric." :synonyms ["sales"]
                                                   :examples ["revenue last month"]}})))
-      (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 42))))
+      (finally (t2/delete! :model/OsiAiContext 'entity_type "card" 'entity_local_id 42))))
   (testing "measure and segment entity refs are accepted (they are indexed library entities)"
     (doseq [entity-type ["measure" "segment"]]
       (try
         (is (=? {:entity_type entity-type :entity_local_id 5}
                 (mt/user-http-request :crowberto :put 200 (str "osi/ai-context/" entity-type "/5")
                                       {:ai_context {:synonyms ["alias"]}})))
-        (finally (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id 5)))))
+        (finally (t2/delete! :model/OsiAiContext 'entity_type entity-type 'entity_local_id 5)))))
   (testing "PUTting the same card under different flavors upserts one row (both normalize to \"card\")"
     (try
       (mt/user-http-request :crowberto :put 200 "osi/ai-context/metric/99" {:ai_context {:instructions "v1"}})
@@ -80,14 +80,14 @@
         (is (=? {:entity_type "card" :entity_local_id 99 :ai_context {:instructions "v2"}}
                 (mt/user-http-request :crowberto :get 200 "osi/ai-context/model/99"))
             "one canonical card row, fetched by either flavor")
-        (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
-      (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
+        (is (= 1 (t2/count :model/OsiAiContext 'entity_type "card" 'entity_local_id 99))))
+      (finally (t2/delete! :model/OsiAiContext 'entity_type "card" 'entity_local_id 99))))
   (testing "a re-PUT with the same ai_context is idempotent (a no-op update must not retry as a duplicate insert)"
     (try
       (mt/user-http-request :crowberto :put 200 "osi/ai-context/measure/77" {:ai_context {:instructions "same"}})
       (is (=? {:entity_type "measure" :entity_local_id 77 :ai_context {:instructions "same"}}
               (mt/user-http-request :crowberto :put 200 "osi/ai-context/measure/77" {:ai_context {:instructions "same"}})))
-      (finally (t2/delete! :model/OsiAiContext :entity_type "measure" :entity_local_id 77))))
+      (finally (t2/delete! :model/OsiAiContext 'entity_type "measure" 'entity_local_id 77))))
   (testing "the OSI string shorthand for ai_context is accepted and migrated to {:instructions s}"
     (try
       (is (=? {:entity_type     "table"
@@ -95,7 +95,7 @@
                :ai_context      {:instructions "Use for revenue questions."}}
               (mt/user-http-request :crowberto :put 200 "osi/ai-context/table/3"
                                     {:ai_context "Use for revenue questions."})))
-      (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 3))))
+      (finally (t2/delete! :model/OsiAiContext 'entity_type "table" 'entity_local_id 3))))
   (testing "ai_context is required"
     (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1" {}))
   (testing "an over-long instructions string is rejected"
@@ -126,6 +126,6 @@
       (mt/user-http-request :rasta :delete 403 "osi/ai-context/table/1"))
     (testing "superuser can delete an entry by its logical key"
       (mt/user-http-request :crowberto :delete 204 "osi/ai-context/table/1")
-      (is (nil? (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1))))
+      (is (nil? (t2/select-one :model/OsiAiContext 'entity_type "table" 'entity_local_id 1))))
     (testing "returns 404 for an entity with no row"
       (mt/user-http-request :crowberto :delete 404 "osi/ai-context/table/999999"))))

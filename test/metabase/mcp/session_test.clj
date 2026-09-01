@@ -38,7 +38,7 @@
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       (is (string? session-id))
       (is (some? (parse-uuid (session-correlator session-id))))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (not (t2/exists? :core_session 'key_hashed (derived-hash session-id)))
           "No core_session should exist yet"))))
 
 (deftest session-ui-capability-is-stateless-test
@@ -50,9 +50,9 @@
       (is (some? (parse-uuid (session-correlator ui-session-id))))
       (is (true? (mcp.session/supports-mcp-ui? ui-session-id)))
       (is (false? (mcp.session/supports-mcp-ui? plain-session-id)))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash ui-session-id)))
+      (is (not (t2/exists? :core_session 'key_hashed (derived-hash ui-session-id)))
           "Capability tracking should not materialize a core_session")
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash plain-session-id)))
+      (is (not (t2/exists? :core_session 'key_hashed (derived-hash plain-session-id)))
           "Capability tracking should not materialize a core_session"))))
 
 (deftest create-session-id-length-test
@@ -138,20 +138,20 @@
       (is (= (mcp.session/derive-embedding-session-key session-id) key))
       (is (not= session-id key)
           "Derived key must not equal the MCP session id that travels on the wire")
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
+      (is (t2/exists? :core_session 'key_hashed (derived-hash session-id))
           "core_session should now exist")
       (testing "subsequent calls return the same key and don't create duplicates"
         (is (= key (mcp.session/get-or-create-session-key! session-id user-id)))
-        (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
+        (is (= 1 (t2/count :core_session 'key_hashed (derived-hash session-id))))))))
 
 (deftest delete-test
   (testing "delete! removes the core_session if one was created"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (t2/exists? :core_session 'key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
+      (is (not (t2/exists? :core_session 'key_hashed (derived-hash session-id)))))))
 
 (deftest delete-scoped-to-user-test
   (testing "delete! only removes sessions owned by the given user"
@@ -159,12 +159,12 @@
           other-id   (mt/user->id :rasta)
           session-id (mcp.session/create! user-id)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (t2/exists? :core_session 'key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
+      (is (t2/exists? :core_session 'key_hashed (derived-hash session-id))
           "Session should still exist — wrong user")
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (not (t2/exists? :core_session 'key_hashed (derived-hash session-id)))
           "Session should be deleted by the owning user"))))
 
 (deftest owned-by-user-test
@@ -194,7 +194,7 @@
       (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
       (is (some? (parse-uuid h2)))
       (is (not= h1 h2) "successive calls must produce distinct handles")
-      (is (= session-id (t2/select-one-fn :mcp_session_id :model/McpQueryHandle :id h1))
+      (is (= session-id (t2/select-one-fn :mcp_session_id :model/McpQueryHandle 'id h1))
           "store-handle! stores the full MCP session id, including capability hints")
       (is (= "first"  (mcp.session/read-handle session-id user-id h1)))
       (is (= "second" (mcp.session/read-handle session-id user-id h2)))
@@ -232,7 +232,7 @@
           session-id (mcp.session/create! user-id)
           handle     (mcp.session/store-handle! session-id user-id "payload")]
       (is (= "payload" (mcp.session/read-handle session-id user-id handle)))
-      (t2/delete! :core_session :key_hashed (derived-hash session-id))
+      (t2/delete! :core_session 'key_hashed (derived-hash session-id))
       (is (nil? (mcp.session/read-handle session-id user-id handle))
           "cascade should reap the handle when the core_session row goes"))))
 

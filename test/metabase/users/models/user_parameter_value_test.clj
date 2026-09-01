@@ -18,7 +18,7 @@
               retrieve-fn (fn []
                             (t2/select-fn->fn :parameter_id :value
                                               :model/UserParameterValue
-                                              :user_id (mt/user->id :rasta) :dashboard_id dashboard-id))]
+                                              'user_id (mt/user->id :rasta) 'dashboard_id dashboard-id))]
           (testing "insert upv if value is non-nil"
             (store! [{:id "param1" :value 1}
                      {:id "param2" :value "string"}
@@ -61,7 +61,7 @@
               retrieve-fn (fn []
                             (t2/select-fn->fn :parameter_id :value
                                               :model/UserParameterValue
-                                              :user_id (mt/user->id :rasta) :dashboard_id dashboard-id))]
+                                              'user_id (mt/user->id :rasta) 'dashboard_id dashboard-id))]
           (testing "do not insert anything when disabled"
             (store! [{:id "param1" :value 1}
                      {:id "param2" :value "string"}

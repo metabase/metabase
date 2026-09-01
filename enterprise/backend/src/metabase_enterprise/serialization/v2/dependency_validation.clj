@@ -24,7 +24,7 @@
     "[no collection]"))
 
 (defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model :collection_id] :id id)]
+  (let [entity (t2/select-one [model 'collection_id] 'id id)]
     (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
 (defn- resize-batch

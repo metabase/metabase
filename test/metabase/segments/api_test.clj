@@ -32,7 +32,7 @@
 (defn- mbql4-segment-definition
   "Create a legacy MBQL4 segment definition"
   [table-id field-id value]
-  {:database (t2/select-one-fn :db_id :model/Table :id table-id)
+  {:database (t2/select-one-fn :db_id :model/Table 'id table-id)
    :type     :query
    :query    {:source-table table-id
               :filter       [:= [:field field-id nil] value]}})
@@ -40,7 +40,7 @@
 (defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
-  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
+  (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table 'id table-id))
         table (lib.metadata/table metadata-provider table-id)
         query (lib/query metadata-provider table)
         field (lib.metadata/field metadata-provider field-id)]
@@ -154,7 +154,7 @@
                               {:revision_message "move to venues"
                                :definition       (mbql4-segment-definition (mt/id :venues) (mt/id :venues :name) "cans")})
         (is (= (mt/id :venues)
-               (t2/select-one-fn :table_id :model/Segment :id id)))))))
+               (t2/select-one-fn :table_id :model/Segment 'id id)))))))
 
 (deftest update-test
   (testing "PUT /api/segment/:id"
@@ -224,7 +224,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (true?
-             (t2/select-one-fn :archived :model/Segment :id id)))))))
+             (t2/select-one-fn :archived :model/Segment 'id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
@@ -234,7 +234,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
         (is (= false
-               (t2/select-one-fn :archived :model/Segment :id id)))))))
+               (t2/select-one-fn :archived :model/Segment 'id id)))))))
 
 ;; ## DELETE /api/segment/:id
 

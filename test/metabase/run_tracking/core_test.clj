@@ -57,10 +57,10 @@
                                      :terminal {:status "timeout" :is_active nil :end_time :%now
                                                 :message "reaped"}})]
           (is (= [stale] (mapv :id reaped)))
-          (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale)))
-          (is (nil? (t2/select-one-fn :is_active :model/TransformRun :id stale)))
-          (is (= "reaped" (t2/select-one-fn :message :model/TransformRun :id stale)))
-          (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh))))
+          (is (= :timeout (t2/select-one-fn :status :model/TransformRun 'id stale)))
+          (is (nil? (t2/select-one-fn :is_active :model/TransformRun 'id stale)))
+          (is (= "reaped" (t2/select-one-fn :message :model/TransformRun 'id stale)))
+          (is (= :started (t2/select-one-fn :status :model/TransformRun 'id fresh))))
         (testing "second sweep is empty — the row is no longer active"
           (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:= :is_active true]
                                       :stale [:< :last_heartbeat (rt/cutoff 5 :minute)]
@@ -78,7 +78,7 @@
                                              [:< :start_time (rt/cutoff 60 :minute)]]
                                      :terminal {:status "timeout" :is_active nil :end_time :%now}})]
           (is (= [old-start] (mapv :id reaped)))
-          (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-start))))))))
+          (is (= :timeout (t2/select-one-fn :status :model/TransformRun 'id old-start))))))))
 
 (deftest reap-rows!-status-active-test
   (testing "status-based active guard (TaskRun): guards on :status :started, transitions to :abandoned"
@@ -92,8 +92,8 @@
                                    :stale [:< :updated_at (rt/cutoff 60 :minute)]
                                    :terminal {:status "abandoned"}})]
         (is (= [stale] (mapv :id reaped)))
-        (is (= :abandoned (t2/select-one-fn :status :model/TaskRun :id stale)))
-        (is (= :started (t2/select-one-fn :status :model/TaskRun :id fresh)))))))
+        (is (= :abandoned (t2/select-one-fn :status :model/TaskRun 'id stale)))
+        (is (= :started (t2/select-one-fn :status :model/TaskRun 'id fresh)))))))
 
 ;;; --------------------------------------------- heartbeat-ids! -------------------------------------------
 
@@ -112,7 +112,7 @@
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}]
       (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat [beat done])
-      (let [recent? (fn [id] (.isAfter ^OffsetDateTime (t2/select-one-fn :last_heartbeat :model/TransformRun :id id)
+      (let [recent? (fn [id] (.isAfter ^OffsetDateTime (t2/select-one-fn :last_heartbeat :model/TransformRun 'id id)
                                        (minutes-ago 1)))]
         (is (recent? beat) "a passed, still-active id is stamped")
         (is (not (recent? skip)) "an id not in the list is left to go stale")

@@ -102,7 +102,7 @@
               (transforms.execute/execute! transform {:run-method :manual})
               (transforms.tu/wait-for-table table-name 10000)
               (testing "every managed row is verified succeeded"
-                (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex :transform_id tid))))
+                (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex 'transform_id tid))))
               ;; the index endpoints inherit the transform's permission checks, which fail when transforms are disabled
               (testing "GET /index lists them, flagged metabase_managed"
                 (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
@@ -134,7 +134,7 @@
                   (testing "and the run is recorded as failed"
                     (is (= :failed
                            (t2/select-one-fn :status :model/TransformRun
-                                             :transform_id (:id transform)
+                                             'transform_id (:id transform)
                                              {:order-by [[:id :desc]]})))))))))))))
 
 (deftest ^:synchronized declared-index-creation-is-idempotent-test
@@ -272,7 +272,7 @@
         (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex kept-id)))
         (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex kept-id))))
       (testing "a vanished delete-pending row is removed, freeing its (transform, name) for re-create"
-        (is (not (t2/exists? :model/TableIndex :id dropped-id)))
+        (is (not (t2/exists? :model/TableIndex 'id dropped-id)))
         (is (some? (t2/insert-returning-pk! :model/TableIndex
                                             {:transform_id tid :index_name "dropped_idx"
                                              :structured {:kind :btree :name "dropped_idx"

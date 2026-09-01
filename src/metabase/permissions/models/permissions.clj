@@ -328,7 +328,7 @@
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (t2/select-one :model/Collection 'id collection-id))
     (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -532,7 +532,7 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
+         ([_# pk#]    (mi/can-read? (t2/select-one ~target 'id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)
@@ -577,7 +577,7 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
+    (t2/select-one :model/Collection 'id (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the

@@ -43,8 +43,8 @@
                     ["33 Taps"]
                     ["800 Degrees Neapolitan Pizzeria"]
                     ["BCD Tofu House"]]
-          table    (t2/select-one :model/Table :id (mt/id :venues))
-          fields   [(t2/select-one :model/Field :id (mt/id :venues :name))]
+          table    (t2/select-one :model/Table 'id (mt/id :venues))
+          fields   [(t2/select-one :model/Field 'id (mt/id :venues :name))]
           fetch   (fn [truncation-size]
                     (->> (table-rows-sample/table-rows-sample table fields (constantly conj)
                                                               (when truncation-size
@@ -136,8 +136,8 @@
   (testing "For coerced fields, effective type is used for fingerprinting (string -> number exmaple)"
     (mt/dataset
       coerced-string-nums-db
-      (doseq [id (t2/select-fn-vec :id :model/Field :table_id (mt/id :string_nums))]
-        (t2/update! :model/Field :id id {:fingerprint         nil
+      (doseq [id (t2/select-fn-vec :id :model/Field 'table_id (mt/id :string_nums))]
+        (t2/update! :model/Field 'id id {:fingerprint         nil
                                          :fingerprint_version 0}))
       (let [fingerprints                 (atom [])
             fingerprint-query            (atom nil)
@@ -147,7 +147,7 @@
                                     table-rows-sample/table-rows-sample-query (fn [& args]
                                                                                 (reset! fingerprint-query
                                                                                         (apply orig-table-rows-sample-query args)))]
-          (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
+          (fingerprint/fingerprint-table! (t2/select-one :model/Table 'id (mt/id :string_nums)))
           (testing "empty expressions = no substring optimization in sample query = use of effective type"
             (is (empty? (lib/expressions @fingerprint-query))))
           (testing "query returns number types due coercion -> numbers are fingerprinted"

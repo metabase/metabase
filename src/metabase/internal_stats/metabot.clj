@@ -7,7 +7,7 @@
 (defn- usage-by-model
   "Aggregate combined tokens by provider:model for a given UTC date."
   [date-utc]
-  (let [rows (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
+  (let [rows (t2/select [:model/AiUsageLog 'model [:%sum.total_tokens :tokens]]
                         {:where    [:and
                                     :ai_proxied
                                     [:= [:cast :created_at :date] [:cast date-utc :date]]]
@@ -42,8 +42,8 @@
                 :metabot-usage      (usage-by-model yesterday-utc)
                 :metabot-queries    (t2/select-one-fn :cnt
                                                       [:model/MetabotMessage [:%count.id :cnt]]
-                                                      :role "user"
-                                                      :forked_from_message_id nil
+                                                      'role "user"
+                                                      'forked_from_message_id nil
                                                       {:where [:and
                                                                :ai_proxied
                                                                [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})

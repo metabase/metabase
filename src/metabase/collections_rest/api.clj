@@ -1582,7 +1582,7 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
+    (doseq [card (t2/select :model/Card 'collection_id (u/the-id collection-before-update))]
       (notification/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
@@ -1594,7 +1594,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (t2/select-one [:model/Collection :location :id :type] :id new-parent-id)
+                          (t2/select-one [:model/Collection 'location 'id 'type] 'id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -1764,11 +1764,11 @@
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (let [updated-collection (t2/select-one :model/Collection :id id)]
+    (let [updated-collection (t2/select-one :model/Collection 'id id)]
       (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
+  (collection-detail (t2/select-one :model/Collection 'id id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1792,11 +1792,11 @@
     (t2/with-transaction [_tx]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
       (doseq [child (t2/select :model/Collection
-                               :location [:like (str old-children-location "%")]
-                               :archived_directly true)]
+                               'location ['like (str old-children-location "%")]
+                               'archived_directly true)]
         (collection/move-collection! child new-children-location))
       ;; Now we can safely delete this collection and anything left under it.
-      (t2/delete! :model/Collection :id id))))
+      (t2/delete! :model/Collection 'id id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

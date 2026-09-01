@@ -248,11 +248,11 @@
                         :card_id              card-id-1
                         :attribute_remappings {:foo 1}}]
                       (:sandboxes result)))
-              (is (t2/exists? :model/Sandbox :table_id table-id-1 :group_id group-id))))
+              (is (t2/exists? :model/Sandbox 'table_id table-id-1 'group_id group-id))))
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id :model/Sandbox
-                                               :table_id table-id-1
-                                               :group_id group-id)
+                                               'table_id table-id-1
+                                               'group_id group-id)
                   graph      (-> (data-perms.graph/api-graph)
                                  (assoc :sandboxes [{:id                   sandbox-id
                                                      :card_id              card-id-2
@@ -263,12 +263,12 @@
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 2}}
                             (t2/select-one :model/Sandbox
-                                           :table_id table-id-1
-                                           :group_id group-id)))))
+                                           'table_id table-id-1
+                                           'group_id group-id)))))
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id :model/Sandbox
-                                               :table_id table-id-1
-                                               :group_id group-id)
+                                               'table_id table-id-1
+                                               'group_id group-id)
                   graph       (-> (data-perms.graph/api-graph)
                                   (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id-2 :sandboxed}})
                                   (assoc :sandboxes [{:id                   sandbox-id
@@ -286,14 +286,14 @@
               (is (partial= {:card_id              card-id-1
                              :attribute_remappings {"foo" 3}}
                             (t2/select-one :model/Sandbox
-                                           :table_id table-id-1
-                                           :group_id group-id)))
+                                           'table_id table-id-1
+                                           'group_id group-id)))
               ;; Created sandbox
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 10}}
                             (t2/select-one :model/Sandbox
-                                           :table_id table-id-2
-                                           :group_id group-id))))))))))
+                                           'table_id table-id-2
+                                           'group_id group-id))))))))))
 
 (deftest sandbox-and-create-queries-persist-together-test
   (testing "PUT /api/permissions/graph with a sandbox view-data change and a create-queries change persists both (#46450)"
@@ -310,7 +310,7 @@
                                               :card_id              cid
                                               :attribute_remappings {"foo" 1}}]))]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
-            (is (t2/exists? :model/Sandbox :table_id tid :group_id gid))
+            (is (t2/exists? :model/Sandbox 'table_id tid 'group_id gid))
             (is (= :query-builder
                    (data-perms/table-permission-for-groups #{gid} :perms/create-queries (mt/id) tid)))))))))
 

@@ -148,7 +148,7 @@
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
             _            (api/check-400
-                          (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                          (not (t2/exists? :model/CustomVizPlugin 'identifier identifier))
                           (format "A custom visualization with identifier \"%s\" already exists." identifier))
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
@@ -176,7 +176,7 @@
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
         _            (api/check-400
-                      (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                      (not (t2/exists? :model/CustomVizPlugin 'identifier identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
@@ -219,7 +219,7 @@
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
-    (t2/delete! :model/CustomVizPlugin :id id)
+    (t2/delete! :model/CustomVizPlugin 'id id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})

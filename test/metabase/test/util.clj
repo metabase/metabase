@@ -574,14 +574,14 @@
       (t2/update! :model/Setting setting-k {:value value})
       (t2/insert! :model/Setting :key setting-k :value value))
     (when original-value
-      (t2/delete! :model/Setting :key setting-k)))
+      (t2/delete! :model/Setting 'key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   [original-value setting-k]
   (if original-value
     (t2/update! :model/Setting setting-k {:value original-value})
-    (t2/delete! :model/Setting :key setting-k))
+    (t2/delete! :model/Setting 'key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value!
@@ -610,7 +610,7 @@
     (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
-                             (t2/select-one-fn :value :model/Setting :key setting-k)
+                             (t2/select-one-fn :value :model/Setting 'key setting-k)
                              (if skip-init?
                                (setting/read-setting setting-k)
                                (setting/get setting-k)))]
@@ -1022,11 +1022,11 @@
             (is (= (inc card-count-before)
                    (t2/count :model/Card))))
           (testing "Card should exist"
-            (is (t2/exists? :model/Card :name card-name))))
+            (is (t2/exists? :model/Card 'name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
                  (t2/count :model/Card)))
-          (is (not (t2/exists? :model/Card :name card-name)))
+          (is (not (t2/exists? :model/Card 'name card-name)))
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
@@ -1087,12 +1087,12 @@
                  :status "verified"}}
               (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
                                 :model/ModerationReview
-                                :moderated_item_id card-id
-                                :moderated_item_type "card"))))
+                                'moderated_item_id card-id
+                                'moderated_item_type "card"))))
     (testing "everything is cleaned up after the macro"
       (is (= 0 (t2/count :model/ModerationReview
-                         :moderated_item_id card-id
-                         :moderated_item_type "card"))))))
+                         'moderated_item_id card-id
+                         'moderated_item_type "card"))))))
 
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
@@ -1149,13 +1149,13 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path (perms/collection-read-path collection-or-id)
         readwrite-path (perms/collection-readwrite-path collection-or-id)
-        groups-with-read-perms (t2/select-fn-set :group_id :model/Permissions :object read-path)
-        groups-with-readwrite-perms (t2/select-fn-set :group_id :model/Permissions :object readwrite-path)]
+        groups-with-read-perms (t2/select-fn-set :group_id :model/Permissions 'object read-path)
+        groups-with-readwrite-perms (t2/select-fn-set :group_id :model/Permissions 'object readwrite-path)]
     (mb.hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
-        (t2/delete! :model/Permissions :object [:in #{read-path readwrite-path}])
+        (t2/delete! :model/Permissions 'object ['in #{read-path readwrite-path}])
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
@@ -1235,8 +1235,8 @@
      collection
      (fn []
        (t2/delete! :model/Permissions
-                   :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-                   :group_id [:not= (u/the-id (perms/admin-group))])
+                   'object ['in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+                   'group_id ['not= (u/the-id (perms/admin-group))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -1245,9 +1245,9 @@
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
-                                            :id [:not= (u/the-id (perms/admin-group))]
-                                            :is_tenant_group false)]
-          (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
+                                            'id ['not= (u/the-id (perms/admin-group))]
+                                            'is_tenant_group false)]
+          (when-not (t2/exists? :model/Permissions 'group_id group-id, 'object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
@@ -1349,12 +1349,12 @@
      ([] thunk)
      ([thunk] (thunk))
      ([thunk [original-column-id remap]]
-      (let [original (t2/select-one :model/Field :id (u/the-id original-column-id))
+      (let [original (t2/select-one :model/Field 'id (u/the-id original-column-id))
             describe-field (fn [{table-id :table_id, field-name :name}]
-                             (format "%s.%s" (t2/select-one-fn :name :model/Table :id table-id) field-name))]
+                             (format "%s.%s" (t2/select-one-fn :name :model/Table 'id table-id) field-name))]
         (if (integer? remap)
           ;; remap is integer => fk remap
-          (let [remapped (t2/select-one :model/Field :id (u/the-id remap))]
+          (let [remapped (t2/select-one :model/Field 'id (u/the-id remap))]
             (fn []
               (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
                                                            :name (format "%s [external remap]" (:display_name original))
@@ -1369,8 +1369,8 @@
                              remap)]
             (fn []
               (let [preexisting-id (t2/select-one-pk :model/FieldValues
-                                                     :field_id (:id original)
-                                                     :type :full)
+                                                     'field_id (:id original)
+                                                     'type :full)
                     testing-thunk (fn []
                                     (testing (format "With human readable values remapping %s -> %s\n"
                                                      (describe-field original) (pr-str values-map))
@@ -1701,7 +1701,7 @@
   ([] (latest-audit-log-entry nil nil))
   ([topic] (latest-audit-log-entry topic nil))
   ([topic model-id]
-   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+   (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
@@ -1712,7 +1712,7 @@
   [topic model model-id]
   (assert (int? model-id) "Must provide an integer id for the model")
   (assert (isa? model :metabase/model))
-  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+  (t2/select [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
              {:order-by [[:id :desc]]
               :where [:and
                       [:= :model (name model)]

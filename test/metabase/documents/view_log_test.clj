@@ -18,9 +18,9 @@
   "Returns the most recent view for a given user and document ID"
   [user-id document-id]
   (t2/select-one :model/ViewLog
-                 :user_id user-id
-                 :model "document"
-                 :model_id document-id
+                 'user_id user-id
+                 'model "document"
+                 'model_id document-id
                  {:order-by [[:id :desc]]}))
 
 (deftest document-read-ee-test
@@ -155,16 +155,16 @@
       (testing "Document read event updates user's recent views"
         ;; Verify no recent views initially
         (is (empty? (t2/select :model/RecentViews
-                               :user_id (:id user)
-                               :model "document"
-                               :model_id (:id document))))
+                               'user_id (:id user)
+                               'model "document"
+                               'model_id (:id document))))
         ;; Publish document read event
         (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
         ;; Verify recent view was created
         (let [recent-view (t2/select-one :model/RecentViews
-                                         :user_id (:id user)
-                                         :model "document"
-                                         :model_id (:id document))]
+                                         'user_id (:id user)
+                                         'model "document"
+                                         'model_id (:id document))]
           (is (some? recent-view) "Recent view should be created")
           (is (= (:id user) (:user_id recent-view)))
           (is (= "document" (:model recent-view)))

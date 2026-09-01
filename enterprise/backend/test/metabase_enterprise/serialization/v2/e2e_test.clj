@@ -304,13 +304,13 @@
                   (is (= (clean-entity coll)
                          (-> (ts/extract-one "Table" [:and
                                                       [:= :name name]
-                                                      [:= :db_id (t2/select-one-pk 'Database :name db_id)]])
+                                                      [:= :db_id (t2/select-one-pk 'Database 'name db_id)]])
                              clean-entity)))))
               (testing "for Fields"
                 (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
                   (is (nil? schema))
-                  (let [db (t2/select-one-pk 'Database :name db)
-                        table (t2/select-one-fn :id 'Table :schema schema :name table :db_id db)]
+                  (let [db (t2/select-one-pk 'Database 'name db)
+                        table (t2/select-one-fn :id 'Table 'schema schema 'name table 'db_id db)]
                     (is (= (clean-entity coll)
                            (-> (ts/extract-one "Field" [:and [:= :name name] [:= :table_id table]])
                                clean-entity))))))
@@ -433,10 +433,10 @@
                   (testing "doing ingestion"
                     (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                         "successful"))
-                  (let [dash1d  (t2/select-one :model/Dashboard :name (:name dash1s))
-                        card1d  (t2/select-one :model/Card :name (:name card1s))
-                        card2d  (t2/select-one :model/Card :name (:name card2s))
-                        field1d (t2/select-one :model/Field :name (:name field1s))]
+                  (let [dash1d  (t2/select-one :model/Dashboard 'name (:name dash1s))
+                        card1d  (t2/select-one :model/Card 'name (:name card1s))
+                        card2d  (t2/select-one :model/Card 'name (:name card2s))
+                        field1d (t2/select-one :model/Field 'name (:name field1s))]
                     (testing "parameter on dashboard is loaded correctly"
                       (is (= {:card_id     (:id card1d),
                               :value_field [:field (:id field1d) nil]}
@@ -444,7 +444,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                      (is (some? (t2/select-one :model/ParameterCard 'parameterized_object_type "dashboard" 'parameterized_object_id (:id dash1d)))))
                     (testing "parameter on card is loaded correctly"
                       (is (= {:card_id     (:id card1d),
                               :value_field [:field (:id field1d) nil]}
@@ -452,7 +452,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                      (is (some? (t2/select-one :model/ParameterCard 'parameterized_object_type "card" 'parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -541,21 +541,21 @@
                          [model-name 'Card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
-                    (is (some? (t2/select model :name name)))))
+                    (is (some? (t2/select model 'name name)))))
                 (testing "linkcards are loaded with correct fk"
-                  (let [new-db-id    (t2/select-one-pk :model/Database :name db-name)
-                        new-table-id (t2/select-one-pk :model/Table :name table-name)
-                        new-card-id  (t2/select-one-pk :model/Card :name card-name)
-                        new-model-id (t2/select-one-pk :model/Card :name model-name)
-                        new-dash-id  (t2/select-one-pk :model/Dashboard :name dash-name)
-                        new-coll-id  (t2/select-one-pk :model/Collection :name coll-name)]
+                  (let [new-db-id    (t2/select-one-pk :model/Database 'name db-name)
+                        new-table-id (t2/select-one-pk :model/Table 'name table-name)
+                        new-card-id  (t2/select-one-pk :model/Card 'name card-name)
+                        new-model-id (t2/select-one-pk :model/Card 'name model-name)
+                        new-dash-id  (t2/select-one-pk :model/Dashboard 'name dash-name)
+                        new-coll-id  (t2/select-one-pk :model/Collection 'name coll-name)]
                     (is (= [{:id new-coll-id  :model "collection"}
                             {:id new-db-id    :model "database"}
                             {:id new-table-id :model "table"}
                             {:id new-dash-id  :model "dashboard"}
                             {:id new-card-id  :model "card"}
                             {:id new-model-id :model "dataset"}]
-                           (-> (t2/select-one :model/Dashboard :name dashboard-name)
+                           (-> (t2/select-one :model/Dashboard 'name dashboard-name)
                                (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
 
@@ -574,7 +574,7 @@
            :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
            :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
           (testing "sense check what hydrated dashcards look like on the source DB"
-            (let [hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+            (let [hydrated-dashcards (-> (t2/select-one :model/Dashboard 'name (:name dash))
                                          (t2/hydrate [:dashcards :series])
                                          :dashcards
                                          (->> (m/index-by :id)))]
@@ -591,12 +591,12 @@
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
               (testing "Series are loaded correctly"
-                (let [new-c1-id  (t2/select-one-pk :model/Card :name (:name c1))
-                      new-c2-id  (t2/select-one-pk :model/Card :name (:name c2))
-                      new-c3-id  (t2/select-one-pk :model/Card :name (:name c3))
-                      new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id new-c1-id)
-                      new-dc2-id (t2/select-one-pk :model/DashboardCard :card_id new-c2-id)
-                      new-hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                (let [new-c1-id  (t2/select-one-pk :model/Card 'name (:name c1))
+                      new-c2-id  (t2/select-one-pk :model/Card 'name (:name c2))
+                      new-c3-id  (t2/select-one-pk :model/Card 'name (:name c3))
+                      new-dc1-id (t2/select-one-pk :model/DashboardCard 'card_id new-c1-id)
+                      new-dc2-id (t2/select-one-pk :model/DashboardCard 'card_id new-c2-id)
+                      new-hydrated-dashcards (-> (t2/select-one :model/Dashboard 'name (:name dash))
                                                  (t2/hydrate [:dashcards :series])
                                                  :dashcards
                                                  (->> (m/index-by :id)))]
@@ -648,12 +648,12 @@
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
-                (let [new-dashboard (-> (t2/select-one :model/Dashboard :entity_id dashboard-eid)
+                (let [new-dashboard (-> (t2/select-one :model/Dashboard 'entity_id dashboard-eid)
                                         (t2/hydrate :tabs :dashcards))
-                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
-                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
-                      new-card-id-1 (t2/select-one-pk :model/Card :entity_id card-eid-1)
-                      new-card-id-2 (t2/select-one-pk :model/Card :entity_id card-eid-2)]
+                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab 'entity_id tab-eid-1)
+                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab 'entity_id tab-eid-2)
+                      new-card-id-1 (t2/select-one-pk :model/Card 'entity_id card-eid-1)
+                      new-card-id-2 (t2/select-one-pk :model/Card 'entity_id card-eid-2)]
                   (is (=? [{:id           new-tab-id-1
                             :dashboard_id (:id new-dashboard)
                             :name         "Tab 1"
@@ -700,9 +700,9 @@
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
                 (testing "The loaded card is a dashboard question, same as before"
-                  (let [new-dash-id (t2/select-one-pk :model/Dashboard :entity_id dashboard-eid)
-                        new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
-                        new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
+                  (let [new-dash-id (t2/select-one-pk :model/Dashboard 'entity_id dashboard-eid)
+                        new-coll-id (t2/select-one-pk :model/Collection 'entity_id coll-eid)
+                        new-card-id (t2/select-one-pk :model/Card 'entity_id card-eid)]
                     (is (= new-dash-id (:dashboard_id
                                         (t2/select-one :model/Card new-card-id))))
                     (is (= new-coll-id (:collection_id
@@ -727,8 +727,8 @@
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
                 (testing "only the router database was exported"
-                  (is (t2/exists? :model/Database :name "Router"))
-                  (is (not (t2/exists? :model/Database :name "Destination")))
+                  (is (t2/exists? :model/Database 'name "Router"))
+                  (is (not (t2/exists? :model/Database 'name "Destination")))
                   (is (= 0 (t2/count :model/DatabaseRouter))))))))))))
 
 (deftest premium-features-test
@@ -816,7 +816,7 @@
                              :orders.product_id %orders.product_id}
                             @old-ids)))
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
-                (let [viz (t2/select-one-fn :visualization_settings :model/Card :entity_id (:entity_id @card1s))]
+                (let [viz (t2/select-one-fn :visualization_settings :model/Card 'entity_id (:entity_id @card1s))]
                   (testing "column names inside pivot table transferred"
                     (is (= ["NAME"]
                            (get-in viz [:pivot_table.column_split :rows])))
@@ -890,7 +890,7 @@
                          :type    :channel/http
                          :details {:url         "http://example.com"
                                    :auth-method "none"}}
-                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))
+                        (t2/select-one :model/Channel 'name "My HTTP channel")))))))))))
 
 (deftest metric-based-question-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -916,8 +916,8 @@
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful")
-                (let [new-coll-id (t2/select-one-pk :model/Collection :name "Collection")
-                      new-metric (t2/select-one :model/Card :name "Metric Card")]
+                (let [new-coll-id (t2/select-one-pk :model/Collection 'name "Collection")
+                      new-metric (t2/select-one :model/Card 'name "Metric Card")]
                   (is (int? new-coll-id))
                   (is (=? {:name "Metric Card"
                            :collection_id new-coll-id
@@ -929,7 +929,7 @@
                            :collection_id new-coll-id
                            :dataset_query {:stages [{:aggregation [[:metric {} (:id new-metric)]]
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
-                          (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
+                          (t2/select-one :model/Card 'name "Metric Consuming Question Card"))))))))))))
 
 (deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
   (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
@@ -961,7 +961,7 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card 'dataset_query] native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
               (t2/update! :model/Card native-id {:result_metadata source-cols})
@@ -970,8 +970,8 @@
               (ts/with-db dest-db
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "serdes ingest succeeded")
-                (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
-                      imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
+                (let [imported-native (t2/select-one :model/Card 'entity_id native-eid)
+                      imported-gui    (t2/select-one :model/Card 'entity_id gui-eid)]
                   (testing "imported native card preserves its result_metadata columns"
                     (is (= source-names (mapv :name (:result_metadata imported-native)))
                         "Native source card lost result_metadata columns during serdes round-trip"))
@@ -1021,7 +1021,7 @@
             (let [ingestable (ingest/ingest-yaml dump-dir)]
               (is (serdes/with-cache (serdes.load/load-metabase! ingestable))
                   "ingestion should succeed")
-              (is (t2/exists? :model/Collection :entity_id coll-eid)
+              (is (t2/exists? :model/Collection 'entity_id coll-eid)
                   "collection should have been imported from old-format path"))))))))
 
 (deftest query-with-missing-table-and-field-test
@@ -1034,11 +1034,11 @@
             query    (-> (lib/query mp (lib.metadata/table mp table-id))
                          (lib/with-fields [(lib.metadata/field mp field-id)]))
             exported (serdes/export-mbql query)
-            _        (t2/delete! :model/Field :id field-id)
-            _        (t2/delete! :model/Table :id table-id)
+            _        (t2/delete! :model/Field 'id field-id)
+            _        (t2/delete! :model/Table 'id table-id)
             imported (serdes/import-mbql exported)
-            table    (t2/select-one :model/Table :db_id db-id :schema table-schema :name table-name)
-            field    (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+            table    (t2/select-one :model/Table 'db_id db-id 'schema table-schema 'name table-name)
+            field    (t2/select-one :model/Field 'table_id (:id table) 'name field-name)]
         (is (=? {:db_id db-id :schema table-schema :name table-name :active false} table))
         (is (=? {:table_id (:id table) :name field-name :active false}             field))
         (is (= (:id table) (lib/primary-source-table-id imported)))

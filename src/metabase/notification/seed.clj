@@ -189,9 +189,9 @@
 
 (defn- cleanup-notification!
   [internal-id existing-row]
-  (t2/delete! :model/Notification :internal_id internal-id)
+  (t2/delete! :model/Notification 'internal_id internal-id)
   (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
-    (t2/delete! :model/ChannelTemplate :id [:in template-ids])))
+    (t2/delete! :model/ChannelTemplate 'id ['in template-ids])))
 
 (defn- create-notification!
   [notification]
@@ -233,7 +233,7 @@
 
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
-  (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
+  (let [existing-notification (some-> (t2/select-one :model/Notification 'internal_id internal_id)
                                       hydrate-existing-notification)]
     (u/prog1 (action existing-notification row)
       (case <>

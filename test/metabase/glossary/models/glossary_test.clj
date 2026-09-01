@@ -22,14 +22,14 @@
                                                 :definition "Representational State Transfer"
                                                 :creator_id user2-id}]
         (testing "Single glossary entry hydration"
-          (let [hydrated (t2/hydrate (t2/select-one :model/Glossary :id (:id glossary1)) :creator)]
+          (let [hydrated (t2/hydrate (t2/select-one :model/Glossary 'id (:id glossary1)) :creator)]
             (is (some? (:creator hydrated)))
             (is (= user1-id (get-in hydrated [:creator :id])))
             (is (= "Test" (get-in hydrated [:creator :first_name])))
             (is (= "Creator" (get-in hydrated [:creator :last_name])))
             (is (= "test.creator@example.com" (get-in hydrated [:creator :email])))))
         (testing "Batch glossary entry hydration"
-          (let [glossary-entries (t2/select :model/Glossary :id [:in [(:id glossary1) (:id glossary2)]])
+          (let [glossary-entries (t2/select :model/Glossary 'id ['in [(:id glossary1) (:id glossary2)]])
                 hydrated (t2/hydrate glossary-entries :creator)]
             (is (= 2 (count hydrated)))
             (is (every? #(some? (:creator %)) hydrated))

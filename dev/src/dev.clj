@@ -156,7 +156,7 @@
 (defn deleted-inmem-databases
   "Finds in-memory Databases for which the underlying in-mem h2 db no longer exists."
   []
-  (let [h2-dbs (t2/select :model/Database :engine :h2)
+  (let [h2-dbs (t2/select :model/Database 'engine :h2)
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
                        (binding [driver.settings/*allow-testing-h2-connections* true]
@@ -175,7 +175,7 @@
   will otherwise spam logs)."
   []
   (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
-    (t2/delete! :model/Database :id [:in outdated-ids])))
+    (t2/delete! :model/Database 'id ['in outdated-ids])))
 
 (defn start!
   "Start Metabase"
@@ -365,7 +365,7 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (t2/select-one :model/Database :name "Application Database")
+    (or (t2/select-one :model/Database 'name "Application Database")
         (let [details (#'mdb.env/broken-out-details
                        (mdb/db-type)
                        @#'mdb.env/env)

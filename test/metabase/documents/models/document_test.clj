@@ -49,9 +49,9 @@
         ;; Should update exactly 2 cards
         (is (= 2 updated-count))
         ;; Verify the document cards were updated
-        (let [updated-card1 (t2/select-one :model/Card :id card1-id)
-              updated-card2 (t2/select-one :model/Card :id card2-id)
-              other-card (t2/select-one :model/Card :id other-card-id)]
+        (let [updated-card1 (t2/select-one :model/Card 'id card1-id)
+              updated-card2 (t2/select-one :model/Card 'id card2-id)
+              other-card (t2/select-one :model/Card 'id other-card-id)]
           (is (= collection-id (:collection_id updated-card1)))
           (is (= collection-id (:collection_id updated-card2)))
           ;; Other card should not be affected
@@ -69,7 +69,7 @@
         ;; Should update 0 cards since no cards have matching document_id
         (is (= 0 updated-count))
         ;; Verify the card with nil document_id was not affected
-        (let [unchanged-card (t2/select-one :model/Card :id nil-document-card-id)]
+        (let [unchanged-card (t2/select-one :model/Card 'id nil-document-card-id)]
           (is (nil? (:collection_id unchanged-card))))))))
 
 (deftest sync-document-cards-collection-empty-result-sets-test
@@ -97,8 +97,8 @@
       ;; Update the document's collection_id
       (t2/update! :model/Document document-id {:collection_id new-collection-id})
       ;; Verify that associated cards were updated to match the new collection
-      (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
-      (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
+      (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card1-id))))
+      (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card2-id)))))))
 
 (deftest document-collection-sync-hook-handles-nil-collections-test
   (testing "Hook correctly handles nil collection values"
@@ -112,7 +112,7 @@
       ;; Move document to no collection (nil)
       (t2/update! :model/Document document-id {:collection_id nil})
       ;; Verify that the card's collection_id was updated to nil
-      (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
+      (is (nil? (:collection_id (t2/select-one :model/Card 'id card-id)))))))
 
 (deftest document-collection-sync-hook-only-affects-cards-test
   (testing "Hook only updates cards with  matching document_id"
@@ -136,10 +136,10 @@
       ;; Update the document's collection_id
       (t2/update! :model/Document document-id {:collection_id new-collection-id})
       ;; Verify only the correct card was updated
-      (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
+      (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id in-document-card-id))))
       ;; Verify other cards were NOT updated
-      (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id question-card-id))))
-      (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id regular-card-id)))))))
+      (is (= old-collection-id (:collection_id (t2/select-one :model/Card 'id question-card-id))))
+      (is (= old-collection-id (:collection_id (t2/select-one :model/Card 'id regular-card-id)))))))
 
 (deftest personal-collection-edge-cases-test
   (testing "Personal collection handling"
@@ -159,15 +159,15 @@
             ;; As the personal collection owner, update should succeed
             (t2/update! :model/Document document-id {:collection_id personal-collection-id})
             ;; Verify both document and card moved to personal collection
-            (is (= personal-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= personal-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+            (is (= personal-collection-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+            (is (= personal-collection-id (:collection_id (t2/select-one :model/Card 'id card-id))))))
         (testing "moving document from personal collection works"
           (mt/with-current-user user-id
             ;; Move back to regular collection
             (t2/update! :model/Document document-id {:collection_id regular-collection-id})
             ;; Verify both document and card moved back
-            (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))))))
+            (is (= regular-collection-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+            (is (= regular-collection-id (:collection_id (t2/select-one :model/Card 'id card-id))))))))))
 
 (deftest validate-collection-move-permissions-allows-move-with-both-permissions-test
   (testing "allows move when user has write permissions for both collections"
@@ -292,7 +292,7 @@
                                               :email "john.doe@example.com"}
                    :model/Document {document-id :id} {:name "Test Document"
                                                       :creator_id user-id}]
-      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :creator)]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document 'id document-id) :creator)]
         (testing "creator is hydrated with correct user data"
           (is (some? (:creator hydrated-doc)))
           (is (= user-id (get-in hydrated-doc [:creator :id])))
@@ -314,7 +314,7 @@
                                                   :creator_id user2-id}
                    :model/Document {doc3-id :id} {:name "Document 3"
                                                   :creator_id user1-id}] ; Same creator as doc1
-      (let [documents (t2/select :model/Document :id [:in [doc1-id doc2-id doc3-id]])
+      (let [documents (t2/select :model/Document 'id ['in [doc1-id doc2-id doc3-id]])
             hydrated-docs (t2/hydrate documents :creator)]
         (testing "all documents have their creators hydrated"
           (is (= 3 (count hydrated-docs)))
@@ -344,7 +344,7 @@
                    :model/Card {card2-id :id} {:name "Card 2"
                                                :dataset_query (mt/mbql-query venues {:limit 10})
                                                :document_id document-id}]
-      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document 'id document-id) :cards)]
         (testing "cards are hydrated as a map keyed by card ID"
           (is (map? (:cards hydrated-doc)))
           (is (= 2 (count (:cards hydrated-doc))))
@@ -367,7 +367,7 @@
                                                        :dataset_query (mt/mbql-query venues {:limit 5})
                                                        :document_id document-id
                                                        :archived true}]
-      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document 'id document-id) :cards)]
         (testing "only active cards are included"
           (is (= 1 (count (:cards hydrated-doc))))
           (is (contains? (:cards hydrated-doc) active-card-id))
@@ -387,7 +387,7 @@
                    :model/Card {card3-id :id} {:name "Card 3"
                                                :dataset_query (mt/mbql-query venues {:limit 5})
                                                :document_id doc2-id}]
-      (let [documents (t2/select :model/Document :id [:in [doc1-id doc2-id doc3-id]])
+      (let [documents (t2/select :model/Document 'id ['in [doc1-id doc2-id doc3-id]])
             hydrated-docs (t2/hydrate documents :cards)]
         (testing "all documents have cards field"
           (is (= 3 (count hydrated-docs)))
@@ -413,16 +413,16 @@
                    :model/Document {document-id :id} {:name "Positioned Document"
                                                       :collection_id collection-id
                                                       :collection_position 5}]
-      (let [document (t2/select-one :model/Document :id document-id)]
+      (let [document (t2/select-one :model/Document 'id document-id)]
         (testing "collection_position is stored and retrieved correctly"
           (is (= 5 (:collection_position document)))))
       (testing "collection_position can be updated"
         (t2/update! :model/Document document-id {:collection_position 10})
-        (let [updated-document (t2/select-one :model/Document :id document-id)]
+        (let [updated-document (t2/select-one :model/Document 'id document-id)]
           (is (= 10 (:collection_position updated-document)))))
       (testing "collection_position can be set to nil"
         (t2/update! :model/Document document-id {:collection_position nil})
-        (let [updated-document (t2/select-one :model/Document :id document-id)]
+        (let [updated-document (t2/select-one :model/Document 'id document-id)]
           (is (nil? (:collection_position updated-document))))))))
 
 ;;; ------------------------------------------------- Serialization Tests -------------------------------------------

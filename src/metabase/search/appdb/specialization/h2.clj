@@ -28,7 +28,7 @@
     (when (seq entries)
       (doseq [[model model-entries] (group-by :model entries)]
         (let [ids (map (comp str :model_id) model-entries)]
-          (t2/delete! table :model model :model_id [:in ids])))
+          (t2/delete! table 'model model 'model_id ['in ids])))
       (t2/insert! table entries))))
 
 (defn- wildcard-tokens [search-term]

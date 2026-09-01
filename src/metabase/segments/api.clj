@@ -57,7 +57,7 @@
       (t2/hydrate segment :creator))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/Segment :id id))
+  (-> (api/read-check (t2/select-one :model/Segment 'id id))
       (t2/hydrate :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -78,11 +78,11 @@
   "Fetch *all* `Segments`."
   []
   (let [segments  (t2/select :model/Segment
-                             :archived false
+                             'archived false
                              {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (t2/select-fn-set :db_id :model/Table 'id ['in table-ids]))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))
@@ -157,4 +157,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
+  (-> (t2/select-one :model/Segment 'id id) api/read-check xrays/related))

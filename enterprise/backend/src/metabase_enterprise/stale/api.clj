@@ -40,7 +40,7 @@
                                  (remove coll-id->coll))
                        (vals coll-id->coll))
         coll-id->coll (merge (if (seq to-fetch)
-                               (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
+                               (t2/select-pk->fn identity :model/Collection 'id ['in to-fetch])
                                {})
                              coll-id->coll)
         annotate (fn [x]
@@ -57,21 +57,21 @@
 
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (t2/select [:model/Card
-                               :id
-                               :dashboard_id
-                               :description
-                               :collection_id
-                               :name
-                               :entity_id
-                               :archived
-                               :collection_position
-                               :display
-                               :collection_preview
-                               :database_id
+                               'id
+                               'dashboard_id
+                               'description
+                               'collection_id
+                               'name
+                               'entity_id
+                               'archived
+                               'collection_position
+                               'display
+                               'collection_preview
+                               'database_id
                                [nil :location]
-                               :dataset_query
-                               :card_schema
-                               :last_used_at
+                               'dataset_query
+                               'card_schema
+                               'last_used_at
                                [^:allow-subquery
                                 {:select   [:status]
                                  :from     [:moderation_review]
@@ -84,7 +84,7 @@
                                  :order-by [[:id :desc]]
                                  :limit    1}
                                 :moderated_status]]
-                              :id [:in (set (map :id cards))])
+                              'id ['in (set (map :id cards))])
                    :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
        present-collections
        (map (fn [card]
@@ -105,19 +105,19 @@
 
 (defmethod present-model-items :model/Dashboard [_ dashboards]
   (->> (t2/hydrate (t2/select [:model/Dashboard
-                               :id
-                               :description
-                               :collection_id
-                               :name
-                               :entity_id
-                               :archived
-                               :collection_position
+                               'id
+                               'description
+                               'collection_id
+                               'name
+                               'entity_id
+                               'archived
+                               'collection_position
                                [:last_viewed_at :last_used_at]
                                ["dashboard" :model]
                                [nil :dashboard_id]
                                [nil :location]
                                [nil :database_id]]
-                              :id [:in (set (map :id dashboards))])
+                              'id ['in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore [:collection :effective_location])
        annotate-dashboard-with-collection-info
        present-collections))

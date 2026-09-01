@@ -199,7 +199,7 @@
                                                      ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
         (testing "the stored bcrypt hash is encrypted at rest"
           ;; select from the raw table to bypass the model's decrypting :out transform
-          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+          (let [raw (t2/select-one-fn :key :api_key 'id api-key-id)]
             (is (encryption/possibly-encrypted-string? raw)
                 "raw column value should be ciphertext")
             (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
@@ -332,7 +332,7 @@
                                   :user_id    (mt/user->id :lucky)})
       (is (= nil (#'mw.session/current-user-info-for-session test-session-id nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"
@@ -350,7 +350,7 @@
               :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test-2
   (testing "superusers should come back as `:is-superuser?`"
@@ -366,7 +366,7 @@
               :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test-3
   (testing "If user is a group manager of at least one group, `:is-group-manager?` "
@@ -374,7 +374,7 @@
       (mt/with-user-in-groups [group-1 {:name "New Group 1"}
                                group-2 {:name "New Group 2"}
                                user    [group-1 group-2]]
-        (t2/update! :model/PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+        (t2/update! :model/PermissionsGroupMembership {'user_id (:id user), 'group_id (:id group-2)}
                     {:is_group_manager true})
         (t2/insert! :model/Session {:id         test-session-id
                                     :key_hashed test-session-key-hashed
@@ -390,7 +390,7 @@
             (is (true?
                  (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test-4
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
@@ -402,7 +402,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))
+        (t2/delete! :model/Session 'id test-session-id)))
     (testing "...but if we do specifiy the token, they should come back"
       (try
         (t2/insert! :model/Session {:id              test-session-id
@@ -417,7 +417,7 @@
                 :auth-provider nil}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
-          (t2/delete! :model/Session :id test-session-id)))
+          (t2/delete! :model/Session 'id test-session-id)))
       (testing "(unless the token is wrong)"
         (try
           (t2/insert! :model/Session {:id              test-session-id
@@ -427,7 +427,7 @@
           (is (= nil
                  (#'mw.session/current-user-info-for-session test-session-key (str/join (reverse test-anti-csrf-token)))))
           (finally
-            (t2/delete! :model/Session :id test-session-id)))))))
+            (t2/delete! :model/Session 'id test-session-id)))))))
 
 (deftest current-user-info-for-session-test-5
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
@@ -438,7 +438,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test-6
   (testing "shouldn't fetch expired sessions"
@@ -451,7 +451,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest current-user-info-for-session-test-7
   (testing "shouldn't fetch sessions for inactive users"
@@ -460,7 +460,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
-        (t2/delete! :model/Session :id test-session-id)))))
+        (t2/delete! :model/Session 'id test-session-id)))))
 
 (deftest auth-provider-via-left-join-test
   (testing "session LEFT JOIN on auth_identity returns correct provider for each auth method"
@@ -489,8 +489,8 @@
               (is (= provider
                      (:auth-provider (#'mw.session/current-user-info-for-session session-key nil))))
               (finally
-                (t2/delete! :model/Session :id session-id)
-                (t2/delete! :model/AuthIdentity :id (:id ai))))))))))
+                (t2/delete! :model/Session 'id session-id)
+                (t2/delete! :model/AuthIdentity 'id (:id ai))))))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]

@@ -36,8 +36,8 @@
         (is (= #{models.analysis-finding/*current-analysis-finding-version*}
                (t2/select-fn-set :analysis_version
                                  :model/AnalysisFinding
-                                 :analyzed_entity_id [:in [card-id other-card-id]]
-                                 :analyzed_entity_type :card)))))))
+                                 'analyzed_entity_id ['in [card-id other-card-id]]
+                                 'analyzed_entity_type :card)))))))
 
 (deftest ^:synchronized does-not-repeatedly-analyze-entities-test
   (backfill-all-entity-analyses!)
@@ -75,8 +75,8 @@
           (is (= [models.analysis-finding/*current-analysis-finding-version* false]
                  (t2/select-one-fn (juxt :analysis_version :result)
                                    :model/AnalysisFinding
-                                   :analyzed_entity_id card-id
-                                   :analyzed_entity_type :card))))))))
+                                   'analyzed_entity_id card-id
+                                   'analyzed_entity_type :card))))))))
 
 (deftest ^:synchronized does-report-errors-for-missing-refs-in-fields-test
   (testing "missing (not inactive) field refs in :fields are reported as findings (GHY-3157)"
@@ -95,8 +95,8 @@
           (is (= [models.analysis-finding/*current-analysis-finding-version* false]
                  (t2/select-one-fn (juxt :analysis_version :result)
                                    :model/AnalysisFinding
-                                   :analyzed_entity_id card-id
-                                   :analyzed_entity_type :card))))))))
+                                   'analyzed_entity_id card-id
+                                   'analyzed_entity_type :card))))))))
 
 ;; TODO: (bshepherdson, 2026-02-05) Add a test like does-not-report-errors-in-removable-refs-test-1-stage-fields for
 ;; join clause :fields as well. See QUE-3081 and QUE-3044.
@@ -127,15 +127,15 @@
   "Returns a map of {entity-id stale?} for the given card IDs."
   [card-ids]
   (t2/select-fn->fn :analyzed_entity_id :stale :model/AnalysisFinding
-                    :analyzed_entity_type :card
-                    :analyzed_entity_id [:in card-ids]))
+                    'analyzed_entity_type :card
+                    'analyzed_entity_id ['in card-ids]))
 
 (defn- finding-stale?
   "Returns the stale value for a specific entity's analysis finding, or nil if no finding exists."
   [entity-type entity-id]
   (t2/select-one-fn :stale :model/AnalysisFinding
-                    :analyzed_entity_type entity-type
-                    :analyzed_entity_id entity-id))
+                    'analyzed_entity_type entity-type
+                    'analyzed_entity_id entity-id))
 
 (deftest ^:synchronized analyze-batch-picks-up-missing-analyses-test
   (testing "analyze-batch! picks up entities with no pre-existing AnalysisFinding"
@@ -147,15 +147,15 @@
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
             (testing "card has no analysis finding initially"
               (is (not (t2/exists? :model/AnalysisFinding
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id card-id))))
+                                   'analyzed_entity_type :card
+                                   'analyzed_entity_id card-id))))
             (testing "analyze-batch! creates analysis for the card"
               (lib-be/with-metadata-provider-cache
                 (is (pos? (deps.findings/analyze-batch! :card 10)))))
             (testing "card now has an analysis finding"
               (is (t2/exists? :model/AnalysisFinding
-                              :analyzed_entity_type :card
-                              :analyzed_entity_id card-id)))))))))
+                              'analyzed_entity_type :card
+                              'analyzed_entity_id card-id)))))))))
 
 (deftest mark-dependents-stale-test
   (testing "mark-transitive-dependents-stale! marks direct dependents as stale"
@@ -171,7 +171,7 @@
                                                 :to_entity_type :card
                                                 :to_entity_id parent-card-id}]
               (run! deps.findings/upsert-analysis!
-                    (t2/select :model/Card :id [:in [parent-card-id child-card-id]]))
+                    (t2/select :model/Card 'id ['in [parent-card-id child-card-id]]))
               (is (= {parent-card-id false, child-card-id false}
                      (stale-map [parent-card-id child-card-id]))
                   "neither should be stale before marking")
@@ -200,7 +200,7 @@
                                                 :to_entity_type :card
                                                 :to_entity_id parent-id}]
               (run! deps.findings/upsert-analysis!
-                    (t2/select :model/Card :id [:in [grandparent-id parent-id child-id]]))
+                    (t2/select :model/Card 'id ['in [grandparent-id parent-id child-id]]))
               (t2/with-transaction [_conn]
                 (deps.findings/mark-transitive-dependents-stale! {:card [grandparent-id]})
                 (is (= {grandparent-id false, parent-id true, child-id true}
@@ -322,7 +322,7 @@
                 (lib-be/with-metadata-provider-cache
                   (deps.findings/upsert-analysis! (t2/instance :model/Card card)))))
             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                          :analyzed_entity_type :card :analyzed_entity_id cid))
+                                          'analyzed_entity_type :card 'analyzed_entity_id cid))
                 "the stale flag is cleared, so the entity stops being re-selected forever")
             (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
                 "an error finding is recorded explaining why the entity couldn't be analyzed")))))))
@@ -346,7 +346,7 @@
               (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
                   "phase 1: a terminal error is recorded while the database is unresolvable")
               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                                            'analyzed_entity_type :card 'analyzed_entity_id cid))
                   "phase 1: stale flag cleared")
               ;; phase 2: database resolvable again; re-trigger analysis (as an event/job would)
               (models.analysis-finding/mark-stale! :card [cid])
@@ -355,7 +355,7 @@
               (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))
                   "phase 2: re-analyzed normally — the terminal db error is replaced by a clean result")
               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                                            'analyzed_entity_type :card 'analyzed_entity_id cid))
                   "phase 2: re-analysis cleared stale again"))))))))
 
 (deftest ^:synchronized analyze-batch-shares-one-metadata-provider-test

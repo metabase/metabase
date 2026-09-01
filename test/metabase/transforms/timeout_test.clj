@@ -42,8 +42,8 @@
           (let [timed-out (transform-run/timeout-old-runs! 5 :minute)]
             (testing "only the stale run is timed out"
               (is (= 1 (count timed-out)))
-              (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-run-id)))
-              (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-run-id)))))
+              (is (= :timeout (t2/select-one-fn :status :model/TransformRun 'id old-run-id)))
+              (is (= :started (t2/select-one-fn :status :model/TransformRun 'id fresh-run-id)))))
           (testing "counter bumps {type=transform} once for the stale run"
             (is (== 1 (mt/metric-value system
                                        :metabase-transforms/timeouts-total
@@ -89,7 +89,7 @@
                                                                :start_time     (minutes-ago 1)
                                                                :last_heartbeat (minutes-ago 1)}]
           (transform-run/timeout-run! run-id)
-          (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id run-id)))
+          (is (= :timeout (t2/select-one-fn :status :model/TransformRun 'id run-id)))
           (is (== 1 (mt/metric-value system
                                      :metabase-transforms/timeouts-total
                                      {:type "transform"})))
@@ -115,8 +115,8 @@
                                                                    :last_heartbeat (minutes-ago 1)}]
           (let [timed-out (transforms.job-run/reap-orphaned-runs! 5)]
             (is (= 1 (count timed-out)))
-            (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id old-run-id)))
-            (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-run-id))))
+            (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun 'id old-run-id)))
+            (is (= :started (t2/select-one-fn :status :model/TransformJobRun 'id fresh-run-id))))
           (is (== 1 (mt/metric-value system
                                      :metabase-transforms/timeouts-total
                                      {:type "job"})))

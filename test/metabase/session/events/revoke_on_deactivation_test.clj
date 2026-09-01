@@ -25,20 +25,20 @@
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
         (events/publish-event! :event/user-credentials-revoked {:user-id victim})
-        (is (not (t2/exists? :model/Session :id victim-session))
+        (is (not (t2/exists? :model/Session 'id victim-session))
             "victim's session is deleted")
-        (is (t2/exists? :model/Session :id bystander-session)
+        (is (t2/exists? :model/Session 'id bystander-session)
             "an unrelated user's session is untouched")))))
 
 (deftest deactivation-revokes-and-reactivation-does-not-revive-test
   (testing "deactivating a user deletes their sessions; reactivating does NOT bring them back (SEC-863)"
     (mt/with-temp [:model/User {user-id :id} {:is_active true}]
       (let [session-id (insert-session! user-id)]
-        (is (t2/exists? :model/Session :id session-id)
+        (is (t2/exists? :model/Session 'id session-id)
             "session exists while the user is active")
         (t2/update! :model/User user-id {:is_active false})
-        (is (not (t2/exists? :model/Session :id session-id))
+        (is (not (t2/exists? :model/Session 'id session-id))
             "deactivation revokes the session")
         (t2/update! :model/User user-id {:is_active true})
-        (is (not (t2/exists? :model/Session :id session-id))
+        (is (not (t2/exists? :model/Session 'id session-id))
             "reactivation does not revive the pre-deactivation session")))))

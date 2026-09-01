@@ -15,8 +15,8 @@
        (testing "POST /ee/library creates the Library root + Data/Metrics subcollections"
          (let [response (mt/user-http-request :crowberto :post 200 "ee/library")]
            (is (= "Library" (:name response)))
-           (is (some? (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)))
-           (is (some? (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)))))
+           (is (some? (t2/select-one-pk :model/Collection 'type collection/library-data-collection-type)))
+           (is (some? (t2/select-one-pk :model/Collection 'type collection/library-metrics-collection-type)))))
        (testing "a second call rejects with 400 'Library already exists'"
          (is (= "Library already exists"
                 (mt/user-http-request :crowberto :post 400 "ee/library"))))))))
@@ -29,8 +29,8 @@
          (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
            (is (= {:data nil} response))))
        (let [_          (collection/create-library-collection!)
-             data-id    (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)
-             metrics-id (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
+             data-id    (t2/select-one-pk :model/Collection 'type collection/library-data-collection-type)
+             metrics-id (t2/select-one-pk :model/Collection 'type collection/library-metrics-collection-type)
              response   (mt/user-http-request :crowberto :get 200 "ee/library")]
          (testing "When library exists, but no content"
            (is (= "Library" (:name response)))

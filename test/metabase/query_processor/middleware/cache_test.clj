@@ -269,7 +269,7 @@
                                                                  :updated_at original-updated-at}]
         (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
         (let [{:keys [updated_at refresh_started_at]}
-              (t2/select-one :model/QueryCache :query_hash query-hash)]
+              (t2/select-one :model/QueryCache 'query_hash query-hash)]
           (testing "the lease was claimed"
             (is (some? refresh_started_at)))
           (testing "updated_at was left alone -- results have not actually been rewritten yet"
@@ -284,7 +284,7 @@
                                                                :updated_at (t/offset-date-time)}]
       (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
       (backend.db/delete-entry! query-hash)
-      (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
+      (is (nil? (t2/select-one :model/QueryCache 'query_hash query-hash))))))
 
 (deftest failed-refresh-deletes-outdated-entry-test
   (testing "a refresh that fails to save (e.g. results exceed query-caching-max-kb) deletes the outdated entry
@@ -690,7 +690,7 @@
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
           (with-mock-cache! [save-chan]
-            (t2/delete! :model/Query :query_hash q-hash)
+            (t2/delete! :model/Query 'query_hash q-hash)
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)

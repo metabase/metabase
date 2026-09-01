@@ -63,7 +63,7 @@
   (mi/instances-with-hydrated-data
    notifications k
    #(group-by :notification_id
-              (t2/select :model/NotificationSubscription :notification_id [:in (map :id notifications)]))
+              (t2/select :model/NotificationSubscription 'notification_id ['in (map :id notifications)]))
    :id
    {:default []}))
 
@@ -79,7 +79,7 @@
                                            :notification/card
                                            (let [notification-cards (t2/hydrate
                                                                      (t2/select :model/NotificationCard
-                                                                                :id [:in payload-ids])
+                                                                                'id ['in payload-ids])
                                                                      :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
@@ -95,7 +95,7 @@
   (mi/instances-with-hydrated-data
    notifications k
    #(group-by :notification_id
-              (t2/select :model/NotificationHandler :notification_id [:in (map :id notifications)]))
+              (t2/select :model/NotificationHandler 'notification_id ['in (map :id notifications)]))
    :id
    {:default []}))
 
@@ -154,8 +154,8 @@
                        :changes     changes}))))
   (when (contains? (t2/changes instance) :active)
     (let [subscriptions (t2/select :model/NotificationSubscription
-                                   :notification_id (:id instance)
-                                   :type :notification-subscription/cron)]
+                                   'notification_id (:id instance)
+                                   'type :notification-subscription/cron)]
       (doseq [subscription subscriptions]
         (if (:active instance)
           (update-subscription-trigger! subscription)
@@ -165,8 +165,8 @@
 (t2/define-before-delete :model/Notification
   [instance]
   (doseq [subscription-id (t2/select-pks-set :model/NotificationSubscription
-                                             :notification_id (:id instance)
-                                             :type :notification-subscription/cron)]
+                                             'notification_id (:id instance)
+                                             'type :notification-subscription/cron)]
     (delete-trigger-for-subscription! subscription-id))
   (when-let [payload-id (:payload_id instance)]
     (t2/delete! (case (:payload_type instance)
@@ -260,8 +260,8 @@
    notification-handlers k
    #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
       (t2/select-fn->fn :id identity :model/Channel
-                        :id [:in channel-ids]
-                        :active true))
+                        'id ['in channel-ids]
+                        'active true))
    :channel_id
    {:default nil}))
 
@@ -272,7 +272,7 @@
    notification-handlers k
    #(when-let [template-ids (seq (keep :template_id notification-handlers))]
       (t2/select-fn->fn :id identity :model/ChannelTemplate
-                        :id [:in template-ids]))
+                        'id ['in template-ids]))
    :template_id
    {:default nil}))
 
@@ -284,7 +284,7 @@
    k
    #(group-by :notification_handler_id
               (t2/select :model/NotificationRecipient
-                         :notification_handler_id [:in (map :id notification-handlers)]))
+                         'notification_handler_id ['in (map :id notification-handlers)]))
    :id
    {:default []}))
 
@@ -298,8 +298,8 @@
                          (fn [recipients]
                            (let [id->user (when (seq recipients)
                                             (t2/select-fn->fn :id identity :model/User
-                                                              :id [:in (map :user_id recipients)]
-                                                              :is_active true))]
+                                                              'id ['in (map :user_id recipients)]
+                                                              'is_active true))]
                              (mapv #(assoc % :user (id->user (:user_id %))) recipients))))
       (m/update-existing :notification-recipient/group
                          (fn [recipients]
@@ -311,7 +311,7 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id)]
+          template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate 'channel_type] template-id)]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
                         {:status        400
@@ -675,9 +675,9 @@
   "Find all active card notifications for a given card-id."
   [card-id :- pos-int?]
   (hydrate-notification (t2/select :model/Notification
-                                   :active true
-                                   :payload_type :notification/card
-                                   :payload_id [:in ^:allow-subquery {:select [:id]
+                                   'active true
+                                   'payload_type :notification/card
+                                   'payload_id ['in ^:allow-subquery {:select [:id]
                                                                       :from   [:notification_card]
                                                                       :where  [:= :card_id card-id]}])))
 
@@ -736,7 +736,7 @@
   "Unsubscribe a user from a notification."
   [notification-id user-id]
   (t2/delete! :model/NotificationRecipient
-              :user_id user-id
-              :notification_handler_id [:in ^:allow-subquery {:select [:id]
+              'user_id user-id
+              'notification_handler_id ['in ^:allow-subquery {:select [:id]
                                                               :from   [:notification_handler]
                                                               :where  [:= :notification_id notification-id]}]))

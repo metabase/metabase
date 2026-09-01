@@ -15,7 +15,7 @@
 (defn- clear-test-user-recent-views
   []
   (log/infof "Clearing %s's recent views" (pr-str :rasta))
-  (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta)))
+  (t2/delete! :model/RecentViews 'user_id (mt/user->id :rasta)))
 
 (use-fixtures
   :each (fn [f]
@@ -619,7 +619,7 @@
                (collection/trash-collection-id)
                with-ns-id
                normal-id}
-             (t2/select-fn-set :model_id :model/RecentViews :model "collection" :user_id (mt/user->id :rasta) :context "view"))))
+             (t2/select-fn-set :model_id :model/RecentViews 'model "collection" 'user_id (mt/user->id :rasta) 'context "view"))))
     (testing "only the instance analytics gets included"
       (is (= [{:id instance-analytics-id}
               {:id normal-id}]

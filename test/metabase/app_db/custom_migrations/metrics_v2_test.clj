@@ -226,9 +226,9 @@
               (me/humanize (query-explainer query)))))
       (testing "forward migration"
         (migrate!)
-        (let [migration-coll (t2/select-one :collection :name "Migrated Metrics v1")
-              coll-permissions (t2/select :permissions :object [:like (str "/collection/" (:id migration-coll) "/%")])
-              metric-cards (t2/select :report_card :collection_id (:id migration-coll))
+        (let [migration-coll (t2/select-one :collection 'name "Migrated Metrics v1")
+              coll-permissions (t2/select :permissions 'object ['like (str "/collection/" (:id migration-coll) "/%")])
+              metric-cards (t2/select :report_card 'collection_id (:id migration-coll))
               rewritten-card (t2/select-one :report_card card-id)
               rewritten-query (-> rewritten-card :dataset_query normalized-query)]
           (is (= 1 (count metric-cards)))
@@ -244,7 +244,7 @@
           (is (= (-> metric-cards first :id) (get-in rewritten-query [:aggregation 1 1])))))
       (testing "rollback"
         (migrate! :down 50)
-        (let [migtation-coll (t2/select-one :collection :name "Migrated Metrics v1")
+        (let [migtation-coll (t2/select-one :collection 'name "Migrated Metrics v1")
               reverted-card (t2/select-one :report_card card-id)]
           (is (nil? migtation-coll))
           (is (= original-query (:dataset_query reverted-card))))))))

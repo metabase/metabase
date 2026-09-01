@@ -35,8 +35,8 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id
-                                                     :card_id [:in cards-to-add]))
+                                   (t2/select-fn->pk :card_id :model/DashboardCard 'dashboard_id dashboard-id
+                                                     'card_id ['in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -49,7 +49,7 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
+            (t2/update! :model/Pulse {'dashboard_id dashboard-id}
                         ;; TODO we probably don't need this anymore
                         ;; pulse.name is no longer used for generating title.
                         ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed

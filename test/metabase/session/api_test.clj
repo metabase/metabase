@@ -82,7 +82,7 @@
                    [:device_description ms/NonBlankString]
                    [:ip_address         ms/NonBlankString]
                    [:active             [:= true]]]
-                  (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
+                  (t2/select-one :model/LoginHistory 'user_id (mt/user->id :rasta), 'session_id (t2/select-one-fn :id :model/Session 'key_hashed (session/hash-session-key (:id response)))))))))
 
 (deftest login-remember-me-sets-max-age-test
   (testing "POST /api/session - 'remember me' checkbox sets Max-Age attribute on session cookie"
@@ -232,7 +232,7 @@
       (test.users/clear-cached-session-tokens!)
       (let [session-key        (client/authenticate (test.users/user->credentials :rasta))
             session-key-hashed (session/hash-session-key session-key)
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
+            login-history-id (t2/select-one-pk :model/LoginHistory 'session_id (t2/select-one-pk :model/Session 'key_hashed session-key-hashed))]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -240,7 +240,7 @@
         (client/client session-key :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (t2/select-one :model/Session :key_hashed session-key-hashed)))
+               (t2/select-one :model/Session 'key_hashed session-key-hashed)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
@@ -250,7 +250,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
-                      (t2/select-one :model/LoginHistory :id login-history-id))))))))
+                      (t2/select-one :model/LoginHistory 'id login-history-id))))))))
 
 (deftest forgot-password-initiate-reset-test
   (testing "POST /api/session/forgot_password - initiate password reset"
@@ -259,9 +259,9 @@
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
-                  (boolean (t2/select-one :model/AuthIdentity :user_id (mt/user->id :rasta)
-                                          :provider "emailed-secret-password-reset")))]
-          (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "emailed-secret-password-reset")
+                  (boolean (t2/select-one :model/AuthIdentity 'user_id (mt/user->id :rasta)
+                                          'provider "emailed-secret-password-reset")))]
+          (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "emailed-secret-password-reset")
           (assert (not (reset-fields-set?)))
           (is (= nil
                  (mt/user-http-request :rasta :post 204 "session/forgot_password"
@@ -441,7 +441,7 @@
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" (:new creds))))
             (is (nil? (t2/select-one :model/AuthIdentity
-                                     :user_id id :provider "emailed-secret-password-reset"))
+                                     'user_id id 'provider "emailed-secret-password-reset"))
                 "the reset token is removed once the password has been set")))))))
 
 (deftest reset-password-throttling-test
@@ -500,7 +500,7 @@
     (testing "Test that an expired token doesn't work"
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
-            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+            ai (t2/select-one :model/AuthIdentity 'user_id uid 'provider "emailed-secret-password-reset")]
         (t2/update! :model/AuthIdentity (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
@@ -517,10 +517,10 @@
                       :device_description "Test" :ip_address "127.0.0.1"}
                      :provider/password)
             token   (auth-identity/create-password-reset! (:id user))]
-        (is (some? (t2/select-one :model/Session :id (:id session)))
+        (is (some? (t2/select-one :model/Session 'id (:id session)))
             "sanity check: the session exists before the reset")
         (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
-        (is (nil? (t2/select-one :model/Session :id (:id session)))
+        (is (nil? (t2/select-one :model/Session 'id (:id session)))
             "the pre-existing session should be deleted after resetting the password via token")))))
 
 (deftest check-reset-token-valid-test
@@ -535,7 +535,7 @@
     (testing "Check that an expired but valid token returns false"
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
-            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+            ai (t2/select-one :model/AuthIdentity 'user_id uid 'provider "emailed-secret-password-reset")]
         (t2/update! :model/AuthIdentity (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
@@ -758,7 +758,7 @@
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
-          (t2/delete! :model/User :email "sally.brown@metabase.com"))))))
+          (t2/delete! :model/User 'email "sally.brown@metabase.com"))))))
 
 (deftest ldap-login-uppercase-email-test
   (testing "LDAP login - can login multiple times with uppercase email (#13739)"
@@ -771,7 +771,7 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (t2/delete! :model/User :email "john.smith@metabase.com"))))))
+          (t2/delete! :model/User 'email "john.smith@metabase.com"))))))
 
 (deftest ldap-login-group-sync-without-uid-test
   (testing "LDAP login - group sync works even if ldap doesn't return uid (#22014)"
@@ -781,8 +781,8 @@
           [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (t2/select-one-pk :model/User :email "fred.taylor@metabase.com")]
-            (is (t2/exists? :model/PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id)))))))))
+          (let [user-id (t2/select-one-pk :model/User 'email "fred.taylor@metabase.com")]
+            (is (t2/exists? :model/PermissionsGroupMembership 'group_id (u/the-id group) 'user_id (u/the-id user-id)))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

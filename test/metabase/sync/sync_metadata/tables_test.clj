@@ -39,7 +39,7 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-a-crufty-table
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS"       :visibility_type nil :initial_sync_status "complete"}}
-             (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
+             (set (for [table (t2/select [:model/Table 'name 'visibility_type 'initial_sync_status] 'db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest transform-temp-tables-are-skipped-without-premium-features
@@ -64,7 +64,7 @@
                    :model/Table    _                {:name "Table 2" :db_id (u/the-id db)}]
       (#'sync-tables/retire-tables! #{table-1-id})
       (is (= {"Table 1" false "Table 2" true}
-             (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
+             (t2/select-fn->fn :name :active :model/Table 'db_id (u/the-id db)))))))
 
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
@@ -113,7 +113,7 @@
        (is (= #{:cruft}
               (t2/select-fn-set :visibility_type
                                 :model/Table
-                                :db_id
+                                'db_id
                                 (u/the-id db))))))))
 
 (deftest cruft-does-not-happen-during-update-test
@@ -125,7 +125,7 @@
         (testing "Observe: the tables are marked as crufty"
           (is (= #{["employees" :cruft] ["transactions" :cruft]} (->tables-info))))
         ;; make employees visible:
-        (t2/update! :model/Table :db_id (u/the-id db) :name "employees" {:visibility_type nil})
+        (t2/update! :model/Table 'db_id (u/the-id db) 'name "employees" {:visibility_type nil})
         (testing "Observe: employees is visible, but transactions is still crufty"
           (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))
         (sync-metadata/sync-db-metadata! db)
@@ -137,11 +137,11 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables []}}]
       (sync-metadata/sync-db-metadata! db)
-      (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type original-vis-type})
+      (t2/update! :model/Table 'db_id (u/the-id db) {:visibility_type original-vis-type})
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" original-vis-type]
                ["transactions" original-vis-type]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+             (t2/select-fn-set (juxt :name :visibility_type) :model/Table 'db_id (u/the-id db)))))))
 
 (deftest auto-cruft-no-tables-hidden-test
   (doseq [vis-type (sort table/visibility-types)]
@@ -155,7 +155,7 @@
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
-              (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
+              (t2/select-fn-set (juxt :name :visibility_type) :model/Table 'db_id (u/the-id db))))))))
 
 (deftest auto-cruft-tables-with-an-l-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
@@ -165,7 +165,7 @@
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
-              (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
+              (t2/select-fn-set (juxt :name :visibility_type) :model/Table 'db_id (u/the-id db))))))))
 
 (deftest auto-cruft-tables-with-an-l-or-a-y-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
@@ -175,7 +175,7 @@
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
-              (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
+              (t2/select-fn-set (juxt :name :visibility_type) :model/Table 'db_id (u/the-id db))))))))
 
 (deftest archive-tables-test
   (testing "Tables deactivated for more than 14 days should be archived"
@@ -360,8 +360,8 @@
       (mt/with-temp [:model/Database db {}]
         (#'sync-tables/create-tables! db metadatas)
         (is (= ["beta" "apple" "mango" "zebra"]
-               (map :name (t2/select [:model/Table :name]
-                                     :db_id (u/the-id db)
+               (map :name (t2/select [:model/Table 'name]
+                                     'db_id (u/the-id db)
                                      {:order-by [[:id :asc]]}))))))))
 
 (deftest sample-database-tables-data-authority-test

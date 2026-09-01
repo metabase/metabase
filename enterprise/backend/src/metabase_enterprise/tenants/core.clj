@@ -27,7 +27,7 @@
           (comp
            (mapcat keys)
            (distinct))
-          (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
+          (t2/select-fn-reducible :attributes [:model/Tenant 'attributes]
                                   {:where [:and
                                            [:not= :attributes nil]
                                            [:not= :attributes "{}"]]}))
@@ -38,7 +38,7 @@
   :feature :tenants
   [tenant-id]
   (or (nil? tenant-id)
-      (t2/exists? :model/Tenant :id tenant-id :is_active true)))
+      (t2/exists? :model/Tenant 'id tenant-id 'is_active true)))
 
 (defenterprise create-tenant!
   "Creates a tenant"
@@ -51,7 +51,7 @@
   :feature :tenants
   [user]
   (when-let [tenant-id (:tenant_id user)]
-    (t2/select-one :model/Tenant :id tenant-id)))
+    (t2/select-one :model/Tenant 'id tenant-id)))
 
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."

@@ -23,12 +23,12 @@
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> (t2/select-one :model/Field :id from-field-id)
+  (-> (t2/select-one :model/Field 'id from-field-id)
       (dissoc :id :entity_id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> (t2/select-one :model/Table :id from-tbl-id)
+  (-> (t2/select-one :model/Table 'id from-tbl-id)
       (dissoc :id :entity_id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
@@ -43,7 +43,7 @@
   "Gets the personal collection ID for :crowberto (needed for tests). Must be public because the `with-world` macro
   is public."
   []
-  (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto)))
+  (t2/select-one-fn :id :model/Collection 'personal_owner_id (mt/user->id :crowberto)))
 
 ;;; TODO -- this is a bad name, how is anyone supposed to know what this does without reading the docstring?
 (defmacro with-temp-dpc

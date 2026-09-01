@@ -91,9 +91,9 @@
   so a row that has one but no token is a write-path bug — adjudicated and denied, not skipped."
   [thread-ids]
   (t2/select [:model/ExplorationQuery
-              :id :exploration_thread_id :database_id :dataset_query :data_access_token]
-             :exploration_thread_id [:in thread-ids]
-             :dataset_query [:not= nil]
+              'id 'exploration_thread_id 'database_id 'dataset_query 'data_access_token]
+             'exploration_thread_id ['in thread-ids]
+             'dataset_query ['not= nil]
              {:order-by [[:id :asc]]}))
 
 (defn- lens-stamped-threads
@@ -107,11 +107,11 @@
   stamped, and, unlike the thread's queries, not deleted by a restart. A thread whose Card cannot be
   resolved is still returned, marked [[::indeterminate]] so it denies."
   [thread-ids]
-  (when-let [threads (seq (t2/select [:model/ExplorationThread :id :data_access_token]
-                                     :id [:in thread-ids]
-                                     :data_access_token [:not= nil]))]
-    (let [blocks    (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
-                               :exploration_thread_id [:in (map :id threads)]
+  (when-let [threads (seq (t2/select [:model/ExplorationThread 'id 'data_access_token]
+                                     'id ['in thread-ids]
+                                     'data_access_token ['not= nil]))]
+    (let [blocks    (t2/select [:model/ExplorationBlock 'exploration_thread_id 'metrics]
+                               'exploration_thread_id ['in (map :id threads)]
                                {:order-by [[:position :desc] [:id :desc]]})
           ;; descending order + `into {}` (later pairs win) leaves the thread's *first* block
           ;; standing, whose metric is the one the token was computed over.
@@ -121,8 +121,8 @@
                           blocks)
           cards     (when (seq card-id)
                       ;; `:card_schema` is mandatory in any explicit Card column list
-                      (u/index-by :id (t2/select [:model/Card :id :card_schema :database_id :dataset_query]
-                                                 :id [:in (distinct (vals card-id))])))]
+                      (u/index-by :id (t2/select [:model/Card 'id 'card_schema 'database_id 'dataset_query]
+                                                 'id ['in (distinct (vals card-id))])))]
       (map (fn [{thread-id :id :as thread}]
              (let [card (get cards (get card-id thread-id))]
                (cond-> {:id                    thread-id
@@ -187,7 +187,7 @@
   [exploration-id]
   (if (nil? exploration-id)
     true
-    (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
+    (let [thread-ids (t2/select-pks-set :model/ExplorationThread 'exploration_id exploration-id)]
       (or (empty? thread-ids)
           (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
 
@@ -203,7 +203,7 @@
 
     (:id document)
     (exploration-content-visible?
-     (t2/select-one-fn :exploration_id :model/Document :id (:id document)))
+     (t2/select-one-fn :exploration_id :model/Document 'id (:id document)))
 
     :else
     false))
@@ -222,7 +222,7 @@
   withheld. A comment anchored to a page of a thread the viewer can see keeps its context; anything
   else (a Summary block, an unanchored comment, or a page of a gated thread) loses it."
   [exploration-id comments]
-  (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
+  (let [thread-ids (t2/select-pks-set :model/ExplorationThread 'exploration_id exploration-id)]
     (if (or (empty? thread-ids) (not-any? :context comments))
       comments
       (let [visible (thread-ids-with-visible-derived-data thread-ids)]

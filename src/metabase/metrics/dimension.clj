@@ -221,7 +221,7 @@
         field->row (when (seq field-ids)
                      (t2/select-pk->fn #(update-keys (select-keys % field-cols) u/->kebab-case-en)
                                        (into [:model/Field :id] field-cols)
-                                       :id [:in field-ids]))
+                                       'id ['in field-ids]))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric
@@ -239,7 +239,7 @@
    dimension-mappings :- [:maybe [:sequential :map]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field    (t2/select-one :model/Field :id field-id)]
+        field    (t2/select-one :model/Field 'id field-id)]
     (parameters/field->values field)))
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
@@ -259,11 +259,11 @@
    dimension-id       :- :string
    value              :- :string]
   (let [field-id        (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field           (t2/select-one :model/Field :id field-id)
+        field           (t2/select-one :model/Field 'id field-id)
         parsed-value    (parameters/parse-query-param-value-for-field field value)
         remapped-fid    (parameters/remapped-field-id field-id)]
     (if remapped-fid
-      (let [remapped-field (t2/select-one :model/Field :id remapped-fid)]
+      (let [remapped-field (t2/select-one :model/Field 'id remapped-fid)]
         (parameters/remapped-value field remapped-field parsed-value))
       ;; No remapping - return the value as-is
       [parsed-value])))

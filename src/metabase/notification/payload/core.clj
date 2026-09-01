@@ -149,7 +149,7 @@
   "Realize notification-info with :context and :payload."
   [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type :creator_id])
-         :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
+         :creator (t2/select-one [:model/User 'id 'first_name 'last_name 'email] (:creator_id notification))
          :payload (w/prewalk (fn [x]
                                (if (and (map? x) (:lib/metadata x))
                                  (dissoc x :lib/metadata)

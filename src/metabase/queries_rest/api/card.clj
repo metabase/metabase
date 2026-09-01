@@ -56,17 +56,17 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (t2/select :model/Card, :archived false, order-by-name))
+  (t2/select :model/Card, 'archived false, order-by-name))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (t2/select :model/Card, :creator_id api/*current-user-id*, :archived false, order-by-name))
+  (t2/select :model/Card, 'creator_id api/*current-user-id*, 'archived false, order-by-name))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [bookmarks (t2/select [:model/CardBookmark :card_id] :user_id api/*current-user-id*)]
+  (let [bookmarks (t2/select [:model/CardBookmark 'card_id] 'user_id api/*current-user-id*)]
     (->> (t2/hydrate bookmarks :card)
          (map :card)
          (remove :archived)
@@ -75,17 +75,17 @@
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (t2/select :model/Card, :database_id database-id, :archived false, order-by-name))
+  (t2/select :model/Card, 'database_id database-id, 'archived false, order-by-name))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (t2/select :model/Card, :table_id table-id, :archived false, order-by-name))
+  (t2/select :model/Card, 'table_id table-id, 'archived false, order-by-name))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (t2/select :model/Card, :archived true, order-by-name))
+  (t2/select :model/Card, 'archived true, order-by-name))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -134,7 +134,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Card 'name 'id 'public_uuid 'card_schema], 'public_uuid ['not= nil], 'archived false))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -146,7 +146,7 @@
   []
   (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
+  (t2/select [:model/Card 'name 'id 'card_schema], 'enable_embedding true, 'archived false))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
@@ -182,7 +182,7 @@
                                                        (name f)))
     (case f
       :database      (api/read-check :model/Database model-id)
-      :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model-id))
+      :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, 'id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
@@ -240,7 +240,7 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (t2/select-one :model/Card :id id)]
+        raw-card (t2/select-one :model/Card 'id id)]
     (-> raw-card
         api/read-check
         hydrate-card-details
@@ -388,9 +388,9 @@
        [:page-size   {:optional true} [:maybe ms/PositiveInt]]
        [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [matching-cards  (t2/select :model/Card
-                                   :archived false
-                                   :display [:in supported-series-display-type]
-                                   :id [:not= (:id card)]
+                                   'archived false
+                                   'display ['in supported-series-display-type]
+                                   'id ['not= (:id card)]
                                    (cond-> {:order-by [[:id :desc]]
                                             :where    [:and]}
                                      last-cursor
@@ -469,7 +469,7 @@
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
-        card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
+        card         (-> (t2/select-one :model/Card 'id id) api/check-404 api/read-check)
         card-display (:display card)]
     (when-not (supported-series-display-type card-display)
       (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
@@ -684,7 +684,7 @@
   (let [query (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (check-parameter-permissions (:parameters card-updates)
-                                 (or query (t2/select-one-fn :dataset_query :model/Card :id id)))
+                                 (or query (t2/select-one-fn :dataset_query :model/Card 'id id)))
     (when-some [query (:dataset_query card-updates)]
       (try
         (lib/check-card-overwrite id query)
@@ -794,7 +794,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
-    (t2/delete! :model/Card :id id)
+    (t2/delete! :model/Card 'id id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -809,7 +809,7 @@
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
         max-position-result (t2/select-one [:model/Card [:%max.collection_position :max_position]]
-                                           :collection_id new-collection-id-or-nil)
+                                           'collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
@@ -837,7 +837,7 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema]
+    (let [cards (t2/select [:model/Card 'id 'collection_id 'collection_position 'dataset_query 'card_schema]
                            {:where [:and [:in :id (set card-ids)]
                                     [:or [:not= :collection_id new-collection-id-or-nil]
                                      (when new-collection-id-or-nil
@@ -862,7 +862,7 @@
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
-                      {:id [:in (set cards-without-position)]}
+                      {'id ['in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))
         (doseq [card cards]
           (collection/check-for-remote-sync-update card)))))
@@ -913,7 +913,7 @@
   ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
   [card-id stored-result-id sort]
   (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
-  (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
+  (let [sr (api/check-404 (t2/select-one :model/StoredResult 'id stored-result-id))]
     (queries/assert-can-view-card-snapshots! card-id)
     (api/check-404 (queries/cached-dataset sr sort))))
 
@@ -1015,7 +1015,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
+  (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card 'public_uuid 'card_schema] 'id card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/card-public-link-created

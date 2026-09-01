@@ -110,7 +110,7 @@
                      :model/User user {}]
         ;; need to remove permissions belong to the all users group since a user is always part
         ;; of that group
-        (t2/delete! :model/DataPermissions :group_id (u/the-id (perms/all-users-group)))
+        (t2/delete! :model/DataPermissions 'group_id (u/the-id (perms/all-users-group)))
         (let [user-info {:user-id (:id user) :is-superuser? false}
               permission-mapping {:perms/view-data :unrestricted}
               query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
@@ -125,7 +125,7 @@
                      :model/PermissionsGroup group {}
                      :model/User user {}
                      :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
-        (t2/delete! :model/DataPermissions :group_id (u/the-id (perms/all-users-group)))
+        (t2/delete! :model/DataPermissions 'group_id (u/the-id (perms/all-users-group)))
         (perms/set-table-permission! group table1 :perms/view-data :blocked)
         (let [user-info {:user-id (:id user) :is-superuser? false}
               permission-mapping {:perms/view-data :unrestricted}

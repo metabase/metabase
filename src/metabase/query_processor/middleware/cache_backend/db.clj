@@ -48,8 +48,8 @@
   (t2/select-one-fn (fn [row]
                       {:results    (results-as-bytes row)
                        :updated-at (:updated_at row)})
-                    [:model/QueryCache :results :updated_at]
-                    :query_hash query-hash))
+                    [:model/QueryCache 'results 'updated_at]
+                    'query_hash query-hash))
 
 (defn invalidated-at-ttl
   "Freshness boundary for a `:ttl` strategy: cache entries with `updated_at` older than this are stale. Returns nil when
@@ -90,8 +90,8 @@
   scheduler; bumping it here would let a crashed refresh silently extend the row's freshness (#76856)."
   [query-hash lease-ms]
   (pos? (t2/update! (t2/table-name :model/QueryCache)
-                    {:query_hash                                         query-hash
-                     [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
+                    {'query_hash                                         query-hash
+                     [:coalesce :refresh_started_at lease-free-sentinel] ['< (ms-ago lease-ms)]}
                     {:refresh_started_at (t/offset-date-time)})))
 
 (defn delete-entry!
@@ -101,7 +101,7 @@
   shouldn't fail a query that already ran successfully."
   [^bytes query-hash]
   (try
-    (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash)
+    (t2/delete! (t2/table-name :model/QueryCache) 'query_hash query-hash)
     (catch Throwable e
       (log/errorf "Error deleting outdated cache entry: %s" (ex-message e))))
   nil)
@@ -113,7 +113,7 @@
   (log/trace "Purging old cache entries.")
   (try
     (t2/delete! (t2/table-name :model/QueryCache)
-                :updated_at [:<= (seconds-ago max-age-seconds)])
+                'updated_at ['<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/errorf "Error purging old cache entries: %s" (ex-message e))))
   nil)

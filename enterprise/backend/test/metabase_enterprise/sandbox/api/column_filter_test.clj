@@ -67,7 +67,7 @@
                                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
-      (let [all-fields (t2/select :model/Field :table_id (mt/id :venues))
+      (let [all-fields (t2/select :model/Field 'table_id (mt/id :venues))
             filtered   (col-filter/filter-fields-for-table (mt/id :venues) all-fields)]
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (set (map (comp u/upper-case-en :name) filtered))))))))
@@ -75,7 +75,7 @@
 (deftest filter-fields-for-table-no-sandbox-test
   (testing "filter-fields-for-table returns fields unchanged when no sandbox exists for the user+table"
     (mt/with-current-user (mt/user->id :rasta)
-      (let [all-fields (vec (t2/select :model/Field :table_id (mt/id :venues)))
+      (let [all-fields (vec (t2/select :model/Field 'table_id (mt/id :venues)))
             filtered   (col-filter/filter-fields-for-table (mt/id :venues) all-fields)]
         (is (= (count all-fields) (count filtered))
             "No sandbox configured for this user+table — should be a pass-through")))))
@@ -86,8 +86,8 @@
                                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
-      (let [all-venues-fields   (vec (t2/select :model/Field :table_id (mt/id :venues)))
-            all-checkins-fields (vec (t2/select :model/Field :table_id (mt/id :checkins)))
+      (let [all-venues-fields   (vec (t2/select :model/Field 'table_id (mt/id :venues)))
+            all-checkins-fields (vec (t2/select :model/Field 'table_id (mt/id :checkins)))
             result (col-filter/batch-filter-fields-by-table
                     {(mt/id :venues)   all-venues-fields
                      (mt/id :checkins) all-checkins-fields})]
@@ -111,7 +111,7 @@
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})]
         ;; Forcibly clear result_metadata to simulate the async-not-yet-complete or failed-extraction state.
-        (t2/update! :model/Card :id (:id card) {:result_metadata nil})
+        (t2/update! :model/Card 'id (:id card) {:result_metadata nil})
         (testing "sandboxed user sees zero fields (fail-closed)"
           (let [{:keys [fields]} (mt/user-http-request :rasta :get 200
                                                        (format "table/%d/query_metadata"

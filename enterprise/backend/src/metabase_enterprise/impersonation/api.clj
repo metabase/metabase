@@ -22,7 +22,7 @@
                                 [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (if (and group_id db_id)
-    (t2/select-one :model/ConnectionImpersonation :group_id group_id :db_id db_id)
+    (t2/select-one :model/ConnectionImpersonation 'group_id group_id 'db_id db_id)
     (t2/select :model/ConnectionImpersonation {:order-by [[:id :asc]]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -34,6 +34,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))
-  (t2/delete! :model/ConnectionImpersonation :id id)
+  (api/check-404 (t2/select-one :model/ConnectionImpersonation 'id id))
+  (t2/delete! :model/ConnectionImpersonation 'id id)
   api/generic-204-no-content)

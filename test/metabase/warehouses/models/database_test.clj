@@ -67,10 +67,10 @@
 
 (deftest cleanup-permissions-after-delete-db-test
   (mt/with-temp [:model/Database {db-id :id} {}]
-    (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
+    (is (true? (t2/exists? :model/DataPermissions 'db_id db-id)))
     (t2/delete! :model/Database db-id)
     (testing "All permissions are deleted when we delete the database"
-      (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
+      (is (false? (t2/exists? :model/DataPermissions 'db_id db-id))))))
 
 (deftest ^:synchronized delete-empty-database-does-not-run-field-delete-test
   (testing "Deleting a Database with no Fields avoids the locking bulk-delete query"
@@ -98,8 +98,8 @@
         (#'database/delete-database-fields! db-id)
         (is (= 4 (call-count))
             "One existence check, two successful DELETEs, and one terminating DELETE"))
-      (is (not (t2/exists? :model/Field :id parent-id)))
-      (is (not (t2/exists? :model/Field :table_id table-id))))))
+      (is (not (t2/exists? :model/Field 'id parent-id)))
+      (is (not (t2/exists? :model/Field 'table_id table-id))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -115,7 +115,7 @@
                  :data                {"db-id" db-id}}
                 (trigger-for-db db-id)))
         (testing "When deleting a Database, sync tasks should get removed"
-          (t2/delete! :model/Database :id db-id)
+          (t2/delete! :model/Database 'id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
 
@@ -663,7 +663,7 @@
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
                   (t2/update! :model/Database id {:details (assoc details :password-path "/path/to/my/password-file")})
-                  (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
+                  (check-db-fn (t2/select-one :model/Database 'id id) {:kind    :password
                                                                        :source  :file-path
                                                                        :version 2
                                                                        :value   "/path/to/my/password-file"}))))
@@ -671,7 +671,7 @@
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (t2/select-one :model/Secret :id secret-id))
+                  (is (nil? (t2/select-one :model/Secret 'id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest write-data-details-secrets-on-insert-test
@@ -720,8 +720,8 @@
                                              :updated_at         (t/instant)
                                              :details            (json/encode {:host "localhost"})
                                              :write_data_details (json/encode {:keystore-id write-secret-id})}]
-          (t2/delete! :model/Database :id db-id)
-          (is (nil? (t2/select-one :model/Secret :id write-secret-id))
+          (t2/delete! :model/Database 'id db-id)
+          (is (nil? (t2/select-one :model/Secret 'id write-secret-id))
               "Secret referenced in write_data_details should be deleted"))))))
 
 (deftest write-data-details-redaction-to-json-test
@@ -867,7 +867,7 @@
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
-             (t2/select-one-fn :engine :model/Database :id db-id))))))
+             (t2/select-one-fn :engine :model/Database 'id db-id))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
   (testing "serdes/extract-one preserves :is_stub true and elides it when false"
@@ -928,7 +928,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -954,7 +954,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -980,7 +980,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1006,7 +1006,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1032,7 +1032,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1059,7 +1059,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1086,7 +1086,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1096,8 +1096,8 @@
         ;; Remove user from groups we added (avoid touching All Users group)
         (perms-group-membership/with-allow-direct-deletion
           (t2/delete! :model/PermissionsGroupMembership
-                      :user_id (mt/user->id :rasta)
-                      :group_id [:in [(:id pg1) (:id pg2)]]))
+                      'user_id (mt/user->id :rasta)
+                      'group_id ['in [(:id pg1) (:id pg2)]]))
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
                                           {:user-id (mt/user->id :rasta) :is-superuser? false}
                                           default-permission-mapping
@@ -1113,7 +1113,7 @@
                      :model/PermissionsGroup pg {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
         ;; Clear existing permissions for our test database only
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         ;; Block database-level access
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1136,7 +1136,7 @@
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
@@ -1148,7 +1148,7 @@
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
@@ -1161,7 +1161,7 @@
                    :model/Table {table-id :id} {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
@@ -1176,7 +1176,7 @@
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
@@ -1191,7 +1191,7 @@
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)

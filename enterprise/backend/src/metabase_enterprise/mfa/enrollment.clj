@@ -45,10 +45,10 @@
     ;; serialize concurrent enrollments for the same user by locking the User row: with no totp
     ;; row yet there is nothing else to lock, and racing inserts would abort the transaction on
     ;; the unique (user_id, provider) constraint
-    (t2/select-one [:model/User :id] :id user-id {:for :update})
+    (t2/select-one [:model/User 'id] 'id user-id {:for :update})
     (let [auth-identity (t2/select-one :model/AuthIdentity
-                                       :user_id user-id
-                                       :provider "totp"
+                                       'user_id user-id
+                                       'provider "totp"
                                        {:for :update})]
       (when-not (some-> auth-identity verification/confirmed?)
         (let [secret      (totp/generate-secret)
@@ -68,8 +68,8 @@
   [user-id code]
   (t2/with-transaction [_conn]
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider "totp"
+                                            'user_id user-id
+                                            'provider "totp"
                                             {:for :update})]
       (when-not (verification/confirmed? auth-identity)
         (when-let [secret (verification/stored-secret auth-identity)]
@@ -86,7 +86,7 @@
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when
   something was removed."
   [user-id]
-  (pos? (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp")))
+  (pos? (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "totp")))
 
 ;;; -------------------------------------------------- Recovery-code management --------------------------------------------------
 
@@ -97,8 +97,8 @@
   [user-id]
   (t2/with-transaction [_conn]
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider "totp"
+                                            'user_id user-id
+                                            'provider "totp"
                                             {:for :update})]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]

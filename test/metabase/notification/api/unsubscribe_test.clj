@@ -65,7 +65,7 @@
               (is (= {:status "success"
                       :title  "Card notification test card"}
                      (api:unsubscribe 200 handler-id email)))
-              (is (not (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))
+              (is (not (t2/exists? :model/NotificationRecipient 'notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-ex
                       :user_id  nil
                       :model    "NotificationHandler"
@@ -91,7 +91,7 @@
               (is (=? [{:notification_handler_id handler-id
                         :type                    :notification-recipient/raw-value
                         :details                 {:value email}}]
-                      (t2/select :model/NotificationRecipient :notification_handler_id handler-id)))
+                      (t2/select :model/NotificationRecipient 'notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-undo-ex
                       :user_id  nil
                       :model    "NotificationHandler"

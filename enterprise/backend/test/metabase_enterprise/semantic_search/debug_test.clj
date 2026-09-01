@@ -19,7 +19,7 @@
   (mt/with-premium-features #{:semantic-search}
     (mt/as-admin
       (semantic.tu/with-test-db! {:mode :mock-indexed}
-        (let [card-id (t2/select-one-pk :model/Card :name "Dog Training Guide")
+        (let [card-id (t2/select-one-pk :model/Card 'name "Dog Training Guide")
               all     {:models ["card" "dashboard" "table"] :archived? false}]
           (testing "a matching query is a candidate"
             (is (=? {:type :candidate}
@@ -39,9 +39,9 @@
             a structural filter would also drop it"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db! {:mode :mock-indexed}
-        (let [{card-id :id coll-id :collection_id} (t2/select-one [:model/Card :id :collection_id]
-                                                                  :name "Dog Training Guide")]
-          (mt/with-non-admin-groups-no-collection-perms (t2/select-one :model/Collection :id coll-id)
+        (let [{card-id :id coll-id :collection_id} (t2/select-one [:model/Card 'id 'collection_id]
+                                                                  'name "Dog Training Guide")]
+          (mt/with-non-admin-groups-no-collection-perms (t2/select-one :model/Collection 'id coll-id)
             (mt/with-test-user :rasta
               ;; :models ["dashboard"] would also exclude this card structurally; permission denial must win.
               (is (=? {:type :filtered :details {:excluded-by :permissions}}

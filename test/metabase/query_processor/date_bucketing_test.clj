@@ -1281,7 +1281,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (t2/delete! :model/Database :id (mt/id))
+        (t2/delete! :model/Database 'id (mt/id))
         (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
         (apply count-of-grouping! dataset field-grouping relative-datetime-args))
       ;; Use UTC timezone for queries to match the timezone used during data insertion (see

@@ -28,7 +28,7 @@
                                    [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                    [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
   (if (and group_id table_id)
-    (t2/select-one :model/Sandbox :group_id group_id :table_id table_id)
+    (t2/select-one :model/Sandbox 'group_id group_id 'table_id table_id)
     (t2/select :model/Sandbox {:order-by [[:id :asc]]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -39,7 +39,7 @@
   "Fetch GTAP by `id`"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-404 (t2/select-one :model/Sandbox :id id)))
+  (api/check-404 (t2/select-one :model/Sandbox 'id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -74,14 +74,14 @@
    body :- [:map
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
-  (api/check-404 (t2/select-one :model/Sandbox :id id))
+  (api/check-404 (t2/select-one :model/Sandbox 'id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
     (t2/update! :model/Sandbox id
                 (u/select-keys-when body
                                     :present #{:card_id :attribute_remappings})))
-  (t2/select-one :model/Sandbox :id id))
+  (t2/select-one :model/Sandbox 'id id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -97,7 +97,7 @@
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (when card_id
     (let [db (t2/select-one :model/Database
-                            :id ^:allow-subquery {:select [:t.db_id]
+                            'id ^:allow-subquery {:select [:t.db_id]
                                                   :from [[(t2/table-name :model/Table) :t]]
                                                   :where [:= :t.id table_id]})]
       (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
@@ -115,8 +115,8 @@
   "Delete a GTAP entry."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-404 (t2/select-one :model/Sandbox :id id))
-  (t2/delete! :model/Sandbox :id id)
+  (api/check-404 (t2/select-one :model/Sandbox 'id id))
+  (t2/delete! :model/Sandbox 'id id)
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

@@ -29,14 +29,14 @@
                      :last_name        "Era"
                      :email            "cam+config-file-test@metabase.com"
                      :login_attributes {"a" "1"}}
-                    (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
-                                   :email "cam+config-file-test@metabase.com")))
+                    (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                                   'email "cam+config-file-test@metabase.com")))
       (is (= 1
-             (t2/count :model/User :email "cam+config-file-test@metabase.com"))))
+             (t2/count :model/User 'email "cam+config-file-test@metabase.com"))))
     (testing "upsert if User already exists, with merged login attributes"
       (let [pw-credentials           (fn [] (t2/select-one-fn :credentials :model/AuthIdentity
-                                                              :user_id (t2/select-one-pk :model/User :email "cam+config-file-test@metabase.com")
-                                                              :provider "password"))
+                                                              'user_id (t2/select-one-pk :model/User 'email "cam+config-file-test@metabase.com")
+                                                              'provider "password"))
             hashed-password          (fn [] (:password_hash (pw-credentials)))
             salt                     (fn [] (:password_salt (pw-credentials)))
             original-hashed-password (hashed-password)]
@@ -49,13 +49,13 @@
                                     :password         "2cans"
                                     :login_attributes {"b" 2}}]}})))
         (is (= 1
-               (t2/count :model/User :email "cam+config-file-test@metabase.com")))
+               (t2/count :model/User 'email "cam+config-file-test@metabase.com")))
         (is (partial= {:first_name       "Cam"
                        :last_name        "Saul"
                        :email            "cam+config-file-test@metabase.com"
                        :login_attributes {"a" "1" "b" "2"}}
-                      (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
-                                     :email "cam+config-file-test@metabase.com")))
+                      (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                                     'email "cam+config-file-test@metabase.com")))
         (testing "Password should be hashed, but it should be a NEW HASH"
           (let [new-hashed-password (hashed-password)]
             (is (not= original-hashed-password
@@ -66,7 +66,7 @@
             (testing "Password should work correctly"
               (is (u.password/verify-password "2cans" (salt) new-hashed-password)))))))
     (finally
-      (t2/delete! :model/User :email "cam+config-file-test@metabase.com"))))
+      (t2/delete! :model/User 'email "cam+config-file-test@metabase.com"))))
 
 (deftest init-from-config-file-force-admin-for-first-user-test
   (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
@@ -85,9 +85,9 @@
                          :last_name    "Era"
                          :email        "cam+config-file-admin-test@metabase.com"
                          :is_superuser true}
-                        (t2/select-one :model/User :email "cam+config-file-admin-test@metabase.com")))
+                        (t2/select-one :model/User 'email "cam+config-file-admin-test@metabase.com")))
           (is (= 1
-                 (t2/count :model/User :email "cam+config-file-admin-test@metabase.com")))))
+                 (t2/count :model/User 'email "cam+config-file-admin-test@metabase.com")))))
       (testing "Create the another User, DO NOT force them to be an admin"
         (is (= :ok
                (advanced-config.file/initialize!
@@ -101,10 +101,10 @@
                        :last_name    "Saul"
                        :email        "cam+config-file-admin-test-2@metabase.com"
                        :is_superuser false}
-                      (t2/select-one :model/User :email "cam+config-file-admin-test-2@metabase.com")))
+                      (t2/select-one :model/User 'email "cam+config-file-admin-test-2@metabase.com")))
         (is (= 1
-               (t2/count :model/User :email "cam+config-file-admin-test-2@metabase.com"))))
-      (finally (t2/delete! :model/User :email [:in #{"cam+config-file-admin-test@metabase.com"
+               (t2/count :model/User 'email "cam+config-file-admin-test-2@metabase.com"))))
+      (finally (t2/delete! :model/User 'email ['in #{"cam+config-file-admin-test@metabase.com"
                                                      "cam+config-file-admin-test-2@metabase.com"}])))))
 
 (deftest init-from-config-file-env-var-for-password-test
@@ -120,17 +120,17 @@
                                       :email      "cam+config-file-password-test@metabase.com"
                                       :password   "{{env USER_PASSWORD}}"}]}}
                   {:expand-templates? true})))
-          (let [user (t2/select-one [:model/User :id :first_name :last_name :email]
-                                    :email "cam+config-file-password-test@metabase.com")
+          (let [user (t2/select-one [:model/User 'id 'first_name 'last_name 'email]
+                                    'email "cam+config-file-password-test@metabase.com")
                 {:keys [password_hash password_salt]} (t2/select-one-fn :credentials :model/AuthIdentity
-                                                                        :user_id (:id user) :provider "password")]
+                                                                        'user_id (:id user) 'provider "password")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"
                            :email      "cam+config-file-password-test@metabase.com"}
                           user))
             (is (u.password/verify-password "1234cans" password_salt password_hash)))))
       (finally
-        (t2/delete! :model/User :email "cam+config-file-password-test@metabase.com")))))
+        (t2/delete! :model/User 'email "cam+config-file-password-test@metabase.com")))))
 
 (deftest init-from-config-file-validation-test
   (are [user error-pattern] (thrown-with-msg?
@@ -175,5 +175,5 @@
         (testing "It should not fail with 'duplicate'"
           (is (= :ok (advanced-config.file/initialize! config)))))
       (finally
-        (t2/delete! :model/User :email "cam+config-file-test@metabase.com")
-        (t2/delete! :model/User :email "Cam+config-file-test@metabase.com")))))
+        (t2/delete! :model/User 'email "cam+config-file-test@metabase.com")
+        (t2/delete! :model/User 'email "Cam+config-file-test@metabase.com")))))

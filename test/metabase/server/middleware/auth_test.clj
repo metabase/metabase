@@ -44,7 +44,7 @@
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-key session-key))
                    :metabase-user-id)))
-        (finally (t2/delete! :model/Session :id session-id)))))
+        (finally (t2/delete! :model/Session 'id session-id)))))
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
       (is (= api.response/response-unauthentic
@@ -60,11 +60,11 @@
           (t2/insert! :model/Session {:id      session-id
                                       :key_hashed session-key-hashed
                                       :user_id (test.users/user->id :rasta)})
-          (t2/update! (t2/table-name :model/Session) {:id session-id}
+          (t2/update! (t2/table-name :model/Session) {'id session-id}
                       {:created_at (t/instant 1000)})
           (is (= api.response/response-unauthentic
                  (auth-enforced-handler (request-with-session-key session-key))))
-          (finally (t2/delete! :model/Session :id session-id)))))
+          (finally (t2/delete! :model/Session 'id session-id)))))
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
       ;; should fail due to inactive user
@@ -79,7 +79,7 @@
           (is (= api.response/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-key session-key))))
-          (finally (t2/delete! :model/Session :id session-id)))))))
+          (finally (t2/delete! :model/Session 'id session-id)))))))
 
 ;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 

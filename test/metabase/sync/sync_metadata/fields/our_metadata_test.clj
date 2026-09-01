@@ -107,11 +107,11 @@
                                                           :json-unfolding    false
                                                           :database-is-auto-increment false
                                                           :preview-display   true}}}}}}
-           (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+           (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table 'db_id (u/the-id db), 'name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %
                                                                    ;; database-position isn't stable since they are
                                                                    ;; defined in sets. changing keys will change the
                                                                    ;; order in the set implementation. (and position depends on database-position)
                                                                    (m/filter-vals some? (dissoc % :id :database-position :position))))]
-             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table :id transactions-table-id))))))))
+             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table 'id transactions-table-id))))))))

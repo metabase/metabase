@@ -53,7 +53,7 @@
   (testing "updates progress value"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/update-progress! (:id task) 0.25)
-      (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 0.25 (:progress updated-task)))
         (is (some? (:last_progress_report_at updated-task))))
       (rst/complete-sync-task! (:id task)))))
@@ -62,10 +62,10 @@
   (testing "updates progress multiple times"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/update-progress! (:id task) 0.5)
-      (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 0.5 (:progress updated-task))))
       (rst/update-progress! (:id task) 0.75)
-      (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 0.75 (:progress updated-task))))
       (rst/complete-sync-task! (:id task)))))
 
@@ -73,10 +73,10 @@
   (testing "handles edge case progress values"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/update-progress! (:id task) 0.0)
-      (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 0.0 (:progress updated-task))))
       (rst/update-progress! (:id task) 1.0)
-      (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 1.0 (:progress updated-task))))
       (rst/complete-sync-task! (:id task)))))
 
@@ -88,7 +88,7 @@
   (testing "marks task as completed"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 1.0 (:progress completed-task)))
         (is (some? (:ended_at completed-task)))
         (is (nil? (:error_message completed-task)))
@@ -98,7 +98,7 @@
   (testing "stores the structured outcome map (round-tripped as JSON) when one is provided"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task) {:kind "pulled" :count 12 :branch "main"})
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= {:kind "pulled" :count 12 :branch "main"} (:outcome completed-task)))
         (is (nil? (:error_message completed-task)))))))
 
@@ -111,7 +111,7 @@
     (let [task (rst/create-sync-task! "export" (mt/user->id :rasta))
           error-msg "Connection timeout: Failed to connect to remote server"]
       (rst/fail-sync-task! (:id task) error-msg)
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (some? (:ended_at failed-task)))
         (is (= error-msg (:error_message failed-task)))
         ;; Progress remains unchanged when task fails
@@ -122,7 +122,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/update-progress! (:id task) 0.5)
       (rst/fail-sync-task! (:id task) "Partial failure after 50% complete")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 0.5 (:progress failed-task)))
         (is (= "Partial failure after 50% complete" (:error_message failed-task)))
         (is (some? (:ended_at failed-task)))))))
@@ -190,12 +190,12 @@
       (is (some? (:started_at task)))
       ;; Progress updates
       (rst/update-progress! (:id task) 0.3)
-      (let [updated (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [updated (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (< (abs (- 0.3 (:progress updated))) 0.0001))
         (is (nil? (:ended_at updated))))
       ;; Completion
       (rst/complete-sync-task! (:id task))
-      (let [completed (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (= 1.0 (:progress completed)))
         (is (some? (:ended_at completed)))
         (is (nil? (:error_message completed)))))))
@@ -208,7 +208,7 @@
       ;; Failure
       (let [error-msg "Network connection lost"]
         (rst/fail-sync-task! (:id task) error-msg)
-        (let [failed (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (let [failed (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (< (abs (- 0.7 (:progress failed))) 0.0001))
           (is (some? (:ended_at failed)))
           (is (= error-msg (:error_message failed))))))))
@@ -227,88 +227,88 @@
   (testing "successful? returns true for completed task without error"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (true? (rst/successful? completed-task))))))
   (testing "successful? returns false for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
-          running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          running-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
       (is (false? (rst/successful? running-task)))
       (rst/complete-sync-task! (:id task))))
   (testing "successful? returns false for failed task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "error")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/successful? failed-task))))))
   (testing "successful? returns false for cancelled task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/successful? failed-task)))))))
 
 (deftest failed?-test
   (testing "failed? returns true for task with error and ended_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Connection failed")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (true? (rst/failed? failed-task))))))
   (testing "failed? returns false for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
-          running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          running-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
       (is (false? (rst/failed? running-task)))
       (rst/complete-sync-task! (:id task))))
   (testing "failed? returns false for successful task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/failed? completed-task))))))
   (testing "failed? returns false for cancelled task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/failed? completed-task)))))))
 
 (deftest cancelled?-test
   (testing "cancelled? returns true for cancelled tasks"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
-      (let [running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [running-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (true? (rst/cancelled? running-task))))))
   (testing "cancelled? returns false for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
-          running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          running-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
       (is (false? (rst/cancelled? running-task)))
       (rst/complete-sync-task! (:id task))))
   (testing "cancelled? returns false for successful task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/cancelled? completed-task))))))
   (testing "cancelled? returns false for task with error and ended_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Connection failed")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/cancelled? failed-task)))))))
 
 (deftest running?-test
   (testing "running? returns false for cancelled tasks"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/cancel-sync-task! (:id task))
-      (let [cancelled-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [cancelled-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/running? cancelled-task))))))
   (testing "running? returns true for incomplete task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
-          running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          running-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
       (is (true? (rst/running? running-task)))
       (rst/complete-sync-task! (:id task))))
   (testing "running? returns false for successful task"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/running? completed-task))))))
   (testing "running? returns false for task with error and ended_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Connection failed")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/running? failed-task)))))))
 
 (deftest timed-out?-returns-true-for-stale-task-test
@@ -318,7 +318,7 @@
       (try
         (t2/update! :model/RemoteSyncTask (:id task)
                     {:last_progress_report_at old-time})
-        (let [stale-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (let [stale-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (true? (rst/timed-out? stale-task))))
         (finally
           (rst/complete-sync-task! (:id task)))))))
@@ -328,7 +328,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (try
         (rst/update-progress! (:id task) 0.5)
-        (let [active-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (let [active-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (false? (rst/timed-out? active-task))))
         (finally
           (rst/complete-sync-task! (:id task)))))))
@@ -340,7 +340,7 @@
       (t2/update! :model/RemoteSyncTask (:id task)
                   {:last_progress_report_at old-time})
       (rst/complete-sync-task! (:id task))
-      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/timed-out? completed-task)))))))
 
 (deftest timed-out?-returns-false-for-failed-task-test
@@ -350,7 +350,7 @@
       (t2/update! :model/RemoteSyncTask (:id task)
                   {:last_progress_report_at old-time})
       (rst/fail-sync-task! (:id task) "Task failed")
-      (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+      (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/timed-out? failed-task)))))))
 
 (deftest timed-out?-returns-false-at-boundary-test
@@ -360,7 +360,7 @@
       (try
         (t2/update! :model/RemoteSyncTask (:id task)
                     {:last_progress_report_at boundary-time})
-        (let [boundary-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (let [boundary-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (false? (rst/timed-out? boundary-task))))
         (finally
           (rst/complete-sync-task! (:id task)))))))
@@ -423,7 +423,7 @@
                                     :last_progress_report_at old-time
                                     :progress 0.5})]
       (rst/supersede-stale-tasks!)
-      (let [after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
+      (let [after (t2/select-one :model/RemoteSyncTask 'id (:id stale-task))]
         (is (true? (:cancelled after)))
         (is (some? (:ended_at after)))
         (is (= "Superseded after staleness timeout" (:error_message after)))))))
@@ -436,7 +436,7 @@
           new-task (insert-task! {:started_at              now
                                   :last_progress_report_at now})]
       (rst/supersede-stale-tasks!)
-      (let [after (t2/select-one :model/RemoteSyncTask :id (:id new-task))]
+      (let [after (t2/select-one :model/RemoteSyncTask 'id (:id new-task))]
         (is (false? (:cancelled after))
             "brand-new task must remain unchanged")
         (is (nil? (:ended_at after))
@@ -451,7 +451,7 @@
                                      :last_progress_report_at now
                                      :progress 0.7})]
       (rst/supersede-stale-tasks!)
-      (let [after (t2/select-one :model/RemoteSyncTask :id (:id active-task))]
+      (let [after (t2/select-one :model/RemoteSyncTask 'id (:id active-task))]
         (is (false? (:cancelled after))
             "task with recent progress must remain unchanged")
         (is (nil? (:ended_at after))
@@ -466,9 +466,9 @@
                                     :progress  1.0})
           ;; Capture the post-insert ended_at so the comparison is done at the DB's precision
           ;; (Postgres/MySQL truncate nanoseconds to microseconds; H2 keeps full nanos).
-          before     (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
+          before     (t2/select-one :model/RemoteSyncTask 'id (:id ended-task))]
       (rst/supersede-stale-tasks!)
-      (let [after (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
+      (let [after (t2/select-one :model/RemoteSyncTask 'id (:id ended-task))]
         (is (false? (:cancelled after)))
         (is (= (:ended_at before) (:ended_at after))
             "ended_at must not be overwritten")))))

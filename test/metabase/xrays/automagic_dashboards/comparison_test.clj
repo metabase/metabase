@@ -39,8 +39,8 @@
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
     (mt/with-test-user :rasta
       (with-rollback-only-transaction
-        (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) (t2/select-one :model/Segment :id segment-id))))
-        (is (some? (test-comparison (t2/select-one :model/Segment :id segment-id) (t2/select-one :model/Table :id (mt/id :venues)))))))))
+        (is (some? (test-comparison (t2/select-one :model/Table 'id (mt/id :venues)) (t2/select-one :model/Segment 'id segment-id))))
+        (is (some? (test-comparison (t2/select-one :model/Segment 'id segment-id) (t2/select-one :model/Table 'id (mt/id :venues)))))))))
 
 (deftest ^:parallel test-2
   (mt/with-temp [:model/Segment {segment1-id :id} @segment
@@ -52,7 +52,7 @@
                                                                  (lib/filter query (lib/< field 4)))}]
     (mt/with-test-user :rasta
       (with-rollback-only-transaction
-        (is (some? (test-comparison (t2/select-one :model/Segment :id segment1-id) (t2/select-one :model/Segment :id segment2-id))))))))
+        (is (some? (test-comparison (t2/select-one :model/Segment 'id segment1-id) (t2/select-one :model/Segment 'id segment2-id))))))))
 
 (deftest ^:parallel test-3
   (mt/with-test-user :rasta
@@ -61,7 +61,7 @@
                                                                          :source-table (mt/id :venues)}
                                                               :type     :query
                                                               :database (mt/id)})]
-        (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) q)))))))
+        (is (some? (test-comparison (t2/select-one :model/Table 'id (mt/id :venues)) q)))))))
 
 (deftest ^:parallel test-4
   (mt/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
@@ -71,4 +71,4 @@
                                                             :database (mt/id)}}]
     (mt/with-test-user :rasta
       (with-rollback-only-transaction
-        (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) (t2/select-one :model/Card :id card-id))))))))
+        (is (some? (test-comparison (t2/select-one :model/Table 'id (mt/id :venues)) (t2/select-one :model/Card 'id card-id))))))))

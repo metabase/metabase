@@ -41,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (t2/select-one-fn :engine :model/Database :id database-id)))
+    (t2/select-one-fn :engine :model/Database 'id database-id)))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.

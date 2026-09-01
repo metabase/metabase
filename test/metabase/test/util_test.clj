@@ -27,7 +27,7 @@
       (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
         (throw (Exception.))))
     (is (= 5
-           (t2/select-one-fn :position :model/Field :id (data/id :venues :price))))))
+           (t2/select-one-fn :position :model/Field 'id (data/id :venues :price))))))
 
 (setting/defsetting test-util-test-setting
   "Another internal test setting"

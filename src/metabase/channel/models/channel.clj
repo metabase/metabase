@@ -71,7 +71,7 @@
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
     (when deactivation?
-      (t2/delete! :model/PulseChannel :channel_id (:id instance)))
+      (t2/delete! :model/PulseChannel 'channel_id (:id instance)))
     (cond-> instance
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
@@ -83,7 +83,7 @@
 
 (defmethod serdes/load-find-local "Channel"
   [path]
-  (t2/select-one :model/Channel :name (:id (last path))))
+  (t2/select-one :model/Channel 'name (:id (last path))))
 
 (defmethod serdes/generate-path "Channel" [_ channel]
   [(serdes/infer-self-path "Channel" channel)])

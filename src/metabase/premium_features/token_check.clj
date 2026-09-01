@@ -79,7 +79,7 @@
                             ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
                             ;; the `after-select` method on users, which calls an EE method that needs ... a token
                             ;; check :|
-                            (t2/count (t2/table-name :model/User) :is_active true :type "personal"))]
+                            (t2/count (t2/table-name :model/User) 'is_active true 'type "personal"))]
                (log/debug (u/colorize :green "=>") result)
                result))
       lock (Object.)]
@@ -246,7 +246,7 @@
 (defn- active-user-count []
   ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
   ;; on users, which calls an EE method that needs ... a token check :|
-  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
+  (t2/count (t2/table-name :model/User) 'is_active true, 'type "personal"))
 
 (defn assert-valid-airgap-user-count!
   "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
@@ -365,7 +365,7 @@
 (defn- read-cache-from-db
   "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
   [token-hash]
-  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))
+  (t2/select-one [:model/PremiumFeaturesCache 'token_status_hash 'updated_at] 'token_hash token-hash))
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
@@ -374,7 +374,7 @@
   [token-hash result-hash]
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
-          updated (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+          updated (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
                               {:token_status_hash result-hash :updated_at now})]
       (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
         ;; we should always be updating this row with the timestamp if it's there.
@@ -384,7 +384,7 @@
                                                    :updated_at        now})
           (catch Exception _e
             ;; Another instance inserted first — update instead.
-            (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+            (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
                         {:token_status_hash result-hash :updated_at now})))))))
 
 (defn- clear-db-cache!

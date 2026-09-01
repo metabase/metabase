@@ -16,7 +16,7 @@
   (testing "Creating a session with password authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info {:device_id "test-device-123"
                          :embedded false
                          :token_exchange false
@@ -27,7 +27,7 @@
         (is (some? session))
         (is (string? (:key session)))
         (is (= (:id password-auth) (:auth_identity_id session)))
-        (let [persisted-session (t2/select-one :model/Session :id (:id session))]
+        (let [persisted-session (t2/select-one :model/Session 'id (:id session))]
           (is (= (:id password-auth) (:auth_identity_id persisted-session))))))))
 
 (deftest create-session-with-google-sso-auth-tracking-test
@@ -44,7 +44,7 @@
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/google)]
         (is (some? session))
         (is (= (:id google-auth) (:auth_identity_id session)))
-        (let [persisted-session (t2/select-one :model/Session :id (:id session))]
+        (let [persisted-session (t2/select-one :model/Session 'id (:id session))]
           (is (= (:id google-auth) (:auth_identity_id persisted-session))))))))
 
 (deftest create-session-with-ldap-auth-tracking-test
@@ -61,14 +61,14 @@
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/ldap)]
         (is (some? session))
         (is (= (:id ldap-auth) (:auth_identity_id session)))
-        (let [persisted-session (t2/select-one :model/Session :id (:id session))]
+        (let [persisted-session (t2/select-one :model/Session 'id (:id session))]
           (is (= (:id ldap-auth) (:auth_identity_id persisted-session))))))))
 
 (deftest create-session-updates-last-used-at-test
   (testing "Creating a session updates the last_used_at timestamp on the AuthIdentity"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info {:device_id "test-device-last-used"
                          :embedded false
                          :token_exchange false
@@ -77,14 +77,14 @@
             original-last-used (:last_used_at password-auth)]
         (is (nil? original-last-used))
         (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)
-        (let [updated-auth (t2/select-one :model/AuthIdentity :id (:id password-auth))]
+        (let [updated-auth (t2/select-one :model/AuthIdentity 'id (:id password-auth))]
           (is (some? (:last_used_at updated-auth))))))))
 
 (deftest multiple-sessions-same-auth-identity-test
   (testing "Multiple sessions can reference the same AuthIdentity"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info-1 {:device_id "device-1"
                            :embedded false
                            :token_exchange false
@@ -109,7 +109,7 @@
   (testing "Deleting an AuthIdentity cascades to delete associated Sessions"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info {:device_id "test-device-cascade"
                          :embedded false
                          :token_exchange false
@@ -118,9 +118,9 @@
             session (auth-identity/create-session-with-auth-tracking!
                      user device-info :provider/password)]
         (is (some? session))
-        (is (some? (t2/select-one :model/Session :id (:id session))))
-        (t2/delete! :model/AuthIdentity :id (:id password-auth))
-        (is (nil? (t2/select-one :model/Session :id (:id session))))))))
+        (is (some? (t2/select-one :model/Session 'id (:id session))))
+        (t2/delete! :model/AuthIdentity 'id (:id password-auth))
+        (is (nil? (t2/select-one :model/Session 'id (:id session))))))))
 
 (deftest session-creation-with-user-having-multiple-providers-test
   (testing "User with multiple providers can create sessions with different providers"
@@ -128,7 +128,7 @@
                    :model/AuthIdentity google-auth {:user_id (:id user)
                                                     :provider "google"}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info {:device_id "test-device-multi"
                          :embedded false
                          :token_exchange false
@@ -175,7 +175,7 @@
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
       (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
-            password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
+            password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")]
         (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
         (let [device-info {:device_id "test-device-expires"
                            :embedded false
@@ -187,14 +187,14 @@
               "Session should have expires_at")
           (is (instance? java.time.OffsetDateTime (:expires_at session))
               "expires_at should be OffsetDateTime")
-          (is (t2/exists? :model/AuthIdentity :id (:id password-auth) :expires_at (:expires_at session))
+          (is (t2/exists? :model/AuthIdentity 'id (:id password-auth) 'expires_at (:expires_at session))
               "Session expires_at should match auth-identity expires_at"))))))
 
 (deftest session-no-expires-at-when-auth-identity-has-none-test
   (testing "Session has no expires_at when auth-identity doesn't have one"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             device-info {:device_id "test-device-no-expires"
                          :embedded false
                          :token_exchange false

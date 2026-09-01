@@ -200,13 +200,13 @@
   ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
   ;; because parent_id contributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (t2/delete! :model/Field :parent_id (:id field)))
+  (t2/delete! :model/Field 'parent_id (:id field)))
 
 (defn- field->table
   "Get the Table for a Field, either from hydration or by fetching."
   [instance]
   (or (:table instance)
-      (t2/select-one :model/Table :id (:table_id instance))))
+      (t2/select-one :model/Table 'id (:table_id instance))))
 
 (defmethod mi/can-read? :model/Field
   ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
@@ -229,7 +229,7 @@
   metabase-enterprise.advanced-permissions.common
   [instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (t2/select-one :model/Table 'id (:table_id instance)))]
     (and (remote-sync/table-editable? table)
          (mi/superuser?))))
 
@@ -253,7 +253,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (t2/select :model/Collection 'id ['in collection-ids]))
                                 {})
         ;; Associate collection info with each field's table
         fields-with-collection (for [field fields-with-tables
@@ -275,7 +275,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
+  (t2/select [:model/FieldValues 'field_id 'values], 'field_id id 'type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recursively find the field id for a nested field name, return nil if not found.
@@ -288,7 +288,7 @@
          field-id    nil]
     (if (seq field-names)
       (let [field-name (first field-names)
-            field-id   (t2/select-one-pk :model/Field :name field-name :parent_id field-id :table_id table-id)]
+            field-id   (t2/select-one-pk :model/Field 'name field-name 'parent_id field-id 'table_id table-id)]
         (if field-id
           (recur (rest field-names) field-id)
           nil))
@@ -401,7 +401,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (t2/select :model/Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (t2/select :model/Field 'id ['in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -411,7 +411,7 @@
   [field]
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (t2/select-one :model/Field :id target-field-id))]
+        target-field    (when-let [target-field (and target-field-id (t2/select-one :model/Field 'id target-field-id))]
                           (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
@@ -419,9 +419,9 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (t2/select-one :model/Field :id parent-id)]
+  (conj (vec (if-let [parent (t2/select-one :model/Field 'id parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
+               (let [{table-name :name, schema :schema} (t2/select-one ['Table 'name 'schema], 'id table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -437,7 +437,7 @@
   (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (t2/select-one-fn :table_id :model/Field, :id field-id))))
+     (t2/select-one-fn :table_id :model/Field, 'id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
@@ -450,7 +450,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (t2/select-one 'Table, :id table_id))
+  (t2/select-one 'Table, 'id table_id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]

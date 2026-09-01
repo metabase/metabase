@@ -303,7 +303,7 @@
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "comment/" c1))))
         (testing "comment is marked as deleted in database"
-          (let [comment (t2/select-one :model/Comment :id c1)]
+          (let [comment (t2/select-one :model/Comment 'id c1)]
             (is (some? (:deleted_at comment)))))
         (testing "deleting a comment twice leaves sour taste in the mouth"
           ;; NOTE: maybe it's fine and we should just noop here rather than return an error?
@@ -560,7 +560,7 @@
         ;; still sends one is not broken by the change.
         (testing "drops unknown keys, so the blob cannot quietly accrete new values"
           (let [created (post! 200 {:some_future_key "anything"})]
-            (is (= {} (t2/select-one-fn :context :model/Comment :id (:id created))))))))))
+            (is (= {} (t2/select-one-fn :context :model/Comment 'id (:id created))))))))))
 
 (deftest comment-highlight-label-is-stored-as-the-client-formatted-it-test
   (testing "the label for a commented-on data point"
@@ -589,7 +589,7 @@
             (is (= "$0 – $10, EU" (get-in created [:context :highlight_label])))
             (is (= "$0 – $10, EU" (get-in (fetch (:id created)) [:context :highlight_label])))
             (is (= {:highlighted highlighted :highlight_label "$0 – $10, EU"}
-                   (t2/select-one-fn :context :model/Comment :id (:id created))))))
+                   (t2/select-one-fn :context :model/Comment 'id (:id created))))))
         (testing "is absent when the comment is not anchored to a data point"
           (let [plain (post! {:timeline_id 1})]
             (is (nil? (get-in plain [:context :highlight_label])))

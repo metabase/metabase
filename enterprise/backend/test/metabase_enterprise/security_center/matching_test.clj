@@ -137,7 +137,7 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status     :active
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))
     (testing "query doesn't match → not_affected"
       (mt/with-temp [:model/SecurityAdvisory advisory
                      {:advisory_id       "SC-MATCH-002"
@@ -153,7 +153,7 @@
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status :not_affected}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))
     (testing "nil matching_query (affects all) + version in range → active"
       (mt/with-temp [:model/SecurityAdvisory advisory
                      {:advisory_id       "SC-MATCH-003"
@@ -168,7 +168,7 @@
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status :active}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))
     (testing "query error → error status persisted"
       (mt/with-temp [:model/SecurityAdvisory advisory
                      {:advisory_id       "SC-MATCH-004"
@@ -184,7 +184,7 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))))
 
 ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
 (deftest evaluate-advisory!-out-of-range-test
@@ -207,7 +207,7 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :not_affected
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))
     ;; The matching_query in these tests would throw if executed — that's how we
     ;; verify the short-circuit actually avoids running the query.
     (let [past #t "2020-01-01T00:00:00Z"]
@@ -225,7 +225,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-advisory! advisory)
-          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
             (is (= :resolved (:match_status reloaded)))
             (is (= (t/instant past) (t/instant (:last_evaluated_at reloaded)))))))
       (testing "out-of-range + already :not_affected → skip entirely"
@@ -242,7 +242,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-advisory! advisory)
-          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
             (is (= :not_affected (:match_status reloaded)))
             (is (= (t/instant past) (t/instant (:last_evaluated_at reloaded))))))))
     (testing "out-of-range + :active + query match → transitions to :resolved"
@@ -260,7 +260,7 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :resolved
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+                (t2/select-one :model/SecurityAdvisory 'id (:id advisory))))))))
 
 ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
 ;; must never produce :active — we cannot claim an instance is affected when
@@ -283,7 +283,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-advisory! advisory (matching/parse-version tag))
-          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
             (is (not= :active (:match_status reloaded)))))))))
 
 (deftest evaluate-advisory!-reactivation-test
@@ -311,7 +311,7 @@
                             :published_at      #t "2026-03-24T00:00:00Z"
                             :updated_at        #t "2026-03-24T00:00:00Z"}]
               (matching/evaluate-advisory! advisory)
-              (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+              (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
                 (is (= new-status (:match_status reloaded)))
                 (is (nil? (:acknowledged_at reloaded)))
                 (is (nil? (:acknowledged_by reloaded)))
@@ -331,7 +331,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-advisory! advisory)
-          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
             (is (= :active (:match_status reloaded)))
             (is (= (t/instant acked-at) (t/instant (:acknowledged_at reloaded))))
             (is (= (mt/user->id :rasta) (:acknowledged_by reloaded))))))
@@ -348,7 +348,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-advisory! advisory)
-          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (let [reloaded (t2/select-one :model/SecurityAdvisory 'id (:id advisory))]
             (is (= :active (:match_status reloaded)))
             (is (nil? (:acknowledged_at reloaded)))))))))
 
@@ -389,7 +389,7 @@
                     :published_at      #t "2026-03-24T00:00:00Z"
                     :updated_at        #t "2026-03-24T00:00:00Z"}]
       (matching/evaluate-all-advisories!)
-      (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))
+      (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory 'advisory_id id))
             past #t "2020-01-01T00:00:00Z"]
         (testing "each advisory gets the correct status and timestamp"
           (is (=? {:match_status      :active
@@ -402,19 +402,19 @@
                    :last_evaluated_at some?}
                   (fetch "SC-EVAL-003"))))
         (testing "acknowledged + active advisories are still re-evaluated"
-          (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-001"}
+          (t2/update! :model/SecurityAdvisory {'advisory_id "SC-EVAL-001"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
           (is (not= past (:last_evaluated_at (fetch "SC-EVAL-001")))))
         (testing "acknowledged + not_affected + in-range advisories are still re-evaluated"
-          (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-002"}
+          (t2/update! :model/SecurityAdvisory {'advisory_id "SC-EVAL-002"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
           (is (not= past (:last_evaluated_at (fetch "SC-EVAL-002")))))
         (testing "acknowledged + error advisories are still re-evaluated"
-          (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-003"}
+          (t2/update! :model/SecurityAdvisory {'advisory_id "SC-EVAL-003"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
@@ -451,7 +451,7 @@
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
           (matching/evaluate-all-advisories!)
-          (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))]
+          (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory 'advisory_id id))]
             (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-001")))))
             (is (= :resolved (:match_status (fetch "SC-EVAL-OOR-001"))))
             (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-002")))))

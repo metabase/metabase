@@ -39,8 +39,8 @@
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
   (cond-> (t2/hydrate (t2/select :model/Timeline
-                                 :collection_id collection-id
-                                 :archived (boolean archived?))
+                                 'collection_id collection-id
+                                 'archived (boolean archived?))
                       :creator
                       [:collection :can_write])
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))

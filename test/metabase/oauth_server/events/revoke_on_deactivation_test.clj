@@ -36,7 +36,7 @@
     code))
 
 (defn- revoked? [model token]
-  (some? (t2/select-one-fn :revoked_at model :token token)))
+  (some? (t2/select-one-fn :revoked_at model 'token token)))
 
 (deftest revoke-on-event-test
   (testing ":event/user-credentials-revoked revokes the user's OAuth tokens, leaving other users' untouched"
@@ -53,11 +53,11 @@
             "victim's access token is revoked")
         (is (revoked? :model/OAuthRefreshToken victim-refresh)
             "victim's refresh token is revoked")
-        (is (not (t2/exists? :model/OAuthAuthorizationCode :code victim-code))
+        (is (not (t2/exists? :model/OAuthAuthorizationCode 'code victim-code))
             "victim's pending authorization code is deleted — it could otherwise mint fresh tokens")
         (is (not (revoked? :model/OAuthAccessToken bystander-access))
             "an unrelated user's token is untouched")
-        (is (t2/exists? :model/OAuthAuthorizationCode :code bystander-code)
+        (is (t2/exists? :model/OAuthAuthorizationCode 'code bystander-code)
             "an unrelated user's pending authorization code is untouched")))))
 
 (deftest deactivation-revokes-and-reactivation-does-not-revive-test
@@ -71,9 +71,9 @@
         (t2/update! :model/User user-id {:is_active false})
         (is (revoked? :model/OAuthAccessToken access-token)
             "deactivation revokes the token")
-        (is (not (t2/exists? :model/OAuthAuthorizationCode :code auth-code))
+        (is (not (t2/exists? :model/OAuthAuthorizationCode 'code auth-code))
             "deactivation deletes the pending authorization code")
-        (let [revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token)]
+        (let [revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken 'token access-token)]
           (t2/update! :model/User user-id {:is_active true})
-          (is (= revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token))
+          (is (= revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken 'token access-token))
               "reactivation does not un-revoke the pre-deactivation token"))))))

@@ -488,8 +488,8 @@
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
-        (let [admins-coll-id (t2/select-one-pk :model/Collection :personal_owner_id api/*current-user-id*)
-              others-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (let [admins-coll-id (t2/select-one-pk :model/Collection 'personal_owner_id api/*current-user-id*)
+              others-coll-id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :rasta))]
           (mt/with-temp [:model/Collection {public-coll-id :id} {}
                          :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
                          :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
@@ -673,8 +673,8 @@
           (let [results   (search/search {:term-queries ["BaseTable Sample Metric"]})
                 by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
                 metric-res (get by-id [metric-id "metric"])
-                db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
-                orders-t  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+                db-name   (t2/select-one-fn :name :model/Database 'id (mt/id))
+                orders-t  (t2/select-one [:model/Table 'schema 'name] 'id (mt/id :orders))]
             (is (some? metric-res) "metric should appear in search results")
             (testing "base_table_* fields are populated"
               (is (= (mt/id :orders) (:base_table_id metric-res)))

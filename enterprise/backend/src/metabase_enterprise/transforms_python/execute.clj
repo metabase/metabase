@@ -27,7 +27,7 @@
   "Saves the content of the log into the transform_run's message field. Lossy, string contains user facing information only."
   [run-id message-log]
   (t2/update! :model/TransformRun
-              :id run-id
+              'id run-id
               {:message (base/message-log->string message-log)}))
 
 (def ^:private ^Duration python-message-loop-sleep-duration

@@ -626,8 +626,8 @@
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)
-                               (t2/select [:model/Table :id :db_id :schema]
-                                          :db_id [:in affected-db-ids]))
+                               (t2/select [:model/Table 'id 'db_id 'schema]
+                                          'db_id ['in affected-db-ids]))
          tables-by-db-schema (group-by (juxt :db_id :schema) all-tables)
          tables-by-db        (group-by :db_id all-tables)
          current-perms       (or (perms/index-database-permissions affected-group-ids affected-db-ids) {})

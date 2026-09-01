@@ -52,8 +52,8 @@
    errors      :- [:sequential ::error-input]]
   (t2/with-transaction [_conn]
     (t2/delete! :model/AnalysisFindingError
-                :analyzed_entity_type entity-type
-                :analyzed_entity_id entity-id)
+                'analyzed_entity_type entity-type
+                'analyzed_entity_id entity-id)
     (when (seq errors)
       (t2/insert! :model/AnalysisFindingError
                   (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
@@ -70,13 +70,13 @@
   [source-entity-type :- [:maybe ::lib.schema.validate/source-entity-type]
    source-entity-id   :- ms/PositiveInt]
   (t2/select :model/AnalysisFindingError
-             :source_entity_type source-entity-type
-             :source_entity_id source-entity-id))
+             'source_entity_type source-entity-type
+             'source_entity_id source-entity-id))
 
 (mu/defn errors-for-entity :- [:sequential ::analysis-finding-error]
   "Get all errors for a specific analyzed entity."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
   (t2/select :model/AnalysisFindingError
-             :analyzed_entity_type entity-type
-             :analyzed_entity_id entity-id))
+             'analyzed_entity_type entity-type
+             'analyzed_entity_id entity-id))

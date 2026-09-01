@@ -46,10 +46,10 @@
 (defn- action-rows
   "Returns raw rows so we can detect actions that cannot be resolved to action details."
   [model-ids]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false
-             :type [:not= "http"]))
+  (t2/select [:model/Action 'id 'model_id 'name 'type]
+             'model_id ['in model-ids]
+             'archived false
+             'type ['not= "http"]))
 
 (defn- unresolved-action-rows
   "Returns action rows missing from resolved action details."

@@ -47,7 +47,7 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (->> (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :series)
+  (let [current-cards    (->> (t2/hydrate (t2/select :model/DashboardCard 'dashboard_id dashboard-id) :series)
                               (mapv (fn [dashcard]
                                       (-> (apply dissoc (t2.realize/realize dashcard)
                                                  excluded-columns-for-dashcard-revision)
@@ -111,7 +111,7 @@
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
           current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                                      :model/DashboardTab :dashboard_id dashboard-id)
+                                                      :model/DashboardTab 'dashboard_id dashboard-id)
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
           _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards

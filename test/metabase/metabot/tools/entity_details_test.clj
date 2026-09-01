@@ -438,8 +438,8 @@
                                              {:metric-id metric-id
                                               :with-queryable-dimensions? false
                                               :with-field-values? false}))
-                db-name (t2/select-one-fn :name :model/Database :id (mt/id))
-                orders  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+                db-name (t2/select-one-fn :name :model/Database 'id (mt/id))
+                orders  (t2/select-one [:model/Table 'schema 'name] 'id (mt/id :orders))]
             (is (= (mt/id :orders) (:base_table_id output)))
             (is (= (:name orders)  (:base_table_name output)))
             (is (= [db-name (:schema orders) (:name orders)]
@@ -889,13 +889,13 @@
         (testing "join-required-dimensions surfaces REVIEWS.RATING under the REVIEWS join"
           (is (= 1 (count jrd)))
           (let [{:keys [target_table join dimensions]} (first jrd)
-                reviews (t2/select-one [:model/Table :name :schema] :id (mt/id :reviews))]
+                reviews (t2/select-one [:model/Table 'name 'schema] 'id (mt/id :reviews))]
             (is (= (:name reviews) target_table))
             (is (some #(= rating-id (:field_id %)) dimensions))
             (testing "the join clause is a pasteable portable mbql/join targeting REVIEWS"
               (is (= "mbql/join" (get join "lib/type")))
               (is (= "left-join" (get join "strategy")))
-              (is (= [(t2/select-one-fn :name [:model/Database :name] :id (mt/id))
+              (is (= [(t2/select-one-fn :name [:model/Database 'name] 'id (mt/id))
                       (:schema reviews)
                       (:name reviews)]
                      (get-in join ["stages" 0 "source-table"])))
@@ -959,7 +959,7 @@
                 (is (seq jrd) "join-required-dimensions surfaced through the real resource path")
                 (let [{:keys [target_table dimensions]} (first jrd)
                       rating (first (filter #(= (mt/id :reviews :rating) (:field_id %)) dimensions))]
-                  (is (= (t2/select-one-fn :name [:model/Table :name] :id (mt/id :reviews)) target_table))
+                  (is (= (t2/select-one-fn :name [:model/Table 'name] 'id (mt/id :reviews)) target_table))
                   (is (some? rating) "REVIEWS.RATING is surfaced")
                   (is (= "field" (first (:reference rating))))
                   (is (contains? (second (:reference rating)) "join-alias")

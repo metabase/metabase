@@ -58,9 +58,9 @@
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
+  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary 'id id))]
     (t2/update! :model/Glossary id {:term term :definition definition})
-    (let [glossary (t2/select-one :model/Glossary :id id)]
+    (let [glossary (t2/select-one :model/Glossary 'id id)]
       (events/publish-event! :event/glossary-update
                              {:object glossary
                               :previous-object previous-glossary
@@ -75,8 +75,8 @@
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
-    (t2/delete! :model/Glossary :id id)
+  (let [glossary (api/check-404 (t2/select-one :model/Glossary 'id id))]
+    (t2/delete! :model/Glossary 'id id)
     (events/publish-event! :event/glossary-delete
                            {:object glossary
                             :user-id api/*current-user-id*}))

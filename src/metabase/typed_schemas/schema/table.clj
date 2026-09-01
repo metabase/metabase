@@ -16,7 +16,7 @@
   "Returns the table for a given field id."
   [field-id]
   (when (integer? field-id)
-    (t2/select-one-fn :table_id :model/Field :id field-id)))
+    (t2/select-one-fn :table_id :model/Field 'id field-id)))
 
 (defn field-schema
   "Returns the schema for a table field."
@@ -100,7 +100,7 @@
   measure remains usable with a fallback column."
   [database-id measure-id]
   (try
-    (when-let [definition (t2/select-one-fn :definition :model/Measure :id measure-id)]
+    (when-let [definition (t2/select-one-fn :definition :model/Measure 'id measure-id)]
       (schema.common/aggregation-result-column database-id definition))
     (catch Exception _
       nil)))
@@ -112,7 +112,7 @@
     (when (seq measure-ids)
       (let [definition-by-measure-id (into {}
                                            (map (juxt :id :definition))
-                                           (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))]
+                                           (t2/select [:model/Measure 'id 'definition] 'id ['in measure-ids]))]
         (try
           (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
             (into {}

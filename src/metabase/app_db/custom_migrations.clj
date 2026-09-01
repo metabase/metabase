@@ -882,17 +882,17 @@
   For some reasons during data-migration [[metabase.settings.models.setting/get]] return the default value defined in
   [[metabase.settings.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (t2/select-one-fn :value :setting :key (name k)))
+  (t2/select-one-fn :value :setting 'key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
-  (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
+  (let [admin-group-id (t2/select-one-pk :permissions_group 'name "Administrators")
         mapping        (try
                          (json/decode (raw-setting mapping-setting-key))
                          (catch Exception _e
                            {}))]
     (when-not (empty? mapping)
-      (t2/update! :setting {:key (name mapping-setting-key)}
+      (t2/update! :setting {'key (name mapping-setting-key)}
                   {:value
                    (->> mapping
                         (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
@@ -1113,7 +1113,7 @@
       (doseq [db dbs]
         (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
-      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
+      (t2/update! :metabase_database 'id ['in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
@@ -1437,7 +1437,7 @@
 
 (define-migration DecryptCacheSettings
   (let [decrypt! (fn [k]
-                   (t2/update! :setting :key k {:value (raw-setting-value k)}))]
+                   (t2/update! :setting 'key k {:value (raw-setting-value k)}))]
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
@@ -2035,9 +2035,9 @@
       (when-let [table-id (legacy-checkpoint-source-table-id parsed)]
         (when (int? table-id)
           (t2/select-one-pk :model/Field
-                            :table_id table-id
-                            :name column-name
-                            :active true))))))
+                            'table_id table-id
+                            'name column-name
+                            'active true))))))
 
 (define-migration RemoveLegacyIncrementalStrategies
   (doseq [{:keys [id source]} (t2/select [:transform :id :source])]

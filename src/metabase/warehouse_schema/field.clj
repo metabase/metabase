@@ -10,7 +10,7 @@
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (t2/select-one :model/Field :id id))
+  (let [field (-> (api/check-404 (t2/select-one :model/Field 'id id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
                 (field/hydrate-target-with-write-perms field)
@@ -39,7 +39,7 @@
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
-    (let [fields (t2/select :model/Field :id [:in ids])]
+    (let [fields (t2/select :model/Field 'id ['in ids])]
       (prime-table-perms-for-fields! fields)
       (-> (filter mi/can-read? fields)
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
@@ -48,7 +48,7 @@
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (u/prog1 (t2/hydrate (t2/select [:model/Field :id :table_id] :id [:in ids])
+         (u/prog1 (t2/hydrate (t2/select [:model/Field 'id 'table_id] 'id ['in ids])
                               :table)
            (prime-table-perms-for-fields! <>)))
        (filter mi/can-read?)

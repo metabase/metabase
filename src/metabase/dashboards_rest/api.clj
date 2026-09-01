@@ -148,15 +148,15 @@
 (defn- stored-references
   [dashboard-id]
   {:cards   (into (set (t2/select-fn-vec :card_id :model/ParameterCard
-                                         :parameterized_object_type "dashboard"
-                                         :parameterized_object_id   dashboard-id))
-                  (concat (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id)
+                                         'parameterized_object_type "dashboard"
+                                         'parameterized_object_id   dashboard-id))
+                  (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id dashboard-id)
                           (t2/select-fn-vec :card_id :model/DashboardCardSeries
                                             {:where [:in :dashboardcard_id
                                                      ^:allow-subquery {:select [:id]
                                                                        :from   [(t2/table-name :model/DashboardCard)]
                                                                        :where  [:= :dashboard_id dashboard-id]}]})))
-   :actions (set (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))})
+   :actions (set (t2/select-fn-vec :action_id :model/DashboardCard 'dashboard_id dashboard-id))})
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
@@ -289,7 +289,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in hashes])]
+    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query 'query_hash ['in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -356,7 +356,7 @@
                            (fn [card]
                              (when card
                                (let [dataset-query (or (:dataset_query card)
-                                                       (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
+                                                       (t2/select-one-fn :dataset_query :model/Card 'id (:id card)))
                                      download-level (when (seq dataset-query)
                                                       (perms/download-perms-level dataset-query api/*current-user-id*))]
                                  (assoc card :download_perms (case download-level
@@ -382,7 +382,7 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (-> (t2/select-one :model/Dashboard :id id)
+    (-> (t2/select-one :model/Dashboard 'id id)
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -588,8 +588,8 @@
   (api/create-check :model/Dashboard {:collection_id collection_id})
   (api/check-400 (not (and (= is_deep_copy false)
                            (t2/exists? :model/Card
-                                       :dashboard_id from-dashboard-id
-                                       :archived false)))
+                                       'dashboard_id from-dashboard-id
+                                       'archived false)))
                  (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
@@ -647,7 +647,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Dashboard 'name 'id 'public_uuid], 'public_uuid ['not= nil], 'archived false))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -659,7 +659,7 @@
   []
   (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
+  (t2/select [:model/Dashboard 'name 'id], 'enable_embedding true, 'archived false))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
@@ -754,7 +754,7 @@
         cards      (app-db/query query)]
     {:total  (count cards)
      :data   (api.collection/post-process-rows {}
-                                               (t2/select-one :model/Collection :id (:collection_id dashboard))
+                                               (t2/select-one :model/Collection 'id (:collection_id dashboard))
                                                cards)
      :limit  (request/limit)
      :offset (request/offset)
@@ -781,7 +781,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
-    (t2/delete! :model/Dashboard :id id)
+    (t2/delete! :model/Dashboard 'id id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -797,7 +797,7 @@
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
-                           (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+                           (t2/select-pk->fn :dataset_query :model/Card 'id ['in card-ids]))
           field-ids      (into []
                                (keep (fn [{:keys [target card-id]}]
                                        (when target
@@ -819,7 +819,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id)))
+              (t2/select-pk->fn :parameter_mappings :model/DashboardCard 'dashboard_id dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -838,8 +838,8 @@
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
                                          (t2/select-pk->fn :card_id :model/DashboardCard
-                                                           :dashboard_id dashboard-id
-                                                           :id           [:in (set (map :dashcard-id new-mappings))]))
+                                                           'dashboard_id dashboard-id
+                                                           'id           ['in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
@@ -847,7 +847,7 @@
 (defn- create-dashcards!
   [dashboard dashcards]
   (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
-    (api/check-not-archived (t2/select-one :model/Card :id card-id)))
+    (api/check-not-archived (t2/select-one :model/Card 'id card-id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
@@ -861,7 +861,7 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select :model/DashboardCard :id [:in dashcard-ids])]
+  (let [dashboard-cards (t2/select :model/DashboardCard 'id ['in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
@@ -958,7 +958,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+  (let [creator (t2/select-one [:model/User 'first_name 'last_name 'email] creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -966,20 +966,20 @@
      :affected-users (flatten
                       (for [{pulse-channel-id  :id
                              channel-type      :channel_type
-                             {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
-                                                                    :pulse_id [:= bad-pulse-id])]
+                             {:keys [channel]} :details} (t2/select [:model/PulseChannel 'id 'channel_type 'details]
+                                                                    'pulse_id ['= bad-pulse-id])]
                         (case channel-type
                           :email (let [pulse-channel-recipients (when (= :email channel-type)
                                                                   (t2/select :model/PulseChannelRecipient
-                                                                             :pulse_channel_id pulse-channel-id))]
+                                                                             'pulse_channel_id pulse-channel-id))]
                                    (when (seq pulse-channel-recipients)
                                      (map
                                       (fn [{:keys [common_name] :as recipient}]
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
-                                      (t2/select [:model/User :first_name :last_name :email]
-                                                 :id [:in (map :user_id pulse-channel-recipients)]))))
+                                      (t2/select [:model/User 'first_name 'last_name 'email]
+                                                 'id ['in (map :user_id pulse-channel-recipients)]))))
                           :slack {:notification-type channel-type
                                   :recipient         channel}
                           nil)))}))
@@ -989,11 +989,11 @@
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
-                                     (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
+                                     (t2/select-one [:model/Dashboard 'id 'parameters] dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]})
+      (->> (t2/select :model/Pulse 'dashboard_id dashboard-id 'archived false {:order-by [[:id :asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1014,7 +1014,7 @@
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
-                                            (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
+                                            (t2/select-one [:model/Dashboard 'name 'description 'creator_id] dashboard-id)
                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
@@ -1234,7 +1234,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
+  (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard 'id dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/dashboard-public-link-created
@@ -1275,7 +1275,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Dashboard :id id) api/read-check xrays/related))
+  (-> (t2/select-one :model/Dashboard 'id id) api/read-check xrays/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -1338,7 +1338,7 @@
                                    (if api/*is-superuser?*
                                      "/"
                                      (collection/children-location
-                                      (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
+                                      (t2/select-one :model/Collection 'personal_owner_id api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
@@ -1455,8 +1455,8 @@
                             [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
   (api/read-check :model/Dashboard dashboard-id)
   (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))]
+                                               'id dashcard-id
+                                               'dashboard_id dashboard-id))]
     (actions/fetch-values
      (api/check-404 (actions/dashcard->action dashcard))
      parameters)))

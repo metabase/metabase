@@ -41,7 +41,7 @@
   ;; In the future, we might want to skip multi-table changes when using cmd-Z.
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
   (t2/select :model/Undo
-             :batch_num [:in
+             'batch_num ['in
                          ^:allow-subquery
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
@@ -84,7 +84,7 @@
 
 (defn- prune-from-batch! [batch-num & [where]]
   (t2/delete! :model/Undo
-              :batch_num [:<= batch-num]
+              'batch_num ['<= batch-num]
               {:where (or where true)}))
 
 (defn- prune-batches! [batches-to-keep & [where]]
@@ -92,9 +92,9 @@
 
 (defn- next-sequence!
   [seq-name]
-  (if-let [batch-num (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update})]
+  (if-let [batch-num (t2/select-one-fn :next_val [:sequences 'next_val] 'name seq-name {:for :update})]
     (do
-      (t2/update! :sequences {:name seq-name} {:next_val (inc batch-num)})
+      (t2/update! :sequences {'name seq-name} {:next_val (inc batch-num)})
       batch-num)
     (do
       (t2/insert! :sequences {:name seq-name :next_val 2})
@@ -121,9 +121,9 @@
     ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
     (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
       (t2/delete! :model/Undo
-                  :batch_num [:>= batch_num]
-                  :scope scope
-                  :undone true))
+                  'batch_num ['>= batch_num]
+                  'scope scope
+                  'undone true))
     ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
     (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
                             (batch-to-prune-from retention-total-batches)))
@@ -151,10 +151,10 @@
     ;; conflict detection completely in SQL.
     ;; This normal form may make maintenance of the history a bit too expensive however.
     (t2/exists? :model/Undo
-                :table_id [:in table-ids]
-                :row_pk [:in row-pks]
-                :batch_num [(if undo? :> :<) batch_num]
-                :undone (not undo?))))
+                'table_id ['in table-ids]
+                'row_pk ['in row-pks]
+                'batch_num [(if undo? :> :<) batch_num]
+                'undone (not undo?))))
 
 (defn- categorize [{:keys [raw_before raw_after]}]
   (cond
@@ -226,7 +226,7 @@
       :else
       (do (update-table-data! undo-or-redo context batch)
           (t2/update! :model/Undo
-                      {:batch_num (:batch_num (first batch))}
+                      {'batch_num (:batch_num (first batch))}
                       {:undone undo?})
           (for [[table-id sub-batch] (u/group-by :table_id batch)
                 :let [rows (batch->rows undo? sub-batch)]

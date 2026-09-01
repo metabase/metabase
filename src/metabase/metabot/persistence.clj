@@ -180,8 +180,8 @@
   "A conversation's non-deleted messages in reader order (created_at, id)."
   [conversation-id]
   (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
-             :deleted_at nil
+             'conversation_id conversation-id
+             'deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (def ^:private opening-message-limit 10)
@@ -190,8 +190,8 @@
   "A conversation's first few non-deleted messages in reader order."
   [conversation-id]
   (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
-             :deleted_at nil
+             'conversation_id conversation-id
+             'deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]
               :limit    opening-message-limit}))
 
@@ -199,7 +199,7 @@
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
   [conversation-id & body]
   `(t2/with-transaction [_conn#]
-     (t2/select-one :model/MetabotConversation :id ~conversation-id {:for :update})
+     (t2/select-one :model/MetabotConversation 'id ~conversation-id {:for :update})
      ~@body))
 
 (defn soft-delete-messages!
@@ -552,14 +552,14 @@
   [conversation-id title]
   (when (and conversation-id (not (str/blank? title)))
     (t2/update! :model/MetabotConversation
-                {:id conversation-id :title nil}
+                {'id conversation-id 'title nil}
                 {:title title})))
 
 (defn conversation-title
   "Return the current persisted title for a conversation."
   [conversation-id]
   (when conversation-id
-    (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)))
+    (t2/select-one-fn :title :model/MetabotConversation 'id conversation-id)))
 
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
@@ -799,7 +799,7 @@
   conversation participants may not be able to read; readers resolve names through
   the permission-checked card API."
   [conversation-id]
-  (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
+  (when-let [conv (t2/select-one :model/MetabotConversation 'id conversation-id)]
     (let [messages (live-messages conversation-id)]
       {:conversation_id             (:id conv)
        :created_at                  (:created_at conv)
@@ -810,9 +810,9 @@
        :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
                                             {:card_id  id
                                              :chart_id metabot_chart_id})
-                                          (t2/select [:model/Card :id :metabot_chart_id]
-                                                     :metabot_conversation_id conversation-id
-                                                     :archived false
+                                          (t2/select [:model/Card 'id 'metabot_chart_id]
+                                                     'metabot_conversation_id conversation-id
+                                                     'archived false
                                                      {:order-by [[:id :asc]]}))
        :messages                    (messages->chat-messages messages)})))
 

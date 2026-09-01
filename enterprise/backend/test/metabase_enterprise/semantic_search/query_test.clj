@@ -253,7 +253,7 @@
 (deftest permissions-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db! {:mode :mock-indexed}
-      (let [monsters-table (t2/select-one-pk :model/Table :name "Monsters Table")
+      (let [monsters-table (t2/select-one-pk :model/Table 'name "Monsters Table")
             all-users (perms-group/all-users)
             unrestrict-table (fn [table-id]
                                (data-perms/set-table-permission! all-users table-id :perms/create-queries :query-builder)
@@ -266,7 +266,7 @@
                                                                      :vector-search-strategy strategy})))]
             ;; Re-establish the restricted baseline each iteration: the give-data-permissions block below
             ;; unrestricts the table, which would otherwise leak into the next strategy's iteration.
-            (perms/revoke-collection-permissions! (perms-group/all-users) (t2/select-one :model/Collection :name "Cryptozoology"))
+            (perms/revoke-collection-permissions! (perms-group/all-users) (t2/select-one :model/Collection 'name "Cryptozoology"))
             (restrict-table monsters-table)
             (testing (str "strategy = " strategy)
               (testing "admin"

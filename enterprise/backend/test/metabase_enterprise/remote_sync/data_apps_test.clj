@@ -37,7 +37,7 @@
                             "data_apps/sales/dist/index.js" "SALESBUNDLE"}}
             result (import! files)]
         (is (= :success (:status result)))
-        (let [app (t2/select-one :model/DataApp :name "sales")]
+        (let [app (t2/select-one :model/DataApp 'name "sales")]
           (is (some? app) "the data app from the repo was materialized by the import")
           (is (= "Sales" (:display_name app)))
           (is (= "data_apps/sales/dist/index.js" (:bundle_path app)))
@@ -54,9 +54,9 @@
       (is (= #{"gone" "kept"} (t2/select-fn-set :name :model/DataApp)))
       (import! {"main" {"data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
                         "data_apps/kept/i.js"         "K"}})
-      (is (nil? (t2/select-one :model/DataApp :name "gone"))
+      (is (nil? (t2/select-one :model/DataApp 'name "gone"))
           "the app absent from the later import is pruned")
-      (is (some? (t2/select-one :model/DataApp :name "kept"))
+      (is (some? (t2/select-one :model/DataApp 'name "kept"))
           "the still-present app is kept"))))
 
 (deftest deletion-only-pull-counts-the-removal-test

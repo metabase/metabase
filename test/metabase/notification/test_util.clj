@@ -267,7 +267,7 @@
 (defn notification-triggers
   "Return the quartz triggers for a notification."
   [notification-id]
-  (let [subscription-ids (t2/select-pks-set :model/NotificationSubscription :notification_id notification-id)]
+  (let [subscription-ids (t2/select-pks-set :model/NotificationSubscription 'notification_id notification-id)]
     (mapcat send-notification-triggers subscription-ids)))
 
 (defn subscription->trigger-info

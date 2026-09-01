@@ -21,7 +21,7 @@
   "Helper function to create a Document revision manually for testing."
   [document-id is-creation? user]
   (revision/push-revision!
-   {:object (t2/select-one :model/Document :id document-id)
+   {:object (t2/select-one :model/Document 'id document-id)
     :entity :model/Document
     :id document-id
     :user-id (mt/user->id user)
@@ -38,7 +38,7 @@
                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
                                                                :creator_id (mt/user->id :crowberto)}]
       (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :crowberto)})
-      (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+      (let [revision (t2/select-one :model/Revision 'model "Document" 'model_id doc-id)]
         (is revision "Revision should be created")
         (is (= "Document" (:model revision)))
         (is (= doc-id (:model_id revision)))
@@ -64,7 +64,7 @@
                                     :name "Updated Document"
                                     :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]})]
         (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
-        (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id :user_id (mt/user->id :rasta))]
+        (let [revision (t2/select-one :model/Revision 'model "Document" 'model_id doc-id 'user_id (mt/user->id :rasta))]
           (is revision "Revision should be created for update")
           (is (= "Document" (:model revision)))
           (is (= doc-id (:model_id revision)))
@@ -123,7 +123,7 @@
               (is (= "reverted to an earlier version." (:description revert-response)))
               (is (=? @rasta-revision-info (:user revert-response)))))
           (testing "Document state is restored"
-            (let [reverted-document (t2/select-one :model/Document :id doc-id)]
+            (let [reverted-document (t2/select-one :model/Document 'id doc-id)]
               (is (= "Original Document" (:name reverted-document)))
               (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                      (:document reverted-document)))))
@@ -184,7 +184,7 @@
                                                      :id doc-id
                                                      :revision_id original-rev-id})]
           (is (:is_reversion revert-response))
-          (let [reverted-doc (t2/select-one :model/Document :id doc-id)]
+          (let [reverted-doc (t2/select-one :model/Document 'id doc-id)]
             (is (= "Cross-boundary Document" (:name reverted-doc)))))))))
 
 (deftest document-revision-event-handler-integration-test
@@ -199,13 +199,13 @@
                                                                    :creator_id (mt/user->id :rasta)}]
           (testing "Create event triggers revision creation"
             (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :rasta)})
-            (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+            (let [revision (t2/select-one :model/Revision 'model "Document" 'model_id doc-id)]
               (is revision)
               (is (:is_creation revision))))
           (testing "Update event triggers revision creation"
             (let [updated-document (assoc document :name "Updated Event Document")]
               (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
-              (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
+              (let [revisions (t2/select :model/Revision 'model "Document" 'model_id doc-id {:order-by [[:id :desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]
                   (is (not (:is_creation latest-revision)))

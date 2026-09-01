@@ -19,7 +19,7 @@
                                              :definition {:filter [:=
                                                                    [:field-id 1]
                                                                    [:datetime-field [:field-id 2] :month]]}}]
-        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
+        (let [loaded-segment (t2/select-one :model/Segment 'id (:id segment))
               definition (:definition loaded-segment)]
           (testing "should convert to full MBQL 5 query"
             (is (=? {:lib/type :mbql/query
@@ -32,7 +32,7 @@
       (mt/with-temp [:model/Segment segment {:table_id (mt/id :venues)
                                              :definition {:filter [:= [:field-id 1] 2]
                                                           :aggregation [[:count]]}}]
-        (let [loaded-segment (t2/select-one :model/Segment :id (:id segment))
+        (let [loaded-segment (t2/select-one :model/Segment 'id (:id segment))
               definition (:definition loaded-segment)]
           (testing "should convert to MBQL 5 without aggregation"
             (is (=? {:lib/type :mbql/query
@@ -54,7 +54,7 @@
                        :set {:definition (json/encode {:filter "X"})}
                        :where [:= :id segment-id]})
         (is (= {}
-               (:definition (t2/select-one :model/Segment :id segment-id)))))))
+               (:definition (t2/select-one :model/Segment 'id segment-id)))))))
   (testing "...but should still throw them on insert"
     (is (thrown? Exception
                  (t2/insert! :model/Segment {:table_id (mt/id :venues)

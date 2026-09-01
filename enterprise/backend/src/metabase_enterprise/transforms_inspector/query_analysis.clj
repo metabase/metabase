@@ -216,7 +216,7 @@
                            qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (t2/select-one-fn (comp keyword :engine) :model/Database 'id db-id)
           parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))

@@ -46,7 +46,7 @@
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
-      (t2/delete! :model/Database :is_audit true)
+      (t2/delete! :model/Database 'is_audit true)
       ;; reset checksum
       (audit/last-analytics-checksum! 0)
       (with-redefs [ee-audit/analytics-dir-resource nil]
@@ -56,7 +56,7 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true)
+      (t2/delete! :model/Database 'is_audit true)
       (audit/last-analytics-checksum! 0))
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
@@ -66,8 +66,8 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
-      (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
-                                               :database_id audit/audit-db-id)
+      (let [audit-cards             (t2/select [:model/Card 'id 'name 'result_metadata 'card_schema]
+                                               'database_id audit/audit-db-id)
             audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]
         (is (seq audit-cards))
         (is (empty? audit-cards-no-metadata)
@@ -92,10 +92,10 @@
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (mt/with-dynamic-fn-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database :is_audit true {:engine "datomic"})
+        (t2/update! :model/Database 'is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database :is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database 'is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
@@ -126,7 +126,7 @@
 
 (deftest no-sync-tasks-for-audit-db
   ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
-  (t2/delete! :model/Database :id audit/audit-db-id)
+  (t2/delete! :model/Database 'id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
     (with-audit-db-restoration!
@@ -144,7 +144,7 @@
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (t2/delete! :model/Database :is_audit true)
+    (t2/delete! :model/Database 'is_audit true)
     (testing "If audit content loading throws an exception, the checksum should not be stored"
       (audit/last-analytics-checksum! 0)
       (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
@@ -276,37 +276,37 @@
       (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
       (testing "Database engine should be set to postgres"
         (is (= :postgres
-               (t2/select-one-fn :engine :model/Database :id audit-db-id))))
+               (t2/select-one-fn :engine :model/Database 'id audit-db-id))))
       (testing "Tables with existing lowercase versions should not be modified"
         (is (= "USERS"
-               (t2/select-one-fn :name :model/Table :id upper-table-id)))
+               (t2/select-one-fn :name :model/Table 'id upper-table-id)))
         (is (= "users"
-               (t2/select-one-fn :name :model/Table :id lower-table-id))))
+               (t2/select-one-fn :name :model/Table 'id lower-table-id))))
       (testing "Tables without lowercase versions should be converted to lowercase"
         (is (= "orders"
-               (t2/select-one-fn :name :model/Table :id single-table-id))))
+               (t2/select-one-fn :name :model/Table 'id single-table-id))))
       (testing "Tables with nil schemas should not be changed if a table with a schema exists"
         (is (= 2
                (t2/count :model/Table {:where [:= :name "accounts"]}))))
       (testing "Tables with nil schemas have their schema set to \"public\""
         (is (= "public"
-               (t2/select-one-fn :schema :model/Table :id no-schema-table))))
+               (t2/select-one-fn :schema :model/Table 'id no-schema-table))))
       (testing "Fields with existing lowercase versions should not be modified"
         (is (= "EMAIL"
-               (t2/select-one-fn :name :model/Field :id upper-field-id)))
+               (t2/select-one-fn :name :model/Field 'id upper-field-id)))
         (is (= "email"
-               (t2/select-one-fn :name :model/Field :id lower-field-id))))
+               (t2/select-one-fn :name :model/Field 'id lower-field-id))))
       (testing "Fields without lowercase versions should be converted to lowercase"
         (is (= "product"
-               (t2/select-one-fn :name :model/Field :id single-field-id)))))))
+               (t2/select-one-fn :name :model/Field 'id single-field-id)))))))
 
 (defn- audit-view-table
   "The single active `metabase_table` row for audit view `view-name` (a lower-cased name), or nil.
    Matched case-insensitively so it finds the same view across host engines whose name casing differs."
   [view-name]
-  (t2/select-one [:model/Table :id :name :schema :active]
-                 :db_id audit/audit-db-id
-                 :active true
+  (t2/select-one [:model/Table 'id 'name 'schema 'active]
+                 'db_id audit/audit-db-id
+                 'active true
                  {:where [:= [:lower :name] view-name]}))
 
 (deftest audit-db-self-heals-duplicate-rows-from-stale-schema-test
@@ -330,21 +330,21 @@
           (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
             ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
             (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
-            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
-            (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
+            (sync/sync-database! (t2/select-one :model/Database 'is_audit true) {:scan :schema})
+            (is (= 2 (t2/count :model/Table 'db_id audit/audit-db-id 'name (:name v-content)))
                 "stale-schema sync should produce a duplicate pair")
-            (is (false? (t2/select-one-fn :active :model/Table :id orig-id))
+            (is (false? (t2/select-one-fn :active :model/Table 'id orig-id))
                 "the row the customer card points at is retired"))
           (testing "ensure-audit-db-installed! self-heals the duplicate"
             (ee-audit/ensure-audit-db-installed!)
-            (let [rows (t2/select [:model/Table :id :name :active]
-                                  :db_id audit/audit-db-id
+            (let [rows (t2/select [:model/Table 'id 'name 'active]
+                                  'db_id audit/audit-db-id
                                   {:where [:= [:lower :name] "v_content"]})]
               (is (= 1 (count rows)) "exactly one metabase_table row per view after heal")
               (is (every? :active rows) "the surviving row is active"))
             (testing "the customer card still points at an active table"
               (is (true? (t2/select-one-fn :active :model/Table
-                                           :id (t2/select-one-fn :table_id :model/Card :id card-id)))
+                                           'id (t2/select-one-fn :table_id :model/Card 'id card-id)))
                   "card's table_id must reference an active table after heal"))))))))
 
 (deftest audit-db-reconcile-preserves-content-on-the-deleted-duplicate-test
@@ -368,13 +368,13 @@
                         :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
           (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
             (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
-            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
-            (let [rows   (t2/select [:model/Table :id :active] :db_id audit/audit-db-id
+            (sync/sync-database! (t2/select-one :model/Database 'is_audit true) {:scan :schema})
+            (let [rows   (t2/select [:model/Table 'id 'active] 'db_id audit/audit-db-id
                                     {:where [:= [:lower :name] "v_content"]})
                   new-id (:id (first (filter :active rows)))]
               (is (= 2 (count rows)) "stale-schema sync should produce a duplicate pair")
               (is (some? new-id) "a freshly-synced active row exists")
-              (let [a-field    (t2/select-one [:model/Field :id :name :base_type] :table_id new-id)
+              (let [a-field    (t2/select-one [:model/Field 'id 'name 'base_type] 'table_id new-id)
                     a-field-id (:id a-field)]
                 (mt/with-temp [:model/Card {card-id :id}
                                {:database_id     audit/audit-db-id
@@ -391,21 +391,21 @@
                                                      :field_ref [:field a-field-id nil]}])}]
                   (testing "ensure-audit-db-installed! self-heals without destroying the customer card"
                     (ee-audit/ensure-audit-db-installed!)
-                    (is (true? (t2/exists? :model/Card :id card-id))
+                    (is (true? (t2/exists? :model/Card 'id card-id))
                         "customer card must still exist after heal (must not be cascade-deleted)")
-                    (let [healed       (t2/select-one :model/Card :id card-id)
+                    (let [healed       (t2/select-one :model/Card 'id card-id)
                           healed-tid   (:table_id healed)
                           ref-field-id (-> healed :dataset_query :stages first :fields first lib/field-ref-id)]
                       (is (some? healed-tid) "card's table_id must not be nil after heal")
-                      (is (true? (t2/select-one-fn :active :model/Table :id healed-tid))
+                      (is (true? (t2/select-one-fn :active :model/Table 'id healed-tid))
                           "card's table_id must reference an active table after heal")
                       (when a-field-id
                         (is (some? ref-field-id) "card's field ref survived the rewrite")
-                        (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id ref-field-id))
+                        (is (= healed-tid (t2/select-one-fn :table_id :model/Field 'id ref-field-id))
                             "card's field ref must resolve to a field on the survivor table")
                         (testing "result_metadata (legacy field_ref) is remapped onto the survivor"
                           (let [col (-> healed :result_metadata first)]
-                            (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id (:id col)))
+                            (is (= healed-tid (t2/select-one-fn :table_id :model/Field 'id (:id col)))
                                 "result_metadata :id resolves to a survivor field")
                             (is (= (:id col) (nth (:field_ref col) 1))
                                 "result_metadata legacy :field_ref id matches the remapped :id")))))))))))))))
@@ -419,7 +419,7 @@
   ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
   (mt/test-drivers #{:postgres :h2 :mysql}
     (try
-      (t2/delete! :model/Database :is_audit true)
+      (t2/delete! :model/Database 'is_audit true)
       (audit/last-analytics-checksum! 0)
       (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
         (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
@@ -430,7 +430,7 @@
               "checksum stays 0 so the next boot re-runs the load and host-adjust")))
       (finally
         ;; restore a clean, installed audit DB for sibling tests regardless of how this test exits
-        (t2/delete! :model/Database :is_audit true)
+        (t2/delete! :model/Database 'is_audit true)
         (audit/last-analytics-checksum! 0)
         (mbc/ensure-audit-db-installed!)))))
 
@@ -447,7 +447,7 @@
   ;; got its dialect sync. There is no other repair path: the scheduled sync task and the sync
   ;; API both refuse the audit DB.
   (with-audit-db-restoration!
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (let [audit-db (t2/select-one :model/Database 'is_audit true)]
       ;; "Boot 1": steady state (checksums current), the engine-changed sync dies mid-flight.
       (with-redefs [sync.core/sync-database! (fn [& _] (throw (ex-info "killed mid-sync" {})))]
         (#'ee-audit/maybe-sync-audit-db! audit-db true))
@@ -482,7 +482,7 @@
                         (reset! visible
                                 (deref (future
                                          (binding [t2.connection/*current-connectable* nil]
-                                           (t2/exists? :model/User :email email)))
+                                           (t2/exists? :model/User 'email email)))
                                        5000 ::timeout))
                         ;; report no errors: content is already loaded from the steady state, so
                         ;; letting the checksum advance leaves a consistent end state
@@ -491,7 +491,7 @@
         (testing "work committed inside the audit pipeline is visible mid-pipeline from another connection"
           (is (true? @visible)))
         (finally
-          (t2/delete! :model/User :email email))))))
+          (t2/delete! :model/User 'email email))))))
 
 (deftest crash-mid-load-repaired-on-next-boot-test
   ;; Pins the self-healing premise the detached lock's safety argument leans on: a crash in the
@@ -514,4 +514,4 @@
       (mbc/ensure-audit-db-installed!)
       (testing "the next boot re-runs the load and converges to the healthy state"
         (is (= healthy-checksum (audit/last-analytics-checksum)))
-        (is (pos? (t2/count :model/Card :database_id audit/audit-db-id)))))))
+        (is (pos? (t2/count :model/Card 'database_id audit/audit-db-id)))))))

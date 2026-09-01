@@ -179,7 +179,7 @@
   [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+             (t2/hydrate (t2/select-one :model/Document 'id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id
@@ -218,7 +218,7 @@
   concurrent edit cannot be overwritten. Returns the updated document."
   [document-id card-id position & {:keys [extra-attrs]}]
   (t2/with-transaction [_conn]
-    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))
+    (let [document (api/check-404 (t2/select-one :model/Document 'id document-id))
           updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
           updates  (cond-> (select-keys updated [:document])
                      (:is_placeholder document) (assoc :is_placeholder false))]
@@ -272,7 +272,7 @@
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
-                               (t2/update! :model/Document :id document-id
+                               (t2/update! :model/Document 'id document-id
                                            (update-cards-in-ast
                                             {:document document
                                              :content_type prose-mirror/prose-mirror-content-type}
@@ -361,12 +361,12 @@
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+  (let [document (api/check-404 (t2/select-one :model/Document 'id document-id))]
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
-    (t2/delete! :model/Document :id document-id)
+    (t2/delete! :model/Document 'id document-id)
     (events/publish-event! :event/document-delete
                            {:object document
                             :user-id api/*current-user-id*})
@@ -387,7 +387,7 @@
   [source-document-id :- ms/PositiveInt
    new-document-id :- ms/PositiveInt
    new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
+  (let [cards-to-copy (t2/select :model/Card 'document_id source-document-id)]
     (reduce (fn [accum card]
               ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
               ;; collection the caller cannot read. Read-check each card before copying, mirroring
@@ -419,7 +419,7 @@
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
                            (api/read-check
-                            (t2/select-one :model/Document :id from-document-id :archived false)))
+                            (t2/select-one :model/Document 'id from-document-id 'archived false)))
         document-data {:name                (or name (:name existing-document))
                        :document            (:document existing-document)
                        :content_type        (:content_type existing-document)
@@ -432,7 +432,7 @@
                        (let [new-document-id (t2/insert-returning-pk! :model/Document document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
-                           (t2/update! :model/Document :id new-document-id
+                           (t2/update! :model/Document 'id new-document-id
                                        (update-cards-in-ast
                                         {:document (:document existing-document)
                                          :content_type (:content_type existing-document)}
@@ -465,14 +465,14 @@
   ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
   ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
-    (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
+    (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document 'id document-id)]
       {:uuid existing-uuid}
       (do
         (t2/update! :model/Document document-id
                     {:public_uuid       (str (random-uuid))
                      :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
-        {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)}))))
+        {:uuid (t2/select-one-fn :public_uuid :model/Document 'id document-id)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -514,7 +514,7 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Document 'name 'id 'public_uuid], 'public_uuid ['not= nil], 'archived false))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
@@ -524,10 +524,10 @@
 
    Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
-  (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
+  (let [document (api/check-404 (t2/select-one :model/Document 'id document-id 'archived false))]
     (api/read-check document)
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
-                        (t2/exists? :model/Card :id card-id :document_id document-id :archived false)))))
+                        (t2/exists? :model/Card 'id card-id 'document_id document-id 'archived false)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

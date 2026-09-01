@@ -12,7 +12,7 @@
 
 (deftest get-or-create-field-values!-test
   (mt/with-premium-features #{:advanced-permissions}
-    (let [field (t2/select-one :model/Field :id (mt/id :categories :id))]
+    (let [field (t2/select-one :model/Field 'id (mt/id :categories :id))]
       (try
         (testing "creates new field values for user using impersonation"
           (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -26,10 +26,10 @@
               (params.field-values/get-or-create-field-values! field)
               (is (= #{hash-key-1}
                      (into #{}
-                           (map :hash_key (t2/select :model/FieldValues :field_id (u/the-id field) :type :advanced)))))
+                           (map :hash_key (t2/select :model/FieldValues 'field_id (u/the-id field) 'type :advanced)))))
               (testing "calling a second time shouldn't create new FieldValues"
                 (params.field-values/get-or-create-field-values! field)
-                (is (= 1 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced))))
+                (is (= 1 (t2/count :model/FieldValues 'field_id (u/the-id field) 'type :advanced))))
               (testing "changing the impersonation role creates new FieldValues"
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "impersonation_role_2"}}
@@ -42,7 +42,7 @@
                     (params.field-values/get-or-create-field-values! field)
                     (is (= #{hash-key-1 hash-key-2}
                            (into #{}
-                                 (map :hash_key (t2/select :model/FieldValues :field_id (u/the-id field) :type :advanced)))))
-                    (is (= 2 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced)))))))))
+                                 (map :hash_key (t2/select :model/FieldValues 'field_id (u/the-id field) 'type :advanced)))))
+                    (is (= 2 (t2/count :model/FieldValues 'field_id (u/the-id field) 'type :advanced)))))))))
         (finally
-          (t2/delete! :model/FieldValues :field_id (u/the-id field) :type :advanced))))))
+          (t2/delete! :model/FieldValues 'field_id (u/the-id field) 'type :advanced))))))

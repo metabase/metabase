@@ -77,7 +77,7 @@
 
   Throws ExceptionInfo if the task has been marked as cancelled."
   [task-id progress]
-  (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
+  (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask 'id task-id))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
   (t2/update! :model/RemoteSyncTask task-id

@@ -49,7 +49,7 @@
                                                                  :timeline_id  (u/the-id timeline)}))
       ;; check the Timeline to see if the event is there
       (is (= "Rasta Migrates to Florida for the Winter"
-             (-> (t2/select-one :model/TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
+             (-> (t2/select-one :model/TimelineEvent 'timeline_id (u/the-id timeline)) :name))))))
 
 (deftest update-timeline-event-test
   (testing "PUT /api/timeline-event/:id"
@@ -77,7 +77,7 @@
       (is (= tl-b
              (:timeline_id (mt/user-http-request :rasta :put 200 (str "timeline-event/" ev-id)
                                                  {:timeline_id tl-b}))))
-      (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id))))))
+      (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent 'id ev-id))))))
 
 (deftest timeline-event-permissions-test
   (testing "read-only users cannot create or edit timeline events"

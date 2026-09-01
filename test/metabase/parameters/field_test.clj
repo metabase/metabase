@@ -13,8 +13,8 @@
               [10 "Fred 62"]]
              (mt/format-rows-by
               [int str]
-              (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :venues :id))
-                                              (t2/select-one :model/Field :id (mt/id :venues :name))
+              (parameters.field/search-values (t2/select-one :model/Field 'id (mt/id :venues :id))
+                                              (t2/select-one :model/Field 'id (mt/id :venues :name))
                                               "Red"
                                               nil)))))))
 
@@ -30,8 +30,8 @@
                              ["648" "Fred 62"]
                              ["72" "Red Medicine"]
                              ["977" "Fred 62"]])
-             (->> (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :checkins :id))
-                                                  (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+             (->> (parameters.field/search-values (t2/select-one :model/Field 'id (mt/id :checkins :id))
+                                                  (t2/select-one :model/Field 'id (mt/id :checkins :venue_name))
                                                   "Red"
                                                   nil)
                   ;; Druid JDBC returns id as int and non-JDBC as str. Also ordering is different. Following lines
@@ -45,8 +45,8 @@
       (is (= [[1 "Red Medicine"]]
              (mt/format-rows-by
               [int str]
-              (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :venues :id))
-                                              (t2/select-one :model/Field :id (mt/id :venues :name))
+              (parameters.field/search-values (t2/select-one :model/Field 'id (mt/id :venues :id))
+                                              (t2/select-one :model/Field 'id (mt/id :venues :name))
                                               "Red"
                                               1)))))))
 
@@ -54,8 +54,8 @@
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Fred 62"] ["Red Medicine"]]
-             (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :venues :name))
-                                             (t2/select-one :model/Field :id (mt/id :venues :name))
+             (parameters.field/search-values (t2/select-one :model/Field 'id (mt/id :venues :name))
+                                             (t2/select-one :model/Field 'id (mt/id :venues :name))
                                              "Red"
                                              nil))))))
 
@@ -63,8 +63,8 @@
   (testing "make sure it also works if you use the same Field twice"
     (tqpt/test-timeseries-drivers
       (is (= [["Fred 62"] ["Red Medicine"]]
-             (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+             (parameters.field/search-values (t2/select-one :model/Field 'id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field 'id (mt/id :checkins :venue_name))
                                              "Red"
                                              nil))))))
 

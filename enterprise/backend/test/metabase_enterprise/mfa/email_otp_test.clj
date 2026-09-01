@@ -68,7 +68,7 @@
                                                     :credentials  {:secret secret}}]
       (let [code (verification/set-email-otp! user-id)]
         ;; back-date the expiry
-        (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
+        (let [ai (t2/select-one :model/AuthIdentity 'id ai-id)]
           (t2/update! :model/AuthIdentity ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
                                               (dec (quot (System/currentTimeMillis) 1000)))}))
@@ -102,7 +102,7 @@
           (testing "a bogus challenge token cannot trigger a send"
             (mt/client :post 401 "session/mfa/send-email-otp" {:challenge_token "bogus"}))
           (finally
-            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+            (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "totp")))))))
 
 (deftest send-email-otp-surfaces-delivery-failure-test
   (mt/with-premium-features #{:multi-factor-auth}
@@ -120,7 +120,7 @@
               (testing "an SMTP failure is an error, not {:success true} with no email"
                 (mt/client :post 500 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)}))))
           (finally
-            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+            (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "totp")))))))
 
 (deftest send-email-otp-requires-configured-email-test
   (mt/with-premium-features #{:multi-factor-auth}
@@ -137,7 +137,7 @@
                 (is (= ["totp"] (:methods challenge))))
               (mt/client :post 400 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)})))
           (finally
-            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+            (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "totp")))))))
 
 (deftest mfa-email-templates-render-test
   (testing "all four MFA email templates render without error and contain their key sentences"

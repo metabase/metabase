@@ -149,14 +149,14 @@
   "Get the `fields` of the table with ID `id`."
   [id & fields]
   (-> (t2/select-one (into [:model/Table :id] fields)
-                     :id id
-                     :active true)
+                     'id id
+                     'active true)
       api/read-check))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
   [id]
-  (-> (t2/select-one :model/Card :id id)
+  (-> (t2/select-one :model/Card 'id id)
       api/read-check))
 
 (defn get-card-by-entity-id
@@ -169,7 +169,7 @@
   card exists but the current user cannot read it, `api/read-check` raises a 403 instead of
   silently letting the representations resolver use an inaccessible card."
   [entity-id]
-  (some-> (t2/select-one :model/Card :entity_id entity-id)
+  (some-> (t2/select-one :model/Card 'entity_id entity-id)
           api/read-check))
 
 (defn card-query
@@ -204,7 +204,7 @@
 
   Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
-  (let [metabot (t2/select-one :model/Metabot :id metabot-id)
+  (let [metabot (t2/select-one :model/Metabot 'id metabot-id)
         metabot-collection-id (:collection_id metabot)
         use-verified-content? (:use_verified_content metabot)
         verified? (premium-features/has-feature? :content-verification)
@@ -213,8 +213,8 @@
         ;; ids of collections under a Library-type root; their metrics/models are library-published content
         library-coll-ids (when library?
                            (let [roots (t2/select :model/Collection
-                                                  :type [:in (mapv name collection/library-collection-types)]
-                                                  :location "/")]
+                                                  'type ['in (mapv name collection/library-collection-types)]
+                                                  'location "/")]
                              (into (set (map :id roots)) (mapcat collection/descendant-ids roots))))
         ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
         ;; library-published (under a Library root). Each disjunct is gated on its feature.
@@ -225,7 +225,7 @@
         ;; Columns are qualified with report_card because the official-collections branch joins
         ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id
-                            (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
+                            (let [collection (t2/select-one :model/Collection 'id metabot-collection-id)
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
@@ -271,7 +271,7 @@
   [[metabase.metabot.tools.resources/check-resource-database]])."
   [db-ids]
   (when (seq db-ids)
-    (t2/select-fn-set :id :model/Database :id [:in db-ids] :router_database_id [:not= nil])))
+    (t2/select-fn-set :id :model/Database 'id ['in db-ids] 'router_database_id ['not= nil])))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.

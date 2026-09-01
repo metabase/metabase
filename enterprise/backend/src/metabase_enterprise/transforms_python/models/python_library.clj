@@ -70,7 +70,7 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path)))
+    (t2/select-one :model/PythonLibrary 'path normalized-path)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."

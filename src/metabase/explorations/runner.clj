@@ -34,7 +34,7 @@
 (defn- pending-query-depth
   "Number of `exploration_query` rows currently awaiting execution."
   []
-  (t2/count :model/ExplorationQuery :status "pending"))
+  (t2/count :model/ExplorationQuery 'status "pending"))
 
 (defn- oldest-pending-age-seconds
   "Age in seconds of the oldest still-pending `exploration_query`, or 0 when the queue is empty.
@@ -216,7 +216,7 @@
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
   [exploration-query]
   (t2/select-one-fn :exploration_id :model/ExplorationThread
-                    :id (:exploration_thread_id exploration-query)))
+                    'id (:exploration_thread_id exploration-query)))
 
 (defn- variant-note
   "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
@@ -242,7 +242,7 @@
   Returns nil for a plain unsegmented default breakdown (nothing to call out)."
   [row]
   (let [segment-name (when-let [sid (:segment_id row)]
-                       (t2/select-one-fn :name :model/Segment :id sid))
+                       (t2/select-one-fn :name :model/Segment 'id sid))
         variant      (variant-note (:query_type row) (:params row))
         parts        (cond-> []
                        variant      (conj variant)
@@ -258,7 +258,7 @@
   charts that won't be scored."
   [exploration-query]
   {:card-description (when-let [card-id (:card_id exploration-query)]
-                       (some-> (t2/select-one-fn :description :model/Card :id card-id)
+                       (some-> (t2/select-one-fn :description :model/Card 'id card-id)
                                str/trim
                                not-empty))
    :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))})
@@ -284,7 +284,7 @@
       (if (nil? creator-id)
         (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
                    (:id exploration-query))
-        (let [prompt (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id)]
+        (let [prompt (t2/select-one-fn :prompt :model/ExplorationThread 'id thread-id)]
           (when-not (str/blank? prompt)
             (let [{:keys [card-description sql]} (build-score-context exploration-query)]
               (request/with-current-user creator-id
@@ -373,7 +373,7 @@
                      :finished_at (OffsetDateTime/now)})))
     true
     (catch Exception e
-      (if (t2/exists? :model/ExplorationQueryResult :exploration_query_id (:id row))
+      (if (t2/exists? :model/ExplorationQueryResult 'exploration_query_id (:id row))
         (do (log/infof "ExplorationQuery %d was already completed by a peer; discarding this run's duplicate result"
                        (:id row))
             false)
@@ -405,7 +405,7 @@
             (record-query-outcome! "done"))
           (:exploration_thread_id row))))
     (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
-                      :id query-id :status [:in ["done" "error" "canceled"]])))
+                      'id query-id 'status ['in ["done" "error" "canceled"]])))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -413,9 +413,9 @@
 
   No-ops on a row that is no longer `pending` (a later delivery succeeded, or it was canceled)."
   [query-id message]
-  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id)]
+  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery 'id query-id)]
     (when (pos? (t2/update! :model/ExplorationQuery
-                            {:id query-id :status "pending"}
+                            {'id query-id 'status "pending"}
                             {:status        "error"
                              :error_message message
                              :finished_at   (OffsetDateTime/now)}))
@@ -428,16 +428,16 @@
   saw the rows that existed at cancel time; rows the planner inserted after that are still `pending`
   on a canceled thread. Flip them so the query table matches its owning thread's terminal state."
   [thread-id]
-  (when (t2/exists? :model/ExplorationThread :id thread-id :canceled_at [:not= nil])
+  (when (t2/exists? :model/ExplorationThread 'id thread-id 'canceled_at ['not= nil])
     (t2/update! :model/ExplorationQuery
-                {:exploration_thread_id thread-id
-                 :status                "pending"}
+                {'exploration_thread_id thread-id
+                 'status                "pending"}
                 {:status "canceled"})))
 
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] :id thread-id)
+  (let [thread   (t2/select-one [:model/ExplorationThread 'id 'canceled_at 'analysis_started_at] 'id thread-id)
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.
@@ -459,7 +459,7 @@
                    (do (log/infof "Exploration thread %d already completed its analysis; skipping planning" thread-id)
                        false)
 
-                   (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+                   (t2/exists? :model/ExplorationQuery 'exploration_thread_id thread-id)
                    (do (log/infof "Exploration thread %d is already planned; skipping" thread-id)
                        false)
 
@@ -485,4 +485,4 @@
 (defn pending-query-ids
   "Ids of `thread-id`'s queries still awaiting execution."
   [thread-id]
-  (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id thread-id :status "pending"))
+  (t2/select-pks-vec :model/ExplorationQuery 'exploration_thread_id thread-id 'status "pending"))

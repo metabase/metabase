@@ -242,7 +242,7 @@
                                           :response-validators [:signature :require-authenticated :issuer]})]
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (t2/delete! :model/Session :key_hashed (session/hash-session-key metabase-session-key))
+          (t2/delete! :model/Session 'key_hashed (session/hash-session-key metabase-session-key))
           (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

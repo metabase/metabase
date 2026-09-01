@@ -12,7 +12,7 @@
     (mt/with-test-user :crowberto
       (mt/dataset test-data
         (testing "->field checks for a table-based context"
-          (let [table (t2/select-one :model/Table :id (mt/id :orders))
+          (let [table (t2/select-one :model/Table 'id (mt/id :orders))
                 root  (#'magic/->root table)]
             (testing "Looking up the field by name does not work"
               (is (nil? (magic.util/->field root "DISCOUNT"))))

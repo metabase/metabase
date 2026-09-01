@@ -24,17 +24,17 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (mt/as-admin
     (apply qp.dashboard/process-query-for-dashcard
-           :dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-           :card      (t2/select-one :model/Card :id card-id)
-           :dashcard  (t2/select-one :model/DashboardCard :id dashcard-id)
+           :dashboard (t2/select-one :model/Dashboard 'id dashboard-id)
+           :card      (t2/select-one :model/Card 'id card-id)
+           :dashcard  (t2/select-one :model/DashboardCard 'id dashcard-id)
            :make-run     (constantly
                           (fn run [query info]
                             (qp/process-query (assoc query :info info))))
            options)))
 
 (defn- resolve-params-for-query [dashboard-id card-id dashcard-id params]
-  (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
-                                           (t2/select-one :model/DashboardCard :id dashcard-id)
+  (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard 'id dashboard-id)
+                                           (t2/select-one :model/DashboardCard 'id dashcard-id)
                                            card-id
                                            params))
 
@@ -48,7 +48,7 @@
 
 (defn- set-default-metric-dimension! [metric-id display-name]
   (metrics/sync-dimensions! :metadata/metric metric-id)
-  (let [metric    (t2/select-one :model/Card :id metric-id)
+  (let [metric    (t2/select-one :model/Card 'id metric-id)
         dimension (some #(when (= display-name (:display-name %)) %) (:dimensions metric))
         dimensions (mapv #(if (= (:id dimension) (:id %))
                             (assoc % :default true)
@@ -172,15 +172,15 @@
         (testing "without a curated default, the saved breakout is unchanged"
           (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
             (is (= "CREATED_AT" (-> result mt/cols first :name)))))
-        (let [stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
+        (let [stored-metadata (t2/select-one-fn :result_metadata :model/Card 'id metric-id)]
           (set-default-metric-dimension! metric-id "Product ID")
-          (let [metric     (t2/select-one :model/Card :id metric-id)
+          (let [metric     (t2/select-one :model/Card 'id metric-id)
                 dimensions (mapv #(cond-> %
                                     (:default %) (dissoc :sources))
                                  (:dimensions metric))]
             (t2/update! :model/Card metric-id {:dimensions dimensions}))
           (testing "missing dimension sources are derived from the mapping"
-            (let [metric    (t2/select-one :model/Card :id metric-id)
+            (let [metric    (t2/select-one :model/Card 'id metric-id)
                   dimension (mt/as-admin (default-metric-dimension metric))]
               (is (= [{:type :field, :field-id (mt/id :orders :product_id)}]
                      (:sources dimension)))))
@@ -189,8 +189,8 @@
             (is (= 200 (count (mt/rows result)))))
           (testing "the rewritten query does not replace the metric's saved result metadata"
             (is (= stored-metadata
-                   (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
-          (let [metric     (t2/select-one :model/Card :id metric-id)
+                   (t2/select-one-fn :result_metadata :model/Card 'id metric-id))))
+          (let [metric     (t2/select-one :model/Card 'id metric-id)
                 dimensions (mapv #(cond-> %
                                     (:default %)
                                     (assoc :sources [{:type :field, :field-id (mt/id :orders :tax)}]))
@@ -199,10 +199,10 @@
           (testing "a curated default hidden from the current user is ignored"
             (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:visibility_type :sensitive}
               (mt/with-test-user :rasta
-                (let [metric (t2/select-one :model/Card :id metric-id)]
+                (let [metric (t2/select-one :model/Card 'id metric-id)]
                   (is (nil? (default-metric-dimension metric)))))))
           (testing "a curated default that is no longer projectable is ignored"
-            (let [metric     (t2/select-one :model/Card :id metric-id)
+            (let [metric     (t2/select-one :model/Card 'id metric-id)
                   default-id (some (fn [dimension]
                                      (when (:default dimension)
                                        (:id dimension)))
@@ -212,10 +212,10 @@
                                       (assoc-in [:target 1 :source-field] (mt/id :orders :tax)))
                                    (:dimension_mappings metric))]
               (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
-                (let [metric (t2/select-one :model/Card :id metric-id)]
+                (let [metric (t2/select-one :model/Card 'id metric-id)]
                   (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
           (testing "a curated default with a missing mapped field is ignored"
-            (let [metric     (t2/select-one :model/Card :id metric-id)
+            (let [metric     (t2/select-one :model/Card 'id metric-id)
                   default-id (some (fn [dimension]
                                      (when (:default dimension)
                                        (:id dimension)))
@@ -225,9 +225,9 @@
                                       (assoc :target [:field {} Integer/MAX_VALUE]))
                                    (:dimension_mappings metric))]
               (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
-                (let [metric (t2/select-one :model/Card :id metric-id)]
+                (let [metric (t2/select-one :model/Card 'id metric-id)]
                   (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
-          (let [metric     (t2/select-one :model/Card :id metric-id)
+          (let [metric     (t2/select-one :model/Card 'id metric-id)
                 dimensions (mapv #(cond-> %
                                     (:default %) (assoc :status :status/orphaned))
                                  (:dimensions metric))]
@@ -254,7 +254,7 @@
                                             :target       [:field {:base-type :type/Integer
                                                                    :lib/uuid  (str (random-uuid))}
                                                            "count"]}]}]
-        (let [original (t2/select-one :model/Card :id metric-id)
+        (let [original (t2/select-one :model/Card 'id metric-id)
               card     (mt/as-admin
                          (qp.dashboard/card-with-default-metric-dimension original))]
           (is (= (:dataset_query original) (:dataset_query card))))))))
@@ -605,7 +605,7 @@
         (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
-            (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
+            (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard 'id dashboard-id)))))))))
 
 (deftest exclude-day-of-week-dashboard-parameter-test
   (testing "Exclude day-of-week filter via dashboard parameter should not embed date literals in SQL (#68479)"

@@ -138,10 +138,10 @@
     (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
-        (t2/update! :model/User :id user-id, :type :api-key, {:first_name new-name, :last_name ""}))
+        (t2/update! :model/User 'id user-id, 'type :api-key, {:first_name new-name, :last_name ""}))
       ;; update user group as well.
       (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
-        (assert (= (t2/select-one-fn :type :model/User :id user-id) :api-key)
+        (assert (= (t2/select-one-fn :type :model/User 'id user-id) :api-key)
                 "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
         (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
       (u/prog1 (-> api-key
@@ -166,7 +166,7 @@
                    (t2/hydrate :group))
       :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
-    (t2/update! :model/User user-id, :type :api-key, {:is_active false})))
+    (t2/update! :model/User user-id, 'type :api-key, {:is_active false})))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -198,7 +198,7 @@
           prefix (prefix (u.secret/expose api-key))]
       ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
       ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
+      (if-not (t2/exists? :model/ApiKey 'key_prefix prefix)
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
@@ -208,7 +208,7 @@
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
        [:group-id {:optional true} pos-int?]]]
-  (api/checkp (not (t2/exists? :model/ApiKey :name key-name))
+  (api/checkp (not (t2/exists? :model/ApiKey 'name key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
@@ -238,7 +238,7 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/ApiKey :id id {:key           (hash-bcrypt new-key)
+      (t2/update! :model/ApiKey 'id id {:key           (hash-bcrypt new-key)
                                         :key_prefix    new-prefix
                                         :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate

@@ -115,7 +115,7 @@
                 (is (= model-columns (t2/select-one-fn (comp set
                                                              (partial map :name)
                                                              :result_metadata)
-                                                       :model/Card :id model-id)))
+                                                       :model/Card 'id model-id)))
                 (is (= #{"id" "bloop"}
                        (->> (action/select-action :id action-id)
                             :parameters (map :id) set)))))))))))
@@ -167,9 +167,9 @@
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
-            (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
+            (is (= 1 (t2/count :model/DashboardCard 'id dashcard-id)))
             (action/update! {:id action-id, :archived true} (action/select-action :id action-id))
-            (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
+            (is (zero? (t2/count :model/DashboardCard 'id dashcard-id)))))))))
 
 (deftest dashcard-deletion-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -179,9 +179,9 @@
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
-            (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-            (t2/delete! :model/Action :id action-id)
-            (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
+            (is (= 1 (t2/count :model/DashboardCard 'id dashcard-id)))
+            (t2/delete! :model/Action 'id action-id)
+            (is (zero? (t2/count :model/DashboardCard 'id dashcard-id)))))))))
 
 (deftest create-update-select-implicit-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -289,15 +289,15 @@
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
-                        :table_id (mt/id :default_uuid))))
+             (t2/select [:model/Field 'name 'database_type 'database_required 'database_is_auto_increment 'semantic_type]
+                        'table_id (mt/id :default_uuid))))
       (is (= [{:database_is_auto_increment false
                :database_required          true
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
-                        :table_id (mt/id :required_uuid)))))
+             (t2/select [:model/Field 'name 'database_type 'database_required 'database_is_auto_increment 'semantic_type]
+                        'table_id (mt/id :required_uuid)))))
     (mt/with-actions-enabled
       (testing "PK with a default should be excluded from implicit create action parameters"
         (mt/with-actions [_                      {:type :model :dataset_query (mt/mbql-query default_uuid)}

@@ -74,8 +74,8 @@
                              (mt/user-http-request
                               :crowberto :post 200
                               (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
-                  added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] :prompt]
-                                           :metabot_id metabot-id
+                  added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] 'prompt]
+                                           'metabot_id metabot-id
                                            {:join     [[:report_card :card] [:= :card.id :card_id]]
                                             :order-by [:metabot_prompt.id]})]
               (is (=? {:status       "generated"
@@ -223,7 +223,7 @@
               (is (true? (:use_verified_content response)))
               (is (= collection-id-1 (:collection_id response))) ; Should remain unchanged
               ;; Verify in database
-              (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
+              (let [updated-metabot (t2/select-one :model/Metabot 'id metabot-id)]
                 (is (true? (:use_verified_content updated-metabot)))))))
         (testing "should update collection_id field"
           (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
@@ -233,7 +233,7 @@
               (is (= collection-id-2 (:collection_id response)))
               (is (true? (:use_verified_content response))) ; Should remain from previous test
               ;; Verify in database
-              (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
+              (let [updated-metabot (t2/select-one :model/Metabot 'id metabot-id)]
                 (is (= collection-id-2 (:collection_id updated-metabot)))))))
         (testing "should update collection_id to null"
           (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
@@ -242,7 +242,7 @@
                                                  {:collection_id nil})]
               (is (= nil (:collection_id response)))
               ;; Verify in database
-              (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
+              (let [updated-metabot (t2/select-one :model/Metabot 'id metabot-id)]
                 (is (= nil (:collection_id updated-metabot)))))))
         (testing "should update all fields simultaneously"
           (mt/with-dynamic-fn-redefs [metabot.suggested-prompts/generate-sample-prompts (constantly nil)]
@@ -300,7 +300,7 @@
               (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
                      (:message response))))
             (is (= #{prompt-id}
-                   (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)))))))))
+                   (t2/select-pks-set :model/MetabotPrompt 'metabot_id metabot-id)))))))))
 
 (deftest metabot-prompt-regenerate-empty-states-test
   (testing "POST /prompt-suggestions/regenerate returns a structured outcome so the UI can"
@@ -330,7 +330,7 @@
               (is (= {:status "ai-produced-no-prompts"}
                      (mt/user-http-request :crowberto :post 200
                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))))
-              (is (empty? (t2/select :model/MetabotPrompt :metabot_id metabot-id))
+              (is (empty? (t2/select :model/MetabotPrompt 'metabot_id metabot-id))
                   "no prompts should be persisted when the LLM returned none")
               ;; Reference the bound card so kondo doesn't flag it as unused.
               (is (pos-int? card-id)))))))))

@@ -174,7 +174,7 @@
                                                       :display_name "Delete Viz"
                                                       :status       :active}]
         (mt/user-http-request :crowberto :delete 204 (str "ee/custom-viz-plugin/" id))
-        (is (nil? (t2/select-one :model/CustomVizPlugin :id id)))))
+        (is (nil? (t2/select-one :model/CustomVizPlugin 'id id)))))
     (testing "404 for non-existent plugin"
       (mt/user-http-request :crowberto :delete 404 "ee/custom-viz-plugin/99999"))))
 
@@ -266,7 +266,7 @@
                                                  :sdk      {:version "2.0.0"}})]
                        ["dist/index.js" "console.log('hi')"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
-                row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
+                row  (t2/select-one :model/CustomVizPlugin 'identifier "new-register-viz")]
             (is (= "new-register-viz" (:identifier resp)))
             (is (false? (:dev_only resp))
                 "upload-registered plugins are not dev-only")
@@ -301,7 +301,7 @@
         (let [zip  (cvp.tu/valid-bundle-bytes "malformed-viz" {:sdk-version 2})
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"metabase-plugin\.json is invalid" (or (:message resp) (str resp))))
-          (is (not (t2/exists? :model/CustomVizPlugin :identifier "malformed-viz"))
+          (is (not (t2/exists? :model/CustomVizPlugin 'identifier "malformed-viz"))
               "nothing is persisted"))))))
 
 (deftest register-plugin-missing-manifest-test
@@ -409,7 +409,7 @@
               resp   (multipart-upload! :crowberto 200
                                         (str "ee/custom-viz-plugin/" id "/bundle") zip
                                         :method :put)
-              row    (t2/select-one :model/CustomVizPlugin :id id)]
+              row    (t2/select-one :model/CustomVizPlugin 'id id)]
           (is (= "replace-viz" (:identifier resp)))
           (is (= "new-icon.svg" (:icon row)))
           (is (not= "oldhash" (:bundle_hash row))

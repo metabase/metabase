@@ -40,7 +40,7 @@
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
   (->> (if include_inactive
          (t2/select :model/Channel)
-         (t2/select :model/Channel :active true))
+         (t2/select :model/Channel 'active true))
        (filter mi/can-read?)
        (map remove-details-if-needed)))
 
@@ -106,7 +106,7 @@
                                        [:type        ChannelType]
                                        [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (perms/check-has-application-permission :setting)
-  (when (t2/exists? :model/Channel :name channel-name)
+  (when (t2/exists? :model/Channel 'name channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)

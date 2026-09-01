@@ -126,9 +126,9 @@
             (testing "parameter_card row is synced"
               (is (= new-source-id
                      (t2/select-one-fn :card_id :model/ParameterCard
-                                       :parameterized_object_type "card"
-                                       :parameterized_object_id   card-id
-                                       :parameter_id              "cat-param"))))))))))
+                                       'parameterized_object_type "card"
+                                       'parameterized_object_id   card-id
+                                       'parameter_id              "cat-param"))))))))))
 
 (deftest card-swap-source!-card-to-table-leaves-parameter-untouched-test
   (testing "swap-source! should NOT update parameter values_source_config card_id on card-to-table swaps"
@@ -286,9 +286,9 @@
             (testing "parameter_card row is synced"
               (is (= new-source-id
                      (t2/select-one-fn :card_id :model/ParameterCard
-                                       :parameterized_object_type "dashboard"
-                                       :parameterized_object_id   dashboard-id
-                                       :parameter_id              "cat-param"))))))))))
+                                       'parameterized_object_type "dashboard"
+                                       'parameterized_object_id   dashboard-id
+                                       'parameter_id              "cat-param"))))))))))
 
 (deftest dashboard-swap-source!-card-to-table-leaves-parameter-untouched-test
   (testing "swap-source! should NOT update dashboard parameter values_source_config card_id on card-to-table swaps"
@@ -424,19 +424,19 @@
                                                          :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :card :from_entity_id card-id
-                              :to_entity_type :table :to_entity_id (mt/id :orders))
+                              'from_entity_type :card 'from_entity_id card-id
+                              'to_entity_type :table 'to_entity_id (mt/id :orders))
                   "Dependency on orders should exist before swap")
               (replacement.source-swap/swap-source! [:card card-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
               (is (not (t2/exists? :model/Dependency
-                                   :from_entity_type :card :from_entity_id card-id
-                                   :to_entity_type :table :to_entity_id (mt/id :orders)))
+                                   'from_entity_type :card 'from_entity_id card-id
+                                   'to_entity_type :table 'to_entity_id (mt/id :orders)))
                   "Dependency on orders should be gone after swap")
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :card :from_entity_id card-id
-                              :to_entity_type :table :to_entity_id (mt/id :reviews))
+                              'from_entity_type :card 'from_entity_id card-id
+                              'to_entity_type :table 'to_entity_id (mt/id :reviews))
                   "Dependency on reviews should exist after swap"))))))))
 
 (deftest segment-swap-source!-dependencies-updated-test
@@ -454,18 +454,18 @@
                                                             :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :segment :from_entity_id segment-id
-                              :to_entity_type :table :to_entity_id (mt/id :orders)))
+                              'from_entity_type :segment 'from_entity_id segment-id
+                              'to_entity_type :table 'to_entity_id (mt/id :orders)))
               (replacement.source-swap/swap-source! [:segment segment-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
               (is (not (t2/exists? :model/Dependency
-                                   :from_entity_type :segment :from_entity_id segment-id
-                                   :to_entity_type :table :to_entity_id (mt/id :orders)))
+                                   'from_entity_type :segment 'from_entity_id segment-id
+                                   'to_entity_type :table 'to_entity_id (mt/id :orders)))
                   "Dependency on orders should be gone")
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :segment :from_entity_id segment-id
-                              :to_entity_type :table :to_entity_id (mt/id :reviews))
+                              'from_entity_type :segment 'from_entity_id segment-id
+                              'to_entity_type :table 'to_entity_id (mt/id :reviews))
                   "Dependency on reviews should exist"))))))))
 
 (deftest measure-swap-source!-dependencies-updated-test
@@ -484,18 +484,18 @@
                                                             :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :measure :from_entity_id measure-id
-                              :to_entity_type :table :to_entity_id (mt/id :orders)))
+                              'from_entity_type :measure 'from_entity_id measure-id
+                              'to_entity_type :table 'to_entity_id (mt/id :orders)))
               (replacement.source-swap/swap-source! [:measure measure-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
               (is (not (t2/exists? :model/Dependency
-                                   :from_entity_type :measure :from_entity_id measure-id
-                                   :to_entity_type :table :to_entity_id (mt/id :orders)))
+                                   'from_entity_type :measure 'from_entity_id measure-id
+                                   'to_entity_type :table 'to_entity_id (mt/id :orders)))
                   "Dependency on orders should be gone")
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :measure :from_entity_id measure-id
-                              :to_entity_type :table :to_entity_id (mt/id :reviews))
+                              'from_entity_type :measure 'from_entity_id measure-id
+                              'to_entity_type :table 'to_entity_id (mt/id :reviews))
                   "Dependency on reviews should exist"))))))))
 
 (deftest transform-swap-source!-dependencies-updated-test
@@ -513,18 +513,18 @@
                                                               :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :transform :from_entity_id transform-id
-                              :to_entity_type :table :to_entity_id (mt/id :orders)))
+                              'from_entity_type :transform 'from_entity_id transform-id
+                              'to_entity_type :table 'to_entity_id (mt/id :orders)))
               (replacement.source-swap/swap-source! [:transform transform-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
               (is (not (t2/exists? :model/Dependency
-                                   :from_entity_type :transform :from_entity_id transform-id
-                                   :to_entity_type :table :to_entity_id (mt/id :orders)))
+                                   'from_entity_type :transform 'from_entity_id transform-id
+                                   'to_entity_type :table 'to_entity_id (mt/id :orders)))
                   "Dependency on orders should be gone")
               (is (t2/exists? :model/Dependency
-                              :from_entity_type :transform :from_entity_id transform-id
-                              :to_entity_type :table :to_entity_id (mt/id :reviews))
+                              'from_entity_type :transform 'from_entity_id transform-id
+                              'to_entity_type :table 'to_entity_id (mt/id :reviews))
                   "Dependency on reviews should exist"))))))))
 
 (deftest card-swap-source!-no-change-preserves-state-test

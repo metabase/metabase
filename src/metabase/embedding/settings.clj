@@ -69,8 +69,8 @@
                                                                       ;; Don't track "localhost:*" as a meaningful origin since it was
                                                                       ;; the old default and may still exist in migrated instances
                                                                       (and sdk-origins (not (str/blank? sdk-origins)) (not= "localhost:*" sdk-origins)))))
-                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+                                   :number-embedded-questions  (t2/count :model/Card 'enable_embedding true)
+                                   :number-embedded-dashboards (t2/count :model/Dashboard 'enable_embedding true)}))))))
 
 (defsetting ^:deprecated enable-embedding
   ;; To be removed in 0.53.0

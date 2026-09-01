@@ -225,7 +225,7 @@
                    (mt/rows (qp/process-query
                              {:database (u/the-id database)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
+                              :query    {:source-table (t2/select-one-pk :model/Table 'name "presents-and-gifts")}}))))))))
     (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -238,7 +238,7 @@
                  (mt/rows (qp/process-query
                            {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
+                            :query    {:source-table (t2/select-one-pk :model/Table 'db_id (mt/id))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -370,7 +370,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+                        (t2/select [:model/Table 'name 'active] 'db_id (u/the-id database), 'name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
@@ -1100,17 +1100,17 @@
                       (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds")]
+         (let [table-id (t2/select-one-pk :model/Table 'db_id (u/the-id db), 'name "birds")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}
                     {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
-                            (t2/select [:model/Field :name :database_type :base_type] :table_id table-id)))))))
+                            (t2/select [:model/Field 'name 'database_type 'base_type] 'table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds")
-               bird-type-field-id (t2/select-one-pk :model/Field :table_id table-id, :name "type")]
+         (let [table-id           (t2/select-one-pk :model/Table 'db_id (u/the-id db), 'name "birds")
+               bird-type-field-id (t2/select-one-pk :model/Field 'table_id table-id, 'name "type")]
            (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                               " \"public\".\"birds\".\"status\" AS \"status\","
@@ -1134,8 +1134,8 @@
     (do-with-enums-db!
      (fn [db]
        (let [mp            (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
-             table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
-             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")
+             table-id      (t2/select-one-pk :model/Table 'db_id (u/the-id db) 'name "birds")
+             type-field-id (t2/select-one-pk :model/Field 'table_id table-id 'name "type")
              type-field    (lib.metadata/field mp type-field-id)]
          (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
            (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
@@ -1210,17 +1210,17 @@
                       (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds_m")]
+         (let [table-id (t2/select-one-pk :model/Table 'db_id (u/the-id db), 'name "birds_m")]
            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                     {:name "other_status", :database_type "\"bird_schema\".\"bird_status\"", :base_type :type/PostgresEnum}
                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                   (set (map (partial into {})
-                            (t2/select [:model/Field :name :database_type :base_type] :table_id table-id)))))))
+                            (t2/select [:model/Field 'name 'database_type 'base_type] 'table_id table-id)))))))
 
        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "birds_m")
-               bird-type-field-id (t2/select-one-pk :model/Field :table_id table-id, :name "type")]
+         (let [table-id           (t2/select-one-pk :model/Table 'db_id (u/the-id db), 'name "birds_m")
+               bird-type-field-id (t2/select-one-pk :model/Field 'table_id table-id, 'name "type")]
            (is (= {:rows        [["Rasta" "good bird" "sad bird" "toucan"]]
                    :native_form {:query  (str "SELECT \"public\".\"birds_m\".\"name\" AS \"name\","
                                               " \"public\".\"birds_m\".\"status\" AS \"status\","
@@ -1548,7 +1548,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
           (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
-                                                :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
+                                                'table_id (t2/select-one-pk :model/Table 'db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
                 ;; shape (#5911), not the interestingness metrics.
                 extended-keys [:skewness :mode-fraction :top-3-fraction :percent-blank]
@@ -1646,7 +1646,7 @@
           (binding [sync-util/*log-exceptions-and-continue?* false]
             (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
-                 (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name :model/Table 'db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
@@ -1716,7 +1716,7 @@
                      (sql-jdbc.sync/describe-nested-field-columns
                       :postgres
                       database
-                      (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
+                      (t2/select-one :model/Table 'db_id (mt/id) 'name "json_table")))))))))))
 
 (defn- pretty-sql [s]
   (-> s
@@ -2198,7 +2198,7 @@
                   (is (= {"readonly_table"   false
                           "readwrite_table"  false
                           "fullaccess_table" true}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))))
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
@@ -2206,7 +2206,7 @@
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
                           "fullaccess_table" true}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))))))
             (finally
               (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
               (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))

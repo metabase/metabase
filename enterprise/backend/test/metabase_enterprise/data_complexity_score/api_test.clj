@@ -42,7 +42,7 @@
   []
   (mt/initialize-if-needed! :db)
   (t2/select-one-pk :model/Metabot
-                    :entity_id (get-in metabot.config/metabot-config
+                    'entity_id (get-in metabot.config/metabot-config
                                        [metabot.config/internal-metabot-id :entity-id])))
 
 (deftest complexity-endpoint-requires-superuser-test

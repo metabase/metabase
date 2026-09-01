@@ -53,7 +53,7 @@
                          :model/Card card {:enable_embedding true
                                            :dataset_query     {:database (u/the-id router-db)
                                                                :type     :query
-                                                               :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
+                                                               :query    {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}}}]
             ;; Add test data to both databases
             (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-data')")
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
@@ -69,8 +69,8 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (with-routing-setup! [router-db [[destination-db "destination-db"]]]
-          (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
-                field-id (t2/select-one-pk :model/Field :table_id table-id)]
+          (let [table-id (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))
+                field-id (t2/select-one-pk :model/Field 'table_id table-id)]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                     :user_attribute "db_name"}
                            :model/Card card {:dataset_query {:database (u/the-id router-db)
@@ -103,8 +103,8 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (with-routing-setup! [router-db [[destination-db "destination-db"]]]
-          (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
-                field-id (t2/select-one-pk :model/Field :table_id table-id)]
+          (let [table-id (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))
+                field-id (t2/select-one-pk :model/Field 'table_id table-id)]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                     :user_attribute "db_name"}
                            :model/Card card {:enable_embedding true
@@ -141,7 +141,7 @@
                                                     :user_attribute "db_name"}
                            :model/Card card {:dataset_query {:database (u/the-id router-db)
                                                              :type     :query
-                                                             :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
+                                                             :query    {:source-table (t2/select-one-pk :model/Table 'db_id (u/the-id router-db))}}}]
               (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-data')")
               (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
               (with-embedding-enabled-and-new-secret-key!

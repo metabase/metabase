@@ -134,8 +134,8 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
-                                          :id [:in collection-ids])
+    (let [colls                (t2/select [:model/Collection 'id 'personal_owner_id 'location]
+                                          'id ['in collection-ids])
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)
@@ -147,9 +147,9 @@
           root-id->owner       (into direct
                                      (map (juxt :id :personal_owner_id))
                                      (when (seq unknown-roots)
-                                       (t2/select [:model/Collection :id :personal_owner_id]
-                                                  :id [:in unknown-roots]
-                                                  :personal_owner_id [:not= nil])))]
+                                       (t2/select [:model/Collection 'id 'personal_owner_id]
+                                                  'id ['in unknown-roots]
+                                                  'personal_owner_id ['not= nil])))]
       (into direct
             (keep (fn [[coll-id root-id]]
                     (when-let [owner (get root-id->owner root-id)]
@@ -997,7 +997,7 @@
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                                 t2-instance (t2/select t2-model 'id ['in (map :id docs)])]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1018,8 +1018,8 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (t2/select [:collection :id :location]
-                                          :id [:in collection-ids])
+                          (->> (t2/select [:collection 'id 'location]
+                                          'id ['in collection-ids])
                                (into {} (map (juxt :id identity)))))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]

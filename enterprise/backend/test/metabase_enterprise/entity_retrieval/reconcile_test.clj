@@ -171,7 +171,7 @@
             (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model)))))
           (testing "editing instructions is a no-op for the index (instructions are read live, not stored)"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
-              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id table-id
+              (t2/update! :model/OsiAiContext 'entity_type "table" 'entity_local_id table-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})
@@ -427,7 +427,7 @@
               (reconcile/reconcile! ds (constantly model))
               (is (= {"name" 1 "description" 1 "synonym" 2}
                      (frequencies (map :doc_type (docs-for ds "table" a-id)))))
-              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id a-id)
+              (t2/delete! :model/OsiAiContext 'entity_type "table" 'entity_local_id a-id)
               (is (=? {:inserted 0 :deleted 2} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))

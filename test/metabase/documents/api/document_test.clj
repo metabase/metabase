@@ -25,7 +25,7 @@
       (let [result (mt/user-http-request :crowberto
                                          :post 200 "document/" {:name "Document 1"
                                                                 :document (documents.test-util/text->prose-mirror-ast "Doc 1")})
-            document-row (t2/select-one :model/Document :id (:id result))]
+            document-row (t2/select-one :model/Document 'id (:id result))]
         (is (partial= {:name "Document 1" :document (documents.test-util/text->prose-mirror-ast "Doc 1")} result))
         (is (pos? (:id result)))
         (is (partial= {:name "Document 1" :document (documents.test-util/text->prose-mirror-ast "Doc 1")} document-row))))))
@@ -176,11 +176,11 @@
             (is (= "Copied Document" (:name copied)))
             (is (= coll-id (:collection_id copied))))
           (testing "copies cards onto the new document"
-            (let [new-cards (t2/select :model/Card :document_id (:id copied))]
+            (let [new-cards (t2/select :model/Card 'document_id (:id copied))]
               (is (= 3 (count new-cards)))
               (is (every? #(not (contains? #{card-1-id card-2-id archived-card-id} (:id %))) new-cards))))
           (testing "updates embedded card IDs in the copied document AST for all copied cards"
-            (let [new-cards-by-name (into {} (map (juxt :name :id)) (t2/select :model/Card :document_id (:id copied)))
+            (let [new-cards-by-name (into {} (map (juxt :name :id)) (t2/select :model/Card 'document_id (:id copied)))
                   embedded-ids      (keep #(get-in % [:attrs :id]) (get-in copied [:document :content]))]
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 1")))
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 2")))
@@ -243,7 +243,7 @@
             (mt/user-http-request :rasta :post 403 (format "document/%d/copy" doc-id)
                                   {:name "Copy" :collection_id readable-coll})
             ;; only the original card remains — no laundered duplicate was committed
-            (is (= [secret-card] (map :id (t2/select :model/Card :name "Secret"))))))))))
+            (is (= [secret-card] (map :id (t2/select :model/Card 'name "Secret"))))))))))
 
 (deftest document-card-parameter-field-permissions-test
   (testing "POST /api/document enforces the same parameter-target data-permission check POST /api/card enforces"
@@ -273,7 +273,7 @@
                                          :document {:type "doc" :content []}
                                          :cards {"-1" card-body}}))
                 (testing "no Card carrying that target may exist afterwards"
-                  (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
+                  (is (empty? (t2/select :model/Card 'collection_id coll-id))))))))))))
 
 (deftest copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"
@@ -313,22 +313,22 @@
                                                {:collection_id new-collection-id})]
             (is (= new-collection-id (:collection_id response)))
             ;; Verify document was moved
-            (is (= new-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
+            (is (= new-collection-id (:collection_id (t2/select-one :model/Document 'id document-id))))
             ;; Verify associated cards were moved
-            (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
-            (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id))))
+            (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card1-id))))
+            (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card2-id))))
             ;; Verify other card was NOT moved
-            (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id other-card-id))))))
+            (is (= old-collection-id (:collection_id (t2/select-one :model/Card 'id other-card-id))))))
         (testing "Moving to root collection (nil) works"
           (let [response (mt/user-http-request :crowberto
                                                :put 200 (format "document/%s" document-id)
                                                {:collection_id nil})]
             (is (nil? (:collection_id response)))
             ;; Verify all associated cards moved to root
-            (is (nil? (:collection_id (t2/select-one :model/Card :id card1-id))))
-            (is (nil? (:collection_id (t2/select-one :model/Card :id card2-id))))
+            (is (nil? (:collection_id (t2/select-one :model/Card 'id card1-id))))
+            (is (nil? (:collection_id (t2/select-one :model/Card 'id card2-id))))
             ;; Other card should still be in old collection
-            (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id other-card-id))))))))))
+            (is (= old-collection-id (:collection_id (t2/select-one :model/Card 'id other-card-id))))))))))
 
 (deftest api-permission-edge-cases-test
   (testing "API permission validation edge cases"
@@ -351,8 +351,8 @@
                                     :put 403 (format "document/%s" document-id)
                                     {:collection_id collection2-id})
               ;; Verify nothing changed
-              (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
-              (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))
+              (is (= collection1-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+              (is (= collection1-id (:collection_id (t2/select-one :model/Card 'id card-id)))))))
         (testing "regular user without source permissions cannot move document"
           ;; Should fail with 403
           (mt/with-non-admin-groups-no-collection-perms collection1-id
@@ -360,8 +360,8 @@
                                   :put 403 (format "document/%s" document-id)
                                   {:collection_id collection2-id})
             ;; Verify nothing changed
-            (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Card 'id card-id))))))
         (testing "regular user without destination permissions cannot move document"
           ;; Should fail with 403
           (mt/with-non-admin-groups-no-collection-perms collection2-id
@@ -369,15 +369,15 @@
                                   :put 403 (format "document/%s" document-id)
                                   {:collection_id collection2-id})
             ;; Verify nothing changed
-            (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+            (is (= collection1-id (:collection_id (t2/select-one :model/Card 'id card-id))))))
         (testing "moving to non-existent collection fails gracefully"
           (mt/user-http-request :crowberto
                                 :put 400 (format "document/%s" document-id)
                                 {:collection_id 99999})
           ;; Verify nothing changed
-          (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
-          (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))
+          (is (= collection1-id (:collection_id (t2/select-one :model/Document 'id document-id))))
+          (is (= collection1-id (:collection_id (t2/select-one :model/Card 'id card-id)))))))))
 
 (deftest post-document-with-cards-to-create-test
   (testing "POST /api/document/ - create document with new cards via cards"
@@ -410,7 +410,7 @@
             (is (pos? (:id result)))
             (is (= "Document with Generated Cards" (:name result))))
           (testing "should create cards with correct properties"
-            (let [created-cards (t2/select :model/Card :document_id (:id result))
+            (let [created-cards (t2/select :model/Card 'document_id (:id result))
                   card1 (first (filter #(= "Generated Card 1" (:name %)) created-cards))
                   card2 (first (filter #(= "Generated Card 2" (:name %)) created-cards))]
               (testing "should have created exactly 2 cards"
@@ -434,7 +434,7 @@
                   (is (= (:id card2)
                          (get-in card2-embed [:attrs :id])))))))
           (testing "document should have correct properties"
-            (let [document (t2/select-one :model/Document :id (:id result))]
+            (let [document (t2/select-one :model/Document 'id (:id result))]
               (is (= "Document with Generated Cards" (:name document)))
               (is (= col-id (:collection_id document))))))))))
 
@@ -492,7 +492,7 @@
           (is (= "Updated Document with Generated Cards" (:name result)))
           (is (= col-id (:collection_id result))))
         (testing "should create cards with correct properties"
-          (let [created-cards (t2/select :model/Card :document_id document-id)
+          (let [created-cards (t2/select :model/Card 'document_id document-id)
                 card1 (first (filter #(= "Updated Generated Card 1" (:name %)) created-cards))
                 card2 (first (filter #(= "Updated Generated Card 2" (:name %)) created-cards))]
             (testing "should have created exactly 2 cards"
@@ -516,7 +516,7 @@
                 (is (= (:id card2)
                        (get-in card2-embed [:attrs :id])))))))
         (testing "document should have updated properties"
-          (let [document (t2/select-one :model/Document :id document-id)]
+          (let [document (t2/select-one :model/Document 'id document-id)]
             (is (= "Updated Document with Generated Cards" (:name document)))
             (is (= col-id (:collection_id document)))))))))
 
@@ -544,7 +544,7 @@
         (is (pos-int? new-card-id))
         (is (= before (t2/count :model/StoredResultUse))
             "no stored_result_use rows are created for a live ad-hoc embed")
-        (is (zero? (t2/count :model/StoredResultUse :card_id new-card-id)))))))
+        (is (zero? (t2/count :model/StoredResultUse 'card_id new-card-id)))))))
 
 (deftest cards-to-create-schema-validation-test
   (testing "POST /api/document/ - cards schema validation"
@@ -587,13 +587,13 @@
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
         ;; Verify no document was created
-        (is (zero? (t2/count :model/Document :name "Document That Should Rollback")))))))
+        (is (zero? (t2/count :model/Document 'name "Document That Should Rollback")))))))
 
 (deftest put-document-cards-to-create-transaction-rollback-test
   (testing "PUT /api/document/:id - transaction rollback on card creation failure"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
-      (let [initial-document (t2/select-one :model/Document :id document-id)
+      (let [initial-document (t2/select-one :model/Document 'id document-id)
             invalid-cards {-1 {:name "Card with Invalid Query"
                                :type :question
                                :dataset_query {:type :invalid-type} ; invalid query
@@ -605,7 +605,7 @@
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
         ;; Verify document wasn't updated
-        (let [unchanged-document (t2/select-one :model/Document :id document-id)]
+        (let [unchanged-document (t2/select-one :model/Document 'id document-id)]
           (is (= (:name initial-document) (:name unchanged-document)))
           (is (= (:document initial-document) (:document unchanged-document))))))))
 
@@ -624,7 +624,7 @@
                                             :document (documents.test-util/text->prose-mirror-ast "Doc in root collection")
                                             :collection_id nil
                                             :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
+              created-cards (t2/select :model/Card 'document_id (:id result))
               card (first created-cards)]
           (is (= 1 (count created-cards)))
           (is (nil? (:collection_id card))) ; should inherit nil from document
@@ -650,7 +650,7 @@
                                                                           :name nil}}]}
                                             :collection_id col-id
                                             :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
+              created-cards (t2/select :model/Card 'document_id (:id result))
               card (first created-cards)]
           (testing "should create document successfully"
             (is (pos? (:id result)))
@@ -689,7 +689,7 @@
                                                                         :name nil}}]}
                                           :collection_id col-id
                                           :cards cards-to-create})
-            created-cards (t2/select :model/Card :document_id document-id)
+            created-cards (t2/select :model/Card 'document_id document-id)
             card (first created-cards)]
         (testing "should update document successfully"
           (is (= document-id (:id result)))
@@ -734,7 +734,7 @@
                                                                           :name nil}}]}
                                             :collection_id col-id
                                             :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
+              created-cards (t2/select :model/Card 'document_id (:id result))
               model-card (first (filter #(= "Model Card" (:name %)) created-cards))
               question-card (first (filter #(= "Question Card" (:name %)) created-cards))]
           (testing "should create both cards"
@@ -778,7 +778,7 @@
             (is (pos? (:id result)))
             (is (= "Document with Cloned Cards" (:name result))))
           (testing "should clone cards with correct properties"
-            (let [cloned-cards (t2/select :model/Card :document_id (:id result))
+            (let [cloned-cards (t2/select :model/Card 'document_id (:id result))
                   cloned-card-1 (first (filter #(= "Existing Card 1" (:name %)) cloned-cards))
                   cloned-card-2 (first (filter #(= "Existing Card 2" (:name %)) cloned-cards))]
               (testing "should have created exactly 2 cloned cards"
@@ -799,8 +799,8 @@
                   (is (= (:id cloned-card-2)
                          (get-in card2-embed [:attrs :id])))))))
           (testing "original cards should remain unchanged"
-            (let [original-1 (t2/select-one :model/Card :id existing-card-1)
-                  original-2 (t2/select-one :model/Card :id existing-card-2)]
+            (let [original-1 (t2/select-one :model/Card 'id existing-card-1)
+                  original-2 (t2/select-one :model/Card 'id existing-card-2)]
               (is (nil? (:document_id original-1)))
               (is (nil? (:document_id original-2))))))))))
 
@@ -834,7 +834,7 @@
             (is (pos? (:id result)))
             (is (= "Document with Mixed Cards" (:name result))))
           (testing "should handle both cloned and new cards"
-            (let [all-cards (t2/select :model/Card :document_id (:id result))
+            (let [all-cards (t2/select :model/Card 'document_id (:id result))
                   cloned-card (first (filter #(= "Existing Card" (:name %)) all-cards))
                   new-card (first (filter #(= "New Card" (:name %)) all-cards))]
               (testing "should have created exactly 2 cards total"
@@ -887,7 +887,7 @@
             (is (pos? (:id result)))
             (is (= "Document with Mixed Association Cards" (:name result))))
           (testing "should clone cards"
-            (let [cloned-cards (t2/select :model/Card :document_id (:id result))]
+            (let [cloned-cards (t2/select :model/Card 'document_id (:id result))]
               (testing "should have cloned only 1 card"
                 (is (= 2 (count cloned-cards))))
               (testing "should update AST correctly"
@@ -896,7 +896,7 @@
                            (:id (second cloned-cards))}
                          associated-ids))))))
           (testing "original associated card should remain with its document"
-            (let [original-associated (t2/select-one :model/Card :id associated-card)]
+            (let [original-associated (t2/select-one :model/Card 'id associated-card)]
               (is (= other-doc-id (:document_id original-associated))))))))))
 
 (deftest document-clone-only-cards-not-already-in-document-test
@@ -930,7 +930,7 @@
         (testing "should update document successfully"
           (is (= document-id (:id result))))
         (testing "should only clone card not already in document"
-          (let [cards-in-doc (t2/select :model/Card :document_id document-id)
+          (let [cards-in-doc (t2/select :model/Card 'document_id document-id)
                 card-already-in-doc (first (filter #(= "Card Already in Document" (:name %)) cards-in-doc))
                 cloned-card (first (filter #(= "Card Without Document" (:name %)) cards-in-doc))]
             (testing "should have exactly 2 cards - 1 original and 1 cloned"
@@ -977,7 +977,7 @@
           (is (= document-id (:id result)))
           (is (= "Updated Document with Cloned Cards" (:name result))))
         (testing "should clone cards with correct properties"
-          (let [cloned-cards (t2/select :model/Card :document_id document-id)
+          (let [cloned-cards (t2/select :model/Card 'document_id document-id)
                 cloned-card-1 (first (filter #(= "Existing Card 1" (:name %)) cloned-cards))
                 cloned-card-2 (first (filter #(= "Existing Card 2" (:name %)) cloned-cards))]
             (testing "should have created exactly 2 cloned cards"
@@ -995,8 +995,8 @@
                 (is (= (:id cloned-card-2)
                        (get-in card2-embed [:attrs :id])))))))
         (testing "original cards should remain unchanged"
-          (let [original-1 (t2/select-one :model/Card :id existing-card-1)
-                original-2 (t2/select-one :model/Card :id existing-card-2)]
+          (let [original-1 (t2/select-one :model/Card 'id existing-card-1)
+                original-2 (t2/select-one :model/Card 'id existing-card-2)]
             (is (nil? (:document_id original-1)))
             (is (nil? (:document_id original-2)))))))))
 
@@ -1031,7 +1031,7 @@
           (is (= document-id (:id result)))
           (is (= "Updated Document with Mixed Cards" (:name result))))
         (testing "should handle both cloned and new cards"
-          (let [all-cards (t2/select :model/Card :document_id document-id)
+          (let [all-cards (t2/select :model/Card 'document_id document-id)
                 cloned-card (first (filter #(= "Existing Card" (:name %)) all-cards))
                 new-card (first (filter #(= "New Card" (:name %)) all-cards))]
             (testing "should have created exactly 2 cards total"
@@ -1108,7 +1108,7 @@
             (is (pos? (:id result)))
             (is (= "Document with Nested Cards" (:name result))))
           (testing "should clone cards in nested structures"
-            (let [cloned-cards (t2/select :model/Card :document_id (:id result))
+            (let [cloned-cards (t2/select :model/Card 'document_id (:id result))
                   cloned-card-1 (first (filter #(= "Card 1" (:name %)) cloned-cards))
                   cloned-card-2 (first (filter #(= "Card 2" (:name %)) cloned-cards))]
               (testing "should have created exactly 2 cloned cards"
@@ -1151,11 +1151,11 @@
                                                                   :attrs {:id original-card
                                                                           :name nil}}]}
                                             :collection_id col-id})
-              cloned-cards (t2/select :model/Card :document_id (:id result))
+              cloned-cards (t2/select :model/Card 'document_id (:id result))
               cloned-card (first cloned-cards)]
           (testing "cloned card preserves all metadata"
             (is (= "Complex Card" (:name cloned-card)))
-            (is (= (:dataset_query (t2/select-one :model/Card :id original-card))
+            (is (= (:dataset_query (t2/select-one :model/Card 'id original-card))
                    (:dataset_query cloned-card)))
             (is (= :bar (:display cloned-card)))
             (is (= {:graph.dimensions ["category_id"]
@@ -1192,7 +1192,7 @@
                                         :content [{:type "cardEmbed"
                                                    :attrs {:id existing-card
                                                            :name nil}}]}})
-      (let [first-cloned-cards (t2/select :model/Card :document_id document-id)
+      (let [first-cloned-cards (t2/select :model/Card 'document_id document-id)
             first-cloned-id (:id (first first-cloned-cards))]
         (testing "first update creates one clone"
           (is (= 1 (count first-cloned-cards))))
@@ -1203,7 +1203,7 @@
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id first-cloned-id
                                                                                  :name nil}}]}})
-              second-cloned-cards (t2/select :model/Card :document_id document-id)]
+              second-cloned-cards (t2/select :model/Card 'document_id document-id)]
           (testing "second update doesn't create additional clones"
             (is (= 1 (count second-cloned-cards)))
             (is (= first-cloned-id (:id (first second-cloned-cards))))
@@ -1312,7 +1312,7 @@
                 (is (= doc-id (:id result)))
                 (is (= destination-col (:collection_id result)))
                 ;; Verify document was actually moved
-                (is (= destination-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))
+                (is (= destination-col (:collection_id (t2/select-one :model/Document 'id doc-id)))))))
           (testing "PUT /api/document/:id - :rasta cannot move documents from collections without write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move From Here"
                                                          :document (documents.test-util/text->prose-mirror-ast "No permission to move")
@@ -1321,7 +1321,7 @@
                                     :put 403 (format "document/%s" doc-id)
                                     {:collection_id destination-col})
               ;; Verify document wasn't moved
-              (is (= read-only-col (:collection_id (t2/select-one :model/Document :id doc-id))))))
+              (is (= read-only-col (:collection_id (t2/select-one :model/Document 'id doc-id))))))
           (testing "PUT /api/document/:id - :rasta cannot move documents to collections without write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Cannot Move To There"
                                                          :document (documents.test-util/text->prose-mirror-ast "No permission for destination")
@@ -1330,7 +1330,7 @@
                                     :put 403 (format "document/%s" doc-id)
                                     {:collection_id read-only-col})
               ;; Verify document wasn't moved
-              (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
+              (is (= write-col (:collection_id (t2/select-one :model/Document 'id doc-id)))))))))))
 
 (deftest rasta-document-read-permissions-test
   (testing "Document read permissions for non-admin user :rasta"
@@ -1424,7 +1424,7 @@
                                            {:archived true})]
           (is (true? (:archived result)))
           ;; Verify document is actually archived in database
-          (is (true? (:archived (t2/select-one :model/Document :id doc-id))))))
+          (is (true? (:archived (t2/select-one :model/Document 'id doc-id))))))
       (testing "archived document doesn't appear in normal listings"
         (let [documents (mt/user-http-request :crowberto :get 200 "document/")]
           (is (not (some #(= doc-id (:id %)) (:items documents))))))
@@ -1434,7 +1434,7 @@
                                            {:archived false})]
           (is (false? (:archived result)))
           ;; Verify document is actually unarchived in database
-          (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
+          (is (false? (:archived (t2/select-one :model/Document 'id doc-id)))))))))
 
 (deftest document-archive-with-cards-test
   (testing "Document archiving includes associated cards"
@@ -1458,23 +1458,23 @@
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
         ;; Verify document is archived
-        (is (true? (:archived (t2/select-one :model/Document :id doc-id))))
+        (is (true? (:archived (t2/select-one :model/Document 'id doc-id))))
         ;; Verify associated cards are archived
-        (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
-        (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
+        (is (true? (:archived (t2/select-one :model/Card 'id card1-id))))
+        (is (true? (:archived (t2/select-one :model/Card 'id card2-id))))
         ;; Verify non-associated card is NOT archived
-        (is (false? (:archived (t2/select-one :model/Card :id other-card-id)))))
+        (is (false? (:archived (t2/select-one :model/Card 'id other-card-id)))))
       (testing "unarchiving document unarchives associated cards"
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
         ;; Verify document is unarchived
-        (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
+        (is (false? (:archived (t2/select-one :model/Document 'id doc-id))))
         ;; Verify associated cards are unarchived
-        (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
-        (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
+        (is (false? (:archived (t2/select-one :model/Card 'id card1-id))))
+        (is (false? (:archived (t2/select-one :model/Card 'id card2-id))))
         ;; Verify other card remains unchanged
-        (is (false? (:archived (t2/select-one :model/Card :id other-card-id))))))))
+        (is (false? (:archived (t2/select-one :model/Card 'id other-card-id))))))))
 
 (deftest document-archive-permissions-test
   (testing "Document archiving permission requirements"
@@ -1502,7 +1502,7 @@
                                   :put 403 (format "document/%s" read-only-doc-id)
                                   {:archived true})
             ;; Verify document wasn't archived
-            (is (false? (:archived (t2/select-one :model/Document :id read-only-doc-id)))))
+            (is (false? (:archived (t2/select-one :model/Document 'id read-only-doc-id)))))
           (testing "user with write permissions can unarchive document"
             (let [result (mt/user-http-request :rasta
                                                :put 200 (format "document/%s" write-doc-id)
@@ -1534,32 +1534,32 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived true})
         ;; Verify collection is archived
-        (is (true? (:archived (t2/select-one :model/Collection :id coll-id))))
+        (is (true? (:archived (t2/select-one :model/Collection 'id coll-id))))
         ;; Verify documents are archived (not directly)
-        (is (true? (:archived (t2/select-one :model/Document :id doc1-id))))
-        (is (false? (:archived_directly (t2/select-one :model/Document :id doc1-id))))
-        (is (true? (:archived (t2/select-one :model/Document :id doc2-id))))
-        (is (false? (:archived_directly (t2/select-one :model/Document :id doc2-id))))
+        (is (true? (:archived (t2/select-one :model/Document 'id doc1-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Document 'id doc1-id))))
+        (is (true? (:archived (t2/select-one :model/Document 'id doc2-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Document 'id doc2-id))))
         ;; Verify all cards are archived (not directly)
-        (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
-        (is (false? (:archived_directly (t2/select-one :model/Card :id card1-id))))
-        (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
-        (is (false? (:archived_directly (t2/select-one :model/Card :id card2-id))))
-        (is (true? (:archived (t2/select-one :model/Card :id standalone-card-id))))
-        (is (false? (:archived_directly (t2/select-one :model/Card :id standalone-card-id)))))
+        (is (true? (:archived (t2/select-one :model/Card 'id card1-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card 'id card1-id))))
+        (is (true? (:archived (t2/select-one :model/Card 'id card2-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card 'id card2-id))))
+        (is (true? (:archived (t2/select-one :model/Card 'id standalone-card-id))))
+        (is (false? (:archived_directly (t2/select-one :model/Card 'id standalone-card-id)))))
       (testing "unarchiving collection restores documents and cards"
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
         ;; Verify collection is unarchived
-        (is (false? (:archived (t2/select-one :model/Collection :id coll-id))))
+        (is (false? (:archived (t2/select-one :model/Collection 'id coll-id))))
         ;; Verify documents are unarchived
-        (is (false? (:archived (t2/select-one :model/Document :id doc1-id))))
-        (is (false? (:archived (t2/select-one :model/Document :id doc2-id))))
+        (is (false? (:archived (t2/select-one :model/Document 'id doc1-id))))
+        (is (false? (:archived (t2/select-one :model/Document 'id doc2-id))))
         ;; Verify cards are unarchived
-        (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
-        (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
-        (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
+        (is (false? (:archived (t2/select-one :model/Card 'id card1-id))))
+        (is (false? (:archived (t2/select-one :model/Card 'id card2-id))))
+        (is (false? (:archived (t2/select-one :model/Card 'id standalone-card-id))))))))
 
 (deftest document-archived-directly-flag-test
   (testing "Document archived_directly flag behavior"
@@ -1575,8 +1575,8 @@
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
+        (let [doc (t2/select-one :model/Document 'id doc-id)
+              card (t2/select-one :model/Card 'id card-id)]
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
@@ -1585,8 +1585,8 @@
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
+        (let [doc (t2/select-one :model/Document 'id doc-id)
+              card (t2/select-one :model/Card 'id card-id)]
           (is (false? (:archived doc)))
           (is (false? (:archived_directly doc)))
           (is (false? (:archived card)))
@@ -1596,8 +1596,8 @@
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
                               {:archived true})
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
+        (let [doc (t2/select-one :model/Document 'id doc-id)
+              card (t2/select-one :model/Card 'id card-id)]
           (is (true? (:archived doc)))
           (is (false? (:archived_directly doc)))
           (is (true? (:archived card)))
@@ -1615,8 +1615,8 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
         ;; Document should remain archived because it was archived directly
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
+        (let [doc (t2/select-one :model/Document 'id doc-id)
+              card (t2/select-one :model/Card 'id card-id)]
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
@@ -1692,8 +1692,8 @@
                                   :put 500 (format "document/%s" doc-id)
                                   {:archived true})
             ;; Verify document wasn't archived due to rollback
-            (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
-            (is (false? (:archived (t2/select-one :model/Card :id card-id))))))))))
+            (is (false? (:archived (t2/select-one :model/Document 'id doc-id))))
+            (is (false? (:archived (t2/select-one :model/Card 'id card-id))))))))))
 
 (deftest document-archive-mixed-scenarios-test
   (testing "Mixed archiving scenarios - documents with different archival states"
@@ -1719,13 +1719,13 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
         ;; Directly archived document should remain archived
-        (is (true? (:archived (t2/select-one :model/Document :id directly-archived-doc))))
-        (is (true? (:archived_directly (t2/select-one :model/Document :id directly-archived-doc))))
+        (is (true? (:archived (t2/select-one :model/Document 'id directly-archived-doc))))
+        (is (true? (:archived_directly (t2/select-one :model/Document 'id directly-archived-doc))))
         ;; Collection archived document should be unarchived
-        (is (false? (:archived (t2/select-one :model/Document :id collection-archived-doc))))
-        (is (false? (:archived_directly (t2/select-one :model/Document :id collection-archived-doc))))
+        (is (false? (:archived (t2/select-one :model/Document 'id collection-archived-doc))))
+        (is (false? (:archived_directly (t2/select-one :model/Document 'id collection-archived-doc))))
         ;; Active document should remain active
-        (is (false? (:archived (t2/select-one :model/Document :id active-doc))))))))
+        (is (false? (:archived (t2/select-one :model/Document 'id active-doc))))))))
 
 (deftest document-archive-edge-cases-test
   (testing "Document archiving edge cases"
@@ -1738,7 +1738,7 @@
                                            :put 200 (format "document/%s" doc-id)
                                            {:archived true})]
           (is (true? (:archived result)))
-          (is (true? (:archived_directly (t2/select-one :model/Document :id doc-id)))))))
+          (is (true? (:archived_directly (t2/select-one :model/Document 'id doc-id)))))))
     (testing "unarchiving already active document is idempotent"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Already Active"
                                                    :document (documents.test-util/text->prose-mirror-ast "Already active")}]
@@ -1764,7 +1764,7 @@
                                            {:archived true})]
           (is (true? (:archived result)))
           ;; Should not fail even with no associated cards
-          (is (zero? (t2/count :model/Card :document_id doc-id))))))
+          (is (zero? (t2/count :model/Card 'document_id doc-id))))))
     (testing "archiving and updating other fields simultaneously"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Original Name"
                                                    :document (documents.test-util/text->prose-mirror-ast "Original")}]
@@ -1785,7 +1785,7 @@
       (testing "can delete archived document"
         (mt/user-http-request :crowberto :delete (format "document/%s" doc-id))
         ;; Verify document is actually deleted from database
-        (is (nil? (t2/select-one :model/Document :id doc-id))))
+        (is (nil? (t2/select-one :model/Document 'id doc-id))))
       (testing "cannot delete same document twice"
         (mt/user-http-request :crowberto :delete 404 (format "document/%s" doc-id))))))
 
@@ -1797,7 +1797,7 @@
       (testing "returns 400 error when trying to delete non-archived document"
         (mt/user-http-request :crowberto :delete 400 (format "document/%s" doc-id))
         ;; Verify document still exists
-        (is (some? (t2/select-one :model/Document :id doc-id)))))))
+        (is (some? (t2/select-one :model/Document 'id doc-id)))))))
 
 (deftest delete-document-permissions-test
   (testing "DELETE /api/document/:id - permission requirements"
@@ -1820,11 +1820,11 @@
           (testing "user with write permissions can delete archived document"
             (mt/user-http-request :rasta :delete (format "document/%s" write-doc-id))
             ;; Verify document is deleted
-            (is (nil? (t2/select-one :model/Document :id write-doc-id))))
+            (is (nil? (t2/select-one :model/Document 'id write-doc-id))))
           (testing "user without write permissions cannot delete archived document"
             (mt/user-http-request :rasta :delete 403 (format "document/%s" read-only-doc-id))
             ;; Verify document still exists
-            (is (some? (t2/select-one :model/Document :id read-only-doc-id)))))))))
+            (is (some? (t2/select-one :model/Document 'id read-only-doc-id)))))))))
 
 (deftest delete-document-with-cards-test
   (testing "DELETE /api/document/:id - deletes document with associated cards"
@@ -1849,12 +1849,12 @@
       (testing "deleting document also deletes associated cards via cascade"
         (mt/user-http-request :crowberto :delete (format "document/%s" doc-id))
         ;; Verify document is deleted
-        (is (nil? (t2/select-one :model/Document :id doc-id)))
+        (is (nil? (t2/select-one :model/Document 'id doc-id)))
         ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
-        (is (nil? (t2/select-one :model/Card :id card1-id)))
-        (is (nil? (t2/select-one :model/Card :id card2-id)))
+        (is (nil? (t2/select-one :model/Card 'id card1-id)))
+        (is (nil? (t2/select-one :model/Card 'id card2-id)))
         ;; Verify non-associated card still exists
-        (is (some? (t2/select-one :model/Card :id other-card-id)))))))
+        (is (some? (t2/select-one :model/Card 'id other-card-id)))))))
 
 (deftest delete-document-nonexistent-test
   (testing "DELETE /api/document/:id - returns 404 for nonexistent document"
@@ -1897,7 +1897,7 @@
             ;; New document should have position 3
             (is (= 3 (:collection_position new-doc-result)))
             ;; Existing document should be shifted to position 4
-            (let [shifted-document (t2/select-one :model/Document :id existing-doc-id)]
+            (let [shifted-document (t2/select-one :model/Document 'id existing-doc-id)]
               (is (= 4 (:collection_position shifted-document))))))
         (testing "inserting document without position works"
           (let [no-position-result (mt/user-http-request :crowberto
@@ -1940,8 +1940,8 @@
             ;; Document 3 should now be at position 1
             (is (= 1 (:collection_position updated-doc3)))
             ;; Check that other documents were shifted
-            (let [doc1 (t2/select-one :model/Document :id doc1-id)
-                  doc2 (t2/select-one :model/Document :id doc2-id)]
+            (let [doc1 (t2/select-one :model/Document 'id doc1-id)
+                  doc2 (t2/select-one :model/Document 'id doc2-id)]
               ;; Original documents should be shifted
               (is (= 2 (:collection_position doc1)))
               (is (= 3 (:collection_position doc2))))))
@@ -1956,7 +1956,7 @@
               (is (= other-collection-id (:collection_id moved-doc)))
               (is (= 1 (:collection_position moved-doc)))
               ;; Document 2 should be shifted down in original collection
-              (let [doc2 (t2/select-one :model/Document :id doc2-id)]
+              (let [doc2 (t2/select-one :model/Document 'id doc2-id)]
                 (is (= 2 (:collection_position doc2)))))))))))
 
 (deftest document-collection-position-field-handling-test
@@ -2023,7 +2023,7 @@
                                                :document (documents.test-util/text->prose-mirror-ast "Test content")}]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "document/%d/public-link" (:id document)))]
-          (is (t2/exists? :model/Document :id (:id document), :public_uuid uuid))
+          (is (t2/exists? :model/Document 'id (:id document), 'public_uuid uuid))
           (testing "Test that if a Document has already been shared we reuse the existing UUID"
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
@@ -2047,7 +2047,7 @@
       (testing "Test that we can unshare a Document"
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (mt/user-http-request :crowberto :delete 204 (format "document/%d/public-link" (:id document)))
-          (is (not (t2/exists? :model/Document :id (:id document), :public_uuid (:public_uuid document))))))
+          (is (not (t2/exists? :model/Document 'id (:id document), 'public_uuid (:public_uuid document))))))
       (testing "Test that we *cannot* unshare a Document if we are not admins"
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "You don't have permissions to do that."
@@ -2419,7 +2419,7 @@
            (mt/user-http-request :crowberto
                                  :put 200 (format "document/%s" doc-id)
                                  {:collection_id regular-id})
-           (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
+           (is (= regular-id (:collection_id (t2/select-one :model/Document 'id doc-id))))))))))
 
 (deftest move-document-with-remote-synced-refs-to-root-collection-test
   (testing "PUT /api/document/:id - moving document with remote-synced references to root collection"
@@ -2438,7 +2438,7 @@
            (mt/user-http-request :crowberto
                                  :put 200 (format "document/%s" doc-id)
                                  {:collection_id nil})
-           (is (nil? (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
+           (is (nil? (:collection_id (t2/select-one :model/Document 'id doc-id))))))))))
 
 (deftest move-document-without-remote-synced-refs-out-of-remote-synced-collection-test
   (testing "PUT /api/document/:id - moving document without remote-synced references out of remote-synced collection"
@@ -2458,7 +2458,7 @@
                                                 :put 200 (format "document/%s" doc-id)
                                                 {:collection_id regular-id})]
              (is (= regular-id (:collection_id response)))
-             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
+             (is (= regular-id (:collection_id (t2/select-one :model/Document 'id doc-id)))))))))))
 
 (deftest move-document-into-remote-synced-collection-with-non-remote-synced-refs-test
   (testing "PUT /api/document/:id - moving document into remote-synced collection when it has non-remote-synced references"
@@ -2482,7 +2482,7 @@
                                                 {:collection_id remote-synced-id})]
              (is (= "Uses content that is not remote synced." (:message response)))
              ;; Verify document was NOT moved
-             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
+             (is (= regular-id (:collection_id (t2/select-one :model/Document 'id doc-id)))
                  "Document should remain in regular collection"))))))))
 
 (deftest update-and-move-document-simultaneously-test
@@ -2519,7 +2519,7 @@
 (deftest post-document-to-personal-collection-test
   (testing "POST /api/document/ - creating a document in a personal collection"
     (mt/with-model-cleanup [:model/Document]
-      (let [personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+      (let [personal-coll-id (t2/select-one-pk :model/Collection 'personal_owner_id (mt/user->id :rasta))]
         (testing "User can create a document in their own personal collection"
           (let [result (mt/user-http-request :rasta
                                              :post 200 "document/"
@@ -2530,7 +2530,7 @@
             (is (= "Personal Document" (:name result)))
             (is (= personal-coll-id (:collection_id result)))
             (testing "Document is successfully saved in the database"
-              (let [doc (t2/select-one :model/Document :id (:id result))]
+              (let [doc (t2/select-one :model/Document 'id (:id result))]
                 (is (some? doc))
                 (is (= personal-coll-id (:collection_id doc)))
                 (is (= "Personal Document" (:name doc)))))))
@@ -2600,11 +2600,11 @@
                                                {:name          "Doc referencing native card"
                                                 :collection_id coll-id
                                                 :document      (card-embed-ast native-card-id)})
-                  cloned-card (t2/select-one :model/Card :document_id (:id result))]
+                  cloned-card (t2/select-one :model/Card 'document_id (:id result))]
               (testing "the embedded card is cloned into the document with the same query"
                 (is (some? cloned-card))
                 (is (not= native-card-id (:id cloned-card)))
-                (is (= (t2/select-one-fn :dataset_query :model/Card :id native-card-id)
+                (is (= (t2/select-one-fn :dataset_query :model/Card 'id native-card-id)
                        (:dataset_query cloned-card)))))))))))
 
 (deftest put-document-embedding-existing-native-card-without-native-perms-test
@@ -2627,7 +2627,7 @@
                                   :put 200 (str "document/" doc-id)
                                   {:document (card-embed-ast native-card-id)})
             (testing "the embedded card is cloned into the document"
-              (is (t2/exists? :model/Card :document_id doc-id)))))))))
+              (is (t2/exists? :model/Card 'document_id doc-id)))))))))
 
 (deftest copy-document-containing-native-card-without-native-perms-test
   (testing "POST /api/document/:id/copy - user without native perms can copy a document containing a native card (UXW-5037)"
@@ -2651,7 +2651,7 @@
                                                :post 200 (format "document/%d/copy" doc-id)
                                                {:collection_id coll-id})]
               (testing "the document-owned card is copied"
-                (is (t2/exists? :model/Card :document_id (:id result)))))))))))
+                (is (t2/exists? :model/Card 'document_id (:id result)))))))))))
 
 (deftest post-document-draft-native-card-still-requires-native-perms-test
   (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"
@@ -2707,14 +2707,14 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-            (let [query-before (t2/select-one-fn :dataset_query :model/Card :id cloned-card-id)]
+            (let [query-before (t2/select-one-fn :dataset_query :model/Card 'id cloned-card-id)]
               (mt/user-http-request :rasta
                                     :put 403 (str "card/" cloned-card-id)
                                     {:dataset_query (mt/native-query
                                                      {:query "SELECT * FROM ORDERS"})})
               (testing "the card's query is unchanged"
                 (is (= query-before
-                       (t2/select-one-fn :dataset_query :model/Card :id cloned-card-id)))))))))))
+                       (t2/select-one-fn :dataset_query :model/Card 'id cloned-card-id)))))))))))
 
 (deftest post-document-embedding-mbql-card-without-query-builder-perms-test
   (testing "POST /api/document/ - view-data-only user can embed a readable MBQL card (the fix is not native-specific)"
@@ -2733,4 +2733,4 @@
                                                {:name          "Doc referencing MBQL card"
                                                 :collection_id coll-id
                                                 :document      (card-embed-ast mbql-card-id)})]
-              (is (t2/exists? :model/Card :document_id (:id result))))))))))
+              (is (t2/exists? :model/Card 'document_id (:id result))))))))))

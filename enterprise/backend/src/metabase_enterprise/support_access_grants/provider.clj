@@ -78,7 +78,7 @@
                              :expires_at grant-ends-at
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
-          (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant")]
+          (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity 'user_id user-id 'provider "support-access-grant")]
             (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
             (t2/insert! :model/AuthIdentity auth-identity)))))))
 

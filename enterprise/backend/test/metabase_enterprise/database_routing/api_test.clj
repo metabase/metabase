@@ -33,8 +33,8 @@
                                                :destinations [{:name "destination database"
                                                                :details (:details (mt/db))}]})]
       (is (t2/exists? :model/Database
-                      :router_database_id (mt/id)
-                      :id db-id)))))
+                      'router_database_id (mt/id)
+                      'id db-id)))))
 
 (deftest invalid-details-doesnt-matter
   (mt/with-model-cleanup [:model/Database]
@@ -45,8 +45,8 @@
                                                  :destinations [{:name (str (random-uuid))
                                                                  :details {:db "meow"}}]})]
         (is (t2/exists? :model/Database
-                        :router_database_id (mt/id)
-                        :id db-id)))
+                        'router_database_id (mt/id)
+                        'id db-id)))
       (testing "unless you pass the `check_connection_details` flag"
         (let [db-name (str (random-uuid))]
           (is (= {(keyword db-name) {:message "nope"}}
@@ -60,14 +60,14 @@
     (mt/with-model-cleanup [:model/DatabaseRouter]
       (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
                             {:user_attribute "foo"})
-      (is (t2/exists? :model/DatabaseRouter :database_id db-id :user_attribute "foo")))))
+      (is (t2/exists? :model/DatabaseRouter 'database_id db-id 'user_attribute "foo")))))
 
 (deftest marking-a-nonexistent-database-as-a-router-database-fails
   (let [nonexistent-id 123456789]
     (mt/with-model-cleanup [:model/DatabaseRouter]
       (mt/user-http-request :crowberto :put 404 (str "ee/database-routing/router-database/" nonexistent-id)
                             {:user_attribute "foo"})
-      (is (not (t2/exists? :model/DatabaseRouter :database_id nonexistent-id :user_attribute "foo"))))))
+      (is (not (t2/exists? :model/DatabaseRouter 'database_id nonexistent-id 'user_attribute "foo"))))))
 
 (deftest we-can-update-existing-router-databases-to-point-to-a-new-user-attribute
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -82,8 +82,8 @@
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
     (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id) {:user_attribute nil})
     ;; the destination databases are left around
-    (is (t2/exists? :model/Database :id destination-db-id))
-    (is (not (t2/exists? :model/DatabaseRouter :id router-id)))))
+    (is (t2/exists? :model/Database 'id destination-db-id))
+    (is (not (t2/exists? :model/DatabaseRouter 'id router-id)))))
 
 (deftest endpoint-are-locked-down-to-superusers-only
   (testing "POST /api/ee/database-routing/destination-database"
@@ -175,7 +175,7 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
           (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :query-builder-and-native)
-          (t2/select :model/DataPermissions :db_id db-id :perm_type "perms/create-queries")
+          (t2/select :model/DataPermissions 'db_id db-id 'perm_type "perms/create-queries")
           (is (some #(= (:id %) destination-db-id)
                     (:data (mt/user-http-request :rasta :get 200 (str "database/?router_database_id=" db-id)))))
           (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :no)
@@ -256,9 +256,9 @@
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
       (testing "New group should have permissions for the router database"
-        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+        (is (t2/exists? :model/DataPermissions 'group_id group-id 'db_id db-id)))
       (testing "New group should NOT have permissions for the destination database"
-        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+        (is (not (t2/exists? :model/DataPermissions 'group_id group-id 'db_id destination-db-id)))))))
 
 (deftest manage-db-user-can-update-destination-database-test
   (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"
@@ -273,12 +273,12 @@
           (testing "without manage-database perms on the router the update is refused"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "database/" dest) {:name "Renamed"})))
-            (is (= "Destination DB 1" (t2/select-one-fn :name :model/Database :id dest))))
+            (is (= "Destination DB 1" (t2/select-one-fn :name :model/Database 'id dest))))
           (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
           (testing "with manage-database perms on the router the update succeeds"
             (is (=? {:id dest}
                     (mt/user-http-request :rasta :put 200 (str "database/" dest) {:name "Renamed"})))
-            (is (= "Renamed" (t2/select-one-fn :name :model/Database :id dest)))))))))
+            (is (= "Renamed" (t2/select-one-fn :name :model/Database 'id dest)))))))))
 
 (deftest manage-db-user-cannot-delete-destination-database-test
   (testing "DELETE /api/database/:id is rejected (403) for a non-superuser with manage-database perms on a routed destination"
@@ -306,5 +306,5 @@
           (testing "manage-database perms on the router database don't allow deleting its destination database"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
-          (is (t2/exists? :model/Database :id regular-db-id))
-          (is (t2/exists? :model/Database :id dest)))))))
+          (is (t2/exists? :model/Database 'id regular-db-id))
+          (is (t2/exists? :model/Database 'id dest)))))))

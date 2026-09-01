@@ -24,7 +24,7 @@
           timelines    (when (seq timeline-ids)
                          (timeline/include-events
                           (filterv mi/can-read?
-                                   (t2/select :model/Timeline :id [:in timeline-ids]))
+                                   (t2/select :model/Timeline 'id ['in timeline-ids]))
                           {:events/all? false}))]
       (into {} (map (juxt :id identity)) timelines))
    :timeline_id))

@@ -218,7 +218,7 @@
                (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version :model/Database 'id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
   (me/humanize (mr/explain sync-dbms-ver/DBMSVersion dbms-version)))
@@ -233,7 +233,7 @@
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
               _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
-              db                   (t2/select-one :model/Database :id (u/the-id db))
+              db                   (t2/select-one :model/Database 'id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"
@@ -543,10 +543,10 @@
                    (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
-  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
-                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
-                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                             (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
+  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table 'id (mt/id :checkins))
+                                            [(t2/select-one :model/Field 'id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field 'id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field 'id (mt/id :checkins :__time #_:timestamp))]
                                             (constantly conj))
        (sort-by first)
        (take 5)))

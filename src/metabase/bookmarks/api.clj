@@ -53,7 +53,7 @@
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
     (api/check (not (t2/exists? bookmark-model item-key id
-                                :user_id api/*current-user-id*))
+                                'user_id api/*current-user-id*))
                [400 "Bookmark already exists"])
     (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
@@ -69,7 +69,7 @@
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/delete! bookmark-model
-                :user_id api/*current-user-id*
+                'user_id api/*current-user-id*
                 item-key id)
     api/generic-204-no-content))
 

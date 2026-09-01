@@ -103,7 +103,7 @@
                 (setting/restore-cache!)
                 (throw e))))]
     (let [{:keys [user-id session-key session]} (create!)
-          superuser (t2/select-one :model/User :id user-id)]
+          superuser (t2/select-one :model/User 'id user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))

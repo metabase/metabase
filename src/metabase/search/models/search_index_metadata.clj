@@ -26,11 +26,11 @@
   "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
   [engine version]
   (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
-    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-                    :engine engine
-                    :version version
-                    :lang_code (i18n/site-locale-string)
-                    :status [:in [:active :pending]])
+    (->> (t2/select [:model/SearchIndexMetadata 'index_name 'status 'created_at]
+                    'engine engine
+                    'version version
+                    'lang_code (i18n/site-locale-string)
+                    'status ['in [:active :pending]])
          (filter (fn [{:keys [status created_at]}]
                    (or (not= status :pending)
                        (t/before? pending-cut-off created_at))))
@@ -47,10 +47,10 @@
                        [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
   (boolean
    (when-not (t2/exists? :model/SearchIndexMetadata
-                         :engine engine
-                         :version version
-                         :lang_code (i18n/site-locale-string)
-                         :status :pending)
+                         'engine engine
+                         'version version
+                         'lang_code (i18n/site-locale-string)
+                         'status :pending)
      (try
        (t2/insert! :model/SearchIndexMetadata {:engine     engine
                                                :version    version
@@ -66,17 +66,17 @@
 (defn delete-index!
   "Delete the given pending index, as long as its still pending."
   [engine version index-name]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :index_name (name index-name)))
+  (t2/delete! :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'index_name (name index-name)))
 
 (defn active-pending!
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
   [engine version]
   (t2/with-transaction [_conn]
-    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :pending)
-      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :retired)
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
-    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :active)))
+    (when (t2/exists? :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :pending)
+      (t2/delete! :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :retired)
+      (t2/update! :model/SearchIndexMetadata {'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :active} {:status :retired})
+      (t2/update! :model/SearchIndexMetadata {'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :pending} {:status :active}))
+    (t2/select-one-fn :index_name :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :active)))
 
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.

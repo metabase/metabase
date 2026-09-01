@@ -29,7 +29,7 @@
   (mt/with-model-cleanup [:model/SecurityAdvisory]
     (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store (constantly [(make-advisory "SC-FETCH-001")])]
       (fetch/sync-advisories!)
-      (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-001")]
+      (let [row (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-FETCH-001")]
         (is (some? row))
         (is (=? {:advisory_id  "SC-FETCH-001"
                  :match_status :unknown
@@ -46,7 +46,7 @@
       (is (=? {:title        "New title"
                :severity     :critical
                :match_status :active}
-              (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-002"))))))
+              (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-FETCH-002"))))))
 
 (deftest sync-advisories-preserves-acknowledgement-test
   (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
@@ -63,7 +63,7 @@
       (is (=? {:title           "Updated title"
                :acknowledged_by some?
                :acknowledged_at some?}
-              (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-003"))))))
+              (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-FETCH-003"))))))
 
 (defn- make-json-advisory
   "Build a JSON-shaped advisory map (as it arrives from the store API, before parsing).
@@ -97,7 +97,7 @@
                       premium-features/premium-embedding-token      (constantly "fake-token")
                       premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
           (fetch/sync-advisories!)
-          (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-2026-001")]
+          (let [row (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-2026-001")]
             (is (some? row))
             (is (= {:default {:select [1] :from [:core_user] :where [:= :email "x"] :limit 1}}
                    (:matching_query row)))
@@ -118,7 +118,7 @@
                       premium-features/premium-embedding-token                    (constantly "fake-token")
                       premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
           (fetch/sync-advisories!)
-          (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-DL-001")]
+          (let [row (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-DL-001")]
             (is (some? row))
             (is (= [{:min "0.58.0" :fixed "0.58.11"} {:min "0.59.0" :fixed "0.59.6"}]
                    (:affected_versions row)))
@@ -130,7 +130,7 @@
     (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
                                 (constantly [(make-advisory "SC-UPD-001" :updated_at #t "2026-04-01T12:00:00Z")])]
       (fetch/sync-advisories!)
-      (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-001")]
+      (let [row (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-UPD-001")]
         (is (some? (:updated_at row)))
         (is (not= (:published_at row) (:updated_at row)))))))
 
@@ -142,9 +142,9 @@
                                   (constantly [(make-advisory "SC-UPD-003" :updated_at #t "2026-04-02T08:00:00Z")])]
         (fetch/sync-advisories!)
         (is (=? {:updated_at some?}
-                (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003")))
+                (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-UPD-003")))
         (is (not= #t "2026-03-24T00:00:00Z"
-                  (:updated_at (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003"))))))))
+                  (:updated_at (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-UPD-003"))))))))
 
 (deftest fetch-rejects-non-select-matching-query-test
   (testing "matching_query with mutation keys is rejected during sync"
@@ -165,7 +165,7 @@
               ;; sync should not throw — error is caught per-advisory
               (fetch/sync-advisories!)
               (testing "advisory was NOT inserted"
-                (is (nil? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-BAD-" label))))))))))))
+                (is (nil? (t2/select-one :model/SecurityAdvisory 'advisory_id (str "SC-BAD-" label))))))))))))
 
 (deftest fetch-allows-valid-select-queries-test
   (doseq [[label query-edn] [["subquery"  "{:select [1] :from [{:select [:id] :from [:core_user]}] :limit 1}"]
@@ -179,7 +179,7 @@
                         premium-features/premium-embedding-token                    (constantly "fake-token")
                         premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
             (fetch/sync-advisories!)
-            (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-OK-" label))))))))))
+            (is (some? (t2/select-one :model/SecurityAdvisory 'advisory_id (str "SC-OK-" label))))))))))
 
 (deftest sync-advisories-handles-fetch-error-test
   (testing "network error doesn't throw"
@@ -194,4 +194,4 @@
                                                (make-advisory "SC-FETCH-GOOD")])]
         (fetch/sync-advisories!)
         (testing "good advisory was still inserted"
-          (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-GOOD"))))))))
+          (is (some? (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-FETCH-GOOD"))))))))

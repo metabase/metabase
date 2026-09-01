@@ -168,7 +168,7 @@
   ([token age-ms local-cache]
    (let [token-hash (#'token-check/hash-token token)
          new-ts     (t/minus (t/offset-date-time) (t/millis age-ms))]
-     (t2/update! :model/PremiumFeaturesCache :token_hash token-hash {:updated_at new-ts})
+     (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash {:updated_at new-ts})
      (when local-cache
        (swap! local-cache update token-hash assoc :updated-at (t/minus (t/instant) (t/millis age-ms)))))))
 
@@ -310,7 +310,7 @@
 
 (deftest active-users-count-setting-test
   (testing "returns the number of active users"
-    (is (= (t2/count :model/User :is_active true :type :personal)
+    (is (= (t2/count :model/User 'is_active true 'type :personal)
            (premium-features/active-users-count))))
   (testing "Default to 0 if db is not setup yet"
     (binding [mdb.connection/*application-db* {:status (atom nil)}]
@@ -584,9 +584,9 @@
           token   (tu/random-token)]
       (token-check/-check-token checker token)
       (let [token-hash (#'token-check/hash-token token)]
-        (is (some? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))
+        (is (some? (t2/select-one :model/PremiumFeaturesCache 'token_hash token-hash)))
         (token-check/-clear-cache! checker)
-        (is (nil? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))))))
+        (is (nil? (t2/select-one :model/PremiumFeaturesCache 'token_hash token-hash)))))))
 
 (deftest db-hash-aware-token-checker-invalid-cached-test
   (testing "Invalid token responses are also cached in table to avoid hammering MetaStore"
@@ -678,7 +678,7 @@
         (is (= good-response (token-check/-check-token checker token)))
         (is (= 1 @call-count))
         ;; Tamper with the DB hash — simulate someone modifying the row
-        (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+        (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
                     {:token_status_hash "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"})
         ;; Expire local-cached-token-checker
         (Thread/sleep 5)
@@ -703,11 +703,11 @@
         (token-check/-check-token checker token)
         (is (= 1 @call-count))
         (let [token-hash (#'token-check/hash-token token)]
-          (is (some? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))
+          (is (some? (t2/select-one :model/PremiumFeaturesCache 'token_hash token-hash)))
           ;; Run the startup hook (clears the global token-checker's cache, including the table)
           (startup/def-startup-logic! :metabase.premium-features.task.clear-token-cache/clear-token-cache)
           ;; Table should be cleared
-          (is (nil? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash))))
+          (is (nil? (t2/select-one :model/PremiumFeaturesCache 'token_hash token-hash))))
         (finally
           (token-check/-clear-cache! checker))))))
 

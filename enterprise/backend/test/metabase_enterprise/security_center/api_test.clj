@@ -118,8 +118,8 @@
           (testing "creates an audit log entry"
             (is (=? {:topic   :security-advisory-acknowledge
                      :user_id (mt/user->id :crowberto)}
-                    (t2/select-one [:model/AuditLog :topic :user_id]
-                                   :topic :security-advisory-acknowledge
+                    (t2/select-one [:model/AuditLog 'topic 'user_id]
+                                   'topic :security-advisory-acknowledge
                                    {:order-by [[:id :desc]]})))))
         (testing "cannot acknowledge twice"
           (mt/user-http-request :crowberto :post 409

@@ -16,7 +16,7 @@
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
                                                                   :schema "PUBLIC"}]
       ;; Clear default perms for the group
-      (t2/delete! :model/DataPermissions :group_id group-id-1)
+      (t2/delete! :model/DataPermissions 'group_id group-id-1)
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
@@ -64,7 +64,7 @@
         (are [api-graph db-graph] (= db-graph
                                      (do
                                        ;; Clear default perms for the group
-                                       (t2/delete! :model/DataPermissions :group_id group-id-1)
+                                       (t2/delete! :model/DataPermissions 'group_id group-id-1)
                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
@@ -133,7 +133,7 @@
                    :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                   :schema nil}]
       ;; Clear default perms for the group
-      (t2/delete! :model/DataPermissions :group_id group-id-1)
+      (t2/delete! :model/DataPermissions 'group_id group-id-1)
       (testing "data-access permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
@@ -207,7 +207,7 @@
                  :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                 :schema nil}]
     ;; Clear default perms for the group
-    (t2/delete! :model/DataPermissions :group_id group-id-1)
+    (t2/delete! :model/DataPermissions 'group_id group-id-1)
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -272,7 +272,7 @@
                  :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                 :schema nil}]
     ;; Clear default perms for the group
-    (t2/delete! :model/DataPermissions :group_id group-id-1)
+    (t2/delete! :model/DataPermissions 'group_id group-id-1)
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -331,7 +331,7 @@
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                  :model/Database         {database-id-1 :id}   {}]
     ;; Clear default perms for the group
-    (t2/delete! :model/DataPermissions :group_id group-id-1)
+    (t2/delete! :model/DataPermissions 'group_id group-id-1)
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -361,7 +361,7 @@
                      :model/Table            {t1 :id}       {:db_id db-id :schema "PUBLIC"}
                      :model/Table            {t2 :id}       {:db_id db-id :schema "PUBLIC"}
                      :model/Table            {t3 :id}       {:db_id db-id :schema "OTHER"}]
-        (t2/delete! :model/DataPermissions :group_id group-id)
+        (t2/delete! :model/DataPermissions 'group_id group-id)
         (testing "all tables uniformly :blocked across one schema collapses to scalar"
           (data-perms/set-table-permissions! group-id :perms/view-data {t1 :blocked t2 :blocked})
           (is (= :blocked
@@ -386,7 +386,7 @@
                  (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
                          [group-id db-id :perms/view-data]))))
         (testing "other granular perm types are not collapsed"
-          (t2/delete! :model/DataPermissions :group_id group-id)
+          (t2/delete! :model/DataPermissions 'group_id group-id)
           (data-perms/set-table-permissions! group-id :perms/create-queries {t1 :no t2 :no t3 :no})
           (is (= {"PUBLIC" {t1 :no t2 :no}
                   "OTHER" {t3 :no}}
@@ -485,7 +485,7 @@
                      :model/Table            {t1 :id}       {:db_id db-id :schema "PUBLIC"}
                      :model/Table            {t2 :id}       {:db_id db-id :schema "PUBLIC"}
                      :model/Table            {t3 :id}       {:db_id db-id :schema "OTHER"}]
-        (t2/delete! :model/DataPermissions :group_id group-id)
+        (t2/delete! :model/DataPermissions 'group_id group-id)
         (data-perms/set-table-permissions! group-id :perms/view-data {t1 :blocked t2 :blocked t3 :blocked})
         (let [api-perms (get-in (data-perms.graph/api-graph :group-id group-id :db-id db-id)
                                 [:groups group-id db-id])]
@@ -620,7 +620,7 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                    :model/Database         {db-id :id}    {}]
       ;; Clear default perms for the group
-      (t2/delete! :model/DataPermissions :group_id group-id)
+      (t2/delete! :model/DataPermissions 'group_id group-id)
       (testing "transforms:yes together with create-queries:query-builder-and-native is allowed"
         (is (nil? (data-perms.graph/update-data-perms-graph!
                    {:groups {group-id {db-id {:view-data :unrestricted

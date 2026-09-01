@@ -18,7 +18,7 @@
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "ts-test"
                                                     :display_name "ts-test"
                                                     :status       :active}]
-      (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
+      (let [plugin (t2/select-one :model/CustomVizPlugin 'id id)]
         (is (some? (:created_at plugin)))
         (is (some? (:updated_at plugin)))))))
 
@@ -27,7 +27,7 @@
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test"
                                                     :display_name "perm-test"
                                                     :status       :active}]
-      (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
+      (let [plugin (t2/select-one :model/CustomVizPlugin 'id id)]
         (binding [api/*current-user-id* (mt/user->id :rasta)]
           (is (true? (mi/can-read? plugin))))
         (binding [api/*current-user-id* nil]
@@ -36,7 +36,7 @@
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test-2"
                                                     :display_name "perm-test-2"
                                                     :status       :active}]
-      (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
+      (let [plugin (t2/select-one :model/CustomVizPlugin 'id id)]
         (binding [api/*is-superuser?* true]
           (is (true? (mi/can-write? plugin))))
         (binding [api/*is-superuser?* false]
@@ -54,7 +54,7 @@
                                                     :status       :active
                                                     :bundle       (.getBytes "pretend-zip-bytes" "UTF-8")
                                                     :bundle_hash  "feedface"}]
-      (let [plugin   (t2/select-one :model/CustomVizPlugin :id id)
+      (let [plugin   (t2/select-one :model/CustomVizPlugin 'id id)
             json-str (json/encode plugin)]
         (is (not (re-find #"pretend-zip-bytes" json-str)))))))
 
@@ -63,9 +63,9 @@
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "status-test"
                                                     :display_name "status-test"
                                                     :status       :active}]
-      (is (= :active (:status (t2/select-one :model/CustomVizPlugin :id id))))
+      (is (= :active (:status (t2/select-one :model/CustomVizPlugin 'id id))))
       (t2/update! :model/CustomVizPlugin id {:status :error})
-      (is (= :error (:status (t2/select-one :model/CustomVizPlugin :id id)))))))
+      (is (= :error (:status (t2/select-one :model/CustomVizPlugin 'id id)))))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

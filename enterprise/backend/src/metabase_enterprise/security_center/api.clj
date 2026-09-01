@@ -84,7 +84,7 @@
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
-  (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
+  (let [advisory (t2/select-one :model/SecurityAdvisory 'advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 

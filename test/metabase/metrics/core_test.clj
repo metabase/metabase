@@ -49,7 +49,7 @@
                                        :table_id (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+      (let [reloaded (t2/select-one :model/Card 'id (:id metric))]
         (is (some? (:dimensions reloaded))
             "Should have dimensions populated")
         (is (some? (:dimension_mappings reloaded))
@@ -67,10 +67,10 @@
                                        :database_id (mt/id)
                                        :table_id (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+      (is (nil? (:dimensions (t2/select-one :model/Card 'id (:id metric))))
           "Dimensions should be nil before sync")
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+      (let [reloaded (t2/select-one :model/Card 'id (:id metric))]
         (is (some? (:dimensions reloaded))
             "Dimensions should be persisted to database")
         (is (some? (:dimension_mappings reloaded))
@@ -109,8 +109,8 @@
       (let [stored     (t2/query-one {:select [:dimensions :dimension_mappings]
                                       :from   [:report_card]
                                       :where  [:= :id (:id metric)]})
-            first-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))
-            next-ids  (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))]
+            first-ids (mapv :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))
+            next-ids  (mapv :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))]
         (is (some? (:dimensions stored)))
         (is (some? (:dimension_mappings stored)))
         (is (= first-ids next-ids))))))
@@ -126,7 +126,7 @@
                                          :table_id      (mt/id :orders)
                                          :dataset_query orders-query}]
         (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [dimensions (t2/select-one-fn :dimensions :model/Card :id (:id metric))]
+        (let [dimensions (t2/select-one-fn :dimensions :model/Card 'id (:id metric))]
           (is (seq dimensions))
           (is (empty? (filter :default dimensions))))))))
 
@@ -139,7 +139,7 @@
                                        :dataset_query (metric-query)}]
       ;; First sync to get dimensions
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [first-dim (first (:dimensions (t2/select-one :model/Card :id (:id metric))))
+      (let [first-dim (first (:dimensions (t2/select-one :model/Card 'id (:id metric))))
             dim-id (:id first-dim)]
         ;; Manually update the dimension to have a custom display name
         (t2/update! :model/Card (:id metric)
@@ -149,7 +149,7 @@
                                    :status :status/active}]})
         ;; Sync again
         (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [reloaded (t2/select-one :model/Card :id (:id metric))
+        (let [reloaded (t2/select-one :model/Card 'id (:id metric))
               matching-dim (first (filter #(= dim-id (:id %)) (:dimensions reloaded)))]
           (is (= "My Custom Metric Dimension" (:display-name matching-dim))
               "User's custom display-name should be preserved"))))))
@@ -163,7 +163,7 @@
                                        :dataset_query (metric-query)}]
       (t2/update! :model/Card (:id metric) {:dataset_query {}})
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+      (let [reloaded (t2/select-one :model/Card 'id (:id metric))]
         (is (nil? (:dimensions reloaded))
             "Dimensions should remain nil when query is empty")
         (is (nil? (:dimension_mappings reloaded))
@@ -185,10 +185,10 @@
                                        :dataset_query (let [mp (mt/metadata-provider)]
                                                         (-> (lib/query mp (lib.metadata/card mp (:id model)))
                                                             (lib/aggregate (lib/count))))}]
-      (is (nil? (:table_id (t2/select-one :model/Card :id (:id model))))
+      (is (nil? (:table_id (t2/select-one :model/Card 'id (:id model))))
           "sanity check: native-SQL model has no table_id")
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+      (let [reloaded (t2/select-one :model/Card 'id (:id metric))]
         (is (= #{"ID" "NAME" "CATEGORY_ID"}
                (into #{} (map :name) (:dimensions reloaded)))
             "dimensions come from the model's result_metadata")
@@ -202,7 +202,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card 'id (:id metric))
             removed-id    (:id (first dimensions))
             kept          (rest dimensions)
             kept-ids      (into #{} (map :id) kept)
@@ -216,7 +216,7 @@
                      :dimension_mappings kept-mappings})
         (metrics/sync-dimensions! :metadata/metric (:id metric))
         (let [reloaded-ids (into #{} (map :id)
-                                 (t2/select-one-fn :dimensions :model/Card :id (:id metric)))]
+                                 (t2/select-one-fn :dimensions :model/Card 'id (:id metric)))]
           (is (not (contains? reloaded-ids removed-id))
               "Removed dimension must not reappear")
           (is (= kept-ids reloaded-ids)
@@ -234,7 +234,7 @@
       (t2/update! :model/Card (:id metric) {:dimensions         []
                                             :dimension_mappings []})
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (is (zero? (count (t2/select-one-fn :dimensions :model/Card :id (:id metric))))
+      (is (zero? (count (t2/select-one-fn :dimensions :model/Card 'id (:id metric))))
           "Emptied dimensions must not be re-seeded"))))
 
 (deftest metric-sync-dimensions-orphans-deleted-column-test
@@ -245,7 +245,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card 'id (:id metric))
             dim     (first dimensions)
             mapping (m/find-first #(= (:id dim) (:dimension-id %))
                                   dimension_mappings)
@@ -257,7 +257,7 @@
                     {:dimensions         [dim]
                      :dimension_mappings [orphan-mapping]})
         (metrics/sync-dimensions! :metadata/metric (:id metric))
-        (let [reloaded (first (t2/select-one-fn :dimensions :model/Card :id (:id metric)))]
+        (let [reloaded (first (t2/select-one-fn :dimensions :model/Card 'id (:id metric)))]
           (is (= :status/orphaned (:status reloaded))
               "A dimension with a missing column should be orphaned")
           (is (some? (:status-message reloaded))
@@ -272,7 +272,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (metrics/sync-dimensions! :metadata/measure (:id measure))
-      (let [reloaded (t2/select-one :model/Measure :id (:id measure))]
+      (let [reloaded (t2/select-one :model/Measure 'id (:id measure))]
         (is (some? (:dimensions reloaded))
             "Should have dimensions populated")
         (is (some? (:dimension_mappings reloaded))
@@ -290,12 +290,12 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       ;; Initially, dimensions should be nil in the database
-      (is (nil? (:dimensions (t2/select-one :model/Measure :id (:id measure))))
+      (is (nil? (:dimensions (t2/select-one :model/Measure 'id (:id measure))))
           "Dimensions should be nil before sync")
       ;; Sync dimensions
       (metrics/sync-dimensions! :metadata/measure (:id measure))
       ;; Now check that dimensions were persisted
-      (let [reloaded (t2/select-one :model/Measure :id (:id measure))]
+      (let [reloaded (t2/select-one :model/Measure 'id (:id measure))]
         (is (some? (:dimensions reloaded))
             "Dimensions should be persisted to database")
         (is (some? (:dimension_mappings reloaded))
@@ -309,7 +309,7 @@
                                            :definition (measure-definition (lib/count))}]
       ;; First sync to get dimensions
       (metrics/sync-dimensions! :metadata/measure (:id measure))
-      (let [first-dim (first (:dimensions (t2/select-one :model/Measure :id (:id measure))))
+      (let [first-dim (first (:dimensions (t2/select-one :model/Measure 'id (:id measure))))
             dim-id (:id first-dim)]
         ;; Manually update the dimension to have a custom display name
         (t2/update! :model/Measure (:id measure)
@@ -319,7 +319,7 @@
                                    :status :status/active}]})
         ;; Sync again
         (metrics/sync-dimensions! :metadata/measure (:id measure))
-        (let [reloaded (t2/select-one :model/Measure :id (:id measure))
+        (let [reloaded (t2/select-one :model/Measure 'id (:id measure))
               matching-dim (first (filter #(= dim-id (:id %)) (:dimensions reloaded)))]
           (is (= "My Custom Name" (:display-name matching-dim))
               "User's custom display-name should be preserved"))))))
@@ -332,7 +332,7 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (metrics/sync-dimensions! :metadata/measure (:id measure))
-      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Measure :id (:id measure))
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Measure 'id (:id measure))
             kept          (rest dimensions)
             kept-ids      (into #{} (map :id) kept)
             kept-mappings (filter (comp kept-ids :dimension-id)
@@ -344,7 +344,7 @@
                     {:dimensions         kept
                      :dimension_mappings kept-mappings})
         (metrics/sync-dimensions! :metadata/measure (:id measure))
-        (let [reloaded-ids (into #{} (map :id) (t2/select-one-fn :dimensions :model/Measure :id (:id measure)))]
+        (let [reloaded-ids (into #{} (map :id) (t2/select-one-fn :dimensions :model/Measure 'id (:id measure)))]
           (is (= (count dimensions) (count reloaded-ids))
               "the column dropped from storage is re-added by the full sync")
           (is (every? reloaded-ids kept-ids)
@@ -362,10 +362,10 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+      (is (nil? (:dimensions (t2/select-one :model/Card 'id (:id metric))))
           "precondition: dimensions empty before backfill")
       (metrics/sync-metric-dimensions-for-database! (mt/id))
-      (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
+      (is (seq (:dimensions (t2/select-one :model/Card 'id (:id metric))))
           "backfill populates dimensions for the metric")
-      (is (seq (:dimension_mappings (t2/select-one :model/Card :id (:id metric))))
+      (is (seq (:dimension_mappings (t2/select-one :model/Card 'id (:id metric))))
           "backfill populates dimension_mappings for the metric"))))

@@ -113,13 +113,13 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one :model/ParameterCard :card_id card-id))))))
+              (t2/select-one :model/ParameterCard 'card_id card-id))))))
 
 (deftest parameter-card-test-2
   (testing "Adding a card_id creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
-      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
+      (is (nil? (t2/select-one :model/ParameterCard 'card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
                                                                       :values_source_config {:card_id card-id}})]})
@@ -127,7 +127,7 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one :model/ParameterCard :card_id card-id))))))
+              (t2/select-one :model/ParameterCard 'card_id card-id))))))
 
 (deftest parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
@@ -136,8 +136,8 @@
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
       ;; same setup as earlier test, we know the ParameterCard exists right now
-      (t2/delete! :model/Dashboard :id dashboard-id)
-      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
+      (t2/delete! :model/Dashboard 'id dashboard-id)
+      (is (nil? (t2/select-one :model/ParameterCard 'card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
@@ -199,9 +199,9 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id perms/user-permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
+          (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table 'id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
-            (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
+            (is (= (t2/count :model/DashboardCard 'dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :dashcards count)))))))))
 
 (deftest validate-collection-namespace-test
@@ -214,7 +214,7 @@
                #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
-            (t2/delete! :model/Dashboard :name dashboard-name)))))
+            (t2/delete! :model/Dashboard 'name dashboard-name)))))
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
       (mt/with-temp [:model/Dashboard {card-id :id}]
         (is (thrown-with-msg?
@@ -262,7 +262,7 @@
                    :values_query_type :list
                    :values_source_type :card
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-                 (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))))
+                 (t2/select-one-fn :parameters :model/Dashboard 'id dashboard-id))))))))
 
 (deftest ^:parallel should-add-default-values-source-test
   (testing "shoudld add default if not exists"
@@ -274,7 +274,7 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category}]
-              (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
+              (t2/select-one-fn :parameters :model/Dashboard 'id dashboard-id))))))
 
 (deftest ^:parallel should-add-default-values-source-test-2
   (testing "shoudld not override if existsed "
@@ -294,7 +294,7 @@
                 :values_query_type    :list
                 :values_source_type   :card
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-              (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
+              (t2/select-one-fn :parameters :model/Dashboard 'id dashboard-id))))))
 
 (deftest ^:parallel descendants-test
   (testing "dashboard which have parameter's source is another card"

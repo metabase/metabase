@@ -33,7 +33,7 @@
   [parameters]
   (let [card-ids      (replacement.walk/parameter-source-card-ids parameters)
         card-id->card (when (seq card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in card-ids]))]
+                        (t2/select-pk->fn identity :model/Card 'id ['in card-ids]))]
     (if (seq card-ids)
       (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
       parameters)))
@@ -133,7 +133,7 @@
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in `:parameters` for the `dashboard`, `:parameter_mappings` and `:visualization_settings` for all dashcards in the `dashboard`."
   [dashboard]
-  (let [dashcards     (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+  (let [dashcards     (t2/select :model/DashboardCard 'dashboard_id (:id dashboard))
         parameters    (or (:parameters dashboard) [])
         all-card-ids  (into (replacement.walk/parameter-source-card-ids parameters)
                             (mapcat (fn [dashcard]
@@ -142,7 +142,7 @@
                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                             dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
+                        (t2/select-pk->fn identity :model/Card 'id ['in all-card-ids])
                         {})
         parameters'   (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
         changes       (cond-> {}
@@ -160,11 +160,11 @@
   `entity` is an optional pre-fetched entity from bulk-load-metadata-for-entities!."
   ([[entity-type entity-id :as entity-ref]]
    (upgrade-field-refs! entity-ref (case entity-type
-                                     :card      (t2/select-one :model/Card :id entity-id)
-                                     :transform (t2/select-one :model/Transform :id entity-id)
-                                     :segment   (t2/select-one :model/Segment :id entity-id)
-                                     :measure   (t2/select-one :model/Measure :id entity-id)
-                                     :dashboard (t2/select-one :model/Dashboard :id entity-id)
+                                     :card      (t2/select-one :model/Card 'id entity-id)
+                                     :transform (t2/select-one :model/Transform 'id entity-id)
+                                     :segment   (t2/select-one :model/Segment 'id entity-id)
+                                     :measure   (t2/select-one :model/Measure 'id entity-id)
+                                     :dashboard (t2/select-one :model/Dashboard 'id entity-id)
                                      nil)))
   ([[entity-type _entity-id] entity]
    (case entity-type

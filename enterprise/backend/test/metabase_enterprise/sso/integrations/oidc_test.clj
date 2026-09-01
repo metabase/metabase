@@ -262,10 +262,10 @@
          (fn [result]
            (is (true? (:success? result)) (str "login result: " (pr-str result)))
            (testing "user is added to the mapped group"
-             (let [user (t2/select-one :model/User :%lower.email "oidc-group-user@example.com")]
+             (let [user (t2/select-one :model/User '%lower.email "oidc-group-user@example.com")]
                (is (some? user))
                (is (contains?
-                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))
                     group-id))))))))))
 
 (deftest oidc-group-sync-disabled-test
@@ -281,10 +281,10 @@
          (fn [result]
            (is (true? (:success? result)))
            (testing "user is NOT added to the mapped group because sync is disabled"
-             (let [user (t2/select-one :model/User :%lower.email email)]
+             (let [user (t2/select-one :model/User '%lower.email email)]
                (is (some? user))
                (is (not (contains?
-                         (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                         (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))
                          group-id)))))))))))
 
 (deftest oidc-group-sync-no-mappings-test
@@ -299,10 +299,10 @@
        (fn [result]
          (is (true? (:success? result)))
          (testing "user exists but only has the All Users group"
-           (let [user (t2/select-one :model/User :%lower.email email)]
+           (let [user (t2/select-one :model/User '%lower.email email)]
              (is (some? user))
              ;; All Users group (id=1) is the only group
-             (is (= #{1} (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user)))))))))))
+             (is (= #{1} (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user)))))))))))
 
 (deftest oidc-group-sync-single-string-value-test
   (testing "Single group value (string instead of array) should still work"
@@ -317,10 +317,10 @@
          (fn [result]
            (is (true? (:success? result)))
            (testing "user is added to the mapped group even with a string claim value"
-             (let [user (t2/select-one :model/User :%lower.email email)]
+             (let [user (t2/select-one :model/User '%lower.email email)]
                (is (some? user))
                (is (contains?
-                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))
                     group-id))))))))))
 
 (deftest oidc-group-sync-removal-test
@@ -338,9 +338,9 @@
          provider-config {:groups ["group-a" "group-b"]} email
          (fn [result]
            (is (true? (:success? result)))
-           (let [user (t2/select-one :model/User :%lower.email email)]
+           (let [user (t2/select-one :model/User '%lower.email email)]
              (is (some? user))
-             (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
+             (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))]
                (is (contains? group-ids group-a-id))
                (is (contains? group-ids group-b-id))))))
         ;; Second login: user only has group-a — should be removed from group-b
@@ -349,8 +349,8 @@
          (fn [result]
            (is (true? (:success? result)))
            (testing "user is removed from group-b but still in group-a"
-             (let [user      (t2/select-one :model/User :%lower.email email)
-                   group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
+             (let [user      (t2/select-one :model/User '%lower.email email)
+                   group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))]
                (is (contains? group-ids group-a-id))
                (is (not (contains? group-ids group-b-id)))))))))))
 
@@ -367,10 +367,10 @@
          (fn [result]
            (is (true? (:success? result)))
            (testing "user is added to the mapped group via custom claim attribute"
-             (let [user (t2/select-one :model/User :%lower.email email)]
+             (let [user (t2/select-one :model/User '%lower.email email)]
                (is (some? user))
                (is (contains?
-                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))
                     group-id))))))))))
 
 (deftest oidc-group-sync-string-keys-in-claims-test
@@ -386,10 +386,10 @@
          (fn [result]
            (is (true? (:success? result)))
            (testing "user is added to the mapped group even with string-keyed claims"
-             (let [user (t2/select-one :model/User :%lower.email email)]
+             (let [user (t2/select-one :model/User '%lower.email email)]
                (is (some? user))
                (is (contains?
-                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (:id user))
                     group-id))))))))))
 
 (deftest successful-oidc-callback-does-not-log-pii-test

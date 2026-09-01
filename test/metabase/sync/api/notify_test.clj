@@ -138,7 +138,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres :details (assoc details :dbname db-name)}]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
-                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table 'db_id (:id %))))
                 post     (fn post-api
                            ([payload] (post-api payload 200))
                            ([payload expected-code]
@@ -170,14 +170,14 @@
 
 (defn do-with-no-attached-data-warehouses
   [f]
-  (let [attached (t2/select-fn-set :id :model/Database :is_attached_dwh true)]
+  (let [attached (t2/select-fn-set :id :model/Database 'is_attached_dwh true)]
     (try
       (when (seq attached)
-        (t2/update! :model/Database :id [:in attached] {:is_attached_dwh false}))
+        (t2/update! :model/Database 'id ['in attached] {:is_attached_dwh false}))
       (f)
       (finally
         (when (seq attached)
-          (t2/update! :model/Database :id [:in attached] {:is_attached_dwh true}))))))
+          (t2/update! :model/Database 'id ['in attached] {:is_attached_dwh true}))))))
 
 (defmacro with-no-attached-data-warehouses
   [& body]
@@ -196,7 +196,7 @@
                                                        :is_attached_dwh true}]
                 (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                       exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
-                      tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
+                      tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table 'db_id (:id %))))
                       post     (fn post-api
                                  ([payload] (post-api payload 200))
                                  ([payload expected-code]
@@ -216,8 +216,8 @@
                   (testing "And it will see new fields"
                     (exec! spec ["ALTER TABLE public.FOO add column newly_added int"])
                     (is (= 200 (:status (post {:schema_name "public" :table_name "foo"} 200))))
-                    (let [table (t2/select-one :model/Table :db_id (:id database) :name "foo")
-                          fields (t2/select :model/Field :table_id (:id table))]
+                    (let [table (t2/select-one :model/Table 'db_id (:id database) 'name "foo")
+                          fields (t2/select :model/Field 'table_id (:id table))]
                       (is (= #{"val" "newly_added"} (into #{} (map :name) fields)))))
                   (testing "We get a 404 for non-existant tables"
                     (is (= 404 (:status (post {:schema_name "public" :table_name "bar"} 404)))))

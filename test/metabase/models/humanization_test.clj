@@ -9,7 +9,7 @@
 (defn- get-humanized-display-name! [actual-name strategy]
   (mt/with-dynamic-fn-redefs [humanization/humanization-strategy (constantly strategy)]
     (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-      (t2/select-one-fn :display_name :model/Table, :id table-id))))
+      (t2/select-one-fn :display_name :model/Table, 'id table-id))))
 
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
@@ -32,7 +32,7 @@
                                                            :none     "fussybird_sightings"}}]
       (tu/with-temporary-setting-values [humanization-strategy "simple"]
         (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-          (letfn [(display-name [] (t2/select-one-fn :display_name :model/Table, :id table-id))]
+          (letfn [(display-name [] (t2/select-one-fn :display_name :model/Table, 'id table-id))]
             (testing "initial display name"
               (is (= (:initial expected)
                      (display-name))))
@@ -54,7 +54,7 @@
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
               (humanization/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
-                     (t2/select-one-fn :display_name :model/Table, :id table-id))))))))))
+                     (t2/select-one-fn :display_name :model/Table, 'id table-id))))))))))
 
 (deftest invalid-strategies-default-to-simple
   (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]

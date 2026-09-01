@@ -80,7 +80,7 @@
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
-  (let [model     (t2/select-one :model/Card :id (:model_id model-index))
+  (let [model     (t2/select-one :model/Card 'id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
@@ -125,7 +125,7 @@
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
                                               (t2/select :model/ModelIndexValue
-                                                         :model_index_id (:id model-index)))]
+                                                         'model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
       (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
                                                        :error      error-message
@@ -140,8 +140,8 @@
                                                     (str (:id model-index) ":" pk))
                                                   deletions-part)]]
                 (t2/delete! :model/ModelIndexValue
-                            :model_index_id (:id model-index)
-                            :model_pk [:in (->> deletions-part (map first))])
+                            'model_index_id (:id model-index)
+                            'model_pk ['in (->> deletions-part (map first))])
                 (search/delete! :model/ModelIndexValue search-model-ids)))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
@@ -157,7 +157,7 @@
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
-        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
+        (run! search/update! (t2/reducible-select :model/ModelIndexValue 'model_index_id (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))

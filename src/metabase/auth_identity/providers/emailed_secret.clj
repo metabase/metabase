@@ -111,7 +111,7 @@
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
-        (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")]
+        (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity 'user_id user-id 'provider "emailed-secret-password-reset")]
           (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
           (t2/insert! :model/AuthIdentity auth-identity))))))
 
@@ -144,8 +144,8 @@
     (try
       (if-let [user-id (parse-token-user-id token)]
         (if-let [auth-identity (t2/select-one :model/AuthIdentity
-                                              :user_id user-id
-                                              :provider (name provider))]
+                                              'user_id user-id
+                                              'provider (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid

@@ -20,7 +20,7 @@
 (defn- client-pk
   "Look up the numeric `oauth_client.id` primary key for the given OAuth `client-id` (UUID)."
   [client-id]
-  (t2/select-one-pk :model/OAuthClient :client_id client-id))
+  (t2/select-one-pk :model/OAuthClient 'client_id client-id))
 
 (defn record-registration!
   "Record a `registered` event for the freshly-registered client identified by `client-id` (the OAuth

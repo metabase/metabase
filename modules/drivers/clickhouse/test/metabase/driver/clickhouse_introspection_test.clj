@@ -572,11 +572,11 @@
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
             ;; Verify that the table AFTER the problematic view was still synced
-            (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
+            (let [table-after (t2/select-one :model/Table 'db_id (u/the-id db) 'name "table_after_view")]
               (is (some? table-after)
                   "Table created after parameterized view should be synced")
               (when table-after
-                (let [fields (t2/select :model/Field :table_id (:id table-after))]
+                (let [fields (t2/select :model/Field 'table_id (:id table-after))]
                   (is (= #{"id" "name"}
                          (set (map :name fields)))
                       "Fields in table after parameterized view should be synced"))))

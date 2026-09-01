@@ -160,7 +160,7 @@
                                             :page_id (:id p)
                                             :dataset_query {:database 1 :type :query}}]
     (testing "ExplorationQuery transforms"
-      (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
+      (let [reread (t2/select-one :model/ExplorationQuery 'id (:id q))]
         (is (= "d1" (:dimension_id reread)))
         (is (= 1 (-> reread :dataset_query :database)))))))
 
@@ -196,6 +196,6 @@
                  :model/Exploration e {:name "x" :creator_id (:id u)}
                  :model/ExplorationThread _t1 {:exploration_id (:id e) :position 0}
                  :model/ExplorationThread _t2 {:exploration_id (:id e) :position 1}]
-    (let [hydrated (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :threads)]
+    (let [hydrated (t2/hydrate (t2/select-one :model/Exploration 'id (:id e)) :threads)]
       (is (= 2 (count (:threads hydrated))))
       (is (= [0 1] (mapv :position (:threads hydrated)))))))

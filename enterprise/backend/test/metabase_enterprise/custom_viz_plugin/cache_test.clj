@@ -198,14 +198,14 @@
       (testing "sets a valid http URL"
         (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
         (is (= "http://localhost:5174"
-               (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+               (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin 'id id))))
       (testing "clears the URL with nil"
         (cache/set-or-clear-dev-bundle! id nil)
-        (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+        (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin 'id id))))
       (testing "clears the URL with empty string"
         (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
         (cache/set-or-clear-dev-bundle! id "")
-        (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+        (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin 'id id))))
       (testing "SECURITY: rejects file:// URLs"
         (is (thrown-with-msg? Exception #"http or https"
                               (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")))))))

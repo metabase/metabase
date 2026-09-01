@@ -62,7 +62,7 @@
    Returns a map conforming to the DebuggerSchema defined in the API."
   {:arglists '([debug-info-map])}
   (fn [{:keys [action-type user-id]}]
-    (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User :id user-id)]
+    (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User 'id user-id)]
       (if user-is-superuser?
         ::is-superuser
         action-type))))
@@ -223,7 +223,7 @@
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
    (let [card-id (Integer/parseInt model-id)
-         card (t2/select-one :model/Card :id card-id)
+         card (t2/select-one :model/Card 'id card-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})]
@@ -243,7 +243,7 @@
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/query))
    (let [card-id (Integer/parseInt model-id)
-         card (t2/select-one :model/Card :id card-id)
+         card (t2/select-one :model/Card 'id card-id)
          limited-by-group (check-table-permissions user-id card
                                                    {:perms/download-results :ten-thousand-rows}
                                                    {:perms/download-results :one-million-rows})

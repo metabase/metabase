@@ -27,7 +27,7 @@
   Snapshots the seed transform's name and entity_id so the run stays displayable after the
   transform is deleted (its FK is SET NULL, as for `transform_run.transform_id`)."
   [source-transform-id direction user-id transform-count]
-  (let [transform (t2/select-one [:model/Transform :name :entity_id] :id source-transform-id)]
+  (let [transform (t2/select-one [:model/Transform 'name 'entity_id] 'id source-transform-id)]
     (t2/insert-returning-instance! :model/TransformDagRun
                                    {:source_transform_id        source-transform-id
                                     :source_transform_name      (:name transform)
@@ -42,8 +42,8 @@
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
   [source-transform-id]
   (t2/select-one :model/TransformDagRun
-                 :source_transform_id source-transform-id
-                 :is_active           true))
+                 'source_transform_id source-transform-id
+                 'is_active           true))
 
 (defn transform-runs-for-dag-run
   "Return the transform runs that were part of the given DAG run, ordered by start time."

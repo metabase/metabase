@@ -228,7 +228,7 @@
                         boolean)]
       (cond
         indexed?                              :indexable
-        (t2/exists? (:model spec) :id id)     :excluded
+        (t2/exists? (:model spec) 'id id)     :excluded
         :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)

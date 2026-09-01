@@ -69,7 +69,7 @@
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [table-ids (map :table_id source_tables)
-        db-ids    (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids])]
+        db-ids    (t2/select-fn-set :db_id [:model/Table 'db_id] 'id ['in table-ids])]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
     (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
     (doseq [table-id table-ids]

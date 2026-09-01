@@ -86,7 +86,7 @@
           (is (thrown-with-msg?
                java.lang.Exception
                #"Only superusers can change a notification's creator_id."
-               (t2/update! :model/Notification :id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
+               (t2/update! :model/Notification 'id ['in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
       (testing "no current user (system context)"
         (is (thrown-with-msg?
              java.lang.Exception
@@ -124,13 +124,13 @@
           (testing "sanity: both notifications and notification cards exist"
             (is (t2/exists? :model/Notification (:id active-notification)))
             (is (t2/exists? :model/Notification (:id inactive-notification)))
-            (is (= 2 (t2/count :model/NotificationCard :card_id card-id))))
+            (is (= 2 (t2/count :model/NotificationCard 'card_id card-id))))
           (t2/delete! :model/Card card-id)
           (testing "both notifications should be removed when the card is deleted"
             (is (not (t2/exists? :model/Notification (:id active-notification))))
             (is (not (t2/exists? :model/Notification (:id inactive-notification)))))
           (testing "notification card payloads should also be removed"
-            (is (not (t2/exists? :model/NotificationCard :card_id card-id)))))))))
+            (is (not (t2/exists? :model/NotificationCard 'card_id card-id)))))))))
 
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
@@ -211,7 +211,7 @@
                       :channel_id   (:id chn-2)
                       :template_id  nil}]
                     (:handlers (t2/hydrate noti :handlers)))))
-          (let [noti-handler (t2/select-one :model/NotificationHandler :channel_id (:id chn-1) :template_id (:id tmpl))]
+          (let [noti-handler (t2/select-one :model/NotificationHandler 'channel_id (:id chn-1) 'template_id (:id tmpl))]
             (testing "hydrate template + channel"
               (is (=? {:channel_type (:type chn-1)
                        :channel_id   (:id chn-1)
@@ -249,7 +249,7 @@
                       :recipients   [{:type     :notification-recipient/user
                                       :user_id  (mt/user->id :rasta)}]}])]
           (t2/delete! :model/ChannelTemplate (:id tmpl-1))
-          (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti)))))))))
+          (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler 'notification_id (:id noti)))))))))
 
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
@@ -421,6 +421,6 @@
                                          :cron_schedule   cron-schedule
                                          :ui_display_type ui-display-type}]}]
          (let [get-schedule-type (fn []
-                                   (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
-           (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
+                                   (:schedule_type (t2/select-one :v_alerts 'entity_id (:id notification))))]
+           (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts 'entity_id (:id notification)))
              (is (= schedule-type (get-schedule-type))))))))))

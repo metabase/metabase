@@ -35,7 +35,7 @@
   "Add transform-runs for a transform. Must have :id field."
   [transform]
   (t2/select :model/TransformRun
-             :transform_id (:id transform)
+             'transform_id (:id transform)
              {:order-by [[:start_time :desc] [:end_time :desc]]}))
 
 (defn- latest-run-cte
@@ -68,7 +68,7 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [transform  (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id)
+   (let [transform  (t2/select-one [:model/Transform 'name 'entity_id 'source_type] 'id transform-id)
          metered-as (premium-features/transform-metered-as (:source_type transform))
          run (t2/insert-returning-instance! :model/TransformRun
                                             (assoc properties
@@ -90,8 +90,8 @@
    (succeed-started-run! run-id {}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
+                        'id    run-id
+                        'is_active true
                         (merge properties
                                {:end_time  :%now
                                 :status    :succeeded
@@ -102,8 +102,8 @@
   "Mark the started active run as failed and inactive."
   [run-id properties]
   (u/prog1 (t2/update! :model/TransformRun
-                       :id    run-id
-                       :is_active true
+                       'id    run-id
+                       'is_active true
                        (merge properties
                               {:end_time  :%now
                                :status    :failed
@@ -116,8 +116,8 @@
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
+                        'id    run-id
+                        'is_active true
                         (merge properties
                                {:end_time  :%now
                                 :status    :canceled
@@ -141,8 +141,8 @@
    (timeout-run! run-id {}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        :id    run-id
-                        :is_active true
+                        'id    run-id
+                        'is_active true
                         (merge properties
                                {:end_time  :%now
                                 :message   "Timed out"
@@ -151,7 +151,7 @@
      (cancel/delete-cancelation! run-id)
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
-       (when-let [run (t2/select-one :model/TransformRun :id run-id)]
+       (when-let [run (t2/select-one :model/TransformRun 'id run-id)]
          (publish-timeout-event! run))))))
 
 (defn- reap-transform-runs!
@@ -208,16 +208,16 @@
   (t2/with-transaction [_conn]
     (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
           times  (into {} (map (juxt :run_id :time))
-                       (t2/select [:model/TransformRunCancelation :run_id :time]
-                                  :time [:< cutoff]))
+                       (t2/select [:model/TransformRunCancelation 'run_id 'time]
+                                  'time ['< cutoff]))
           locked (when (seq times)
                    (t2/select :model/TransformRun
                               {:where [:and [:= :is_active true] [:in :id (keys times)]]
                                :for   :update}))]
       (when (seq locked)
         (t2/update! :model/TransformRun
-                    :id        [:in (mapv :id locked)]
-                    :is_active true
+                    'id        ['in (mapv :id locked)]
+                    'is_active true
                     {:status    :canceled
                      :end_time  :%now
                      :is_active nil
@@ -225,14 +225,14 @@
         (cancel/delete-old-canceling-runs!))
       (mapv #(assoc % :request_time (times (:id %)))
             (when (seq locked)
-              (t2/select :model/TransformRun :id [:in (mapv :id locked)]))))))
+              (t2/select :model/TransformRun 'id ['in (mapv :id locked)]))))))
 
 (defn running-run-for-transform-id
   "Return a single active transform run or nil."
   [transform-id]
   (t2/select-one :model/TransformRun
-                 :transform_id transform-id
-                 :is_active true))
+                 'transform_id transform-id
+                 'is_active true))
 
 (defn last-successful-run-times
   "Map each id in `transform-ids` with a succeeded run to its most recent run's `end_time`. Ids with

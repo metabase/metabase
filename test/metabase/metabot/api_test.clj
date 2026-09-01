@@ -67,8 +67,8 @@
                       events   (->> lines
                                     (remove #(= "data: [DONE]" %))
                                     (mapv #(json/decode+kw (subs % 6))))
-                      conv     (t2/select-one :model/MetabotConversation :id conversation-id)
-                      messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+                      conv     (t2/select-one :model/MetabotConversation 'id conversation-id)
+                      messages (t2/select :model/MetabotMessage 'conversation_id conversation-id)]
                   (testing "response is an SSE stream of typed events ending with [DONE]"
                     (is (= "data: [DONE]" (last lines)))
                     (is (= ["start" "data-conversation-title" "start-step"] (mapv :type (take 3 events))))
@@ -297,7 +297,7 @@
                         (is (false? (:finished? @stored-kwargs))
                             "the finalized turn is marked :finished? false — the cancel was detected")
                         (is (= 2 (count (t2/select :model/MetabotMessage
-                                                   :conversation_id conversation-id)))
+                                                   'conversation_id conversation-id)))
                             "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
         (finally
           (.stop llm-server))))))
@@ -410,14 +410,14 @@
                                            :source_type "table"
                                            :positive    true})))
           (is (some? (t2/select-one :model/MetabotSourceFeedback
-                                    :message_id  message-id
-                                    :user_id     user-id
-                                    :source_id   42
-                                    :source_type "table"))))
+                                    'message_id  message-id
+                                    'user_id     user-id
+                                    'source_id   42
+                                    'source_type "table"))))
         (finally
-          (t2/delete! :model/MetabotSourceFeedback :user_id user-id :source_id 42 :source_type "table")
-          (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
-          (t2/delete! :model/MetabotConversation :id conversation-id))))))
+          (t2/delete! :model/MetabotSourceFeedback 'user_id user-id 'source_id 42 'source_type "table")
+          (t2/delete! :model/MetabotMessage 'conversation_id conversation-id)
+          (t2/delete! :model/MetabotConversation 'id conversation-id))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
@@ -574,8 +574,8 @@
 
 (defn- conversation-rows
   [conversation-id]
-  (t2/select [:model/MetabotMessage :id :external_id :role :deleted_at :deleted_by_user_id]
-             :conversation_id conversation-id
+  (t2/select [:model/MetabotMessage 'id 'external_id 'role 'deleted_at 'deleted_by_user_id]
+             'conversation_id conversation-id
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (deftest agent-streaming-start-event-carries-user-message-id-test
@@ -589,7 +589,7 @@
           (is (string? user-message-id))
           (is (= user-message-id
                  (t2/select-one-fn :external_id :model/MetabotMessage
-                                   :conversation_id conversation-id :role "user"))))))))
+                                   'conversation_id conversation-id 'role "user"))))))))
 
 (deftest agent-streaming-honors-client-minted-message-ids-test
   (testing "rows persist under client-sent ids, the start event echoes them, and a retry honors its fresh assistant id"
@@ -606,7 +606,7 @@
           (is (= user-id (streamed-user-message-id response)))
           (is (= {:user user-id :assistant assistant-id}
                  (t2/select-fn->fn :role :external_id :model/MetabotMessage
-                                   :conversation_id conversation-id)))
+                                   'conversation_id conversation-id)))
           (let [retry-assistant-id (str (random-uuid))]
             (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                   (agent-request conversation-id "first"
@@ -943,8 +943,8 @@
               {:type :finish}])
             (t2/select-one :model/MetabotMessage assistant-msg-id)))
         (finally
-          (t2/delete! :model/MetabotMessage :conversation_id conv-id)
-          (t2/delete! :model/MetabotConversation :id conv-id))))))
+          (t2/delete! :model/MetabotMessage 'conversation_id conv-id)
+          (t2/delete! :model/MetabotConversation 'id conv-id))))))
 
 (deftest start-turn-ai-proxy-test
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
@@ -998,8 +998,8 @@
                 (is (= {:step 1} (:state msg))
                     "the turn's partial state lands on the message row"))))
           (finally
-            (t2/delete! :model/MetabotMessage :conversation_id conv-id)
-            (t2/delete! :model/MetabotConversation :id conv-id)))))))
+            (t2/delete! :model/MetabotMessage 'conversation_id conv-id)
+            (t2/delete! :model/MetabotConversation 'id conv-id)))))))
 
 (deftest parts->storable-content-tool-output-trimming-test
   (testing "drops transient result keys and structured-output fields outside the persisted subset"
@@ -1190,7 +1190,7 @@
                                   :debug           false}
                            parent-message-id (assoc :parent_message_id parent-message-id)))
           ip-for       (fn [conversation-id]
-                         (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
+                         (:ip_address (t2/select-one :model/MetabotConversation 'id conversation-id)))
           info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                                   conversation-title/ensure-title!      (constantly {:status :missing})
@@ -1235,7 +1235,7 @@
                           :user-agent nil
                           :ip-address nil})
           convo-for    (fn [conversation-id]
-                         (t2/select-one :model/MetabotConversation :id conversation-id))]
+                         (t2/select-one :model/MetabotConversation 'id conversation-id))]
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                                   conversation-title/ensure-title!      (constantly {:status :missing})
                                   api/native-agent-streaming-request    (constantly nil)]
@@ -1299,7 +1299,7 @@
                                            :context         {}
                                            :conversation_id conversation-id
                                            :state           {}})
-                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                    (let [convo (t2/select-one :model/MetabotConversation 'id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
                       (is (= "/dashboard"           (:embedding_path     convo)))))))
               (testing "flag off: hostname recorded (ungated), path NOT recorded"
@@ -1312,7 +1312,7 @@
                                            :context         {}
                                            :conversation_id conversation-id
                                            :state           {}})
-                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                    (let [convo (t2/select-one :model/MetabotConversation 'id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
                       (is (nil?                     (:embedding_path     convo)))))))
               (testing "standard Referer header (no x-metabase-embed-referrer) leaves both columns null"
@@ -1324,7 +1324,7 @@
                                            :context         {}
                                            :conversation_id conversation-id
                                            :state           {}})
-                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                    (let [convo (t2/select-one :model/MetabotConversation 'id conversation-id)]
                       (is (nil? (:embedding_hostname convo)))
                       (is (nil? (:embedding_path     convo)))))))
               (testing "user-agent recorded only when flag is on"
@@ -1336,7 +1336,7 @@
                                            :context         {}
                                            :conversation_id conversation-id
                                            :state           {}})
-                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                    (let [convo (t2/select-one :model/MetabotConversation 'id conversation-id)]
                       (is (= "Mozilla/5.0 (TestAgent)" (:user_agent convo)))
                       (is (some? (:sanitized_user_agent convo))))))
                 (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
@@ -1347,7 +1347,7 @@
                                            :context         {}
                                            :conversation_id conversation-id
                                            :state           {}})
-                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                    (let [convo (t2/select-one :model/MetabotConversation 'id conversation-id)]
                       (is (nil? (:user_agent           convo)))
                       (is (nil? (:sanitized_user_agent convo))))))))))))))
 

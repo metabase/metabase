@@ -453,7 +453,7 @@
                  :row 14}
                 {:id  tab4-card2-id
                  :row 18}]
-               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
+               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard 'dashboard_id dashboard-id)))))))
 
 (deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -500,11 +500,11 @@
                 {:row 0  :col 0  :size_x 24 :size_y 2}
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
-               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+               (-> (t2/select-one (t2/table-name :model/Revision) 'id revision-id)
                    :object json/decode+kw :cards))))
       (migrate! :down 46)
       (testing "downgrade works correctly"
-        (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+        (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) 'id revision-id)
                          :object json/decode+kw :cards)))))))
 
 (deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
@@ -534,7 +534,7 @@
                 {:id 3 :row 0 :col 0 :size_x 5 :size_y 4}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
-               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+               (-> (t2/select-one (t2/table-name :model/Revision) 'id revision-id)
                    :object json/decode+kw :cards))))
       (migrate! :down 46)
       (testing "downgrade works correctly and ignore failures"
@@ -543,7 +543,7 @@
                 {:id 3 :size_y 4 :size_x 4 :col 0 :row 0}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
-               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+               (-> (t2/select-one (t2/table-name :model/Revision) 'id revision-id)
                    :object json/decode+kw :cards)))))))
 
 (defn two-cards-overlap? [box1 box2]
@@ -1129,11 +1129,11 @@
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id))))
+                           (t2/select-one [:model/Database 'settings 'options] success-id))))
                   (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
+                           (t2/select-one [:model/Database 'settings 'options] empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1497,7 +1497,7 @@
                                       :linkTextTemplate "here is my id: {{id}}"}}}}]
             (f)
             (is (= expected-settings
-                   (-> (t2/select-one :model/DashboardCard :id dashcard-id)
+                   (-> (t2/select-one :model/DashboardCard 'id dashcard-id)
                        :visualization_settings)))))]
     (testing "Running the migration from scratch"
       (impl/test-migrations ["v48.00-022"] [migrate!]
@@ -1510,7 +1510,7 @@
 
 (defn- get-json-setting
   [setting-k]
-  (json/decode (t2/select-one-fn :value :setting :key (name setting-k))))
+  (json/decode (t2/select-one-fn :value :setting 'key (name setting-k))))
 
 (defn- call-with-ldap-and-sso-configured! [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values
@@ -1635,7 +1635,7 @@
           (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
           (testing "created_at shouldn't change if there is an update"
             (is (= (:created_at session)
-                   (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
+                   (t2/select-one-fn :created_at :core_session 'id (:id session))))))))))
 
 (def ^:private deep-nested-map
   "A 35 level nested map to test for mariadb"
@@ -1755,7 +1755,7 @@
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
                     (testing "never scan and on demand should not have scan field values"
-                      (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
+                      (doseq [db (t2/select :model/Database 'id ['in (map :id db-without-scan-fv)])]
                         (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
                         (is (nil? (:cache_field_values_schedule db))))))))]
@@ -2025,13 +2025,13 @@
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
     (testing "Values were indeed encrypted"
-      (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
+      (is (not= "true" (t2/select-one-fn :value :setting 'key "enable-query-caching"))))
     (encryption-test/with-secret-key "whateverwhatever"
       (migrate!))
     (testing "But not anymore"
-      (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
-      (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
-      (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
+      (is (= "true" (t2/select-one-fn :value :setting 'key "enable-query-caching")))
+      (is (= "100" (t2/select-one-fn :value :setting 'key "query-caching-ttl-ratio")))
+      (is (= "123" (t2/select-one-fn :value :setting 'key "query-caching-min-ttl"))))))
 
 ;;;
 ;;; 51 tests
@@ -2187,12 +2187,12 @@
             (is (= create? (sample-content-created?))))
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
-              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
+              (let [id (t2/select-one-pk :model/Collection 'is_sample true)]
                 (is (partial=
                      {:collection_id id
                       :perm_type     :perms/collection-access
                       :perm_value    :read-and-write}
-                     (t2/select-one :model/Permissions :collection_id id)))))))))))
+                     (t2/select-one :model/Permissions 'collection_id id)))))))))))
 
 (deftest ^:mb/old-migrations-test create-sample-content-test-2
   (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
@@ -2571,10 +2571,10 @@
             (migrate!)
             (testing "pulse is migrated to notification"
               (let [notification      (t2/select-one :notification)
-                    notification-card (t2/select-one :notification_card :id (:payload_id notification))
-                    subscription      (t2/select-one :notification_subscription :notification_id (:id notification))
-                    handler           (t2/select-one :notification_handler :notification_id (:id notification))
-                    recipient         (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
+                    notification-card (t2/select-one :notification_card 'id (:payload_id notification))
+                    subscription      (t2/select-one :notification_subscription 'notification_id (:id notification))
+                    handler           (t2/select-one :notification_handler 'notification_id (:id notification))
+                    recipient         (t2/select-one :notification_recipient 'notification_handler_id (:id handler))]
                 (is (= {:payload_type "notification/card"
                         :active       true
                         :creator_id   user-id}
@@ -2596,7 +2596,7 @@
                        (select-keys recipient [:type :details]))))))
           (testing "after downgrade"
             (migrate! :down 52)
-            (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
+            (is (zero? (t2/count :notification 'payload_type "notification/card")))))))))
 
 (deftest migrate-clickhouse-details-to-multi-db-test
   (testing "v57.2025-08-23T16:00:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
@@ -2620,7 +2620,7 @@
                                  :updated_at :%now
                                  :details (mi/encrypted-json-in details)})))
                 (assert-pre-conditions []
-                  (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
+                  (let [clickhouse-dbs (t2/select :metabase_database 'engine "clickhouse")
                         details-list (map #(mi/encrypted-json-out (:details %)) clickhouse-dbs)]
                     (is (= 4 (count clickhouse-dbs)))
                     (is (every? #(contains? % :scan-all-databases) details-list))
@@ -2641,7 +2641,7 @@
           ;; run migration
           (migrate!)
           ;; assert post conditions
-          (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")]
+          (let [clickhouse-dbs (t2/select :metabase_database 'engine "clickhouse")]
             (is (= 4 (count clickhouse-dbs)))
             (doseq [db clickhouse-dbs]
               (let [details (mi/encrypted-json-out (:details db))]
@@ -2693,13 +2693,13 @@
             db-router-id (:id (new-instance-with-default :db_router {:user_attribute "@foo" :database_id database-id}))]
         (migrate!)
         (is (= {"_@foo" "bar"}
-               (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
+               (json/decode (:attribute_remappings (t2/select-one :sandboxes 'id sandbox-id)))))
         (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
         (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
         (is (= {"_@foo" "bar"}
-               (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
+               (json/decode (t2/select-one-fn :login_attributes :core_user 'id user-id))))
         (is (= {"_@foo" "bang"}
-               (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+               (json/decode (t2/select-one-fn :login_attributes :core_user 'id other-user-id))))))))
 
 (deftest encrypt-auth-identity-credentials-test
   (testing "v58.2026-08-25T00:00:00 : plaintext auth_identity.credentials rows are encrypted, encrypted rows untouched"
@@ -2715,7 +2715,7 @@
               plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
               enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
               enc-id   (ins-cred "google" enc-str)
-              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))]
+              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity 'id id))]
           (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
           (migrate!)
           (testing "plaintext credentials are encrypted and decrypt to the original value"
@@ -2740,7 +2740,7 @@
               plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
               enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
               enc-id   (ins-key "mb_encr" enc-str)
-              raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
+              raw-key  (fn [id] (t2/select-one-fn :key :api_key 'id id))]
           (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
           (migrate!)
           (testing "plaintext key is encrypted and decrypts to the original hash"
@@ -2824,7 +2824,7 @@
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
         (let [ins!       (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw        (fn [k] (t2/select-one-fn :value :setting :key k))
+              raw        (fn [k] (t2/select-one-fn :value :setting 'key k))
               enc-str    (encryption/maybe-encrypt "https://already.example")
               ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
               shaped-str (str (apply str (repeat 86 "a")) "==")]
@@ -2875,7 +2875,7 @@
     (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
       (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
         (let [insert-setting! (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw-setting     (fn [k] (t2/select-one-fn :value :setting :key k))
+              raw-setting     (fn [k] (t2/select-one-fn :value :setting 'key k))
               encrypted-value (encryption/maybe-encrypt "https://otel.example")]
           ;; a plaintext row from before the setting was encrypted
           (insert-setting! "setup-token" "b7f4a1e2-0000-4000-8000-000000000000")
@@ -2983,9 +2983,9 @@
                 unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
             (migrate!)
             ;; The uploads db has the correct uploads_schema_name from the details
-            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database 'id db-id))))
             (are [exp table-id] (= exp
-                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
+                                   (t2/select-one [:metabase_table 'name 'schema 'active 'is_upload] 'id table-id))
               ;; The upload table that was already in a good state remains unchanged
               {:name "uploads_test_table_0"
                :schema "db_foo"
@@ -3082,7 +3082,7 @@
             native-id (insert-transform! native-source)
             get-source (fn [id]
                          (json/decode
-                          (t2/select-one-fn :source :transform :id id)
+                          (t2/select-one-fn :source :transform 'id id)
                           keyword))]
         (migrate!)
         (testing "Resolvable legacy strategy is migrated to checkpoint-filter-field-id"
@@ -3124,11 +3124,11 @@
                                                  (json/encode {:secret "s3"})))]
           (migrate!)
           (testing "encrypted confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity 'id enc-confirmed))))
           (testing "legacy plaintext confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity 'id plain-confirmed))))
           (testing "pending (unconfirmed) enrollment stays null"
-            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity 'id pending)))))))))
 
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"

@@ -116,7 +116,7 @@
                                site-name "SuperStar"
                                application-logo-url "https://metabase.com/superstar.png"]
                               (-> (notification.tu/with-captured-channel-send!
-                                    (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
+                                    (publish-user-invited-event! (t2/select-one :model/User 'email "crowberto@metabase.com")
                                                                  {:first_name invitor-name :email "ngoc@metabase.com"}
                                                                  sent-from-setup?))
                                   :channel/email first))]
@@ -177,7 +177,7 @@
                        site-name "SuperStar"
                        application-logo-url "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="]
                       (-> (notification.tu/with-captured-channel-send!
-                            (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
+                            (publish-user-invited-event! (t2/select-one :model/User 'email "crowberto@metabase.com")
                                                          {:first_name "Ngoc" :email "ngoc@metabase.com"}
                                                          false))
                           :channel/email first))]
@@ -316,7 +316,7 @@
                           :message        [(zipmap (map str regexes) (repeat true))]
                           :recipient-type :cc}
                          (apply mt/summarize-multipart-single-email email regexes)))))
-        admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
+        admin-emails (t2/select-fn-set :email :model/User 'is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
                            #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))

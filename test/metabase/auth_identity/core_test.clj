@@ -27,19 +27,19 @@
             (is (= {:email "test@example.com"}
                    (:metadata auth-identity))))))
       (testing "can update an AuthIdentity"
-        (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
+        (let [auth-identity (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")]
           (t2/update! :model/AuthIdentity (:id auth-identity)
                       {:credentials {:password_hash "new_hash"
                                      :password_salt "new_salt"}})
-          (let [updated (t2/select-one :model/AuthIdentity :id (:id auth-identity))]
+          (let [updated (t2/select-one :model/AuthIdentity 'id (:id auth-identity))]
             (is (= {:password_hash "new_hash" :password_salt "new_salt"}
                    (:credentials updated))))))
       (testing "can delete an AuthIdentity"
         ;; Create a google AuthIdentity to delete (don't delete the password one)
         (mt/with-temp [:model/AuthIdentity auth-identity {:user_id (:id user)
                                                           :provider "google"}]
-          (t2/delete! :model/AuthIdentity :id (:id auth-identity))
-          (is (nil? (t2/select-one :model/AuthIdentity :id (:id auth-identity)))))))))
+          (t2/delete! :model/AuthIdentity 'id (:id auth-identity))
+          (is (nil? (t2/select-one :model/AuthIdentity 'id (:id auth-identity)))))))))
 
 (deftest auth-identity-json-transform-test
   (testing "JSON transformation for credentials and metadata"
@@ -48,7 +48,7 @@
                                                       :provider "google"
                                                       :metadata {:sso_source "google"
                                                                  :login_attributes {:email "test@example.com"}}}]
-      (let [fetched (t2/select-one :model/AuthIdentity :id (:id auth-identity))]
+      (let [fetched (t2/select-one :model/AuthIdentity 'id (:id auth-identity))]
         (is (map? (:metadata fetched)))
         (is (= "google" (get-in fetched [:metadata :sso_source])))
         (is (= {:email "test@example.com"} (get-in fetched [:metadata :login_attributes])))))))
@@ -72,7 +72,7 @@
   (testing "A user can have multiple authentication providers"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "test-password")
-      (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
+      (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             google-auth (t2/insert-returning-instance! :model/AuthIdentity
                                                        {:user_id (:id user)
                                                         :provider "google"
@@ -84,12 +84,12 @@
         (is (some? password-auth))
         (is (some? google-auth))
         (is (some? ldap-auth))
-        (let [providers (t2/select :model/AuthIdentity :user_id (:id user))]
+        (let [providers (t2/select :model/AuthIdentity 'user_id (:id user))]
           (is (= 3 (count providers)))
           (is (= #{"password" "google" "ldap"} (set (map :provider providers)))))
-        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")))
-        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "google")))
-        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "ldap")))
+        (is (some? (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")))
+        (is (some? (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "google")))
+        (is (some? (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "ldap")))
         (is (some? (:credentials password-auth)))
         (is (= {:sso_source "google"}
                (:metadata google-auth)))

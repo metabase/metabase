@@ -50,7 +50,7 @@
    (fn []
      (testing "H2 connection details should not have been copied"
        (is (= {}
-              (t2/select-one-fn :details :model/Database :engine :h2)))))))
+              (t2/select-one-fn :details :model/Database 'engine :h2)))))))
 
 (deftest load-from-h2-copy-details-enabled-test
   (binding [copy/*copy-h2-database-details* true]
@@ -59,7 +59,7 @@
      (fn []
        (testing "H2 connection details SHOULD have been copied"
          (is (=? {:db string?}
-                 (t2/select-one-fn :details :model/Database :engine :h2))))))))
+                 (t2/select-one-fn :details :model/Database 'engine :h2))))))))
 
 (defn get-data-source [db-type db-def]
   (let [connection-details (tx/dbdef->connection-details db-type :db db-def)

@@ -44,10 +44,10 @@
                          {:where [:like :fingerprint (str fingerprint-prefix "%")]})))
       (#'complexity-score-trimmer/trim-old-complexity-score-data!)
       (is (some? (t2/select-one :model/DataComplexityScore
-                                :fingerprint (str fingerprint-prefix recent-score-label))))
+                                'fingerprint (str fingerprint-prefix recent-score-label))))
       (is (some? (t2/select-one :model/DataComplexityScore
-                                :fingerprint (str fingerprint-prefix boundary-score-label))))
+                                'fingerprint (str fingerprint-prefix boundary-score-label))))
       (is (nil? (t2/select-one :model/DataComplexityScore
-                               :fingerprint (str fingerprint-prefix old-score-label))))
+                               'fingerprint (str fingerprint-prefix old-score-label))))
       (is (= 2 (t2/count :model/DataComplexityScore
                          {:where [:like :fingerprint (str fingerprint-prefix "%")]}))))))

@@ -35,7 +35,7 @@
               (is (= [(double (/ 50 120)) (double (/ 100 120)) 1.0]
                      @writes))
               (is (=? {:is_active nil :progress 1.0 :status :succeeded}
-                      (t2/select-one :model/ReplacementRun :id (:id record)))))))))))
+                      (t2/select-one :model/ReplacementRun 'id (:id record)))))))))))
 
 (deftest advance!-count-arity-test
   (testing "advance! with count arity crosses boundaries correctly"
@@ -97,7 +97,7 @@
               ;; then checks canceled? → true → throws. Both writes happen.
               (is (= [(double (/ 50 130)) (double (/ 100 130))] @writes)
                   "Both boundary writes happen; cancellation fires after the second write")
-              (is (= :canceled (:status (t2/select-one :model/ReplacementRun :id (:id record))))
+              (is (= :canceled (:status (t2/select-one :model/ReplacementRun 'id (:id record))))
                   "Run status should be :canceled"))))))))
 
 (deftest work-fn-exception-marks-run-as-failed-test
@@ -113,6 +113,6 @@
                              {:failures [{:entity [:card 42] :error "boom"}]})))
            progress)
           (is (= :run/fail (u/deref-with-timeout done? 500)))
-          (let [run (t2/select-one :model/ReplacementRun :id (:id record))]
+          (let [run (t2/select-one :model/ReplacementRun 'id (:id record))]
             (is (= :failed (:status run)))
             (is (str/starts-with? (:message run) "1 of 5 entities failed"))))))))

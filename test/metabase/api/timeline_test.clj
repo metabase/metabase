@@ -156,10 +156,10 @@
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
               (is (= "Rasta's TL"
-                     (-> (t2/select-one :model/Timeline :collection_id id) :name))))
+                     (-> (t2/select-one :model/Timeline 'collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (t2/select-one-fn :icon :model/Timeline :collection_id id))))))))))
+                     (t2/select-one-fn :icon :model/Timeline 'collection_id id))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
@@ -178,14 +178,14 @@
         ;; update the timeline to be archived
         (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived true})
         (is (true?
-             (->> (t2/select :model/TimelineEvent :timeline_id (u/the-id tl-b))
+             (->> (t2/select :model/TimelineEvent 'timeline_id (u/the-id tl-b))
                   (map :archived)
                   (every? true?)))))
       (testing "check that we un-archive all events in a timeline when the timeline is un-archived"
         ;; since we archived in the previous step, we unarchive the same timeline here.
         (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived false})
         (is (true?
-             (->> (t2/select :model/TimelineEvent :timeline_id (u/the-id tl-b))
+             (->> (t2/select :model/TimelineEvent 'timeline_id (u/the-id tl-b))
                   (map :archived)
                   (every? false?))))))))
 
@@ -194,7 +194,7 @@
     (mt/with-temp [:model/Timeline {tl-id :id} {:name "Timeline A"}]
       (is (= "Launches"
              (:name (mt/user-http-request :rasta :put 200 (str "timeline/" tl-id) {:name "Launches"}))))
-      (is (= "Launches" (t2/select-one-fn :name :model/Timeline :id tl-id))))))
+      (is (= "Launches" (t2/select-one-fn :name :model/Timeline 'id tl-id))))))
 
 (deftest move-timeline-test
   (testing "PUT /api/timeline/:id can move a timeline to another collection"
@@ -213,8 +213,8 @@
     (mt/with-temp [:model/Timeline      {tl-id :id} {:name "Releases"}
                    :model/TimelineEvent {ev-id :id} {:timeline_id tl-id :name "RC1"}]
       (is (nil? (mt/user-http-request :crowberto :delete 204 (str "timeline/" tl-id))))
-      (is (nil? (t2/select-one :model/Timeline :id tl-id)))
-      (is (nil? (t2/select-one :model/TimelineEvent :id ev-id))))))
+      (is (nil? (t2/select-one :model/Timeline 'id tl-id)))
+      (is (nil? (t2/select-one :model/TimelineEvent 'id ev-id))))))
 
 (deftest create-timeline-permissions-test
   (testing "POST /api/timeline is denied to a user with only read permission on the collection"

@@ -24,29 +24,29 @@
   (testing "bulk-set-remote-sync enables remote sync on a single collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
       (core/bulk-set-remote-sync {coll-id true})
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))
 
 (deftest bulk-set-remote-sync-disables-single-collection-test
   (testing "bulk-set-remote-sync disables remote sync on a single collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
       (core/bulk-set-remote-sync {coll-id false})
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))
 
 (deftest bulk-set-remote-sync-enables-multiple-collections-test
   (testing "bulk-set-remote-sync enables remote sync on multiple collections"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}]
       (core/bulk-set-remote-sync {coll1-id true coll2-id true})
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll2-id)))))))
 
 (deftest bulk-set-remote-sync-mixed-operations-test
   (testing "bulk-set-remote-sync handles mixed enable/disable operations"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}]
       (core/bulk-set-remote-sync {coll1-id true coll2-id false})
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll2-id)))))))
 
 (deftest bulk-set-remote-sync-cascades-to-descendants-test
   (testing "bulk-set-remote-sync cascades remote sync to descendant collections when enabling"
@@ -54,9 +54,9 @@
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}
                    :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced false}]
       (core/bulk-set-remote-sync {parent-id true})
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id child-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id grandchild-id)))))))
 
 (deftest bulk-set-remote-sync-cascades-disable-to-descendants-test
   (testing "bulk-set-remote-sync cascades disable to descendant collections"
@@ -64,9 +64,9 @@
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}
                    :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced true}]
       (core/bulk-set-remote-sync {parent-id false})
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id child-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id grandchild-id)))))))
 
 (deftest bulk-set-remote-sync-throws-on-non-remote-synced-dependencies-test
   (testing "bulk-set-remote-sync throws when enabling a collection with non-remote-synced dependencies"
@@ -274,7 +274,7 @@
   (testing "bulk-set-remote-sync with empty map is a no-op"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
       (core/bulk-set-remote-sync {})
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))))))
 
 (deftest bulk-set-remote-sync-transaction-rollback-on-error-test
   (testing "bulk-set-remote-sync rolls back all changes on error"
@@ -291,8 +291,8 @@
       ;; Try to disable one - should fail because coll1 has dependents in coll2
       (is (thrown? clojure.lang.ExceptionInfo
                    (core/bulk-set-remote-sync {coll1-id false})))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id coll2-id)))))))
 
 (deftest bulk-set-remote-sync-allows-disabling-when-no-dependents-test
   (testing "bulk-set-remote-sync allows disabling when there are no external remote-synced dependents"
@@ -308,7 +308,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
       ;; Should succeed because dependents are not in a remote-synced collection
       (core/bulk-set-remote-sync {coll1-id false})
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll1-id)))))))
 
 ;;; ------------------------------------------- Event Publishing Tests -------------------------------------------
 
@@ -390,8 +390,8 @@
       ;; The UPDATE should affect 0 rows because of the WHERE is_remote_synced = false clause
       (core/bulk-set-remote-sync {parent-id true})
       ;; Verify collections remain unchanged (the UPDATE was a no-op)
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id child-id)))))))
 
 (deftest bulk-set-remote-sync-skips-already-disabled-collections-test
   (testing "bulk-set-remote-sync does not update collections that are already in the target state (disable)"
@@ -401,8 +401,8 @@
       ;; The UPDATE should affect 0 rows because of the WHERE is_remote_synced = true clause
       (core/bulk-set-remote-sync {parent-id false})
       ;; Verify collections remain unchanged (the UPDATE was a no-op)
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id child-id)))))))
 
 (deftest bulk-set-remote-sync-only-updates-changed-descendants-test
   (testing "bulk-set-remote-sync only updates descendants that need changing"
@@ -417,9 +417,9 @@
       ;; When enabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id true})
       ;; All should now be true
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
-      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id child1-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection 'id child2-id)))))))
 
 (deftest bulk-set-remote-sync-only-updates-changed-descendants-disable-test
   (testing "bulk-set-remote-sync only updates descendants that need changing (disable)"
@@ -434,9 +434,9 @@
       ;; When disabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id false})
       ;; All should now be false
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
-      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id child1-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id child2-id)))))))
 
 ;;; ------------------------------------------- RSO Cleanup Tests -------------------------------------------
 
@@ -458,10 +458,10 @@
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {coll-id false}))
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                           :model_type "Collection" :model_id coll-id))
+                                           'model_type "Collection" 'model_id coll-id))
             "the collection RSO is marked removed, not deleted")
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                           :model_type "Card" :model_id card-eid))
+                                           'model_type "Card" 'model_id card-eid))
             "the collection's contents are marked removed too")
         (is (true? (remote-sync.object/dirty?))
             "disabling leaves a pending change so a subsequent export pushes the removal")))))
@@ -480,9 +480,9 @@
                      :model_collection_id coll-id :status "create" :status_changed_at now})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {coll-id false}))
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+        (is (false? (t2/exists? :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id))
             "a never-pushed collection RSO is dropped outright")
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-eid))
+        (is (false? (t2/exists? :model/RemoteSyncObject 'model_type "Card" 'model_id card-eid))
             "a never-pushed content RSO is dropped outright")))))
 
 (deftest bulk-set-remote-sync-marks-descendant-rsos-removed-test
@@ -505,12 +505,12 @@
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {parent-id false}))
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                           :model_type "Collection" :model_id parent-id))
+                                           'model_type "Collection" 'model_id parent-id))
             "already-pushed parent collection is marked removed")
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                           :model_type "Collection" :model_id child-id))
+                                           'model_type "Collection" 'model_id child-id))
             "already-pushed descendant collection is marked removed")
-        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-eid))
+        (is (false? (t2/exists? :model/RemoteSyncObject 'model_type "Card" 'model_id card-eid))
             "never-pushed content RSO is dropped")))))
 
 ;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
@@ -568,5 +568,5 @@
       (with-redefs [guards/task-running? (constantly true)]
         (is (thrown-with-msg? Exception #"Remote sync task in progress"
                               (core/bulk-set-remote-sync {coll-id true})))
-        (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))
+        (is (false? (:is_remote_synced (t2/select-one :model/Collection 'id coll-id)))
             "collection's is_remote_synced flag must remain unchanged when the guard fires")))))

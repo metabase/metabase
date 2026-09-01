@@ -19,7 +19,7 @@
 
 (defn- upstream-of [from-type from-id]
   (t2/select-fn-set #(select-keys % [:from_entity_type :from_entity_id :to_entity_type :to_entity_id])
-                    :model/Dependency :from_entity_type from-type :from_entity_id from-id))
+                    :model/Dependency 'from_entity_type from-type 'from_entity_id from-id))
 
 (defn basic-orders
   "Construct a basic card for dependency testing."
@@ -78,7 +78,7 @@
                             (depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))
                 (testing "to remove a table dep"
-                  (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
+                  (card/update-card! {:card-before-update (t2/select-one :model/Card 'id (:id card1))
                                       :card-updates
                                       {:dataset_query (mt/mbql-query products)}})
                   (deps.test/synchronously-run-backfill!)
@@ -193,27 +193,27 @@
             (mt/with-premium-features #{:dependencies}
               (card/update-card! {:card-before-update card
                                   :card-updates {:dataset_query (mt/mbql-query orders)}}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true)))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id (:id card) 'stale true)))))
       (testing "transforms create"
         (mt/with-premium-features #{:dependencies}
           (mt/with-temp [:model/Transform transform]
-            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :transform 'entity_id (:id transform) 'stale true)))))
       (testing "transforms update"
         (mt/with-premium-features #{}
           (mt/with-temp [:model/Transform transform]
             (mt/with-premium-features #{:dependencies}
               (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :transform 'entity_id (:id transform) 'stale true)))))
       (testing "snippets create"
         (mt/with-premium-features #{:dependencies}
           (mt/with-temp [:model/NativeQuerySnippet snippet]
-            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true)))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :snippet 'entity_id (:id snippet) 'stale true)))))
       (testing "snippets update"
         (mt/with-premium-features #{}
           (mt/with-temp [:model/NativeQuerySnippet snippet]
             (mt/with-premium-features #{:dependencies}
               (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :snippet 'entity_id (:id snippet) 'stale true))))))))
 
 (deftest dependency-status-marked-stale-on-card-create-test
   (testing "dependency_status is marked stale when a card is created"
@@ -221,7 +221,7 @@
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user]
           (let [card (card/create-card! (basic-orders) user)]
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true))))))))
+            (is (t2/exists? :model/DependencyStatus 'entity_type :card 'entity_id (:id card) 'stale true))))))))
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"
@@ -308,16 +308,16 @@
           (deps.graph/swap-dependency! :card (:id card1) [:table (:id table1)] [:table (:id table2)])
           (deps.test/synchronously-run-backfill!)
           (is (not (t2/exists? :model/Dependency
-                               :from_entity_type :card
-                               :from_entity_id (:id card1)
-                               :to_entity_type :table
-                               :to_entity_id (:id table1)))
+                               'from_entity_type :card
+                               'from_entity_id (:id card1)
+                               'to_entity_type :table
+                               'to_entity_id (:id table1)))
               "Old dependency should be gone")
           (is (t2/exists? :model/Dependency
-                          :from_entity_type :card
-                          :from_entity_id (:id card1)
-                          :to_entity_type :table
-                          :to_entity_id (:id table2))
+                          'from_entity_type :card
+                          'from_entity_id (:id card1)
+                          'to_entity_type :table
+                          'to_entity_id (:id table2))
               "New dependency should exist"))
         (testing "swap when new dep already exists - should just delete old"
           ;; Set up: card2 depends on both table1 and table2
@@ -333,22 +333,22 @@
           (deps.graph/swap-dependency! :card (:id card2) [:table (:id table1)] [:table (:id table2)])
           (deps.test/synchronously-run-backfill!)
           (is (not (t2/exists? :model/Dependency
-                               :from_entity_type :card
-                               :from_entity_id (:id card2)
-                               :to_entity_type :table
-                               :to_entity_id (:id table1)))
+                               'from_entity_type :card
+                               'from_entity_id (:id card2)
+                               'to_entity_type :table
+                               'to_entity_id (:id table1)))
               "Old dependency should be deleted")
           (is (t2/exists? :model/Dependency
-                          :from_entity_type :card
-                          :from_entity_id (:id card2)
-                          :to_entity_type :table
-                          :to_entity_id (:id table2))
+                          'from_entity_type :card
+                          'from_entity_id (:id card2)
+                          'to_entity_type :table
+                          'to_entity_id (:id table2))
               "New dependency should still exist (only one copy)")
           (is (= 1 (t2/count :model/Dependency
-                             :from_entity_type :card
-                             :from_entity_id (:id card2)
-                             :to_entity_type :table
-                             :to_entity_id (:id table2)))
+                             'from_entity_type :card
+                             'from_entity_id (:id card2)
+                             'to_entity_type :table
+                             'to_entity_id (:id table2)))
               "Should have exactly one dependency to table2"))))))
 
 (deftest replace-dependencies!-rejects-non-integer-ids-test
@@ -361,5 +361,5 @@
       (mt/with-model-cleanup [:model/Dependency]
         (deps.graph/replace-dependencies! "card" (:id card) {"card" #{(:id card)}})
         (is (pos? (t2/count :model/Dependency
-                            :from_entity_type "card"
-                            :from_entity_id (:id card))))))))
+                            'from_entity_type "card"
+                            'from_entity_id (:id card))))))))

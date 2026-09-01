@@ -30,10 +30,10 @@
                                        remote-sync-type :read-only
                                        remote-sync-auto-import true]
       (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
-        (let [before (t2/count :model/AuditLog :topic "remote-sync-import")]
+        (let [before (t2/count :model/AuditLog 'topic "remote-sync-import")]
           (#'task.import/auto-import!)
-          (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))
-          (let [entry (t2/select-one :model/AuditLog :topic "remote-sync-import" {:order-by [[:id :desc]]})]
+          (is (= (inc before) (t2/count :model/AuditLog 'topic "remote-sync-import")))
+          (let [entry (t2/select-one :model/AuditLog 'topic "remote-sync-import" {:order-by [[:id :desc]]})]
             (testing "system-triggered, so no user"
               (is (nil? (:user_id entry))))
             (testing "marked as automatic so it can be distinguished from manual imports"
@@ -42,4 +42,4 @@
               (is (= "main" (get-in entry [:details :branch])))))
           (testing "a no-op run (source version unchanged) does not log another entry"
             (#'task.import/auto-import!)
-            (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
+            (is (= (inc before) (t2/count :model/AuditLog 'topic "remote-sync-import")))))))))

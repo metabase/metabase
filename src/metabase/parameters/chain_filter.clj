@@ -644,8 +644,8 @@
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
-          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one :model/Field :id field-id))
-          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one :model/Field :id field-id) constraints))]
+          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one :model/Field 'id field-id))
+          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one :model/Field 'id field-id) constraints))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -726,12 +726,12 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (t2/select-one-fn :base_type :model/Field :id field-id)]
+  (let [base-type (t2/select-one-fn :base_type :model/Field 'id field-id)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (t2/select-one-fn :name :model/Field :id field-id)]
+      (let [field-name (t2/select-one-fn :name :model/Field 'id field-id)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -777,7 +777,7 @@
        :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (let [field (t2/select-one :model/Field :id field-id)]
+  (let [field (t2/select-one :model/Field 'id field-id)]
     (and (use-cached-field-values? field-id)
          (isa? (:base_type field) :type/Text)
          (apply t2/exists? :model/FieldValues (mapcat

@@ -139,9 +139,9 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (t2/select [:model/Measure :table_id :name]
-                                         :archived false
-                                         :table_id [:in chunk]))))
+                              (t2/select [:model/Measure 'table_id 'name]
+                                         'archived false
+                                         'table_id ['in chunk]))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -180,7 +180,7 @@
   [collection-id]
   (when collection-id
     (into #{collection-id}
-          (when-let [root (t2/select-one :model/Collection :id collection-id)]
+          (when-let [root (t2/select-one :model/Collection 'id collection-id)]
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
@@ -189,21 +189,21 @@
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
+                    'moderated_item_type "card"
+                    'most_recent         true
+                    'status              "verified"))
 
 (defn- official-collection-id-set
   "Set of collection ids with `official` authority level."
   []
-  (t2/select-fn-set :id :model/Collection :authority_level "official"))
+  (t2/select-fn-set :id :model/Collection 'authority_level "official"))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
+  (t2/select-fn-set :id :model/Database 'router_database_id ['not= nil]))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -244,14 +244,14 @@
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
         ;; even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id :data_layer :data_authority]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
+        universe-cards    (t2/select [:model/Card 'id 'name 'type 'collection_id 'card_schema]
+                                     'type        ['in ["metric" "model"]]
+                                     'archived    false
+                                     'database_id ['not= audit/audit-db-id])
+        universe-tables   (t2/select [:model/Table 'id 'name 'collection_id 'is_published
+                                      'visibility_type 'db_id 'data_layer 'data_authority]
+                                     'active true
+                                     'db_id  ['not= audit/audit-db-id])
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

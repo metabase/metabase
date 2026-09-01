@@ -307,11 +307,11 @@
       (assoc :user
              (or (when-let [user-id (:user-id $)]
                    (if (pos-int? user-id)
-                     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
+                     (t2/select-one [:model/User 'id 'is_active 'last_login 'tenant_id] 'id user-id)
                      (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
-                   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email))))))
+                   (t2/select-one [:model/User 'id 'is_active 'last_login 'tenant_id] '%lower.email (u/lower-case-en email))))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -348,14 +348,14 @@
    provider :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
-                             (not (t2/select-one-fn :is_active :model/User :id user-id)))]
+                             (not (t2/select-one-fn :is_active :model/User 'id user-id)))]
       (t2/update! :model/User user-id
                   (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                     reactivating? (assoc :is_superuser false))))
-    (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
+    (when-not (t2/exists? :model/AuthIdentity 'user_id user-id 'provider (name provider))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
-    (t2/select-one [:model/User :id :is_active :last_login] user-id)))
+    (t2/select-one [:model/User 'id 'is_active 'last_login] user-id)))
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "

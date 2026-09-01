@@ -73,9 +73,9 @@
    can be applied to filter tables by permission level."
   [dbs & {:keys [can-query? can-write-metadata?]}]
   (let [all-tables (t2/select :model/Table
-                              :active          true
-                              :db_id           [:in (map :id dbs)]
-                              :visibility_type nil
+                              'active          true
+                              'db_id           ['in (map :id dbs)]
+                              'visibility_type nil
                               {:order-by [[:%lower.schema :asc]
                                           [:%lower.display_name :asc]]})
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
@@ -491,8 +491,8 @@
     :- [:map
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
-                    (t2/exists? :model/Database :id id)
-                    (t2/exists? :model/Database :id id :router_database_id nil)))))
+                    (t2/exists? :model/Database 'id id)
+                    (t2/exists? :model/Database 'id id 'router_database_id nil)))))
 
 (defn- present-database
   "Get a single Database with `id`."
@@ -703,7 +703,7 @@
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id like-pattern limit]
-  (t2/select [:model/Table :id :db_id :schema :name]
+  (t2/select [:model/Table 'id 'db_id 'schema 'name]
              {:where    [:and [:= :db_id db-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
@@ -725,8 +725,8 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [:model/Card :id :type :database_id :name :collection_id
-                [:collection.name :collection_name] :card_schema]
+    (t2/select [:model/Card 'id 'type 'database_id 'name 'collection_id
+                [:collection.name :collection_name] 'card_schema]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -762,11 +762,11 @@
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
-  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-             :metabase_field.active          true
-             :%lower.metabase_field/name     [:like like-pattern]
-             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-             :table.db_id                    db-id
+  (t2/select [:model/Field 'name 'base_type 'semantic_type 'id 'table_id [:table.name :table_name]]
+             'metabase_field.active          true
+             :%lower.metabase_field/name     ['like like-pattern]
+             'metabase_field.visibility_type ['not-in ["sensitive" "retired"]]
+             'table.db_id                    db-id
              {:order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
@@ -875,9 +875,9 @@
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
   (perms/prime-table-perms-cache {:db-ids #{id}})
-  (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
-                                                   :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
-                                                   :visibility_type [:not-in ["sensitive" "retired"]])
+  (let [fields (filter mi/can-read? (-> (t2/select [:model/Field 'id 'name 'display_name 'table_id 'base_type 'semantic_type]
+                                                   'table_id        ['in (t2/select-fn-set :id :model/Table, 'db_id id)]
+                                                   'visibility_type ['not-in ["sensitive" "retired"]])
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
@@ -1010,7 +1010,7 @@
   []
   (api/check-superuser)
   (sample-data/extract-and-sync-sample-database!)
-  (t2/select-one :model/Database :is_sample true))
+  (t2/select-one :model/Database 'is_sample true))
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
@@ -1044,7 +1044,7 @@
         article-noun   (str article " " noun)]
     (api/check-400 (not (:router_database_id existing-database))
                    (tru "Cannot configure {0} connection on a destination database" article-noun))
-    (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
+    (api/check-400 (not (t2/exists? :model/Database 'router_database_id (:id existing-database)))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
       (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
@@ -1108,7 +1108,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+  (let [existing-database               (api/write-check (t2/select-one :model/Database 'id id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1200,7 +1200,7 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
-        (let [db (t2/select-one :model/Database :id id)]
+        (let [db (t2/select-one :model/Database 'id id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1227,11 +1227,11 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (t2/select-one :model/Database :id id)]
+    (api/let-404 [db (t2/select-one :model/Database 'id id)]
       (api/check-403 (mi/can-write? db))
-      (t2/delete! :model/Database :router_database_id id)
+      (t2/delete! :model/Database 'router_database_id id)
       (database-routing/delete-associated-database-router! id)
-      (t2/delete! :model/Database :id id)
+      (t2/delete! :model/Database 'id id)
       (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
@@ -1291,7 +1291,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"})))
+      (t2/update! :model/Table {'id ['in table-ids]} {:initial_sync_status "complete"})))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1419,7 +1419,7 @@
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
-                                     (let [tables (t2/select :model/Table :db_id id :active true)
+                                     (let [tables (t2/select :model/Table 'db_id id 'active true)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
@@ -1429,7 +1429,7 @@
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
-                           :db_id id :active true
+                           'db_id id 'active true
                            (merge
                             {:order-by [[:%lower.schema :asc]]}
                             (when clauses
@@ -1505,15 +1505,15 @@
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
                             (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
+                                       'db_id db-id
+                                       'schema schema
+                                       'active true
                                        {:order-by [[:display_name :asc]]})
                             (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       :visibility_type nil
+                                       'db_id db-id
+                                       'schema schema
+                                       'active true
+                                       'visibility_type nil
                                        {:order-by [[:display_name :asc]]}))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
@@ -1618,7 +1618,7 @@
           :question
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection 'name schema)))])])
          (map schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1630,7 +1630,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database :id id))
+  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database 'id id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
@@ -1655,7 +1655,7 @@
           :model
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection 'name schema)))])])
          (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------

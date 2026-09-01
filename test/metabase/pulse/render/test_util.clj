@@ -158,7 +158,7 @@
   internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select` can be used
   on the output of this function and are particularly useful for writing test assertions."
   [card-id]
-  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card 'id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
     (with-redefs [js.svg/svg-string->bytes       identity
@@ -178,7 +178,7 @@
   Redefines some internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select`
   can be used on the output of this function and are particularly useful for writing test assertions."
   [card-id]
-  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card 'id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp.pivot/run-pivot-query (assoc query :viz-settings visualization_settings))]
     (with-redefs [js.svg/svg-string->bytes       identity
@@ -199,8 +199,8 @@
   used on the output of this function and are particularly useful for writing test assertions."
   ([dashcard-id] (render-dashcard-as-hickory! dashcard-id []))
   ([dashcard-id parameters]
-   (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
-         card                      (t2/select-one :model/Card :id (:card_id dashcard))
+   (let [dashcard                  (t2/select-one :model/DashboardCard 'id dashcard-id)
+         card                      (t2/select-one :model/Card 'id (:card_id dashcard))
          {:keys [result dashcard]} (channel.shared/maybe-realize-data-rows
                                     (notification.execute/execute-dashboard-subscription-card dashcard parameters))]
      (with-redefs [js.svg/svg-string->bytes       identity

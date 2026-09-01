@@ -46,21 +46,21 @@
             new-attribute-remappings (set/rename-keys attribute-remappings {old-attr new-attr})]
         ;; yes this is n+1 but we're not expecting big numbers here.
         (when (not= new-attribute-remappings attribute-remappings)
-          (t2/update! :sandboxes :id id {:attribute_remappings (to-json new-attribute-remappings)}))))))
+          (t2/update! :sandboxes 'id id {:attribute_remappings (to-json new-attribute-remappings)}))))))
 
 (defn- migrate-db-routing! [old-attr new-attr]
-  (t2/update! :db_router :user_attribute old-attr {:user_attribute new-attr}))
+  (t2/update! :db_router 'user_attribute old-attr {:user_attribute new-attr}))
 
 (defn- migrate-impersonations! [old-attr new-attr]
-  (t2/update! :connection_impersonations :attribute old-attr {:attribute new-attr}))
+  (t2/update! :connection_impersonations 'attribute old-attr {:attribute new-attr}))
 
 (defn- migrate-users! [old-attr new-attr]
-  (let [users (t2/select :core_user :login_attributes [:like (str "%" old-attr "%")])]
+  (let [users (t2/select :core_user 'login_attributes ['like (str "%" old-attr "%")])]
     (doseq [{:keys [id login_attributes]} users]
       (let [login-attributes (parse-json login_attributes)
             new-login-attributes (set/rename-keys login-attributes {old-attr new-attr})]
         (when (not= login-attributes new-login-attributes)
-          (t2/update! :core_user :id id {:login_attributes (to-json new-login-attributes)}))))))
+          (t2/update! :core_user 'id id {:login_attributes (to-json new-login-attributes)}))))))
 
 (defn- find-rename-option
   "We want to rename `@foo` to `_@foo`, but maybe there's already an `_@foo`, so just keep adding `_` until it's available."
@@ -78,7 +78,7 @@
          (mapcat keys)
          ;; we can't just check for *begins* with here, because we need to include cases that *might* be clobbered by renames.
          (filter #(re-matches #"^(_+)?@.+" %)))
-        (t2/select-fn-reducible :login_attributes [:core_user :login_attributes]
+        (t2/select-fn-reducible :login_attributes [:core_user 'login_attributes]
                                 {:where [:and
                                          [:not= :login_attributes nil]
                                          [:not= :login_attributes "{}"]

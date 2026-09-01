@@ -171,7 +171,7 @@
       (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
-        (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
+        (t2/select-one [:model/Card 'collection_id 'card_schema] 'id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
 (mu/defn- source-card-read-perms :- [:set perms/PathSchema]
@@ -351,7 +351,7 @@
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
       ;; -- Noah
-      (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
+      (t2/select-one :model/Card 'id card-id 'database_id ['!= database-id])
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
@@ -362,7 +362,7 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+                          (t2/select-fn-set :table_id :model/Field 'id ['in field-ids])))]
     (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
@@ -459,15 +459,15 @@
   to."
   [field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   (when (seq field-ids)
-    (let [table-ids             (t2/select-fn-set :table_id :model/Field :id [:in (set field-ids)])
+    (let [table-ids             (t2/select-fn-set :table_id :model/Field 'id ['in (set field-ids)])
           table-id->database-id (when (seq table-ids)
-                                  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))]
+                                  (t2/select-pk->fn :db_id :model/Table 'id ['in table-ids]))]
       (perms/prime-table-perms-cache {:table-ids table-ids})
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]
         (when-not (can-query-table? database-id table-id)
           (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                               (pr-str (t2/select-one-fn :name :model/Table :id table-id)))
+                               (pr-str (t2/select-one-fn :name :model/Table 'id table-id)))
                           {:status-code        403
                            :database-id        database-id
                            :table-id           table-id

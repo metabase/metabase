@@ -9,7 +9,7 @@
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+  (t2/select-one-fn :user_attribute :model/DatabaseRouter 'database_id (u/the-id db-or-id)))
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
@@ -45,8 +45,8 @@
 
         :else
         (or (t2/select-one-pk :model/Database
-                              :router_database_id (u/the-id db-or-id)
-                              :name database-name)
+                              'router_database_id (u/the-id db-or-id)
+                              'name database-name)
             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
                                  database-name)
                             {:database-name database-name
@@ -114,7 +114,7 @@
 
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
+  (and (t2/exists? :model/Database 'id db-or-id 'router_database_id ['not= nil])
        (not= *database-routing-on* :on)))
 
 (defn assert-not-direct-destination-access!

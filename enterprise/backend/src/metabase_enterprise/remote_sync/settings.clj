@@ -112,16 +112,16 @@
   [enabled?]
   (let [timestamp (t/offset-date-time)
         existing-rso (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Collection"
-                                    :model_id transforms-root-id)]
+                                    'model_type "Collection"
+                                    'model_id transforms-root-id)]
     (cond
       ;; When enabling, always create/update to 'create' status
       enabled?
       (do
         (when existing-rso
           (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id transforms-root-id))
+                      'model_type "Collection"
+                      'model_id transforms-root-id))
         (t2/insert! :model/RemoteSyncObject
                     {:model_type        "Collection"
                      :model_id          transforms-root-id
@@ -132,8 +132,8 @@
       existing-rso
       (do
         (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id transforms-root-id)
+                    'model_type "Collection"
+                    'model_id transforms-root-id)
         (t2/insert! :model/RemoteSyncObject
                     {:model_type        "Collection"
                      :model_id          transforms-root-id

@@ -21,9 +21,9 @@
   [user device-info provider]
   (let [user-id (u/the-id user)
         provider-str (name provider)
-        auth-identity (t2/select-one [:model/AuthIdentity :id :expires_at]
-                                     :user_id user-id
-                                     :provider provider-str)
+        auth-identity (t2/select-one [:model/AuthIdentity 'id 'expires_at]
+                                     'user_id user-id
+                                     'provider provider-str)
         auth-identity-id (:id auth-identity)
         session-key (str (random-uuid))
         session-id (string/random-string 12)

@@ -59,7 +59,7 @@
 
   ([table-key field-key]
    (let [field-id (mt/id table-key field-key)
-         field-name (t2/select-one-fn :name :model/Field :id field-id)]
+         field-name (t2/select-one-fn :name :model/Field 'id field-id)]
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
@@ -333,7 +333,7 @@
       (met/with-gtaps-for-user! api-key-user-id {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                                                  :attributes {"cat" 50}}
         (is (= {"cat" "50"}
-               (t2/select-one-fn :login_attributes :model/User :id api-key-user-id))
+               (t2/select-one-fn :login_attributes :model/User 'id api-key-user-id))
             "sanity check: the attributes really are stored on the API-key user's row")
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -790,12 +790,12 @@
                                        :checkins {}}
                           :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/Sandbox
-                                                    :group_id (:id &group)
-                                                    :table_id (mt/id :venues))]
+                                                    'group_id (:id &group)
+                                                    'table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
-                   (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
+                   (t2/select-one-fn :result_metadata :model/Card 'id venues-gtap-card-id))))
           (fails-without-token (mt/run-mbql-query venues
                                  {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
                                   :joins    [{:fields       :all
@@ -824,7 +824,7 @@
                      {:name "LATITUDE"}
                      {:name "LONGITUDE"}
                      {:name "PRICE"}]
-                    (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id)))))))))
+                    (t2/select-one-fn :result_metadata :model/Card 'id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap! [sql f]
   (met/with-gtaps! (mt/$ids
@@ -838,12 +838,12 @@
                               :checkins {}}
                       :attributes {"venue_id" 1}})
     (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/Sandbox
-                                                :group_id (:id &group)
-                                                :table_id (mt/id :venues))]
+                                                'group_id (:id &group)
+                                                'table_id (mt/id :venues))]
       (is (integer? venues-gtap-card-id))
       (testing "GTAP Card should not yet current have result_metadata"
         (is (= nil
-               (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
+               (t2/select-one-fn :result_metadata :model/Card 'id venues-gtap-card-id))))
       (f {:run-query (fn []
                        (mt/run-mbql-query venues
                          {:fields [$id $name]
@@ -1043,7 +1043,7 @@
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type :type/Text
                                                           :semantic_type (t2/select-one-fn :semantic_type :model/Field
-                                                                                           :id (mt/id :products :category))
+                                                                                           'id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"}]]
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
@@ -1125,8 +1125,8 @@
   when running the query."
   [group table-name param-name param-value]
   (let [card-id (t2/select-one-fn :card_id :model/Sandbox
-                                  :group_id (u/the-id group), :table_id (mt/id table-name))
-        card (t2/select-one :model/Card :id (u/the-id card-id))
+                                  'group_id (u/the-id group), 'table_id (mt/id table-name))
+        card (t2/select-one :model/Card 'id (u/the-id card-id))
         results (mt/with-test-user :crowberto
                   (-> (:dataset_query card)
                       (assoc :parameters [{:type :category
@@ -1267,9 +1267,9 @@
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :group_id (u/the-id &group))
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox 'group_id (u/the-id &group))
               _ (is (pos-int? card-id))
-              query (t2/select-one-fn :dataset_query :model/Card :id card-id)
+              query (t2/select-one-fn :dataset_query :model/Card 'id card-id)
               run-query (fn []
                           (let [results (qp/process-query (assoc query :cache-strategy {:type :ttl
                                                                                         :multiplier 60
@@ -1313,8 +1313,8 @@
             (mt/with-test-user :crowberto
               (persist-models!))
             (let [persisted-info (t2/select-one :model/PersistedInfo
-                                                :database_id (mt/id)
-                                                :card_id (:id model))]
+                                                'database_id (mt/id)
+                                                'card_id (:id model))]
               (is (= "persisted" (:state persisted-info))
                   "Model failed to persist")
               (is (string? (:table_name persisted-info)))
@@ -1471,8 +1471,8 @@
                       :attributes {"cat" 50}}
       (let [sandbox-card-id (t2/select-one-fn :card_id
                                               :model/Sandbox
-                                              :group_id (:id &group)
-                                              :table_id (mt/id :venues))]
+                                              'group_id (:id &group)
+                                              'table_id (mt/id :venues))]
         (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
         (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))

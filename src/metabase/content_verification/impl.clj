@@ -38,8 +38,8 @@
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
                                   (t2/select :model/ModerationReview
-                                             :moderated_item_type [:in item-types]
-                                             :moderated_item_id [:in item-ids]
+                                             'moderated_item_type ['in item-types]
+                                             'moderated_item_id ['in item-ids]
                                              {:order-by [[:id :desc]]})))]
       (for [item items]
         (if (nil? item)
@@ -53,7 +53,7 @@
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
-                               (t2/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
+                               (t2/select 'User 'id ['in (map :moderator_id moderation-reviews)]))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 
@@ -67,10 +67,10 @@
           ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
           item-types (not-empty (into #{} (map (comp keyword object->type)) items*))
           type+id->status (when item-ids
-                            (->> (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
-                                            :moderated_item_type [:in item-types]
-                                            :moderated_item_id [:in item-ids]
-                                            :most_recent true
+                            (->> (t2/select [:model/ModerationReview 'moderated_item_id 'moderated_item_type 'status]
+                                            'moderated_item_type ['in item-types]
+                                            'moderated_item_id ['in item-ids]
+                                            'most_recent true
                                             {:order-by [[:id :desc]]})
                                  (group-by (juxt :moderated_item_type :moderated_item_id))
                                  (m/map-vals #(:status (first %)))))]

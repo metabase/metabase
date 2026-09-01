@@ -40,7 +40,7 @@
         (is (= name (:name secret)))
         (is (= kind (:kind secret)))
         (is (mt/secret-value-equals? value (:value secret)))
-        (let [loaded (t2/select-one :model/Secret :id id)]
+        (let [loaded (t2/select-one :model/Secret 'id id)]
           (is (= name (:name loaded)))
           (is (= kind (:kind loaded)))
           (is (mt/secret-value-equals? value (:value loaded))))))))

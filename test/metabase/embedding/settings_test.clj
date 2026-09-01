@@ -39,8 +39,8 @@
       (mt/with-premium-features #{:embedding}
         (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
                                            enable-embedding-interactive false]
-          (let [embedded-dash-count (t2/count :model/Dashboard :enable_embedding true)
-                embedded-card-count (t2/count :model/Card :enable_embedding true)
+          (let [embedded-dash-count (t2/count :model/Dashboard 'enable_embedding true)
+                embedded-card-count (t2/count :model/Card 'enable_embedding true)
                 expected-payload    {"embedding_app_origin_set"   true
                                      "number_embedded_questions"  embedded-card-count
                                      "number_embedded_dashboards" embedded-dash-count}]

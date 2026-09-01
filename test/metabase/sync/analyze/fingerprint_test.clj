@@ -298,11 +298,11 @@
                   :failed-fingerprints    0
                   :updated-fingerprints   1
                   :fingerprints-attempted 1}
-                 (#'sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues)) [field])))
+                 (#'sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table 'id (data/id :venues)) [field])))
           (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                   :fingerprint_version 3
                   :last_analyzed       nil}
-                 (into {} (t2/select-one [:model/Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
+                 (into {} (t2/select-one [:model/Field 'fingerprint 'fingerprint_version 'last_analyzed] 'id (u/the-id field))))))))))
 
 (deftest fingerprint-failure-test
   (testing "if fingerprinting fails, the exception should be caught and included in the stats map"
@@ -312,13 +312,13 @@
                       sync.fingerprint/*refingerprint?* true]
           (is (= (assoc (sync.fingerprint/empty-stats-map 0)
                         :throwable mock-ex)
-                 (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues))))))))))
+                 (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table 'id (data/id :venues))))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
-        (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)))
+        (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table 'id (data/id :venues)))
         (is (=? {:global {:distinct-count 100
                           :nil%           0.0}
                  :type   {:type/Text {:percent-json   0.0
@@ -326,17 +326,17 @@
                                       :percent-email  0.0
                                       :average-length #(< 15 % 16)
                                       :percent-state  0.0}}}
-                (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :name))))))))
+                (t2/select-one-fn :fingerprint :model/Field 'id (mt/id :venues :name))))))))
 
 (deftest fingerprinting-test
   (testing "fingerprinting truncates text fields (see #13288)"
     (doseq [size [4 8 10]]
-      (let [table (t2/select-one :model/Table :id (mt/id :categories))
-            field (t2/select-one :model/Field :id (mt/id :categories :name))]
+      (let [table (t2/select-one :model/Table 'id (mt/id :categories))
+            field (t2/select-one :model/Field 'id (mt/id :categories :name))]
         (binding [sync.fingerprint/*truncation-size* size]
           (is (=? {:updated-fingerprints 1}
                   (#'sync.fingerprint/fingerprint-fields! table [field])))
-          (let [field' (t2/select-one [:model/Field :fingerprint] :id (u/id field))
+          (let [field' (t2/select-one [:model/Field 'fingerprint] 'id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is fingerprinted-size)
             (is (<= fingerprinted-size size))))))))
@@ -380,7 +380,7 @@
               i/*fingerprint-version->types-that-should-be-re-fingerprinted* {5 #{:type/Text}}]
       (with-redefs-fn redefs
         (fn [] (sync.fingerprint/fingerprint-table! table))))
-    (t2/select-one-fn :fingerprint_version :model/Field :id (u/the-id field))))
+    (t2/select-one-fn :fingerprint_version :model/Field 'id (u/the-id field))))
 
 (defn- table-error-redefs
   "Sampling query throws `ex` — exercises the whole-table failure path in `fingerprint-table!`."

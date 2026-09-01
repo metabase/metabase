@@ -22,13 +22,13 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [{:keys [dashboard_id]} (t2/select-one [:model/DashboardCard :dashboard_id] (:dashcard-id scope))]
+    (let [{:keys [dashboard_id]} (t2/select-one [:model/DashboardCard 'dashboard_id] (:dashcard-id scope))]
       (merge {:dashboard-id (or dashboard_id missing-id)} scope))))
 
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
-    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
+    (let [card         (t2/select-one [:model/Card 'dataset_query 'collection_id 'database_id 'display] card-id)
           table-id     (lib/primary-source-table-id (:dataset_query card))]
       (merge {:table-id      table-id
               :collection-id (:collection_id card missing-id)
@@ -40,12 +40,12 @@
     (:dashcard-id scope) hydrate-from-dashcard
 
     (:dashboard-id scope)
-    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope)) missing-id))
+    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard 'collection_id] (:dashboard-id scope)) missing-id))
 
     (:model-id scope) (hydrate-from-card (:model-id scope))
 
     (:table-id scope)
-    (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope)) missing-id))))
+    (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table 'db_id] (:table-id scope)) missing-id))))
 
 (defn- strip-nils
   "Remove any keys corresponding to nil values from the given map."

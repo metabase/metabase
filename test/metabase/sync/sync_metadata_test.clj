@@ -59,6 +59,6 @@
                           (throw (doto (java.sql.SQLSyntaxErrorException.
                                         "Unknown column 'generation_expression' in 'field list'")
                                    (.setStackTrace (into-array StackTraceElement [])))))]
-            (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
+            (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database 'id (mt/id))))
           (is (= "aborted"
                  (t2/select-one-fn :initial_sync_status :model/Database (mt/id)))))))))

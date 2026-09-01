@@ -307,7 +307,7 @@
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
-                                      (t2/select-one-fn :embedding_params :model/Card :id card-id))]
+                                      (t2/select-one-fn :embedding_params :model/Card 'id card-id))]
     (-> (apply api.public/public-card card-id constraints)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
@@ -419,7 +419,7 @@
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
-                             (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
+                             (t2/select-one-fn :embedding_params :model/Dashboard, 'id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard dashboard-id constraints)
         (substitute-token-parameters-in-text token-params)
@@ -567,7 +567,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        dashboard                                      (t2/select-one :model/Dashboard :id dashboard-id)
+        dashboard                                      (t2/select-one :model/Dashboard 'id dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -622,7 +622,7 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         dashboard                  (t2/select-one :model/Dashboard 'id dashboard-id)
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)

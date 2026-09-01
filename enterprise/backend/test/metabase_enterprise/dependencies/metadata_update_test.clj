@@ -130,8 +130,8 @@
                                               :to_entity_id child-id}]
             (is (= #{8}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card :id :result_metadata :card_schema]
-                                     :id [:in [parent-id child-id grandchild-id]])))
+                                     [:model/Card 'id 'result_metadata 'card_schema]
+                                     'id ['in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
@@ -140,8 +140,8 @@
                                       :user-id api/*current-user-id*}))
             (is (= #{9}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card :id :result_metadata :card_schema]
-                                     :id [:in [parent-id child-id grandchild-id]])))))))))
+                                     [:model/Card 'id 'result_metadata 'card_schema]
+                                     'id ['in [parent-id child-id grandchild-id]])))))))))
 
 (deftest ^:synchronized native-card-update-does-not-update-children-test
   (testing "native card updates do not update children"
@@ -165,8 +165,8 @@
                                       :user-id api/*current-user-id*}))
             (is (= nil
                    (t2/select-one-fn :result_metadata
-                                     [:model/Card :id :result_metadata :card_schema]
-                                     :id child-id)))))))))
+                                     [:model/Card 'id 'result_metadata 'card_schema]
+                                     'id child-id)))))))))
 
 (deftest ^:synchronized model-update-passes-down-new-values-test
   (testing "model updates pass down new result metadata"
@@ -201,8 +201,8 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card :id :result_metadata :card_schema]
-                                       :id [:in [child-id grandchild-id]]))))))))))
+                                       [:model/Card 'id 'result_metadata 'card_schema]
+                                       'id ['in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-respects-child-overrides-test
   (testing "model updates respect child metadata edits"
@@ -244,8 +244,8 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "child-name"] [grandchild-id "grandchild-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card :id :result_metadata :card_schema]
-                                       :id [:in [child-id grandchild-id]]))))))))))
+                                       [:model/Card 'id 'result_metadata 'card_schema]
+                                       'id ['in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-stops-recursing-when-child-metadata-is-unchanged-test
   (testing "model updates stop recursing when they hit a child whose metadata didn't change"
@@ -286,8 +286,8 @@
                                         :user-id api/*current-user-id*}))
               (is (= nil
                      (t2/select-one-fn #(get-in % [:result_metadata 0 :display_name])
-                                       [:model/Card :id :result_metadata :card_schema]
-                                       :id grandchild-id))))))))))
+                                       [:model/Card 'id 'result_metadata 'card_schema]
+                                       'id grandchild-id))))))))))
 
 (defn- with-syncable-db! [thunk]
   (mt/with-premium-features #{:dependencies}
@@ -298,8 +298,8 @@
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       ;; Sync the database to pick up the new table
       (sync/sync-database! (mt/db))
-      (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
-            filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
+      (let [table-id        (t2/select-one-fn :id :model/Table 'db_id (mt/id) 'name "test_table")
+            filter-field-id (t2/select-one-fn :id :model/Field 'table_id table-id 'name "filter_col")
             ;; Step 2: Create a card with a filter on filter_col
             mp              (lib-be/application-database-metadata-provider (mt/id))
             table           (lib.metadata/table mp table-id)
@@ -322,8 +322,8 @@
           (testing "Initial analysis succeeds"
             (is (true?
                  (t2/select-one-fn :result :model/AnalysisFinding
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id card-id)))
+                                   'analyzed_entity_type :card
+                                   'analyzed_entity_id card-id)))
             (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
           ;; Backdate the analysis timestamp and table/field updated_at so
           ;; synced-db->direct-dependents-of-changed-tables will detect it as stale (analyzed_at < field.updated_at)
@@ -332,11 +332,11 @@
           ;; the field update from sync would have identical timestamps.
           (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
             (t2/update! :model/AnalysisFinding
-                        {:analyzed_entity_type :card :analyzed_entity_id card-id}
+                        {'analyzed_entity_type :card 'analyzed_entity_id card-id}
                         {:analyzed_at old-time})
-            (t2/update! :model/Field :table_id table-id
+            (t2/update! :model/Field 'table_id table-id
                         {:updated_at old-time})
-            (t2/update! :model/Table :id table-id
+            (t2/update! :model/Table 'id table-id
                         {:updated_at old-time}))
           ;; Setup complete: Now call the thunk for the actual test run.
           (thunk {:db-id           (:id (mt/db))
@@ -350,8 +350,8 @@
     (with-syncable-db!
       (fn [{:keys [card-id filter-field-id]}]
         (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)]
+                                                      'analyzed_entity_type :card
+                                                      'analyzed_entity_id card-id)]
           ;; Step 4: Remove the column used in the filter
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
           ;; Step 5: Re-sync the database. The sync-end event will detect the stale analysis
@@ -359,13 +359,13 @@
           (sync/sync-database! (mt/db))
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
-            (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
+            (is (false? (t2/select-one-fn :active :model/Field 'id filter-field-id))))
           ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
           ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
           ;; or already reanalyzed (job ran). Check for either valid outcome.
           (let [finding (t2/select-one :model/AnalysisFinding
-                                       :analyzed_entity_type :card
-                                       :analyzed_entity_id card-id)]
+                                       'analyzed_entity_type :card
+                                       'analyzed_entity_id card-id)]
             (is (some? finding) "Analysis finding should exist")
             (if (:stale finding)
               ;; Job hasn't run yet - sync marked it stale, that's the expected behavior
@@ -388,12 +388,12 @@
     (with-syncable-db!
       (fn [{:keys [card-id db-id filter-field-id table-id]}]
         (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)
+                                                      'analyzed_entity_type :card
+                                                      'analyzed_entity_id card-id)
               db-deps-checked       (atom [])
               original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
-              table-before          (into {} (t2/select-one :model/Table :id table-id))
-              filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
+              table-before          (into {} (t2/select-one :model/Table 'id table-id))
+              filter-field-before   (into {} (t2/select-one :model/Field 'id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
           (mt/with-dynamic-fn-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
                                       (fn [db-id]
@@ -401,8 +401,8 @@
                                           (swap! db-deps-checked conj [db-id <>])))]
             (sync/sync-database! (mt/db)))
           (testing "sync doesn't update tables or fields that haven't changed"
-            (let [table-after        (into {} (t2/select-one :model/Table :id table-id))
-                  filter-field-after (into {} (t2/select-one :model/Field :id filter-field-id))]
+            (let [table-after        (into {} (t2/select-one :model/Table 'id table-id))
+                  filter-field-after (into {} (t2/select-one :model/Field 'id filter-field-id))]
               (is (= table-before table-after))
               (is (= filter-field-before filter-field-after))))
           (testing "the DB is were checked for tables that need deps updates, but none were found"
@@ -410,8 +410,8 @@
                     @db-deps-checked)))
           (testing "No re-analysis was done, the analysis for the card is ~1 hour ago"
             (let [finding (t2/select-one :model/AnalysisFinding
-                                         :analyzed_entity_type :card
-                                         :analyzed_entity_id card-id)]
+                                         'analyzed_entity_type :card
+                                         'analyzed_entity_id card-id)]
               (is (some? finding) "Analysis finding should exist")
               (is (true? (:result finding)) "Analysis should be a success")
               (is (= initial-analysis-time (:analyzed_at finding))

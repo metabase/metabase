@@ -25,19 +25,19 @@
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
     (data/with-temp-copy-of-db
       ;; mark all the Fields as analyzed with so they won't be subject to analysis
-      (t2/update! :model/Field {:table_id (data/id :venues)}
+      (t2/update! :model/Field {'table_id (data/id :venues)}
                   {:last_analyzed       #t "2017-08-01T00:00"
                    :semantic_type       nil
                    :fingerprint_version Short/MAX_VALUE})
       ;; the type of the value that comes back may differ a bit between different application DBs
-      (let [analysis-date (t2/select-one-fn :last_analyzed :model/Field :table_id (data/id :venues))]
+      (let [analysis-date (t2/select-one-fn :last_analyzed :model/Field 'table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (t2/select-one :model/Table :id (data/id :venues)))
+        (analyze/analyze-table! (t2/select-one :model/Table 'id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
                        (repeat {:semantic_type nil, :last_analyzed analysis-date}))
-               (into {} (for [field (t2/select [:model/Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
+               (into {} (for [field (t2/select [:model/Field 'name 'semantic_type 'last_analyzed] 'table_id (data/id :venues))]
                           [(:name field) (into {} (dissoc field :name))]))))))))
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
@@ -57,7 +57,7 @@
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (t2/select [:model/Field :name :semantic_type :last_analyzed] :table_id (:id venues))]
+           (set (for [field (t2/select [:model/Field 'name 'semantic_type 'last_analyzed] 'table_id (:id venues))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
@@ -82,7 +82,7 @@
                                      :last_analyzed       #t "2017-08-09T00:00Z"}]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
-               (t2/select-fn-set :name :model/Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+               (t2/select-fn-set :name :model/Field 'table_id (u/the-id table), 'last_analyzed ['> #t "2018-01-01"])))))))
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
@@ -151,13 +151,13 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (t2/exists? :model/Field :id (u/the-id field)))
-  (t2/exists? :model/Field :id (u/the-id field), :last_analyzed [:not= nil]))
+  (assert (t2/exists? :model/Field 'id (u/the-id field)))
+  (t2/exists? :model/Field 'id (u/the-id field), 'last_analyzed ['not= nil]))
 
 (defn- latest-sync-time [table]
   (t2/select-one-fn :last_analyzed :model/Field
-                    :last_analyzed [:not= nil]
-                    :table_id      (u/the-id table)
+                    'last_analyzed ['not= nil]
+                    'table_id      (u/the-id table)
                     {:order-by [[:last_analyzed :desc]]}))
 
 (defn- set-table-visibility-type-via-api!
@@ -186,7 +186,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (t2/select-one :model/Database :id (:db_id table))))
+  (analyze/analyze-db! (t2/select-one :model/Database 'id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"

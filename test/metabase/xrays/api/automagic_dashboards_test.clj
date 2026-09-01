@@ -333,10 +333,10 @@
                                              :creator-id (mt/user->id :crowberto)})]
         (model-index/add-values! model-index)
         (f {:model             model
-            :model-index       (t2/select-one :model/ModelIndex :id (:id model-index))
+            :model-index       (t2/select-one :model/ModelIndex 'id (:id model-index))
             :model-index-value (t2/select-one :model/ModelIndexValue
-                                              :model_index_id (:id model-index)
-                                              :model_pk 1)})))))
+                                              'model_index_id (:id model-index)
+                                              'model_pk 1)})))))
 
 (defmacro with-indexed-model!
   "Creates a model based on `query-info`, which is indexed.
@@ -459,11 +459,11 @@
                         {:result_metadata (annotating results-meta id-field-ref
                                                       #(assoc % :id id-field-id))})
             (assert (= (-> (t2/select-one-fn :result_metadata :model/Card
-                                             :id (:id model))
+                                             'id (:id model))
                            (by-id "id") :id)
                        id-field-id)
                     "Metadata not updated with the mapping to the database column")
-            (let [model (t2/select-one 'Card :id (:id model))
+            (let [model (t2/select-one 'Card 'id (:id model))
                   dash  (#'api.magic/create-linked-dashboard
                          {:model             model
                           :model-index       model-index

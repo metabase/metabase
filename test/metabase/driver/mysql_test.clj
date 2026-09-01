@@ -215,8 +215,8 @@
 (defn db->fields
   "Given a DB return its fields as a set."
   [db]
-  (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select [:model/Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
+  (let [table-ids (t2/select-pks-set :model/Table 'db_id (u/the-id db))]
+    (set (map (partial into {}) (t2/select [:model/Field 'name 'base_type 'semantic_type] 'table_id ['in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -274,8 +274,8 @@
         (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
-      (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)))
-            fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
+      (let [table  (t2/select-one :model/Table 'db_id (u/id (mt/db)))
+            fields (t2/select :model/Field 'table_id (u/id table) 'name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
                  (table-rows-sample/table-rows-sample table fields (constantly conj)))))
@@ -454,7 +454,7 @@
                                :base_type :type/Integer}
                               {:name      "t"
                                :base_type :type/Text}]}]
-                   (->> (t2/hydrate (t2/select :model/Table :db_id (:id database) {:order-by [:name]}) :fields)
+                   (->> (t2/hydrate (t2/select :model/Table 'db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
 
 (defn- create-enums-table! [db]
@@ -471,7 +471,7 @@
       (testing "ENUM columns are synced with the correct base and semantic types"
         (is (=? {:base_type     :type/MySQLEnum
                  :semantic_type :type/Category}
-                (t2/select-one :model/Field :name "bird_type"))))
+                (t2/select-one :model/Field 'name "bird_type"))))
       (testing "string functions work on ENUM fields"
         (let [query (mt/mbql-query birds
                       {:expressions {"typ" [:replace $bird_type "ou" "hree"]}})]
@@ -643,16 +643,16 @@
                        (sql-jdbc.sync/describe-nested-field-columns
                         driver/*driver*
                         database
-                        (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
+                        (t2/select-one :model/Table 'db_id (mt/id) 'name "json_table"))))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql
     (when (not (mysql/mariadb? (mt/db)))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
-          (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)) :name "json")]
+          (let [table  (t2/select-one :model/Table 'db_id (u/id (mt/db)) 'name "json")]
             (sync/sync-table! table)
-            (let [field (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")
+            (let [field (t2/select-one :model/Field 'table_id (u/id table) 'name "json_bit → 1234")
                   compile-res (qp.compile/compile
                                (mt/mbql-query nil
                                  {:source-table (u/the-id table)
@@ -682,9 +682,9 @@
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
-                table    (t2/select-one :model/Table :db_id (u/id database) :name "json")]
+                table    (t2/select-one :model/Table 'db_id (u/id database) 'name "json")]
             (sync/sync-table! table)
-            (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
+            (let [field    (t2/select-one :model/Field 'table_id (u/id table) 'name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field
                                     {:binning
@@ -1021,7 +1021,7 @@
                   (is (= {"readonly_table"   false
                           "readwrite_table"  false
                           "fullaccess_table" true}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))))
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
@@ -1029,7 +1029,7 @@
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
                           "fullaccess_table" true}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))))))
             (finally
               (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
 
@@ -1061,7 +1061,7 @@
                       "Should support metadata/table-writable-check when partial_revokes is OFF")
                   (sync/sync-database! database)
                   (is (= {"writable_table" true, "revoked_table" true}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))))
                 (testing "With partial_revokes ON and INSERT revoked on one table, the check stays enabled"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
                   (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.revoked_table FROM 'partial_revokes_test_user';")
@@ -1074,7 +1074,7 @@
                   ;; whose INSERT was revoked correctly reports not-writable instead of dragging everything down with it.
                   ;; (Optimistic handling of schema-level partial-revoke REVOKE lines is covered by `parse-grant-test`.)
                   (is (= {"writable_table" true, "revoked_table" false}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
+                         (t2/select-fn->fn :name :is_writable :model/Table 'db_id (:id database)))
                       "writable_table stays writable; revoked_table loses writability after its INSERT is revoked"))))
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting

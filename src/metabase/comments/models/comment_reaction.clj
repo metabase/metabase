@@ -24,9 +24,9 @@
   "Check if a reaction already exists for a given comment, user, and emoji"
   [comment-id user-id emoji]
   (t2/exists? :model/CommentReaction
-              :comment_id comment-id
-              :user_id user-id
-              :emoji emoji))
+              'comment_id comment-id
+              'user_id user-id
+              'emoji emoji))
 
 (defn create-reaction!
   "Create a new reaction"
@@ -40,9 +40,9 @@
   "Delete a specific reaction"
   [comment-id user-id emoji]
   (t2/delete! :model/CommentReaction
-              :comment_id comment-id
-              :user_id user-id
-              :emoji emoji))
+              'comment_id comment-id
+              'user_id user-id
+              'emoji emoji))
 
 (defn toggle-reaction
   "Toggle a reaction - add it if it doesn't exist, remove it if it does"

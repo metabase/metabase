@@ -172,10 +172,10 @@
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- :map]
   (if-let [existing (t2/select-one :model/Table
-                                   :db_id (u/the-id database)
-                                   :schema schema
-                                   :name table-name
-                                   :active false)]
+                                   'db_id (u/the-id database)
+                                   'schema schema
+                                   'name table-name
+                                   'active false)]
     (reactivate-table! database existing)
     (create-table! database table)))
 
@@ -237,7 +237,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false})))
+    (t2/update! :model/Table {'id ['in table-ids] 'active true} {:active false})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -328,8 +328,8 @@
     (if (seq names)
       (t2/select-fn->fn table-name+schema identity
                         (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
-                        :db_id (u/the-id database)
-                        :name [:in names])
+                        'db_id (u/the-id database)
+                        'name ['in names])
       {})))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
@@ -346,7 +346,7 @@
         (cond-> accum
           (not= schema new-schema) (assoc schema new-schema)))))
    nil
-   (t2/reducible-select [:model/Table :schema] :db_id (u/the-id database))))
+   (t2/reducible-select [:model/Table 'schema] 'db_id (u/the-id database))))
 
 (mu/defn- adjust-table-schemas!
   "Apply the `{old-schema new-schema}` renames from [[adjusted-schemas]] to the app-DB Table rows."
@@ -356,8 +356,8 @@
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
     (t2/update! :model/Table
-                :db_id (:id database)
-                :schema schema
+                'db_id (:id database)
+                'schema schema
                 {:schema new-schema})))
 
 (def ^:private
@@ -378,11 +378,11 @@
                         (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
         tables-to-archive (t2/select :model/Table
-                                     :db_id (u/the-id database)
-                                     :active false
-                                     :archived_at nil
-                                     :transform_target false
-                                     :deactivated_at [:< threshold-expr])
+                                     'db_id (u/the-id database)
+                                     'active false
+                                     'archived_at nil
+                                     'transform_target false
+                                     'deactivated_at ['< threshold-expr])
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -399,8 +399,8 @@
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
                   [(t2/update! :model/Table
-                               {:id (:id table)
-                                :active false}
+                               {'id (:id table)
+                                'active false}
                                {:archived_at (mi/now)
                                 :name new-name})]
                   (catch Throwable t
@@ -487,7 +487,7 @@
                  (retire-tables! (set batch))
                  (+ retired (count batch))))
    0
-   (t2/reducible-select [:model/Table :id] :db_id (u/the-id database) :active true)))
+   (t2/reducible-select [:model/Table 'id] 'db_id (u/the-id database) 'active true)))
 
 (mu/defn sync-tables-and-database!
   "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB
@@ -530,4 +530,4 @@
          {:updated-tables (cond-> (+ created updated)
                             (int? retired)  (+ retired)
                             (int? archived) (+ archived))
-          :total-tables   (t2/count :model/Table :db_id (u/the-id database) :active true)})))))
+          :total-tables   (t2/count :model/Table 'db_id (u/the-id database) 'active true)})))))

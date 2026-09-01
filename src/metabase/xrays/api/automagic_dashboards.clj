@@ -93,7 +93,7 @@
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Database :id id)
+  (-> (t2/select-one :model/Database 'id id)
       api/read-check
       automagic-dashboards.core/candidate-tables))
 
@@ -127,21 +127,21 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (t2/select-one :model/Table :id (ensure-int table-id-str)))))
+    (api/read-check (t2/select-one :model/Table 'id (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (t2/select-one :model/Segment :id (ensure-int segment-id-str))))
+  (api/read-check (t2/select-one :model/Segment 'id (ensure-int segment-id-str))))
 
 (defmethod ->entity :model
   [_entity-type card-id-str]
   (api/read-check (t2/select-one :model/Card
-                                 :id (ensure-int card-id-str)
-                                 :type :model)))
+                                 'id (ensure-int card-id-str)
+                                 'type :model)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (t2/select-one :model/Card :id (ensure-int card-id-str))))
+  (api/read-check (t2/select-one :model/Card 'id (ensure-int card-id-str))))
 
 (mu/defn adhoc-query-instance :- [:and
                                   (ms/InstanceOf :model/Query)
@@ -160,11 +160,11 @@
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (t2/select-one :model/Field :id (ensure-int field-id-str))))
+  (api/read-check (t2/select-one :model/Field 'id (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (t2/select-one :model/Collection :id (transforms.materialize/get-collection transform-name)))
+  (api/read-check (t2/select-one :model/Collection 'id (transforms.materialize/get-collection transform-name)))
   transform-name)
 
 (def ^:private entities
@@ -262,7 +262,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (t2/select :model/Field :fk_target_field_id field-id) :table)]
+    (let [fields (t2/hydrate (t2/select :model/Field 'fk_target_field_id field-id) :table)]
       (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]
@@ -297,7 +297,7 @@
     :keys                                        [linked-tables]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (t2/select-one :model/Table :id linked-table-id)
+                                  (let [table (t2/select-one :model/Table 'id linked-table-id)
                                         mp    (lib-be/application-database-metadata-provider (:db_id table))]
                                     (automagic-dashboards.core/automagic-analysis
                                      table
@@ -362,8 +362,8 @@
   (api/let-404 [model-index (t2/select-one :model/ModelIndex model-index-id)
                 model (t2/select-one :model/Card (:model_id model-index))
                 model-index-value (t2/select-one :model/ModelIndexValue
-                                                 :model_index_id model-index-id
-                                                 :model_pk pk-id)]
+                                                 'model_index_id model-index-id
+                                                 'model_pk pk-id)]
     ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
     (let [linked (linked-entities {:model             model

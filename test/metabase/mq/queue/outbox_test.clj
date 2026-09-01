@@ -35,15 +35,15 @@
   ["outbox-require" "outbox-try" "outbox-never" "outbox-chunked" "outbox-dedup" "outbox-recover"])
 
 (defn- clear-outbox! [t]
-  (t2/delete! :queue_message_outbox :queue_name [:in test-queue-names])
-  (try (t) (finally (t2/delete! :queue_message_outbox :queue_name [:in test-queue-names]))))
+  (t2/delete! :queue_message_outbox 'queue_name ['in test-queue-names])
+  (try (t) (finally (t2/delete! :queue_message_outbox 'queue_name ['in test-queue-names]))))
 
 ;; These tests read/write the `queue_message_outbox` table directly, so the app-db must be migrated.
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each clear-outbox!)
 
 (defn- outbox-count [qname]
-  (t2/count :queue_message_outbox :queue_name qname))
+  (t2/count :queue_message_outbox 'queue_name qname))
 
 (deftest require-mode-no-transaction-throws-test
   (mq.tu/with-test-mq [_ctx]
@@ -67,7 +67,7 @@
                          (mq/put q "nope"))
                        (throw (ex-info "rollback" {})))))
         (mq.tu/flush! ctx)
-        (is (not (t2/exists? :model/User :email email)) "business write rolled back")
+        (is (not (t2/exists? :model/User 'email email)) "business write rolled back")
         (is (= [] @heard) "no message delivered")
         (is (zero? (outbox-count "outbox-require")) "no outbox row persisted"))
       (testing "commit: the business write commits and the message is delivered, outbox cleared"
@@ -78,10 +78,10 @@
               (mq/put q "hello")))
           (mq.tu/eventually! ctx #(= ["hello"] @heard) 5000)
           (is (= ["hello"] @heard))
-          (is (t2/exists? :model/User :email email))
+          (is (t2/exists? :model/User 'email email))
           (is (zero? (outbox-count "outbox-require")) "outbox row deleted after publish")
           (finally
-            (t2/delete! :model/User :email email)))))))
+            (t2/delete! :model/User 'email email)))))))
 
 (deftest try-mode-no-transaction-publishes-immediately-test
   (let [heard (atom [])]
@@ -215,7 +215,7 @@
           (outbox/publish-outbox-rows!
            (atom {:metabase.mq.queue.outbox/rows
                   [{:id id :channel :queue/outbox-require :payload pl}]})))
-        (is (t2/exists? :queue_message_outbox :id id)
+        (is (t2/exists? :queue_message_outbox 'id id)
             "publish failed, so the row is retained (not silently deleted)")))))
 
 (deftest publish-outbox-rows-retains-row-when-scheduler-disabled-test
@@ -234,7 +234,7 @@
               (outbox/publish-outbox-rows!
                (atom {:metabase.mq.queue.outbox/rows
                       [{:id id :channel :queue/outbox-require :payload pl}]}))))
-          (is (t2/exists? :queue_message_outbox :id id)
+          (is (t2/exists? :queue_message_outbox 'id id)
               "publish failed, so the row is retained (not silently deleted)"))))))
 
 (deftest recover-outbox-partial-failure-keeps-delivered-rows-deleted-test
@@ -260,9 +260,9 @@
                                          (real-publish channel payload))))]
           (is (= 1 (outbox/recover-outbox!)) "only the good row counts as recovered"))
         (is (= [good] @published) "the good row was published exactly once")
-        (is (not (t2/exists? :queue_message_outbox :id good-id))
+        (is (not (t2/exists? :queue_message_outbox 'id good-id))
             "the published row is deleted and its delete is NOT rolled back by the later failure")
-        (is (t2/exists? :queue_message_outbox :id bad-id)
+        (is (t2/exists? :queue_message_outbox 'id bad-id)
             "the failed row is retained for a later sweep")))))
 
 (deftest publish-outbox-rows-batches-deletes-test
@@ -288,9 +288,9 @@
                   [{:id id1 :channel :queue/outbox-require :payload p1}
                    {:id id2 :channel :queue/outbox-require :payload p2}
                    {:id id3 :channel :queue/outbox-require :payload p3}]})))
-        (is (not (t2/exists? :queue_message_outbox :id id1)) "published row deleted")
-        (is (t2/exists? :queue_message_outbox :id id2) "failed row retained for recovery")
-        (is (not (t2/exists? :queue_message_outbox :id id3)) "published row deleted")))))
+        (is (not (t2/exists? :queue_message_outbox 'id id1)) "published row deleted")
+        (is (t2/exists? :queue_message_outbox 'id id2) "failed row retained for recovery")
+        (is (not (t2/exists? :queue_message_outbox 'id id3)) "published row deleted")))))
 
 (deftest recover-outbox-skips-fresh-rows-test
   (mq.tu/with-test-mq [_ctx]
@@ -325,8 +325,8 @@
       (let [id (insert-stale-row! (payload/encode ["poison"]))]
         (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered"))
-        (is (t2/exists? :queue_message_outbox :id id) "poison row retained for a later sweep")
-        (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] :id id)]
+        (is (t2/exists? :queue_message_outbox 'id id) "poison row retained for a later sweep")
+        (let [row (t2/select-one [:queue_message_outbox 'publish_attempts 'next_attempt_at] 'id id)]
           (is (= 1 (:publish_attempts row))
               "attempts bumped exactly once for the one sweep (the failed row is skipped, not re-claimed)")
           (is (some? (:next_attempt_at row)) "a backed-off retry time is scheduled"))))))
@@ -338,21 +338,21 @@
         (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
           ;; sweep 1: attempt bumped and a future next_attempt_at scheduled (backing off)
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] :id id)]
+          (let [row (t2/select-one [:queue_message_outbox 'publish_attempts 'next_attempt_at] 'id id)]
             (is (= 1 (:publish_attempts row)) "attempts bumped")
             (is (.isAfter (->instant (:next_attempt_at row)) (Instant/now))
                 "next attempt scheduled in the future"))
           ;; immediate re-sweep: the row is not due yet, so it is skipped (attempts unchanged)
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+          (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
               "a row that is not yet due is not re-attempted before its backoff elapses")
           ;; force the row due and sweep again: re-attempted, attempt count grows, still retained
-          (t2/update! :queue_message_outbox :id id
+          (t2/update! :queue_message_outbox 'id id
                       {:next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+          (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
               "a due row is re-attempted and its attempt count keeps growing")
-          (is (t2/exists? :queue_message_outbox :id id)
+          (is (t2/exists? :queue_message_outbox 'id id)
               "the row is never dropped no matter how many times it fails"))))))
 
 (deftest retry-delay-ms-is-exponential-and-capped-test
@@ -385,7 +385,7 @@
               (is (= 1 (outbox/recover-outbox!))
                   "the good row is recovered despite the full batch of poison rows ahead of it"))
             (is (= [good] @published) "the good row was published exactly once")
-            (is (not (t2/exists? :queue_message_outbox :id good-id)) "good row published and deleted")
+            (is (not (t2/exists? :queue_message_outbox 'id good-id)) "good row published and deleted")
             (is (= 2 (outbox-count "outbox-recover")) "only the two poison rows remain")))))))
 
 (deftest recover-outbox-emits-retry-metric-on-publish-failure-test
@@ -411,8 +411,8 @@
         (is (= 1 @calls)
             "only ONE publish is attempted — the sweep stops on the first backend-unavailable error")
         (doseq [id ids]
-          (is (t2/exists? :queue_message_outbox :id id) "every row is retained for the next sweep")
-          (is (= 0 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+          (is (t2/exists? :queue_message_outbox 'id id) "every row is retained for the next sweep")
+          (is (= 0 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
               "no row is bumped — a backend being down doesn't burn anyone's retry budget"))))))
 
 (deftest recover-outbox-message-specific-failure-still-continues-past-it-test
@@ -432,4 +432,4 @@
                                          (real-publish channel payload)))]
               (is (= 1 (outbox/recover-outbox!))
                   "the good row behind a message-specific failure is still recovered"))
-            (is (not (t2/exists? :queue_message_outbox :id good-id)) "good row published and deleted")))))))
+            (is (not (t2/exists? :queue_message_outbox 'id good-id)) "good row published and deleted")))))))

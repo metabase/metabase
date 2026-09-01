@@ -52,7 +52,7 @@
             :status      "success"
             :duration-ms 12
             :ip-address  "203.0.113.7"})
-          (let [row (t2/select-one :model/AgentApiCallLog :operation op)]
+          (let [row (t2/select-one :model/AgentApiCallLog 'operation op)]
             (testing "non-PII columns"
               (is (= "metabase-cli" (:client_name row)))
               (is (= "success" (:status row)))
@@ -72,7 +72,7 @@
               (usage/record-agent-api-call!
                {:user-id (mt/user->id :rasta) :operation op :status "error" :duration-ms 1
                 :user-agent "metabase-cli/1" :ip-address "203.0.113.7" :error-message "boom"})
-              (let [row (t2/select-one :model/AgentApiCallLog :operation op)]
+              (let [row (t2/select-one :model/AgentApiCallLog 'operation op)]
                 (is (= "203.0.113.7" (:ip_address row)))
                 (is (= "boom" (:error_message row))))
               (finally (cleanup-by-ip! :operation op))))))
@@ -83,7 +83,7 @@
               (usage/record-agent-api-call!
                {:user-id (mt/user->id :rasta) :operation op :status "error" :duration-ms 1
                 :user-agent "metabase-cli/1" :ip-address "203.0.113.7" :error-message "boom"})
-              (let [row (t2/select-one :model/AgentApiCallLog :operation op)]
+              (let [row (t2/select-one :model/AgentApiCallLog 'operation op)]
                 (is (nil? (:ip_address row)))
                 (is (nil? (:error_message row))))
               (finally (cleanup-by-ip! :operation op)))))))))
@@ -98,7 +98,7 @@
             (usage/record-agent-api-call!
              {:user-id (mt/user->id :rasta) :operation long-op :status "success" :duration-ms 1
               :ip-address ip})
-            (is (= 255 (count (:operation (t2/select-one :model/AgentApiCallLog :ip_address ip)))))
+            (is (= 255 (count (:operation (t2/select-one :model/AgentApiCallLog 'ip_address ip)))))
             (finally (cleanup-by-ip! :ip_address ip))))))))
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
@@ -111,7 +111,7 @@
           (usage/record-agent-api-call!
            {:user-id (mt/user->id :rasta) :operation op :status "success" :duration-ms 1
             :user-agent "metabase-cli/1" :ip-address "1.2.3.4" :error-message "x"})
-          (let [row (t2/select-one :model/AgentApiCallLog :operation op)]
+          (let [row (t2/select-one :model/AgentApiCallLog 'operation op)]
             (testing "non-PII row is written"
               (is (some? row))
               (is (= "metabase-cli" (:client_name row)))

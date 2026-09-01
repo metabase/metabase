@@ -114,7 +114,7 @@
                        []
                        (::rows @state))]
     (when (seq published-ids)
-      (t2/delete! :queue_message_outbox :id [:in published-ids]))))
+      (t2/delete! :queue_message_outbox 'id ['in published-ids]))))
 
 (defn defer-transactional!
   "Routes `msgs` for `channel` through the transactional outbox. Accumulates them per channel in
@@ -180,9 +180,9 @@
                   {:recover-ids [] :bumps [] :backend-down? false}
                   rows)]
       ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
-      (when (seq recover-ids) (t2/delete! :queue_message_outbox :id [:in recover-ids]))
+      (when (seq recover-ids) (t2/delete! :queue_message_outbox 'id ['in recover-ids]))
       (doseq [{:keys [id next-attempt-at]} bumps]
-        (t2/update! :queue_message_outbox :id id
+        (t2/update! :queue_message_outbox 'id id
                     {:publish_attempts [:+ :publish_attempts [:inline 1]]
                      :next_attempt_at  next-attempt-at}))
       (when backend-down?

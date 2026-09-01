@@ -71,8 +71,8 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
+    (let [coll      (t2/select-one [:model/Collection 'id 'name 'location 'personal_owner_id
+                                    'namespace 'archived_directly]
                                    collection-id)
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
@@ -920,7 +920,7 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (update-card-response (t2/select-one :model/Card :id id))))
+    (update-card-response (t2/select-one :model/Card 'id id))))
 
 (mr/def ::create-question-request
   [:map
@@ -1218,7 +1218,7 @@
   "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
-        (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
+        (t2/select [:model/DashboardTab 'id 'name] 'dashboard_id dashboard-id
                    {:order-by [[:position :asc] [:id :asc]]})))
 
 (mr/def ::create-dashboard-response
@@ -1293,7 +1293,7 @@
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
+       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard 'dashboard_id (:id dash)
                                               {:order-by [[:row :asc] [:col :asc]]})
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
@@ -1393,9 +1393,9 @@
   Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+  (let [current        (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
-        tab-ids        (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
+        tab-ids        (t2/select-pks-vec :model/DashboardTab 'dashboard_id dashboard-id
                                           {:order-by [[:position :asc] [:id :asc]]})
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
@@ -1454,7 +1454,7 @@
           "update_text"
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))
+                                         'id dashcard_id 'dashboard_id dashboard-id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1471,7 +1471,7 @@
           "remove"
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))]
+                                         'id dashcard_id 'dashboard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
             (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
@@ -1481,7 +1481,7 @@
           "move"
           (let [existing  (api/check-404
                            (t2/select-one :model/DashboardCard
-                                          :id dashcard_id :dashboard_id dashboard-id))
+                                          'id dashcard_id 'dashboard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1528,7 +1528,7 @@
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
       (dashboard/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+       dashboard-id (t2/select :model/DashboardCard 'dashboard_id dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1620,7 +1620,7 @@
                              {:object current-dash
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
-    (let [updated (t2/select-one :model/Dashboard :id id)]
+    (let [updated (t2/select-one :model/Dashboard 'id id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)
@@ -1630,7 +1630,7 @@
        :description     (:description updated)
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
+       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard 'dashboard_id id
                                               {:order-by [[:row :asc] [:col :asc]]})
                             [])
        :tabs            (dashboard-tabs id)})))
@@ -1728,7 +1728,7 @@
       ;; JWT is valid - look up user from the email extracted by the JWT provider
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
+                      (t2/select-one :model/User '%lower.email (u/lower-case-en email) 'is_active true))]
         (let [scope-entry (-> result :jwt-data (find :scope))]
           (cond-> {:user user}
             scope-entry

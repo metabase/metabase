@@ -16,7 +16,7 @@
            index-2
            index-3
            index-4] (map str (repeatedly random-uuid))
-          indexes #(->> (t2/select :model/SearchIndexMetadata :engine engine :version version)
+          indexes #(->> (t2/select :model/SearchIndexMetadata 'engine engine 'version version)
                         (u/index-by :status :index_name))]
       (testing "You can create a pending index."
         (is (search-index-metadata/create-pending! engine version index-1)))
@@ -72,4 +72,4 @@
                  (t2/select-fn-set :version :model/SearchIndexMetadata))))))))
 
 (comment
-  (t2/delete! :model/SearchIndexMetadata :engine :something-futureproof))
+  (t2/delete! :model/SearchIndexMetadata 'engine :something-futureproof))

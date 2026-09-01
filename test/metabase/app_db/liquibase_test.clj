@@ -62,11 +62,11 @@
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
             (testing "makes sure the change log filename are correctly set"
               (is (= (set (mdb.test-util/liquibase-file->included-ids "liquibase_legacy_migrations.yaml" driver/*driver* conn))
-                     (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
+                     (t2/select-fn-set :id table-name 'filename "migrations/000_legacy_migrations.yaml")))
               (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
-                     (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml")))
+                     (t2/select-fn-set :id table-name 'filename "migrations/001_update_migrations.yaml")))
               (is (= []
-                     (remove #(str/starts-with? % "v56.") (t2/select-fn-set :id table-name :filename "migrations/056_update_migrations.yaml"))))
+                     (remove #(str/starts-with? % "v56.") (t2/select-fn-set :id table-name 'filename "migrations/056_update_migrations.yaml"))))
               (is (= (t2/select-fn-set :id table-name)
                      (set (mdb.test-util/all-liquibase-ids true driver/*driver* conn)))))))))))
 

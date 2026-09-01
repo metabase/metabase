@@ -36,9 +36,9 @@
   "Get or create container collection for automagic dashboards in a given location."
   [location]
   (or (t2/select-one :model/Collection
-                     :name "Automatically Generated Dashboards"
-                     :archived false
-                     :location location)
+                     'name "Automatically Generated Dashboards"
+                     'archived false
+                     'location location)
       (t2/insert-returning-instance!
        :model/Collection
        {:name "Automatically Generated Dashboards"

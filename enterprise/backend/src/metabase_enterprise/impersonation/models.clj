@@ -44,8 +44,8 @@
    (for [impersonation impersonations]
      (do
        (t2/delete! :model/ConnectionImpersonation
-                   :group_id (:group_id impersonation)
-                   :db_id (:db_id impersonation))
+                   'group_id (:group_id impersonation)
+                   'db_id (:db_id impersonation))
        (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
            first)))))
 
@@ -60,7 +60,7 @@
                   :blocked      "is now BLOCKED from all non-data-perms access"
                   "now has granular (sandboxed) data access")
                 database-id)
-    (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id)))
+    (t2/delete! :model/ConnectionImpersonation 'group_id group-id 'db_id database-id)))
 
 (defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))

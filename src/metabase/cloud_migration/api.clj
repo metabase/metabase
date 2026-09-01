@@ -23,7 +23,7 @@
     (premium-features/is-hosted?)
     {:status 400 :body "Cannot migrate a hosted instance."}
 
-    (t2/select-one :model/CloudMigration :state [:not-in cloud-migration/terminal-states])
+    (t2/select-one :model/CloudMigration 'state ['not-in cloud-migration/terminal-states])
     {:status 409 :body "There's an ongoing migration already."}
 
     :else
@@ -57,4 +57,4 @@
   []
   (api/check-superuser)
   (cloud-migration.settings/read-only-mode! false)
-  (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled}))
+  (t2/update! :model/CloudMigration {'state ['not-in cloud-migration/terminal-states]} {:state :cancelled}))

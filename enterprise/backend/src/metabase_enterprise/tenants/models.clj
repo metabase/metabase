@@ -94,11 +94,11 @@
   :feature :tenants
   [user-or-id]
   (into []
-        (when-let [tenant-id (t2/select-one-fn :tenant_id :model/User :id (u/the-id user-or-id))]
-          (when-let [tenant-collection-id (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id)]
+        (when-let [tenant-id (t2/select-one-fn :tenant_id :model/User 'id (u/the-id user-or-id))]
+          (when-let [tenant-collection-id (t2/select-one-fn :tenant_collection_id :model/Tenant 'id tenant-id)]
             (let [descendant-ids (t2/select-pks-set :model/Collection
-                                                    :location
-                                                    [:like (str "/" tenant-collection-id "/%")])]
+                                                    'location
+                                                    ['like (str "/" tenant-collection-id "/%")])]
               (conj descendant-ids tenant-collection-id))))))
 
 (defenterprise maybe-localize-tenant-collection-names
@@ -113,7 +113,7 @@
         (when (seq tenant-collection-ids)
           (t2/select-fn->fn :tenant_collection_id (juxt :name :id)
                             :model/Tenant
-                            :tenant_collection_id [:in tenant-collection-ids]))]
+                            'tenant_collection_id ['in tenant-collection-ids]))]
     (mapv (fn [{ttype :type id :id :as coll}]
             (cond-> coll
               (= ttype collection/tenant-specific-root-collection-type)

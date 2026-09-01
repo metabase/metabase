@@ -25,8 +25,8 @@
 
 (defn- ensure-fresh-field-values!
   [field-id]
-  (t2/delete! :model/FieldValues :field_id field-id :type :full)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
+  (t2/delete! :model/FieldValues 'field_id field-id 'type :full)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id field-id)))
 
 (def ^:private edn-patterns
   "Regex patterns that indicate raw EDN/Clojure data leaked into the output.

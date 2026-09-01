@@ -285,18 +285,18 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
-             :active true
+  (t2/select [:model/Field 'id 'name 'base_type 'effective_type 'semantic_type 'database_type 'database_position]
+             'table_id table-id
+             'active true
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-             :parent_id nil
-             :nfc_path nil
+             'parent_id nil
+             'nfc_path nil
              {:order-by [[:database_position :asc]]}))
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
   [table-id source-incremental-strategy source-range-params limit]
-  (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+  (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) 'id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         table-metadata    (lib.metadata/table metadata-provider table-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
@@ -324,7 +324,7 @@
     (let [tmp-data-file (File/createTempFile data-path "")
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table_id)
+        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) 'id table_id)
               driver      (t2/select-one-fn :engine :model/Database db-id)
               fields-meta (fields-metadata driver table_id)
               manifest    (generate-manifest table_id fields-meta)]

@@ -31,7 +31,7 @@
     (try
       (t2/insert-returning-instance! :model/Session {:id session-id :key_hashed (session/hash-session-key (str test-uuid)), :user_id (mt/user->id :trashbird)})
       (finally
-        (t2/delete! :model/Session :id test-id)))))
+        (t2/delete! :model/Session 'id test-id)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back without an anti_csrf_token"
@@ -171,7 +171,7 @@
                                                    :user_id user-id
                                                    :session_key key)]
         (is (nil? (:key session)) "Key is not returned by the insert")
-        (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session :user_id user-id)))))))
+        (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session 'user_id user-id)))))))
 
 (deftest hash-session-key-test
   (testing "the no-secret on-disk format stays plain SHA-512; a format regression here mass-logs-out keyless

@@ -48,7 +48,7 @@
   [db-or-id]
   (boolean
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
-     (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
+     (t2/exists? :model/ConnectionImpersonation 'db_id (u/id db-or-id)))))
 
 (defn enforced-impersonations-for-db
   "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
@@ -59,11 +59,11 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+  (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id api/*current-user-id*)
         conn-impersonations (when (seq group-ids)
                               (t2/select :model/ConnectionImpersonation
-                                         :group_id [:in group-ids]
-                                         :db_id (u/the-id db-or-id)))]
+                                         'group_id ['in group-ids]
+                                         'db_id (u/the-id db-or-id)))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))
       (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                       {:user-id api/*current-user-id*
@@ -92,7 +92,7 @@
                 role               (get user-attributes role-attribute)
                 database           (if (map? database-or-id)
                                      database-or-id
-                                     (t2/select-one :model/Database :id (u/the-id database-or-id)))
+                                     (t2/select-one :model/Database 'id (u/the-id database-or-id)))
                 default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)

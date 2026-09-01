@@ -91,7 +91,7 @@
               (is (= ["price"] (:key_columns e)))
               (is (nil? (:request e)))))
           (testing "nothing unmanaged was persisted"
-            (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
+            (is (= 1 (count (t2/select :model/TableIndex 'transform_id transform-id))))))))))
 
 (deftest index-endpoints-require-transform-permission-test
   (testing "every index endpoint inherits the transform's permission: a user without access is blocked from all of them"
@@ -163,7 +163,7 @@
       (is (re-find #"already exists"
                    (mt/user-http-request :crowberto :post 400 "index/request"
                                          {:transform_id transform-id :structured btree})))
-      (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id)))))))
+      (is (= 1 (count (t2/select :model/TableIndex 'transform_id transform-id)))))))
 
 (deftest incremental-mutations-force-next-run-to-rebuild-test
   (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)

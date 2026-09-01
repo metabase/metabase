@@ -190,7 +190,7 @@
       ;; Use the *canonical* DB name (per `repr-plan.md` step 13: `database:` is now strict).
       ;; The prompt's `Sample` example would fail at the database lookup before we even get
       ;; to exercise the order-by repair pass we're testing here.
-      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+      (let [db-name (t2/select-one-fn :name :model/Database 'id (mt/id))
             query-data {"lib/type" "mbql/query"
                         "database" db-name
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -273,7 +273,7 @@
                 "(the canonical name reported by search / `read_resource`) and the chart constructs\n"
                 "cleanly. This is the post-step-13 happy path the LLM should follow.")
     (mt/with-current-user (test.users/user->id :crowberto)
-      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+      (let [db-name (t2/select-one-fn :name :model/Database 'id (mt/id))
             query-data {"lib/type" "mbql/query"
                         "database" db-name
                         "stages"   [{"lib/type"     "mbql.stage/mbql"

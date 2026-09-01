@@ -19,7 +19,7 @@
       ;; seeded separately (see `enabled-builtin-metabots-test`) and would otherwise add prompts.
       (mt/with-temporary-setting-values [metabot.settings/embedded-metabot-enabled? false]
         (let [original-metabot (t2/select-one :model/Metabot
-                                              :entity_id (get-in metabot.config/metabot-config
+                                              'entity_id (get-in metabot.config/metabot-config
                                                                  [metabot.config/internal-metabot-id :entity-id]))
               mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -44,13 +44,13 @@
                 (testing "Non-verified card with use_verified_content=false generates prompts"
                   (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                  (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
+                  (let [prompts (t2/select :model/MetabotPrompt 'card_id card-id)]
                     (is (seq prompts))))
                 (testing "Non-verified card with use_verified_content=true generates no prompts"
                   (t2/delete! :model/MetabotPrompt)
                   (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                  (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
+                  (let [prompts (t2/select :model/MetabotPrompt 'card_id card-id)]
                     (is (empty? prompts))))
                 (testing "Verified card generates prompts regardless of use_verified_content"
                   (mt/with-temp
@@ -65,13 +65,13 @@
                       (t2/delete! :model/MetabotPrompt)
                       (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                      (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
+                      (let [prompts (t2/select :model/MetabotPrompt 'card_id card-id)]
                         (is (seq prompts))))
                     (testing "with use_verified_content=false"
                       (t2/delete! :model/MetabotPrompt)
                       (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                      (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
+                      (let [prompts (t2/select :model/MetabotPrompt 'card_id card-id)]
                         (is (seq prompts))))))
                 ;; Reset metabot state
                 (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})))))))))
@@ -110,9 +110,9 @@
                                                :metric_questions []})]
                   (run! #(t2/update! :model/Metabot % {:use_verified_content false}) [internal-id embedded-id])
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                  (is (seq (t2/select :model/MetabotPrompt :metabot_id internal-id :card_id card-id))
+                  (is (seq (t2/select :model/MetabotPrompt 'metabot_id internal-id 'card_id card-id))
                       "internal bot is seeded")
-                  (is (seq (t2/select :model/MetabotPrompt :metabot_id embedded-id :card_id card-id))
+                  (is (seq (t2/select :model/MetabotPrompt 'metabot_id embedded-id 'card_id card-id))
                       "embedded bot is seeded"))))))))))
 
 (deftest suggested-prompts-generator-skips-generation-when-managed-provider-is-locked-test
@@ -121,7 +121,7 @@
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                          "metabase/anthropic/claude-sonnet-4-6"]
         (let [original-metabot (t2/select-one :model/Metabot
-                                              :entity_id (get-in metabot.config/metabot-config
+                                              'entity_id (get-in metabot.config/metabot-config
                                                                  [metabot.config/internal-metabot-id :entity-id]))
               mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -139,4 +139,4 @@
                                           (fn [& _]
                                             (throw (ex-info "should not generate prompts" {})))]
                 (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
-                (is (empty? (t2/select :model/MetabotPrompt :card_id card-id)))))))))))
+                (is (empty? (t2/select :model/MetabotPrompt 'card_id card-id)))))))))))

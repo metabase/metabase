@@ -152,8 +152,8 @@
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
-                           (->> (t2/select [:model/MetabotMessage :conversation_id :data :data_version]
-                                           :conversation_id [:in conversation-ids])
+                           (->> (t2/select [:model/MetabotMessage 'conversation_id 'data 'data_version]
+                                           'conversation_id ['in conversation-ids])
                                 (group-by :conversation_id)))]
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
@@ -239,10 +239,10 @@
 (defn fetch-conversation-detail
   "Fetch a conversation detail or throw a 404."
   [conversation-id]
-  (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+  (let [conversation (t2/select-one :model/MetabotConversation 'id conversation-id)]
     (api/check-404 conversation)
     (let [all-messages (t2/select :model/MetabotMessage
-                                  :conversation_id conversation-id
+                                  'conversation_id conversation-id
                                   {:order-by [[:created_at :asc] [:id :asc]]})
           forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]

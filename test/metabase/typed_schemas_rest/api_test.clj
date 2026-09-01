@@ -45,7 +45,7 @@
 
 (deftest database-filter-test
   (let [database-id      (mt/id)
-        database-name    (t2/select-one-fn :name :model/Database :id database-id)
+        database-name    (t2/select-one-fn :name :model/Database 'id database-id)
         schema-by-id     (:body (mt/user-http-request-full-response
                                  :crowberto :get 200 "typed-schemas/v1/typescript" :database database-id))
         schema-by-name   (:body (mt/user-http-request-full-response

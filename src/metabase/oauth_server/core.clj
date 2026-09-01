@@ -104,7 +104,7 @@
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
                      ;; Fail closed if the issuing client is gone (SEC-863).
-                     (t2/exists? :model/OAuthClient :client_id (:client-id token-data)))
+                     (t2/exists? :model/OAuthClient 'client_id (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               {:user-id user-id
                :scopes  (or (some->> (:scope token-data) (into #{})) #{})})))))))

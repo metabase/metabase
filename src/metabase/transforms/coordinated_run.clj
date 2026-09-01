@@ -14,7 +14,7 @@
 (defn add-run-activity!
   "Note that a run has had activity (touches `updated_at`)."
   [model run-id]
-  (t2/update! model :id run-id :is_active true {:updated_at :%now}))
+  (t2/update! model 'id run-id 'is_active true {:updated_at :%now}))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."
@@ -22,8 +22,8 @@
    (succeed-started-run! model run-id {}))
   ([model run-id properties]
    (t2/update! model
-               :id        run-id
-               :is_active true
+               'id        run-id
+               'is_active true
                (merge {:end_time :%now}
                       properties
                       {:status    :succeeded
@@ -33,8 +33,8 @@
   "Mark the started active run as failed and inactive."
   [model run-id properties]
   (t2/update! model
-              :id        run-id
-              :is_active true
+              'id        run-id
+              'is_active true
               (merge {:end_time :%now}
                      properties
                      {:status    :failed
@@ -45,8 +45,8 @@
   Returns the number of rows updated — 0 if the run had already finished."
   [model run-id]
   (t2/update! model
-              :id        run-id
-              :is_active true
+              'id        run-id
+              'is_active true
               {:status    :canceled
                :is_active nil
                :end_time  :%now
@@ -60,7 +60,7 @@
   [model member-fk run-id]
   (boolean
    (when (pos? (cancel-started-run! model run-id))
-     (doseq [member-run-id (t2/select-pks-vec :model/TransformRun member-fk run-id :is_active true)]
+     (doseq [member-run-id (t2/select-pks-vec :model/TransformRun member-fk run-id 'is_active true)]
        (transform-run-cancelation/mark-cancel-started-run! member-run-id)
        (canceling/chan-signal-cancel! member-run-id))
      true)))

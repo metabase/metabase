@@ -45,8 +45,8 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :card :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :card 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :card 'entity_id (:id object))))
 
 ;; ### Snippets
 (events/derive! ::snippet-deps :metabase/event)
@@ -64,8 +64,8 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :snippet :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :snippet 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :snippet 'entity_id (:id object))))
 
 ;; ### Transforms
 (events/derive! ::transform-deps :metabase/event)
@@ -84,8 +84,8 @@
   [_ {:keys [id]}]
   ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)
-    (t2/delete! :model/DependencyStatus :entity_type :transform :entity_id id)))
+    (t2/delete! :model/Dependency 'from_entity_type :transform 'from_entity_id id)
+    (t2/delete! :model/DependencyStatus 'entity_type :transform 'entity_id id)))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
@@ -96,7 +96,7 @@
 (defn- transform-table-deps! [{:keys [db-id output-schema output-table transform-id] :as _details}]
   (let [;; output-table is a keyword like :my_schema/my_table
         table-name (name output-table)]
-    (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
+    (when-let [table-id (t2/select-one-fn :id :model/Table 'db_id db-id 'schema output-schema 'name table-name)]
       (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))))
 
 (methodical/defmethod events/publish-event! ::transform-run
@@ -120,8 +120,8 @@
 (methodical/defmethod events/publish-event! ::dashboard-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :dashboard :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :dashboard 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :dashboard 'entity_id (:id object))))
 
 ;; ### Documents
 (events/derive! ::document-deps :metabase/event)
@@ -139,8 +139,8 @@
 (methodical/defmethod events/publish-event! ::document-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :document :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :document 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :document 'entity_id (:id object))))
 
 ;; ### Sandboxes
 (events/derive! ::sandbox-deps :metabase/event)
@@ -158,8 +158,8 @@
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :sandbox :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :sandbox 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :sandbox 'entity_id (:id object))))
 
 ;; ### Segments
 (events/derive! ::segment-deps :metabase/event)
@@ -177,8 +177,8 @@
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :segment :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :segment 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :segment 'entity_id (:id object))))
 
 ;; ### Measures
 (events/derive! ::measure-deps :metabase/event)
@@ -196,8 +196,8 @@
 (methodical/defmethod events/publish-event! ::measure-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :measure :entity_id (:id object))))
+    (t2/delete! :model/Dependency 'from_entity_type :measure 'from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus 'entity_type :measure 'entity_id (:id object))))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;
@@ -351,7 +351,7 @@
    for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
   :feature :dependencies
   [db-id]
-  (when-let [transform-ids (not-empty (t2/select-pks-set :model/Transform :source_database_id db-id))]
+  (when-let [transform-ids (not-empty (t2/select-pks-set :model/Transform 'source_database_id db-id))]
     (deps.analysis-finding/mark-stale! :transform transform-ids)
     (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
     (task.entity-check/trigger-entity-check-job!)))

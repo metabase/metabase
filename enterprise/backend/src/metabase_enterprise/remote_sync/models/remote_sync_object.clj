@@ -26,10 +26,10 @@
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
-      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"])
+      (t2/exists? :model/RemoteSyncObject 'status ['not= "synced"])
       (t2/exists? :model/RemoteSyncObject
-                  :status [:not= "synced"]
-                  :model_type [:not-in excluded]))))
+                  'status ['not= "synced"]
+                  'model_type ['not-in excluded]))))
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
@@ -37,10 +37,10 @@
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
-      (t2/select :model/RemoteSyncObject :status [:not= "synced"])
+      (t2/select :model/RemoteSyncObject 'status ['not= "synced"])
       (t2/select :model/RemoteSyncObject
-                 :status [:not= "synced"]
-                 :model_type [:not-in excluded]))))
+                 'status ['not= "synced"]
+                 'model_type ['not-in excluded]))))
 
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.

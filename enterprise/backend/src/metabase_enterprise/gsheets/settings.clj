@@ -93,7 +93,7 @@
                         :folder-upload-time :created-at})
       (dissoc :status)
       (cond->
-       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)))
+       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (t2/select-one-fn :id :model/Database 'is_attached_dwh true)))
       (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
                  (setting/set-value-of-type! :json :gsheets <>)))))
 
@@ -123,6 +123,6 @@
             (or
              ;; This NEEDS to be up to date between instances on a cluster, so:
              ;; we are going around the settings cache:
-             (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
+             (some-> (t2/select-one :model/Setting 'key "gsheets") :value json/decode+kw migrate-gsheet-value)
              (u/prog1 gsheets.constants/not-connected
                (setting/set-value-of-type! :json :gsheets <>)))))

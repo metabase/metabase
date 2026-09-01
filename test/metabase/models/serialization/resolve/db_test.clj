@@ -21,7 +21,7 @@
                    :schema "public"
                    :name   "missing"
                    :active false}
-                  (t2/select-one :model/Table :id table-id))))))))
+                  (t2/select-one :model/Table 'id table-id))))))))
 
 (deftest import-table-fk-no-schema-test
   (testing "synthesizes a table when schema is nil"
@@ -33,7 +33,7 @@
                    :schema nil
                    :name   "schemaless"
                    :active false}
-                  (t2/select-one :model/Table :id table-id))))))))
+                  (t2/select-one :model/Table 'id table-id))))))))
 
 (deftest import-table-fk-throws-when-database-missing-test
   (testing "throws when the database itself does not exist"
@@ -60,7 +60,7 @@
                    :parent_id nil
                    :name      "missing"
                    :active    false}
-                  (t2/select-one :model/Field :id field-id))))))))
+                  (t2/select-one :model/Field 'id field-id))))))))
 
 (deftest import-field-fk-synthesizes-nested-chain-test
   (testing "creates inactive parent fields along the chain when missing"
@@ -68,9 +68,9 @@
       (mt/with-temp [:model/Database {db-id :id}    {:name "test-db"}
                      :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}]
         (let [field-id (serdes/*import-field-fk* ["test-db" "public" "events" "outer" "middle" "inner"])
-              inner    (t2/select-one :model/Field :id field-id)
-              middle   (t2/select-one :model/Field :id (:parent_id inner))
-              outer    (t2/select-one :model/Field :id (:parent_id middle))]
+              inner    (t2/select-one :model/Field 'id field-id)
+              middle   (t2/select-one :model/Field 'id (:parent_id inner))
+              outer    (t2/select-one :model/Field 'id (:parent_id middle))]
           (is (=? {:name "inner"  :active false}                                                   inner))
           (is (=? {:name "middle" :active false :parent_id (:id outer)}                            middle))
           (is (=? {:name "outer"  :active false :parent_id nil          :table_id table-id}        outer)))))))
@@ -116,5 +116,5 @@
                    :name      "inner"
                    :parent_id parent-id
                    :active    false}
-                  (t2/select-one :model/Field :id field-id)))
-          (is (= 1 (t2/count :model/Field :table_id table-id :name "outer"))))))))
+                  (t2/select-one :model/Field 'id field-id)))
+          (is (= 1 (t2/count :model/Field 'table_id table-id 'name "outer"))))))))

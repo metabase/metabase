@@ -108,7 +108,7 @@
                                     "database"  :model/Database
                                     "dashboard" :model/Dashboard
                                     "question"  :model/Card)
-                                  :id [:in ids]))))
+                                  'id ['in ids]))))
 
 (mr/def ::cache-config-item
   [:map

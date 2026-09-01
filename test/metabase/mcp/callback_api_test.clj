@@ -116,7 +116,7 @@
                  :prompt            "show orders"
                  :query             "encoded-query"
                  :created_at        some?}
-                (t2/select-one :model/McpFeedback :user_id (mt/user->id :rasta)
+                (t2/select-one :model/McpFeedback 'user_id (mt/user->id :rasta)
                                {:order-by [[:id :desc]]})))))))
 
 (deftest feedback-post-persists-minimal-payload-test
@@ -132,7 +132,7 @@
                  :freeform_feedback nil
                  :prompt            nil
                  :query             nil}
-                (t2/select-one :model/McpFeedback :user_id (mt/user->id :rasta)
+                (t2/select-one :model/McpFeedback 'user_id (mt/user->id :rasta)
                                {:order-by [[:id :desc]]})))))))
 
 (deftest feedback-post-requires-metabot-enabled-test
@@ -145,7 +145,7 @@
                           :conversation_data {:source "mcp"}}]
           (is (=? {:status 403}
                   (post-mcp-feedback :rasta 403 body session-id)))
-          (is (zero? (t2/count :model/McpFeedback :user_id (mt/user->id :rasta)))))))))
+          (is (zero? (t2/count :model/McpFeedback 'user_id (mt/user->id :rasta)))))))))
 
 (deftest feedback-post-rejects-oversized-free-text-test
   (testing "MCP feedback bounds user-controlled free text before persisting"
@@ -160,7 +160,7 @@
           (testing label
             (is (=? {:status 400}
                     (post-mcp-feedback :rasta 400 (assoc-in base-body path too-large) session-id)))))
-        (is (zero? (t2/count :model/McpFeedback :user_id (mt/user->id :rasta)))
+        (is (zero? (t2/count :model/McpFeedback 'user_id (mt/user->id :rasta)))
             "Oversized feedback payloads must not be persisted")))))
 
 (deftest feedback-post-validates-session-header-test

@@ -107,7 +107,7 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select :model/Table
-                                :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                'db_id (u/the-id db-or-id), 'active true, 'visibility_type nil
                                 {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -367,7 +367,7 @@
                                                                m)))]
         (is (malli= [:map [:id ::lib.schema.id/database]]
                     response))
-        (t2/select-one :model/Database :id db-id)))))
+        (t2/select-one :model/Database 'id db-id)))))
 
 (def ^:private monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"})
 
@@ -532,14 +532,14 @@
             details (:details (mt/db))]
         (is (= {:message "H2 is not supported as a data warehouse"}
                (mt/user-http-request :crowberto :post 400 "database" {:engine :h2, :name db-name, :details details})))
-        (is (not (t2/exists? :model/Database :name db-name)))))))
+        (is (not (t2/exists? :model/Database 'name db-name)))))))
 
 (deftest ^:parallel delete-database-test
   (testing "DELETE /api/database/:id"
     (testing "Check that a superuser can delete a Database"
       (mt/with-temp [:model/Database db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (t2/exists? :model/Database :id (u/the-id db))))))
+        (is (false? (t2/exists? :model/Database 'id (u/the-id db))))))
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp [:model/Database db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
@@ -578,7 +578,7 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database 'name 'engine 'details 'is_full_sync], 'id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
@@ -598,7 +598,7 @@
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
-                 (t2/select-one-fn :auto_run_queries :model/Database, :id db-id))))))))
+                 (t2/select-one-fn :auto_run_queries :model/Database, 'id db-id))))))))
 
 (deftest update-database-test-3
   (testing "PUT /api/database/:id"
@@ -608,7 +608,7 @@
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= nil
-                 (t2/select-one-fn :cache_ttl :model/Database, :id db-id))))))))
+                 (t2/select-one-fn :cache_ttl :model/Database, 'id db-id))))))))
 
 (deftest update-database-test-4
   (testing "PUT /api/database/:id"
@@ -620,10 +620,10 @@
                 updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
                 updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
             (updates1!)
-            (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
+            (let [curr-db (t2/select-one [:model/Database 'cache_ttl], 'id db-id)]
               (is (= 1337 (:cache_ttl curr-db))))
             (updates2!)
-            (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
+            (let [curr-db (t2/select-one [:model/Database 'cache_ttl], 'id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest reject-is-stub-in-create-test
@@ -645,14 +645,14 @@
              (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                    {:is_stub true})))
       (testing "the row is unchanged"
-        (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+        (is (false? (t2/select-one-fn :is_stub :model/Database 'id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
     ;; Real callers often PUT the full database row (which includes :is_stub false) and the API
     ;; must not reject that.
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
       (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                             {:is_stub false :name "still-fine"})
-      (is (= "still-fine" (t2/select-one-fn :name :model/Database :id db-id))))))
+      (is (= "still-fine" (t2/select-one-fn :name :model/Database 'id db-id))))))
 
 (deftest clear-is-stub-on-successful-main-connection-update-test
   (testing "PUT /api/database/:id with new :details clears :is_stub when the main connection test succeeds"
@@ -662,7 +662,7 @@
       (with-redefs [driver/can-connect? (constantly true)]
         (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                               {:details {:db "new"}}))
-      (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+      (is (false? (t2/select-one-fn :is_stub :model/Database 'id db-id))))))
 
 (deftest preserve-is-stub-when-main-details-unchanged-test
   (testing "PUT /api/database/:id that does not change :details leaves :is_stub untouched"
@@ -672,7 +672,7 @@
                                                 :name    "before"}]
       (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                             {:name "after"})
-      (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))
+      (is (true? (t2/select-one-fn :is_stub :model/Database 'id db-id))
           ":is_stub must stay true when the main connection is not re-tested"))))
 
 (deftest preserve-is-stub-on-failed-main-connection-test
@@ -683,7 +683,7 @@
       (with-redefs [driver/can-connect? (fn [& _] (throw (Exception. "nope")))]
         (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                               {:details {:db "new"}}))
-      (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+      (is (true? (t2/select-one-fn :is_stub :model/Database 'id db-id))))))
 
 (deftest reject-sample-database-edit-test
   (testing "PUT /api/database/:id rejects any edit to the sample database with a sample-specific message"
@@ -694,12 +694,12 @@
                    (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                          {:name "New Name"})))
       (testing "the row is unchanged"
-        (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
+        (is (= "Sample Database" (t2/select-one-fn :name :model/Database 'id db-id))))
       (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"
         (mt/with-temp-env-var-value! [mb-enable-test-endpoints "true"]
           (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                 {:name "New Name"})
-          (is (= "New Name" (t2/select-one-fn :name :model/Database :id db-id))))))))
+          (is (= "New Name" (t2/select-one-fn :name :model/Database 'id db-id))))))))
 
 (deftest database-modifiability-flags-test
   (testing "GET /api/database/:id returns the is_sample and is_attached_dwh flags the admin UI uses to disable editing"
@@ -728,10 +728,10 @@
               updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
               updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
           (updates1!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+          (let [curr-db (t2/select-one [:model/Database 'provider_name], 'id db-id)]
             (is (= "AWS RDS" (:provider_name curr-db))))
           (updates2!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+          (let [curr-db (t2/select-one [:model/Database 'provider_name], 'id db-id)]
             (is (= nil (:provider_name curr-db)))))))))
 
 (deftest update-database-audit-log-test
@@ -877,7 +877,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :is_writable] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table 'created_at 'updated_at 'is_writable] 'id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -885,7 +885,7 @@
                                      :initial_sync_status "complete"
                                      :data_layer          "hidden"
                                      :fields              [(merge
-                                                            (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
+                                                            (field-details (t2/select-one :model/Field 'id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -904,7 +904,7 @@
                                                              :database_is_nullable       false
                                                              :database_is_pk             true})
                                                            (merge
-                                                            (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
+                                                            (field-details (t2/select-one :model/Field 'id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -1134,7 +1134,7 @@
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
-                                (into (keys (t2/select-one :model/Database :id (mt/id))))
+                                (into (keys (t2/select-one :model/Database 'id (mt/id))))
                                 (disj :details :write_data_details :admin_details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
@@ -1743,9 +1743,9 @@
                                                     (f)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (testing "the explicit sync actually ran, not merely dispatched"
-            (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))
+            (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database 'id db-id))
                 "Sync-now must complete the sync even when disable-auto-sync is on")
-            (is (pos? (t2/count :model/Table :db_id db-id))
+            (is (pos? (t2/count :model/Table 'db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
 
 (deftest sync-schema-executes-when-executor-busy-test
@@ -1847,10 +1847,10 @@
                (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
       (testing "values-1 still exists?"
         (is (= false
-               (t2/exists? :model/FieldValues :id (u/the-id values-1)))))
+               (t2/exists? :model/FieldValues 'id (u/the-id values-1)))))
       (testing "values-2 still exists?"
         (is (= false
-               (t2/exists? :model/FieldValues :id (u/the-id values-2))))))))
+               (t2/exists? :model/FieldValues 'id (u/the-id values-2))))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
@@ -1958,7 +1958,7 @@
           (let [response (mt/user-http-request :crowberto :post 400 "database"
                                                {:name "internal" :engine "postgres" :details private-details})]
             (is (=? {:message "Cannot connect to a private or internal network address."} response))
-            (is (not (t2/exists? :model/Database :name "internal")))))
+            (is (not (t2/exists? :model/Database 'name "internal")))))
         (testing "POST /api/database/validate"
           (is (=? {:valid false, :message "Cannot connect to a private or internal network address."}
                   (mt/user-http-request :crowberto :post 200 "database/validate"
@@ -2336,7 +2336,7 @@
                                                                 :query    {:source-table (str "card__" (:id card))
                                                                            :aggregation  [[:count]]}}}]
     (is (=? nil (:result_metadata card)))
-    (is (=? nil (:result_metadata (t2/select-one :model/Card :id (:id card)))))
+    (is (=? nil (:result_metadata (t2/select-one :model/Card 'id (:id card)))))
     (is (=? {:status "completed"}
             (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
     (let [virtual-table {:id           (format "card__%d" (:id card))
@@ -2633,7 +2633,7 @@
   (testing "Admins should be allowed to update Database-local Settings (#19409)"
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings nil}
       (letfn [(settings []
-                (t2/select-one-fn :settings :model/Database :id (mt/id)))
+                (t2/select-one-fn :settings :model/Database 'id (mt/id)))
               (set-settings! [m]
                 (with-redefs [driver.settings/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
@@ -2709,7 +2709,7 @@
                                       :query "flozzlebarger"
                                       :include_dashboard_questions "true")))))
       (testing "sanity check: removing the `dashboard_id` lets us get it"
-        (t2/update! :model/Card :id card-id {:dashboard_id nil})
+        (t2/update! :model/Card 'id card-id {:dashboard_id nil})
         (is (= 1
                (count
                 (mt/user-http-request :rasta :get 200
@@ -2845,8 +2845,8 @@
                    :model/Table    _             {:db_id db-2-id :name "table2" :active true}
                    :model/PermissionsGroup {pg-id :id :as pg} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-1-id)
-      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      (t2/delete! :model/DataPermissions 'db_id db-1-id)
+      (t2/delete! :model/DataPermissions 'db_id db-2-id)
       ;; Grant full permissions to db-1 (queryable)
       (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
@@ -2895,9 +2895,9 @@
                    :model/Table    _             {:db_id db-3-id :name "table3" :active true}
                    :model/PermissionsGroup {pg-id :id :as pg} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-1-id)
-      (t2/delete! :model/DataPermissions :db_id db-2-id)
-      (t2/delete! :model/DataPermissions :db_id db-3-id)
+      (t2/delete! :model/DataPermissions 'db_id db-1-id)
+      (t2/delete! :model/DataPermissions 'db_id db-2-id)
+      (t2/delete! :model/DataPermissions 'db_id db-3-id)
       ;; Grant query permissions to db-1 (queryable)
       (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
@@ -2978,7 +2978,7 @@
                                                                        :write-data-connection true}})]
               (is (= "write-host" (get-in response [:write_data_details :host])))
               (is (= secret/protected-password (get-in response [:write_data_details :password])))
-              (let [db (t2/select-one :model/Database :id db-id)]
+              (let [db (t2/select-one :model/Database 'id db-id)]
                 (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
                        (:write_data_details db)))))))))
     (testing "Superusers can clear write_data_details by setting it to nil"
@@ -2989,7 +2989,7 @@
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:write_data_details nil})
-            (let [db (t2/select-one :model/Database :id db-id)]
+            (let [db (t2/select-one :model/Database 'id db-id)]
               (is (nil? (:write_data_details db))))))))
     (testing "Sensitive fields are preserved when protected-password is sent"
       (mt/with-premium-features #{:writable-connection}
@@ -3002,7 +3002,7 @@
                                   {:write_data_details {:host "new-write-host"
                                                         :password secret/protected-password
                                                         :write-data-connection true}})
-            (let [db (t2/select-one :model/Database :id db-id)]
+            (let [db (t2/select-one :model/Database 'id db-id)]
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
     (testing "Returns 402 without :writable-connection feature"
@@ -3148,7 +3148,7 @@
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
                      :provider_name      "AWS RDS"}
-                    (t2/select-one :model/Database :id db-id)))))))))
+                    (t2/select-one :model/Database 'id db-id)))))))))
 
 (deftest databases-list-can-upload-respects-view-data-test
   (testing "GET /api/database/:id can_upload reflects the user's view-data permission, not just uploads_enabled"
@@ -3196,9 +3196,9 @@
 
 (deftest get-schema-tables-include-measures-test
   (let [mp          (mt/metadata-provider)
-        schema      (t2/select-one-fn :schema :model/Table :id (mt/id :orders))
-        orders-name (t2/select-one-fn :name :model/Table :id (mt/id :orders))
-        people-name (t2/select-one-fn :name :model/Table :id (mt/id :people))]
+        schema      (t2/select-one-fn :schema :model/Table 'id (mt/id :orders))
+        orders-name (t2/select-one-fn :name :model/Table 'id (mt/id :orders))
+        people-name (t2/select-one-fn :name :model/Table 'id (mt/id :people))]
     (testing "GET /api/database/:id/schema/:schema?include_measures=true hydrates :measures per table"
       (mt/with-temp [:model/Measure _ {:table_id   (mt/id :orders)
                                        :name       "Some measure"
@@ -3223,9 +3223,9 @@
                    :model/Card     {c :id}     {:database_id db-id :table_id t}
                    :model/Segment  {s :id}     {:table_id t}]
       (mt/user-http-request :crowberto :delete 204 (format "database/%d" db-id))
-      (is (not (t2/exists? :model/Database :id db-id)))
-      (is (not (t2/exists? :model/Card :id c)))
-      (is (not (t2/exists? :model/Segment :id s))))))
+      (is (not (t2/exists? :model/Database 'id db-id)))
+      (is (not (t2/exists? :model/Card 'id c)))
+      (is (not (t2/exists? :model/Segment 'id s))))))
 
 (deftest restore-sample-database-endpoint-test
   (testing "POST /api/database/sample_database"

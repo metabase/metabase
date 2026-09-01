@@ -191,7 +191,7 @@
   [table-id]
   (into #{}
         (map :name)
-        (t2/select :model/Field :table_id table-id :active true)))
+        (t2/select :model/Field 'table_id table-id 'active true)))
 
 (defn- get-actual-field-names
   "Get the set of field names that actually exist in the database for a given table."
@@ -204,13 +204,13 @@
 (deftest analytics-views-schema-test
   (testing "Analytics usage views (v_* tables) have expected schema"
     (mt/test-drivers #{:postgres :h2 :mysql}
-      (let [analytics-db (t2/select-one :model/Database :is_audit true)]
+      (let [analytics-db (t2/select-one :model/Database 'is_audit true)]
         (when analytics-db
           (doseq [[view-name expected-fields] expected-view-schemas]
             (testing (str "View: " view-name)
               (let [table (t2/select-one :model/Table
-                                         :db_id (:id analytics-db)
-                                         :name view-name)
+                                         'db_id (:id analytics-db)
+                                         'name view-name)
                     _ (is (some? table))
 
                     synced-fields (when table (get-synced-field-names (:id table)))

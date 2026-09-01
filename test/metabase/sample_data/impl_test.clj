@@ -44,12 +44,12 @@
 (defn- table
   "Get the Table in a `db` with `table-name`."
   [db table-name]
-  (t2/select-one :model/Table :name table-name, :db_id (u/the-id db)))
+  (t2/select-one :model/Table 'name table-name, 'db_id (u/the-id db)))
 
 (defn- field
   "Get the Field in a `db` with `table-name` and `field-name.`"
   [db table-name field-name]
-  (t2/select-one :model/Field :name field-name, :table_id (u/the-id (table db table-name))))
+  (t2/select-one :model/Field 'name field-name, 'table_id (u/the-id (table db table-name))))
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
@@ -62,30 +62,30 @@
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! h2-db)
-        (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
-              total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
+        (let [orders-id  (t2/select-one-pk :model/Table 'db_id (:id h2-db) 'name "ORDERS")
+              total-id   (t2/select-one-pk :model/Field 'table_id orders-id 'name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
                                                         {:name "user q" :database_id (:id h2-db) :table_id orders-id
                                                          :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
                                                          :dataset_query {:database (:id h2-db) :type :query
                                                                          :query {:source-table orders-id
                                                                                  :aggregation [[:sum [:field total-id nil]]]}}})
-              before-tables  (t2/select-fn-set :id :model/Table :db_id (:id h2-db))
-              before-fields  (t2/select-fn-set :id :model/Field :table_id [:in before-tables])]
-          (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))
+              before-tables  (t2/select-fn-set :id :model/Table 'db_id (:id h2-db))
+              before-fields  (t2/select-fn-set :id :model/Field 'table_id ['in before-tables])]
+          (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table 'db_id (:id h2-db)))
               "precondition: H2 tables live in the PUBLIC schema")
           ;; ---- the migration under test ----
-          (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+          (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database 'id (:id h2-db)))
           (testing "the database record is now SQLite"
-            (is (= :sqlite (:engine (t2/select-one :model/Database :id (:id h2-db))))))
+            (is (= :sqlite (:engine (t2/select-one :model/Database 'id (:id h2-db))))))
           (testing "the same tables remain (no new ones), now with schema = nil"
-            (is (= before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))))
-            (is (= #{nil} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))))
+            (is (= before-tables (t2/select-fn-set :id :model/Table 'db_id (:id h2-db))))
+            (is (= #{nil} (t2/select-fn-set :schema :model/Table 'db_id (:id h2-db)))))
           (testing "the same fields remain (ids preserved), so embedded query refs stay valid"
-            (is (= before-fields (t2/select-fn-set :id :model/Field :table_id [:in before-tables]))))
+            (is (= before-fields (t2/select-fn-set :id :model/Field 'table_id ['in before-tables]))))
           (testing "the user card survives with its id and still queries the (now SQLite) sample DB"
-            (is (t2/exists? :model/Card :id (:id user-card)))
-            (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card :id (:id user-card))))]
+            (is (t2/exists? :model/Card 'id (:id user-card)))
+            (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card 'id (:id user-card))))]
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
 
@@ -99,30 +99,30 @@
                                                      {:name "Sample Database" :engine :sqlite :is_sample true
                                                       :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
         (sync/sync-database! sqlite-db)
-        (let [orders-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")
-              total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
+        (let [orders-id (t2/select-one-pk :model/Table 'db_id (:id sqlite-db) 'name "ORDERS")
+              total-id  (t2/select-one-pk :model/Field 'table_id orders-id 'name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
                                                        {:name "user q" :database_id (:id sqlite-db) :table_id orders-id
                                                         :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
                                                         :dataset_query {:database (:id sqlite-db) :type :query
                                                                         :query {:source-table orders-id
                                                                                 :aggregation [[:sum [:field total-id nil]]]}}})
-              before-tables (t2/select-fn-set :id :model/Table :db_id (:id sqlite-db))
-              before-fields (t2/select-fn-set :id :model/Field :table_id [:in before-tables])]
-          (is (= #{nil} (t2/select-fn-set :schema :model/Table :db_id (:id sqlite-db)))
+              before-tables (t2/select-fn-set :id :model/Table 'db_id (:id sqlite-db))
+              before-fields (t2/select-fn-set :id :model/Field 'table_id ['in before-tables])]
+          (is (= #{nil} (t2/select-fn-set :schema :model/Table 'db_id (:id sqlite-db)))
               "precondition: SQLite tables have a nil schema")
           ;; ---- the migration under test ----
-          (#'sample-data/migrate-sample-database-engine-in-place! :h2 (t2/select-one :model/Database :id (:id sqlite-db)))
+          (#'sample-data/migrate-sample-database-engine-in-place! :h2 (t2/select-one :model/Database 'id (:id sqlite-db)))
           (testing "the database record is now H2"
-            (is (= :h2 (:engine (t2/select-one :model/Database :id (:id sqlite-db))))))
+            (is (= :h2 (:engine (t2/select-one :model/Database 'id (:id sqlite-db))))))
           (testing "the same tables remain (no new ones), now with schema = PUBLIC"
-            (is (= before-tables (t2/select-fn-set :id :model/Table :db_id (:id sqlite-db))))
-            (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table :db_id (:id sqlite-db)))))
+            (is (= before-tables (t2/select-fn-set :id :model/Table 'db_id (:id sqlite-db))))
+            (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table 'db_id (:id sqlite-db)))))
           (testing "the same fields remain (ids preserved)"
-            (is (= before-fields (t2/select-fn-set :id :model/Field :table_id [:in before-tables]))))
+            (is (= before-fields (t2/select-fn-set :id :model/Field 'table_id ['in before-tables]))))
           (testing "the user card survives with its id and still queries the (now H2) sample DB"
-            (is (t2/exists? :model/Card :id (:id user-card)))
-            (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card :id (:id user-card))))]
+            (is (t2/exists? :model/Card 'id (:id user-card)))
+            (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card 'id (:id user-card))))]
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
 
@@ -136,8 +136,8 @@
                                                   :settings {:database-enable-actions       true
                                                              :database-enable-table-editing true}
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-        (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
-        (let [db (t2/select-one :model/Database :id (:id h2-db))]
+        (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database 'id (:id h2-db)))
+        (let [db (t2/select-one :model/Database 'id (:id h2-db))]
           (testing "the migration succeeds"
             (is (= :sqlite (:engine db))))
           (testing "the unsupported feature settings are disabled"
@@ -157,8 +157,8 @@
                                                     :details (#'sample-data/try-to-extract-sample-database! :h2)})]
           (sync/sync-database! h2-db)
           (let [db-id     (:id h2-db)
-                orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")
-                people-id (t2/select-one-pk :model/Table :db_id db-id :name "PEOPLE")]
+                orders-id (t2/select-one-pk :model/Table 'db_id db-id 'name "ORDERS")
+                people-id (t2/select-one-pk :model/Table 'db_id db-id 'name "PEOPLE")]
             ;; Granular state: All Users sees nothing; the custom group can query everything except ORDERS.
             ;; Blocking a single table splits the group's db-level rows into per-table rows, each carrying the
             ;; table's schema_name ("PUBLIC" pre-migration).
@@ -182,11 +182,11 @@
                      before)
                   "precondition: granular perms are in effect on the H2 sample DB")
               ;; ---- the migration under test ----
-              (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id db-id))
+              (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database 'id db-id))
               (testing "permission checks give the same answers under the new (nil) schema"
                 (is (= before (effective nil))))
               (testing "no data_permissions rows are left pointing at the departed PUBLIC schema"
-                (is (not (t2/exists? :model/DataPermissions :db_id db-id :schema_name "PUBLIC")))))))))))
+                (is (not (t2/exists? :model/DataPermissions 'db_id db-id 'schema_name "PUBLIC")))))))))))
 
 (def ^:private extracted-db-path-regex #".*plugins/sample-database\.sqlite$")
 
@@ -261,16 +261,16 @@
           (#'sample-data/update-sample-database-if-needed! db))
         (testing "the existing sample DB row is not replaced"
           (is (false? @extract-called?))
-          (is (t2/exists? :model/Database :id (:id db))))
+          (is (t2/exists? :model/Database 'id (:id db))))
         (testing "its details were refreshed to the intended path"
           (is (re-matches extracted-db-path-regex
-                          (get-in (t2/select-one :model/Database :id (:id db)) [:details :db]))))))))
+                          (get-in (t2/select-one :model/Database 'id (:id db)) [:details :db]))))))))
 
 (defn- db-level-perms
   "DB-level data-permission rows for `db-id` as a comparable map {[group-id perm-type] perm-value}."
   [db-id]
   (into {}
-        (for [{:keys [group_id perm_type perm_value]} (t2/select :model/DataPermissions :db_id db-id :table_id nil)]
+        (for [{:keys [group_id perm_type perm_value]} (t2/select :model/DataPermissions 'db_id db-id 'table_id nil)]
           [[group_id perm_type] perm_value])))
 
 (deftest sample-database-upgrade-preserves-permissions-test
@@ -286,7 +286,7 @@
         (let [expected-perms (db-level-perms (:id old-sample))]
           (with-redefs [config/load-sample-content? (constantly true)]
             (#'sample-data/update-sample-database-if-needed! old-sample))
-          (let [new-sample (t2/select-one :model/Database :is_sample true :engine :sqlite)]
+          (let [new-sample (t2/select-one :model/Database 'is_sample true 'engine :sqlite)]
             (is (some? new-sample) "the swap created a SQLite sample database")
             (testing "every group's db-level permissions match the old sample DB exactly"
               (is (= expected-perms (db-level-perms (:id new-sample)))))
@@ -306,6 +306,6 @@
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))
         (testing "The sample database should also have sync jobs scheduled"
-          (let [sample-db (t2/select-one :model/Database :is_sample true)]
+          (let [sample-db (t2/select-one :model/Database 'is_sample true)]
             (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)
                    (task.sync-databases-test/query-all-db-sync-triggers-name sample-db)))))))))

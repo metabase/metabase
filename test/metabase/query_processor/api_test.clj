@@ -71,7 +71,7 @@
   ;; and retry if it's not there yet.
   (letfn [(thunk []
             (t2/select-one :model/QueryExecution
-                           :hash (qp.util/query-hash query)
+                           'hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]
       (or (thunk)

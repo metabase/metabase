@@ -19,7 +19,7 @@
   "Generates a new SCIM API key and deletes any that already exist."
   [user-id]
   (t2/with-transaction [_conn]
-    (t2/delete! :model/ApiKey :scope :scim)
+    (t2/delete! :model/ApiKey 'scope :scim)
     (let [unhashed-key (api-key/generate-key)]
       (->
        (t2/insert-returning-instance! :model/ApiKey {:user_id               nil
@@ -42,7 +42,7 @@
   to that after it is created."
   []
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/ApiKey :scope :scim)))
+  (api/check-404 (t2/select-one :model/ApiKey 'scope :scim)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

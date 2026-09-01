@@ -19,7 +19,7 @@
   "From a create request return either the parent collection or the root collection."
   [{collection-id :parent_id collection-namespace :namespace}]
   (if collection-id
-    (t2/select-one :model/Collection :id collection-id)
+    (t2/select-one :model/Collection 'id collection-id)
     (collection/root-collection-with-ui-details collection-namespace)))
 
 (defn- write-check-authority-level

@@ -61,10 +61,10 @@
             (testing "depends on the referenced Card"
               (is (= [[{:model "Card" :id card-eid}]] (serdes/deserialization-dependencies extracted))))
             (testing "importing resolves the path back to the local card row"
-              (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+              (t2/delete! :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id)
               (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
               (is (=? {:entity_type "card" :entity_local_id card-id}
-                      (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))))
+                      (t2/select-one :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id))))))))))
 
 (deftest measure-segment-entity-round-trip-test
   (testing "measure and segment refs nest under the entity's path and import back"
@@ -87,10 +87,10 @@
                 (testing "depends on the referenced entity"
                   (is (= [[{:model serdes-model :id eid}]] (serdes/deserialization-dependencies extracted))))
                 (testing "importing resolves the path back to the local id"
-                  (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id id)
+                  (t2/delete! :model/OsiAiContext 'entity_type entity-type 'entity_local_id id)
                   (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
                   (is (=? {:entity_type entity-type :entity_local_id id}
-                          (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id id))))))))))))
+                          (t2/select-one :model/OsiAiContext 'entity_type entity-type 'entity_local_id id))))))))))))
 
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
@@ -103,10 +103,10 @@
         (testing "depends on the Table"
           (is (= [(vec (pop (vec (serdes/path extracted))))] (serdes/deserialization-dependencies extracted))))
         (testing "importing resolves the path back to the local id"
-          (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
+          (t2/delete! :model/OsiAiContext 'entity_type "table" 'entity_local_id table-id)
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
           (is (=? {:entity_type "table" :entity_local_id table-id}
-                  (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
+                  (t2/select-one :model/OsiAiContext 'entity_type "table" 'entity_local_id table-id))))))))
 
 (deftest import-over-existing-row-updates-by-compound-key-test
   (testing "importing over an existing row updates it in place via the full compound key, not entity_type alone"
@@ -115,10 +115,10 @@
                                           :ai_context {:instructions "v1"}}]
       (let [extracted (assoc-in (extract-for "card" card-id) [:ai_context :instructions] "v2")]
         (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-        (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-id))
+        (is (= 1 (t2/count :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id))
             "still one row (updated, not duplicated)")
         (is (=? {:ai_context {:instructions "v2"}}
-                (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
+                (t2/select-one :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id)))))))
 
 (deftest string-ai-context-import-coerces-to-instructions-test
   (testing "an OSI string-shorthand ai_context imports as {:instructions s} — serdes copies it verbatim and
@@ -129,7 +129,7 @@
       (let [extracted (assoc (extract-for "card" card-id) :ai_context "just the instructions")]
         (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
         (is (=? {:ai_context {:instructions "just the instructions"}}
-                (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
+                (t2/select-one :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id)))))))
 
 (deftest disk-round-trip-card-context-test
   (testing "a card-backed ai_context survives a real on-disk store/ingest/load (storage-path handles a non-table parent)"
@@ -140,10 +140,10 @@
         (ts/with-random-dump-dir [dump-dir "osi-card-"]
           ;; store! exercises storage-path for a Card parent — the regression that used to throw.
           (storage/store! [extracted] (storage.files/file-writer dump-dir))
-          (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+          (t2/delete! :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id)
           (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
           (is (=? {:ai_context {:instructions "card guidance"}}
-                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))
+                  (t2/select-one :model/OsiAiContext 'entity_type "card" 'entity_local_id card-id))))))))
 
 (deftest osi-ai-context-excluded-from-default-export-test
   (testing "OsiAiContext is kept out of the default export set"

@@ -17,7 +17,6 @@
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
    [metabase.app-db.h2 :as mdb.h2]
-   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
@@ -30,7 +29,6 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me)
 

@@ -131,7 +131,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [response  (register-client! {:redirect_uris ["https://example.com/callback"]})
               client-id (:client_id response)
-              db-client (t2/select-one :model/OAuthClient :client_id client-id)]
+              db-client (t2/select-one :model/OAuthClient 'client_id client-id)]
           (is (= "dynamic" (:registration_type db-client))))))))
 
 (deftest dynamic-register-records-registered-event-test
@@ -140,8 +140,8 @@
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [response  (register-client! {:redirect_uris ["https://example.com/callback"]})
-              client-pk (t2/select-one-pk :model/OAuthClient :client_id (:client_id response))
-              events    (t2/select :model/OAuthClientEvent :oauth_client_id client-pk)]
+              client-pk (t2/select-one-pk :model/OAuthClient 'client_id (:client_id response))
+              events    (t2/select :model/OAuthClientEvent 'oauth_client_id client-pk)]
           (is (= 1 (count events)) "Exactly one client event row should have been created")
           (is (= "registered" (:event_type (first events))))
           (is (nil? (:user_id (first events)))))))))
@@ -510,7 +510,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client (create-test-client!)]
           (approve-or-deny! :crowberto (:client_id client) true)
-          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+          (let [events (t2/select :model/OAuthClientEvent 'oauth_client_id (:id client))]
             (is (= 1 (count events)))
             (is (= "approved" (:event_type (first events))))
             (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
@@ -521,7 +521,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client (create-test-client!)]
           (approve-or-deny! :crowberto (:client_id client) false)
-          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+          (let [events (t2/select :model/OAuthClientEvent 'oauth_client_id (:id client))]
             (is (= 1 (count events)))
             (is (= "denied" (:event_type (first events))))
             (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
@@ -793,7 +793,7 @@
                                :redirect_uri  "https://example.com/callback"}
                               :authorization (basic-auth-header client-id client-secret))]
           (is (some? (:refresh_token token-response)))
-          (let [db-token (t2/select-one :model/OAuthRefreshToken :client_id client-id)]
+          (let [db-token (t2/select-one :model/OAuthRefreshToken 'client_id client-id)]
             (is (some? db-token) "Refresh token should be stored in the database")
             (is (some? (:expiry db-token)) "Refresh token should have an expiry set")
             (when (:expiry db-token)

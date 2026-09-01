@@ -26,7 +26,7 @@
                  tenant-id (assoc :tenant_id tenant-id)))))
 
 (defn- cleanup-test-usage! [user-id]
-  (t2/delete! :model/AiUsageLog :user_id user-id :source "test"))
+  (t2/delete! :model/AiUsageLog 'user_id user-id 'source "test"))
 
 (deftest ^:parallel valid-usage-profile-id-test
   (is (= "internal" (ee.usage/valid-usage-profile-id "internal")))
@@ -40,7 +40,7 @@
     (testing "log-ai-usage! inserts a row into ai_usage_log"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
-          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
+          (let [before-count (t2/count :model/AiUsageLog 'user_id user-id 'source "metabot_agent")]
             (usage/log-ai-usage!
              {:source            "metabot_agent"
               :model             "anthropic/claude-test"
@@ -49,8 +49,8 @@
               :ai-proxied        true})
             (try
               (is (= (inc before-count)
-                     (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
-              (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
+                     (t2/count :model/AiUsageLog 'user_id user-id 'source "metabot_agent")))
+              (let [row (t2/select-one :model/AiUsageLog 'user_id user-id 'source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
                 (is (= "anthropic/claude-test" (:model row)))
                 (is (= 100 (:prompt_tokens row)))
@@ -59,23 +59,23 @@
                 (is (= user-id (:user_id row)))
                 (is (true? (:ai_proxied row))))
               (finally
-                (t2/delete! :model/AiUsageLog :user_id user-id :source "metabot_agent")))))))))
+                (t2/delete! :model/AiUsageLog 'user_id user-id 'source "metabot_agent")))))))))
 
 (deftest log-ai-usage!-skips-intent-classification-test
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! skips user-intent-classification source"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
-          (let [before-count (t2/count :model/AiUsageLog :user_id user-id
-                                       :source "user-intent-classification")]
+          (let [before-count (t2/count :model/AiUsageLog 'user_id user-id
+                                       'source "user-intent-classification")]
             (usage/log-ai-usage!
              {:source            "user-intent-classification"
               :model             "anthropic/claude-test"
               :prompt-tokens     10
               :completion-tokens 5})
             (is (= before-count
-                   (t2/count :model/AiUsageLog :user_id user-id
-                             :source "user-intent-classification")))))))))
+                   (t2/count :model/AiUsageLog 'user_id user-id
+                             'source "user-intent-classification")))))))))
 
 (deftest log-ai-usage!-defaults-user-id-from-binding-test
   (mt/with-premium-features #{:ai-controls}
@@ -88,11 +88,11 @@
             :prompt-tokens     1
             :completion-tokens 1})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "document_generate_content"
+            (let [row (t2/select-one :model/AiUsageLog 'source "document_generate_content"
                                      {:order-by [[:id :desc]]})]
               (is (= user-id (:user_id row))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "document_generate_content"))))))))
+              (t2/delete! :model/AiUsageLog 'source "document_generate_content"))))))))
 
 (deftest log-ai-usage!-converts-profile-id-keyword-test
   (mt/with-premium-features #{:ai-controls}
@@ -105,11 +105,11 @@
           :completion-tokens 1
           :profile-id        :internal})
         (try
-          (let [row (t2/select-one :model/AiUsageLog :source "example_question_generation_batch"
+          (let [row (t2/select-one :model/AiUsageLog 'source "example_question_generation_batch"
                                    {:order-by [[:id :desc]]})]
             (is (= "internal" (:profile_id row))))
           (finally
-            (t2/delete! :model/AiUsageLog :source "example_question_generation_batch")))))))
+            (t2/delete! :model/AiUsageLog 'source "example_question_generation_batch")))))))
 
 (deftest log-ai-usage!-explicit-user-id-test
   (mt/with-premium-features #{:ai-controls}
@@ -123,11 +123,11 @@
             :completion-tokens 1
             :user-id           crowberto-id})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "slack"
+            (let [row (t2/select-one :model/AiUsageLog 'source "slack"
                                      {:order-by [[:id :desc]]})]
               (is (= crowberto-id (:user_id row))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "slack"))))))))
+              (t2/delete! :model/AiUsageLog 'source "slack"))))))))
 
 (deftest log-ai-usage!-ai-proxied-defaults-to-nil-test
   (mt/with-premium-features #{:ai-controls}
@@ -139,11 +139,11 @@
           :prompt-tokens     1
           :completion-tokens 1})
         (try
-          (let [row (t2/select-one :model/AiUsageLog :source "oss-sql-gen"
+          (let [row (t2/select-one :model/AiUsageLog 'source "oss-sql-gen"
                                    {:order-by [[:id :desc]]})]
             (is (nil? (:ai_proxied row))))
           (finally
-            (t2/delete! :model/AiUsageLog :source "oss-sql-gen")))))))
+            (t2/delete! :model/AiUsageLog 'source "oss-sql-gen")))))))
 
 (deftest log-ai-usage!-throws-on-unknown-source-test
   (mt/with-premium-features #{:ai-controls}
@@ -188,7 +188,7 @@
             :cache-creation-tokens 400
             :cache-read-tokens     1600})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "metabot_agent" :model model
+            (let [row (t2/select-one :model/AiUsageLog 'source "metabot_agent" 'model model
                                      {:order-by [[:id :desc]]})]
               (is (= 2100 (:prompt_tokens row)))
               (is (= 400  (:cache_creation_tokens row)))
@@ -196,7 +196,7 @@
               (testing "total_tokens = prompt + completion (prompt already includes cache breakdown)"
                 (is (= 2150 (:total_tokens row)))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
+              (t2/delete! :model/AiUsageLog 'source "metabot_agent" 'model model))))))))
 
 (deftest log-ai-usage!-cache-tokens-default-to-zero-test
   (mt/with-premium-features #{:ai-controls}
@@ -209,12 +209,12 @@
             :prompt-tokens     1
             :completion-tokens 1})
           (try
-            (let [row (t2/select-one :model/AiUsageLog :source "metabot_agent" :model model
+            (let [row (t2/select-one :model/AiUsageLog 'source "metabot_agent" 'model model
                                      {:order-by [[:id :desc]]})]
               (is (= 0 (:cache_creation_tokens row)))
               (is (= 0 (:cache_read_tokens row))))
             (finally
-              (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
+              (t2/delete! :model/AiUsageLog 'source "metabot_agent" 'model model))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -323,7 +323,7 @@
     (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
       (testing "User group limit: user over their group limit returns message"
         (let [user-id   (mt/user->id :rasta)
-              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id user-id)
               group-id  (first group-ids)]
           (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 50}]
             (insert-usage! user-id 100000000)
@@ -336,7 +336,7 @@
 (deftest user-group-limit-takes-max-across-groups-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+    (t2/delete! :model/MetabotInstanceLimit 'tenant_id nil)
     (testing "User group limit: takes the max limit across all groups the user is in"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Low limit group"}
@@ -356,7 +356,7 @@
 (deftest user-group-null-limit-means-unlimited-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+    (t2/delete! :model/MetabotInstanceLimit 'tenant_id nil)
     (testing "User group limit: if any of the user's groups has no limit configured, user is unlimited"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Limited group"}
@@ -441,7 +441,7 @@
     (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
       (testing "Instance limit blocks even when user group limit would allow"
         (let [user-id   (mt/user->id :rasta)
-              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id user-id)
               group-id  (first group-ids)]
           (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}
                          :model/MetabotGroupLimit _ {:group_id group-id :max_usage 999999}]

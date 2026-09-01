@@ -45,7 +45,7 @@
                                     :done?   true?
                                     :timeout-ms 20000
                                     :interval-ms 1000})))
-                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
+                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table 'name (:name target)))
                                     :done?   true?
                                     :timeout-ms 10000
                                     :interval-ms 1000})))))))))))

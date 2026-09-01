@@ -316,7 +316,7 @@
 (deftest ^:parallel user-list-include-inactive-test-2
   (testing "GET /api/user?include_deactivated=true"
     (testing "Pagination gets the total users _in query_, not including the Internal User"
-      (is (=? {:total (t2/count :model/User :type "personal")}
+      (is (=? {:total (t2/count :model/User 'type "personal")}
               (mt/user-http-request :crowberto :get 200 "user" :status "all"))))))
 
 (deftest ^:parallel user-list-include-inactive-test-3
@@ -409,7 +409,7 @@
 (deftest ^:parallel user-list-limit-test-2
   (testing "GET /api/user?limit=1&offset=1"
     (testing "Limit and offset pagination get the total"
-      (is (= (t2/count :model/User :is_active true :type "personal")
+      (is (= (t2/count :model/User 'is_active true 'type "personal")
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))))
 
 (deftest ^:parallel user-list-limit-test-3
@@ -745,7 +745,7 @@
         (testing "nothing was updated"
           (is (=? {:login_attributes nil
                    :first_name       (comp not #{"Updated"})}
-                  (t2/select-one [:model/User :login_attributes :first_name] :id api-key-user-id))))))))
+                  (t2/select-one [:model/User 'login_attributes 'first_name] 'id api-key-user-id))))))))
 
 (deftest combine-function-test
   (testing "combine function merges attributes correctly"
@@ -838,7 +838,7 @@
   (let [email (mt/random-email)]
     (try
       (f email)
-      (finally (t2/delete! :model/User :email email)))))
+      (finally (t2/delete! :model/User 'email email)))))
 
 (defmacro ^:private with-temp-user-email! [[email-binding] & body]
   `(do-with-temp-user-email! (fn [~email-binding] ~@body)))
@@ -884,7 +884,7 @@
                                    :user_group_memberships (group-or-ids->user-group-memberships
                                                             [(perms-group/all-users) group-1 group-2])})
             (is (= #{"All Users" "Group 1" "Group 2"}
-                   (user-test/user-group-names (t2/select-one :model/User :email email))))))))))
+                   (user-test/user-group-names (t2/select-one :model/User 'email email))))))))))
 
 (deftest create-user-set-groups-test-2
   (testing "POST /api/user"
@@ -899,13 +899,13 @@
                                    :last_name "Era"
                                    :email email
                                    :user_group_memberships (group-or-ids->user-group-memberships [group])})
-            (is (not (t2/exists? :model/User :%lower.email (u/lower-case-en email))))))))))
+            (is (not (t2/exists? :model/User '%lower.email (u/lower-case-en email))))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
-  {:is-superuser? (t2/select-one-fn :is_superuser :model/User :%lower.email (u/lower-case-en email))
+  {:is-superuser? (t2/select-one-fn :is_superuser :model/User '%lower.email (u/lower-case-en email))
    :pgm-exists? (t2/exists? :model/PermissionsGroupMembership
-                            :user_id (t2/select-one-pk :model/User :%lower.email (u/lower-case-en email))
-                            :group_id (u/the-id (perms-group/admin)))})
+                            'user_id (t2/select-one-pk :model/User '%lower.email (u/lower-case-en email))
+                            'group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
   (testing "POST /api/user"
@@ -968,7 +968,7 @@
                                                    :login_attributes {:test "value"}}))
                            (finally
                              ;; clean up after ourselves
-                             (t2/delete! :model/User :email email)))))))))))
+                             (t2/delete! :model/User 'email email)))))))))))
 
 (deftest create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
@@ -988,7 +988,7 @@
   ::personal-collection-name
   "Hydrate `::personal-collection-name`. This is just for tests."
   [user]
-  (t2/select-one-fn :name :model/Collection :id (:personal_collection_id user)))
+  (t2/select-one-fn :name :model/Collection 'id (:personal_collection_id user)))
 
 (deftest admin-update-other-user-test
   (testing "PUT /api/user/:id"
@@ -999,7 +999,7 @@
                                                   :email "cam.era@metabase.com"
                                                   :is_superuser true}
                        :model/Collection _ {}]
-          (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
+          (letfn [(user [] (into {} (-> (t2/select-one [:model/User 'id 'first_name 'last_name 'is_superuser 'email], 'id user-id)
                                         (t2/hydrate :personal_collection_id ::personal-collection-name)
                                         (dissoc :id :personal_collection_id :common_name))))]
             (testing "before API call"
@@ -1083,7 +1083,7 @@
                     "float-attr" "3.14"
                     "bool-true" "true"
                     "bool-false" "false"}
-                   (t2/select-one-fn :login_attributes :model/User :id user-id)))))))))
+                   (t2/select-one-fn :login_attributes :model/User 'id user-id)))))))))
 
 (deftest create-user-with-different-attribute-types-test
   (testing "POST /api/user"
@@ -1110,7 +1110,7 @@
                     "decimal-val" "45.67"
                     "boolean-true" "true"
                     "boolean-false" "false"}
-                   (t2/select-one-fn :login_attributes :model/User :id (:id response))))))))))
+                   (t2/select-one-fn :login_attributes :model/User 'id (:id response))))))))))
 
 (deftest login-attributes-cannot-start-with-at-symbol
   (testing "PUT /api/user/:id"
@@ -1261,7 +1261,7 @@
   (testing "PUT /api/user/:id"
     (testing "Test that a normal user cannot change the :is_superuser flag for themselves"
       (letfn [(fetch-rasta []
-                (t2/select-one [:model/User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
+                (t2/select-one [:model/User 'first_name 'last_name 'is_superuser 'email], 'id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                                 (assoc (fetch-rasta) :is_superuser true))
@@ -1272,8 +1272,8 @@
   "Check if a user is a member of the Data Analysts group."
   [user-id]
   (t2/exists? :model/PermissionsGroupMembership
-              :user_id user-id
-              :group_id (:id (perms-group/data-analyst))))
+              'user_id user-id
+              'group_id (:id (perms-group/data-analyst))))
 
 (deftest update-data-analyst-status-test
   (testing "PUT /api/user/:id"
@@ -1421,7 +1421,7 @@
                  (user-test/user-group-names (mt/user->id :rasta)))))
         (testing "first name"
           (is (= "Rasta"
-                 (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta)))))))))
+                 (t2/select-one-fn :first_name :model/User 'id (mt/user->id :rasta)))))))))
 
 (deftest update-groups-test-3
   (testing "PUT /api/user/:id"
@@ -1438,7 +1438,7 @@
                    (user-test/user-group-names (mt/user->id :rasta)))))
           (testing "first name"
             (is (= "Reggae"
-                   (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta))))))))))
+                   (t2/select-one-fn :first_name :model/User 'id (mt/user->id :rasta))))))))))
 
 (deftest update-groups-test-4
   (testing "PUT /api/user/:id"
@@ -1464,7 +1464,7 @@
                                  :first_name "Cool New First Name"})
           (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
                  (assoc (superuser-and-admin-pgm-info email)
-                        :first-name (t2/select-one-fn :first_name :model/User :id id)))))))))
+                        :first-name (t2/select-one-fn :first_name :model/User 'id id)))))))))
 
 (deftest update-groups-test-6
   (testing "PUT /api/user/:id"
@@ -1502,10 +1502,10 @@
 (deftest ^:parallel update-groups-test-9
   (testing "Double-check that the tests above cleaned up after themselves"
     (is (= "Rasta"
-           (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta))))
+           (t2/select-one-fn :first_name :model/User 'id (mt/user->id :rasta))))
     (is (= {:name "Rasta Toucan's Personal Collection"
             :slug "rasta_toucan_s_personal_collection"}
-           (t2/select-one [:model/Collection :name :slug] :personal_owner_id (mt/user->id :rasta))))))
+           (t2/select-one [:model/Collection 'name 'slug] 'personal_owner_id (mt/user->id :rasta))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
@@ -1516,7 +1516,7 @@
                            :put expected-status-code (str "user/" user-id)
                            {:locale new-locale}))
               (locale-from-db []
-                (t2/select-one-fn :locale :model/User :id user-id))]
+                (t2/select-one-fn :locale :model/User 'id user-id))]
         (let [url (str "user/" user-id)]
           (testing "normal Users should be able to update their own locale"
             (doseq [[message locale] {"to a language-country locale (with dash)" "es-MX"
@@ -1572,7 +1572,7 @@
                                :last_name "whatever"
                                :email (:email user)})
         (is (true?
-             (t2/select-one-fn :is_active :model/User :id (:id user)))
+             (t2/select-one-fn :is_active :model/User 'id (:id user)))
             "the user should now be active")))
     (testing "error conditions"
       (testing "Attempting to reactivate a non-existant user should return a 404"
@@ -1591,7 +1591,7 @@
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
-                   (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
+                   (mt/derecordize (t2/select-one [:model/User 'is_active 'sso_source] 'id (u/the-id user)))))))))))
 
 (deftest reactivate-second-to-last-admin-test
   (mt/with-single-admin-user! [{id :id}]
@@ -1610,7 +1610,7 @@
     (auth-identity/set-password! (:id user) "def")
     (let [creds {:username (:email user), :password "def"}
           password-hash (fn [] (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
-                                                                 :user_id (:id user), :provider "password")))
+                                                                 'user_id (:id user), 'provider "password")))
           original-hash (password-hash)]
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
@@ -1676,7 +1676,7 @@
         (testing "the new password authenticates and the stale core_user columns are left untouched"
           (is (some? (mt/client :post 200 "session" {:username (:email user), :password "abc123!!DEF"})))
           (is (= {:password "not-a-bcrypt-hash", :password_salt "stale"}
-                 (into {} (t2/select-one [:model/User :password :password_salt] :id (:id user))))))))))
+                 (into {} (t2/select-one [:model/User 'password 'password_salt] 'id (:id user))))))))))
 
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
@@ -1703,11 +1703,11 @@
                      {:device_id "test-device" :embedded false :token_exchange false
                       :device_description "Test" :ip_address "127.0.0.1"}
                      :provider/password)]
-        (is (some? (t2/select-one :model/Session :id (:id session)))
+        (is (some? (t2/select-one :model/Session 'id (:id session)))
             "sanity check: the session exists before the password change")
         (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
                               {:password "abc123!!DEF", :old_password "def"})
-        (is (nil? (t2/select-one :model/Session :id (:id session)))
+        (is (nil? (t2/select-one :model/Session 'id (:id session)))
             "the user's pre-existing session should be deleted after the password change")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1721,7 +1721,7 @@
              (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {})))
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
-               (mt/derecordize (t2/select-one [:model/User :is_active] :id (:id user)))))))
+               (mt/derecordize (t2/select-one [:model/User 'is_active] 'id (:id user)))))))
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user! [{id :id}]
         (is (= "You cannot remove the last member of the 'Admin' group!"
@@ -1765,12 +1765,12 @@
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"
-              (is (true? (t2/select-one-fn property :model/User, :id id))))
+              (is (true? (t2/select-one-fn property :model/User, 'id id))))
             (testing "response"
               (is (= {:success true}
                      (mt/client creds :put 200 (format "user/%d/modal/%s" id endpoint)))))
             (testing (str endpoint "?")
-              (is (false? (t2/select-one-fn property :model/User, :id id)))))))
+              (is (false? (t2/select-one-fn property :model/User, 'id id)))))))
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403

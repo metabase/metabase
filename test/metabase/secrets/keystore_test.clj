@@ -70,9 +70,9 @@
             (is (contains? details :keystore-id) "keystore-id was added to details")
             (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
             (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
-            (let [{ks-pw-bytes :value} (t2/select-one :model/Secret :id (:keystore-password-id details))
+            (let [{ks-pw-bytes :value} (t2/select-one :model/Secret 'id (:keystore-password-id details))
                   ks-pw-str            (String. ^bytes ks-pw-bytes StandardCharsets/UTF_8)
-                  {:keys [value]}      (t2/select-one :model/Secret :id (:keystore-id details))
+                  {:keys [value]}      (t2/select-one :model/Secret 'id (:keystore-id details))
                   ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
               (is (= (seq ks-bytes) (seq value)))
               (assert-entries ks-pw-str ks {key-alias key-value}))))))))

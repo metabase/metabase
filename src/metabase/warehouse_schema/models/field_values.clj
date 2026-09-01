@@ -146,13 +146,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)
-              :type     [:in advanced-field-values-types]))
+  (t2/delete! :model/FieldValues 'field_id (u/the-id field-or-id)
+              'type     ['in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! :model/FieldValues 'field_id (u/the-id field-or-id)))
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
@@ -246,7 +246,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values :preview_display] :id field-id)
+      (recur (or (t2/select-one ['Field 'base_type 'visibility_type 'has_field_values 'preview_display] 'id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -415,7 +415,7 @@
                                      (mapcat rest)
                                      (map :id))]
     (when (seq to-delete-fv-ids)
-      (t2/delete! :model/FieldValues :id [:in to-delete-fv-ids]))
+      (t2/delete! :model/FieldValues 'id ['in to-delete-fv-ids]))
     (update-vals fvs-grouped-by-field-id first)))
 
 (defn- get-latest-field-values
@@ -423,7 +423,7 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (-> (t2/select :model/FieldValues :field_id field-id :type type :hash_key hash)
+  (-> (t2/select :model/FieldValues 'field_id field-id 'type type 'hash_key hash)
       delete-duplicates-and-return-latest!
       (get field-id)))
 
@@ -447,7 +447,7 @@
   (delete-duplicates-and-return-latest!
    (when (seq field-ids)
      (mapcat (fn [batch]
-               (t2/select :model/FieldValues :field_id [:in batch] :type :full :hash_key nil))
+               (t2/select :model/FieldValues 'field_id ['in batch] 'type :full 'hash_key nil))
              (partition-all *fv-select-batch-size* field-ids)))))
 
 (defn persist-field-values!

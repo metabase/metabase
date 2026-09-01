@@ -118,8 +118,8 @@
   (testing "requested Field columns are merged onto each dimension"
     (let [price-id (mt/id :venues :price)
           name-id  (mt/id :venues :name)
-          expected (t2/select-pk->fn :description [:model/Field :id :description]
-                                     :id [:in [price-id name-id]])
+          expected (t2/select-pk->fn :description [:model/Field 'id 'description]
+                                     'id ['in [price-id name-id]])
           [m]      (metrics.dimension/annotate-dimensions-with-field-data
                     [:description]
                     [(metric ["d1" price-id] ["d2" name-id])])]

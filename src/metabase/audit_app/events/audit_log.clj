@@ -37,7 +37,7 @@
   (let [cards   (when (seq dashcards)
                   (t2/select-fn->fn :id #(select-keys % [:name :description])
                                     :model/Card
-                                    :id [:in (map :card_id dashcards)]))
+                                    'id ['in (map :card_id dashcards)]))
         details (-> (select-keys object [:description :name :id])
                     (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                         (-> (cards card_id)
@@ -212,7 +212,7 @@
 
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
-  (when-not (t2/exists? :model/AuditLog :topic "install")
+  (when-not (t2/exists? :model/AuditLog 'topic "install")
     (audit-log/record-event! topic {})))
 
 (events/derive! ::database-event ::event)

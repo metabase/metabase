@@ -106,7 +106,7 @@
 (defrecord DbClientStore []
   proto/ClientStore
   (get-client [_ client-id]
-    (-> (t2/select-one :model/OAuthClient :client_id client-id)
+    (-> (t2/select-one :model/OAuthClient 'client_id client-id)
         db-row->client-config))
 
   (register-client [_ client-config]
@@ -130,7 +130,7 @@
       config))
 
   (update-client [_ client-id updated-config]
-    (let [existing (t2/select-one :model/OAuthClient :client_id client-id)]
+    (let [existing (t2/select-one :model/OAuthClient 'client_id client-id)]
       (when existing
         (let [existing-config (db-row->client-config existing)
               merged          (-> (merge existing-config updated-config)
@@ -158,17 +158,17 @@
     true)
 
   (get-authorization-code [_ code]
-    (-> (t2/select-one :model/OAuthAuthorizationCode :code code)
+    (-> (t2/select-one :model/OAuthAuthorizationCode 'code code)
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (t2/delete! :model/OAuthAuthorizationCode :code code)
+    (t2/delete! :model/OAuthAuthorizationCode 'code code)
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
-      (when-let [row (t2/select-one :model/OAuthAuthorizationCode :code code {:for :update})]
-        (t2/delete! :model/OAuthAuthorizationCode :code code)
+      (when-let [row (t2/select-one :model/OAuthAuthorizationCode 'code code {:for :update})]
+        (t2/delete! :model/OAuthAuthorizationCode 'code code)
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
@@ -186,7 +186,7 @@
     true)
 
   (get-access-token [_ token]
-    (-> (t2/select-one :model/OAuthAccessToken :token token :revoked_at nil)
+    (-> (t2/select-one :model/OAuthAccessToken 'token token 'revoked_at nil)
         db-row->access-token))
 
   (save-refresh-token [_ token user-id client-id scope expiry resource]
@@ -200,12 +200,12 @@
     true)
 
   (get-refresh-token [_ token]
-    (-> (t2/select-one :model/OAuthRefreshToken :token token :revoked_at nil)
+    (-> (t2/select-one :model/OAuthRefreshToken 'token token 'revoked_at nil)
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now})
-    (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now})
+    (t2/update! :model/OAuthAccessToken {'token token} {:revoked_at :%now})
+    (t2/update! :model/OAuthRefreshToken {'token token} {:revoked_at :%now})
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

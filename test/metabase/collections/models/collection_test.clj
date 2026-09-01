@@ -64,8 +64,8 @@
       (mt/with-temp [:model/User {id :id}]
         (reset! user-id id)
         (reset! collection-id (@#'collection/user->personal-collection-id id))
-        (is (t2/exists? :model/Collection :id @collection-id)))
-      (is (not (t2/exists? :model/Collection :id @collection-id))
+        (is (t2/exists? :model/Collection 'id @collection-id)))
+      (is (not (t2/exists? :model/Collection 'id @collection-id))
           "with-temp removed the Personal Collection")
       (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
                                 meta :clojure.core.memoize/cache)
@@ -191,14 +191,14 @@
     (mt/with-temp [:model/Collection collection {}
                    :model/Card       card       {:collection_id (u/the-id collection)}]
       (archive-collection! collection)
-      (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id card))))))
+      (is (true? (t2/select-one-fn :archived :model/Card 'id (u/the-id card))))))
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card       card       {:collection_id (u/the-id collection)}]
       (archive-collection! collection)
-      (is (t2/select-one-fn :archived :model/Card :id (u/the-id card)))
-      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
-      (is (false? (t2/select-one-fn :archived :model/Card :id (u/the-id card)))))))
+      (is (t2/select-one-fn :archived :model/Card 'id (u/the-id card)))
+      (unarchive-collection! (t2/select-one :model/Collection 'id (u/the-id collection)))
+      (is (false? (t2/select-one-fn :archived :model/Card 'id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -252,7 +252,7 @@
       (do-with-current-user-perms-for-collections*! collections-or-ids (next collections-or-ids-to-discard) body-fn))
     (let [read-paths (map perms/collection-read-path collections-or-ids)
           write-paths (map perms/collection-readwrite-path collections-or-ids)]
-      (t2/delete! :model/Permissions :object [:in (concat read-paths write-paths)])
+      (t2/delete! :model/Permissions 'object ['in (concat read-paths write-paths)])
       (t2/insert! :model/Permissions (map (fn [c-or-id]
                                             {:group_id (u/the-id (perms/all-users-group))
                                              :object (perms/collection-read-path c-or-id)})
@@ -281,7 +281,7 @@
   (when (seq path)
     (let [ids      (collection/location-path->ids path)
           id->name (when (seq ids)
-                     (t2/select-fn->fn :id :name :model/Collection :id [:in ids]))]
+                     (t2/select-fn->fn :id :name :model/Collection 'id ['in ids]))]
       ;; now loop through each ID and replace the ID part like (ex. /10/) with a name (ex. /A/)
       (loop [path path, [id & more] ids]
         (if-not id
@@ -377,7 +377,7 @@
     (let [->names (fn [id-set]
                     (let [root (when (contains? id-set "root") #{"root"})
                           others (when-let [non-root-ids (seq (disj id-set "root"))]
-                                   (t2/select-fn-set :name :model/Collection :id [:in non-root-ids]))]
+                                   (t2/select-fn-set :name :model/Collection 'id ['in non-root-ids]))]
                       (set/union root others)))
           visible-names (fn []
                           (->names
@@ -472,7 +472,7 @@
        (let [~collection-binding (first (t2/insert-returning-instances! :model/Collection :name name#, :location ~location))]
          ~@body)
        (finally
-         (t2/delete! :model/Collection :name name#)))))
+         (t2/delete! :model/Collection 'name name#)))))
 
 (defn- nonexistent-collection-id []
   (inc (or (:max (t2/select-one [:model/Collection [:%max.id :max]]))
@@ -522,9 +522,9 @@
     ;;           +-> F -> G
     (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (is (= 1
-             (t2/delete! :model/Collection :id (u/the-id a))))
+             (t2/delete! :model/Collection 'id (u/the-id a))))
       (is (= 0
-             (t2/count :model/Collection :id [:in (map u/the-id [a b c d e f g])])))))
+             (t2/count :model/Collection 'id ['in (map u/the-id [a b c d e f g])])))))
   (testing "parents & siblings should be untouched"
     ;; ...put
     ;;
@@ -534,9 +534,9 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy! [{:keys [a b c d e f g]}]
-      (t2/delete! :model/Collection :id (u/the-id c))
+      (t2/delete! :model/Collection 'id (u/the-id c))
       (is (= 2
-             (t2/count :model/Collection :id [:in (map u/the-id [a b c d e f g])]))))))
+             (t2/count :model/Collection 'id ['in (map u/the-id [a b c d e f g])]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Ancestors & Effective Ancestors                               |
@@ -841,7 +841,7 @@
   (testing "Archived descendants should be excluded from permission requirements"
     (with-collection-hierarchy! [{:keys [a], :as collections}]
       ;; Archive C and all its descendants (D, E, F, G)
-      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+      (t2/update! :model/Collection {'id ['in (map u/the-id [(:c collections) (:d collections) (:e collections)
                                                              (:f collections) (:g collections)])]}
                   {:archived true})
       ;; Now archiving A should only require perms for A and B (not C, D, E, F, G which are archived)
@@ -948,7 +948,7 @@
   (testing "Archived descendants should be excluded from permission requirements"
     (with-collection-hierarchy! [{:keys [a b], :as collections}]
       ;; Archive C and all its descendants (D, E, F, G)
-      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+      (t2/update! :model/Collection {'id ['in (map u/the-id [(:c collections) (:d collections) (:e collections)
                                                              (:f collections) (:g collections)])]}
                   {:archived true})
       ;; Create a destination collection outside the hierarchy
@@ -1053,7 +1053,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy! [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (t2/select-one :model/Collection 'id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1102,7 +1102,7 @@
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy! [{:keys [e], :as collections}]
       (archive-collection! e)
-      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
+      (unarchive-collection! (t2/select-one :model/Collection 'id (u/the-id e)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1115,7 +1115,7 @@
     ;;                                        +-> F -> G
     (with-collection-hierarchy! [{:keys [c], :as collections}]
       (archive-collection! c)
-      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
+      (unarchive-collection! (t2/select-one :model/Collection 'id (u/the-id c)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1130,7 +1130,7 @@
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! e)
           (is (true?
-               (t2/select-one-fn :archived model :id (u/the-id object)))))))
+               (t2/select-one-fn :archived model 'id (u/the-id object)))))))
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model :model/NativeQuerySnippet)
@@ -1138,7 +1138,7 @@
         (mt/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! c)
           (is (true?
-               (t2/select-one-fn :archived model :id (u/the-id object)))))))))
+               (t2/select-one-fn :archived model 'id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
@@ -1148,18 +1148,18 @@
                                                                    {:namespace "snippets"})]
         (archive-collection! e)
         (mt/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
+          (unarchive-collection! (t2/select-one :model/Collection 'id (u/the-id e)))
           (is (= false
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model 'id (u/the-id object)))))))
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model :model/NativeQuerySnippet)
                                                                      {:namespace "snippets"})]
         (archive-collection! c)
         (mt/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
+          (unarchive-collection! (t2/select-one :model/Collection 'id (u/the-id c)))
           (is (= false
-                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model 'id (u/the-id object)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Permissions Inheritance Upon Creation!                                     |
@@ -1252,13 +1252,13 @@
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp [:model/Collection child {:name "{child}", :location (lucky-collection-children-location)}]
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
+        (is (not (t2/exists? :model/Permissions 'object ['like (format "/collection/%d/%%" (u/the-id child))])))))
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp [:model/Collection child      {:location (lucky-collection-children-location)}
                      :model/Collection grandchild {:location (collection/children-location child)}]
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
+        (is (not (t2/exists? :model/Permissions 'object ['like (format "/collection/%d/%%" (u/the-id child))])))
+        (is (not (t2/exists? :model/Permissions 'object ['like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -1316,7 +1316,7 @@
                                   (-> (t2/select-one :model/Collection id-or-ids)
                                       (t2/hydrate :is_personal)
                                       :is_personal)
-                                  (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
+                                  (as-> (t2/select :model/Collection 'id ['in id-or-ids] {:order-by [:id]}) collections
                                     (t2/hydrate collections :is_personal)
                                     (map :is_personal collections))))]
         (testing "simple hydration and batched hydration should return correctly"
@@ -1555,14 +1555,14 @@
                    :model/Card       {card-id :id}      {:collection_id coll-id}
                    :model/Dashboard  {dashboard-id :id} {:collection_id coll-id}
                    :model/Pulse      {pulse-id :id}     {:collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
-      (is (not (t2/exists? :model/Card :id card-id)))
-      (is (not (t2/exists? :model/Dashboard :id dashboard-id)))
-      (is (not (t2/exists? :model/Pulse :id pulse-id))))
+      (t2/delete! :model/Collection 'id coll-id)
+      (is (not (t2/exists? :model/Card 'id card-id)))
+      (is (not (t2/exists? :model/Dashboard 'id dashboard-id)))
+      (is (not (t2/exists? :model/Pulse 'id pulse-id))))
     (mt/with-temp [:model/Collection         {coll-id :id}    {:namespace "snippets"}
                    :model/NativeQuerySnippet {snippet-id :id} {:collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
-      (is (not (t2/exists? :model/NativeQuerySnippet :id snippet-id))
+      (t2/delete! :model/Collection 'id coll-id)
+      (is (not (t2/exists? :model/NativeQuerySnippet 'id snippet-id))
           "Snippet"))))
 
 (deftest collections->tree-test
@@ -1928,7 +1928,7 @@
                    :model/NativeQuerySnippet _ {:name "Snippet in Regular"
                                                 :collection_id snippet-regular-coll-id}
                    :model/Card {card-in-remote-synced-id :id} {:name "Model Card in Library"
-                                                               :collection_id (t2/select-one-pk :model/Collection :entity_id "remotesyncremosyncremo")
+                                                               :collection_id (t2/select-one-pk :model/Collection 'entity_id "remotesyncremosyncremo")
                                                                :type :model}
                    :model/Card {card-in-regular-id :id} {:name "Model Card in Regular"
                                                          :collection_id regular-coll-id
@@ -2067,14 +2067,14 @@
       ;; Move collection to parent with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id) true)
       ;; Check that the moved collection became remote-synced type
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [moved-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
             "Moved collection should have remote-synced type"))
       ;; Check that child collections also became remote-synced type
-      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+      (let [moved-child (t2/select-one :model/Collection 'id child-id)]
         (is (true? (:is_remote_synced moved-child))
             "Child collection should have remote-synced type"))
-      (let [moved-grandchild (t2/select-one :model/Collection :id grandchild-id)]
+      (let [moved-grandchild (t2/select-one :model/Collection 'id grandchild-id)]
         (is (true? (:is_remote_synced moved-grandchild))
             "Grandchild collection should have remote-synced type")))))
 
@@ -2090,10 +2090,10 @@
       ;; Move collection to parent with into-remote-synced? false
       (collection/move-collection! coll (format "/%d/" parent-id) false)
       ;; Check that collection types remain nil
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [moved-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Moved collection should not have remote-synced type"))
-      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+      (let [moved-child (t2/select-one :model/Collection 'id child-id)]
         (is (false? (:is_remote_synced moved-child))
             "Child collection should not have remote-synced type")))))
 
@@ -2109,10 +2109,10 @@
       ;; Move remote-synced collection with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id))
       ;; Check that collections remain remote-synced type
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [moved-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Library collection should lose remote-synced type"))
-      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+      (let [moved-child (t2/select-one :model/Collection 'id child-id)]
         (is (false? (:is_remote_synced moved-child))
             "Child of remote-synced collection lose remote-synced type")))))
 
@@ -2132,7 +2132,7 @@
       ;; This should succeed because the dependency (remote-synced-card) is in a remote-synced collection
       (collection/move-collection! coll (format "/%d/" parent-id) true)
       ;; Verify the collection was moved and became remote-synced type
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [moved-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
             "Collection should have remote-synced type")
         (is (= (format "/%d/" parent-id) (:location moved-coll))
@@ -2162,7 +2162,7 @@
         (is (contains? ex-data :non-remote-synced-models)
             "Exception should contain non-remote-synced models"))
       ;; Verify the transaction was rolled back - collection should not be moved or changed
-      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [unchanged-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after failed move")
         (is (= "/" (:location unchanged-coll))
@@ -2189,12 +2189,12 @@
                    (collection/move-collection! coll (format "/%d/" parent-id) true))
           "Should throw exception for non-remote-synced dependencies")
       ;; Verify the transaction was completely rolled back
-      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [unchanged-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after transaction rollback")
         (is (= "/" (:location unchanged-coll))
             "Collection location should remain unchanged after transaction rollback"))
-      (let [unchanged-child (t2/select-one :model/Collection :id child-id)]
+      (let [unchanged-child (t2/select-one :model/Collection 'id child-id)]
         (is (false? (:is_remote_synced unchanged-child))
             "Child collection type should remain unchanged after transaction rollback")
         (is (= (format "/%d/" coll-id) (:location unchanged-child))
@@ -2216,7 +2216,7 @@
       ;; This should succeed because we're not converting to remote-synced
       (collection/move-collection! coll (format "/%d/" parent-id))
       ;; Verify the collection was moved but did not become remote-synced type
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+      (let [moved-coll (t2/select-one :model/Collection 'id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Collection should not have remote-synced type")
         (is (= (format "/%d/" parent-id) (:location moved-coll))
@@ -2523,7 +2523,7 @@
                                               :archived true
                                               :database_id (mt/id)
                                               :dataset_query (mt/mbql-query venues)}]
-      (let [card-before-update (t2/select-one :model/Card :id card-id)]
+      (let [card-before-update (t2/select-one :model/Card 'id card-id)]
         ;; mirror the DB state after a restore has been applied within the update transaction
         (t2/update! :model/Card card-id {:archived false})
         (is (some? (collection/check-for-remote-sync-update card-before-update))
@@ -2540,7 +2540,7 @@
                                   :collection_id remote-synced-id
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (let [card-before-update (t2/select-one :model/Card :id base-card-id)]
+      (let [card-before-update (t2/select-one :model/Card 'id base-card-id)]
         ;; mirror the DB state after an archive has been applied within the update transaction
         (t2/update! :model/Card base-card-id {:archived true})
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -2682,7 +2682,7 @@
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
       (testing "Collection remains unchanged after failed move"
-        (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
+        (let [unchanged-coll (t2/select-one :model/Collection 'id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
               "Collection type should remain remote-synced collection after failed move")
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
@@ -2720,7 +2720,7 @@
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
       (testing "Collection remains unchanged after failed move"
-        (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
+        (let [unchanged-coll (t2/select-one :model/Collection 'id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
               "Collection type should remain remote-synced collection after failed move")
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
@@ -2742,7 +2742,7 @@
                                   :dataset_query (mt/native-query {:query "SELECT 1"})}]
       (testing "Successfully moves collection when no dependents exist"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id))
-        (let [moved-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
+        (let [moved-coll (t2/select-one :model/Collection 'id child-remote-synced-id)]
           (is (false? (:is_remote_synced moved-coll))
               "Collection type should be cleared when moved out of remote-synced collection")
           (is (= (format "/%d/" regular-parent-id) (:location moved-coll))
@@ -2770,7 +2770,7 @@
       (testing "allows moving a collection from one remote-synced collection to another"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
         (is (= (format "/%d/" remote-synced-parent2-id)
-               (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
+               (:location (t2/select-one :model/Collection 'id child-remote-synced-id))))))))
 
 (deftest move-collection!-from-remote-synced-to-remote-synced-allows-move-with-dependents-in-source-test
   (testing "move-collection! allows moving a collection between remote-synced roots even when dependents exist in source root"
@@ -2795,7 +2795,7 @@
       (testing "Allows moving collection from one remote-synced collection to another"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
         (is (= (format "/%d/" remote-synced-parent2-id)
-               (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
+               (:location (t2/select-one :model/Collection 'id child-remote-synced-id))))))))
 
 (deftest move-collection!-from-remote-synced-with-nested-dependents-prevents-move-test
   (testing "move-collection! prevents moving a collection from remote-synced collection when nested collections have dependents"
@@ -2829,12 +2829,12 @@
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
       (testing "Collection and nested collections remain unchanged after failed move"
-        (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
+        (let [unchanged-coll (t2/select-one :model/Collection 'id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
               "Collection type should remain remote-synced collection after failed move")
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
               "Collection location should remain unchanged after failed move"))
-        (let [unchanged-grandchild (t2/select-one :model/Collection :id grandchild-remote-synced-id)]
+        (let [unchanged-grandchild (t2/select-one :model/Collection 'id grandchild-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-grandchild))
               "Grandchild collection type should remain remote-synced collection after failed move")
           (is (= (format "/%d/%d/" remote-synced-parent-id child-remote-synced-id) (:location unchanged-grandchild))
@@ -2953,7 +2953,7 @@
                      :model/Collection sample-collection {:name "Sample Collection" :is_sample true}]
         (testing "regular collection is included"
           (is (some #(= (:id regular-collection) (:id %))
-                    (t2/select :model/Collection :id (:id regular-collection)))))
+                    (t2/select :model/Collection 'id (:id regular-collection)))))
         (testing "trash collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
@@ -3119,7 +3119,7 @@
             (is (= #{{"Card" dep-card-id}} (set (ex-data :remote-synced-models)))
                 "Exception should contain remote-synced dependents"))))
       (testing "Collection is NOT archived when exception is thrown"
-        (let [child-after (t2/select-one :model/Collection :id child-id)]
+        (let [child-after (t2/select-one :model/Collection 'id child-id)]
           (is (false? (:archived child-after))
               "Child should NOT be archived when check fails"))))))
 
@@ -3141,7 +3141,7 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! child-coll)))
       (testing "Child collection is archived"
-        (let [archived-child (t2/select-one :model/Collection :id child-id)]
+        (let [archived-child (t2/select-one :model/Collection 'id child-id)]
           (is (true? (:archived archived-child))
               "Child collection should be archived"))))))
 
@@ -3160,7 +3160,7 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! remote-synced-coll)))
       (testing "Collection is archived"
-        (let [archived-coll (t2/select-one :model/Collection :id remote-synced-id)]
+        (let [archived-coll (t2/select-one :model/Collection 'id remote-synced-id)]
           (is (true? (:archived archived-coll))
               "Collection should be archived")
           (is (true? (:archived_directly archived-coll))
@@ -3184,7 +3184,7 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! regular-child-coll)))
       (testing "Collection is archived"
-        (let [archived-coll (t2/select-one :model/Collection :id regular-child-id)]
+        (let [archived-coll (t2/select-one :model/Collection 'id regular-child-id)]
           (is (true? (:archived archived-coll))
               "Regular collection should be archived"))))))
 
@@ -3213,7 +3213,7 @@
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")))
       (testing "Collection is NOT archived when exception is thrown"
-        (let [child-after (t2/select-one :model/Collection :id child-id)]
+        (let [child-after (t2/select-one :model/Collection 'id child-id)]
           (is (false? (:archived child-after))
               "Child should NOT be archived when check fails"))))))
 
@@ -3236,7 +3236,7 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! child-coll)))
       (testing "Child collection is archived"
-        (let [archived-child (t2/select-one :model/Collection :id child-id)]
+        (let [archived-child (t2/select-one :model/Collection 'id child-id)]
           (is (true? (:archived archived-child))
               "Child should be archived"))))))
 
@@ -3281,7 +3281,7 @@
     (testing "Creating a Layer when one already exists throws an exception"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
-    (t2/delete! :model/Collection :type [:in [collection/library-collection-type
+    (t2/delete! :model/Collection 'type ['in [collection/library-collection-type
                                               collection/library-data-collection-type
                                               collection/library-metrics-collection-type]])))
 
@@ -3305,7 +3305,7 @@
 
 (deftest update-sets-remote-sync-test
   (mt/with-temp [:model/Collection {id :id} {}]
-    (t2/update! :model/Collection :id id {:type "remote-synced"})
+    (t2/update! :model/Collection 'id id {:type "remote-synced"})
     (let [collection (t2/select-one :model/Collection id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))

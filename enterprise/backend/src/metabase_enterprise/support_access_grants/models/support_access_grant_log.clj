@@ -24,7 +24,7 @@
   If the user exists but is deactivated, reactivate them.
   Always ensures the support user has superuser access."
   []
-  (if-let [user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
+  (if-let [user (t2/select-one :model/User 'email (sag.settings/support-access-grant-email))]
     (do
       (t2/update! :model/User (:id user) {:is_active true :is_superuser true})
       (assoc user :is_active true :is_superuser true))
@@ -39,8 +39,8 @@
   (let [user-ids   (keep :user_id grants)
         user-info  (when (seq user-ids)
                      (t2/select-pk->fn #(select-keys % [:first_name :email])
-                                       [:model/User :id :first_name :email]
-                                       :id [:in user-ids]))]
+                                       [:model/User 'id 'first_name 'email]
+                                       'id ['in user-ids]))]
     (for [grant grants]
       (let [user-info (get user-info (:user_id grant))]
         (assoc grant
@@ -52,7 +52,7 @@
   time-limited password can't be used again, and delete their sessions. Called both when a grant is explicitly
   revoked and when one simply runs out."
   [support-user-id ended-at]
-  (let [auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
+  (let [auth-identity-ids (t2/select-pks-vec :model/AuthIdentity 'user_id support-user-id)]
     (try
       (t2/update! :model/User support-user-id {:is_superuser false})
       (catch Exception e
@@ -60,12 +60,12 @@
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at ended-at}))
-    (t2/delete! :model/Session :user_id support-user-id)))
+      (t2/update! :model/AuthIdentity 'id ['in auth-identity-ids] {:expires_at ended-at}))
+    (t2/delete! :model/Session 'user_id support-user-id)))
 
 (t2/define-after-update :model/SupportAccessGrantLog
   [{revoked-at :revoked_at :as grant}]
   (u/prog1 grant
     (when revoked-at
-      (when-let [support-user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
+      (when-let [support-user (t2/select-one :model/User 'email (sag.settings/support-access-grant-email))]
         (revoke-support-user-access! (:id support-user) revoked-at)))))

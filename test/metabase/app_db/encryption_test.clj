@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- recipient-details []
-  (t2/select-fn-vec :details :notification_recipient :details [:!= nil]))
+  (t2/select-fn-vec :details :notification_recipient 'details ['!= nil]))
 
 (deftest encrypt-plaintext-columns!-test
   ;; Re-enacts how a boot of a pre-encryption build undoes the one-shot encryption backfills: its seeding reads the

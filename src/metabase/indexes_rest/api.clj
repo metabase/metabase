@@ -78,7 +78,7 @@
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (doto (api/check-404 (t2/select-one :model/TableIndex :id id))
+  (doto (api/check-404 (t2/select-one :model/TableIndex 'id id))
     (read-check-owner!)))
 
 (api.macros/defendpoint :post "/request" :- RequestIndex
@@ -126,7 +126,7 @@
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
       (t2/update! :model/TableIndex id {:structured structured})
-      (t2/select-one :model/TableIndex :id id))))
+      (t2/select-one :model/TableIndex 'id id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/request/:id"

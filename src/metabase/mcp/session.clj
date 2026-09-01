@@ -315,7 +315,7 @@
    (i.e. no ownership to violate), or if the existing row belongs to `user-id`."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
-        owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
+        owner      (t2/select-one-fn :user_id :core_session 'key_hashed key-hashed)]
     (or (nil? owner) (= owner user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
@@ -406,4 +406,4 @@
                :where       [:and
                              [:= :key_hashed key-hashed]
                              [:= :user_id user-id]]})
-    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))
+    (t2/delete! :model/McpQueryHandle 'mcp_session_id session-id)))

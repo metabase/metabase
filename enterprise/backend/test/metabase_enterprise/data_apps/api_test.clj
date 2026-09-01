@@ -110,7 +110,7 @@
           (is (= "[\"https://api.example.com\"]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
       (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
-        (t2/update! :model/DataApp :name "demo" {:allowed_hosts []})
+        (t2/update! :model/DataApp 'name "demo" {:allowed_hosts []})
         (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
@@ -142,7 +142,7 @@
                                    (app-files "ops"   {:name "Ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
       (is (=? {:synced 2} result))
       (is (= #{"sales" "ops"} (t2/select-fn-set :name :model/DataApp)))
-      (let [sales (t2/select-one :model/DataApp :name "sales")]
+      (let [sales (t2/select-one :model/DataApp 'name "sales")]
         (is (= "SALES-BUNDLE" (String. ^bytes (:bundle sales) "UTF-8")))
         (is (= "Sales" (:display_name sales)))
         (is (= "data_apps/sales/dist/index.js" (:bundle_path sales)))
@@ -157,11 +157,11 @@
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"
                                      :allowed_hosts ["https://api.example.com" "https://*.acme.com"]})))
       (is (= ["https://api.example.com" "https://*.acme.com"]
-             (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))
+             (:allowed_hosts (t2/select-one :model/DataApp 'name "sales")))))
     (testing "re-syncing without allowed_hosts clears them to an empty list"
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"})))
-      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
+      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp 'name "sales")))))))
 
 (deftest import-prunes-apps-absent-from-snapshot-test
   (mt/with-model-cleanup [:model/DataApp]
@@ -186,10 +186,10 @@
         (testing "a non-superuser cannot remove an app"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 "apps/demo")))
-          (is (t2/exists? :model/DataApp :name "demo")))
+          (is (t2/exists? :model/DataApp 'name "demo")))
         (testing "a superuser removes the app"
           (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
-          (is (not (t2/exists? :model/DataApp :name "demo"))))
+          (is (not (t2/exists? :model/DataApp 'name "demo"))))
         (testing "removing a non-existent app 404s"
           (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))
 
@@ -197,11 +197,11 @@
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
-    (t2/update! :model/DataApp :name "a" {:enabled false})
+    (t2/update! :model/DataApp 'name "a" {:enabled false})
     ;; a new bundle must not flip the admin's enabled toggle back on
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V2"})))
-    (let [a (t2/select-one :model/DataApp :name "a")]
+    (let [a (t2/select-one :model/DataApp 'name "a")]
       (is (false? (:enabled a)) "the disabled toggle is preserved")
       (is (= "V2" (String. ^bytes (:bundle a) "UTF-8")) "the bundle is still updated"))))
 
@@ -213,8 +213,8 @@
                         ;; "bad" declares a path that doesn't exist
                         {"data_apps/bad/data_app.yaml" (app-config {:name "Bad" :path "missing.js"})})))
       (is (= #{"good" "bad"} (t2/select-fn-set :name :model/DataApp)))
-      (let [good (t2/select-one :model/DataApp :name "good")
-            bad  (t2/select-one :model/DataApp :name "bad")]
+      (let [good (t2/select-one :model/DataApp 'name "good")
+            bad  (t2/select-one :model/DataApp 'name "bad")]
         (is (= "GOOD" (String. ^bytes (:bundle good) "UTF-8")))
         (is (nil? (:sync_error good)))
         (is (nil? (:bundle bad)))

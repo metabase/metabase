@@ -34,7 +34,7 @@
         ;; provision Sally by logging in once, then enroll her
         (let [_       (mt/client :post 200 "session" {:username sally-email
                                                       :password sally-directory-password})
-              user-id (t2/select-one-fn :id :model/User :email sally-email)
+              user-id (t2/select-one-fn :id :model/User 'email sally-email)
               secret  (totp/generate-secret)]
           (try
             (t2/insert! :model/AuthIdentity {:user_id     user-id
@@ -52,7 +52,7 @@
                                      {:challenge_token (:challenge_token resp)
                                       :code            (totp/generate-code secret)}))))))
             (finally
-              (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp"))))))))
+              (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "totp"))))))))
 
 (deftest ldap-enroll-rejects-blank-password-test
   ;; An empty (or whitespace) password sent to ldap/bind? is an *anonymous* bind, which succeeds on
@@ -65,7 +65,7 @@
       (ldap.test/with-ldap-server!
         (let [{session-key :id} (mt/client :post 200 "session" {:username sally-email
                                                                 :password sally-directory-password})
-              user-id           (t2/select-one-fn :id :model/User :email sally-email)]
+              user-id           (t2/select-one-fn :id :model/User 'email sally-email)]
           (testing "the helper rejects blank passwords rather than letting an anonymous bind pass"
             (is (false? (#'mfa.management/verify-user-password user-id "")))
             (is (false? (#'mfa.management/verify-user-password user-id "   ")))
@@ -84,7 +84,7 @@
       (ldap.test/with-ldap-server!
         (let [{session-key :id} (mt/client :post 200 "session" {:username sally-email
                                                                 :password sally-directory-password})
-              user-id           (t2/select-one-fn :id :model/User :email sally-email)
+              user-id           (t2/select-one-fn :id :model/User 'email sally-email)
               secret            (totp/generate-secret)]
           (try
             (t2/insert! :model/AuthIdentity {:user_id     user-id
@@ -102,7 +102,7 @@
                 (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
                 (is (nil? (enrollment/enrolled-method user-id)))))
             (finally
-              (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp"))))))))
+              (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "totp"))))))))
 
 (deftest ldap-only-user-enrolls-with-directory-password-test
   (mt/with-premium-features #{:multi-factor-auth}
@@ -110,7 +110,7 @@
       (ldap.test/with-ldap-server!
         (let [{session-key :id} (mt/client :post 200 "session" {:username sally-email
                                                                 :password sally-directory-password})
-              user-id           (t2/select-one-fn :id :model/User :email sally-email)]
+              user-id           (t2/select-one-fn :id :model/User 'email sally-email)]
           (try
             ;; provisioned users get a random local password they never know, so a successful
             ;; enroll with the directory password proves the LDAP-bind branch, not the local hash
@@ -123,4 +123,4 @@
                                   (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
                                              {:code (totp/generate-code secret)})))))))
             (finally
-              (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp"))))))))
+              (t2/delete! :model/AuthIdentity 'user_id user-id 'provider "totp"))))))))

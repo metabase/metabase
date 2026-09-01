@@ -77,7 +77,7 @@
       (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
         (mt/with-temp [:model/Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
-                 (t2/select-one-fn :schema :model/Table :id table-id))))))))
+                 (t2/select-one-fn :schema :model/Table 'id table-id))))))))
 
 (deftest set-new-table-permissions!-test
   (testing "New permissions are set appropriately for a new table, for all groups"
@@ -146,16 +146,16 @@
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/view-data :unrestricted)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/download-results :one-million-rows)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/manage-table-metadata :yes)
-    (is (true? (t2/exists? :model/DataPermissions :table_id table-id-1)))
+    (is (true? (t2/exists? :model/DataPermissions 'table_id table-id-1)))
     (t2/delete! :model/Table table-id-1)
     (testing "Table-level permissions are deleted when we delete the table"
-      (is (false? (t2/exists? :model/DataPermissions :table_id table-id-1))))))
+      (is (false? (t2/exists? :model/DataPermissions 'table_id table-id-1))))))
 
 ;; hydration tests
 (deftest field-values-hydration-test
   ;; Manually activate Field values since they are not created during sync (#53387)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :venues :price)))
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id (mt/id :venues :name)))
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
@@ -199,7 +199,7 @@
                      :model/Table            {table-3 :id}  {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg             {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (is (= #{table-1 table-2 table-3}
@@ -218,7 +218,7 @@
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg                {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -242,7 +242,7 @@
                      :model/Table            {table-2 :id} {:db_id db-id :name "Table2"}
                      :model/PermissionsGroup pg            {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -264,7 +264,7 @@
                      :model/Table            {table-2 :id} {:db_id db-id :name "Table2"}
                      :model/PermissionsGroup pg            {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -287,7 +287,7 @@
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg                {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -313,7 +313,7 @@
                      :model/Table            {table-legacy :id}  {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg                {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -341,7 +341,7 @@
                      :model/Table            {table-legacy :id}  {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg                {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
         (data-perms/set-table-permission! pg table-1 :perms/view-data :unrestricted)
@@ -370,7 +370,7 @@
                      :model/PermissionsGroup pg2               {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions :db_id db-id)
+        (t2/delete! :model/DataPermissions 'db_id db-id)
         ;; pg1 has legacy-no-self-service for table-legacy
         (data-perms/set-database-permission! pg1 db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg1 db-id :perms/create-queries :no)
@@ -501,16 +501,16 @@
              (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
         (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
-        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table 'id table-id))))
       (testing "can also change it to nil"
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
-        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
+        (is (nil? (t2/select-one-fn :data_source :model/Table 'id table-id))))))
   (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
     (testing "can set data_source to metabase-transform on an existing synced table"
       (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
         (binding [mi/*deserializing?* true]
           (is (some? (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
-        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
+        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table 'id table-id)))))
     (testing "reverse direction stays blocked even during deserialization"
       (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
         (binding [mi/*deserializing?* true]
@@ -522,11 +522,11 @@
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
     (mt/with-temp [:model/Table {table-id :id} {}]
-      (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))
+      (is (false? (t2/select-one-fn :is_published :model/Table 'id table-id)))))
   (testing "can create a table with is_published=true and collection_id"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-id :id} {:is_published true :collection_id coll-id}]
-      (let [table (t2/select-one :model/Table :id table-id)]
+      (let [table (t2/select-one :model/Table 'id table-id)]
         (is (true? (:is_published table)))
         (is (= coll-id (:collection_id table))))))
   (testing "collection_id FK constraint prevents referencing non-existent collection"
@@ -537,9 +537,9 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
                    :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
+      (t2/delete! :model/Collection 'id coll-id)
       (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
-                                              :id [:in [table-1-id table-2-id]]))))))
+                                              'id ['in [table-1-id table-2-id]]))))))
 
 (deftest collection-hydration-test
   (testing "hydrating :collection on a table"
@@ -582,7 +582,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
@@ -595,7 +595,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
@@ -608,7 +608,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
@@ -621,7 +621,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
@@ -635,7 +635,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       ;; Only view-data - not enough
@@ -653,7 +653,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
@@ -668,7 +668,7 @@
                    :model/Table table {:db_id db-id}
                    :model/PermissionsGroup pg {}]
       (perms/add-user-to-group! (mt/user->id :rasta) pg)
-      (t2/delete! :model/DataPermissions :db_id db-id)
+      (t2/delete! :model/DataPermissions 'db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
@@ -722,7 +722,7 @@
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
-      (let [table      (t2/select-one :model/Table :id table-id)
+      (let [table      (t2/select-one :model/Table 'id table-id)
             extracted  (serdes/extract-one "Table" {} table)]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"
@@ -733,7 +733,7 @@
             (let [ingested (assoc extracted :data_layer legacy-value)]
               (serdes/load-one! ingested table)
               (is (= (keyword expected)
-                     (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
+                     (t2/select-one-fn :data_layer :model/Table 'id table-id))))))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
@@ -741,7 +741,7 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}]
         (is (=? {:data_layer :internal :data_authority :unconfigured}
-                (t2/select-one [:model/Table :data_layer :data_authority] :id table-id)))))
+                (t2/select-one [:model/Table 'data_layer 'data_authority] 'id table-id)))))
     (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
       ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
       (mt/with-temp [:model/Database {db-id :id} {}]
@@ -752,5 +752,5 @@
                                       :created_at :%now
                                       :updated_at :%now}]})
         (is (=? {:data_layer :internal :data_authority :unconfigured}
-                (t2/select-one [:model/Table :data_layer :data_authority]
-                               :name "raw-insert-probe" :db_id db-id)))))))
+                (t2/select-one [:model/Table 'data_layer 'data_authority]
+                               'name "raw-insert-probe" 'db_id db-id)))))))

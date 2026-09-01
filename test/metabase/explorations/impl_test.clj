@@ -21,10 +21,10 @@
                            (lib/aggregate (lib/count))))))
 
 (defn- do-with-sample-metrics-archived [thunk]
-  (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+  (let [sample-db-id (t2/select-one-pk :model/Database 'is_sample true)
         metric-ids   (when sample-db-id
-                       (t2/select-pks-vec :model/Card :type :metric :archived false
-                                          :database_id sample-db-id))]
+                       (t2/select-pks-vec :model/Card 'type :metric 'archived false
+                                          'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
         (t2/query {:update :report_card :set {:archived true} :where [:in :id metric-ids]})
@@ -423,7 +423,7 @@
               mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
           (is (seq (:dimension_ids mine))
               "response includes the freshly synced dimensions")
-          (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
+          (is (seq (:dimensions (t2/select-one :model/Card 'id (:id metric))))
               "healed dimensions are persisted"))))))
 
 (deftest exploration-data-heals-missing-dimensions-sql-model-test
@@ -446,7 +446,7 @@
               mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
           (is (seq (:dimension_ids mine)))
           (is (= #{"ID" "NAME" "CATEGORY_ID"}
-                 (into #{} (map :name) (:dimensions (t2/select-one :model/Card :id (:id metric)))))
+                 (into #{} (map :name) (:dimensions (t2/select-one :model/Card 'id (:id metric)))))
               "healed dimensions match the model's result_metadata columns"))))))
 
 (deftest exploration-data-uncomputable-metric-does-not-break-test
@@ -467,7 +467,7 @@
                 mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
             (is (some? mine) "metric still appears in the response")
             (is (empty? (:dimension_ids mine)))
-            (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+            (is (nil? (:dimensions (t2/select-one :model/Card 'id (:id metric))))
                 "nothing computed -> nothing persisted, stays NULL for a later retry")))))))
 
 ;;; --------------------------------------- metric search matching ---------------------------------------

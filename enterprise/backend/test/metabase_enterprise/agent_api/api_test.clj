@@ -52,7 +52,7 @@
                                            :remote-addr      ip
                                            :metabase-user-id (mt/user->id :rasta)})]
               (is (= 200 (:status resp))))
-            (let [row (t2/select-one :model/AgentApiCallLog :ip_address ip)]
+            (let [row (t2/select-one :model/AgentApiCallLog 'ip_address ip)]
               (is (some? row) "a row is recorded for the CLI call")
               (is (= "metabase-cli" (:client_name row)))
               (is (= "GET /api/card/:id" (:operation row)) "numeric segments are templatized")
@@ -73,7 +73,7 @@
                                            :remote-addr      ip
                                            :metabase-user-id (mt/user->id :rasta)})]
               (is (= 200 (:status resp))))
-            (is (nil? (t2/select-one :model/AgentApiCallLog :ip_address ip))
+            (is (nil? (t2/select-one :model/AgentApiCallLog 'ip_address ip))
                 "no row is written for a non-CLI request")
             (finally (cleanup-by-ip! :ip_address ip))))))))
 
@@ -89,7 +89,7 @@
                                            :remote-addr      ip
                                            :metabase-user-id (mt/user->id :rasta)})]
               (is (= 200 (:status resp))))
-            (is (nil? (t2/select-one :model/AgentApiCallLog :ip_address ip))
+            (is (nil? (t2/select-one :model/AgentApiCallLog 'ip_address ip))
                 "no row is written for a non-/api/ path")
             (finally (cleanup-by-ip! :ip_address ip))))))))
 
@@ -106,7 +106,7 @@
                                            :metabase-user-id (mt/user->id :rasta)}
                                           {:status 404, :body "Not found."})]
               (is (= 404 (:status resp))))
-            (let [row (t2/select-one :model/AgentApiCallLog :ip_address ip)]
+            (let [row (t2/select-one :model/AgentApiCallLog 'ip_address ip)]
               (is (some? row) "a row is recorded for the error call")
               (is (= "error" (:status row)))
               (is (= "Not found." (:error_message row)) "error_message is captured from the body")

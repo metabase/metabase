@@ -58,7 +58,7 @@
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
   [id :- ms/PositiveInt]
-  (api/read-check (t2/select-one :model/Timeline :id id)))
+  (api/read-check (t2/select-one :model/Timeline 'id id)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
@@ -113,15 +113,15 @@
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (t2/select-one :model/Timeline :id id))]
+        current-archived (:archived (t2/select-one :model/Timeline 'id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (t2/update! :model/Timeline id
                 (u/select-keys-when timeline-updates
                                     :present #{:description :icon :collection_id :default :archived}
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
-    (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
+      (t2/update! :model/TimelineEvent {'timeline_id id} {:archived archived}))
+    (u/prog1 (t2/hydrate (t2/select-one :model/Timeline 'id id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -133,7 +133,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
-    (t2/delete! :model/Timeline :id id)
+    (t2/delete! :model/Timeline 'id id)
     (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -162,6 +162,6 @@
    {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (t2/select-one :model/Collection :id id))
+  (api/read-check (t2/select-one :model/Collection 'id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
