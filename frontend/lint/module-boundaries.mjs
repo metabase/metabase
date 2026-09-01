@@ -243,10 +243,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "schema",
-    pattern: [
-      "frontend/src/metabase/schema.ts",
-      "frontend/src/metabase/schema.unit.spec.js",
-    ],
+    pattern: "frontend/src/metabase/schema.{ts,unit.spec.js}",
     mode: "full",
   }),
   createElement({ type: "shared", name: "selectors" }),
