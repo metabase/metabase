@@ -96,7 +96,8 @@
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
   [provider {:keys [user] :as request}]
-  (when-not user
+  ;; only gate provisioning on successful authentications: a failure must surface its own error
+  (when (and (true? (:success? request)) (not user))
     (sso-utils/check-user-provisioning :oidc))
   (next-method provider request))
 
