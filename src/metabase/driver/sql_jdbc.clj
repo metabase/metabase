@@ -59,6 +59,10 @@
   [driver details]
   (sql-jdbc.conn/can-connect? driver details))
 
+(defmethod driver/validate-impersonated-query :sql-jdbc
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
+
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
   (query driver database table {:select [:*]}))

@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - New driver method `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` --
   refreshes table statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
