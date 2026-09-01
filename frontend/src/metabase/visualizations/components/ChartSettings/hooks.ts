@@ -54,11 +54,12 @@ export const useChartSettingsState = ({
     if (settings) {
       return settings;
     }
-    // Only custom viz needs the stored-settings migration; other displays keep reading
-    // their raw settings so an unrelated edit doesn't rewrite their stored shape.
+
+    // Only custom viz needs the stored-settings migration
     return isCustomVizDisplay(display)
       ? getStoredSettingsForSeries(series)
       : series[0].card.visualization_settings;
+
     // getStoredSettingsForSeries reads the registry internally; `visualization`
     // forces a recompute once an async custom viz plugin registers.
     // eslint-disable-next-line react-hooks/exhaustive-deps

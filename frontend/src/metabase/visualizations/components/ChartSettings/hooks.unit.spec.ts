@@ -127,7 +127,6 @@ describe("useChartSettingsState", () => {
       useChartSettingsState({ series, onChange: jest.fn() }),
     );
 
-    // Not registered yet: the bare key can't be migrated.
     expect(result.current.chartSettings).toEqual({ threshold: 5 });
 
     registerVisualization({
