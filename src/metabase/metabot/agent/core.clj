@@ -310,12 +310,18 @@
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
     (fn [mem {:keys [chart-id query-id chart-type query]}]
+      ;; Merge onto whatever's already at this chart-id rather than replacing it
+      ;; outright. A chart seeded from viewing context (or written earlier this
+      ;; same turn by the tool itself, see edit-chart-tool) can carry
+      ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
+      ;; structured-output doesn't know about; a full replace would drop them.
       (memory/set-chart mem
                         chart-id
-                        {:chart_id chart-id
-                         :query_id query-id
-                         :queries [query]
-                         :visualization_settings {:chart_type chart-type}})))
+                        (merge (get-in mem [:state :charts chart-id])
+                               {:chart_id chart-id
+                                :query_id query-id
+                                :queries [query]
+                                :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))
 
@@ -405,6 +411,10 @@
   "Create chart structure from chart-config"
   [id {:keys [query timeline_events] :as chart-config}]
   {:chart_id id
+   ;; `id` is the same viewing-context item id seed-state stores this chart's query
+   ;; under; reusing it as :query_id lets edit_chart carry a query-id through (see
+   ;; extract-charts below) instead of leaving charts seeded this way uncaptured.
+   :query_id id
    :queries [query]
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out

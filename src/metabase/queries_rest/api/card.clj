@@ -33,6 +33,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -266,6 +267,7 @@
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
+                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))
@@ -398,7 +400,7 @@
                                      (update :where conj [:not [:in :id exclude-ids]])
 
                                      query
-                                     (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+                                     (update :where conj [:like :%lower.name (h2x/like-substring query)])
 
                                      ;; add a little buffer to the page to account for cards that are not
                                      ;; compatible + do not have permissions to read

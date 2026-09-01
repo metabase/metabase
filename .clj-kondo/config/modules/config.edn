@@ -356,7 +356,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache}}
 
   appearance
   {:team "UX West"
@@ -578,6 +578,8 @@
            auth-identity
            classloader
            config
+           llm
+           metabot
            models
            query-processor
            search
@@ -1373,6 +1375,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.metadata-perms
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
@@ -1606,6 +1609,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request
@@ -2482,6 +2486,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}

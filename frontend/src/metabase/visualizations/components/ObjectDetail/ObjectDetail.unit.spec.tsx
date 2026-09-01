@@ -6,16 +6,16 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 

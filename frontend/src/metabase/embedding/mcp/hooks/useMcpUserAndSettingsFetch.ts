@@ -34,6 +34,10 @@ export function useMcpUserAndSettingsFetch({
   // selectors like getTokenFeature has populated settings.
   // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
   useEffect(() => {
+    if (isSettingsReady) {
+      return;
+    }
+
     let isMounted = true;
 
     const setErrorByType = (type: McpAppsUserAndSettingsFetchErrorType) =>
@@ -45,7 +49,6 @@ export function useMcpUserAndSettingsFetch({
         setFetchError(null);
 
         if (!uiCredential) {
-          setErrorByType("auth");
           return;
         }
 
@@ -80,7 +83,7 @@ export function useMcpUserAndSettingsFetch({
     return () => {
       isMounted = false;
     };
-  }, [instanceUrl, uiCredential, store]);
+  }, [instanceUrl, isSettingsReady, uiCredential, store]);
 
   return { isSettingsReady, userAndSettingsFetchError: fetchError };
 }

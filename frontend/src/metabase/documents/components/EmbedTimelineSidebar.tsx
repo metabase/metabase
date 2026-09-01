@@ -6,7 +6,7 @@ import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/questions/components/TimelineSidebar";
 import { Box, Loader, Stack, Text } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
+import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   CollectionId,
   TimelineEvent,

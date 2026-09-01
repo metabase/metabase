@@ -3,10 +3,11 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
-import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+
+import type { UpdateQueryHookProps } from "../../../../hooks/types";
+import { useDefaultQueryAggregation } from "../../../../hooks/use-default-query-aggregation";
 
 import {
   SummarizeAggregationItemList,
