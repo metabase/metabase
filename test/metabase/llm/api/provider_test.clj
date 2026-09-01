@@ -1269,6 +1269,20 @@
       (testing "and the connection is taken out of the fallback rotation"
         (is (false? (llm.provider/connection-serviceable? "recorded-anthropic")))))))
 
+(deftest listing-failures-count-for-google-despite-its-fixed-catalog-test
+  (testing "Google's model list is fixed, but its listing still verifies the credentials against the provider —
+            so a rejection must be recorded like any other provider's, not skipped as registry-answered"
+    (mt/with-temporary-setting-values [llm-providers [(connection "recorded-google" "google"
+                                                                  {:oauth-access-token "ya29.revoked"
+                                                                   :project-id         "my-project"})]]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider _opts]
+                                    (throw (ex-info "invalid oauth token" {:api-error true :status-code 401})))]
+        (mt/user-http-request :crowberto :get 200 "llm/models")
+        (is (= {:message "invalid oauth token" :fatal? true}
+               (select-keys (llm.health/failure "recorded-google") [:message :fatal?])))
+        (is (false? (llm.provider/connection-serviceable? "recorded-google")))))))
+
 (deftest listing-models-never-clears-an-inference-failure-test
   (testing "a listing that works is not proof inference does — Anthropic serves its catalog to an account it will not
             run a request for — so it leaves a recorded failure alone; only inference, or the timeout, clears one"

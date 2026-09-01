@@ -269,10 +269,11 @@
   Only an inference that succeeds clears a failure, or the timeout on a transient one.
 
   Called on the way into the cache rather than on every read, so an error being served from the cache does not keep
-  pushing back the moment a transient failure expires. Types whose catalog is fixed are answered from the registry
-  without a request, so they prove nothing about the connection and are left out of the record."
+  pushing back the moment a transient failure expires. Only the managed type is left out: it is answered from the
+  registry without a request, so it proves nothing about the connection. Google's catalog is fixed too, but its
+  listing still verifies the credentials against the provider, so what it finds counts."
   [{conn-key :key :keys [type]} {:keys [error transient?] :as result}]
-  (when (and error (not (llm.provider/fixed-models type)))
+  (when (and error (not (llm.provider/managed-type? type)))
     (llm.health/record-failure! conn-key error (not transient?)))
   result)
 
