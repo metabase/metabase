@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { getCopyTextFieldProps } from "metabase/common/components/CopyTextField/copy-text-field-props";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Button,
   Group,
