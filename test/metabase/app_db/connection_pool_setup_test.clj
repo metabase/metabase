@@ -193,14 +193,13 @@
   (testing "returns false when getConnection blocks past the timeout, and does not wait for it"
     ;; Regression guard for #81440: without a wall-clock bound on the priming acquire, a wedged pool would hang
     ;; startup for the full checkoutTimeout (30s by default).
-    (let [ds      (mock-data-source (fn []
-                                      (Thread/sleep 60000)
-                                      (throw (RuntimeException. "should have been interrupted"))))
-          started (System/currentTimeMillis)
-          result  (#'mdb.connection-pool-setup/prime-pool! ds 100)
-          elapsed (- (System/currentTimeMillis) started)]
+    (let [ds     (mock-data-source (fn []
+                                     (Thread/sleep 60000)
+                                     (throw (RuntimeException. "should have been interrupted"))))
+          timer  (u/start-timer)
+          result (#'mdb.connection-pool-setup/prime-pool! ds 100)]
       (is (false? result))
-      (is (< elapsed 1000)
+      (is (< (u/since-ms timer) 1000)
           "prime-pool! must return within a small multiple of the timeout, not wait for getConnection"))))
 
 (deftest reset-read-only-test
