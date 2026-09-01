@@ -58,49 +58,37 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
-  project-backend-checks:
-    name: 'Project tests: Backend checks'
-    if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+  project-checks:
+    name: 'Project tests: Suites'
+    if: >-
+      ${{ inputs.force-run ||
+      inputs.run-project-backend-checks ||
+      inputs.run-project-migration-checks ||
+      inputs.run-project-ratchet-checks }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Run backend checks
-        run: ./bin/mage project-tests backend
-
-  project-migration-checks:
-    name: 'Project tests: Migration checks'
-    if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Run migration checks
-        run: ./bin/mage project-tests migrations
-
-  project-ratchet-checks:
-    name: 'Project tests: Ratchet checks'
-    # The backend checks already run this suite, so it only runs when they do not.
-    if: ${{ inputs.run-project-ratchet-checks && !inputs.force-run && !inputs.run-project-backend-checks }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Run ratchet checks
-        run: ./bin/mage project-tests ratchets
+      # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
+      - name: Prepare Mage
+        run: ./bin/mage
+      - parallel:
+        - name: Run backend checks
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          run: ./bin/mage project-tests backend
+        - name: Run migration checks
+          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          run: ./bin/mage project-tests migrations
+        # The backend checks already run this suite, so it only runs when they do not.
+        - name: Run ratchet checks
+          if: ${{ inputs.run-project-ratchet-checks && !inputs.force-run && !inputs.run-project-backend-checks }}
+          run: ./bin/mage project-tests ratchets
 
   project-tests:
     name: Project tests
-    needs:
-      - project-backend-checks
-      - project-migration-checks
-      - project-ratchet-checks
+    needs: project-checks
     if: ${{ always() && !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
