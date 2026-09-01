@@ -22,7 +22,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
 
   return (
     <Modal
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- legal terms of use, not a branding string
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
       title={t`Each end user needs their own Metabase account`}
       onClose={onClose}
       opened={opened}
@@ -33,7 +33,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
     >
       <Text mt="xxs">
         {
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- legal terms of use, not a branding string
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
           t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`
         }
       </Text>
