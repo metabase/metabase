@@ -89,19 +89,21 @@ export function useTableUpdateHandlers({
       sendErrorToast(t`Failed to update field order`);
     } else {
       sendSuccessToast(t`Field order updated`, async () => {
-        const { error: fieldsOrderError } = await updateTableFieldsOrder({
-          id: table.id,
-          field_order: table.fields?.map(getRawTableFieldId) ?? [],
-        });
-
-        if (table.field_order !== "custom") {
-          const { error: tableError } = await updateTable({
+        // A single request per undo: restoring a non-custom order through
+        // PUT /api/table recomputes every field position server-side, and
+        // restoring a custom order only needs the positions themselves.
+        if (table.field_order === "custom") {
+          const { error: undoError } = await updateTableFieldsOrder({
+            id: table.id,
+            field_order: table.fields?.map(getRawTableFieldId) ?? [],
+          });
+          sendUndoToast(undoError);
+        } else {
+          const { error: undoError } = await updateTable({
             id: table.id,
             field_order: table.field_order,
           });
-          sendUndoToast(fieldsOrderError ?? tableError);
-        } else {
-          sendUndoToast(fieldsOrderError);
+          sendUndoToast(undoError);
         }
       });
     }
