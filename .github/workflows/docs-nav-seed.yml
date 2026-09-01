@@ -22,6 +22,7 @@ jobs:
   params:
     name: Build branch matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
     steps:
@@ -44,6 +45,7 @@ jobs:
       matrix: ${{ fromJson(needs.params.outputs.matrix) }}
     name: Seed nav.yml on ${{ matrix.branch }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
     env:
       TARGET_BRANCH: ${{ matrix.branch }}
       SOURCE_FILE: ${{ matrix.source_file }}
