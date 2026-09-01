@@ -103,6 +103,8 @@
           :at-time-zone :case-expr :foreign-key :get-in :ignore-nulls :is-distinct-from :is-not
           :is-not-distinct-from :not-between :not-ilike :not-like :not-similar-to :not=
           :order-by :primary-key :respect-nulls :similar-to :with-ordinality :within-group :| :||
+          ;; the Postgres JSON, array and regex operators our drivers register globally with `register-op!`
+          :#- :#> :#>> :-> :->> :=> :? :?& :?|
           ;; handled inline by `honey.sql/format-expr`, so in neither registry
           :in :not-in
           ;; the forms we register ourselves, in [[metabase.util.honey-sql-2]]
@@ -116,8 +118,8 @@
           ;; ORDER BY directions
           :asc :desc :nulls-first :nulls-last
           :asc-nulls-first :asc-nulls-last :desc-nulls-first :desc-nulls-last}
-        ;; `:^` and `:~` are Honey SQL operators that aren't readable as keyword literals
-        (map keyword ["^" "~"])))
+        ;; operators that aren't readable as keyword literals
+        (map keyword ["^" "~" "~*" "!~" "!~*" "<@" "@>" "@?" "@@"])))
 
 (defn- ident-string
   "The string Honey SQL renders ident `x` from. As in `honey.sql/format-var`, the namespace is part of it:
