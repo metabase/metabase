@@ -158,7 +158,7 @@ describe("sanitizePluginSettings", () => {
   });
 
   describe("dependencies", () => {
-    it("namespaces read, write and erase dependencies", () => {
+    it("namespaces read, write and erase dependencies to the plugin's own settings", () => {
       const { context } = setupMount();
 
       const sanitized = sanitizePluginSettings(
@@ -166,18 +166,41 @@ describe("sanitizePluginSettings", () => {
           threshold: definePluginSetting({
             widget: "number",
             readDependencies: ["label"],
-            writeDependencies: ["label", "card.title"],
-            eraseDependencies: ["gauge.segments"],
+            writeDependencies: ["label", "goalColumn"],
+            eraseDependencies: ["segments"],
           }),
+          label: definePluginSetting({ widget: "input" }),
+          goalColumn: definePluginSetting({ widget: "input" }),
+          segments: definePluginSetting({ widget: "input" }),
         },
         context,
       );
 
       expect(getHostDefinition(sanitized, `${PREFIX}threshold`)).toMatchObject({
         readDependencies: [`${PREFIX}label`],
-        writeDependencies: [`${PREFIX}label`, `${PREFIX}card.title`],
-        eraseDependencies: [`${PREFIX}gauge.segments`],
+        writeDependencies: [`${PREFIX}label`, `${PREFIX}goalColumn`],
+        eraseDependencies: [`${PREFIX}segments`],
       });
+    });
+
+    it("drops dependencies that don't name the plugin's own settings", () => {
+      const { context } = setupMount();
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            readDependencies: ["card.title"],
+            writeDependencies: ["label", "card.title"],
+          }),
+          label: definePluginSetting({ widget: "input" }),
+        },
+        context,
+      );
+
+      const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+      expect(definition.readDependencies).toEqual([]);
+      expect(definition.writeDependencies).toEqual([`${PREFIX}label`]);
     });
 
     it("drops dependencies that are not lists of ids", () => {
@@ -190,6 +213,7 @@ describe("sanitizePluginSettings", () => {
             readDependencies: "label",
             writeDependencies: ["label", 42],
           }),
+          label: definePluginSetting({ widget: "input" }),
         },
         context,
       );

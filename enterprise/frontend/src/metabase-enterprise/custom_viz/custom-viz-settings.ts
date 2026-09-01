@@ -72,10 +72,12 @@ export function sanitizePluginSettings(
 
   assertValidSettingWidgets(definitions);
 
+  const declaredIds = new Set(definitions.map(([settingId]) => settingId));
+
   return Object.fromEntries(
     definitions.map(([settingId, definition]) => [
       `${context.prefix}${settingId}`,
-      toHostDefinition(definition, context),
+      toHostDefinition(definition, context, declaredIds),
     ]),
   );
 }
@@ -83,6 +85,7 @@ export function sanitizePluginSettings(
 function toHostDefinition(
   definition: PluginSettingDefinition,
   { prefix, mount, plugin }: HostContext,
+  declaredIds: ReadonlySet<string>,
 ): VisualizationSettingDefinition<Series> {
   const {
     title,
@@ -112,9 +115,9 @@ function toHostDefinition(
     inline,
     persistDefault,
     getSection: getSection && (() => getSection()),
-    readDependencies: prefixSettingIds(readDependencies, prefix),
-    writeDependencies: prefixSettingIds(writeDependencies, prefix),
-    eraseDependencies: prefixSettingIds(eraseDependencies, prefix),
+    readDependencies: prefixSettingIds(readDependencies, prefix, declaredIds),
+    writeDependencies: prefixSettingIds(writeDependencies, prefix, declaredIds),
+    eraseDependencies: prefixSettingIds(eraseDependencies, prefix, declaredIds),
     isValid:
       isValid &&
       ((series, settings) => isValid(...pluginArgs(series, settings))),
@@ -140,12 +143,15 @@ function toHostDefinition(
 function prefixSettingIds(
   ids: string[] | undefined,
   prefix: string,
+  declaredIds: ReadonlySet<string>,
 ): string[] | undefined {
   if (!Array.isArray(ids)) {
     return undefined;
   }
+  // Dependencies may only reference the plugin's own settings; drop anything else
+  // (e.g. a host id like `card.title` listed by a bundle built against the old SDK).
   return ids.flatMap((id) =>
-    typeof id === "string" ? [`${prefix}${id}`] : [],
+    typeof id === "string" && declaredIds.has(id) ? [`${prefix}${id}`] : [],
   );
 }
 
