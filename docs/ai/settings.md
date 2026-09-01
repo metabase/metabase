@@ -61,7 +61,7 @@ To connect a provider with your own API key:
 4. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
 5. Click **Connect**.
 
-If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase will select the matching provider and fill the key in for you. Just check to make sure the provider matches.
+If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase selects the matching provider and fills in the key for you. Check to make sure the provider matches.
 
 Once the connection saves, its models show up in the **Models** card, where you pick which model each AI feature runs on. See [Pick the model each AI feature runs on](#pick-the-model-each-ai-feature-runs-on).
 
@@ -82,11 +82,17 @@ Each connection in the list has a **...** menu:
 
 The [Metabase AI service](#metabase-ai-service) connection only offers **Remove**, since there are no credentials of your own to edit.
 
+### Connection errors and warnings
+
+If one connection's credentials stop working, only that connection reports an error.
+
+A connection that's missing a required setting shows a warning icon, and Metabot can't use the connection until you fill in the setting.
+
 ### Set provider credentials with environment variables
 
 If you're self-hosting, you can configure a provider with [environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. These connections will show up in the list as read-only, along with the variable that set the connection.
 
-An environment variable can also override a single field of a connection you manage in the UI. If you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, for example, the base URL comes from the environment, and the rest of the connection stays editable.
+An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
@@ -104,15 +110,11 @@ Metabot, [AI explorations](./metabot.md#ai-exploration), and [SQL generation](./
 
 Embedded Metabot runs on the **Default model** too. There's no separate model setting on the **Embedded** tab, so both Metabots use whatever you pick here.
 
-If one connection's credentials stop working, only that connection reports an error.
-
-A connection that's missing a required setting shows a warning icon, and Metabot can't use the connection until you fill in the setting.
-
 ### Mini model
 
 Quick, high-volume tasks run on the **Mini model**, which should be a cheaper, faster model than your default.
 
-You don't have to pick a mini model. By default, Metabase will use the fastest model from the same connection as your default model. Some providers don't offer a smaller model; in those cases, the mini model falls back to your default model.
+You don't have to pick a mini model. By default, Metabase uses the fastest model from the same connection as your default model. Some providers don't offer a smaller model; in those cases, the mini model falls back to your default model.
 
 ## Configure Metabot
 
