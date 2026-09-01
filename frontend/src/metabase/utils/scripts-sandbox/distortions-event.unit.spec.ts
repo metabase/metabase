@@ -5,11 +5,7 @@ const setterOf = (target: object, key: string) =>
   Object.getOwnPropertyDescriptor(target, key)?.set;
 
 // Blocked event types with no on* IDL handler attribute in this environment,
-// so addEventListener is the only way to listen for them here. Real engines
-// place some of these accessors differently (e.g. Chrome exposes
-// Document.prototype.onbeforecopy); the gating loop in
-// distortions-blocked-apis.ts reads live descriptors, so it gates whatever
-// the environment actually exposes.
+// so addEventListener is the only way to listen for them here.
 const TYPES_WITHOUT_HANDLER_ATTRIBUTE = new Set([
   "beforepaste",
   "beforecopy",
