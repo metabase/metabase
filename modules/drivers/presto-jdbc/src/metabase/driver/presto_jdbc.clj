@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -114,6 +115,14 @@
 (defmethod sql.qp/add-interval-honeysql-form :presto-jdbc
   [_driver expr amount unit]
   (date-add unit amount expr))
+
+;; Presto/Trino doesn't coerce untyped `NULL` across `UNION ALL` branches, so the UA pivot
+;; compiler's default bare-`NULL` pad fails preparation. Emit `CAST(NULL AS <breakout-db-type>)`
+;; so the branch's null-padded column carries the same type as its counterpart in the
+;; full-breakout branch.
+(defmethod sql.pivot/null-pad-breakout-hsql :presto-jdbc
+  [_driver breakout-expr]
+  (sql.pivot/typed-cast-null-hsql breakout-expr))
 
 (defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
