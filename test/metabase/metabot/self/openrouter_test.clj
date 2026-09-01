@@ -177,6 +177,30 @@
                              (self.core/aisdk-xf))
                     raw-chunks))))))
 
+(deftest ^:parallel openrouter-reasoning-deltas-forwarded-for-glm-53-test
+  (let [chunks [{:id      "gen-1"
+                 :model   "z-ai/glm-5.3"
+                 :choices [{:delta {:role "assistant" :reasoning "Let me think"}}]}
+                {:choices [{:delta {:reasoning " about 2+2."}}]}
+                {:choices [{:delta {:content "4"}}]}
+                {:choices [{:delta {} :finish_reason "stop"}]
+                 :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}]]
+    (testing "GLM-5.3 reasoning deltas are forwarded as reasoning parts ahead of the text"
+      (is (=? [{:type :start}
+               {:type :reasoning :text "Let me think about 2+2."}
+               {:type :text :text "4"}
+               {:type :usage}]
+              (into [] (comp (openrouter/openrouter->aisdk-chunks-xf "z-ai/glm-5.3")
+                             (self.core/aisdk-xf))
+                    chunks))))
+    (testing "the same stream from a model we don't surface reasoning for produces only text"
+      (is (=? [{:type :start}
+               {:type :text :text "4"}
+               {:type :usage}]
+              (into [] (comp (openrouter/openrouter->aisdk-chunks-xf "z-ai/glm-5.2")
+                             (self.core/aisdk-xf))
+                    chunks))))))
+
 (deftest ^:parallel openrouter-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
@@ -373,6 +397,7 @@
                                                     {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
+                                                    {:id "z-ai/glm-5.3"                :name "Z.AI: GLM 5.3"                :created 15}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
                                                     {:id "openai/gpt-5"                :name "OpenAI: GPT-5"                :created 5}]}})]
         (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
@@ -382,7 +407,8 @@
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
                 {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}
-                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}]
+                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}
+                {:id "z-ai/glm-5.3"                :display_name "Z.AI: GLM 5.3"}]
                (:models (openrouter/list-models {:credentials byok-credentials}))))))))
 
 (deftest openrouter-raw-explicit-credentials-test

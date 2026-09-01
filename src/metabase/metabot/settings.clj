@@ -7,7 +7,9 @@
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.zai :as zai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -248,11 +250,13 @@
   [model-ref]
   (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
-      "anthropic" (claude/reasoning-model? model)
-      "deepseek"  (deepseek/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      "google"    (google/reasoning-model? model)
-      "vllm"      (vllm/reasoning-connection? credentials)
+      "anthropic"  (claude/reasoning-model? model)
+      "deepseek"   (deepseek/reasoning-model? model)
+      "openai"     (openai/reasoning-model? model)
+      "openrouter" (openrouter/reasoning-model? model)
+      "google"     (google/reasoning-model? model)
+      "vllm"       (vllm/reasoning-connection? credentials)
+      "zai"        (zai/reasoning-model? model)
       false)))
 
 (defsetting llm-metabot-supports-reasoning?

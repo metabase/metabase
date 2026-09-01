@@ -85,6 +85,17 @@
   [model]
   (get-in supported-models [model :context-window]))
 
+(def ^:private reasoning-models
+  "Models whose streamed reasoning we forward. GLM-5.3 always reasons (OpenRouter reports it cannot
+  be disabled) and streams the content back as reasoning deltas. The other whitelisted models either
+  are not asked to reason or, like GLM-5.2, predate reasoning display and keep their output hidden."
+  #{"z-ai/glm-5.3"})
+
+(defn reasoning-model?
+  "Whether `model` streams reasoning back to us that we surface."
+  [model]
+  (contains? reasoning-models model))
+
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]
@@ -135,9 +146,11 @@
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
   OpenRouter streams the generic Chat Completions dialect; see
-  [[chat-completions/chat-completions->aisdk-chunks-xf]]."
-  []
-  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
+  [[chat-completions/chat-completions->aisdk-chunks-xf]]. Reasoning deltas are forwarded for
+  [[reasoning-model?]] models and dropped otherwise."
+  ([] (openrouter->aisdk-chunks-xf nil))
+  ([model]
+   (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? (reasoning-model? model)})))
 
 ;;; HTTP request
 
@@ -256,5 +269,6 @@
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
-  (let [raw (apply openrouter-raw args)]
-    (eduction (openrouter->aisdk-chunks-xf) raw)))
+  (let [{:keys [model] :or {model "anthropic/claude-haiku-4.5"}} (first args)
+        raw (apply openrouter-raw args)]
+    (eduction (openrouter->aisdk-chunks-xf model) raw)))

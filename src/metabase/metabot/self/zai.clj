@@ -45,6 +45,17 @@
   [model]
   (get-in supported-models [model :context-window]))
 
+(def ^:private reasoning-models
+  "Models whose streamed reasoning we forward. GLM-5.3 always reasons (its `thinking` directive
+  cannot be disabled) and streams the content back as `reasoning_content` deltas. GLM-5.2 also
+  reasons by default, but predates reasoning display and keeps its output hidden."
+  #{"glm-5.3"})
+
+(defn reasoning-model?
+  "Whether `model` streams reasoning back to us that we surface."
+  [model]
+  (contains? reasoning-models model))
+
 (defn- supported-model?
   "Whether a `/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]
@@ -141,12 +152,15 @@
          "network_error" "error"))
 
 (defn zai->aisdk-chunks-xf
-  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks."
-  []
-  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
+  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
+  Reasoning deltas are forwarded for [[reasoning-model?]] models and dropped otherwise."
+  ([] (zai->aisdk-chunks-xf nil))
+  ([model]
+   (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? (reasoning-model? model)})))
 
 (defn zai
   "Call the Z.AI Chat Completions API, return AISDK stream."
   [& args]
-  (let [raw (apply zai-raw args)]
-    (eduction (zai->aisdk-chunks-xf) raw)))
+  (let [{:keys [model] :or {model default-model}} (first args)
+        raw (apply zai-raw args)]
+    (eduction (zai->aisdk-chunks-xf model) raw)))
