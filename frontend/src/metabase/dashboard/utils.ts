@@ -8,6 +8,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { b64hash_to_utf8 } from "metabase/utils/encoding";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
@@ -26,6 +27,7 @@ import type {
   BaseDashboardCard,
   CacheableDashboard,
   Card,
+  CardDisplayType,
   CardId,
   ClickBehavior,
   ColumnSettings,
@@ -83,6 +85,62 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ),
     })),
   };
+}
+
+export type AdhocDashboardTile = {
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type AdhocDashboardDefinition = {
+  name: string;
+  description?: string;
+  tiles: AdhocDashboardTile[];
+};
+
+// An "adhoc" dashboard id is a `/dashboard/adhoc#<base64 JSON>` path carrying its
+// whole definition, mirroring `/question#<hash>` urls. It expands into the same
+// placeholder-id shape as inline dashboards, so the inline/transient machinery
+// (adhoc query execution, normalizr) applies unchanged. Ids are derived from the
+// tile index so re-expanding the same url yields identical entities.
+export function expandAdhocDashboard(dashId: string) {
+  const definition: AdhocDashboardDefinition = JSON.parse(
+    b64hash_to_utf8(dashId.slice(dashId.indexOf("#") + 1)),
+  );
+  const dashboard: Partial<Dashboard> = {
+    id: dashId,
+    name: definition.name,
+    description: definition.description ?? null,
+    parameters: [],
+    // The tiles expand into partial dashcards by design: the adhoc query path
+    // only reads layout + card.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    dashcards: definition.tiles.map((tile, index) => ({
+      id: `adhoc-dashcard-${index}`,
+      dashboard_id: dashId,
+      col: tile.col,
+      row: tile.row,
+      size_x: tile.size_x,
+      size_y: tile.size_y,
+      visualization_settings: {},
+      parameter_mappings: [],
+      series: [],
+      card: {
+        id: `adhoc-card-${index}`,
+        name: tile.title,
+        display: tile.display,
+        dataset_query: tile.dataset_query,
+        visualization_settings: {},
+      },
+    })),
+  };
+  return dashboard;
 }
 
 export function expandInlineCard(card?: Card | VirtualCard) {

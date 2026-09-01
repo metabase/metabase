@@ -2,8 +2,10 @@ import { createMockLocation } from "__support__/state";
 import {
   canResetFilter,
   createTabSlug,
+  expandAdhocDashboard,
   fetchDataOrError,
   findDashCardForInlineParameter,
+  getAdhocDashboardDefinition,
   getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
@@ -14,12 +16,19 @@ import {
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
+import { getDatasetParams } from "metabase/redux/downloads";
+import type { AdhocDashboardDefinition } from "metabase/urls";
+import * as Urls from "metabase/urls";
+import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
+import { getDashboardType } from "metabase/utils/dashboard";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
+import Question from "metabase-lib/v1/Question";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import type { Card, ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockCard,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
@@ -31,6 +40,7 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -872,6 +882,124 @@ describe("Dashboard utils", () => {
           "5",
         ]);
       });
+    });
+  });
+});
+
+describe("expandAdhocDashboard", () => {
+  const definition: AdhocDashboardDefinition = {
+    name: "Ops overview",
+    description: "Key ops charts.",
+    tiles: [
+      {
+        title: "Venues by price",
+        display: "bar",
+        dataset_query: createMockStructuredDatasetQuery(),
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 6,
+      },
+    ],
+  };
+  const dashId = Urls.adhocDashboard(definition);
+
+  it("is detected as the adhoc dashboard type", () => {
+    expect(getDashboardType(dashId)).toBe("adhoc");
+    expect(getDashboardType(1)).toBe("normal");
+  });
+
+  it("decodes the url hash into an inline-style dashboard", () => {
+    const dashboard = expandAdhocDashboard(dashId);
+
+    expect(dashboard.id).toBe(dashId);
+    expect(dashboard.name).toBe("Ops overview");
+    expect(dashboard.description).toBe("Key ops charts.");
+
+    const [dashcard] = checkNotNull(dashboard.dashcards);
+    expect(dashcard).toMatchObject({
+      col: 0,
+      row: 0,
+      size_x: 12,
+      size_y: 6,
+      dashboard_id: dashId,
+    });
+    expect(dashcard.id).toBeDefined();
+    expect(dashcard.card_id).toBeNull();
+    expect(dashcard.card).toMatchObject({
+      name: "Venues by price",
+      display: "bar",
+      dataset_query: definition.tiles[0].dataset_query,
+      visualization_settings: {},
+    });
+  });
+
+  it("scopes the temporary dashcard and card ids to the dashboard", () => {
+    const other = Urls.adhocDashboard({ ...definition, name: "Other" });
+    const [first] = expandAdhocDashboard(dashId).dashcards;
+    const [second] = expandAdhocDashboard(other).dashcards;
+    const [firstAgain] = expandAdhocDashboard(dashId).dashcards;
+
+    expect(first.id).not.toBe(second.id);
+    expect(first.card.id).not.toBe(second.card.id);
+    expect(firstAgain.id).toBe(first.id);
+    expect(firstAgain.card.id).toBe(first.card.id);
+  });
+
+  it("survives the hash-option rewrite regardless of base64 padding", () => {
+    for (const padding of ["", "a", "ab"]) {
+      const padded = { ...definition, name: `Ops overview${padding}` };
+      const id = Urls.adhocDashboard(padded);
+      const rewritten = `/dashboard#${stringifyHashOptions({
+        ...parseHashOptions(id.slice(id.indexOf("#"))),
+        fullscreen: true,
+      })}`;
+
+      expect(getAdhocDashboardDefinition(rewritten)).toEqual(padded);
+    }
+  });
+
+  it("downloads a generated tile as an ad-hoc query and a saved-question tile through its card", () => {
+    const result = createMockDataset({
+      json_query: createMockStructuredDatasetQuery({ database: 1 }),
+    });
+    const [dashcard] = expandAdhocDashboard(dashId).dashcards;
+    // an ad-hoc tile's card carries a placeholder string id, which the download
+    // code must not mistake for a saved card
+    const generated = new Question(dashcard.card as Card, undefined);
+    const saved = new Question(createMockCard({ id: 42 }), undefined);
+
+    expect(
+      getDatasetParams({ type: "csv", question: generated, result }),
+    ).toMatchObject({
+      method: "POST",
+      url: "/api/dataset/csv",
+      body: { query: result.json_query },
+    });
+    expect(
+      getDatasetParams({ type: "csv", question: saved, result }),
+    ).toMatchObject({ url: "/api/card/42/query/csv" });
+  });
+
+  it("keeps a saved question tile linked to its card, with its settings", () => {
+    const dashboard = expandAdhocDashboard(
+      Urls.adhocDashboard({
+        ...definition,
+        tiles: [
+          {
+            ...definition.tiles[0],
+            card_id: 42,
+            visualization_settings: { "graph.dimensions": ["PRICE"] },
+          },
+        ],
+      }),
+    );
+
+    const [dashcard] = dashboard.dashcards;
+    expect(dashcard.card_id).toBe(42);
+    expect(dashcard.card).toMatchObject({
+      id: 42,
+      visualization_settings: { "graph.dimensions": ["PRICE"] },
     });
   });
 });

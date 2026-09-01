@@ -44,6 +44,15 @@
 
 ;;; Query URL Encoding
 
+(defn ->url-hash
+  "JSON-encode `value` and base64-encode the result for use as a URL fragment
+  the frontend decodes with `b64hash_to_utf8`."
+  [value]
+  (-> value
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
 (defn query->url-hash
   "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash.
   When `display` is provided, includes it so the frontend renders the
@@ -52,11 +61,8 @@
   ([query]
    (query->url-hash query nil))
   ([query display]
-   (-> (cond-> {:dataset_query query}
-         display (assoc :display (name display)))
-       json/encode
-       (.getBytes "UTF-8")
-       codecs/bytes->b64-str)))
+   (->url-hash (cond-> {:dataset_query query}
+                 display (assoc :display (name display))))))
 
 (defn query->question-url
   "Convert a query to a /question# URL.
