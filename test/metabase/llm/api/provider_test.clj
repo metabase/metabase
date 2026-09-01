@@ -1218,9 +1218,20 @@
             (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
                                   {:value [(conn "https://8.8.8.8/v1")]})
             (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
-          (testing "and an entry already stored does not block an edit to a different connection"
-            (mt/with-temporary-raw-setting-values [llm-providers (json/encode [(conn "http://127.0.0.1:8000/v1")])]
-              (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                    {:value [(conn "http://127.0.0.1:8000/v1")
-                                             (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
-              (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))))))))
+          (testing "a base URL stored before the check does not make its connection unwritable"
+            (let [grandfathered (assoc-in (conn "http://127.0.0.1:8000/v1") [:config :api-key] "sk-old")]
+              (mt/with-temporary-raw-setting-values [llm-providers (json/encode [grandfathered])]
+                (testing "another connection can still be added"
+                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                        {:value [grandfathered
+                                                 (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
+                  (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))
+                (testing "and its own API key can still be rotated"
+                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                        {:value [(assoc-in grandfathered [:config :api-key] "sk-new")]})
+                  (is (= "sk-new" (get-in (first (llm.provider/stored-connections)) [:config :api-key]))))
+                (testing "but changing the base URL itself is still checked"
+                  (is (=? {:field "base-url"}
+                          (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
+                                                {:value [(assoc-in grandfathered
+                                                                   [:config :base-url] "http://10.0.0.1/v1")]}))))))))))))

@@ -694,23 +694,27 @@
      (config-complete? type config))))
 
 (defn validate-changed-connections!
-  "Run the per-field `:validate` hooks over every connection in `conns` that is not already stored verbatim. This is
-  the [[metabase.llm.settings/llm-providers]] setter, so a base URL the network policy refuses cannot be saved by
-  writing the connection list straight through `PUT /api/setting/llm-providers` or `config.yml` rather than through
-  the connection API.
+  "Run the per-field `:validate` hooks over the fields `conns` changes. This is the
+  [[metabase.llm.settings/llm-providers]] setter, so a base URL the network policy refuses cannot be saved by writing
+  the connection list straight through `PUT /api/setting/llm-providers` or `config.yml` rather than through the
+  connection API.
 
-  Only the `:validate` hooks, and only on what changed. Required fields, prefixes and options are the connection
-  API's business: demanding them of every write here would break `config.yml` provisioning and the single-provider
-  settings, which legitimately fill a connection in one field at a time. Skipping the connections that are already
-  stored keeps an entry saved before its URL was refused -- or before this check existed -- from blocking an edit to
-  a different connection.
+  Only the `:validate` hooks: required fields, prefixes and options are the connection API's business, and demanding
+  them of every write here would break `config.yml` provisioning and the single-provider settings, which
+  legitimately fill a connection in one field at a time.
+
+  Only the fields that changed, too, so that a base URL saved before this check existed -- or before the policy was
+  tightened around it -- does not make the connection holding it unwritable. Rotating its API key has to keep
+  working.
 
   A connection of an unknown type has no fields to check, the same as everywhere else a hand-written list is read."
   [conns]
-  (let [unchanged (set (stored-connections))]
-    (doseq [{:keys [type config] :as conn} (filter map? conns)
-            :when (not (contains? unchanged conn))
-            field (:fields (provider-type type))]
+  (let [stored (into {} (map (juxt (juxt :key :type) :config)) (stored-connections))]
+    (doseq [conn (filter map? conns)
+            :let [config   (:config conn)
+                  previous (get stored ((juxt :key :type) conn))]
+            {field-key :key :as field} (:fields (provider-type (:type conn)))
+            :when (not= (get config field-key) (get previous field-key))]
       (validate-field-value! field config))))
 
 (defn set-connections!
