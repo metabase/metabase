@@ -5,7 +5,8 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -56,8 +57,8 @@
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
-                    [:like [:lower :t.name] "%birds%"]
-                    [:like [:lower :db.name] "%birds%"]]}
+                    [:like [:lower :t.name] (h2x/like-substring "birds")]
+                    [:like [:lower :db.name] (h2x/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest ^:parallel add-sort-clause-test
