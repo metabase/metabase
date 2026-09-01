@@ -2,8 +2,9 @@ import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
@@ -12,6 +13,7 @@ import {
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
@@ -127,6 +129,7 @@ function createMetadata({
 }
 
 type SetupOpts = {
+  database?: Database;
   state?: State;
   metadata?: Metadata;
   query?: Lib.Query;
@@ -134,18 +137,21 @@ type SetupOpts = {
 };
 
 function setup({
-  state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-    }),
-    qb: createMockQueryBuilderState({
-      card: createMockCard(),
-    }),
-  }),
+  database = createSampleDatabase(),
+  state,
   metadata = createMetadata(),
   query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   allowCustomExpressions,
 }: SetupOpts = {}) {
+  setupDatabaseEndpoints(database);
+
+  const storeState =
+    state ??
+    createMockState({
+      entities: createMockEntitiesState({ databases: [database] }),
+      qb: createMockQueryBuilderState({ card: createMockCard() }),
+    });
+
   const stageIndex = 0;
   const clause = Lib.aggregations(query, stageIndex)[0];
 
@@ -165,7 +171,7 @@ function setup({
       allowCustomExpressions={allowCustomExpressions}
       onQueryChange={onQueryChange}
     />,
-    { storeInitialState: state },
+    { storeInitialState: storeState },
   );
 
   function getRecentClause(index: number = -1): Lib.Clause | undefined {
@@ -343,7 +349,7 @@ describe("AggregationPicker", () => {
       const expression = "count() + 1";
       const expressionName = "My expression";
 
-      await userEvent.click(screen.getByText("Custom Expression"));
+      await userEvent.click(await screen.findByText("Custom Expression"));
       await userEvent.type(
         await screen.findByTestId("custom-expression-query-editor"),
         expression,
@@ -359,7 +365,7 @@ describe("AggregationPicker", () => {
     it("should open the editor when a named expression without operator is used", async () => {
       setup({ query: createQueryWithInlineExpression() });
 
-      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
 
@@ -370,27 +376,20 @@ describe("AggregationPicker", () => {
       expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
     });
 
-    it("shouldn't be available if database doesn't support custom expressions", () => {
+    it("shouldn't be available if database doesn't support custom expressions", async () => {
       setup({
-        state: createMockState({
-          entities: createMockEntitiesState({
-            databases: [
-              {
-                ...createSampleDatabase(),
-                features: _.without(
-                  COMMON_DATABASE_FEATURES,
-                  "expression-aggregations",
-                ),
-              },
-            ],
-          }),
-          qb: createMockQueryBuilderState({
-            card: createMockCard(),
-          }),
+        database: createSampleDatabase({
+          features: _.without(
+            COMMON_DATABASE_FEATURES,
+            "expression-aggregations",
+          ),
         }),
         metadata: createMetadata({ allowCustomExpressions: false }),
       });
-      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+
+      await waitFor(() =>
+        expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument(),
+      );
     });
 
     it("shouldn't be shown if `allowCustomExpressions` prop is false", () => {

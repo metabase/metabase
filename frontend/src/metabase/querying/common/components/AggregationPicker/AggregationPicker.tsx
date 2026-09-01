@@ -8,6 +8,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -21,6 +22,7 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
@@ -31,8 +33,6 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -104,7 +104,10 @@ export function AggregationPicker({
   readOnly,
 }: AggregationPickerProps) {
   const tc = useTranslateContent();
-  const metadata = useSelector(getMetadata);
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
     : undefined;
@@ -171,11 +174,8 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const measures = Lib.availableMeasures(query, stageIndex);
-    const databaseId = Lib.databaseID(query);
-    const database = metadata.database(databaseId);
-    const supportsCustomExpressions = database?.hasFeature(
-      "expression-aggregations",
-    );
+    const supportsCustomExpressions =
+      database != null && hasFeature(database, "expression-aggregations");
 
     if (operators.length > 0) {
       const operatorItems = operators.map((operator) =>
@@ -234,7 +234,7 @@ export function AggregationPicker({
 
     return sections;
   }, [
-    metadata,
+    database,
     query,
     stageIndex,
     clauseIndex,

@@ -4303,6 +4303,12 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
+    // Both tests in this file that reach the enable page turn the setting on.
+    // The snapshot restore alone does not always win the race against the
+    // backend's settings cache, so clear it explicitly. It must be unset, not
+    // false: the getter falls back to the token feature only when the setting
+    // has no value, and an explicit false hides the transforms UI outright.
+    H.updateSetting("transforms-enabled", null);
   });
 
   it(
@@ -4375,6 +4381,8 @@ describe(
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
+      // See the note in the `oss` describe above.
+      H.updateSetting("transforms-enabled", null);
     });
 
     it("should have transforms available in self-hosted pro without upsell gem icon", () => {

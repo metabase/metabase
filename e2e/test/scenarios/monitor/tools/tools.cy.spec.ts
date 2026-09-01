@@ -647,11 +647,11 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("tasks-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Runs/i }).click();
+    cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.findByTestId("task-runs-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Tasks/i }).click();
+    cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.findByTestId("tasks-table").should("be.visible");
   });

@@ -16,7 +16,10 @@ import type {
 } from "embedding-sdk-bundle/types/metabot";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import { getFinalChartMessageIdsPerTurn } from "metabase/metabot/state";
+import {
+  getFinalChartMessageIdsPerTurn,
+  getMetabotConversationId,
+} from "metabase/metabot/state";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
@@ -83,7 +86,10 @@ export const useMetabot = (): UseMetabotResult => {
 
   // keep only the last chart per turn — agent may emit several mid-stream
   const finalChartIds = useSelector((state) =>
-    getFinalChartMessageIdsPerTurn(state, "omnibot"),
+    getFinalChartMessageIdsPerTurn(
+      state,
+      getMetabotConversationId(state, "omnibot"),
+    ),
   );
   const messages = useMemo<MetabotMessage[]>(
     () =>
@@ -115,6 +121,8 @@ export const useMetabot = (): UseMetabotResult => {
     messages,
     errorMessages,
     isProcessing: agent.isDoingScience,
+    contextWindowPercentUsage: agent.contextWindowPercentUsage,
+    isContextWindowFull: agent.isContextWindowFull,
 
     CurrentChart,
   };

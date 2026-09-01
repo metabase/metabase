@@ -18,7 +18,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io Closeable)
-   (java.net SocketException)
+   (java.net SocketException SocketTimeoutException)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -45,7 +45,12 @@
         (log/debug "Message update loop interrupted")
         (do (let [sleep-ms (.toMillis python-message-loop-sleep-duration)]
               (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
-            (let [{:keys [status body]} (python-runner/get-logs run-id)]
+            ;; a read timeout here is usually transient, so keep polling rather than ending the loop
+            (if-let [{:keys [status body]} (try
+                                             (python-runner/get-logs run-id)
+                                             (catch SocketTimeoutException _
+                                               (log/debugf "Timed out polling for logs, run-id: %s" run-id)
+                                               nil))]
               (cond
                 (<= 200 status 299)
                 (let [{:keys [execution_id events]} body]
@@ -63,7 +68,8 @@
                 :else
                 (do
                   (log/warnf "Unexpected status polling for logs %s, run-id: %s" status run-id)
-                  (log/debug "Exiting due to poll error")))))))
+                  (log/debug "Exiting due to poll error")))
+              (recur)))))
     (catch SocketException se (when-not (= "Closed by interrupt" (ex-message se)) (throw se)))
     (catch InterruptedException _)
     (catch Throwable e

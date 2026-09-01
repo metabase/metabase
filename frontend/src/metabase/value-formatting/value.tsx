@@ -27,7 +27,11 @@ import { getJsxMarkdownRenderer } from "./registry";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
 
-export function formatValue(value: unknown, _options: ColumnSettings = {}) {
+export type FormatValueOptions = ColumnSettings & {
+  copyLinkUrl?: boolean;
+};
+
+export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
   let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (

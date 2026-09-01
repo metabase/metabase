@@ -16,6 +16,29 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- escape-like-pattern
+  "Escape `%`, `_` and the escape character `!` so `s` matches literally in a `LIKE` pattern."
+  ^String [^String s]
+  (str/replace s #"([!%_])" "!$1"))
+
+(defn like-pattern
+  "`LIKE` right-hand side matching `s` literally, with an explicit `ESCAPE` clause so it behaves the same on every app DB.
+  `wrap` receives the escaped string and returns the final pattern (string or HoneySQL expr), e.g. to add wildcards."
+  ([s]
+   (like-pattern s identity))
+  ([s wrap]
+   [:escape (wrap (escape-like-pattern s)) ^:allow-raw-sql [:inline "!"]]))
+
+(defn like-substring
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str "%" % "%")))
+
+(defn like-prefix
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal prefix; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str % "%")))
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
@@ -357,10 +380,18 @@
 (def ^:private raw-cast-type-name-re
   #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
 
+(defn raw-type-name?
+  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores, and spaces with an optional precision
+  suffix, e.g. `varchar(10)` or `double precision` — and is therefore safe to splice into SQL unquoted. Cast targets
+  that don't match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected
+  instead of being emitted raw."
+  [sql-type]
+  (boolean (re-matches raw-cast-type-name-re (name sql-type))))
+
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type expr]
-  (-> (if (re-matches raw-cast-type-name-re (name sql-type))
+  (-> (if (raw-type-name? sql-type)
         [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))

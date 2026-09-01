@@ -1,121 +1,150 @@
 .root {
+  --checkbox-icon-color: var(--mb-color-text-primary-inverse);
+
+  .description {
+    color: var(--mb-color-text-secondary);
+    font-size: var(--mantine-font-size-sm);
+    line-height: var(--mantine-line-height-sm);
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .error {
+    color: var(--mb-color-feedback-negative-strong);
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
   &:has(.input:disabled) {
-    .label {
-      color: var(--mb-color-text-disabled);
-    }
-
-    .description {
-      color: var(--mb-color-text-disabled);
-    }
-
+    .label,
+    .description,
     .icon {
       color: var(--mb-color-text-disabled);
     }
   }
 
-  &[data-variant="stacked"] {
-    .inner {
-      position: relative;
-      z-index: 0;
+  &[data-variant="stacked"] .input {
+    position: relative;
+
+    &:after {
+      content: "";
+      box-sizing: border-box;
+      position: absolute;
+      bottom: rem(-3px);
+      left: rem(-3px);
+      height: calc(var(--checkbox-size) - rem(3px));
+      width: calc(var(--checkbox-size) - rem(3px));
+      border-left: 1px solid var(--mb-color-border-neutral-strong);
+      border-bottom: 1px solid var(--mb-color-border-neutral-strong);
+      border-bottom-left-radius: rem(5px);
     }
 
-    /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
-    &:has(.input[data-indeterminate]),
-    &:has(.input[data-indeterminate="true"]) {
-      .icon {
-        color: var(--mb-color-text-secondary);
-      }
-    }
-
-    .input {
-      /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
-      &[data-indeterminate],
-      &[data-indeterminate="true"] {
-        border-color: var(--mb-color-border-neutral);
-        background-color: var(--mb-color-background_page-primary);
-      }
-
-      &:after {
-        content: "";
-        border: rem(1) solid var(--mb-color-border-neutral);
-        position: absolute;
-        top: rem(-2);
-        left: rem(2);
-        height: 100%;
-        width: 100%;
-        border-radius: var(--checkbox-radius);
-        z-index: -1;
-        background-color: var(--mb-color-background_page-primary);
-        box-sizing: "border-box";
-      }
-
-      &:checked:not([disabled]):after {
-        border: 1px solid var(--mb-color-core-brand);
-      }
-
-      &:disabled:after {
-        border: 1px solid var(--mb-color-border-neutral);
-      }
+    &:disabled:after {
+      border-color: var(--mb-color-border-neutral-subtle);
     }
   }
 }
 
 .body {
   align-items: start;
+
+  &:has(.label) .inner {
+    display: flex;
+    align-items: center;
+    height: rem(20px);
+  }
 }
 
 .input {
-  border: 1px solid var(--mb-color-border-neutral);
-  background-color: var(--mb-color-background_page-primary);
-
-  /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
-  &[data-indeterminate],
-  &[data-indeterminate="true"] {
-    border-color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-core-brand);
-  }
-
-  &:checked {
-    border-color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-core-brand);
-  }
+  border: 1px solid var(--mb-color-border-neutral-strong);
+  background-color: var(--mb-color-background_surface-secondary);
 
   &:not(:disabled) {
     cursor: pointer;
   }
 
+  /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
+  &:checked,
+  &[data-indeterminate],
+  &[data-indeterminate="true"] {
+    border-color: var(--mb-color-border-neutral-strong);
+    background-color: var(--mb-color-background_surface-brand-strong);
+  }
+
   &:disabled {
-    border-color: var(--mb-color-background_surface-disabled);
-    background-color: var(
-      --mb-color-background_page-tertiary
-    ); /* Opaque color needed here */
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
   }
 }
 
 .label {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-md);
-}
-
-.description {
-  color: var(--mb-color-text-primary);
-  font-size: var(--mantine-font-size-sm);
-  line-height: var(--mantine-line-height-sm);
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-.error {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
+  line-height: rem(20px);
 }
 
 .icon {
-  color: var(--mb-color-text-primary-inverse);
+  width: 100%;
 }
 
 .labelWrapper {
-  gap: 0.25rem;
+  gap: rem(2px);
   align-self: center;
+}
+
+.card {
+  --card-ring: 0 0 0 0 transparent;
+
+  display: flex;
+  align-items: flex-start;
+  gap: rem(12px);
+  padding: var(--mantine-spacing-md);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: rem(12px);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs), var(--card-ring);
+  text-align: left;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &[data-checked]:not(:disabled) {
+    --card-ring: inset 0 0 0 0.5px var(--mb-color-border-highlight);
+
+    border-color: var(--mb-color-border-highlight);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
+  }
+}
+
+.cardIndicator {
+  --checkbox-icon-color: var(--mb-color-text-primary-inverse);
+
+  flex-shrink: 0;
+  margin-top: rem(1px);
+  border: 1px solid var(--mb-color-border-neutral-strong);
+  background-color: var(--mb-color-background_surface-secondary);
+
+  &[data-checked] {
+    border-color: var(--mb-color-border-neutral-strong);
+    background-color: var(--mb-color-background_surface-brand-strong);
+  }
+
+  &[data-disabled] {
+    --checkbox-icon-color: var(--mb-color-text-disabled);
+
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
+
+    /* Mantine pins the disabled+checked icon color per scheme with (0,5,0) specificity */
+    [data-mantine-color-scheme] &[data-checked] > .icon {
+      color: var(--mb-color-text-disabled);
+    }
+  }
 }

@@ -33,9 +33,16 @@
   (try
     (api/read-check :model/Database database-id)
     (catch clojure.lang.ExceptionInfo e
-      (throw (if (contains? #{403 404} (:status-code (ex-data e)))
-               (ex-info (ex-message e) (assoc (ex-data e) :agent-error? true) e)
-               e)))))
+      ;; 403 is terminal like the native check below -- no retry grants access. 404 means the
+      ;; database vanished after the existence check, which re-listing databases can recover from.
+      (let [{:keys [status-code] :as data} (ex-data e)]
+        (throw (cond
+                 (= 403 status-code) (ex-info (tru "You do not have access to this database.")
+                                              (assoc data :agent-error? true :terminal-error? true)
+                                              e)
+                 (= 404 status-code) (ex-info (ex-message e) (assoc data :agent-error? true) e)
+                 :else               e)))))
+  (metabot.tools.sql.common/check-native-query-access! database-id))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.

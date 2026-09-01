@@ -1745,3 +1745,30 @@
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
              (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             :id card-id))))))
+
+(deftest serdes-extract-query-excludes-exploration-summary-cards-test
+  (testing "serdes never extracts a Card scoped to an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}     {}
+                   :model/User        {user-id :id}     {:email "serdes-card@example.com"}
+                   :model/Exploration {expl-id :id}     {:name "Explo" :creator_id user-id}
+                   :model/Document    {summary-id :id}  {:name           "Summary"
+                                                         :creator_id     user-id
+                                                         :collection_id  coll-id
+                                                         :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}   {:name "Plain doc" :creator_id user-id
+                                                         :collection_id coll-id}
+                   :model/Card        {plain-card :id}  {:collection_id coll-id}
+                   :model/Card        {doc-card :id}    {:collection_id coll-id :document_id plain-doc}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :name "Orders for Customer = ACME Corp over time"}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Card" {:where [:in :id [plain-card doc-card summary-card]]}))]
+        (is (contains? extracted (eid plain-card))
+            "an ordinary card is still exported")
+        (is (contains? extracted (eid doc-card))
+            "a card belonging to an ordinary document still travels with that document")
+        (is (not (contains? extracted (eid summary-card)))
+            "a card belonging to an exploration Summary is never exported — its name and dataset_query
+             carry values discovered under the creator's lens, and its parent document is excluded")))))

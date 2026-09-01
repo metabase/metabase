@@ -22,6 +22,7 @@
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -51,6 +52,45 @@
   "The Azure deployment name carried by a `{family}/{deployment-name}` model string."
   [model]
   (second (str/split (str model) #"/" 2)))
+
+(def ^:private model-context-windows
+  "Input context windows for the models Azure sells, keyed by model id.
+  GPT values are max input tokens (Microsoft's listed windows are input + output totals):
+  https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
+  {"claude-fable-5"    1000000
+   "claude-opus-5"     1000000
+   "claude-opus-4-8"   1000000
+   "claude-opus-4-7"   1000000
+   "claude-opus-4-6"   1000000
+   "claude-opus-4-5"    200000
+   "claude-opus-4-1"    200000
+   "claude-sonnet-5"   1000000
+   "claude-sonnet-4-6" 1000000
+   "claude-sonnet-4-5"  200000
+   "claude-haiku-4-5"   200000
+   "gpt-5.6-sol"        922000
+   "gpt-5.6-terra"      922000
+   "gpt-5.6-luna"       922000
+   "gpt-5.6"            922000
+   "gpt-5.5-pro"        922000
+   "gpt-5.5"            922000
+   "gpt-5.4-pro"        922000
+   "gpt-5.4-mini"       272000
+   "gpt-5.4-nano"       272000
+   "gpt-5.4"            922000})
+
+(defn context-window-tokens
+  "The input context window for a `{family}/{deployment}` model string. Deployment names
+  default to the model id at deploy time, so the longest model id prefixing the deployment
+  name decides (tolerating date/custom suffixes like `gpt-5.4-2026-03-05`); nil when the
+  deployment name matches no known model."
+  [model]
+  (let [deployment (u/lower-case-en (str (model->deployment model)))]
+    (some->> (keys model-context-windows)
+             (filter #(str/starts-with? deployment %))
+             seq
+             (apply max-key count)
+             model-context-windows)))
 
 ;;; ------------------------------------------------ HTTP plumbing ----------------------------------------------
 
@@ -172,7 +212,7 @@
   throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
-        opts   (assoc opts :model (model->deployment model) :reasoning? false)
+        opts   (assoc opts :model (model->deployment model) :reasoning? false :fast? false)
         {:keys [path headers req]}
         (case family
           :anthropic {:path    "/v1/messages"

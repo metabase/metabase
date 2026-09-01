@@ -83,7 +83,7 @@
   (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
 
 (defn export-query-for-llm
-  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
   map with a `:database` is normalized and exported to the portable representations form
   the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
@@ -986,11 +986,12 @@
   "Render a list-shaped read-resource response.
 
    Input shape:
-     {:list-type :databases     ; keyword, becomes the type attribute
-      :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
-      :total     5
-      :page      1
-      :pages     1}
+     {:list-type      :databases     ; keyword, becomes the type attribute
+      :items          [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
+      :total          5
+      :page           1
+      :pages          1
+      :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
    block ahead of the items; items reference tabs via their `tab_id` attribute.
@@ -1000,7 +1001,7 @@
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages tabs]}]
+  [{:keys [list-type items total page pages tabs next-page-uri]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         tabs-xml  (when (seq tabs)
                     (str "<tabs>\n"
@@ -1013,7 +1014,8 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
+                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)
          "\" pages=\"" (or pages 1)

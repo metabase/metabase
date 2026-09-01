@@ -4,7 +4,10 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -58,7 +61,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -67,7 +70,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -76,7 +79,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -126,6 +129,21 @@
                       {:status-code 400
                        :value       value})))))
 
+(defn- validate-google-model!
+  "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
+  A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
+  request URL).  Throws on invalid input."
+  [value model]
+  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+    (when-not (and (contains? google/model-publishers publisher)
+                   (not (str/blank? model-id))
+                   (not (str/includes? model-id "/")))
+      (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+                           (pr-str value)
+                           (str/join ", " (sort google/model-publishers)))
+                      {:status-code 400
+                       :value       value})))))
+
 (defn- validate-managed-model!
   "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
   [[metabase.llm.provider/provider-types]])."
@@ -156,6 +174,7 @@
                       {:status-code 400 :value value})))
     (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
       "azure"    (validate-azure-model! value model)
+      "google"   (validate-google-model! value model)
       "metabase" (validate-managed-model! model)
       nil)))
 
@@ -221,12 +240,19 @@
   :doc        false)
 
 (defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us."
+  "Whether a model reference names a model that streams its reasoning back to us.
+
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
+  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
+  `--reasoning-parser` as well as on the model, so the name cannot settle it."
   [model-ref]
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)]
+  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
       "anthropic" (claude/reasoning-model? model)
+      "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
+      "google"    (google/reasoning-model? model)
+      "vllm"      (vllm/reasoning-connection? credentials)
       false)))
 
 (defsetting llm-metabot-supports-reasoning?
@@ -237,6 +263,35 @@
   :export?    false
   :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
   :doc        false)
+
+(defn- llm-provider-supports-fast-mode?
+  "Whether a model reference names a model we can serve in Anthropic fast mode.
+
+  Anthropic-only and BYOK-only: fast mode is premium-priced, and proxied connections bill through
+  Metabase Cloud rather than the instance's own API key."
+  [model-ref]
+  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (and (= type "anthropic")
+                  (not ai-proxy?)
+                  (claude/fast-mode-model? model)))))
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
 
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})

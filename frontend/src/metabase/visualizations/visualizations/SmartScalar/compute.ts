@@ -8,13 +8,13 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { computeChange } from "metabase/visualizations/lib/numeric";
-import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import {
-  formatChange,
+  computeChange,
+  findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
-} from "metabase/visualizations/visualizations/SmartScalar/utils";
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {

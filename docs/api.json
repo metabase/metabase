@@ -460,9 +460,9 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.options"
           }, {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
               "type" : "string"
+            }, {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             } ]
           } ]
         }, {
@@ -1015,7 +1015,7 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.time"
         }, {
           "anyOf" : [ {
             "const" : "default"
@@ -6531,6 +6531,48 @@
         },
         "required" : [ "name", "dimension_interestingness", "dimensions" ]
       },
+      "metabase.explorations.api.ExplorationDocument" : {
+        "description" : "Schema for the Summary document attached to an exploration.",
+        "type" : "object",
+        "properties" : {
+          "is_placeholder" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "exploration_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "content_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "exploration_id", "creator_id", "content_type", "is_placeholder", "created_at", "updated_at" ]
+      },
       "metabase.explorations.api.ExplorationMetric" : {
         "description" : "Schema for a metric in the /dimensions response: dimensions referenced by id only.",
         "type" : "object",
@@ -6946,6 +6988,13 @@
             "description" : "value must be an integer greater than zero.",
             "type" : "integer",
             "minimum" : 1
+          },
+          "document" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+            }, {
+              "type" : "null"
+            } ]
           },
           "creator" : {
             "oneOf" : [ {
@@ -13378,6 +13427,215 @@
           "required" : [ "payload_type" ]
         } ]
       },
+      "metabase.notification.api.notification.NotificationApiUpdateInput" : {
+        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload" : {
+              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCardUpdate"
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type", "payload" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type" ]
+        } ]
+      },
       "metabase.notification.models.CreateNotificationCardParams" : {
         "description" : "Schema for :model/NotificationCard on a create request.",
         "type" : "object",
@@ -13898,6 +14156,25 @@
         },
         "required" : [ "card_id" ]
       },
+      "metabase.notification.models.NotificationCardUpdate" : {
+        "description" : "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification.",
+        "type" : "object",
+        "properties" : {
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "send_condition" : {
+            "type" : "string",
+            "enum" : [ "goal_below", "has_result", "goal_above" ]
+          },
+          "send_once" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "card_id" ]
+      },
       "metabase.notification.models.NotificationHandler" : {
         "type" : "object",
         "properties" : {
@@ -14128,6 +14405,9 @@
           "required" : [ "type", "cron_schedule" ]
         } ]
       },
+      "metabase.parameters.schema..api.parameter-values" : {
+        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-values"
+      },
       "metabase.parameters.schema.legacy-ref" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-expression-ref"
@@ -14279,6 +14559,12 @@
           "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
         }
       },
+      "metabase.parameters.schema.parameter-values" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
+        }
+      },
       "metabase.parameters.schema.parameter-with-value" : {
         "description" : "parameter must be a map with an :id key",
         "type" : "object",
@@ -14299,6 +14585,13 @@
           "options" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.options"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
             }, {
               "type" : "null"
             } ]
@@ -15025,13 +15318,6 @@
         "description" : "Form-encoded JSON-encoded legacy MBQL :field ref.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
       },
-      "metabase.tiles.api.parameters" : {
-        "description" : "Form-encoded JSON-encoded array of parameter maps.",
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-        }
-      },
       "metabase.tiles.api.query" : {
         "description" : "Form-encoded JSON-encoded MBQL query.",
         "$ref" : "#/components/schemas/metabase.lib.schema.query"
@@ -15267,6 +15553,207 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
       },
+      "metabase.users-rest.api.current-user-response" : {
+        "description" : "Response for `GET /api/user/current`.",
+        "type" : "object",
+        "properties" : {
+          "permissions" : {
+            "$ref" : "#/components/schemas/metabase.users-rest.api.user-permissions"
+          },
+          "has_model" : {
+            "type" : "boolean"
+          },
+          "login_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sso_source" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "jwt_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_qbnewb" : {
+            "type" : "boolean"
+          },
+          "is_active" : {
+            "type" : "boolean"
+          },
+          "last_login" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "tenant_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "group_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "uniqueItems" : true
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "locale" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "first_login" : { },
+          "is_superuser" : {
+            "type" : "boolean"
+          },
+          "tenant_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "custom_homepage" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "dashboard_id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }
+              },
+              "required" : [ "dashboard_id" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_installer" : {
+            "type" : "boolean"
+          },
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_joined" : { },
+          "has_invited_second_user" : {
+            "type" : "boolean"
+          },
+          "personal_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "common_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "has_question_and_dashboard" : {
+            "type" : "boolean"
+          },
+          "can_write_any_collection" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+      },
+      "metabase.users-rest.api.user-permissions" : {
+        "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
+        "type" : "object",
+        "properties" : {
+          "can_access_subscription" : {
+            "type" : "boolean"
+          },
+          "can_create_native_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_setting" : {
+            "type" : "boolean"
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "is_group_manager" : {
+            "type" : "boolean"
+          },
+          "can_access_monitoring" : {
+            "type" : "boolean"
+          },
+          "can_access_data_model" : {
+            "type" : "boolean"
+          },
+          "can_access_db_details" : {
+            "type" : "boolean"
+          },
+          "can_create_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_transforms" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "can_create_queries", "can_create_native_queries" ]
+      },
       "metabase.users.schema.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -15388,10 +15875,24 @@
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
+      "metabase.xrays.api.automagic-dashboards.cell-query" : {
+        "description" : "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step\n  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler\n  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is\n  and fails validation, surfacing as a clean 400.",
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema..root.cell-query"
+      },
       "metabase.xrays.api.automagic-dashboards.entity-id-or-query" : {
         "description" : "One of these:\n\n  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)\n\n  * a form-encoded base-64-encoded JSON-encoded MBQL query\n\n  * The name of a transform\n\n  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded\n  string.)",
         "type" : "string",
         "minLength" : 1
+      },
+      "metabase.xrays.automagic-dashboards.schema..root.cell-query" : {
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema.filter-clause"
+      },
+      "metabase.xrays.automagic-dashboards.schema.filter-clause" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
       }
     },
     "securitySchemes" : {
@@ -16372,6 +16873,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/agent" ]
       }
     },
@@ -16551,81 +17062,6 @@
           }
         },
         "tags" : [ "/api/agent" ]
-      }
-    },
-    "/api/ai-entity-analysis/analyze-chart" : {
-      "post" : {
-        "operationId" : "post-api-ai-entity-analysis-analyze-chart",
-        "summary" : "POST /api/ai-entity-analysis/analyze-chart",
-        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service\n  for analysis.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "description" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "image_base64" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "timeline_events" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "description" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "name" : {
-                            "type" : "string"
-                          },
-                          "timestamp" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "name", "timestamp" ]
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "image_base64" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ai-entity-analysis" ]
       }
     },
     "/api/alert" : {
@@ -17154,12 +17590,19 @@
                             "type" : "string"
                           }
                         },
+                        "description" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
                         "bundle_path" : {
                           "type" : "string",
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -17327,12 +17770,19 @@
                         "type" : "string"
                       }
                     },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "bundle_path" : {
                       "type" : "string",
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -17466,12 +17916,19 @@
                           "type" : "string"
                         }
                       },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "bundle_path" : {
                         "type" : "string",
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -17529,6 +17986,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/apps" ]
@@ -17673,7 +18140,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -17820,7 +18287,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -19144,7 +19611,7 @@
       "post" : {
         "operationId" : "post-api-card-card-id-query",
         "summary" : "POST /api/card/{card-id}/query",
-        "description" : "Run the query associated with a Card.",
+        "description" : "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query\n  and optionally re-sorts the rows via the `sort` body param.",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -19207,6 +19674,23 @@
                     }, {
                       "type" : "null"
                     } ]
+                  },
+                  "sort" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "value_asc", "value_desc", "label_asc", "label_desc" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "stored_result_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ ]
@@ -19266,11 +19750,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      }
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -21088,6 +21568,17 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "show_exploration_documents",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -21567,6 +22058,18 @@
           }
         }, {
           "in" : "query",
+          "name" : "show_exploration_documents",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
           "name" : "q",
           "required" : false,
           "schema" : {
@@ -21697,6 +22200,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/comment" ]
       },
       "post" : {
@@ -21780,6 +22293,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/comment" ]
@@ -22898,15 +23421,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -23196,6 +23711,18 @@
               "description" : "String must be a valid 21-character NanoID string.",
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
             } ]
           }
         } ],
@@ -23913,15 +24440,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -23953,6 +24472,18 @@
               "description" : "String must be a valid 21-character NanoID string.",
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
             } ]
           }
         } ],
@@ -25027,6 +25558,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -25578,7 +26121,14 @@
         "operationId" : "get-api-database-virtual-db-datasets-schema",
         "summary" : "GET /api/database/{virtual-db}/datasets/{schema}",
         "description" : "Returns a list of Tables for the datasets virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -25618,7 +26168,14 @@
         "operationId" : "get-api-database-virtual-db-schema-schema",
         "summary" : "GET /api/database/{virtual-db}/schema/{schema}",
         "description" : "Returns a list of Tables for the saved questions virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26115,12 +26672,7 @@
                           },
                           "parameters" : {
                             "oneOf" : [ {
-                              "type" : "array",
-                              "items" : {
-                                "description" : "Value must be a map.",
-                                "type" : "object",
-                                "properties" : { }
-                              }
+                              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                             }, {
                               "type" : "null"
                             } ]
@@ -26352,12 +26904,7 @@
                           },
                           "parameters" : {
                             "oneOf" : [ {
-                              "type" : "array",
-                              "items" : {
-                                "description" : "Value must be a map.",
-                                "type" : "object",
-                                "properties" : { }
-                              }
+                              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                             }, {
                               "type" : "null"
                             } ]
@@ -26496,17 +27043,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "description" : "Value must be a map.",
-                          "type" : "object",
-                          "properties" : { }
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -27118,7 +27655,7 @@
       "post" : {
         "operationId" : "post-api-ee-ai-controls-permissions-advanced",
         "summary" : "POST /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group.",
+        "description" : "Switch to group-level permissions. Removes the permissions of All Users and All tenant users, so nobody has\n   access until they are in a group that grants it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -27170,7 +27707,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-ai-controls-permissions-advanced",
         "summary" : "DELETE /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users.",
+        "description" : "Switch back to simple permissions. Removes the permissions of every group other than Administrators, All Users\n   and All tenant users.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28009,6 +28546,17 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "locale",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -28552,6 +29100,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -28762,6 +29320,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -28935,6 +29503,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
@@ -29231,6 +29809,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/data-complexity-score" ]
@@ -30413,6 +31001,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/library" ]
       },
       "get" : {
@@ -30446,6 +31044,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/library" ]
@@ -31772,6 +32380,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/permission_debug" ]
       }
     },
@@ -32405,6 +33023,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
@@ -33240,7 +33868,15 @@
         "operationId" : "put-api-ee-scim-v2-Groups-id",
         "summary" : "PUT /api/ee/scim/v2/Groups/{id}",
         "description" : "Update a group.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -33523,7 +34159,15 @@
         "operationId" : "put-api-ee-scim-v2-Users-id",
         "summary" : "PUT /api/ee/scim/v2/Users/{id}",
         "description" : "Update a user.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -34695,6 +35339,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/tenant" ]
@@ -36451,22 +37105,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -36542,22 +37195,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -36612,7 +37264,7 @@
       "post" : {
         "operationId" : "post-api-exploration",
         "summary" : "POST /api/exploration",
-        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns\n  immediately with an empty queries list. Clients should poll `GET /:id` until the queries appear\n  and reach a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
+        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary\n  document in the same collection. Actual planning is async; this endpoint returns immediately\n  with an empty queries list. Clients should poll `GET /:id` until the queries appear and reach\n  a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -36805,7 +37457,7 @@
       "get" : {
         "operationId" : "get-api-exploration-mine",
         "summary" : "GET /api/exploration/mine",
-        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration and its creation — see\n  [[my-explorations-honeysql]]. Explorations that were moved into a collection the user can no\n  longer read are excluded, as are archived ones. Returns the collection-items envelope:\n  `{:total :limit :offset :data}`.",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[my-explorations-honeysql]]. Explorations that were moved into a collection the\n  user can no longer read are excluded, as are archived ones. Returns the collection-items\n  envelope: `{:total :limit :offset :data}`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37084,7 +37736,7 @@
       "put" : {
         "operationId" : "put-api-exploration-id",
         "summary" : "PUT /api/exploration/{id}",
-        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.",
+        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37162,7 +37814,7 @@
       "delete" : {
         "operationId" : "delete-api-exploration-id",
         "summary" : "DELETE /api/exploration/{id}",
-        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade\n  FKs configured in the explorations migration.",
+        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`\n  via the on-delete-cascade FKs configured in the explorations migration.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37334,6 +37986,71 @@
                   }
                 },
                 "required" : [ "page_id", "explore_filters" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/{id}/summary/append" : {
+      "post" : {
+        "operationId" : "post-api-exploration-id-summary-append",
+        "summary" : "POST /api/exploration/{id}/summary/append",
+        "description" : "Append a static `cardEmbed` representing a *composite chart* — built from one or more\n  `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's\n  Summary document.\n\n  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry\n  for single-query charts; multiple for combined cartesian / heat-map charts). The BE\n  combines those source snapshots (`metabase.explorations.composite/combine`) into one\n  ephemeral `stored_result` and materializes one ephemeral `report_card` referencing it.\n  The cardEmbed node remains single-card.\n\n  - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE\n    can deep-link the embed title back to the source page, share that page's comment\n    stream (`child_target_id`), and resolve highlight hover and explore-further filter\n    pills via opaque `host_data`.\n  - `display` / `visualization_settings` are required FE-computed render settings (from\n    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.\n\n  All source EQs must belong to a thread of this exploration. Appending clears\n  `is_placeholder` when it was set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display" : {
+                    "type" : "string"
+                  },
+                  "exploration_query_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  },
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "exploration_query_ids", "display", "visualization_settings" ]
               }
             }
           }
@@ -38007,6 +38724,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/geojson" ]
       }
     },
@@ -38033,6 +38760,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/geojson" ]
@@ -38229,7 +38966,16 @@
         "operationId" : "get-api-health-inspector",
         "summary" : "GET /api/health-inspector",
         "description" : "Get a list of recent health check runs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -39176,11 +39922,318 @@
         "tags" : [ "/api/llm" ]
       }
     },
-    "/api/llm/list-models" : {
+    "/api/llm/models" : {
       "get" : {
-        "operationId" : "get-api-llm-list-models",
-        "summary" : "GET /api/llm/list-models",
-        "description" : "List available LLM models from the configured provider.\n\n   Requires LLM to be configured for the selected provider in admin settings.",
+        "operationId" : "get-api-llm-models",
+        "summary" : "GET /api/llm/models",
+        "description" : "List the models available from every configured connection, grouped by connection.\n\n  A connection whose credentials are rejected comes back with an empty model list and an `error`, so one bad\n  connection does not blank out the others.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "error" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "key" : {
+                        "type" : "string"
+                      },
+                      "models" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "display_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "id", "display_name" ]
+                        }
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "key", "name", "type", "models" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/provider-types" : {
+      "get" : {
+        "operationId" : "get-api-llm-provider-types",
+        "summary" : "GET /api/llm/provider-types",
+        "description" : "List the provider types a connection can be created for, with the credential fields each one needs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "managed" : {
+                        "type" : "boolean"
+                      },
+                      "singleton" : {
+                        "type" : "boolean"
+                      },
+                      "default_model" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "label" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string"
+                      },
+                      "fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "prefix" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "placeholder" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "label" : {
+                              "type" : "string"
+                            },
+                            "show_when" : {
+                              "oneOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "field" : {
+                                    "type" : "string"
+                                  },
+                                  "value" : {
+                                    "type" : "string"
+                                  }
+                                },
+                                "required" : [ "field", "value" ]
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "key" : {
+                              "type" : "string"
+                            },
+                            "advanced" : {
+                              "type" : "boolean"
+                            },
+                            "docs_url" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "required" : {
+                              "type" : "boolean"
+                            },
+                            "type" : {
+                              "type" : "string",
+                              "enum" : [ "text", "password", "select", "segmented", "file" ]
+                            },
+                            "help" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "options" : {
+                              "oneOf" : [ {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "label" : {
+                                      "type" : "string"
+                                    },
+                                    "value" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "value", "label" ]
+                                }
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "default" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          },
+                          "required" : [ "key", "label", "type", "required", "advanced" ]
+                        }
+                      },
+                      "models" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "display_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "id", "display_name" ]
+                        }
+                      },
+                      "available" : {
+                        "type" : "boolean"
+                      },
+                      "required_any" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      }
+                    },
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "fields" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/providers" : {
+      "get" : {
+        "operationId" : "get-api-llm-providers",
+        "summary" : "GET /api/llm/providers",
+        "description" : "List the configured provider connections, with their secrets masked.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "config" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      },
+                      "env_fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "env_vars" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "key" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "source" : {
+                        "type" : "string",
+                        "enum" : [ "db", "env" ]
+                      },
+                      "type" : {
+                        "type" : "string"
+                      },
+                      "usable" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      },
+      "post" : {
+        "operationId" : "post-api-llm-providers",
+        "summary" : "POST /api/llm/providers",
+        "description" : "Create a provider connection. The credentials are verified before the connection is saved.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -39190,23 +40243,242 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "models" : {
+                    "config" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "env_fields" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
+                        "type" : "string"
                       }
+                    },
+                    "env_vars" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "source" : {
+                      "type" : "string",
+                      "enum" : [ "db", "env" ]
+                    },
+                    "type" : {
+                      "type" : "string"
+                    },
+                    "usable" : {
+                      "type" : "boolean"
                     }
                   },
-                  "required" : [ "models" ]
+                  "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "config" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "key" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "type" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/providers/{key}" : {
+      "put" : {
+        "operationId" : "put-api-llm-providers-key",
+        "summary" : "PUT /api/llm/providers/{key}",
+        "description" : "Update a provider connection. Secret fields the client echoes back masked keep their stored value.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "config" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "env_fields" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "env_vars" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "source" : {
+                      "type" : "string",
+                      "enum" : [ "db", "env" ]
+                    },
+                    "type" : {
+                      "type" : "string"
+                    },
+                    "usable" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "config" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-llm-providers-key",
+        "summary" : "DELETE /api/llm/providers/{key}",
+        "description" : "Delete a provider connection.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }
@@ -40344,9 +41616,7 @@
                         } ]
                       },
                       "dataset_query" : {
-                        "description" : "Value must be a map.",
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
                       },
                       "description" : {
                         "oneOf" : [ {
@@ -40951,253 +42221,6 @@
           }
         },
         "tags" : [ "/api/metabot/permissions" ]
-      }
-    },
-    "/api/metabot/settings" : {
-      "get" : {
-        "operationId" : "get-api-metabot-settings",
-        "summary" : "GET /api/metabot/settings",
-        "description" : "Return available models for a provider using its configured credentials.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "provider",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "credentials-error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "models" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "group" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
-                      }
-                    },
-                    "value" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "value", "models" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/metabot" ]
-      },
-      "put" : {
-        "operationId" : "put-api-metabot-settings",
-        "summary" : "PUT /api/metabot/settings",
-        "description" : "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "credentials-error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "models" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "group" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
-                      }
-                    },
-                    "value" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "value", "models" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "api-key" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "credentials" : {
-                    "oneOf" : [ {
-                      "type" : "object",
-                      "properties" : {
-                        "base-url" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "access-key-id" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "secret-access-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "project-id" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "api-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "service-account-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "location" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "region" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "oauth-access-token" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "session-token" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "model" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "provider" : {
-                    "type" : "string",
-                    "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
-                  }
-                },
-                "required" : [ "provider" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/metabot" ]
       }
     },
     "/api/metabot/slack/events" : {
@@ -42803,7 +43826,7 @@
       "put" : {
         "operationId" : "put-api-mt-user-id-attributes",
         "summary" : "PUT /api/mt/user/{id}/attributes",
-        "description" : "Update the `login_attributes` for a User.",
+        "description" : "Update the `login_attributes` for a User. Only personal users can have attributes.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -43554,7 +44577,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiUpdateInput"
               }
             }
           }
@@ -45374,6 +46397,13 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -45580,22 +46610,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -45671,22 +46700,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -46006,8 +47034,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46081,8 +47108,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46192,8 +47218,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46294,10 +47319,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                      }
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -46625,8 +47647,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46707,15 +47728,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -46812,8 +47825,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46882,8 +47894,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46957,22 +47968,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -47050,22 +48060,21 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -48803,6 +49812,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/session" ]
       }
     },
@@ -49380,7 +50399,7 @@
       "post" : {
         "operationId" : "post-api-slack-bug-report",
         "summary" : "POST /api/slack/bug-report",
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -49400,10 +50419,145 @@
                 "type" : "object",
                 "properties" : {
                   "diagnosticInfo" : {
-                    "type" : "object"
+                    "type" : "object",
+                    "properties" : {
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "additionalProperties" : false
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "additionalProperties" : false
                   }
                 },
-                "required" : [ "diagnosticInfo" ]
+                "required" : [ "diagnosticInfo" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -50793,7 +51947,7 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
           }
         }, {
           "in" : "query",
@@ -50879,7 +52033,7 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
           }
         }, {
           "in" : "query",
@@ -57289,7 +58443,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.users-rest.api.current-user-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57325,7 +58486,7 @@
       "get" : {
         "operationId" : "get-api-user-id",
         "summary" : "GET /api/user/{id}",
-        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
+        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.\n  Only personal users can be fetched this way; API-key users and the internal user 404.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -57352,7 +58513,7 @@
       "put" : {
         "operationId" : "put-api-user-id",
         "summary" : "PUT /api/user/{id}",
-        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.",
+        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.\n  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",

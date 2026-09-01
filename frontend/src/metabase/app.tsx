@@ -1,6 +1,5 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import "@xyflow/react/dist/style.css";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
@@ -19,7 +18,7 @@ import "metabase/auth/plugins";
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
-import "metabase/utils/csp";
+import "metabase/utils/csp-setup";
 
 import { type Middleware, isAction } from "@reduxjs/toolkit";
 import { DragDropContextProvider } from "react-dnd";

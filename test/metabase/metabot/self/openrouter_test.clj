@@ -73,6 +73,92 @@
       (is (= ["user"] (map :role (:messages body)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Temperature gating
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- request-body-temperature
+  [model]
+  (:temperature (openrouter/openrouter-request-body {:model       model
+                                                     :input       [{:role :user :content "hi"}]
+                                                     :temperature 0.3})))
+
+(deftest ^:parallel request-body-drops-temperature-for-models-that-reject-it-test
+  (testing "the GPT-5 and o-series families take no explicit temperature"
+    (doseq [model ["openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4" "openai/gpt-5.4-mini"
+                   "openai/o1" "openai/o3-mini"]]
+      (testing model
+        (is (nil? (request-body-temperature model))))))
+  (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
+    (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
+                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
+      (testing model
+        (is (nil? (request-body-temperature model)))))))
+
+(deftest ^:parallel request-body-keeps-temperature-for-models-that-accept-it-test
+  (testing "every other whitelisted model still gets the profile's temperature"
+    (doseq [model ["anthropic/claude-opus-4.6" "anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1"
+                   "anthropic/claude-sonnet-4.6" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
+                   "deepseek/deepseek-v4-pro" "mistralai/mistral-medium-3-5" "z-ai/glm-5.2"]]
+      (testing model
+        (is (= 0.3 (request-body-temperature model)))))))
+
+(deftest ^:parallel request-body-omits-temperature-when-none-is-supplied-test
+  (testing "a request with no temperature is unchanged either way"
+    (doseq [model ["openai/gpt-5.4" "anthropic/claude-haiku-4.5"]]
+      (testing model
+        (is (not (contains? (openrouter/openrouter-request-body {:model model
+                                                                 :input [{:role :user :content "hi"}]})
+                            :temperature)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; openrouter-request-body tool_choice tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-schema-tool-choice-test
+  (testing "the structured-output forced tool call is downgraded to auto for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "qwen/qwen3.8-max"
+                 :input  [{:role :user :content "hi"}]
+                 :schema {:type "object" :properties {:answer {:type "string"}}}})]
+      (is (=? {:tool_choice "auto"
+               :tools       [{:function {:name "structured_output"}}]}
+              body)))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-explicit-tool-choice-test
+  (testing "an explicit tool_choice required is downgraded too"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "required"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-leaves-auto-tool-choice-test
+  (testing "a tool_choice that is already auto is left alone for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "auto"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
+  (testing "models that accept a forced tool call keep tool_choice required"
+    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model  model
+                     :input  [{:role :user :content "hi"}]
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (= "required" (:tool_choice body))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -280,6 +366,7 @@
                                     :body   {:data [{:id "openai/gpt-5.6-sol"          :name "OpenAI: GPT-5.6 Sol"          :created 50}
                                                     {:id "openai/gpt-5.6-terra"        :name "OpenAI: GPT-5.6 Terra"        :created 49}
                                                     {:id "openai/gpt-5.6-luna"         :name "OpenAI: GPT-5.6 Luna"         :created 48}
+                                                    {:id "qwen/qwen3.8-max"            :name "Qwen: Qwen3.8 Max"            :created 41}
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
@@ -294,7 +381,8 @@
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
-                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}]
+                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}
+                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}]
                (:models (openrouter/list-models {:credentials byok-credentials}))))))))
 
 (deftest openrouter-raw-explicit-credentials-test

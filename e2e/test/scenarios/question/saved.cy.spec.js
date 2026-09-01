@@ -652,35 +652,5 @@ describe(
 
       H.modal().findByText(secondWebhookName).should("be.visible");
     });
-
-    // There is no api to test individual hooks for new Question Alerts
-    it("should allow you to test a webhook", { tags: "@skip" }, () => {
-      cy.intercept("POST", "/api/pulse/test").as("testAlert");
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Create an alert").click();
-
-      H.modal().within(() => {
-        H.getAlertChannel(firstWebhookName).scrollIntoView();
-
-        H.getAlertChannel(firstWebhookName)
-          .findByRole("checkbox")
-          .click({ force: true });
-
-        H.getAlertChannel(firstWebhookName).button("Send a test").click();
-      });
-
-      cy.wait("@testAlert");
-
-      cy.request(
-        `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
-      ).then(({ body }) => {
-        expect(body).to.have.length(1);
-
-        cy.wrap(atob(body[0].content_base64))
-          .should("have.string", "alert_creator_name")
-          .and("have.string", "Bobby Tables");
-      });
-    });
   },
 );

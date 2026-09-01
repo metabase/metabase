@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
@@ -48,9 +49,17 @@
 
 (defmethod definition :model/Card
   [card]
-  (-> card
-      :dataset_query
-      ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
+  ;; The schema permits an empty or otherwise unparseable stored `dataset_query`. Treat such a Card as having
+  ;; no context-bearing forms so it does not break related-entity computation for every Card and x-ray.
+  (try
+    (-> card
+        :dataset_query
+        ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields)))
+    (catch Exception e
+      ;; Runs for every candidate Card while ranking, so keep it quiet.
+      (log/debugf "Ignoring Card %s while finding related entities because its query could not be parsed: %s"
+                  (:id card) (ex-message e))
+      nil)))
 
 (mu/defmethod definition :model/Segment
   [segment :- [:map [:definition ::segments.schema/definition]]]

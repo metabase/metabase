@@ -2,19 +2,16 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { fieldApi } from "metabase/api";
+import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import { type DispatchFn, connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
@@ -24,6 +21,7 @@ import {
 import type {
   DimensionReference,
   EmbeddingParameterVisibility,
+  Field,
   FieldId,
   Parameter,
   ParameterValuesConfig,
@@ -55,11 +53,15 @@ import {
 } from "./TagEditorParamParts/TagEditorParam";
 
 interface StateProps {
-  metadata: Metadata;
+  /**
+   * The field the tag's dimension points at. Loaded by the wrapper below so the
+   * subscription lives as long as the editor does.
+   */
+  field: Field | undefined;
 }
 
 interface DispatchProps {
-  fetchField: (fieldId: FieldId, force?: boolean) => void;
+  fetchField: (fieldId: FieldId, force?: boolean) => Promise<Field | undefined>;
 }
 
 interface OwnProps {
@@ -87,16 +89,10 @@ interface OwnProps {
   parametersAreUserVisible?: boolean;
 }
 
-function mapStateToProps(state: State) {
-  return {
-    metadata: getMetadata(state),
-  };
-}
-
 const mapDispatchToProps = (dispatch: DispatchFn): DispatchProps => {
   return {
     async fetchField(fieldId, force) {
-      const field = await runRtkEndpoint(
+      const field: Field | undefined = await runRtkEndpoint(
         { id: fieldId },
         dispatch,
         fieldApi.endpoints.getField,
@@ -111,6 +107,7 @@ const mapDispatchToProps = (dispatch: DispatchFn): DispatchProps => {
           { forceRefetch: force ?? false },
         );
       }
+      return field;
     },
   };
 };
@@ -268,14 +265,14 @@ class TagEditorParamInner extends Component<
     }
   }
 
-  setDimension = (fieldId: FieldId) => {
-    const { tag, setTemplateTag, metadata } = this.props;
+  setDimension = async (fieldId: FieldId) => {
+    const { tag, setTemplateTag, fetchField } = this.props;
 
     // TODO Fix raw MBQL usage
     const dimension: DimensionReference = ["field", fieldId, null];
 
     if (!_.isEqual(tag.dimension, dimension)) {
-      const field = metadata.field(dimension[1]);
+      const field = await fetchField(fieldId);
       if (!field) {
         return;
       }
@@ -339,7 +336,7 @@ class TagEditorParamInner extends Component<
       tag,
       database,
       databases,
-      metadata,
+      field,
       parameter,
       embeddedParameterVisibility,
       setTemplateTagConfig,
@@ -349,9 +346,6 @@ class TagEditorParamInner extends Component<
     const isDimension = tag.type === "dimension";
     const isTemporalUnit = tag.type === "temporal-unit";
     const isTable = tag.type === "table";
-    const field = Array.isArray(tag.dimension)
-      ? metadata.field(tag.dimension[1])
-      : null;
     const widgetOptions =
       field != null ? getParameterOptionsForField(field) : [];
 
@@ -479,12 +473,18 @@ class TagEditorParamInner extends Component<
   }
 }
 
-export const TagEditorParam = connect<
-  StateProps,
-  DispatchProps,
-  OwnProps,
-  State
->(
-  mapStateToProps,
+const ConnectedTagEditorParam = connect(
+  null,
   mapDispatchToProps,
 )(TagEditorParamInner);
+
+export const TagEditorParam = (props: OwnProps) => {
+  const fieldId = Array.isArray(props.tag.dimension)
+    ? props.tag.dimension[1]
+    : undefined;
+  const { data: field } = useGetFieldQuery(
+    fieldId != null ? { id: fieldId } : skipToken,
+  );
+
+  return <ConnectedTagEditorParam {...props} field={field} />;
+};

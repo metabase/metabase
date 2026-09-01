@@ -6,10 +6,12 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type {
+  Card,
   CardId,
+  Database,
   DatabaseId,
   WritebackAction,
   WritebackActionId,
@@ -51,11 +53,16 @@ export function ActionCreator({
   onSubmit,
   onClose,
 }: ActionCreatorProps) {
-  useListDatabasesQuery();
-  useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  const { data: databases } = useListDatabasesQuery();
+  const { data: model } = useGetCardQuery(
+    modelId != null ? { id: modelId } : skipToken,
+  );
   const metadata = useSelector(getMetadata);
-  const model =
-    modelId != null ? (metadata.question(modelId) ?? undefined) : undefined;
+  // `dataset_query.database` and not `database_id`: the v1 wrapper this
+  // replaced read the database off the query, and the two can differ.
+  const modelDatabase = databases?.data.find(
+    (database) => database.id === model?.dataset_query.database,
+  );
   const { data: initialAction } = useGetActionQuery(
     actionId != null ? { id: actionId } : skipToken,
   );
@@ -69,12 +76,24 @@ export function ActionCreator({
       metadata={metadata}
     >
       <ActionCreatorContent
-        model={model}
+        modelId={modelId}
+        canWriteModelActions={canWriteActions(model, modelDatabase)}
         isRouted={isRouted}
         dataReference={DATA_REFERENCE}
         onSubmit={onSubmit}
         onClose={onClose}
       />
     </ActionContextProvider>
+  );
+}
+
+function canWriteActions(
+  model: Card | undefined,
+  database: Database | undefined,
+): boolean {
+  return (
+    model?.can_write === true &&
+    database?.native_permissions === "write" &&
+    Boolean(database.settings?.["database-enable-actions"])
   );
 }

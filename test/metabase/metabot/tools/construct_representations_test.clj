@@ -2,7 +2,7 @@
   "Tests for `execute-representations-query` - the representations-format entry point for
   `construct_notebook_query`.
 
-  Covers the happy path (external-query JSON -> resolved pMBQL wrapped in structured output),
+  Covers the happy path (external-query JSON -> resolved MBQL 5 wrapped in structured output),
   unknown table, the `:agent-error?` error-translation contract, and the database-id
   resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
@@ -722,7 +722,7 @@
 (deftest expression-map-shape-end-to-end-test
   (testing (str "The LLM-friendly `expressions: {Name: clause, …}` map shape is normalised\n"
                 "to the canonical sequential MBQL 5 form with `lib/expression-name` stamped,\n"
-                "and the resolved query carries the expression in its pMBQL.")
+                "and the resolved query carries the expression in its MBQL 5.")
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query

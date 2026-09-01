@@ -1,11 +1,29 @@
 import { dayjs } from "metabase/dayjs";
 import {
+  hasExplicitTimezone,
   parseTime,
   parseTimestamp,
   timezoneToUTCOffset,
 } from "metabase/utils/time-dayjs";
 
 describe("time-dayjs", () => {
+  describe("hasExplicitTimezone", () => {
+    it.each([
+      ["2015-01-01T00:00:00Z", true],
+      ["2015-01-01T00:00:00.000Z", true],
+      ["2015-01-01T00:00:00+09:00", true],
+      ["2015-01-01T00:00:00+0900", true],
+      ["2015-01-01T00:00:00-08:00", true],
+      ["2015-01-01T00:00:00-0800", true],
+      ["2015-01-01", false],
+      ["2015-01-01 00:00:00", false],
+      ["2015-01-01T00:00:00", false],
+      ["2019-W33", false],
+    ])("%s → %s", (value, expected) => {
+      expect(hasExplicitTimezone(value)).toBe(expected);
+    });
+  });
+
   describe("parseTimestamp", () => {
     afterEach(() => {
       dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });

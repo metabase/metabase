@@ -6,7 +6,7 @@ title: Frontend
 
 ## Typescript
 
-We are aggressively pressing toward having our entire frontend codebase in typescript. If you find yourself working on a javascript file, consider making a small initial PR to convert it to typescript before making further changes (and making it a functional component if you've happened upon a class component 😱).
+The app codebase is fully TypeScript. New files must be `.ts` or `.tsx`. Prefer functional components over class components.
 
 Avoid typecasts, and avoid use of `any` at all costs.
 

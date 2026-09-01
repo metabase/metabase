@@ -86,14 +86,16 @@
 (defn address-allowed-for-network-policy?
   "Whether `addr` is allowed by `policy`.
 
-  `:external-only` allows only globally routable public addresses. `:allow-private` additionally allows private,
-  unique-local, and carrier-grade NAT addresses, but still rejects loopback, link-local, any-local, multicast, and
-  reserved addresses. `:allow-all` imposes no address restriction."
+  `:external-only` allows only globally routable public addresses.
+  `:allow-private` adds private, unique-local and carrier-grade NAT addresses.
+  `:loopback-and-private` allows *only* loopback plus those same private ranges
+  `:allow-all` imposes no address restriction."
   [policy ^InetAddress addr]
   (case policy
-    :external-only (public-address? addr)
-    :allow-private (or (public-address? addr) (private-address? addr))
-    :allow-all     true
+    :external-only        (public-address? addr)
+    :allow-private        (or (public-address? addr) (private-address? addr))
+    :loopback-and-private (or (private-address? addr) (.isLoopbackAddress addr))
+    :allow-all            true
     (throw (ex-info (str "Unknown network policy: " (pr-str policy)) {:policy policy}))))
 
 ;; one or more scheme segments, so nested schemes (`jdbc:postgresql://...`) are stripped too
@@ -208,6 +210,12 @@
           (> (+ total n) max) nil
           :else               (do (.write out buf 0 n) (recur (+ total n))))))))
 
+(defn response-content-type
+  "Return the lower-case media type from a clj-http response, without parameters."
+  [resp]
+  (some-> (get-in resp [:headers :content-type])
+          (str/split #";") first str/trim lower-case-en))
+
 (defn fetch-bytes
   "SSRF-hardened GET of `url`. Returns `{:bytes <byte[]> :content-type <lower-cased string>}` on a
   200 response whose (parameter-stripped, lower-cased) content-type is allowed and whose body is
@@ -233,8 +241,7 @@
                                               :throw-exceptions   false
                                               :headers            {"User-Agent" user-agent}
                                               :dns-resolver       ssrf-safe-dns-resolver})
-             ctype             (some-> (get-in resp [:headers :content-type])
-                                       (str/split #";") first str/trim lower-case-en)
+             ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try
            (when (and (= 200 (:status resp))

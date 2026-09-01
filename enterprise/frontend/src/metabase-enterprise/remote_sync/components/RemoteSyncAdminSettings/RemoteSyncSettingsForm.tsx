@@ -33,6 +33,7 @@ import { CollectionsToSyncSection } from "./CollectionsToSyncSection";
 import { GitSettingsSection } from "./GitSettingsSection";
 import { ReadOnlyBranchSection } from "./ReadOnlyBranchSection";
 import { RemoteSyncConflictModal } from "./RemoteSyncConflictModal";
+import { RemoteSyncDependencyModal } from "./RemoteSyncDependencyModal";
 import {
   RemoteSyncSettingsSection,
   RemoteSyncSettingsVariantProvider,
@@ -58,16 +59,22 @@ export const RemoteSyncSettingsForm = ({
   });
   const { initialValues, libraryCollection } =
     useRemoteSyncInitialValues(variant);
-  const { handleSubmit, branchChangeModal, isUpdating, isCreatingLibrary } =
-    useRemoteSyncSubmit({
-      initialValues,
-      libraryCollection,
-      onSaveSuccess,
-      variant,
-    });
+  const {
+    handleSubmit,
+    branchChangeModal,
+    isUpdating,
+    isCreatingLibrary,
+    unsyncedDependenciesError,
+  } = useRemoteSyncSubmit({
+    initialValues,
+    libraryCollection,
+    onSaveSuccess,
+    variant,
+  });
   const { handleDisable, disableModal, isDisabling } = useDisableRemoteSync();
 
   const dirtyEntities = dirtyData?.dirty ?? [];
+  const dependencyFailures = unsyncedDependenciesError?.errors.collections;
   const isModalVariant = variant === "settings-modal";
   const isSaving = isUpdating || isDisabling;
   const canDisable =
@@ -151,6 +158,11 @@ export const RemoteSyncSettingsForm = ({
                   </Flex>
                 </Flex>
               </Stack>
+
+              {/* Inside the form so its fix-and-save can write through formik; Mantine portals it out. */}
+              {!isModalVariant && (
+                <RemoteSyncDependencyModal failures={dependencyFailures} />
+              )}
             </Form>
           );
         }}

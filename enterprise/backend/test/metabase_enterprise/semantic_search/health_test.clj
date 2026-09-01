@@ -195,9 +195,9 @@
 
 ;; Tests the raw probe (`embedding-service-reachable?` is TTL-memoized, so calling it across cases would
 ;; return a stale cached result).
-;; ^:sequential: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
+;; ^:synchronized: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
 ;; must not run concurrently with other tests (e.g. entity-retrieval-available? reads get-configured-model).
-(deftest ^:sequential probe-embedding-service-test
+(deftest ^:synchronized probe-embedding-service-test
   (testing "a successful embed reads as reachable; the probe bypasses the breaker and silences snowplow"
     (let [seen (atom nil)]
       ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
@@ -215,7 +215,7 @@
       (is (=? {:reachable? false :error "connection refused"}
               (#'embedding-health/probe-embedding-service))))))
 
-(deftest ^:sequential breaker-transition-probe-cache-test
+(deftest ^:synchronized breaker-transition-probe-cache-test
   (testing "open and half-open transitions reuse the probe; recovery clears it"
     (let [probes (atom 0)]
       ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
@@ -234,7 +234,7 @@
           (is (= 2 @probes) "recovery busts the cache so the persisted row can't be a stale 'unreachable'")
           (memoize/memo-clear! @#'embedding-health/embedding-service-reachable?*))))))
 
-(deftest ^:sequential circuit-recovery-probe-test
+(deftest ^:synchronized circuit-recovery-probe-test
   (testing "recovery runs off-thread and supplies enough successful trials to close an untrusted circuit"
     (let [calls     (atom 0)
           completed (CountDownLatch. 1)
@@ -401,7 +401,7 @@
              :message "Index staleness unavailable: database clock precedes a pending change."}
             (#'semantic.health/semantic-staleness)))))
 
-(deftest ^:sequential report-repair-metrics!-test
+(deftest ^:synchronized report-repair-metrics!-test
   (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
     (testing "a stored snapshot refreshes the garbage gauge immediately"
       (let [calls  (atom [])
@@ -481,7 +481,7 @@
     (is (thrown? InterruptedException
                  (semantic.health/report-repair-metrics! {:orphan-count 3})))))
 
-(deftest ^:sequential refresh-clears-garbage-when-inactive-test
+(deftest ^:synchronized refresh-clears-garbage-when-inactive-test
   (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
            repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]

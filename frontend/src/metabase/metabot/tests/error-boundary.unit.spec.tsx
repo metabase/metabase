@@ -1,20 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import {
-  createMockUser,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
+import { screen } from "__support__/ui";
 
-import { Metabot } from "../components/Metabot";
-import { FIXED_METABOT_IDS } from "../constants";
-import { MetabotProvider } from "../context";
-import { getMetabotInitialState } from "../state/reducer-utils";
+import { setup } from "./utils";
 
 let mockShouldThrow = false;
 let mockShouldFailChunkLoad = false;
@@ -53,42 +41,6 @@ jest.mock("../components/MetabotChat/MetabotChat", () => {
     },
   };
 });
-
-function setup() {
-  const settings = mockSettings({
-    "llm-metabot-configured?": true,
-  });
-
-  setupEnterprisePlugins();
-
-  const metabotState = assocIn(
-    getMetabotInitialState(),
-    ["conversations", "omnibot", "visible"],
-    true,
-  );
-
-  fetchMock.get(
-    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
-    { prompts: [], offset: 0, limit: 3, total: 0 },
-  );
-  fetchMock.get(
-    "path:/api/metabot/permissions/user-permissions",
-    createMockUserMetabotPermissions(),
-  );
-
-  renderWithProviders(
-    <MetabotProvider>
-      <Metabot />
-    </MetabotProvider>,
-    {
-      storeInitialState: createMockState({
-        currentUser: createMockUser(),
-        metabot: metabotState,
-        settings,
-      }),
-    },
-  );
-}
 
 describe("metabot error boundary", () => {
   beforeEach(() => {

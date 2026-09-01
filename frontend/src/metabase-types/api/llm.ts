@@ -40,9 +40,11 @@ export type LlmProviderTypeName =
   | "mistral"
   | "zai"
   | "moonshot"
+  | "deepseek"
   | "google"
   | "azure"
   | "bedrock"
+  | "vllm"
   | "metabase";
 
 export type LlmProviderFieldType =

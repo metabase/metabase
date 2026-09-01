@@ -8,7 +8,7 @@
    [metabase.metabot.tools.shared :as shared]))
 
 ;; create-chart only needs the query present in queries-state; the link builder
-;; json-encodes it and `->legacy-mbql` passes a non-pMBQL value through unchanged,
+;; json-encodes it and `->legacy-mbql` passes a non-MBQL 5 value through unchanged,
 ;; so a stub query is enough to exercise the emission branch without a database.
 (def ^:private stub-query
   {:database 1 :type "query" :query {:source-table 1}})
@@ -66,4 +66,11 @@
       (is (= 1 (count parts)))
       (is (= "generated_entity" (:data-type (first parts))))
       (is (= stub-query (get-in entity [:query :query])))
-      (is (= "pie" (:display entity))))))
+      (is (= "pie" (:display entity)))
+      (testing "structured-output also carries the resolved query, not just data-parts"
+        ;; Regression: edit-chart-tool's :query var (used for data-parts above) came
+        ;; from queries-state, but edit-chart's :result — which becomes
+        ;; structured-output and is what extract-charts stores into :charts state —
+        ;; only looked at the chart's own (here empty) :queries, landing on nil.
+        (is (= {:query-id "q-1" :query stub-query}
+               (select-keys (:structured-output result) [:query-id :query])))))))

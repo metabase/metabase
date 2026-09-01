@@ -26,6 +26,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
 
@@ -71,8 +72,14 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
+      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
+      (llm.tu/with-connections [(llm.tu/connection "vllm")]
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
+                (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit")))))
     (testing "serves the managed connection through the wire family the model names"
       (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
               (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -93,7 +100,9 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "google"))))
+    (is (fn? (#'self/resolve-adapter "deepseek")))
+    (is (fn? (#'self/resolve-adapter "google")))
+    (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -127,6 +136,28 @@
                     (when-not (::skip (ex-data e))
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
+
+(deftest call-llm-fast-mode-test
+  (llm.tu/with-default-connections
+    (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured {:body    (json/decode+kw (:body opts))
+                                                                       :headers (:headers opts)}))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+            (doseq [fast? [true false]]
+              (testing (str "llm-fast-mode " fast?)
+                (mt/with-temporary-setting-values [llm-fast-mode fast?]
+                  (try
+                    (run! identity (self/call-llm "anthropic/claude-opus-5" nil [] {} {:tag "agent"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (= (when fast? "fast") (get-in @captured [:body :speed])))
+                  (is (= (when fast? "fast-mode-2026-02-01")
+                         (get-in @captured [:headers "anthropic-beta"]))))))))))))
 
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
@@ -455,6 +486,67 @@
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 
+;;; tool argument validation tests
+
+(defn- schema-tool
+  [args-schema]
+  {:fn     (fn [_args] {:output "ok"})
+   :doc    "validation test tool"
+   :schema [:=> [:cat args-schema] :any]})
+
+(defn- validation-error
+  [args-schema arguments]
+  (let [tools  {"validated" (schema-tool args-schema)}
+        chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-v"}
+                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])]
+    (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message)))
+
+(deftest ^:parallel tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:names {:optional true} [:sequential {:error/message "must be an array of strings"} :string]]
+                [:limit {:optional true} [:int {:min 1 :max 50}]]]]
+    (testing "a well-formed call is accepted"
+      (is (nil? (validation-error schema {:names ["orders"] :limit 10}))))
+    (testing "a scalar where an array is declared names the field and what it received"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a string."
+             (validation-error schema {:names "orders"}))))
+    (testing "the received type reflects the value the model actually sent"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a number."
+             (validation-error schema {:names 5})))
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
+             (validation-error schema {:names {:a 1}}))))
+    (testing "a bad element reports the element's constraint without a received clause"
+      (is (= "Invalid tool arguments: `names` should be a string."
+             (validation-error schema {:names ["ok" 5]}))))
+    (testing "an unsupported key is called out as such"
+      (is (= "Invalid tool arguments: `nope` is not a supported argument."
+             (validation-error schema {:names ["ok"] :nope 1}))))
+    (testing "constraint violations on scalars are reported too"
+      (is (= "Invalid tool arguments: `limit` should be at most 50; received a number."
+             (validation-error schema {:limit 999}))))
+    (testing "arguments that aren't an object at all"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (validation-error schema ["orders"]))))))
+
+(deftest ^:parallel tool-unparseable-arguments-test
+  (testing "arguments the provider streamed as invalid JSON are reported as such"
+    (let [tools  {"validated" (schema-tool [:map {:closed true} [:names {:optional true} [:sequential :string]]])}
+          chunks (concat [{:type :tool-input-start :toolName "validated" :toolCallId "call-j"}]
+                         [{:type :tool-input-delta :toolCallId "call-j" :inputTextDelta "{\"names\": ["}]
+                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
+      (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+             (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+
+(deftest ^:parallel tool-without-schema-is-not-validated-test
+  (testing "a tool with no declared argument schema is left alone"
+    (let [tools  {"anything" {:fn (fn [_args] {:output "ok"}) :doc "d" :schema nil}}
+          chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-ns"}
+                   {:type :tool-input :id "call-ns" :function "anything" :arguments {:whatever "x"}}])]
+      (is (=? {:type :tool-output-available :toolCallId "call-ns" :result {:output "ok"}}
+              (last (into [] (self.core/tool-executor-xf tools) chunks)))))))
+
 ;;; tool :decode tests
 
 (defn- make-decode-tool
@@ -467,7 +559,7 @@
             {:output "ok"})]
     (cond-> {:fn f
              :doc (str tool-name " test tool")
-             :schema [:=> [:cat [:map [:x :any]]] :any]}
+             :schema [:=> [:cat [:map]] :any]}
       decode-fn (assoc :decode decode-fn))))
 
 (deftest ^:parallel tool-decode-var-test
@@ -573,6 +665,97 @@
       (is (=? {:type :tool-output-available :toolCallId "call-d5"}
               (last result))))))
 
+;;; stringified scalar coercion tests
+
+(defn- probe-tool
+  "A tool named `probe` that declares `args-schema` and records the arguments it is called with."
+  [args-schema received]
+  {"probe" {:tool-name "probe"
+            :doc       "Records the arguments it was called with."
+            :schema    [:=> [:cat args-schema] :any]
+            :fn        (fn [args]
+                         (reset! received args)
+                         {:output "ok"})}})
+
+(defn- run-probe
+  "Run one `probe` tool call with `arguments` against `tools`.
+  Returns the last output chunk."
+  [tools arguments]
+  (let [chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-coerce"}
+                 {:type :tool-input :id "call-c1" :function "probe" :arguments arguments}])]
+    (last (into [] (self.core/tool-executor-xf tools) chunks))))
+
+(defn- tool-received-args
+  "Run one `probe` tool call with `arguments` and return the arguments the tool function saw."
+  [args-schema arguments]
+  (let [received (atom nil)]
+    (run-probe (probe-tool args-schema received) arguments)
+    @received))
+
+(deftest ^:parallel tool-args-stringified-int-coerced-test
+  (testing "an integer sent as a string is parsed using the tool's schema"
+    (is (= {:limit 15}
+           (tool-received-args [:map [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]]
+                               {:limit "15"})))))
+
+(deftest ^:parallel tool-args-stringified-scalars-in-collections-coerced-test
+  (testing "stringified scalars nested inside collections are parsed too"
+    (is (= {:ids    [1 2]
+            :nested {:ratio 0.5}}
+           (tool-received-args [:map
+                                [:ids [:sequential :int]]
+                                [:nested [:map [:ratio :double]]]]
+                               {:ids    ["1" "2"]
+                                :nested {:ratio "0.5"}})))))
+
+(deftest ^:parallel tool-args-stringified-boolean-coerced-test
+  (testing "a boolean sent as a string is parsed"
+    (is (= {:verbose true}
+           (tool-received-args [:map [:verbose :boolean]] {:verbose "true"})))))
+
+(deftest ^:parallel tool-args-strings-left-alone-test
+  (testing "strings the schema actually asks for are never reinterpreted"
+    (is (= {:keyword_queries ["15"]
+            :entity_types    ["table"]}
+           (tool-received-args [:map
+                                [:keyword_queries [:sequential :string]]
+                                [:entity_types [:sequential [:enum "table" "model"]]]]
+                               {:keyword_queries ["15"]
+                                :entity_types    ["table"]})))))
+
+(deftest ^:parallel tool-args-unparseable-scalar-rejected-test
+  (testing "a string that isn't a number is rejected at the boundary instead of reaching the tool"
+    (is (nil? (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))
+    (is (= "Invalid tool arguments: `limit` should be an integer; received a string."
+           (validation-error [:map [:limit [:maybe :int]]] {:limit "abc"})))))
+
+(deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
+  (testing "a tool without a usable schema still receives its arguments"
+    (is (= {:limit "15"}
+           (tool-received-args nil {:limit "15"})))))
+
+(deftest ^:parallel tool-args-coercion-precedes-decode-test
+  (testing "coercion happens before the tool's own :decode fn, which sees a real integer"
+    (let [received (atom nil)
+          tools    (update (probe-tool [:map [:limit :int]] received)
+                           "probe" assoc :decode #(update % :limit inc))]
+      (run-probe tools {:limit "15"})
+      (is (= {:limit 16}
+             @received)))))
+
+(deftest ^:parallel tool-args-stringified-int-satisfies-tool-validation-test
+  (testing "a stringified integer no longer fails a tool that validates its own arguments"
+    (let [args-schema [:map [:limit [:maybe [:int {:min 1 :max 50}]]]]
+          tools       {"probe" {:tool-name "probe"
+                                :doc       "Validates its arguments."
+                                :schema    [:=> [:cat args-schema] :any]
+                                :fn        (mu/fn [args :- args-schema]
+                                             {:output (str "limit=" (:limit args))})}}]
+      (is (=? {:type   :tool-output-available
+               :result {:output "limit=15"}}
+              (run-probe tools {:limit "15"}))))))
+
 ;;; AI SDK SSE output tests
 
 (defn- sse-events
@@ -589,6 +772,60 @@
          (is (nil? (mr/explain ::schema.v2/ui-message-chunk event))
              (str "event does not match the wire schema: " (pr-str event))))
        events))))
+
+(defn- usage-part [finish-reason raw-finish-reason]
+  {:type              :usage
+   :model             "m"
+   :usage             {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+   :finish-reason     finish-reason
+   :raw-finish-reason raw-finish-reason})
+
+(deftest parts->aisdk-sse-xf-finish-reason-test
+  (let [error-part {:type :error :error {:message "tool blew up mid-turn"}}]
+    (testing "a truncated turn emits finishReason \"length\" and without an error"
+      (is (= ["text-start" "text-delta" "text-end" "finish"]
+             (mapv :type
+                   (sse-events [{:type :text :id "t1" :text "partial"}
+                                (usage-part "length" "max_tokens")]))))
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [{:type :text :id "t1" :text "partial"}
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "an in-turn error part does not override a length finish"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [error-part
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "a filtered turn emits finishReason \"content-filter\""
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "a loop stopped at max iterations emits finishReason \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "tool-calls"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a terminal-tool stop stays \"stop\" even though the provider reported \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :terminal-tool}])))))
+    (testing "an in-turn error part outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a length finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [(usage-part "length" "max_tokens")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
+    (testing "an in-turn error outranks every non-length provider finish reason"
+      (doseq [finish-reason (disj self.core/finish-reasons "length" "error")]
+        (is (=? {:type "finish" :finishReason "error"}
+                (last (sse-events [error-part
+                                   (usage-part finish-reason nil)]))))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
@@ -702,10 +939,16 @@
                                 :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
 
 (deftest ^:parallel stamp-tool-titles-xf-test
-  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
-               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
-               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
-               "plain" {:tool-name "plain"}}
+  (let [tools {"greet"   {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain"   {:tool-name "plain"}
+               "decoded" {:tool-name "decoded"
+                          :decode    (fn [args] (update args :who (fn [who] (if (string? who) [who] who))))
+                          :title-fn  (fn [{:keys [who]}] (str "Greeting " (str/join ", " who)))}
+               "badcode" {:tool-name "badcode"
+                          :decode    (fn [_] (throw (ex-info "nope" {})))
+                          :title-fn  (fn [_] "never")}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
     (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
@@ -720,6 +963,17 @@
     (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "the tool's :decode runs first, so the title describes the arguments the tool will run with"
+      (is (= [{:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}}))))
+    (testing "a throwing :decode leaves the part untitled"
+      (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
+             (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
+    (testing "a double-encoded argument is coerced before :decode, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}
+               :title "Greeting Sam, Kim"}]
+             (stamp {:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))
@@ -770,10 +1024,10 @@
   (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"
     (let [parts  [{:type :start :id "m"}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
-                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20
@@ -781,8 +1035,18 @@
                                 :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15
                                                                    :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
                                                :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+                                :contextWindowTokens 1000000
+                                ;; the turn's last call alone: (10-5) prompt + (5-1) completion
+                                :contextTokens 9}}
              finish))))
+  (testing "contextTokens follows the turn's last call, not its biggest"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 900 :completionTokens 100}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 7 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= 10 (get-in finish [:messageMetadata :contextTokens])))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
                         :messageMetadata)))))
@@ -790,12 +1054,12 @@
 (deftest parts->aisdk-sse-xf-usage-cache-test
   (testing "Anthropic cache breakdown flows onto finish.messageMetadata; non-cache models contribute 0"
     (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :usage :model "claude-sonnet-4-6"
                    :usage {:promptTokens 1540 :completionTokens 10
                            :cacheCreationTokens 300 :cacheReadTokens 1200}}
-                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata
@@ -805,8 +1069,21 @@
                :usageByModel {:claude-sonnet-4-6 {:inputTokens 1540 :outputTokens 10 :totalTokens 1550
                                                   :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+               :contextWindowTokens 1000000
+               :contextTokens 1550}}
              finish)))))
+
+(deftest context-window-tokens-test
+  (llm.tu/with-default-connections
+    (are [model window] (= window (self/context-window-tokens model))
+      "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
+      "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
+      "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
+      "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "azure/openai/my-deployment"           nil     ; unmatched deployment
+      "anthropic/some-future-model"          nil     ; unknown model
+      "unknown"                              nil)))  ; no such connection
 
 ;;; ===================== Retry Logic Tests =====================
 
@@ -832,7 +1109,17 @@
       ;; but other stuff is not
       false (RuntimeException. "oops")
       ;; a wrapped non-transient cause stays non-retryable
-      false (ex-info "boom" {} (IllegalArgumentException. "bad")))))
+      false (ex-info "boom" {} (IllegalArgumentException. "bad"))))
+  (testing ":retryable? false outranks both the status check and the cause walk"
+    (are [x y] (= x (#'self/retryable-error? y))
+      false (ex-info "vLLM stopped responding"
+                     {:api-error true :error-code :vllm-timeout :retryable? false}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      false (ex-info "vLLM queue full" {:status 429 :retryable? false})))
+  (testing "the tag is an opt-out only — :retryable? true cannot force a retry"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429 :retryable? true})
+      false (ex-info "bad request" {:status 400 :retryable? true}))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"
@@ -1759,3 +2046,24 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(deftest known-models-normalization-test
+  (testing "adapters that key model id to a map are passed through"
+    (let [models (self/known-models "anthropic")]
+      (is (seq models))
+      (is (every? (comp :display-name val) models))))
+  (testing "DeepSeek keys model id straight to a display name, and is normalized to the same shape"
+    (let [models (self/known-models "deepseek")]
+      (is (seq models))
+      (is (every? (comp string? :display-name val) models))))
+  (testing "the types with no allow-list return nil rather than an empty map"
+    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+      (is (nil? (self/known-models provider)) provider)))
+  (testing "an unregistered provider throws instead of reading as one with no models"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown LLM provider"
+                          (self/known-models "brand-new"))))
+  (testing "an entry that is neither a map nor a string throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" 42)))))

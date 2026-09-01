@@ -45,7 +45,7 @@
                              {:source-table (str "card__" (:id inner-card))})
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-maintenance-test-1-new-card
+(deftest ^:synchronized card-deps-maintenance-test-1-new-card
   (testing "upstream deps of a card are updated correctly"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -85,7 +85,7 @@
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))))))))))
 
-(deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
+(deftest ^:synchronized card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -123,7 +123,7 @@
                                lib/->legacy-MBQL)
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+(deftest ^:synchronized card-deps-graph-test-2-native-card-chain
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -154,7 +154,7 @@
                                        deps.graph/transitive-dependents
                                        :card))))))))))))
 
-(deftest ^:sequential card-deps-graph-metric-test
+(deftest ^:synchronized card-deps-graph-metric-test
   (testing "deps graph is connected properly for a question using a metric"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -350,3 +350,16 @@
                              :to_entity_type :table
                              :to_entity_id (:id table2)))
               "Should have exactly one dependency to table2"))))))
+
+(deftest replace-dependencies!-rejects-non-integer-ids-test
+  (testing "a non-integer to-entity-id is rejected before it is inserted"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"must be a positive integer"
+         (deps.graph/replace-dependencies! "document" 1 {"card" #{{:raw "x"}}}))))
+  (testing "legitimate integer ids are accepted and inserted"
+    (mt/with-temp [:model/Card card {}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (deps.graph/replace-dependencies! "card" (:id card) {"card" #{(:id card)}})
+        (is (pos? (t2/count :model/Dependency
+                            :from_entity_type "card"
+                            :from_entity_id (:id card))))))))

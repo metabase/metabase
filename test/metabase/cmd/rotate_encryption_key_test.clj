@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -35,8 +36,8 @@
                                 "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (with-redefs [rotate-encryption-key! #(throw (Exception. "err"))
-                cmd/system-exit! identity]
+  (mt/with-dynamic-fn-redefs [rotate-encryption-key! #(throw (Exception. "err"))
+                              cmd/system-exit!       identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
@@ -57,8 +58,9 @@
           ;; `database.details` use mi/transform-encrypted-json as transformation
           ;; the original definition of mi/transform-encrypted-json has a cached version of out transform
           ;; in this test we change they key multiple times and we don't want the value to be cached when key change
-          (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
-                                                     :out #'mi/encrypted-json-out}]
+          (with-redefs [mi/transform-encrypted-json (fn [source]
+                                                      {:in  mi/encrypted-json-in
+                                                       :out (mi/decrypt-error-context source mi/encrypted-json-out)})]
             (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                       ;; at this point, all the state switching craziness that happens for
                       ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
@@ -97,6 +99,7 @@
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
+                (mdb.encryption/encrypt-db driver/*driver* data-source nil)
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 ;; other encrypted-json columns that must also be re-encrypted on rotation
                 (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
@@ -133,12 +136,14 @@
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
-                    (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
-                    (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
-                    (is (not= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
-                    (is (not= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
-                    (is (not (mt/secret-value-equals? secret-val
-                                                      (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
+                    ;; reading a value that looks encrypted but can't be decrypted with the current key throws rather
+                    ;; than returning the raw ciphertext, so it can never be mistaken for a real plaintext value
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :value :model/Setting :key "nocrypt")))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))
+                    (is (thrown? clojure.lang.ExceptionInfo
+                                 (t2/select-one-fn :value :model/Secret :id @secret-id-unenc))))))
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
                   (let [db (first (t2/insert-returning-instances! :model/Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
@@ -153,7 +158,7 @@
                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
                        (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
-                  (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2")))
+                  (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})

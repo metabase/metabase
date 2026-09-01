@@ -636,6 +636,7 @@
   "Because life is too short for zillions of temp files."
   [^String s]
   (let [bytes (.getBytes s "UTF-8")]
+    ;; only the input side is exercised; the writer methods would throw if hit
     #_{:clj-kondo/ignore [:missing-protocol-method]}
     (reify
       io/IOFactory

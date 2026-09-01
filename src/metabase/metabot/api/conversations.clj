@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
@@ -82,7 +83,7 @@
   [:map
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
-   [:dataset_query          ms/Map]
+   [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:display                ms/NonBlankString]
    [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]

@@ -1,8 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/settings";
+import { getPlan, getSetting } from "metabase/settings";
 import type { TokenStatus, Version } from "metabase-types/api";
 
 export const isSsoEnabled = (state: State) =>
