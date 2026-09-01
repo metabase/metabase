@@ -163,27 +163,14 @@
            (when-not (u.http/host-allowed-for-network-policy? network-policy host)
              (host-not-allowed-message network-policy host)))))))
 
-(defn- proxied-url-problem
-  "Why `url` may not be requested through a JVM proxy under `policy`, or nil when it may.
-
-  [[llm-url-problem]], and additionally the host has to resolve. An unresolvable host is allowed everywhere else
-  because the connection then fails on its own, but behind a proxy the proxy resolves the target: a name only it can
-  answer -- a split-horizon record, a cluster-internal service -- would otherwise reach an address nothing checked."
-  [policy url]
-  (or (llm-url-problem policy url)
-      (when-not (or (= policy :allow-all) (str/blank? url))
-        (let [host (.getHost (URL. ^String url))]
-          (when-not (seq (u.http/host->inet-addresses host))
-            (tru "Metabase cannot resolve the base URL host {0}. Behind an HTTP proxy it has to resolve the host itself to hold it to MB_LLM_ALLOWED_NETWORKS." host))))))
-
 (defn llm-request-opts
   "clj-http options that put the network policy on a request to `url`: redirects are never followed, and a
   `:dns-resolver` refuses any address the policy does not permit (omitted under `:allow-all`). Throws the same 400 as
   a set-time refusal when `url` fails [[llm-url-syntax-problem]]. `floor` is for a deployment-controlled endpoint,
   see [[network-policy]]. Pair with [[rethrow-if-llm-network-policy-error!]] around the request.
 
-  Behind a JVM-wide proxy a `:dns-resolver` enforces nothing, so the check moves to [[proxied-url-problem]] here;
-  see [[metabase.util.http/jvm-proxied-url?]]."
+  Behind a JVM-wide proxy a `:dns-resolver` enforces nothing, so the check moves to [[llm-url-problem]] here; see
+  [[metabase.util.http/jvm-proxied-url?]]."
   ([url]
    (llm-request-opts nil url))
   ([floor url]
@@ -196,7 +183,7 @@
        ;; `:external-only`. The proxy resolves the target on its own, so the target is checked here instead. That
        ;; leaves a host that rebinds between this check and the proxy's own lookup unnoticed, which no check on our
        ;; side of the proxy can close.
-       (do (when-let [problem (proxied-url-problem policy url)]
+       (do (when-let [problem (llm-url-problem policy url)]
              (throw (url-not-allowed-ex problem (u.http/->hostname url))))
            {:redirect-strategy :none})
        ;; nil under :allow-all, which leaves clj-http on its default resolver. Redirects stay disabled under every
