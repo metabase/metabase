@@ -83,18 +83,23 @@
   with everything else that could turn one ident into several SQL tokens."
   #"(?:[A-Za-z_][A-Za-z_0-9]*|\*)(?:[./](?:[A-Za-z_][A-Za-z_0-9]*|\*))*")
 
-(def ^:private function-var-pattern
-  "The tail of a `:%fn.arg` ident. Honey SQL renders `fn` unquoted, so unlike [[plain-identifier-pattern]] this
-  allows no `/`: a namespace would land inside the function name rather than qualify it."
-  #"[A-Za-z_][A-Za-z_0-9]*(?:\.(?:[A-Za-z_][A-Za-z_0-9]*|\*))*")
+(def ^:private function-name-pattern
+  "The function name of a `:%fn.arg` ident, which Honey SQL renders unquoted. Unlike an argument it may not be
+  qualified: a `/` or `.` here would land inside the rendered function name rather than separating parts of it."
+  #"[A-Za-z_][A-Za-z_0-9]*")
 
 (defn- plain-identifier?
   [s]
   (boolean (re-matches plain-identifier-pattern s)))
 
 (defn- function-var?
+  "Whether `s` is the tail of a `:%fn.arg` ident: a bare function name, then arguments Honey SQL renders as quoted
+  entities, so those may be qualified (`lower.metabase_field/name` renders `LOWER(\"metabase_field\".\"name\")`)."
   [s]
-  (boolean (re-matches function-var-pattern s)))
+  (let [[fn-name args] (str/split s #"\." 2)]
+    (and (boolean (re-matches function-name-pattern fn-name))
+         (or (nil? args)
+             (plain-identifier? args)))))
 
 (def ^:private allowed-keywords
   "Keywords Honey SQL renders as a fixed piece of SQL, which is why [[plain-identifier-pattern]] isn't what clears

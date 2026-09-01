@@ -79,6 +79,8 @@
 (deftest ^:parallel percent-ident-test
   (testing "`:%fn.arg` idents are allowed when the function name is a plain identifier"
     (doseq [query [{:select [:%now]}
+                   ;; the argument is a qualified column, which Honey SQL quotes: LOWER("metabase_field"."name")
+                   {:select [:*] :from [:metabase_field] :where [:like :%lower.metabase_field/name "a%"]}
                    {:select [[[:%count.*]]] :from [:core_user]}
                    {:select [:*] :from [:core_user] :order-by [[:%lower.name :asc]]}
                    {:select [:*] :from [:core_user] :where [:= :%lower.email "x@y.com"]}]]
