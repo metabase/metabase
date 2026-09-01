@@ -370,7 +370,6 @@ config:
     transform-run-job-sql-concurrency: 3
     transform-timeout: 240
     transforms-enabled: null
-    transforms-setup-complete: null
     unaggregated-query-row-limit: null
     uploads-settings: null
     usage-metadata-enabled: false
