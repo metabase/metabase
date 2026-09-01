@@ -11,9 +11,10 @@ export type PluginSeries = PluginProps["series"];
 export type PluginSettings = PluginProps["settings"];
 
 const pluginSeriesCache = new WeakMap<Series, PluginSeries>();
+// Keyed by prefix so translating one settings object for two plugins doesn't evict the other.
 const pluginSettingsCache = new WeakMap<
   VisualizationSettings,
-  { prefix: string; pluginSettings: PluginSettings }
+  Map<string, PluginSettings>
 >();
 
 // Sandbox proxies write through to redux state, so the plugin gets a copy
@@ -42,10 +43,11 @@ export function toPluginSettings(
   settings: VisualizationSettings,
   prefix: string,
 ): PluginSettings {
-  const cached = pluginSettingsCache.get(settings);
+  const byPrefix = pluginSettingsCache.get(settings);
+  const cached = byPrefix?.get(prefix);
 
-  if (cached?.prefix === prefix) {
-    return cached.pluginSettings;
+  if (cached) {
+    return cached;
   }
 
   const entries = Object.entries(settings);
@@ -60,7 +62,9 @@ export function toPluginSettings(
     Object.fromEntries([...hostEntries, ...pluginEntries]),
   );
 
-  pluginSettingsCache.set(settings, { prefix, pluginSettings });
+  const cache = byPrefix ?? new Map<string, PluginSettings>();
+  cache.set(prefix, pluginSettings);
+  pluginSettingsCache.set(settings, cache);
 
   return pluginSettings;
 }

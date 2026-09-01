@@ -131,6 +131,16 @@ describe("toPluginSettings", () => {
       toPluginSettings(settings, PREFIX),
     );
   });
+
+  it("caches per prefix so alternating prefixes don't evict each other", () => {
+    const settings = { [`${PREFIX}threshold`]: 42 };
+    const first = toPluginSettings(settings, PREFIX);
+
+    // Translating the same object for another plugin must not evict the first result.
+    toPluginSettings(settings, "custom-viz:other:");
+
+    expect(toPluginSettings(settings, PREFIX)).toBe(first);
+  });
 });
 
 describe("toHostSettings", () => {
