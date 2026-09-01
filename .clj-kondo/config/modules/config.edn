@@ -2467,6 +2467,7 @@
            config
            lib
            lib-be
+           llm
            mcp
            permissions
            premium-features
