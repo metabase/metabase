@@ -3,6 +3,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import * as LibMetric from "metabase-lib/metric";
 import { createMockSettings } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -12,7 +13,9 @@ import {
 import {
   selectMetadataProvider,
   selectMetadataProviderUnfiltered,
+  selectMetricMetadataProvider,
 } from "./provider";
+import { getMetadata } from "./selectors";
 
 const state = createMockState({
   entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
@@ -41,6 +44,22 @@ describe("selectMetadataProvider", () => {
   it("separates the filtered and unfiltered providers", () => {
     expect(selectMetadataProvider(state, SAMPLE_DB_ID)).not.toBe(
       selectMetadataProviderUnfiltered(state, SAMPLE_DB_ID),
+    );
+  });
+});
+
+describe("selectMetricMetadataProvider", () => {
+  it("returns the same provider for the same state", () => {
+    expect(selectMetricMetadataProvider(state)).toBe(
+      selectMetricMetadataProvider(state),
+    );
+  });
+
+  it("is memoised here, not by metabase-lib", () => {
+    const metadata = getMetadata(state);
+
+    expect(LibMetric.metadataProvider(metadata)).not.toBe(
+      LibMetric.metadataProvider(metadata),
     );
   });
 });
