@@ -284,6 +284,26 @@
               (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
         (t2/reducible-select [table :id [column :value]])))
 
+(defn encrypt-plaintext-columns!
+  "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot
+  encryption backfill migrations cannot be relied on to have done this -- run without MB_ENCRYPTION_SECRET_KEY (the
+  `migrate` command does not check the key) they are recorded as executed while doing nothing, a boot of an older
+  version re-writes these columns through its own plaintext-era transforms (e.g. notification seeding re-creates
+  `notification_recipient.details` rows every boot), and `load-from-h2` copies a decrypted dump's values verbatim.
+  A value that decrypts with the current key is left byte-identical; whether a value is encrypted is
+  decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape. The `^bytes` columns are not
+  scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
+  MB_ENCRYPTION_SECRET_KEY is not set."
+  []
+  (when (encryption/default-encryption-enabled?)
+    (t2/with-transaction [conn]
+      (doseq [[table column] encrypted-string-columns]
+        (run! (fn [{:keys [id value]}]
+                (when (and (string? value)
+                           (not (encryption/decryptable-string? value)))
+                  (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
+              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))))))
+
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 

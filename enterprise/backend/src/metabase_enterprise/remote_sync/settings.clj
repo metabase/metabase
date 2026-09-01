@@ -198,7 +198,7 @@
   :type :string
   :visibility :internal
   :export? false
-  :encryption :when-encryption-key-set
+  :encryption :no
   :doc false)
 
 (defn check-and-update-remote-settings!
