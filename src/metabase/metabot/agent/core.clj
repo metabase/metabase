@@ -445,11 +445,7 @@
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the
   requested profile. The base + profile-specific gating policy lives in
-  [[scope/missing-permission]], shared with [[metabase.metabot.self]].
-  Tagged with `:type` ([[metabase.metabot.self/check-permission!]]'s convention)
-  rather than an `:error-code` key: the exception middleware strips `:type` from
-  the body, so the message stays the whole 403 response instead of a
-  `Throwable->map` with a stack trace."
+  [[scope/missing-permission]], shared with [[metabase.metabot.self]]."
   [profile-id perms]
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
     (throw (ex-info (if (= missing :permission/metabot)

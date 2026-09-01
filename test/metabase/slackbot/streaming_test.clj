@@ -339,7 +339,7 @@
                      :timeout-ms 5000})
             (str/join "\n" @append-text-calls)))))))
 
-(deftest slackbot-streamed-error-part-uses-known-error-copy-test
+(deftest ^:synchronized slackbot-streamed-error-part-uses-known-error-copy-test
   (testing "a permission_denied error part becomes access copy, not the raw permission keyword"
     (let [text (dm-error-part-appended-text!
                 {:type :error :error {:message    "Permission denied: :permission/metabot-nlq required"
@@ -365,7 +365,7 @@
       (is (str/includes? text "Something went wrong. Please try again."))
       (is (not (str/includes? text "sk-ant-oops"))))))
 
-(deftest slackbot-dm-posts-permission-copy-when-metabot-access-denied-test
+(deftest ^:synchronized slackbot-dm-posts-permission-copy-when-metabot-access-denied-test
   (testing "the 403 the agent loop's access check throws reaches the DM as access copy"
     (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)]
       (tu/with-slackbot-setup
@@ -390,7 +390,7 @@
                   (is (str/includes? text "You do not have permission to use the AI assistant."))
                   (is (not (str/includes? text "Something went wrong"))))))))))))
 
-(deftest slackbot-channel-posts-permission-copy-when-metabot-access-denied-test
+(deftest ^:synchronized slackbot-channel-posts-permission-copy-when-metabot-access-denied-test
   (testing "the visible channel reply flow posts access copy for the 403, not the generic line"
     (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)]
       (tu/with-slackbot-setup
