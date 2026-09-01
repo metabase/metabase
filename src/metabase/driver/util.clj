@@ -387,35 +387,44 @@
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
-(def ^:private features-timeout-ms
+(defn- features-timeout-ms
   "Budget for resolving a database's whole feature set. [[supports?]] gives each check its own
   [[supports?-timeout-ms]]; applying that per feature here meant one future spawn and one blocking handoff for each
   of the ~90 features, which cost far more than the checks it was guarding. The loop shares one future and one
-  larger budget instead."
+  larger budget instead. Computed per call so that rebinding [[supports?-timeout-ms]] moves this too."
+  []
   (* 4 supports?-timeout-ms))
 
-(defn- features* [driver database]
-  ;; Accumulate outside the future so a timeout still yields the features resolved before the driver stalled. The
-  ;; old per-feature timeout only ever cost us the one feature that stalled; losing the whole set would be worse
-  ;; than what it did.
-  (let [acc (atom #{})]
-    (try
-      (u/with-timeout features-timeout-ms
-        (doseq [feature driver/features
-                :when   (not (skip-internal-features feature))]
-          (when (check-feature driver feature database)
-            (swap! acc conj feature))))
-      (catch Throwable e
-        (log/error (u/format-color 'red "Failed to check features for database %s: %s"
-                                   (:id database) (ex-message e)))))
-    @acc))
+(defn- features*
+  "Resolve every feature `driver` supports for `database`. Returns `{:features #{...}, :complete? bool}`; never throws.
+
+  `:complete?` is false when the driver stalled and the shared budget ran out; `:features` then holds whatever
+  resolved before that. Reporting it is what lets [[features]] keep a partial set out of the memoization cache."
+  [driver database]
+  (let [acc       (atom #{})
+        complete? (try
+                    (u/with-timeout (features-timeout-ms)
+                      (doseq [feature driver/features
+                              :when   (not (skip-internal-features feature))]
+                        (when (check-feature driver feature database)
+                          (swap! acc conj feature)))
+                      true)
+                    (catch Throwable e
+                      (log/error (u/format-color 'red "Failed to check features for database %s: %s"
+                                                 (:id database) (ex-message e)))
+                      false))]
+    ;; Read after the timeout: `deref-with-timeout` cancels the future but the interrupted thread may still be
+    ;; mid-iteration, so on the incomplete path this is a snapshot rather than a fixed point.
+    {:features @acc, :complete? complete?}))
+
+(defn- features-cache-key
+  "The key [[memoized-features*]] files a result under. Named rather than inline because [[features]] evicts single
+  entries with it: `memo-clear!` evicts by the stored key and does not itself apply the memo's `::memoize/args-fn`."
+  [[driver database]]
+  [driver (mdb/unique-identifier) (:id database) (:updated-at database)])
 
 (def ^:private memoized-features*
-  (memoize/memo
-   (-> features*
-       (vary-meta assoc ::memoize/args-fn
-                  (fn [[driver database]]
-                    [driver (mdb/unique-identifier) (:id database) (:updated-at database)])))))
+  (memoize/memo (vary-meta features* assoc ::memoize/args-fn features-cache-key)))
 
 (mu/defn features
   "Return a set of all features supported by `driver` with respect to `database`."
@@ -425,9 +434,16 @@
                 [:map
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
-  (let [database (ensure-lib-database database)
-        f (if *memoize-supports?* memoized-features* features*)]
-    (f driver database)))
+  (let [database (ensure-lib-database database)]
+    (if-not *memoize-supports?*
+      (:features (features* driver database))
+      (let [{feature-set :features, :keys [complete?]} (memoized-features* driver database)]
+        (when-not complete?
+          ;; The cache has no TTL, so a partial set would stick until the database's `:updated-at` changes, leaving
+          ;; it looking like it supports far less than it does. Drop this database's entry so the next caller
+          ;; recomputes it; every other database keeps its own.
+          (memoize/memo-clear! memoized-features* (features-cache-key [driver database])))
+        feature-set))))
 
 (defn available-drivers
   "Return a set of all currently available drivers."

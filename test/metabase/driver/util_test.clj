@@ -484,6 +484,40 @@
               (is (= []
                      (log-messages))))))))))
 
+(deftest features-timeout-is-not-cached-test
+  (testing "a feature scan that blows its shared budget is not memoized, so the next call recomputes"
+    (binding [driver.u/*memoize-supports?* true]
+      ;; the memo is keyed on the database id, so a synthetic one keeps this test off any entry another test warmed
+      (let [db         (assoc (mt/db) :id (- -1 (rand-int 1000000)))
+            stalled    (with-redefs [driver.u/supports?-timeout-ms 50
+                                     driver/database-supports? (fn [_ _ _] (Thread/sleep 100) true)]
+                         (driver.u/features :h2 db))
+            recomputed (with-redefs [driver/database-supports? (fn [_ _ _] true)]
+                         (driver.u/features :h2 db))]
+        (is (seq recomputed)
+            "the second call recomputes rather than returning the cached partial set")
+        (is (< (count stalled) (count recomputed))
+            "the stalled scan really did resolve fewer features than a complete one")))))
+
+(deftest features-timeout-evicts-only-that-database-test
+  (testing "a stalled feature scan evicts its own database's entry and leaves other databases' entries alone"
+    (binding [driver.u/*memoize-supports?* true]
+      (let [base       (- -1 (rand-int 1000000))
+            stalled-db (assoc (mt/db) :id base)
+            other-db   (assoc (mt/db) :id (- base 1000001))
+            warmed     (with-redefs [driver/database-supports? (fn [_ _ _] true)]
+                         (driver.u/features :h2 other-db))]
+        (is (seq warmed)
+            "sanity: the other database got a complete feature set cached")
+        (with-redefs [driver.u/supports?-timeout-ms 50
+                      driver/database-supports? (fn [_ _ _] (Thread/sleep 100) true)]
+          (driver.u/features :h2 stalled-db))
+        ;; stubbed to false: anything other than the cached set means the entry was evicted and recomputed
+        (is (= warmed
+               (with-redefs [driver/database-supports? (fn [_ _ _] false)]
+                 (driver.u/features :h2 other-db)))
+            "the unrelated database still serves its cached feature set")))))
+
 (deftest sqlite-in-available-drivers
   (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)
                                            (derive :sqlite :metabase.driver.impl/concrete))]
