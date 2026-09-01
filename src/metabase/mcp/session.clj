@@ -78,8 +78,8 @@
     (str (UUID. high low))))
 
 (def ^:private ui-credential-lifetime-seconds
-  "Lifetime of a rendered MCP Apps UI credential. This is deliberately short: the
-   credential is delivered to an iframe through a resource response."
+  "Lifetime of an MCP Apps UI credential. The server sends the credential in
+   private tool-result metadata."
   300)
 
 (defn- base64url-encode [^String value]
