@@ -22,9 +22,9 @@ export const canDashCardDisplayTimelineEvents = (
   canDisplayTimelineEvents(dashcard.card.display);
 
 export const isDashCardDataLoaded = (
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   dashcardData: DashCardDataMap[number] | undefined,
-) => isQuestionDashCard(dashcard) && dashcardData?.[dashcard.card.id] != null;
+) => dashcardData?.[dashcard.card.id] != null;
 
 export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,

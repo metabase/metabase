@@ -47,6 +47,11 @@ const RC2 = createMockTimelineEvent({
   timestamp: "2025-06-02T00:00:00Z",
 });
 
+const EVENTS_OFF: TimelineEventsVisibility = {
+  "timeline.selected_timeline_ids": [],
+  "timeline.excluded_timeline_event_ids": [],
+};
+
 const TIMELINE = createMockTimeline({
   id: 1,
   collection_id: CARD.collection_id,
@@ -118,10 +123,7 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("shows nothing for a question saved with events turned off", async () => {
-    const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
-    });
+    const store = await setupWithTimelines(EVENTS_OFF);
 
     expect(getVisibleEventIds(store)).toEqual([]);
   });
@@ -165,10 +167,7 @@ describe("QueryBuilder > timeline events", () => {
   it("saving after turning events on records them", async () => {
     // Turning on a timeline the collection fallback already shows changes
     // nothing, so start from a question that recorded them as off.
-    const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
-    });
+    const store = await setupWithTimelines(EVENTS_OFF);
 
     await act(async () => {
       store.dispatch(showTimeline(TIMELINE));
@@ -210,10 +209,7 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("re-showing a timeline keeps events outside the chart's range", async () => {
-    const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
-    });
+    const store = await setupWithTimelines(EVENTS_OFF);
 
     await act(async () => {
       store.dispatch(showTimeline(TIMELINE));
@@ -242,10 +238,7 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("creating an event on a hidden timeline shows the whole timeline", async () => {
-    const store = await setupWithTimelines({
-      "timeline.selected_timeline_ids": [],
-      "timeline.excluded_timeline_event_ids": [],
-    });
+    const store = await setupWithTimelines(EVENTS_OFF);
     const created = createMockTimelineEvent({
       id: 97,
       timeline_id: TIMELINE.id,

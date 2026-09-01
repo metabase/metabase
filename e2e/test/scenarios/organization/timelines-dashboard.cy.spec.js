@@ -29,7 +29,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
 
     eventsSidebar().within(() => {
       timelineVisibility("Our analytics events").should("be.checked");
-      eventVisibility("RC1").should("be.checked");
+      H.timelineEventVisibility("RC1").should("be.checked");
     });
     H.timelineEventChip("RC1").should("be.visible");
   });
@@ -60,7 +60,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
     openEventsSidebar();
 
     eventsSidebar().within(() => {
-      eventVisibility("RC1").should("not.be.checked");
+      H.timelineEventVisibility("RC1").should("not.be.checked");
     });
     H.timelineEventChip("RC1").should("not.exist");
 
@@ -69,8 +69,8 @@ describe("scenarios > organization > timelines > dashboard", () => {
 
     eventsSidebar().within(() => {
       timelineVisibility("Releases").should("be.checked");
-      eventVisibility("RC1").should("be.checked");
-      eventVisibility("RC2").should("be.checked");
+      H.timelineEventVisibility("RC1").should("be.checked");
+      H.timelineEventVisibility("RC2").should("be.checked");
     });
     H.timelineEventChip("RC1").should("be.visible");
     H.timelineEventChip("RC2").should("be.visible");
@@ -103,17 +103,7 @@ function createEvent(name, date) {
   });
   cy.wait("@createEvent");
   H.modal().should("not.exist");
-  timelineEventCard(name)
-    .findByText(/^Bobby Tables added this on/)
-    .should("be.visible");
-}
-
-function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
-}
-
-function eventVisibility(eventName) {
-  return timelineEventCard(eventName).findByRole("checkbox");
+  H.waitForTimelinesAfterCreatingAnEvent(name);
 }
 
 function timelineVisibility(timelineName) {

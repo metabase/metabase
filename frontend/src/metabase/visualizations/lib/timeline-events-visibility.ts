@@ -132,13 +132,18 @@ const groupEventsByTimelineId = (
 ): Map<TimelineId, TimelineEvent[]> => {
   const groups = new Map<TimelineId, TimelineEvent[]>();
   events.forEach((event) => {
-    groups.set(event.timeline_id, [
-      ...(groups.get(event.timeline_id) ?? []),
-      event,
-    ]);
+    const group = groups.get(event.timeline_id);
+    if (group) {
+      group.push(event);
+    } else {
+      groups.set(event.timeline_id, [event]);
+    }
   });
   return groups;
 };
+
+const indexTimelinesById = (timelines: Timeline[]) =>
+  new Map(timelines.map((timeline) => [timeline.id, timeline]));
 
 export const showTimelineEvents = (
   visibility: TimelineEventsVisibility,
@@ -146,20 +151,18 @@ export const showTimelineEvents = (
   timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  const timelinesById = new Map(
-    timelines.map((timeline) => [timeline.id, timeline]),
-  );
+  const timelinesById = indexTimelinesById(timelines);
   groupEventsByTimelineId(events).forEach((shownEvents, timelineId) => {
     const shownEventIds = new Set(shownEvents.map((event) => event.id));
     if (!sets.shownTimelineIds.has(timelineId)) {
-      sets.shownTimelineIds.add(timelineId);
       const timeline = timelinesById.get(timelineId);
-
       if (timeline) {
         setTimelineVisible(timeline, true, sets);
         getActiveEvents(timeline)
           .filter((event) => !shownEventIds.has(event.id))
           .forEach((event) => sets.hiddenEventIds.add(event.id));
+      } else {
+        sets.shownTimelineIds.add(timelineId);
       }
     }
     shownEventIds.forEach((eventId) => sets.hiddenEventIds.delete(eventId));
@@ -173,9 +176,9 @@ export const showCreatedTimelineEvent = (
   event: TimelineEvent,
   timelines: Timeline[],
 ): TimelineEventsVisibility => {
-  const isTimelineShown = toSets(visibility).shownTimelineIds.has(
-    event.timeline_id,
-  );
+  const isTimelineShown = visibility[
+    "timeline.selected_timeline_ids"
+  ]?.includes(event.timeline_id);
   return showTimelineEvents(
     isTimelineShown
       ? visibility
@@ -191,9 +194,7 @@ export const hideTimelineEvents = (
   timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  const timelinesById = new Map(
-    timelines.map((timeline) => [timeline.id, timeline]),
-  );
+  const timelinesById = indexTimelinesById(timelines);
   groupEventsByTimelineId(events).forEach((hiddenEvents, timelineId) => {
     if (!sets.shownTimelineIds.has(timelineId)) {
       return;
