@@ -12,3 +12,5 @@ export {
   AIProviderSetup,
   LlmModelPicker,
 } from "./components/AIProviderConfigurationForm";
+export { MetabotSaveDashboardModal } from "./components/MetabotChat/MetabotSaveDashboardModal";
+export { markEntitySaved } from "./state";
