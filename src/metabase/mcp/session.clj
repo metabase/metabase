@@ -115,6 +115,15 @@
   (cond-> (into #{} (filter string?) scp)
     (true? unr) (conj ::scope/unrestricted)))
 
+(defn- sign-ui-credential
+  "Sign the standard credential claims plus `extra-claims` into a `<payload>.<signature>` string."
+  [session-id user-id extra-claims]
+  (let [payload (base64url-encode
+                 (json/encode (merge {:v 1 :uid user-id :sid session-id
+                                      :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
+                                     extra-claims)))]
+    (str payload "." (ui-credential-signature payload))))
+
 (defn issue-ui-credential
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
   never as a core Metabase session.
@@ -122,16 +131,16 @@
   `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
   iframe's request surface can ask what the client was actually granted — the credential itself is stamped
   unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap."
-  ;; v1-compat 2-arity: the frozen v1 surface mints credentials without a scope claim; absent
-  ;; claims decode as the empty scope set (fail closed). Delete this arity with v1's retirement.
+  ;; v1-compat 2-arity: the frozen v1 surface mints without a scope claim. It stamps `:legacy` rather than
+  ;; leaving the claim merely absent, because absence has to keep meaning "fail closed" — a rolling deploy can
+  ;; hand a node a credential minted before the claim existed, and
+  ;; [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]] refuses those. An explicit marker is what
+  ;; separates "v1 minted this on purpose" from "we don't know what this is".
+  ;; Delete this arity, and that guard's `:legacy` branch, with v1's retirement.
   ([session-id user-id]
-   (issue-ui-credential session-id user-id nil))
+   (sign-ui-credential session-id user-id {:legacy true}))
   ([session-id user-id token-scopes]
-   (let [payload (base64url-encode
-                  (json/encode (merge {:v 1 :uid user-id :sid session-id
-                                       :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
-                                      (encode-token-scopes token-scopes))))]
-     (str payload "." (ui-credential-signature payload)))))
+   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes))))
 
 (defn resolve-ui-credential
   "Validate a rendered MCP Apps UI credential and return its claims, or nil. The claims carry `:token-scopes`, the

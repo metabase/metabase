@@ -131,12 +131,7 @@
 (defn check-mcp-ui-native-query!
   "Throw a 403 if `request` is authenticated by an MCP Apps UI credential that may not run `query` as raw SQL.
 
-  NOT yet wired into any endpoint. The `:mcp-ui-credential` request key it dispatches on is attached by
-  the v2 core's session rework (the next PR in this stack); until that lands no request carries it, so this
-  guard is a no-op wherever it might be called. It is authored and unit-tested here so the session-rework
-  slice can drop it into the QP endpoint path without also having to write it. When wiring it in, add it to
-  the QP-endpoint request flow for the routes on the MCP-UI credential's allowlist (the `/api/dataset*`
-  surface), and delete this paragraph.
+  Mounted on the `/api/dataset` route tree by [[+refuse-unscoped-native-sql]].
 
   The iframe's credential is stamped `::scope/unrestricted` on purpose — none of the routes on its allowlist declare
   a `:scope`, so a narrower stamp would 403 the iframe at bootstrap. That makes the endpoint scope middleware unable
@@ -144,9 +139,9 @@
   session's real scopes are meant to ride along on the credential and be spent here: raw SQL needs an SQL-execution
   scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) and the `mcp-execute-sql-enabled` kill switch.
 
-  Sequencing: credentials only start carrying a scopes claim with the v2 core's session rework (the
-  next PR in this stack). Until then — and for any credential minted before that deploy — the claim
-  is absent and a native query over a UI credential fails closed, which the test suite codifies.
+  A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
+  the claim existed. v1's frozen surface, which mints claimless credentials by design and whose iframe visualizes
+  raw-SQL handles today, marks them `:legacy` and is skipped — see [[metabase.mcp.session/issue-ui-credential]].
 
   Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
   by design. Non-native queries, and requests authenticated any other way, pass straight through."
@@ -154,7 +149,11 @@
   ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
   ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
   (when-let [claims (:mcp-ui-credential request)]
-    (when (native-query? query)
+    ;; v1-compat: v1 mints claimless credentials through `issue-ui-credential`'s 2-arity, which stamps `:legacy`.
+    ;; Wiring this guard must not change v1's behavior, and v1's iframe visualizes execute_sql handles. Delete
+    ;; this branch with v1's retirement, together with that arity.
+    (when (and (native-query? query)
+               (not (:legacy claims)))
       ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
@@ -170,6 +169,26 @@
         (throw (ex-info (str "Running raw SQL is disabled on this instance — an admin can re-enable it "
                              "with the mcp-execute-sql-enabled setting.")
                         {:status-code 403}))))))
+
+(defn +refuse-unscoped-native-sql
+  "Ring middleware applying [[check-mcp-ui-native-query!]] to a route tree, reading the query from the request
+  body.
+
+  It rides the route rather than the endpoints because the endpoints cannot reach it: `agent-api` already
+  `:uses` `query-processor`, so a call from inside `metabase.query-processor.api` would close a module cycle.
+  `api-routes` is `:uses :any` and is where the two modules legitimately meet.
+
+  Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
+  guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
+  credential's own allowlist, so every other route short-circuits before the body is read. That also means a
+  route later added to the allowlist is covered the day it is added."
+  [handler]
+  (fn [request respond raise]
+    (try
+      (check-mcp-ui-native-query! request (:body request))
+      (handler request respond raise)
+      (catch Throwable e
+        (raise e)))))
 
 (defn check-token-query-permissions!
   "Re-validate the current user's permissions on a stored or client-supplied query.

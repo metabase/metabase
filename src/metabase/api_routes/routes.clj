@@ -4,6 +4,7 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
@@ -191,7 +192,11 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   "/dataset"              (+auth 'metabase.query-processor.api)
+   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
+   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
+   ;; out of the resource HTML from POSTing raw SQL.
+   "/dataset"              (+auth (agent-api.query-guards/+refuse-unscoped-native-sql
+                                   (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)

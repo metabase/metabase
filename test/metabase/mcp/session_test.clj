@@ -1,5 +1,6 @@
 (ns metabase.mcp.session-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
@@ -164,6 +165,48 @@
         ;; A rolling deploy can hand this node a credential from an older one for the 300s it stays valid.
         (with-redefs [mcp.session/encode-token-scopes (constantly {})]
           (is (= #{} (scopes-of #{metabot.scope/agent-sql-run}))))))))
+
+(deftest v1-credential-is-marked-legacy-test
+  (testing "GHY-4318: v1's frozen surface mints through the 2-arity, with no scope claim. The native-SQL guard has
+            to tell such a credential apart from one that merely arrived without the claim — a rolling deploy can
+            produce the latter, and it must fail closed — so the v1 arity stamps an explicit `:legacy` marker
+            rather than relying on the absence of `:scp`.
+
+            TRIPWIRE: retiring v1 means deleting this arity AND the `:legacy` branch in
+            [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]. Deleting only the arity leaves the
+            skip in place as dead-looking but live code."
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id nil)
+          claims     (mcp.session/resolve-ui-credential
+                      (mcp.session/issue-ui-credential session-id user-id))]
+      (is (true? (:legacy claims)))
+      (is (not (contains? claims :scp))
+          "a legacy credential carries no scope claim at all, so `:legacy` is the only thing marking it")
+      (is (= #{} (:token-scopes claims))
+          "and it still decodes to the empty scope set, never to unrestricted")
+      (testing "a v2 credential carries the claim and is never marked legacy"
+        (let [v2-claims (mcp.session/resolve-ui-credential
+                         (mcp.session/issue-ui-credential session-id user-id
+                                                          #{metabot.scope/agent-query-run}))]
+          (is (nil? (:legacy v2-claims)))
+          (is (contains? v2-claims :scp)))))))
+
+(deftest v1-shim-retires-with-v1-test
+  (testing "GHY-4318: the `:legacy` credential shim exists only to keep v1's iframe working while v1 still
+            serves. It is a fail-open branch, so it must not outlive v1 — and a comment saying so does not
+            enforce anything: the retire-v1 branch already carries this arity's own \"delete me with v1\"
+            comment, undeleted.
+
+            So the deletion is keyed on v1's own disappearance rather than on someone remembering. This is
+            inert while v1 ships and fires the day its namespace goes, naming both halves of the change."
+    (if (io/resource "metabase/mcp/api.clj")
+      (is (= 2 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
+          "v1 still ships, so the 2-arity shim is still load-bearing")
+      (is (= 1 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
+          (str "v1 is retired, so its credential shim must go: delete `issue-ui-credential`'s 2-arity, the "
+               "`:legacy` branch in `metabase.agent-api.query-guards/check-mcp-ui-native-query!`, and the two "
+               "tripwire assertions that cover them (here and in query-guards-test). Leaving the guard branch "
+               "keeps a fail-open path alive for any credential shaped `{:legacy true}`.")))))
 
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"

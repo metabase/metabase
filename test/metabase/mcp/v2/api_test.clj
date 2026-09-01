@@ -259,6 +259,79 @@
         ;; a manifest that still lists the throwaway tool.
         (reset! @#'registry/manifest-cache nil)))))
 
+(defn- do-with-bearer-token!
+  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
+  [scopes f]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (mt/with-model-cleanup [:model/OAuthAccessToken]
+      (let [token (str (random-uuid))]
+        ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+        ;; up, so the row has to be written the same way a real issued token would be.
+        (t2/insert! :model/OAuthAccessToken
+                    {:token     (oidc.util/hash-token token)
+                     :user_id   (mt/user->id :crowberto)
+                     :client_id (str (random-uuid))
+                     :scope     (vec scopes)
+                     :expiry    (+ (System/currentTimeMillis) 3600000)})
+        (f {"authorization" (str "Bearer " token)})))))
+
+(defn- ui-credential-for
+  "Drive the full MCP Apps handshake as a client holding `scopes`: initialize, read the
+  visualize-query shell, and pull the credential back out of the rendered HTML — the same path a
+  host's iframe bootstrap takes."
+  [headers]
+  (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                    {:request-options {:headers headers}}
+                                                    (jsonrpc-request "initialize" {:capabilities {}}))
+                       (get-in [:headers "Mcp-Session-Id"]))
+        html       (-> (client/client-full-response
+                        :post 200 endpoint
+                        {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                        (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri}))
+                       (get-in [:body :result :contents])
+                       first
+                       :text)]
+    (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))))
+
+(deftest ui-credential-cannot-outrun-its-scopes-test
+  (testing "GHY-4318: the iframe credential is delivered to the CLIENT inside the resource HTML, so a client
+            holding only `agent:query:run` can lift it out and POST straight to /api/dataset. The credential is
+            stamped unrestricted for the endpoint scope middleware, so the only thing standing between it and raw
+            SQL is `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
+            unit-tested. Without the wiring, `agent:query:run` silently becomes `agent:sql:run`."
+    (mcp.ui-resource/with-fallback-template
+      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}]
+        (testing "a client without agent:sql:run is refused, and told which scope it needs"
+          (do-with-bearer-token!
+           #{"agent:query:run"}
+           (fn [headers]
+             (let [credential (ui-credential-for headers)]
+               (is (string? credential)
+                   "the shell must render a credential — otherwise this test passes vacuously")
+               (let [response (client/client-full-response
+                               :post 403 "dataset"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                               native-query)]
+                 (is (re-find #"agent:sql:run" (str (:body response)))))))))
+        (testing "the same client's non-native queries are untouched — the gate is on raw SQL, not on the credential"
+          (do-with-bearer-token!
+           #{"agent:query:run"}
+           (fn [headers]
+             (let [credential (ui-credential-for headers)]
+               (is (= 202 (:status (client/client-full-response
+                                    :post 202 "dataset"
+                                    {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                                    (mt/mbql-query venues {:limit 1})))))))))
+        (testing "a client that WAS granted agent:sql:run runs the same native query"
+          (do-with-bearer-token!
+           #{"agent:query:run" "agent:sql:run"}
+           (fn [headers]
+             (let [credential (ui-credential-for headers)]
+               (is (= 202 (:status (client/client-full-response
+                                    :post 202 "dataset"
+                                    {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                                    native-query))))))))))))
+
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
