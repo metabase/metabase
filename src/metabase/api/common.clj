@@ -94,6 +94,7 @@
 
 (declare check-403 check-404)
 
+;; p/import-vars needs the literal ns symbol; the open-api alias won't resolve inside the macro
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars [metabase.api.open-api root-open-api-object])
 

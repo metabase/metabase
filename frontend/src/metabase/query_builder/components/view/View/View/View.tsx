@@ -17,23 +17,23 @@ import {
 } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import {
-  rememberLastUsedDatabase,
-  runOrCancelQuestionOrSelectedQuery,
-  setArchivedQuestion,
-} from "metabase/query_builder/actions";
-import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import type { QueryModalType } from "metabase/querying/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
-import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
+import { questionUpdated } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatabaseId, Dataset } from "metabase-types/api";
 
+import {
+  rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
+  setArchivedQuestion,
+} from "../../../../actions";
+import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
@@ -123,7 +123,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               };
         const updated = await setCollection(item, destination);
         // keep the QB in sync with where the question now lives
-        dispatch({ type: API_UPDATE_QUESTION, payload: updated });
+        dispatch(questionUpdated(updated));
       },
     };
     const {

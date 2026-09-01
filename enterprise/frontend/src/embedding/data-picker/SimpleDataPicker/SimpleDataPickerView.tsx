@@ -83,7 +83,7 @@ export function SimpleDataPickerView({
                   leftSection={<Icon c={iconColor} name="table" aria-hidden />}
                   label={tc(option.name)}
                   onClick={() => onClick(option.id)}
-                  variant="default"
+                  variant="primary"
                 />
               );
             })}

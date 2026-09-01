@@ -7,12 +7,11 @@ import {
   WidgetPopoverPortalContext,
   useWidgetPopoverPortal,
 } from "metabase/visualizations/components/settings/WidgetPopoverPortalContext";
-import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type {
   ClickActionPopoverProps,
   LegacyDrill,
 } from "metabase/visualizations/types";
+import { getSettingsWidgetsForSeries, updateSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";

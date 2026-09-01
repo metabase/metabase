@@ -80,8 +80,13 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
-tree may contain. `metabase.core.kondo-ratchet-test` fails when the budgets drift from the actual counts,
-in either direction. Prefer fixing the underlying warning over adding an ignore.
+tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
+`.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
+actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
+
+The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
+with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
+causes an error on `master`.
 
 Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
 change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
@@ -94,6 +99,11 @@ To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
 genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
 PR.
+
+The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
+at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
+above (or trailing on the same line). The set only shrinks: once a linter's last uncommented ignore gains
+a comment, the fixer drops its exemption.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
 flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.

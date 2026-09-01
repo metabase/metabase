@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { NewItemMenu } from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";

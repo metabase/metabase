@@ -94,7 +94,7 @@
   [setting-key]
   (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (defn- non-blank
   [value]

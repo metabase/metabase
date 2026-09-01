@@ -1,4 +1,4 @@
-# Writes the three large dependency caches. Every other job restores them and none of them writes.
+# Writes the shared dependency caches. Every other job restores them and none of them writes.
 #
 # A single writer rather than the usual let-every-job-save arrangement, because a pull request here fans
 # out to roughly 200 jobs, ~75 of which install Cypress. Letting each of those save would have them all
@@ -13,7 +13,7 @@
 # at it, and master's copy backs up every ref that has none of its own.
 #
 # Keys are content-derived (see .github/scripts/cache-keys.sh), so a push whose dependencies already have
-# an entry does nothing but three lookups. There is no cron: nothing here is keyed by date.
+# an entry does nothing but four lookups. There is no cron: nothing here is keyed by date.
 #
 #
 # PRINCIPLES:
@@ -69,6 +69,13 @@ jobs:
           path: ${{ steps.cache-spec.outputs.bun-store-path }}
           key: ${{ steps.cache-spec.outputs.bun-store-key }}
           lookup-only: true
+      - name: Look up Clojure CLI
+        id: clojure-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.clojure-path }}
+          key: ${{ steps.cache-spec.outputs.clojure-key }}
+          lookup-only: true
       - name: Look up Cypress binary
         id: cypress-lookup
         uses: actions/cache/restore@v5
@@ -77,9 +84,18 @@ jobs:
           key: ${{ steps.cache-spec.outputs.cypress-key }}
           lookup-only: true
 
+      # Also runs when only the Clojure CLI entry is missing: installing it is what there is to save,
+      # and the pre-resolve below needs it either way.
       - name: Prepare backend
-        if: steps.m2-lookup.outputs.cache-hit != 'true'
+        if: steps.m2-lookup.outputs.cache-hit != 'true' || steps.clojure-lookup.outputs.cache-hit != 'true'
         uses: ./.github/actions/prepare-backend
+
+      - name: Save Clojure CLI
+        if: steps.clojure-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.clojure-path }}
+          key: ${{ steps.cache-spec.outputs.clojure-key }}
 
       # Pre-resolve every Clojure dependency classpath CI actually uses, so the saved cache is a SUPERSET
       # of what each job resolves at runtime.

@@ -6,15 +6,17 @@ import {
   useMemo,
   useState,
 } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
 import {
+  useAppendChartToSummaryMutation,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
+import { trackDocumentUpdated } from "metabase/documents/analytics";
 import {
   trackExplorationCommentCreated,
   trackExplorationPageHiddenToggled,
@@ -35,6 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
+import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,
@@ -48,12 +51,16 @@ import type { CommentDrafts } from "../../types";
 
 import S from "./ActionToolbar.module.css";
 import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 const TRIAGE_TOOLTIP_OPEN_DELAY = 500;
 
 interface ActionToolbarProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
+  charts: ExplorationChartForDocumentEmbed[];
+  canAddToSummary: boolean;
+  setSelectedSummary: (options?: { scrollIntoView?: boolean }) => void;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   showTimelineDropdown: boolean;
@@ -67,6 +74,9 @@ interface ActionToolbarProps {
 export function ActionToolbar({
   explorationId,
   page,
+  charts,
+  canAddToSummary,
+  setSelectedSummary,
   commentDrafts,
   setCommentDrafts,
   showTimelineDropdown,
@@ -78,8 +88,10 @@ export function ActionToolbar({
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
+  const [appendChartToSummary] = useAppendChartToSummaryMutation();
 
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
+  const [isAddToSummaryMenuOpen, setAddToSummaryMenuOpen] = useState(false);
   const [isMoreActionsOpen, setMoreActionsOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
 
@@ -160,6 +172,55 @@ export function ActionToolbar({
     }
   }, [page.hidden, page.name, setHidden, sendToast, onNextPage]);
 
+  const showAddToSummary = canAddToSummary && charts.length > 0;
+
+  const handleAddToSummary = useCallback(
+    async (chart: ExplorationChartForDocumentEmbed) => {
+      const timelineSettings =
+        selectedTimelineId != null
+          ? getTimelineEventSettings(
+              availableTimelines,
+              (
+                availableTimelines.find((t) => t.id === selectedTimelineId)
+                  ?.events ?? []
+              ).map((event) => event.id),
+            )
+          : {};
+      const { data: document, error } = await appendChartToSummary({
+        explorationId,
+        exploration_query_ids: chart.queryIds,
+        display: chart.display,
+        visualization_settings: {
+          ...chart.visualization_settings,
+          ...timelineSettings,
+        },
+      });
+      if (error || !document) {
+        sendToast({
+          message: t`Failed to add to Summary`,
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+        });
+        return;
+      }
+      trackDocumentUpdated(document, "exploration");
+      sendToast({
+        message: c("{0} is the document name").t`Added to ${document.name}`,
+        icon: "document",
+        actionLabel: t`View`,
+        action: () => setSelectedSummary({ scrollIntoView: true }),
+      });
+    },
+    [
+      appendChartToSummary,
+      availableTimelines,
+      explorationId,
+      selectedTimelineId,
+      sendToast,
+      setSelectedSummary,
+    ],
+  );
+
   const copyLink = useCopyLink();
 
   useEffect(() => {
@@ -199,6 +260,15 @@ export function ActionToolbar({
         event.preventDefault();
       }
 
+      if (event.key === "a" && showAddToSummary) {
+        if (charts.length === 1) {
+          handleAddToSummary(charts[0]);
+        } else {
+          setAddToSummaryMenuOpen(true);
+        }
+        event.preventDefault();
+      }
+
       if (event.key === "l") {
         copyLink(window.location.href);
         event.preventDefault();
@@ -214,6 +284,10 @@ export function ActionToolbar({
     handleToggleStarred,
     handleToggleHidden,
     setCommentEditorOpen,
+    showAddToSummary,
+    charts,
+    handleAddToSummary,
+    setAddToSummaryMenuOpen,
     copyLink,
   ]);
 
@@ -347,6 +421,43 @@ export function ActionToolbar({
             />
           </Popover.Dropdown>
         </Popover>
+        {showAddToSummary &&
+          (charts.length === 1 ? (
+            <ToolbarButton
+              icon="document"
+              tooltipLabel={t`Add to Summary`}
+              iconProps={{
+                size: "1.125rem",
+              }}
+              onClick={() => handleAddToSummary(charts[0])}
+            />
+          ) : (
+            <Menu
+              position="top"
+              opened={isAddToSummaryMenuOpen}
+              onChange={setAddToSummaryMenuOpen}
+            >
+              <Menu.Target>
+                <ToolbarButton
+                  icon="document"
+                  tooltipLabel={t`Add to Summary`}
+                  iconProps={{
+                    size: "1.125rem",
+                  }}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                {charts.map((chart) => (
+                  <Menu.Item
+                    key={chart.queryIds.join(",")}
+                    onClick={() => handleAddToSummary(chart)}
+                  >
+                    {chart.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          ))}
         <Menu
           position="top-end"
           offset={8}

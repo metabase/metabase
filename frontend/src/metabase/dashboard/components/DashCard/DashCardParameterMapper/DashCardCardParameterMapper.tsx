@@ -21,7 +21,7 @@ import type { State } from "metabase/redux/store";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
+import { getMobileHeight } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";

@@ -27,6 +27,7 @@
     :metabot_chart_id
     :metabot_conversation_id
     :public_uuid
+    :public_uuid_prefix
     :updated_at
     :view_count})
 

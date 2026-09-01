@@ -6,6 +6,7 @@
    [medley.core :as m]
    ;; legacy usages, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; domain-entity specs are written against legacy MBQL clauses; no MBQL 5 port yet
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]

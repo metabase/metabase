@@ -11,12 +11,13 @@
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields
-  (into [:model/User] user/admin-or-self-visible-columns))
+  ;; `:type` is needed so [[user/add-attributes]] can refuse to add attributes to non-personal (API-key/internal) users
+  (into [:model/User :type] user/admin-or-self-visible-columns))
 
 (defn- find-user [user-id]
   (when user-id
-    (-> (t2/select-one current-user-fields, :id user-id)
-        user/add-attributes)))
+    (some-> (t2/select-one current-user-fields, :id user-id)
+            user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
