@@ -16,6 +16,29 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- escape-like-pattern
+  "Escape `%`, `_` and the escape character `!` so `s` matches literally in a `LIKE` pattern."
+  ^String [^String s]
+  (str/replace s #"([!%_])" "!$1"))
+
+(defn like-pattern
+  "`LIKE` right-hand side matching `s` literally, with an explicit `ESCAPE` clause so it behaves the same on every app DB.
+  `wrap` receives the escaped string and returns the final pattern (string or HoneySQL expr), e.g. to add wildcards."
+  ([s]
+   (like-pattern s identity))
+  ([s wrap]
+   [:escape (wrap (escape-like-pattern s)) ^:allow-raw-sql [:inline "!"]]))
+
+(defn like-substring
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str "%" % "%")))
+
+(defn like-prefix
+  "`LIKE` right-hand side matching `s` case-insensitively as a literal prefix; compare it against a lowercased column."
+  [s]
+  (like-pattern (u/lower-case-en s) #(str % "%")))
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
