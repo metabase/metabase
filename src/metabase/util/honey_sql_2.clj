@@ -27,7 +27,9 @@
   ([s]
    (like-pattern s identity))
   ([s wrap]
-   [:escape (wrap (escape-like-pattern s)) ^:allow-raw-sql [:inline "!"]]))
+   ;; `::literal` rather than [:inline "!"]: with a driver bound, inline strings compile via driver-specific
+   ;; `inline-value` (MySQL emits `_utf8mb4 X'21'`, whose collation can clash with LIKE's other operands)
+   [:escape (wrap (escape-like-pattern s)) [::literal "!"]]))
 
 (defn like-substring
   "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
