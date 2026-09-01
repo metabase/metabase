@@ -336,13 +336,13 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
-  useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
-  // Fetches the timelines the chart's events are derived from.
-  useListTimelinesQuery({ include: "events" });
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
   const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
+
+  useFavicon({ favicon: props.pageFavicon ?? null });
+  useListTimelinesQuery({ include: "events" });
 
   const {
     question,

@@ -59,7 +59,6 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
-// Both keys are written together; a selected list (even an empty one) means a recorded choice.
 export type TimelineEventsVisibility = Pick<
   VisualizationSettings,
   "timeline.selected_timeline_ids" | "timeline.excluded_timeline_event_ids"
