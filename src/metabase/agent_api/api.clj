@@ -1185,22 +1185,11 @@
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
-(defn- size-override
-  "Optional explicit size from the LLM. Returns {:width :height} or nil to fall back to defaults."
-  [display-size]
-  (case display-size
-    "wide"    {:width 18 :height 6}
-    "tall"    {:width 9  :height 12}
-    "full"    {:width 24 :height 9}
-    nil))
-
 (defn- autoplaced-position
   "Grid position for a new dashcard: the LLM's explicit `display-size` if given, otherwise the
    default size for `display`."
   [placed display display-size]
-  (if-let [{:keys [width height]} (size-override display-size)]
-    (autoplace/get-position-for-new-dashcard placed width height autoplace/default-grid-width)
-    (autoplace/get-position-for-new-dashcard placed display)))
+  (autoplace/get-position-for-new-dashcard placed display display-size))
 
 (mr/def ::create-dashboard-request
   [:map

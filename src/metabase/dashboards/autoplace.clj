@@ -19,8 +19,17 @@
 (defn- intersects-with-any-card? [cards position]
   (boolean (some #(intersects? position %) cards)))
 
+(def size-hints
+  "Coarse size hints a caller (e.g. an LLM) can give instead of a display type's default size."
+  {"wide" {:width 18 :height 6}
+   "tall" {:width 9  :height 12}
+   "full" {:width 24 :height 9}})
+
 (defn get-position-for-new-dashcard
   "Where should a new card be placed on a tab, given the existing dashcards?
+
+  The 3-arity uses the explicit `size-hint` (a key of [[size-hints]]) when given, otherwise the
+  default size for `display-type`.
 
   NOTE: almost identical in behavior to `getPositionForNewDashCard` in
   https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dashboard_grid.js
@@ -36,8 +45,11 @@
   easier for the caller.
   "
   ([cards display-type]
-   (let [{:keys [width height]} (merge dashboard.constants/default-card-size
-                                       (:default (get dashboard.constants/card-size-defaults display-type)))]
+   (get-position-for-new-dashcard cards display-type nil))
+  ([cards display-type size-hint]
+   (let [{:keys [width height]} (or (get size-hints size-hint)
+                                    (merge dashboard.constants/default-card-size
+                                           (:default (get dashboard.constants/card-size-defaults display-type))))]
      (get-position-for-new-dashcard cards width height default-grid-width)))
   ([cards size-x size-y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]

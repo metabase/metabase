@@ -4,11 +4,11 @@
   The dashboard is NOT persisted anywhere — like generated charts it lives only in
   agent memory (`shared/current-dashboards-state`) until the user asks to save it,
   at which point `save_entity` materializes it into a real dashboard. The model
-  provides the tile order and relative size hints; [[layout-tiles]] computes the
-  concrete grid placement."
+  provides the tile order and optional coarse size hints; tiles are sized from their
+  display type's defaults and placed with the shared dashboard autoplacer."
   (:require
    [clojure.string :as str]
-   [metabase.dashboards.constants :as dashboard.constants]
+   [metabase.dashboards.autoplace :as autoplace]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
@@ -21,67 +21,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private grid-width dashboard.constants/grid-width)
-
-(def ^:private min-tile-width 4)
-(def ^:private max-tile-height 12)
-(def ^:private min-tile-height 3)
-
-(defn- clamp [n lo hi]
-  (-> n (max lo) (min hi)))
-
-(defn- group-into-rows [tiles]
-  (reduce (fn [rows tile]
-            (let [tile    (-> tile
-                              (update :width clamp min-tile-width grid-width)
-                              (update :height clamp min-tile-height max-tile-height))
-                  current (peek rows)
-                  used    (transduce (map :width) + 0 current)]
-              (if (and (seq current) (> (+ used (:width tile)) grid-width))
-                (conj rows [tile])
-                (conj (pop rows) (conj current tile)))))
-          [[]]
-          tiles))
-
-(defn- stretch-row [row]
-  (let [total (transduce (map :width) + 0 row)
-        extra (- grid-width total)
-        grow  (map #(quot (* extra (:width %)) total) row)
-        left  (- extra (reduce + grow))]
-    (mapv (fn [tile g extra-col]
-            (update tile :width + g extra-col))
-          row
-          grow
-          (concat (repeat left 1) (repeat 0)))))
-
-(defn layout-tiles
-  "Compute concrete dashboard-grid positions for ordered tiles with `:width`/`:height`
-  size hints. Tiles fill rows left-to-right in the given order; a tile that doesn't
-  fit the current row starts a new one, and each row is stretched so its tiles span
-  the full grid width while preserving their relative widths. Returns the tiles in
-  order with `:row`, `:col`, `:size_x`, and `:size_y` added."
-  [tiles]
-  (loop [rows (group-into-rows tiles)
-         y    0
-         out  []]
-    (if-let [row (seq (first rows))]
-      (let [stretched  (stretch-row row)
-            row-height (long (transduce (map :height) max 0 stretched))
-            placed     (first
-                        (reduce (fn [[acc x] tile]
-                                  [(conj acc (assoc tile
-                                                    :row y
-                                                    :col x
-                                                    :size_x (:width tile)
-                                                    :size_y (:height tile)))
-                                   (+ x (:width tile))])
-                                [[] 0]
-                                stretched))]
-        (recur (rest rows)
-               (+ y row-height)
-               (into out placed)))
-      out)))
 
 (defn- agent-error! [msg]
   (throw (ex-info msg {:agent-error? true :status-code 400})))
@@ -118,8 +57,7 @@
    [:query_id {:optional true} [:maybe :string]]
    [:card_id {:optional true} [:maybe :int]]
    [:title [:string {:min 1}]]
-   [:width [:int {:min 1 :max 24}]]
-   [:height [:int {:min 1 :max 20}]]])
+   [:size {:optional true} [:maybe (into [:enum] (keys autoplace/size-hints))]]])
 
 (def ^:private create-dashboard-schema
   [:map {:closed true}
@@ -127,37 +65,52 @@
    [:description {:optional true} [:maybe :string]]
    [:tiles [:vector {:min 1} tile-schema]]])
 
+(defn- resolve-tile
+  [{:keys [chart_id query_id card_id title size]}]
+  (let [tile (if card_id
+               (let [card (readable-card card_id)]
+                 {:title   title
+                  :display (name (:display card))
+                  :query   (links/->legacy-mbql (:dataset_query card))
+                  :card_id card_id})
+               (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
+                     query (if chart
+                             (or (first (:queries chart))
+                                 (get (shared/current-queries-state) (:query_id chart)))
+                             (get (shared/current-queries-state) query_id))]
+                 (when-not query
+                   (agent-error!
+                    (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
+                         (or chart_id query_id))))
+                 (cond-> {:title   title
+                          :display (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
+                                       (some-> (get-in chart [:chart_config :display_type]) name)
+                                       "table")
+                          :query   (links/->legacy-mbql query)}
+                   chart_id (assoc :chart_id chart_id)
+                   query_id (assoc :query_id query_id))))]
+    (assoc tile :size size)))
+
+(defn- place-tiles
+  "Give each resolved tile its grid position, in order, using the shared autoplacer:
+  sized by the tile's display-type default unless a coarse `:size` hint was given."
+  [tiles]
+  (first
+   (reduce (fn [[placed positions] {:keys [display size] :as tile}]
+             (let [position (autoplace/get-position-for-new-dashcard positions (keyword display) size)]
+               [(conj placed (merge (dissoc tile :size) (select-keys position [:row :col :size_x :size_y])))
+                (conj positions position)]))
+           [[] []]
+           tiles)))
+
 (defn- tile->state [{:keys [chart_id query_id card_id title row col size_x size_y]}]
   (cond-> {:title title :row row :col col :size_x size_x :size_y size_y}
     chart_id (assoc :chart_id chart_id)
     query_id (assoc :query_id query_id)
     card_id  (assoc :card_id card_id)))
 
-(defn- tile->definition [{:keys [chart_id query_id card_id title row col size_x size_y]}]
-  (let [position {:row row :col col :size_x size_x :size_y size_y}]
-    (if card_id
-      (let [card (readable-card card_id)]
-        (merge {:title   title
-                :display (name (:display card))
-                :query   (links/->legacy-mbql (:dataset_query card))
-                :card_id card_id}
-               position))
-      (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
-            query (if chart
-                    (or (first (:queries chart))
-                        (get (shared/current-queries-state) (:query_id chart)))
-                    (get (shared/current-queries-state) query_id))]
-        (when-not query
-          (agent-error!
-           (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
-                (or chart_id query_id))))
-        (merge (cond-> {:title   title
-                        :display (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
-                                     (some-> (get-in chart [:chart_config :display_type]) name)
-                                     "table")
-                        :query   (links/->legacy-mbql query)}
-                 chart_id (assoc :chart_id chart_id))
-               position)))))
+(defn- tile->definition [tile]
+  (dissoc tile :query_id))
 
 (mu/defn ^{:tool-name "create_dashboard"
            :scope     scope/agent-dashboard-create}
@@ -172,13 +125,11 @@
   Saved questions are added as-is and stay linked to the original; charts and queries
   from this conversation become new questions when the dashboard is saved.
 
-  For each tile, suggest a size with `width` (grid columns, out of 24 total) and
-  `height` (grid rows). Sizes are relative hints expressing how much space a tile
-  deserves — give the most important or most detailed charts more space (e.g. 12x6 for
-  a key trend, 24x9 for a wide table, 6x3 for a single number). The final layout is
-  computed automatically to fill the grid while preserving your order and relative
-  sizes; you cannot control exact positions. Tiles you want side by side should have
-  widths that sum to about 24 and similar heights.
+  Tiles are sized automatically from their chart type (e.g. a single number is small,
+  a table is tall) and placed on the 24-column grid in your order. Optionally give a
+  tile a coarse `size` hint when it deserves more room: `wide` (18 columns), `tall`
+  (9 columns, 12 rows), or `full` (the whole width). You cannot control exact
+  positions.
 
   You CANNOT edit a dashboard after creating it, so choose carefully what to include
   and get the order and sizing right in this single call.
@@ -191,7 +142,7 @@
   (try
     (run! validate-tile! tiles)
     (let [dashboard-id (str (random-uuid))
-          positioned   (layout-tiles tiles)
+          positioned   (place-tiles (mapv resolve-tile tiles))
           dashboard    (cond-> {:dashboard_id dashboard-id
                                 :name         dashboard-name
                                 :tiles        (mapv tile->state positioned)}
