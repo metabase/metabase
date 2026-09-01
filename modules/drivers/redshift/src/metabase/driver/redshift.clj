@@ -151,7 +151,14 @@
   "Query listing every syncable relation, restricted to `schema-names` when the filter named them outright.
 
   Without that restriction this scans the whole catalog and the caller drops what the filter rejects. On a shared
-  cluster that is most of the rows -- CI runs measured ~1100 relations fetched to keep ~10."
+  cluster that is most of the rows -- CI runs measured ~1100 relations fetched to keep ~10.
+
+  Lists relations the connecting user cannot read: the `has_schema_privilege`, `has_table_privilege` and
+  `has_any_column_privilege` filters this carried were removed for cost, taking the query from 7.8s to 0.3s.
+
+  Their cost was flat in the number of relations -- a database holding none answered as slowly as one holding
+  132 -- so narrowing `schema-names` does not avoid it, and any per-row privilege call brings all of it back.
+  Restoring the filter needs a set-based source of privileges, such as a join against the ACLs."
   [schema-names]
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
   ;; It does not return tables from datashares, which is a relatively new feature of redshift.
@@ -184,9 +191,6 @@
          "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
          "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
          (when placeholders (str "    and n.nspname in " placeholders))
-         "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
-         "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
-         "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
          "union all"
          "select"
          "  tablename as name,"
@@ -196,9 +200,7 @@
          "  null as description"
          "from svv_external_tables t"
          "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
-         (when placeholders (str "  and t.schemaname in " placeholders))
-         ;; for external tables, USAGE privileges on a schema is sufficient to select
-         "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"]))]
+         (when placeholders (str "  and t.schemaname in " placeholders))]))]
      ;; once per union branch
      (concat schema-names schema-names))))
 

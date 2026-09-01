@@ -279,7 +279,11 @@
 
 (deftest describe-database-privileges-test
   (mt/test-driver :redshift
-    (testing "Should filter out schemas for which the user has insufficient select perms"
+    ;; Inverted deliberately. `get-tables-sql` used to filter by `has_*_privilege` and these four cases
+    ;; asserted it did; the filters were removed because they cost more than the rest of the query put
+    ;; together. Sync therefore reports relations the connecting user cannot read, and the four cases now pin
+    ;; that. If a privilege filter is ever restored -- cheaply, set-based -- this is the test that should fail.
+    (testing "Should report tables regardless of the user's select perms"
       (let [user-name    (u/lower-case-en (mt/random-name))
             schema       (sql.tx/session-schema :redshift)
             table-name   (u/lower-case-en (mt/random-name))
@@ -302,15 +306,15 @@
                  (testing "with schema usage and table select grants, table should be in results"
                    (execute! (str grant-schema-usage grant-table-select))
                    (is (true? (table-is-in-results?))))
-                 (testing "with no schema usage and no table select grants, table should not be in results"
+                 (testing "with no schema usage and no table select grants, table is still in results"
                    (execute! (str revoke-schema-usage revoke-table-select))
-                   (is (false? (table-is-in-results?))))
-                 (testing "with no schema usage but table select grants, table should not be in results"
+                   (is (true? (table-is-in-results?))))
+                 (testing "with no schema usage but table select grants, table is still in results"
                    (execute! (str revoke-schema-usage grant-table-select))
-                   (is (false? (table-is-in-results?))))
-                 (testing "with schema usage but no table select grants, table should not be in results"
+                   (is (true? (table-is-in-results?))))
+                 (testing "with schema usage but no table select grants, table is still in results"
                    (execute! (str grant-schema-usage revoke-table-select))
-                   (is (false? (table-is-in-results?))))))
+                   (is (true? (table-is-in-results?))))))
              (finally
                (execute! (str revoke-schema-usage
                               (format "DROP USER IF EXISTS %s;%n" user-name)))))))))
