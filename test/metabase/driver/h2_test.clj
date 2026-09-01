@@ -492,8 +492,9 @@
 
 (deftest ^:parallel java-object-deserialization-is-refused-test
   (testing "the registered H2 serializer refuses to reconstruct a Java object"
-    (is (thrown-with-msg? Exception #"(?i)not supported"
-                          (.deserialize @#'h2/java-object-serializer (byte-array 0)))))
+    (let [^org.h2.api.JavaObjectSerializer serializer @#'h2/java-object-serializer]
+      (is (thrown-with-msg? Exception #"(?i)not supported"
+                            (.deserialize serializer (byte-array 0))))))
   (testing "ordinary values still read normally"
     (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
       (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))

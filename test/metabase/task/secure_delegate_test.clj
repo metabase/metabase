@@ -1,21 +1,15 @@
 (ns metabase.task.secure-delegate-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.classloader.core :as classloader]
    [metabase.task.secure-delegate :as secure-delegate]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util.deserialization-allowlist :as dal]
-   [toucan2.core :as t2])
+   [metabase.util.deserialization-allowlist :as dal])
   (:import
-   (java.io ByteArrayOutputStream ObjectOutputStream)
-   (java.sql ResultSet)
+   (java.io ByteArrayInputStream ByteArrayOutputStream ObjectOutputStream)
+   (java.sql Blob ResultSet)
    (org.quartz JobDataMap)))
 
 (set! *warn-on-reflection* true)
-
-;; The DB round-trip test below reads a real QRTZ blob through the delegate, so the app DB must exist.
-(use-fixtures :once (fixtures/initialize :db))
 
 (defn- serialize-bytes ^bytes [obj]
   (let [baos (ByteArrayOutputStream.)]
@@ -23,78 +17,64 @@
       (.writeObject oos obj))
     (.toByteArray baos)))
 
-(deftest blob-allow-set-permits-real-job-data-test
-  (testing "the Quartz blob allow-set reads a JobDataMap of the plain data a job carries"
-    ;; This is the whole point: Quartz's own wrapper (org.quartz.JobDataMap) plus EDN-shaped Clojure/JDK
-    ;; data must survive the filter, or the scheduler breaks on read.
-    (let [jdm (JobDataMap. {"database-id" (int 42)
-                            "payload"     {:foo 1 :bar #{:x :y} :nested {:a [1 2 3]}}
-                            "opts"        (java.util.HashMap. {"k" "v"})})]
-      (is (= JobDataMap
-             (class (dal/read-object-bytes (serialize-bytes jdm) secure-delegate/blob-allowed-prefixes)))))))
+;;; A JobDataMap of the plain data a queue job carries, and a serializable class Metabase never stores
+;;; (c3p0's connection-pool datasource) standing in for anything outside the EDN + Quartz value space.
+(defn- job-data ^JobDataMap []
+  (JobDataMap. {"database-id" (int 99)
+                "payload"     {:foo 1 :bar #{:x :y} :nested {:a [1 2 3]}}
+                "opts"        (doto (java.util.HashMap.) (.put "k" "v"))}))
 
-(deftest blob-allow-set-rejects-unlisted-class-test
-  (testing "the Quartz blob allow-set treats a class outside the expected set as unreadable"
-    ;; c3p0's PoolBackedDataSource is a serializable class on the classpath (it's the connection pool)
-    ;; that Metabase never stores in job data — it stands in for anything outside the EDN + Quartz set.
-    (let [unlisted-bytes (serialize-bytes (com.mchange.v2.c3p0.PoolBackedDataSource.))]
-      (is (thrown-with-msg? java.io.InvalidClassException #"(?i)filter"
-                            (dal/read-object-bytes unlisted-bytes secure-delegate/blob-allowed-prefixes))))))
+(defn- unlisted-object [] (com.mchange.v2.c3p0.PoolBackedDataSource.))
 
-(deftest secure-delegate-overrides-getObjectFromBlob-canary-test
-  (testing "each secure delegate declares its OWN getObjectFromBlob(ResultSet, String) — if a Quartz
-            bump renames or re-signs that method, our override silently stops overriding and this fails"
-    (doseq [db-type [:h2 :mysql :postgres]]
-      (let [class-name (secure-delegate/install! db-type)
-            k          (Class/forName class-name true (classloader/the-classloader))
-            m          (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
-        (is (= k (.getDeclaringClass m))
-            (str db-type " secure delegate declares its own getObjectFromBlob override"))))))
+;;; The delegates read a blob differently — StdJDBCDelegate via getBlob, PostgreSQLDelegate via getBytes
+;;; — so we hand each a minimal ResultSet returning our bytes the way it expects, and call the real
+;;; getObjectFromBlob override. No database needed: we're testing the delegate's read, not JDBC.
 
-;;; End-to-end against the real app DB: an actual secure-delegate instance reads a real BLOB column the
-;;; way Quartz does. This is the path that broke in the original investigation (job data unreadable), so
-;;; we exercise the whole getBlob -> filtered ObjectInputStream -> readObject chain over JDBC, not just
-;;; the in-memory filter.
+(defn- getblob-result-set ^ResultSet [^bytes bs]
+  (reify ResultSet
+    (^Blob getBlob [_ ^String _col]
+      (reify Blob
+        (length [_] (alength bs))
+        (getBinaryStream [_] (ByteArrayInputStream. bs))))))
 
-(defn- h2-secure-delegate! ^org.quartz.impl.jdbcjobstore.StdJDBCDelegate []
-  (-> (Class/forName (secure-delegate/install! :h2) true (classloader/the-classloader))
-      (.getDeclaredConstructor (make-array Class 0))
-      (.newInstance (object-array 0))))
+(defn- getbytes-result-set ^ResultSet [^bytes bs]
+  (reify ResultSet
+    (^bytes getBytes [_ ^String _col] bs)))
 
-(defn- read-blob-through-delegate!
-  "Write `obj` (serialized) into a fresh BLOB column and read it back the way Quartz does — through a
-  real secure-delegate instance's `getObjectFromBlob` against a live JDBC `ResultSet`. Returns whatever
-  the delegate reconstructs (or throws from the filter). Exercises the full getBlob→filter→readObject
-  chain, the seam the original job-data-unreadable failure lived in."
-  [obj]
-  (let [tbl (str "secure_delegate_test_" (str/replace (str (random-uuid)) "-" "_"))]
+;; The gen-class delegate classes aren't AOT-compiled at this file's compile time (from source they're
+;; compiled by install! at runtime), so we can't name them literally — a `require` doesn't make them
+;; resolvable to the compiler either. We construct one by name and invoke its getObjectFromBlob override
+;; reflectively, unwrapping the InvocationTargetException so the filter's own exception surfaces.
+(defn- read-through-delegate! [db-type result-set-fn obj]
+  (let [k        (Class/forName (secure-delegate/install! db-type) true (classloader/the-classloader))
+        delegate (.newInstance k)
+        m        (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
     (try
-      (t2/query (str "CREATE TABLE " tbl " (id int, data blob)"))
-      (t2/query {:insert-into (keyword tbl) :values [{:id 1 :data (serialize-bytes obj)}]})
-      (t2/with-connection [conn]
-        (with-open [ps (.prepareStatement conn (str "SELECT data FROM " tbl " WHERE id = 1"))
-                    rs (.executeQuery ps)]
-          (is (.next rs))
-          (.getObjectFromBlob (h2-secure-delegate!) rs "data")))
-      (finally
-        (t2/query (str "DROP TABLE IF EXISTS " tbl))))))
+      (.invoke m delegate (object-array [(result-set-fn (serialize-bytes obj)) "data"]))
+      (catch java.lang.reflect.InvocationTargetException e
+        (throw (.getCause e))))))
 
-(deftest getObjectFromBlob-reads-real-blob-over-jdbc-test
-  (testing "a secure-delegate instance reconstructs a serialized JobDataMap out of a real BLOB column"
-    (let [jdm (JobDataMap. {"database-id" (int 99) "payload" {:a 1 :b #{:x :y}}})]
-      (is (= JobDataMap (class (read-blob-through-delegate! jdm)))))))
+(deftest getObjectFromBlob-reads-through-allow-list-test
+  (testing "each secure delegate's getObjectFromBlob reads allowed job data and refuses an unlisted class"
+    (doseq [[label db-type result-set-fn] [["StdJDBCDelegate (getBlob)"     :h2       getblob-result-set]
+                                           ["PostgreSQLDelegate (getBytes)" :postgres getbytes-result-set]]]
+      (testing label
+        (testing "reconstructs a JobDataMap of allowed data"
+          (is (= JobDataMap (class (read-through-delegate! db-type result-set-fn (job-data))))))
+        (testing "refuses an unlisted class before constructing it"
+          (is (thrown? java.io.InvalidClassException
+                       (read-through-delegate! db-type result-set-fn (unlisted-object)))))))))
 
-(defn- root-cause ^Throwable [^Throwable t]
-  (if-let [c (.getCause t)] (recur c) t))
+(deftest blob-allowed-prefixes-are-edn-plus-quartz-test
+  (testing "the Quartz blob allow-set is the EDN value space plus Quartz's own wrapper classes"
+    (is (= (conj dal/clojure-data-prefixes "org.quartz.")
+           secure-delegate/blob-allowed-prefixes))))
 
-(deftest getObjectFromBlob-refuses-unlisted-blob-over-jdbc-test
-  (testing "a secure-delegate instance treats an unlisted class serialized into a real BLOB column as
-            unreadable, on the real JDBC read path"
-    ;; The read runs inside a toucan2 connection block, which wraps the filter's InvalidClassException
-    ;; in an ExceptionInfo — so we assert on the root cause rather than the (wrapped) outer type.
-    (let [thrown (is (thrown? Throwable
-                              (read-blob-through-delegate! (com.mchange.v2.c3p0.PoolBackedDataSource.))))
-          cause  (root-cause thrown)]
-      (is (instance? java.io.InvalidClassException cause)
-          "the underlying failure is the deserialization filter refusing the class")
-      (is (re-find #"(?i)filter" (str (ex-message cause)))))))
+(deftest getObjectFromBlob-override-canary-test
+  (testing "each secure delegate declares its OWN getObjectFromBlob(ResultSet, String) — if a Quartz
+            bump renames or re-signs that method our override silently stops overriding, and this fails"
+    (doseq [class-name ["metabase.task.SecureStdDelegate" "metabase.task.SecurePostgresDelegate"]]
+      (let [k (Class/forName class-name true (classloader/the-classloader))
+            m (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
+        (is (= k (.getDeclaringClass m))
+            (str class-name " declares its own getObjectFromBlob override"))))))
