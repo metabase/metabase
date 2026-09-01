@@ -79,6 +79,7 @@ jobs:
 
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     steps:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
