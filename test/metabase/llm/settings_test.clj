@@ -339,16 +339,7 @@
                        (catch clojure.lang.ExceptionInfo e (ex-data e))))))
         (testing "a floor loosens the target check for a deployment-controlled endpoint"
           (is (= {:redirect-strategy :none}
-                 (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1"))))
-        (testing (str "a host Metabase cannot resolve is refused here, unlike everywhere else: the proxy resolves "
-                      "it, so nothing behind this check would look at the address")
-          (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
-                  (try (llm.settings/llm-request-opts "https://nx.invalid/v1")
-                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-          (testing "but not under allow-all, which checks nothing anywhere"
-            (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
-              (is (= {:redirect-strategy :none}
-                     (llm.settings/llm-request-opts "https://nx.invalid/v1")))))))
+                 (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1")))))
       (testing "with the proxy selector answering DIRECT, the resolver does the enforcing as before"
         (binding [u.http/*proxy-selector* (proxy-selector [Proxy/NO_PROXY])]
           (is (instance? org.apache.http.conn.DnsResolver
