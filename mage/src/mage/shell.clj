@@ -119,8 +119,10 @@
         opts              (merge
                            {:dir u/project-root-directory}
                            opts)
-        {:keys [env dir timeout-ms]
-         :or   {timeout-ms command-timeout-ms}} opts
+        {:keys [env dir]}  opts
+        ;; `or`, not `:or`: a caller computing the timeout from an env var or an option map can hand us an
+        ;; explicit nil, which `:or` passes straight through.
+        timeout-ms        (or (:timeout-ms opts) command-timeout-ms)
         proc              (start-process! args env dir)]
     ;; Close child stdin so subprocesses that read from it see EOF immediately
     ;; instead of blocking forever on the JVM-owned pipe.
@@ -136,8 +138,11 @@
           {:exit (deref-by-deadline exit-code deadline timeout-ms)
            :out  (deref-by-deadline out deadline timeout-ms)
            :err  (deref-by-deadline err deadline timeout-ms)}
-          (catch clojure.lang.ExceptionInfo e
-            (when (:timed-out? (ex-data e))
+          ;; A timeout is not the only way out of here. A reader future can fail on the pipe, and the calling
+          ;; thread can be interrupted; either way the command keeps running unless we stop it. Whether the
+          ;; process is still alive is the question that matters, not which exception got us here.
+          (catch Throwable e
+            (when (.isAlive proc)
               (kill-process! proc))
             (throw e)))))))
 
