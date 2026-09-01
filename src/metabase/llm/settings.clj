@@ -596,6 +596,12 @@
   :visibility :settings-manager
   :export?    false
   :audit      :no-value
+  ;; The connection API validates what it saves, and so do the single-provider settings, but the list is also
+  ;; writable as itself -- through `PUT /api/setting/llm-providers` and through `config.yml` -- so the field
+  ;; validators run here too, on the way in.
+  :setter     (fn [new-value]
+                ((requiring-resolve 'metabase.llm.provider/validate-changed-connections!) new-value)
+                (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")

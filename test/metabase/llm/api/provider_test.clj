@@ -11,7 +11,8 @@
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -1272,3 +1273,25 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                 {:config {:api-key "sk-ant-rotated"}}))
         (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
+
+(deftest settings-api-cannot-store-a-base-url-on-a-blocked-network-test
+  (testing (str "the connection list is a setting in its own right, so writing the raw JSON through the settings "
+                "API has to be refused the way the connection endpoints refuse it")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (let [conn #(connection "vllm" "vllm" {:base-url %})]
+          (is (=? {:message #".*127\.0\.0\.1 is on a network.*"
+                   :field   "base-url"}
+                  (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
+                                        {:value [(conn "http://127.0.0.1:8000/v1")]})))
+          (is (= [] (vec (llm.provider/stored-connections))))
+          (testing "a base URL the policy permits still saves"
+            (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                  {:value [(conn "https://8.8.8.8/v1")]})
+            (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
+          (testing "and an entry already stored does not block an edit to a different connection"
+            (mt/with-temporary-raw-setting-values [llm-providers (json/encode [(conn "http://127.0.0.1:8000/v1")])]
+              (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                    {:value [(conn "http://127.0.0.1:8000/v1")
+                                             (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
+              (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))))))))
