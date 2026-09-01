@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -21,6 +22,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -203,6 +205,10 @@
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
    [:setter ifn?]
+   ;; a Malli schema the value must match, beyond what `:type` already guarantees -- a URL, an email address, a list
+   ;; of hosts. Enforced in both directions; see [[schema-validating-getter]], [[schema-validating-setter]] and
+   ;; [[validate-schema-declared!]]
+   [:schema :any]
    ;; an init function can be used to seed initial values
    [:init [:maybe ifn?]]
    ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
@@ -1092,45 +1098,113 @@
 ;;; |                                               register-setting!                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- schema-valid?
+  "Whether `v` satisfies a Setting's `:schema`. `nil` and the empty string are exempt: they are how a Setting is
+  cleared, and clearing one is always allowed. Exactly the empty string, matching what [[set-value-of-type!]] treats
+  as \"unset\" -- a whitespace-only value is stored as it stands, so it has to satisfy the schema like any other."
+  [schema v]
+  (or (nil? v)
+      (and (string? v) (empty? v))
+      (mr/validate schema v)))
+
+(defn- schema-validating-getter
+  "Wrap `getter` so a value that does not match the Setting's `:schema` reads as `nil` -- the same thing an unset
+  Setting reads as. It cannot throw: a Setting visible to the frontend is read while building the whole settings
+  payload (see [[user-readable-values-map]]), where throwing would take down every other Setting along with it. This
+  is the direction that catches a value written around the setter, by a direct app-DB write or an environment
+  variable. The value never reaches the log; a Setting may hold a secret.
+
+  Wraps whatever getter the Setting ended up with rather than the default one, so a Setting with a custom getter
+  validates what that getter returns -- its normalized, parsed value, which is what callers see."
+  [{schema :schema, setting-name :name} getter]
+  (fn []
+    (let [v (getter)]
+      (if (schema-valid? schema v)
+        v
+        (do
+          (log/warnf "Setting %s holds a value that is not valid for it; reading it as nil." setting-name)
+          nil)))))
+
+(defn- schema-validating-setter
+  "Wrap `setter` so a value that does not match the Setting's `:schema` is refused, at the point someone tries to
+  store it. Unlike the getter this can throw, and does. The value is not included in the failure.
+
+  Note that the check is against the value the setter is *given*, so a Setting whose custom setter normalizes its
+  input needs a schema that accepts the un-normalized form too."
+  [{schema :schema, setting-name :name} setter]
+  (fn [new-value]
+    (when-not (schema-valid? schema new-value)
+      (throw (ex-info (tru "Invalid value for setting {0}: {1}"
+                           setting-name
+                           (str/join ", " (flatten (me/humanize (mr/explain schema new-value)))))
+                      {:status-code 400
+                       :setting     setting-name})))
+    (setter new-value)))
+
+(defn- validate-schema-declared!
+  "Make a Setting that the entire world can read, and that we thought worth encrypting at rest, declare a `:schema`
+  saying what shape its value has.
+
+  These two properties together are what makes it worth forcing: the value is served to unauthenticated clients, and
+  the fact that it is encrypted says it is worth protecting. A value written around the setter -- by a direct app-DB
+  write, or an environment variable -- reaches those clients unexamined otherwise. As with `:encryption` itself, the
+  point is that adding such a Setting is a conscious decision rather than a default."
+  [{:keys [schema visibility encryption], setting-name :name}]
+  (when (and (= :public visibility)
+             (= :when-encryption-key-set encryption)
+             (nil? schema))
+    (throw (ex-info (trs "`:schema` is a required option for the public, encrypted setting {0}: give it a Malli schema its value must match."
+                         setting-name)
+                    {:setting setting-name}))))
+
 (defn register-setting!
   "Register a new Setting with a map of [[SettingDefinition]] attributes. Returns the map it was passed. This is used
   internally by [[defsetting]]; you shouldn't need to use it yourself."
   [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
   (let [munged-name (munge-setting-name (name setting-name))]
-    (u/prog1 (let [setting-type (mc/assert Type (or setting-type :string))]
-               (merge
-                {:name               setting-name
-                 :munged-name        munged-name
-                 :namespace          setting-ns
-                 :description        nil
-                 :doc                nil
-                 :type               setting-type
-                 :default            default
-                 :on-change          nil
-                 :getter             (partial (default-getter-for-type setting-type) setting-name)
-                 :setter             (partial (default-setter-for-type setting-type) setting-name)
-                 :init               nil
-                 :tag                (default-tag-for-type setting-type)
-                 :visibility         :admin
-                 :encryption         (extract-encryption-or-default setting)
-                 :export?            false
-                 :sensitive?         false
-                 :cache?             true
-                 :feature            nil
-                 :database-local     :never
-                 :user-local         :never
-                 :driver-feature     nil
-                 :enabled-for-db?    nil
-                 :deprecated-name    nil
-                 :deprecated         nil
-                 :enabled?           nil
-                 :can-read-from-env? true
-                 :include-in-list?   true
-                 ;; Disable auditing by default for user- or database-local settings
-                 :audit              (if (site-wide-only? setting) :no-value :never)}
-                (dissoc setting :name :type :default)))
+    (u/prog1 (let [setting-type (mc/assert Type (or setting-type :string))
+                   setting      (merge
+                                 {:name               setting-name
+                                  :munged-name        munged-name
+                                  :namespace          setting-ns
+                                  :description        nil
+                                  :doc                nil
+                                  :type               setting-type
+                                  :default            default
+                                  :on-change          nil
+                                  :getter             (partial (default-getter-for-type setting-type) setting-name)
+                                  :setter             (partial (default-setter-for-type setting-type) setting-name)
+                                  :schema             nil
+                                  :init               nil
+                                  :tag                (default-tag-for-type setting-type)
+                                  :visibility         :admin
+                                  :encryption         (extract-encryption-or-default setting)
+                                  :export?            false
+                                  :sensitive?         false
+                                  :cache?             true
+                                  :feature            nil
+                                  :database-local     :never
+                                  :user-local         :never
+                                  :driver-feature     nil
+                                  :enabled-for-db?    nil
+                                  :deprecated-name    nil
+                                  :deprecated         nil
+                                  :enabled?           nil
+                                  :can-read-from-env? true
+                                  :include-in-list?   true
+                                  ;; Disable auditing by default for user- or database-local settings
+                                  :audit              (if (site-wide-only? setting) :no-value :never)}
+                                 (dissoc setting :name :type :default))]
+               (cond-> setting
+                 (:schema setting)
+                 (update :getter (partial schema-validating-getter setting))
+
+                 ;; `:setter :none` is a keyword, not a function, and nothing can write through it anyway
+                 (and (:schema setting) (not= :none (:setter setting)))
+                 (update :setter (partial schema-validating-setter setting))))
       (mc/assert SettingDefinition <>)
       (validate-default-value-for-type <>)
+      (validate-schema-declared! <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
       (when-let [registered-setting (core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
@@ -1243,6 +1317,8 @@
 (defn- valid-trs-or-tru? [desc]
   (is-form? allowed-deferred-i18n-forms desc))
 
+(defn- ns-in-test? [ns-name] (str/ends-with? ns-name "-test"))
+
 (defn- validate-description-form*
   "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]).
    If not, return a form for an exception to throw at a later stage.
@@ -1259,7 +1335,6 @@
               {:description-form ~description-form})))
 
 ;; This exists as its own method so that we can stub it in tests
-(defn- ns-in-test? [ns-name] (str/ends-with? ns-name "-test"))
 
 (defn- requires-i18n?
   [setting-definition]
@@ -1336,6 +1411,18 @@
   A custom setter fn, which takes a single argument, or `:none` for read-only settings. Overrides the default
   implementation. (This can in turn call methods of [[set-value-of-type!]] to invoke 'parent' setter behavior. Keep in
   mind that the custom setter may be passed `nil`, which should clear the values of the Setting.)
+
+  ###### `:schema`
+
+  A Malli schema the Setting's value must match, for a value whose shape is narrower than its `:type` -- a URL, an
+  email address, a list of hosts. It is enforced in both directions: the setter refuses a value that does not match,
+  and the getter reads one as `nil`. `nil` and blank values are exempt, since clearing a Setting is always allowed.
+  See [[schema-validating-getter]] and [[schema-validating-setter]] for why the two directions differ.
+
+  Required for a Setting that is both `:visibility :public` and `:encryption :when-encryption-key-set` --
+  see [[validate-schema-declared!]]. Note that the setter is checked against the value it is *given*, so a Setting
+  whose custom setter normalizes its input must accept the un-normalized form too, the way `site-url`'s schema is
+  built on its own `normalize-site-url`.
 
   ###### `:cache?`
 

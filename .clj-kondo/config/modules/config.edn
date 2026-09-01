@@ -2202,6 +2202,7 @@
            setup
            sso
            system
+           tiles
            tracing
            users
            util

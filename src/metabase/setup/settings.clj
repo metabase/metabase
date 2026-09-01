@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defsetting setup-token
@@ -14,7 +15,8 @@
   :visibility         :public
   :setter             :none
   :audit              :never
-  :can-read-from-env? false)
+  :can-read-from-env? false
+  :schema             ms/UUIDString)
 
 (let [app-db-id->user-exists? (atom {})]
   (defn- -has-user-setup []

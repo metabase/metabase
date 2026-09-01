@@ -7,14 +7,16 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.settings :as analytics.settings]
+   [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.mcp.core :as mcp]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
-   [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.tiles.settings :as tiles.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -158,7 +160,7 @@
 (defn- parse-hosts-string
   "Split a comma/whitespace-separated `hosts-string` into individual hosts, adding wildcard prefixes as needed."
   [hosts-string]
-  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+  (->> (str/split (or hosts-string "") server.settings/host-separator-pattern)
        (remove str/blank?)
        (mapcat add-wildcard-entries)))
 
@@ -203,7 +205,7 @@
   "Origins of any custom font files configured via the `application-font-files` setting, so that
   `font-src` allows the fonts an admin has explicitly opted into without a separate setting."
   []
-  (->> (setting/get-value-of-type :json :application-font-files)
+  (->> (appearance/application-font-files)
        (keep (comp font-file-src->origin :src))
        distinct
        vec))
@@ -213,7 +215,7 @@
   allows map visualizations to load their tiles. The `{s}` subdomain placeholder becomes a `*` wildcard
   and the `{z}/{x}/{y}` path is dropped; blank or relative templates yield no host."
   []
-  (let [origin (some-> (setting/get-value-of-type :string :map-tile-server-url)
+  (let [origin (some-> (tiles.settings/map-tile-server-url)
                        not-empty
                        (str/replace "{s}" "*")
                        strip-origin-path)]
@@ -330,9 +332,9 @@
                                   "metabase.us10.list-manage.com"
                                   ;; Snowplow analytics
                                   (when (analytics/anon-tracking-enabled)
-                                    (setting/get-value-of-type :string :snowplow-url))
+                                    (analytics.settings/snowplow-url))
                                   (when (analytics/anon-tracking-enabled)
-                                    (setting/get-value-of-type :string :metaplow-url))
+                                    (analytics.settings/metaplow-url))
                                   ;; Webpack dev server
                                   (when config/is-dev?
                                     (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
@@ -367,9 +369,9 @@
   "The configured interactive-embedding app origins (validated to structurally-safe origins),
    when interactive embedding is enabled; otherwise nil."
   []
-  (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+  (and (embedding.settings/enable-embedding-interactive)
        (valid-embedding-origins
-        (setting/get-value-of-type :string :embedding-app-origins-interactive))))
+        (embedding.settings/embedding-app-origins-interactive))))
 
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:

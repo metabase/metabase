@@ -238,16 +238,27 @@
 ;;; Google Auth
 ;;;
 
+(def ^:private google-client-id-suffix ".apps.googleusercontent.com")
+
+(defn- valid-google-client-id?
+  "Whether `s` is a Google OAuth client ID. Trims first, so it holds for an ID pasted with surrounding whitespace --
+  which the setter accepts and stores trimmed, and which the schema therefore has to accept too."
+  [s]
+  (and (string? s)
+       (str/ends-with? (str/trim s) google-client-id-suffix)))
+
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Sign-In.")
   :encryption :when-encryption-key-set
   :visibility :public
   :audit      :getter
+  :schema     [:fn {:error/message (str "a Google client ID ending in " google-client-id-suffix)}
+               valid-google-client-id?]
   :setter     (fn [client-id]
                 (if (seq client-id)
                   (let [trimmed-client-id (str/trim client-id)]
-                    (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
-                      (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
+                    (when-not (valid-google-client-id? trimmed-client-id)
+                      (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \"{0}\"" google-client-id-suffix)
                                       {:status-code 400})))
                     (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
                   (do

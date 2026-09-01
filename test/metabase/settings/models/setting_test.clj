@@ -19,6 +19,7 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -46,6 +47,11 @@
   "Test setting - this only shows up in dev (3)"
   :visibility :internal
   :encryption :when-encryption-key-set)
+
+(defsetting test-schema-setting
+  "Test setting whose value has to be a URL"
+  :encryption :when-encryption-key-set
+  :schema     ms/Url)
 
 (defsetting test-boolean-setting
   "Test setting - this only shows up in dev (3)"
@@ -804,7 +810,8 @@
 (defsetting test-public-setting
   (deferred-tru "test Setting")
   :visibility :public
-  :encryption :when-encryption-key-set)
+  :encryption :when-encryption-key-set
+  :schema     :string)
 
 (defsetting test-authenticated-setting
   (deferred-tru "test Setting")
@@ -1320,8 +1327,8 @@
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set :schema :string))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set :schema :string)))
   (testing "if attempt to register in a different ns throws an error"
     (let [current-ns (ns-name *ns*)]
       (try
@@ -1329,7 +1336,7 @@
           (:require
            [metabase.settings.models.setting :refer [defsetting]]
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
-        (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set :schema :string)
         (catch Exception e
           (is (=? {:existing-setting
                    {:description (deferred-tru "A testing setting")
@@ -1997,3 +2004,75 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+(deftest schema-setter-test
+  (testing "the setter refuses a value that does not match the setting's `:schema`"
+    (mt/with-temporary-setting-values [test-schema-setting nil]
+      (let [e (is (thrown-with-msg? ExceptionInfo
+                                    #"Invalid value for setting :test-schema-setting"
+                                    (test-schema-setting! "not a url")))]
+        (is (= 400 (:status-code (ex-data e))))
+        (is (= :test-schema-setting (:setting (ex-data e)))))
+      (testing "and leaves the stored value alone"
+        (is (nil? (test-schema-setting))))))
+  (testing "a value that matches is stored as usual"
+    (mt/with-temporary-setting-values [test-schema-setting nil]
+      (test-schema-setting! "https://example.com")
+      (is (= "https://example.com" (test-schema-setting)))))
+  (testing "clearing the setting is always allowed: nil and the empty string are exempt"
+    (mt/with-temporary-setting-values [test-schema-setting "https://example.com"]
+      (test-schema-setting! nil)
+      (is (nil? (test-schema-setting)))
+      (test-schema-setting! "https://example.com")
+      (test-schema-setting! "")
+      (is (nil? (test-schema-setting)))))
+  (testing "a whitespace-only value is not clearing the setting, so it has to match like any other"
+    (mt/with-temporary-setting-values [test-schema-setting nil]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid value for setting :test-schema-setting"
+                            (test-schema-setting! "   "))))))
+
+(deftest schema-getter-test
+  (testing "a value written around the setter -- a direct app-DB write, an env var -- is read as nil"
+    (with-setting-row-in-db [:test-schema-setting "not a url"]
+      (is (nil? (test-schema-setting))))
+    (mt/with-temp-env-var-value! [mb-test-schema-setting "not a url"]
+      (is (nil? (test-schema-setting)))))
+  (testing "a raw value that does match is read normally"
+    (with-setting-row-in-db [:test-schema-setting "https://example.com"]
+      (is (= "https://example.com" (test-schema-setting)))))
+  (testing "the failure names the setting but never the value, which may be a secret"
+    (mt/with-log-messages-for-level [messages :warn]
+      (with-setting-row-in-db [:test-schema-setting "sekret-not-a-url"]
+        (test-schema-setting))
+      (let [warnings (filter #(str/includes? (:message %) "test-schema-setting") (messages))]
+        (is (seq warnings))
+        (is (not-any? #(str/includes? (:message %) "sekret") warnings))))))
+
+(deftest schema-is-opt-in-test
+  (testing "a setting that declares no `:schema` is not validated in either direction"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (test-setting-1! "anything at all")
+      (is (= "anything at all" (test-setting-1))))))
+
+(deftest schema-required-for-public-encrypted-settings-test
+  ;; `validate-schema-declared!` directly rather than through `register-setting!`, which would leave these fake
+  ;; settings in the global registry for every test that runs after this one
+  (let [validate! #'setting/validate-schema-declared!
+        base      {:name       :test-schema-required-setting
+                   :namespace  'metabase.some-module.settings
+                   :visibility :public
+                   :encryption :when-encryption-key-set}]
+    (testing "a public, encrypted setting has to say what shape its value has"
+      (is (thrown-with-msg? ExceptionInfo
+                            #"`:schema` is a required option for the public, encrypted setting"
+                            (validate! base))))
+    (testing "declaring one satisfies it"
+      (is (nil? (validate! (assoc base :schema ms/Url)))))
+    (testing "the requirement is only for settings that are both public and encrypted"
+      (is (nil? (validate! (assoc base :visibility :admin))))
+      (is (nil? (validate! (assoc base :encryption :no)))))
+    (testing "the check does not care what namespace the setting is defined in"
+      (is (thrown-with-msg? ExceptionInfo
+                            #"`:schema` is a required option for the public, encrypted setting"
+                            (validate! (assoc base :namespace 'metabase.settings.models.setting-test)))))))

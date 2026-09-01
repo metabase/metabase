@@ -5,6 +5,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defsetting analytics-uuid
@@ -44,21 +45,21 @@
   :visibility :public
   :doc        false)
 
-(defsetting metaplow-tracking-enabled
-  (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
-        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
-  :type       :boolean
-  :getter     (fn [] (boolean (and (anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :metaplow-url))))
-  :visibility :public
-  :doc        false)
-
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :when-encryption-key-set
   :visibility :public
   :audit      :never
+  :doc        false
+  :schema     ms/Url)
+
+(defsetting metaplow-tracking-enabled
+  (deferred-tru
+   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
+  :type       :boolean
+  :getter     (fn [] (boolean (and (anon-tracking-enabled) (metaplow-url))))
+  :visibility :public
   :doc        false)
 
 (defsetting snowplow-url
@@ -70,7 +71,8 @@
                 "http://localhost:9090")
   :visibility :public
   :audit      :never
-  :doc        false)
+  :doc        false
+  :schema     ms/Url)
 
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"

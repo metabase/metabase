@@ -33,13 +33,36 @@ linkedin.com,
 twitter.com,
 x.com")
 
+(def host-separator-pattern
+  "What separates one entry from the next in a host-list setting like [[allowed-iframe-hosts]]: a comma, whitespace, or
+  any run of both."
+  #"[ ,\s\r\n]+")
+
+(def ^:private iframe-host-pattern
+  "One entry in [[allowed-iframe-hosts]]: an optional `http(s)://` scheme, a hostname whose leftmost label may be a `*`
+  wildcard, an optional port, and an optional path. Deliberately permissive about the host itself -- the point is not
+  to judge whether a domain exists, but to keep characters that mean something to a Content-Security-Policy parser
+  (`;` above all, which starts a new directive) out of a value that is spliced into the `frame-src` list."
+  #"(?i)(?:https?://)?(?:\*\.)?[a-z0-9][a-z0-9.-]*(?::\d{1,5})?(?:/[^\s;'\"]*)?")
+
+(def ^:private valid-allowed-iframe-hosts?
+  "Whether every entry in the value is a host [[metabase.server.middleware.security]] can splice into the CSP
+  `frame-src` directive without it meaning something else. Memoized like the parse it guards: this runs on the CSP
+  path, which is every response."
+  (memoize
+   (fn [s]
+     (every? #(re-matches iframe-host-pattern %)
+             (remove str/blank? (str/split (or s "") host-separator-pattern))))))
+
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")
   :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public
-  :export?    true)
+  :export?    true
+  :schema     [:fn {:error/message "a list of hosts, each optionally with a scheme and port"}
+               valid-allowed-iframe-hosts?])
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
