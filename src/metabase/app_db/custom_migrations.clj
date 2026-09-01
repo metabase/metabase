@@ -1862,15 +1862,15 @@
   (reserve-at-symbol-user-attributes/migrate!))
 
 (define-reversible-migration UnifySourceTablesFormat
-  (let [tables [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
-                {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+  (let [tables ['{:table transform           :pks [id]                  :where [= source_type "python"]}
+                '{:table workspace_transform :pks [workspace_id ref_id]}]
         python? (fn [source]
                   (= "python" (get (json-out source false) "type")))
         all-rows (into []
                        (mapcat (fn [{:keys [table pks] w :where}]
-                                 (->> (t2/query (cond-> {'select (into [:source] pks)
+                                 (->> (t2/query (cond-> {'select (into ['source] pks)
                                                          'from   [table]}
-                                                  w (assoc :where w)))
+                                                  w (assoc 'where w)))
                                       (filter #(or w (python? (:source %))))
                                       (map #(assoc % ::table table ::pks pks)))))
                        tables)
@@ -1903,7 +1903,7 @@
                 pks     (::pks row)]
             (t2/query {'update (::table row)
                        'set    {'source (json-in (assoc parsed "source-tables" entries))}
-                       'where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+                       'where  (into ['and] (map #(vector '= % (get row %)) pks))}))))))
   (let [convert-back
         (fn [source-json]
           (let [parsed (json-out source-json false)]
@@ -1914,19 +1914,19 @@
                                          (or (get entry "table_id") entry)]))
                               st)]
                   (json-in (assoc parsed "source-tables" m)))))))
-        tables  [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
-                 {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        tables  ['{:table transform           :pks [id]                  :where [= source_type "python"]}
+                 '{:table workspace_transform :pks [workspace_id ref_id]}]
         python? (fn [source]
                   (= "python" (get (json-out source false) "type")))]
     (doseq [{:keys [table pks] w :where} tables]
-      (doseq [row (cond->> (t2/query (cond-> {'select (into [:source] pks)
+      (doseq [row (cond->> (t2/query (cond-> {'select (into ['source] pks)
                                               'from   [table]}
-                                       w (assoc :where w)))
+                                       w (assoc 'where w)))
                     (not w) (filter #(python? (:source %))))]
         (when-let [new-source (convert-back (:source row))]
           (t2/query {'update table
                      'set    {'source new-source}
-                     'where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+                     'where  (into ['and] (map #(vector '= % (get row %)) pks))}))))))
 (define-migration FixClickHouseUploadDBSchemaNames
   "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
    We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
