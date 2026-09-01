@@ -156,8 +156,7 @@
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Case
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Deleting dataset: " dataset-id)
+  (tx/print-progress! :bigquery-cloud-sdk "deleting %s" dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
@@ -347,6 +346,71 @@
             (if (pos? num-retries)
               (recur (dec num-retries))
               (throw e))))))))
+
+(def ^:private old-dataset-name-pattern "sha_%")
+
+(defn- old-dataset-names
+  "Names of pre-DatasetStore test datasets older than `hours`: tracked ones nothing has accessed in that long, plus
+  untracked ones created that long ago. Excludes the current `test-data`, which [[destroy-dataset!]] refuses to
+  delete anyway.
+
+  Nothing on this branch mints a `sha_` name any more -- these are what other release streams, still on the old
+  scheme, leave in the shared project. Store-managed datasets are swept separately, by
+  [[dataset-store/gc-temp-datasets!]]."
+  [hours]
+  (let [current-test-data (test-dataset-id (tx/get-dataset-definition
+                                            (data.impl/resolve-dataset-definition *ns* 'test-data)))]
+    (into []
+          (comp (map first)
+                (remove #(= % current-test-data)))
+          (execute! (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                         " WHERE `name` LIKE '%2$s'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))"
+                         " UNION ALL "
+                         "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
+                           and d.schema_name like '%2$s'
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))")
+                    (project-id)
+                    old-dataset-name-pattern
+                    hours))))
+
+(defn- drop-datasets!
+  "Delete each named dataset, reporting per dataset whether it went. See [[tx/gc-orphans!]] for the shape."
+  [dataset-ids]
+  (mapv (fn [dataset-id]
+          (try
+            (destroy-dataset! dataset-id)
+            {:name dataset-id, :status :deleted}
+            ;; usually just another job deleting the same dataset at the same time
+            (catch Exception e
+              {:name dataset-id, :status :failed, :error (ex-message e)})))
+        dataset-ids))
+
+;; Nightly garbage collection of orphaned test datasets. Two schemes share this project while other release streams
+;; are still on the old one, so the sweep collects both: `old-dataset-names` for what they leave behind, and the
+;; store for what this branch creates.
+(defmethod tx/gc-orphans! :bigquery-cloud-sdk
+  [driver {:keys [temp-data-hours fixture-hours]}]
+  (let [project (project-id)]
+    (mapv #(assoc % :server project)
+          (into
+           ;; Reported as a failure but caught here rather than thrown: the old scheme's tracking table belongs to
+           ;; the streams still writing it, and once the last of them is gone it stops existing. Letting that take
+           ;; the store's sweep down with it would quietly end temp-dataset collection.
+           (try
+             (drop-datasets! (old-dataset-names fixture-hours))
+             (catch Exception e
+               (tx/print-progress! :bigquery-cloud-sdk "old-scheme sweep failed: %s" (ex-message e))
+               [{:name nil, :status :failed, :error (ex-message e)}]))
+           (dataset-store/gc-temp-datasets! (dataset-store.registry/store-for driver)
+                                            driver
+                                            temp-data-hours)))))
+
+(defmethod tx/count-datasets :bigquery-cloud-sdk
+  [_driver]
+  (let [project (project-id)]
+    {project (ffirst (execute! "SELECT COUNT(*) FROM `%s`.INFORMATION_SCHEMA.SCHEMATA" project))}))
 
 (defn database-exists?!
   [db-def]

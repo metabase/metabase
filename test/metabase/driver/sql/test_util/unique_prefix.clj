@@ -63,36 +63,46 @@
   (memoize unique-prefix*))
 
 (def ^:private old-dataset-hours-threshold
-  "Number of hours after which a dataset is considered old and can be deleted. Because schema names only include the
-  hour (not minutes/seconds), actual deletion can occur anywhere from N to N+1 hours after creation. Set this high
-  enough that any running test won't have its schema deleted mid-run."
+  "Number of hours after which a dataset is considered old and can be deleted. Set this high enough that any running
+  test won't have its schema deleted mid-run."
   3)
 
 (defn old-dataset-name?
   "Is this dataset name old enough to be deleted?
 
-  For new-format names (with hour): checks if more than [[old-dataset-hours-threshold]] hours old.
-  For old-format names (date only): checks if more than 1 day old for backwards compatibility.
+  For new-format names (with hour): more than `hours-threshold` hours old, defaulting to
+  [[old-dataset-hours-threshold]]. Hour precision resolves conservatively, so a dataset goes between N and N+1 hours
+  after creation, never before N.
+
+  For old-format names (date only): more than 1 day old. Not parameterized -- those truncate to midnight, so an
+  hours-based threshold could delete one stamped 23:00 out from under a running test.
+
   If the date/time is invalid, we return false (not old) to be safe - we only want to delete
   datasets that match our known format."
-  [dataset-name]
-  ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
-  (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
-    (let [dataset-date-time (try
-                              (t/local-date-time (parse-long year) (parse-long month) (parse-long day) (parse-long hour) 0)
-                              (catch Throwable _ nil))]
-      (if-not dataset-date-time
-        false
-        (t/before? dataset-date-time (u.date/add (utc-date-time) :hour (- old-dataset-hours-threshold)))))
-    ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
-    ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
-    (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]
-      (let [dataset-date (try
-                           (t/local-date (parse-long year) (parse-long month) (parse-long day))
-                           (catch Throwable _ nil))]
-        (if-not dataset-date
-          false
-          (t/before? dataset-date (u.date/add (utc-date) :day -1)))))))
+  ([dataset-name]
+   (old-dataset-name? dataset-name nil))
+  ([dataset-name hours-threshold]
+   ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
+   (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
+     (let [dataset-date-time (try
+                               (t/local-date-time (parse-long year) (parse-long month) (parse-long day) (parse-long hour) 0)
+                               (catch Throwable _ nil))]
+       (if-not dataset-date-time
+         false
+         ;; a name stamped 10 was created in [10:00, 11:00), so age from the end of the hour -- otherwise an N hour
+         ;; threshold collects things only N-1 hours old
+         (t/before? (u.date/add dataset-date-time :hour 1)
+                    (u.date/add (utc-date-time)
+                                :hour (- (or hours-threshold old-dataset-hours-threshold))))))
+     ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
+     ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
+     (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]
+       (let [dataset-date (try
+                            (t/local-date (parse-long year) (parse-long month) (parse-long day))
+                            (catch Throwable _ nil))]
+         (if-not dataset-date
+           false
+           (t/before? dataset-date (u.date/add (utc-date) :day -1))))))))
 
 (deftest ^:parallel old-dataset-name?-test
   (testing "old-format names (date only) - more than 1 day old"
@@ -121,18 +131,31 @@
       ;; Ancient dates are old
       "2023_02_01_00_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
       "2023_02_01_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
-      ;; 4 hours ago is old
-      (str (unique-prefix* (u.date/add (utc-date-time) :hour -4)) "test-data")
-      ;; 3 hours ago by hour is old (due to hour truncation, could be up to 3:59 hours old)
-      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data"))
+      ;; 5 hours ago is old
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -5)) "test-data"))
     (are [s] (not (old-dataset-name? s))
       ;; Current time is not old
       (str (unique-prefix*) "test-data")
-      ;; 1 hour ago is not old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -1)) "test-data")
-      ;; 2 hours ago is not old
       (str (unique-prefix* (u.date/add (utc-date-time) :hour -2)) "test-data")
+      ;; 3 hours ago by hour is NOT old: the name records only the hour, so it may have been stamped as late as
+      ;; :59 and be barely over 2 hours old. Collecting it here is what let a 2 hour threshold reach inside a
+      ;; running driver job.
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data")
       ;; Future dates are not old
       "2050_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
       ;; invalid hour is not old - only delete datasets matching our known format
-      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
+      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"))
+  (testing "explicit hours-threshold, as passed by the nightly orphan sweep"
+    (are [s] (old-dataset-name? s 2)
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -4)) "test-data")
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -5)) "test-data"))
+    (are [s] (not (old-dataset-name? s 2))
+      (str (unique-prefix*) "test-data")
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -1)) "test-data")
+      ;; the guarantee the sweep relies on: nothing is collected before a full 2 hours have elapsed, no matter where
+      ;; in its hour the name was stamped
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -2)) "test-data"))
+    (testing "a smaller threshold does not make old-format (date-only) names collectable any sooner"
+      (let [today (str/replace (str (utc-date)) "-" "_")]
+        (is (not (old-dataset-name? (str today "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data") 2)))))))

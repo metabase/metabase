@@ -182,9 +182,15 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
+(def ^:dynamic *skip-before-run?*
+  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook. Bound by the nightly sweep
+  ([[metabase.test.data.gc]]), which needs the extensions to dispatch [[gc-orphans!]] but not the hooks: Redshift's
+  creates a session schema, which the sweep would then leak nightly."
+  false)
+
 ;; this gets called below by [[load-test-extensions-namespace-if-needed]]
 (defn- do-before-run-if-needed [driver]
-  (when-not (@has-done-before-run driver)
+  (when-not (or *skip-before-run?* (@has-done-before-run driver))
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
@@ -405,6 +411,69 @@
 (defmethod after-run ::test-extensions
   [driver]
   (log/infof "%s has no after-run hooks." driver))
+
+(defmulti gc-orphans!
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Reports what was attempted, not
+  what was found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never fires when
+  a CI job is cancelled.
+
+  `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
+
+  Returns one map per object it tried to delete:
+
+    {:server \"cluster-a.example/testdb\"  ; which account, project, or cluster+database it was on
+     :name   \"sha__abc123_test_data\"     ; nil only when the failure was reaching the server at all
+     :status :deleted or :failed
+     :error  \"...\"}                      ; ex-message, present only when :failed
+
+  A failed object must still be reported by name: the nightly report exists so someone can tell which dataset is
+  stuck, and an exception alone does not carry that.
+
+  Implement only for drivers whose tests create objects in a shared cloud account -- not Athena or Databricks, whose
+  datasets are preloaded. Match only names the driver's own test extensions generate, never a bare wildcard."
+  {:arglists '([driver options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod gc-orphans! ::test-extensions
+  [driver _options]
+  (log/infof "%s has no orphan GC; skipping." driver)
+  [])
+
+;; `println` rather than [[metabase.util.log]] on purpose: the nightly sweep runs as `clojure -X`, and log4j2 emits
+;; nothing to stdout in that context -- `info` and `warn` alike are swallowed, so a run's log showed only the few
+;; lines that already happened to use `println`.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defn print-progress!
+  "Print one operator-facing progress line, prefixed with `label` so the interleaved output of concurrently sweeping
+  drivers stays attributable.
+
+  Progress is printed as it happens rather than assembled at the end, because the job is expected to be killed at
+  its timeout partway through a backlog.
+
+  The newline is part of the string and written once. `println` writes the text and the newline separately, which
+  let concurrently sweeping drivers splice their output into the middle of each other's lines."
+  [label fmt-str & args]
+  (print (str "[" (name label) "] " (apply format fmt-str args) \newline))
+  (flush))
+
+(defmulti count-datasets
+  "Census of every test dataset still on each server this driver's tests write to, taken after [[gc-orphans!]] has
+  run. Returns `{server-label count}`, keyed the same way as `:server` in [[gc-orphans!]]'s results.
+
+  Counts everything on the server, including datasets too young to be eligible for collection -- the number worth
+  watching is total pressure toward the account's dataset and table limits, not how much this run happened to be
+  allowed to touch.
+
+  A count that cannot be taken is `nil` rather than a missing key, so the report can say \"unknown\" instead of
+  silently omitting a server."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod count-datasets ::test-extensions
+  [_driver]
+  {})
 
 (defmulti drop-if-exists-and-create-db!
   "Drop a database named `db-name` if it already exists, then create a new empty one with that name"

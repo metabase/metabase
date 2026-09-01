@@ -1,5 +1,6 @@
 (ns metabase.lib.js.metadata
   (:require
+   ;; the :clj branch normalizes legacy :field-ref metadata values; cljs leaves them as JS arrays
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
        :cljs ([goog]

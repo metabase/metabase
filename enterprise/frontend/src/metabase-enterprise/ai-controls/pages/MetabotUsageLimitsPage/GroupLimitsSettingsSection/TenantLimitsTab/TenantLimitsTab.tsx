@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Alert,
   Box,

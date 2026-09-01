@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -99,6 +100,158 @@
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
+
+;;; --------------------------------- Orphan census ----------------------------------
+
+(defn- old-dataset-names
+  "Names of pre-DatasetStore test databases old enough to delete, oldest first.
+
+  `isolate_` names were per-run and never reused, so they age from `created`; `sha_` names were
+  content-addressed and reused, so they age from `accessed_at` when the tracking table knows them.
+  Nothing on this branch mints either any more -- these are what other release streams, still on the
+  old scheme, leave in the shared account. Store-managed datasets are swept separately, by
+  [[dataset-store/gc-temp-datasets!]].
+
+  `accessed_at` was only ever trustworthy for `sha_`: the tracking table is keyed on dataset hash and
+  its MERGE never updated `name`, so an `isolate_` row keeps the first run's name while later runs
+  keep refreshing its `accessed_at`.
+
+  Compares timestamps directly; `timestampdiff` counts boundary crossings, so an hour bucket calls a
+  10:59 database two hours old at 12:01."
+  [{:keys [temp-data-hours fixture-hours]}]
+  (into []
+        (map :database_name)
+        (jdbc/query (no-db-connection-spec)
+                    [(format
+                      "select d.database_name
+                       from metabase_test_tracking.information_schema.databases d
+                       left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
+                       where (startswith(d.database_name, 'isolate_')
+                              and d.created < dateadd(hour, -%d, current_timestamp()))
+                          or (startswith(d.database_name, 'sha_')
+                              and coalesce(t.accessed_at, d.created) < dateadd(hour, -%d, current_timestamp()))
+                       order by d.created"
+                      temp-data-hours
+                      fixture-hours)])))
+
+;;; --------------------------------- Destruction ----------------------------------
+
+(defn- with-write-stmt!
+  "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
+  close everything. Centralizes the boilerplate so the per-resource drop fns
+  don't repeat it."
+  [f & args]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (apply f stmt args)))))
+
+(def ^:private drop-workers
+  "Connections used to drop databases at once. Each `DROP DATABASE` is a round trip of roughly half a second and a
+  backlog runs to thousands, which is what overran the job's first real run. Snowflake caps a session at 8 concurrent
+  statements by default, so more workers than this buys queueing, not throughput."
+  8)
+
+(def ^:private untrack-batch-size
+  "Names per `DELETE` when clearing tracking rows. Snowflake locks the whole table for DML, so this is one statement
+  at a time by design -- the win is round trips, not concurrency."
+  500)
+
+(defn- drop-one!
+  [^java.sql.Statement stmt dataset-name]
+  (tx/print-progress! :snowflake "deleting %s" dataset-name)
+  (try
+    (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+    {:name dataset-name, :status :deleted}
+    ;; usually just another job deleting the same dataset at the same time
+    (catch Exception e
+      {:name dataset-name, :status :failed, :error (ex-message e)})))
+
+(defn- drop-chunk!
+  "Drop one worker's share on a connection of its own: a JDBC Statement cannot be shared across threads, and
+  reconnecting per database would cost more than the drop does."
+  [dataset-names]
+  (with-write-stmt!
+    (fn [^java.sql.Statement stmt]
+      (mapv #(drop-one! stmt %) dataset-names))))
+
+(defn- untrack!
+  "Forget these databases. Kept out of the workers: every row lives in one table, and Snowflake serializes DML on a
+  table, so per-database deletes would have undone the parallelism they ran alongside."
+  [dataset-names]
+  (doseq [batch (partition-all untrack-batch-size dataset-names)]
+    (jdbc/execute! (no-db-connection-spec)
+                   (into [(format "delete from metabase_test_tracking.PUBLIC.datasets where name in (%s)"
+                                  (str/join "," (repeat (count batch) "?")))]
+                         batch))))
+
+(defn- drop-datasets!
+  "Un-track each named test database and then drop it, reporting per database whether it went. See [[tx/gc-orphans!]]
+  for the shape.
+
+  Un-tracking comes first so that being killed partway -- the GitHub job hitting its timeout -- leaves recoverable
+  state. A database that is present but untracked is collected again by the next sweep, which ages an untracked
+  `sha_` database from `created`, necessarily older than the `accessed_at` that made it eligible here. Dropping
+  first would instead strand tracking rows for databases that no longer exist, and the sweep enumerates from
+  `information_schema`, so it would never revisit them and the table would grow without bound.
+
+  Each `DROP DATABASE IF EXISTS` is atomic and idempotent on its own, so no individual delete can be torn in half
+  and the parallelism costs nothing in recoverability."
+  [dataset-names]
+  ;; nothing to drop is the common case on a healthy night; don't open a connection to discover that
+  (if (empty? dataset-names)
+    []
+    (if-let [untrack-error (try
+                             (untrack! dataset-names)
+                             nil
+                             (catch Exception e (ex-message e)))]
+      ;; dropping anyway would strand exactly the rows we failed to clear, so drop nothing
+      [{:name   nil
+        :status :failed
+        :error  (format "could not clear tracking rows for %d database(s), so dropped none of them: %s"
+                        (count dataset-names) untrack-error)}]
+      (let [chunks (partition-all (max 1 (long (Math/ceil (/ (count dataset-names) (double drop-workers)))))
+                                  dataset-names)]
+        (cp/with-shutdown! [pool (cp/threadpool (min drop-workers (count chunks)))]
+          (into [] cat (doall (cp/pmap pool drop-chunk! chunks))))))))
+
+;;; --------------------------------- Orphan GC ----------------------------------
+;;;
+;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). This replaces the old in-process cleanup, which
+;;; ran on every job and was disabled for causing hard-to-debug CI failures.
+
+(defn- account
+  "Label for the Snowflake account under sweep, used as the `:server` key in the nightly report."
+  []
+  (tx/db-test-env-var-or-throw :snowflake :account))
+
+;; Two schemes share this account while other release streams are still on the old one, so the sweep collects both:
+;; `old-dataset-names` for what they leave behind, and the store for what this branch creates.
+(defmethod tx/gc-orphans! :snowflake
+  [driver {:keys [temp-data-hours] :as options}]
+  (let [server (account)]
+    (mapv #(assoc % :server server)
+          (into
+           ;; Reported as a failure but caught here rather than thrown: the old scheme's tracking table belongs to
+           ;; the streams still writing it, and once the last of them is gone it stops existing. Letting that take
+           ;; the store's sweep down with it would quietly end temp-dataset collection.
+           (try
+             (drop-datasets! (old-dataset-names options))
+             (catch Exception e
+               (tx/print-progress! :snowflake "old-scheme sweep failed: %s" (ex-message e))
+               [{:name nil, :status :failed, :error (ex-message e)}]))
+           (dataset-store/gc-temp-datasets! (dataset-store.registry/store-for driver)
+                                            driver
+                                            temp-data-hours)))))
+
+(defmethod tx/count-datasets :snowflake
+  [_driver]
+  {(account) (:count (first (jdbc/query (no-db-connection-spec)
+                                        ["select count(*) as count
+                                          from metabase_test_tracking.information_schema.databases"])))})
 
 (defn set-current-user-timezone!
   "Snowflake defaults to America/Los_Angeles; tests expect UTC. Must be set before loading data, or
@@ -238,6 +391,8 @@
                                         FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
                                         WHERE query_text LIKE 'DROP DATABASE %'
                                         ORDER BY end_time DESC limit 64"])
+  ;; Old-scheme databases the nightly sweep would collect, at its own thresholds.
+  (old-dataset-names {:temp-data-hours 2, :fixture-hours 72})
   ;; Every dataset the store knows about, oldest first.
   (into [] (jdbc/reducible-query (no-db-connection-spec)
                                  ["select id, state, created_at

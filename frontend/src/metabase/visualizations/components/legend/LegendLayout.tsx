@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { isNotNull } from "metabase/utils/types";
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";

@@ -18,7 +18,9 @@
    [metabase.test.data.dataset-store :as dataset-store]
    [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.time Instant ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -146,12 +148,23 @@
   (when (str/starts-with? dataset-id dataset-store/temp-id-prefix)
     temp-dataset-expiration-days))
 
+(defn- ->timestamp
+  "An instant in a shape BigQuery will bind as a TIMESTAMP parameter.
+
+  `Instant` is not one of them: the driver's parameter table covers `OffsetDateTime` and
+  `ZonedDateTime` but falls through on `Instant`. Converting here rather than making callers pass a
+  BigQuery-shaped value keeps `:created-before` the same kind of thing for every store."
+  [inst]
+  (if (instance? Instant inst)
+    (.atOffset ^Instant inst ZoneOffset/UTC)
+    inst))
+
 (defn- criteria->where [{:keys [id-prefix state created-before]}]
   (let [clauses (cond-> []
                   ;; STARTS_WITH rather than LIKE: dataset ids contain `_`, a LIKE wildcard.
                   id-prefix        (conj ["STARTS_WITH(id, ?)" id-prefix])
                   state            (conj ["state = ?" (name state)])
-                  created-before   (conj ["created_at < ?" created-before]))]
+                  created-before   (conj ["created_at < ?" (->timestamp created-before)]))]
     (if (empty? clauses)
       [""]
       (into [(str " WHERE " (str/join " AND " (map first clauses)))] (map second) clauses))))

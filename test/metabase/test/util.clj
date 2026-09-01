@@ -531,6 +531,7 @@
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
+  :encryption :no
   :setter :none
   :default "abc")
 
@@ -1112,6 +1113,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      ;; legacy query builder; helper not yet migrated to Lib
                       #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
@@ -1396,6 +1398,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      ;; legacy query builder; helper not yet migrated to Lib
       #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})

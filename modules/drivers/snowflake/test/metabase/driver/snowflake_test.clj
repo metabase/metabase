@@ -29,6 +29,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
+   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
@@ -442,8 +443,11 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
+      ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
+      ;; needs to refresh. With a time-based lag, a test DB that leaks -- a cancelled CI job leaves one behind
+      ;; for the nightly sweep -- keeps refreshing on that schedule until the sweep gets to it.
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
       (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
@@ -1728,6 +1732,62 @@
           (let [result (qp/process-query (filter-query filter))]
             (is (str/includes? (-> result :data :native_form :query) exp-filter))
             (is (= exp-rows (mt/rows result)))))))))
+
+(def ^:private breakout-payload
+  "A value that closes a Snowflake string literal early unless its backslash is escaped: `a\\' or 1=1 -- `.
+  Kept all-lowercase so the case-insensitive filters, which lower-case the value, expect the same literal."
+  "a\\' or 1=1 -- ")
+
+(def ^:private escaped-breakout-payload
+  "[[breakout-payload]] correctly escaped: the `\\` is doubled so it cannot escape anything, and the `'` is doubled,
+  so the payload stays inside the literal."
+  "a\\\\'' or 1=1 -- ")
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash as well as the quote"
+    ;; Snowflake treats `\` as an escape character inside a string literal, so doubling `'` alone (the default
+    ;; `[:sql String]` behaviour) lets a value like `a\'` close the literal early and run the rest as SQL.
+    (are [s expected] (= expected (sql.qp/inline-value :snowflake s))
+      "Tito's Tacos"   "'Tito''s Tacos'"           ; 'Tito''s Tacos'
+      "'"              "''''"                      ; ''''
+      "back\\slash"    "'back\\\\slash'"           ; 'back\\slash'
+      "trailing\\"     "'trailing\\\\'"            ; 'trailing\\'
+      breakout-payload (str \' escaped-breakout-payload \'))))
+
+;;; `contains` / `starts-with` / `ends-with` are an additional carrier for the escaping defect above, and a
+;;; very common one. On the generic SQL path they compile to `LIKE <pattern>`, and `sql.qp/generate-pattern` runs
+;;; `escape-like-pattern` on the value first -- which doubles `\` and so happens to neutralise this payload shape.
+;;; Snowflake overrides all three to its native scalar functions instead, so `generate-pattern` never runs and the
+;;; value reaches ordinary function-argument position unescaped. Only [[sql.qp/inline-value]] stands between it and
+;;; the SQL text.
+(deftest string-filter-inline-escaping-test
+  ;; no Snowflake warehouse needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (testing "a string filter value cannot break out of the literal when compiled with inline parameters"
+    (let [mp       (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:database {:engine :snowflake, :details {:db "test-data"}}})
+          venues   (lib.metadata/table mp (meta/id :venues))
+          name-col (lib.metadata/field mp (meta/id :venues :name))
+          compile! (fn [filter-clause]
+                     (:query (qp.compile/compile-with-inline-parameters
+                              (-> (lib/query mp venues)
+                                  (lib/filter filter-clause)))))]
+      (doseq [[msg filter-clause expected]
+              [["contains"                     (lib/contains name-col breakout-payload)
+                (format "CONTAINS(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["starts-with"                  (lib/starts-with name-col breakout-payload)
+                (format "STARTSWITH(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["ends-with"                    (lib/ends-with name-col breakout-payload)
+                (format "ENDSWITH(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["case-insensitive contains"    (lib/ignore-case (lib/contains name-col breakout-payload))
+                (format "CONTAINS(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]
+               ["case-insensitive starts-with" (lib/ignore-case (lib/starts-with name-col breakout-payload))
+                (format "STARTSWITH(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]
+               ["case-insensitive ends-with"   (lib/ignore-case (lib/ends-with name-col breakout-payload))
+                (format "ENDSWITH(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]]]
+        (testing msg
+          (is (str/includes? (compile! filter-clause) expected)))))))
 
 (deftest snowflake-collate-comparison-test
   (mt/test-driver :snowflake

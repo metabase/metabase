@@ -400,6 +400,35 @@ the random suffix the mark also adds — which is what those callers were alread
 where no `:model/Database` is involved. BigQuery reads the expiry off the id prefix rather than off
 which method created the dataset, so both paths get the backstop.
 
+**Q7 — Does the nightly sweep survive this design? — DECIDED: yes, and it is where reaping belongs.**
+
+`test/metabase/test/data/gc.clj` and `.github/workflows/test.cleanup-dwh-data.yml` landed on master
+while this branch was in flight. It is the right shape and this design does not replace it:
+
+- It runs **out of band**, once a night, in its own job. The reapers this design was motivated by ran
+  *inside test JVMs*, which is why listing-and-deleting raced with loading and why both were
+  commented out. A sweep that shares no process with a load cannot lose that race.
+- Its two TTLs — `:temp-data-hours` (2, floored above the longest driver job) and `:fixture-hours`
+  (96) — are already the shared/temp split this design arrived at independently.
+- It reports per object, prints as it goes because it expects to be killed at its timeout, and fails
+  the job loudly rather than going green having deleted nothing.
+
+**It keeps sweeping old-style datasets, and that is not vestigial.** Other release streams still run
+the old scheme against the same accounts, so `sha_`, `isolate_`, and the timestamp-named Redshift
+schemas keep arriving. Their sweeps are untouched.
+
+**It also sweeps new-style temp datasets**, through the store rather than around it:
+[[metabase.test.data.dataset-store/gc-temp-datasets!]] is `list-datasets` → `delete-dataset!`, so a
+dataset whose claim is held is skipped, not deleted. That refusal is the property whose absence
+disabled the old reapers, and it is why this sweep is safe to run while jobs are loading data.
+
+**Shared `mbds_` datasets are deliberately NOT swept.** With nothing recording use (Q5), any age
+short enough to reclaim an abandoned fixture is also short enough to throw away one that every job
+is still using — at 96 hours, every shared dataset would be rebuilt every four days. The open
+question is what signal replaces use-tracking here: a much longer dedicated TTL, or collecting only
+the datasets whose definitions no longer exist in the tree. Until then they accumulate as
+definitions change, which is a slower leak than the one this design fixed but still a leak.
+
 ---
 
 ## 5b. What must melt away

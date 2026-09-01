@@ -15,9 +15,7 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
-import { extractRemappings, isCartesianChart } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
@@ -25,6 +23,13 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
+import {
+  extendCardWithDashcardSettings,
+  extractRemappings,
+  isCartesianChart,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -32,6 +37,7 @@ import type {
   DatasetData,
   GeoJSONData,
   RawSeries,
+  SeriesCard,
   SettingKey,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
@@ -99,11 +105,11 @@ function getVisualizerRawSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
-        display,
+        display: display ?? DEFAULT_VISUALIZER_DISPLAY,
         visualization_settings: settings,
-      } as Card,
+        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+      },
       // Unjustified type cast. FIXME
       data: mergeVisualizerData({
         columns,
@@ -117,7 +123,7 @@ function getVisualizerRawSeries(
 }
 
 function RenderChart(
-  rawSeries: RawSeries,
+  rawSeries: RawSeries<Card>,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
@@ -138,7 +144,7 @@ function RenderChart(
     options.applicationColors,
   );
 
-  let seriesForRender = rawSeries;
+  let seriesForRender: RawSeries<SeriesCard> = rawSeries;
   if (dashcardSettings.visualization) {
     const { visualization } = dashcardSettings;
     const dataSources = rawSeries.map((series) =>

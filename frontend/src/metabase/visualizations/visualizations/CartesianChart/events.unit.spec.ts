@@ -5,20 +5,16 @@ import {
 } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import {
+  type ComputedVisualizationSettings,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type {
-  Datum,
-  DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesBrushSelectedEvent,
-  EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockDatetimeColumn,
@@ -66,6 +62,7 @@ const dimensionModel: DimensionModel = {
   column: createdAtColumn,
   columnIndex: 0,
   columnByCardId: { [CARD_ID]: createdAtColumn },
+  columns: [createdAtColumn],
 };
 
 describe("getEventDimensions", () => {
@@ -160,6 +157,7 @@ describe("getEventDimensions", () => {
       column: monthColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: monthColumn },
+      columns: [monthColumn],
     };
 
     const seriesModel = createMockSeriesModel({
@@ -257,6 +255,7 @@ describe("getEventDimensions", () => {
       column: categoryColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: categoryColumn },
+      columns: [categoryColumn],
     };
     const seriesModel = createMockSeriesModel({
       dataKey: countKey,
@@ -330,6 +329,7 @@ describe("getSeriesClickData", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {
@@ -403,6 +403,7 @@ describe("getSeriesClickData", () => {
         column: categoryColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: categoryColumn },
+        columns: [categoryColumn],
       },
       cardsColumns: [
         {
@@ -565,6 +566,7 @@ describe("getBrushClickObject", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       xAxisModel: {
         axisType: "time",
@@ -611,6 +613,7 @@ describe("getBrushClickObject", () => {
         column: priceColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: priceColumn },
+        columns: [priceColumn],
       },
       xAxisModel: {
         axisType: "value",
@@ -661,6 +664,7 @@ describe("getAdjustedBrushEndEvent", () => {
       column: createdAtColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: createdAtColumn },
+      columns: [createdAtColumn],
     },
     xAxisModel: {
       axisType: "time",

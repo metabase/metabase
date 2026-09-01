@@ -10,7 +10,10 @@ title: Driver interface changelog
   databases to record dataset use, has been removed along with `tx/tracking-access-note`. Nothing
   records dataset use any more: test dataset ids are content-addressed, so deleting a dataset only
   ever costs the work of rebuilding it identically. Drivers that implemented `track-dataset` should
-  drop the implementation.
+  drop the implementation. Orphans are collected by the nightly sweep (`tx/gc-orphans!`) instead.
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
 
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as

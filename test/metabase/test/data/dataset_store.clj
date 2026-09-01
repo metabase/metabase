@@ -10,7 +10,9 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.lru-ttl-cache :as lru-ttl]))
+   [metabase.util.lru-ttl-cache :as lru-ttl])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -176,6 +178,36 @@
     (when (= :in-progress result)
       (log/warnf "Not deleting %s: another caller holds the claim on it" dataset-id))
     result))
+
+(defn gc-temp-datasets!
+  "Delete temp datasets created more than `max-age-hours` ago, reporting per dataset in the shape
+  [[metabase.test.data.interface/gc-orphans!]] returns. `label` prefixes the progress lines.
+
+  Only temp datasets. A shared dataset is meant to outlive the run that built it, and since nothing
+  records use (see Q5 in `dev/notes/dataset-store-plan.md`), any age short enough to reclaim an
+  abandoned one is also short enough to throw away a fixture every job is still using.
+
+  Nothing here can race a load: [[delete-dataset!]] refuses a dataset whose claim is held. That is
+  the property whose absence is why the in-process reapers this replaces were disabled.
+
+  A dataset that is `:in-progress` or already `:absent` is neither a deletion nor a failure -- one
+  caller is building it, or another sweeper reached it first -- so it is logged and left out of the
+  report rather than failing the nightly job."
+  [store label max-age-hours]
+  (into []
+        (keep (fn [{:keys [id]}]
+                (try
+                  (case (delete-dataset! store id)
+                    :deleted     (do (tx/print-progress! label "deleted temp dataset %s" id)
+                                     {:name id, :status :deleted})
+                    :in-progress (tx/print-progress! label "skipped %s: another caller holds its claim" id)
+                    (tx/print-progress! label "skipped %s: already gone" id))
+                  ;; usually another sweeper or the owning test deleting the same dataset right now
+                  (catch Exception e
+                    (tx/print-progress! label "FAILED %s: %s" id (ex-message e))
+                    {:name id, :status :failed, :error (ex-message e)}))))
+        (list-datasets store {:id-prefix      temp-id-prefix
+                              :created-before (.minusSeconds (Instant/now) (* 3600 (long max-age-hours)))})))
 
 (def ^:private seen-dataset-ttl-ms
   "How long this JVM trusts its own memory of a dataset being present.

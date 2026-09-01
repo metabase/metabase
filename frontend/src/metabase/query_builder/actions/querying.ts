@@ -8,8 +8,7 @@ import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { visualizations } from "metabase/visualizations";
-import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";

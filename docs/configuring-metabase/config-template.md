@@ -165,7 +165,7 @@ config:
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     hide-stacktraces: false
-    http-channel-host-strategy: external-only
+    http-channel-allowed-networks: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
@@ -201,8 +201,10 @@ config:
     ldap-port: 389
     ldap-security: none
     ldap-sync-user-attributes: true
+    ldap-sync-user-attributes-allowlist: ''
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
     ldap-timeout-seconds: 15.0
+    ldap-trust-store: null
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
@@ -250,6 +252,7 @@ config:
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
+    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
