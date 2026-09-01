@@ -1281,6 +1281,56 @@
                         :values          [["Fred 62"] ["Red Medicine"]]}
                        response))))))))))
 
+(deftest card-param-values-respect-locked-parameters-test
+  (testing "a locked parameter constrains the values offered for the card's enabled parameters"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (with-temp-card [card {:enable_embedding true
+                               :embedding_params {:price "locked" :cat "enabled" :name "enabled"}
+                               :dataset_query
+                               (-> (lib/native-query mp (str "SELECT ID, NAME, CATEGORY_ID, PRICE FROM VENUES "
+                                                             "WHERE {{price}} AND {{cat}} AND {{name}}"))
+                                   (lib/with-template-tags
+                                     {"price" {:id           "p1"
+                                               :name         "price"
+                                               :display-name "Price"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                      "cat"   {:id           "c1"
+                                               :name         "cat"
+                                               :display-name "Cat"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}
+                                      "name"  {:id           "n1"
+                                               :name         "name"
+                                               :display-name "Name"
+                                               :type         :dimension
+                                               :widget-type  :string/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))}}))
+                               :parameters [{:id "p1" :type :number/= :slug "price" :name "Price"
+                                             :target [:dimension [:template-tag "price"]]}
+                                            {:id "c1" :type :number/= :slug "cat" :name "Cat"
+                                             :target [:dimension [:template-tag "cat"]]}
+                                            {:id "n1" :type :string/= :slug "name" :name "Name"
+                                             :target [:dimension [:template-tag "name"]]}]}]
+          ;; price 4 occurs only in categories 40 and 67
+          (let [token (card-token card {:params {:price 4}})
+                url   #(format "embed/card/%s/params/%s/%s" token %1 %2)]
+            (testing "the locked parameter is not itself queryable"
+              (is (= "Cannot search for values: \"price\" is not an enabled parameter."
+                     (client/client :get 400 (url "p1" "values")))))
+            (testing "values for an enabled parameter are limited to the rows the locked value allows"
+              (is (= [[40 "Japanese"] [67 "Steakhouse"]]
+                     (:values (client/client :get 200 (url "c1" "values"))))))
+            (testing "search is limited the same way"
+              (is (= [] (:values (client/client :get 200 (url "n1" "search/red"))))))
+            (testing "a value outside those rows has no remapping"
+              (is (= ["2"] (client/client :get 200 (str (url "c1" "remapping") "?value=2")))))
+            (testing "a value within them still remaps"
+              (is (= [40 "Japanese"] (client/client :get 200 (str (url "c1" "remapping") "?value=40")))))))))))
+
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
 (defn- do-with-chain-filter-fixtures! [f]
