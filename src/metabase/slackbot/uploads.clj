@@ -80,7 +80,7 @@
              :model-id (:id result)
              :model-name (:name result)}))
         (catch Exception e
-          (log/warnf "[slackbot] File upload failed: error=%s" (ex-message e))
+          (log/warnf e "[slackbot] File upload failed: error=%s" (ex-message e))
           (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
           {:error (upload-error-message e) :filename name})
         (finally
