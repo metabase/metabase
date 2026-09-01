@@ -1123,8 +1123,8 @@
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-rollback-only-transaction
-        (is (partial= {:list-like?  true
-                       :num-fields 2}
+        (is (partial= {:list_like  true
+                       :num_fields 2}
                       (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                           first)))))))
 

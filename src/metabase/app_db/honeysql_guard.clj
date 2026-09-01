@@ -123,6 +123,8 @@
           :not-null :auto-increment :generated-always
           :timestamp-with-time-zone :timestamp-without-time-zone :time-with-time-zone :time-without-time-zone
           :double-precision :character-varying
+          ;; FOR UPDATE lock modifiers
+          :skip-locked :nowait :no-wait
           ;; ORDER BY directions
           :asc :desc :nulls-first :nulls-last
           :asc-nulls-first :asc-nulls-last :desc-nulls-first :desc-nulls-last}

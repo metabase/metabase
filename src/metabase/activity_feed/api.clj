@@ -27,9 +27,9 @@
                   :collection.authority_level [:collection.name :collection_name]]
      "table"     [:model/Table
                   :id :name :db_id :active
-                  :display_name [:metabase_database.initial_sync_status :initial-sync-status]
+                  :display_name [:metabase_database.initial_sync_status :initial_sync_status]
                   [:visibility_type :visibility_type]
-                  [:metabase_database.name :database-name]])
+                  [:metabase_database.name :database_name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(app-db/qualify model-symb %)]
      {:where [:in (self-qualify :id) ids]
