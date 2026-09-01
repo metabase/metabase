@@ -16,7 +16,6 @@ const pluginSettingsCache = new WeakMap<
   Map<string, PluginSettings>
 >();
 
-// Sandbox proxies could write through to redux state, so the plugin gets a copy.
 export function toPluginSeries(series: Series): PluginSeries {
   const cached = pluginSeriesCache.get(series);
 
@@ -24,7 +23,9 @@ export function toPluginSeries(series: Series): PluginSeries {
     return cached;
   }
 
-  const pluginSeries = series.map((single) => structuredClone(single));
+  const pluginSeries = series.map(({ data, error }) =>
+    structuredClone({ data, error }),
+  );
   pluginSeriesCache.set(series, pluginSeries);
 
   return pluginSeries;

@@ -250,12 +250,12 @@ describe("sanitizePluginSettings", () => {
         );
 
         expect(callback).toHaveBeenCalledTimes(1);
-        expect(callback).toHaveBeenCalledWith(SERIES, {
+        expect(callback).toHaveBeenCalledWith([{ data: SERIES[0].data }], {
           "card.title": "Title",
           threshold: 1,
         });
         const [series] = callback.mock.calls[0];
-        expect(series[0].card).not.toBe(SERIES[0].card);
+        expect(series[0].data).not.toBe(SERIES[0].data);
       },
     );
 

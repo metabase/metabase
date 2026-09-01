@@ -2,7 +2,6 @@ import { createMockSingleSeries } from "metabase-types/api/mocks";
 import { isFunction, isObject } from "metabase-types/guards";
 
 import {
-  type PluginSeries,
   toHostSettings,
   toPluginSeries,
   toPluginSettings,
@@ -11,35 +10,23 @@ import {
 const PREFIX = "custom-viz:demo-viz:";
 
 describe("toPluginSeries", () => {
-  it("hands the plugin a copy of each series entry", () => {
-    const series = [
-      createMockSingleSeries({ visualization_settings: { threshold: 1 } }),
-    ];
+  it("hands the plugin a copy of only the documented series fields", () => {
+    const series = [createMockSingleSeries({})];
 
     const pluginSeries = toPluginSeries(series);
 
-    expect(pluginSeries[0]).toEqual(series[0]);
-    expect(getPluginCard(pluginSeries[0])).not.toBe(series[0].card);
+    expect(Object.keys(pluginSeries[0]).sort()).toEqual(["data", "error"]);
+    expect(pluginSeries[0].data).toEqual(series[0].data);
     expect(pluginSeries[0].data).not.toBe(series[0].data);
   });
 
   it("keeps plugin mutations away from the host series", () => {
-    const series = [createMockSingleSeries({ visualization_settings: {} })];
-    const { card, data } = series[0];
+    const series = [createMockSingleSeries({})];
+    const { data } = series[0];
 
     const pluginSeries = toPluginSeries(series);
-    const pluginSettings = getPluginCard(
-      pluginSeries[0],
-    ).visualization_settings;
-
-    if (!isObject(pluginSettings)) {
-      throw new Error("Expected the plugin card to carry settings");
-    }
-
-    pluginSettings["graph.goal_value"] = 1;
     pluginSeries[0].data.rows.push([1]);
 
-    expect(card.visualization_settings).toEqual({});
     expect(data.rows).toEqual([]);
   });
 
@@ -144,14 +131,3 @@ describe("toHostSettings", () => {
     });
   });
 });
-
-// The SDK types leave the card out, but the host hands it over at runtime.
-function getPluginCard(single: PluginSeries[number]) {
-  const card = Reflect.get(single, "card");
-
-  if (!isObject(card)) {
-    throw new Error("Expected the plugin series to carry the card");
-  }
-
-  return card;
-}
