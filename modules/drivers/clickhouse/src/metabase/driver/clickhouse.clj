@@ -473,19 +473,21 @@
   [_driver _conn role]
   ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
   ;; `quote_ident()` function or similar, escape/quote the identifier client-side. The whole value is quoted
-  ;; as one identifier, so a role name containing a comma stays a single role. Backslashes are escaped so a
-  ;; trailing backslash cannot close the quoted identifier, and interior double-quotes are doubled.
-  (let [default-role    (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed (fn [role]
-                          (if (or (and (str/starts-with? role "\"")
-                                       (str/ends-with? role "\""))
-                                  (= role default-role))
+  ;; as one identifier, so a role name containing a comma stays a single role. ClickHouse honors backslash
+  ;; escapes inside a quoted identifier, so `:ansi+backslashes` is the style that applies -- a trailing `\`
+  ;; must not be able to escape the closing quote. HoneySQL's ANSI quoting only doubles the quote character,
+  ;; which is why this goes through [[sql.u/quote-identifier]] rather than [[sql.u/quote-name]].
+  (let [default-role (driver.sql/default-database-role :clickhouse nil)
+        ;; a value the caller already quoted is unwrapped first, so its contents are escaped like any other.
+        ;; It takes two characters to be a wrapped value -- a lone `"` is a one-character role name.
+        unwrapped    (if (and (>= (count role) 2)
+                              (str/starts-with? role "\"")
+                              (str/ends-with? role "\""))
+                       (subs role 1 (dec (count role)))
+                       role)]
+    (format "SET ROLE %s" (if (= role default-role)
                             role
-                            (str \" role \")))
-        escape-ident    #(-> %
-                             (str/replace "\\" "\\\\")
-                             (str/replace #"(?!^)\"(?<!$)" "\"\""))]
-    (format "SET ROLE %s" (-> role quote-if-needed escape-ident))))
+                            (sql.u/quote-identifier unwrapped :ansi+backslashes)))))
 
 (defmethod driver/set-role! :clickhouse
   [driver ^Connection conn role]

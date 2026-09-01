@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
+   [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -34,6 +35,25 @@
 (def ^:private test-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
 (def ^:private test-session-key-hashed (session/hash-session-key test-session-key))
 (def ^:private test-session-id "abcd1234")
+
+(deftest session-deactivation-revokes-test
+  (init-status/set-complete!)
+  (testing "deactivating the user deletes the session; reactivating does NOT revive it (SEC-863)"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [session-key (str (random-uuid))]
+        (t2/insert! (t2/table-name :model/Session)
+                    {:id         (session/generate-session-id)
+                     :key_hashed (session/hash-session-key session-key)
+                     :user_id    user-id
+                     :created_at :%now})
+        (testing "session authenticates while the user is active"
+          (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active false})
+        (testing "after deactivation the session no longer authenticates"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active true})
+        (testing "after reactivation the same session STILL does not authenticate"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (deftest session-expired-test
   (init-status/set-complete!)
@@ -230,6 +250,27 @@
                :e         nil
                :message   "Ignoring invalid API Key"}]
              (messages))))))
+
+(deftest api-key-lifecycle-follows-synthetic-user-not-creator-test
+  (testing "an API key is gated by its own synthetic user, not the admin who created it (SEC-863)"
+    (mt/with-temp [:model/User  {synthetic-id :id} {}
+                   :model/User  {creator-id :id}   {}
+                   :model/ApiKey _ {:name                  "An API Key"
+                                    :user_id               synthetic-id
+                                    :creator_id            creator-id
+                                    :updated_by_id         creator-id
+                                    ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
+      (let [authed? (fn [] (mt/with-premium-features #{}
+                             (boolean (:metabase-user-id
+                                       (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_foobar123"}})))))]
+        (testing "authenticates while its synthetic user is active"
+          (is (authed?)))
+        (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
+          (t2/update! :model/User creator-id {:is_active false})
+          (is (authed?)))
+        (testing "deactivating the key's own synthetic user DOES revoke it"
+          (t2/update! :model/User synthetic-id {:is_active false})
+          (is (not (authed?))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"

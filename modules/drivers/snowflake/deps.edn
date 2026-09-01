@@ -18,6 +18,8 @@
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
   io.opentelemetry/opentelemetry-api {:mvn/version "1.62.0"}             ; pinned: pulls vulnerable opentelemetry-api (W3CBaggagePropagator DoS vuln)
+  ;; pinned: snowflake-jdbc-thin 4.0.1 pulls jsoup 1.15.3
+  org.jsoup/jsoup                   {:mvn/version "1.23.2"}
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
   org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.85"}
   org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.85.2"}
@@ -25,8 +27,10 @@
   ;; and jackson-databind 2.18.4 which has a deserialization vuln
   com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
   com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
+  ;; pinned: azure-core 1.57.0 (transitive via snowflake-jdbc-thin) pulls reactor-core 3.7.11
+  io.projectreactor/reactor-core          {:mvn/version "3.8.7"}
   ;; pinned: AWS SDK (transitive via snowflake-jdbc-thin) pulls netty 4.1.126.Final
   ;; (SNYK-JAVA-IONETTY-16438930, SNYK-JAVA-IONETTY-16438322). Pin the full family to avoid mixed-version classpath.
-  io.netty/netty-codec                    {:mvn/version "4.1.136.Final"}
-  io.netty/netty-handler                  {:mvn/version "4.1.136.Final"}
-  io.netty/netty-transport-classes-epoll  {:mvn/version "4.1.136.Final"}}}
+  io.netty/netty-codec                    {:mvn/version "4.1.137.Final"}
+  io.netty/netty-handler                  {:mvn/version "4.1.137.Final"}
+  io.netty/netty-transport-classes-epoll  {:mvn/version "4.1.137.Final"}}}

@@ -118,7 +118,8 @@
                                "</result>\n"
                                "<instructions>\n"
                                "NEXT: construct a SQL query based on the user's instructions and this schema.\n"
-                               "THEN: call `document_construct_sql_chart` with SQL and chart settings.\n"
+                               "THEN: call `document_construct_sql_chart` with SQL and chart settings, passing "
+                               "database_id=" database-id " (the id of the database above).\n"
                                "SQL engine: " (:engine db) ".\n"
                                "</instructions>")]
           {:output output

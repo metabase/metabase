@@ -7,13 +7,13 @@ import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
 } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   DataSourceInput,
   EntityTypeInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";

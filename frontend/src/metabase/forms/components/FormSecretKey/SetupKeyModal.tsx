@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Alert,
   Button,

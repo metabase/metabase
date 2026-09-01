@@ -1,4 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import {
@@ -6,7 +7,6 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";

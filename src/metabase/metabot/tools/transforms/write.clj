@@ -104,7 +104,6 @@ def transform():
   - transform-name: Name for new transform (required if no transform-id)
   - transform-description: Description for new transform
   - source-database: Database ID for source tables
-  - source-tables: Map of table aliases to table IDs
   - memory-atom: Atom containing agent memory (injected by wrapper)
   - context: Request context with current transform if editing
 
@@ -112,7 +111,7 @@ def transform():
   - :structured-output - The suggested transform
   - :data-parts - Transform suggestion data part for streaming"
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           database_id source_tables memory-atom context]}]
+           database_id memory-atom context]}]
   (log/info "Writing SQL transform" {:transform-id transform_id
                                      :edit-mode (:mode edit_action)
                                      :has-context (some? context)})
@@ -129,8 +128,10 @@ def transform():
 
                             ;; Create fresh transform
                             :else
+                            ;; SQL sources have no source-tables; the `:sql` branch of
+                            ;; `source-for-transform-type` ignores the argument.
                             (create-fresh-transform :sql transform_name transform_description
-                                                    database_id source_tables))
+                                                    database_id nil))
 
         _ (when (and transform_id (nil? current-transform))
             (throw (ex-info (str "Transform with ID " transform_id " not found. "

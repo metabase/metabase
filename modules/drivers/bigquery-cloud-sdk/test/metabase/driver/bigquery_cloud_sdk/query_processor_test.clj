@@ -1233,6 +1233,14 @@
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash before the quote"
+    (are [s expected] (= expected (sql.qp/inline-value :bigquery-cloud-sdk s))
+      "Tito's Tacos"     "'Tito\\'s Tacos'"
+      "back\\slash"      "'back\\\\slash'"
+      "' OR 1 = 1 --"    "'\\' OR 1 = 1 --'"
+      "a\\' OR 1 = 1 --" "'a\\\\\\' OR 1 = 1 --'")))
+
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"
     (is (= ["DATETIME_ADD(CAST(? AS datetime), INTERVAL 3 month)"

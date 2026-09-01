@@ -67,6 +67,29 @@
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
 
+(deftest interactive-embedding-origins-cannot-inject-csp-directives-test
+  ;; `embedding-app-origins-interactive` is admin-writable and, when interactive embedding is
+  ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
+  ;; directive: a `;` in the value must not break out and append further CSP directives. The
+  ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
+  ;; overrides the nonce/hash `script-src` allowlist the app relies on to block XSS.
+  (mt/with-premium-features #{:embedding}
+    (let [csp-directive-names
+          (fn [origins]
+            (mt/with-temporary-setting-values [enable-embedding-interactive      true
+                                               embedding-app-origins-interactive origins]
+              (->> (str/split (get (mw.security/security-headers) "Content-Security-Policy") #";\s*")
+                   (map str/trim)
+                   (remove str/blank?)
+                   (map #(first (str/split % #"\s+")))
+                   set)))
+          injection "https://ok.example; script-src-elem https://evil.example"]
+      (testing "a `;` in the setting cannot change which CSP directives are present"
+        (is (= (csp-directive-names "https://ok.example")
+               (csp-directive-names injection))))
+      (testing "and script-src-elem specifically is never introduced"
+        (is (not (contains? (csp-directive-names injection) "script-src-elem")))))))
+
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
@@ -78,6 +101,26 @@
   (testing "Includes 'self' so embed previews work (#49142)"
     (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
       (is (contains? hosts "'self'") "frame-src hosts does not include 'self'"))))
+
+(deftest csp-www-strip-keeps-the-admins-registrable-domain-test
+  ;; `add-wildcard-entries` strips a leading `www.` label with a regex whose `.` is unescaped,
+  ;; so it eats `www` + the next character instead of the literal `www.`. An entry of
+  ;; `https://wwwacme.com` must keep the admin's actual domain — not become a different
+  ;; registrable domain (`cme.com`) plus a `*.cme.com` wildcard the admin never entered.
+  (testing "a www<char> host is not rewritten to a different registrable domain + wildcard"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://wwwacme.com"]
+      (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+        (is (contains? hosts "https://wwwacme.com")
+            "the admin's actual domain must be present")
+        (is (not (contains? hosts "https://cme.com"))
+            "a different registrable domain must not appear")
+        (is (not (contains? hosts "https://*.cme.com"))
+            "a wildcard over a domain the admin never entered must not appear"))))
+  (testing "a legitimate www2 host is not silently dropped"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www2.example.com"]
+      (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+        (is (contains? hosts "https://www2.example.com")
+            "a www2.* entry must survive, not vanish")))))
 
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}

@@ -2,9 +2,9 @@ import _ from "underscore";
 
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { getMetadata } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

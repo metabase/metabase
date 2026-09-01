@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getMetadata } from "metabase/metadata-store";
 import { isSavedQuestionChanged } from "metabase/querying/common/utils/question";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 

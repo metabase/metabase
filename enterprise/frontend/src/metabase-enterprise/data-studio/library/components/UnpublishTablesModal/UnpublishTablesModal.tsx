@@ -4,7 +4,7 @@ import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
 import {
   Button,

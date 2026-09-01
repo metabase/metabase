@@ -35,6 +35,12 @@
                (assert (#{:none :ssl :starttls} (keyword new-value))))
              (setting/set-value-of-type! :keyword :ldap-security new-value)))
 
+(defsetting ldap-trust-store
+  (deferred-tru "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store.")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :getter)
+
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")
   :encryption :when-encryption-key-set
