@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
+import { migrateStoredCustomVizSettings } from "metabase/visualizations/custom-visualizations/migrate-legacy-settings";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import type {
   ComputedVisualizationSettings,
@@ -15,7 +15,6 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { getVisualizationRaw } from "../registry";
 import {
@@ -108,64 +107,11 @@ export function getStoredSettingsForSeries(
     );
   }
 
-  const display = series?.[0]?.card?.display;
-
-  if (isCustomVizDisplay(display)) {
-    storedSettings = migrateLegacyCustomVizSettings(
-      storedSettings,
-      getCustomVizSettingKeyPrefix(display),
-      definitions ?? getSettingDefinitionsForSeries(series),
-    );
-  }
-
-  return storedSettings;
-}
-
-const HOST_SETTING_KEYS_WITHOUT_DOT: ReadonlySet<string> = new Set([
-  "click_behavior",
-  "column",
-  "column_settings",
-  "series_settings",
-]);
-
-// A pre-namespacing plugin setting was stored under the plugin's own id. Never adopt a key that
-// names one of Metabase's own settings (dotted keys like `graph.goal_value`, or the ones above) —
-// a plugin must not capture or erase host settings by declaring a colliding id.
-function isHostSettingKey(key: string): boolean {
-  return key.includes(".") || HOST_SETTING_KEYS_WITHOUT_DOT.has(key);
-}
-
-function migrateLegacyCustomVizSettings(
-  storedSettings: VisualizationSettings,
-  prefix: string,
-  definitions: VisualizationSettingsDefinitions,
-): VisualizationSettings {
-  const legacyKeys = Object.keys(definitions)
-    .filter((key) => key.startsWith(prefix))
-    .map((key) => [key, key.slice(prefix.length)] as const)
-    .filter(([, legacyKey]) => {
-      return (
-        !(legacyKey in definitions) &&
-        !isHostSettingKey(legacyKey) &&
-        legacyKey in storedSettings
-      );
-    });
-
-  if (legacyKeys.length === 0) {
-    return storedSettings;
-  }
-
-  const settings = { ...storedSettings };
-
-  for (const [key, legacyKey] of legacyKeys) {
-    if (typeof settings[key] === "undefined") {
-      settings[key] = settings[legacyKey];
-    }
-
-    delete settings[legacyKey];
-  }
-
-  return settings;
+  return migrateStoredCustomVizSettings(
+    series,
+    storedSettings,
+    () => definitions ?? getSettingDefinitionsForSeries(series),
+  );
 }
 
 export function getComputedSettingsForSeries(
