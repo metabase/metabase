@@ -47,6 +47,10 @@ Omitting the prop, or passing an empty array, turns off custom visualizations. C
 
 For security, the SDK runs each custom visualization's code in an isolated sandbox, so a visualization can't reach your app or make network requests. The sandbox doesn't block passive image loads, though. A visualization can still trigger outbound requests through `<img>` tags or CSS `url()`. To limit where custom visualizations can load images from, set a Content Security Policy with an `img-src` allowlist in your app (the core Metabase app does this with [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains)). [Only add visualizations you trust](../../questions/visualizations/custom.md#only-add-visualizations-you-trust).
 
+## Loading and error components
+
+The `loaderComponent` and `errorComponent` props swap the SDK's default loading and error screens for your own React components. See [Customize loading, error, and empty states](./loading-and-errors.md).
+
 ## Global event handlers
 
 You can listen for events by defining the `eventHandlers` prop for `MetabaseProvider`.
