@@ -336,6 +336,51 @@
                 (is (= slack-user-id (:provider_id auth-identity))
                     "AuthIdentity should have correct provider_id")))))))))
 
+(deftest sso-mode-auto-links-without-email-verified-claim-test
+  (testing "SSO mode auto-links an existing user even when Slack omits the email_verified claim"
+    (mt/with-temporary-setting-values
+      [slack-connect-enabled true
+       slack-connect-client-id "test-client-id"
+       slack-connect-client-secret "test-secret"
+       slack-connect-authentication-mode "sso"]
+      (mt/with-temp [:model/User user {:email "no-claim-slack@example.com"}]
+        (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer] slack-discovery-doc)
+                                    oidc.state/validate-oidc-callback
+                                    (fn [_request _state _provider & _opts]
+                                      {:valid? true :nonce "test-nonce" :redirect "/"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub "U_NO_CLAIM"
+                                                :iss "https://slack.com"
+                                                :aud "test-client-id"
+                                                :email "no-claim-slack@example.com"}})]
+          (let [request {:code "test-code"
+                         :state "test-state"
+                         :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
+                         :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
+                result (auth-identity/login! :provider/slack-connect request)]
+            (is (true? (:success? result)))
+            (is (= "U_NO_CLAIM" (t2/select-one-fn :provider_id :model/AuthIdentity
+                                                  :user_id (:id user) :provider "slack-connect")))))))))
+
+(deftest link-only-mode-passes-through-auth-failures-test
+  (testing "Link-only mode surfaces the authenticate failure instead of a generic sub-claim error"
+    (mt/with-temporary-setting-values
+      [slack-connect-enabled true
+       slack-connect-client-id "test-client-id"
+       slack-connect-client-secret "test-secret"
+       slack-connect-authentication-mode "link-only"]
+      (let [result (auth-identity/login! :provider/slack-connect {:authenticated-user (delay nil)})]
+        (is (false? (:success? result)))
+        (is (= :authentication-required (:error result)))))))
+
 (deftest link-only-mode-creates-auth-identity-test
   (testing "Link-only mode creates AuthIdentity for the authenticated user"
     (mt/with-temporary-setting-values

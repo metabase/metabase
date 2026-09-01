@@ -359,6 +359,24 @@ describe("SettingsOIDCForm - Account linking", () => {
     ).toBeInTheDocument();
     expect(await getOidcPutCalls()).toHaveLength(0);
   });
+
+  it("rejects subdomain wildcards, which would be stored but never match", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await userEvent.click(screen.getByText("Account linking"));
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "*.mycompany.com",
+    );
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText(
+        "Enter domains like mycompany.com, separated by commas",
+      ),
+    ).toBeInTheDocument();
+    expect(await getOidcPutCalls()).toHaveLength(0);
+  });
 });
 
 describe("parseTrustedEmailDomains", () => {

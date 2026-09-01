@@ -60,6 +60,22 @@
             (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
                                       (assoc test-provider :key "INVALID SLUG!")))))))))
 
+(deftest trusted-email-domains-validation-test
+  (mt/with-additional-premium-features #{:sso-oidc}
+    (testing "accepts \"*\" and plain hostnames, with an optional leading @"
+      (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
+        (mt/with-temporary-setting-values [oidc-providers []]
+          (is (=? {:trusted-email-domains ["mycompany.com" "*" "@sub.mycompany.com"]}
+                  (mt/user-http-request :crowberto :post 200 "ee/sso/oidc"
+                                        (assoc test-provider
+                                               :trusted-email-domains ["mycompany.com" "*" "@sub.mycompany.com"])))))))
+    (testing "rejects entries that would be stored but never match anything"
+      (mt/with-temporary-setting-values [oidc-providers []]
+        (doseq [bad-domain ["*.mycompany.com" "mycompany.com;example.org" "mycompany" "my company.com"]]
+          (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
+                                    (assoc test-provider :trusted-email-domains [bad-domain]))
+              bad-domain))))))
+
 (deftest read-providers-test
   (testing "Reading OIDC providers"
     (mt/with-additional-premium-features #{:sso-oidc}

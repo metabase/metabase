@@ -115,8 +115,8 @@
 
 (methodical/defmethod validate :default
   [_provider _auth-identity-data]
-  ;; provider keywords created at runtime (e.g. per-IdP OIDC keywords) may not be derived yet in this
-  ;; process; validation is opt-in, so an unknown provider validates as a no-op rather than throwing
+  ;; per-IdP AuthIdentity provider strings (e.g. "oidc-okta") have no registered provider keyword, and
+  ;; the model hooks validate every row on insert/update; validation is opt-in, so no-op rather than throw
   nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------

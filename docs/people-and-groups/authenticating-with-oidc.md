@@ -107,7 +107,7 @@ If auto-provisioning is off, and no matching account exists, the person gets an 
 
 ## Account linking
 
-Metabase links each account to the identity your IdP asserts for it (the `iss` and `sub` claims in the ID token), and checks that link on every login, so an email address alone isn't enough to sign in to an existing account.
+Metabase links each account to the identity your IdP asserts for it (the `iss` and `sub` claims in the ID token), and checks that link on every login, so an email address alone isn't enough to sign in to an existing account. Each configured provider tracks its links separately, so signing in through one provider never changes an account's link to another.
 
 Here's how Metabase decides whether to let someone in:
 
@@ -116,11 +116,11 @@ Here's how Metabase decides whether to let someone in:
 - If the account isn't linked yet (or is linked to a different issuer), Metabase links it automatically when the IdP says the email is verified (`email_verified` is `true`). Otherwise, Metabase rejects the login until the account can be linked.
 - If the token's identity is already linked to a different Metabase account, Metabase rejects the login.
 
-Accounts linked before Metabase started recording the issuer are treated as unlinked when the `sub` claim doesn't match, so they get relinked under the same rules on their next login.
+Accounts linked before Metabase started tracking links per provider get their existing link carried over automatically on their next login when the `sub` claim matches. When it doesn't match, they're treated as unlinked, so they get relinked under the same rules.
 
 If your IdP doesn't send the `email_verified` claim, people with existing accounts that aren't linked yet won't be able to log in after upgrading until you either turn on that claim at the IdP or add your domains to **Trusted email domains** (see below).
 
-New accounts created by [auto-provisioning](#user-provisioning) get linked on their first login.
+New accounts created by [auto-provisioning](#user-provisioning) get linked on their first login. If the token's identity is already linked to an existing account, Metabase rejects the login instead of creating a second account for it (this can happen when someone's email address changes at the IdP).
 
 To change how Metabase links existing accounts, go to **Admin settings** > **Authentication** > **OIDC** > **Account linking**:
 

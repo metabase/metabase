@@ -500,6 +500,127 @@
         (finally
           (t2/delete! :model/User :email email))))))
 
+(deftest authenticate-missing-sub-test
+  (testing "Rejects a token without a sub claim"
+    (let [result (authenticate-with-claims (dissoc base-claims :sub) test-config)]
+      (is (false? (:success? result)))
+      (is (= :invalid-token (:error result)))))
+  (testing "Rejects a token with a blank sub claim"
+    (let [result (authenticate-with-claims (assoc base-claims :sub "") test-config)]
+      (is (false? (:success? result)))
+      (is (= :invalid-token (:error result))))))
+
+(deftest login-jit-identity-already-linked-test
+  (testing "JIT provisioning is refused when the token's identity is already linked to another account"
+    (mt/with-temp [:model/User owner {:email "jit-owner@example.com"}
+                   :model/AuthIdentity _ {:user_id (:id owner)
+                                          :provider "oidc"
+                                          :provider_id "user123"
+                                          :metadata {:iss "https://provider.example.com"}}]
+      (let [email "jit-victim@example.com"]
+        (try
+          (let [result (login-with-claims! (assoc base-claims
+                                                  :email email
+                                                  :email_verified true)
+                                           test-config)]
+            (is (false? (:success? result)))
+            (is (= :identity-already-linked (:error result)))
+            (is (nil? (t2/select-one :model/User :email email)) "No account should be provisioned"))
+          (finally
+            (t2/delete! :model/User :email email)))))))
+
+(deftest login-disabled-account-test
+  (testing "A disabled account is rejected before any identity (re)link is written"
+    (mt/with-temp [:model/User user {:email "disabled@example.com" :is_active false}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "oidc"
+                                                    :provider_id "old-sub"
+                                                    :metadata {:iss "https://old-idp.example.com"}}]
+      (let [result (login-with-claims! (assoc base-claims
+                                              :email "disabled@example.com"
+                                              :email_verified true)
+                                       test-config)
+            auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
+        (is (false? (:success? result)))
+        (is (= :account-disabled (:error result)))
+        (is (= "old-sub" (:provider_id auth-identity)))
+        (is (= "https://old-idp.example.com" (get-in auth-identity [:metadata :iss])))))))
+
+(deftest login-assume-email-verified-test
+  (testing "With :assume-email-verified, a token without the email_verified claim may auto-link"
+    (mt/with-temp [:model/User user {:email "assume@example.com"}]
+      (let [config (assoc test-config :assume-email-verified true)
+            result (login-with-claims! (assoc base-claims :email "assume@example.com") config)]
+        (is (true? (:success? result)))
+        (is (= "user123" (t2/select-one-fn :provider_id :model/AuthIdentity
+                                           :user_id (:id user) :provider "oidc"))))))
+  (testing "...but an explicit email_verified false is still rejected"
+    (mt/with-temp [:model/User _user {:email "assume2@example.com"}]
+      (let [config (assoc test-config :assume-email-verified true)
+            result (login-with-claims! (assoc base-claims
+                                              :email "assume2@example.com"
+                                              :email_verified false)
+                                       config)]
+        (is (false? (:success? result)))
+        (is (= :email-not-verified (:error result)))))))
+
+(deftest login-identity-provider-name-test
+  (testing "With :identity-provider-name, the link lives under the per-IdP provider name"
+    (mt/with-temp [:model/User user {:email "peridp@example.com"}]
+      (let [config (assoc test-config :identity-provider-name "oidc-okta")
+            result (login-with-claims! (assoc base-claims
+                                              :email "peridp@example.com"
+                                              :email_verified true)
+                                       config)]
+        (is (true? (:success? result)))
+        (is (= "user123" (t2/select-one-fn :provider_id :model/AuthIdentity
+                                           :user_id (:id user) :provider "oidc-okta")))
+        (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "oidc"))))))
+  (testing "IdPs sharing one dispatch keyword do not touch each other's links"
+    (mt/with-temp [:model/User user {:email "multi-idp@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "oidc-a"
+                                                    :provider_id "sub-a"
+                                                    :metadata {:iss "https://idp-a.example.com"}}]
+      (let [config (assoc test-config :identity-provider-name "oidc-b")
+            result (login-with-claims! (assoc base-claims
+                                              :email "multi-idp@example.com"
+                                              :email_verified true)
+                                       config)
+            row-a  (t2/select-one :model/AuthIdentity :id ai-id)]
+        (is (true? (:success? result)))
+        (is (= "sub-a" (:provider_id row-a)) "The other IdP's link is untouched")
+        (is (= "user123" (t2/select-one-fn :provider_id :model/AuthIdentity
+                                           :user_id (:id user) :provider "oidc-b")))))))
+
+(deftest login-legacy-provider-name-migration-test
+  (testing "A user's legacy shared-provider row with a matching sub migrates to the per-IdP name"
+    (mt/with-temp [:model/User user {:email "migrate@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "custom-oidc"
+                                                    :provider_id "user123"}]
+      (let [config (assoc test-config
+                          :identity-provider-name "oidc-okta"
+                          :legacy-provider-name "custom-oidc")
+            ;; no email_verified claim: migration backfills an existing link rather than creating one
+            result (login-with-claims! (assoc base-claims :email "migrate@example.com") config)
+            row    (t2/select-one :model/AuthIdentity :id ai-id)]
+        (is (true? (:success? result)))
+        (is (= "oidc-okta" (:provider row)))
+        (is (= "https://provider.example.com" (get-in row [:metadata :iss]))))))
+  (testing "A legacy row with a different sub does not migrate and linking follows policy"
+    (mt/with-temp [:model/User user {:email "no-migrate@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "custom-oidc"
+                                                    :provider_id "other-sub"}]
+      (let [config (assoc test-config
+                          :identity-provider-name "oidc-okta"
+                          :legacy-provider-name "custom-oidc")
+            result (login-with-claims! (assoc base-claims :email "no-migrate@example.com") config)]
+        (is (false? (:success? result)))
+        (is (= :account-linking-required (:error result)))
+        (is (= "custom-oidc" (t2/select-one-fn :provider :model/AuthIdentity :id ai-id)))))))
+
 (deftest authenticate-custom-attribute-mapping-test
   (testing "Uses custom attribute mappings when provided"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
