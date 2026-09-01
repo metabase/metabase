@@ -822,6 +822,8 @@
                          :body {:method "saml"}
                          :headers {"Content-Type" "application/json"}}
                         result))
+          (is (= (str (system/site-url) "/auth/sso")
+                 (get-in result [:body :saml-popup-url])))
           (is (str/starts-with? (-> result :body :url) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-integration-includes-origin-tests
