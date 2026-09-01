@@ -3,7 +3,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   ActionIcon,
   Alert,

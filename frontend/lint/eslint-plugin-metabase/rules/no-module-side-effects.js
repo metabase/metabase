@@ -52,6 +52,7 @@ const DEFAULT_PURE_CALLEES = [
   {
     module: "@reduxjs/toolkit",
     names: [
+      "combineReducers",
       "createSelector",
       "createReducer",
       "createAction",

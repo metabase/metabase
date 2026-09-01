@@ -17,12 +17,13 @@ import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.modu
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";
-import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+
+import { onCloseQuestionInfo } from "../../../../store/actions";
+import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";

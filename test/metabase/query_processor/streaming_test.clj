@@ -11,6 +11,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -702,8 +703,8 @@
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}])))))
 
 (deftest ^:parallel export-column-order-test-5
-  (testing "if table-columns contains a column without a corresponding entry in cols, table-columns is ignored and
-           cols is used as the source of truth for column order (#19465)"
+  (testing "table-columns entries without a corresponding entry in cols are dropped per-entry; the matching cols are
+           still exported in cols order (#19465, #75791)"
     (is (= [0]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
@@ -745,6 +746,20 @@
              {:id 2, :name "Col3", :field_ref [:field 2 nil]}]
             [{::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}])))))
+
+(deftest ^:parallel export-column-order-orphan-entry-test
+  (testing "an unmatchable table-columns entry is ignored per-entry; visibility and ordering of the matching
+           entries are still applied (#75791)"
+    ;; Models the reporter's case: 4-col native query (ID TITLE CATEGORY PRICE), TITLE hidden, custom order, plus
+    ;; one stale orphan entry (EAN) left over from a previous version of the query.
+    (is (= [0 2 3]
+           (@#'qp.streaming/export-column-order
+            [{:name "ID"}, {:name "TITLE"}, {:name "CATEGORY"}, {:name "PRICE"}]
+            [{::mb.viz/table-column-name "ID"       , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "EAN"      , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "TITLE"    , ::mb.viz/table-column-enabled false}
+             {::mb.viz/table-column-name "CATEGORY" , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "PRICE"    , ::mb.viz/table-column-enabled true}])))))
 
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil

@@ -3,16 +3,15 @@ import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type {
-  ComputedVisualizationSettings,
-  DataPoint,
-  HoveredDimension,
-  HoveredObject,
-  RemappingHydratedDatasetColumn,
-} from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type DataPoint,
+  type HoveredDimension,
+  type HoveredObject,
+  type RemappingHydratedDatasetColumn,
+  formatValueForTooltip,
+} from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
-
-import { formatValueForTooltip } from "../../../echarts/tooltip/format";
 
 import S from "./KeyValuePairChartTooltip.module.css";
 

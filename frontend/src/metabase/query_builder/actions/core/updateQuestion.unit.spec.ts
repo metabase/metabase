@@ -1,14 +1,12 @@
 import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
-import * as sharedQB from "metabase/redux/query-builder";
-import { UPDATE_QUESTION } from "metabase/redux/query-builder";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
@@ -52,6 +50,8 @@ import {
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
+import { UPDATE_QUESTION } from "../../store/actions";
+import * as qbActions from "../../store/actions";
 import * as querying from "../querying";
 import * as ui from "../ui";
 import * as url from "../url";
@@ -453,7 +453,7 @@ describe("QB Actions > updateQuestion", () => {
 
       describe(questionType, () => {
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
+          const closeSidebarSpy = jest.spyOn(qbActions, "onCloseQuestionInfo");
           await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).not.toHaveBeenCalled();
         });
@@ -475,7 +475,10 @@ describe("QB Actions > updateQuestion", () => {
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-            const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
+            const closeSidebarSpy = jest.spyOn(
+              qbActions,
+              "onCloseQuestionInfo",
+            );
             await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
             expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
           });
