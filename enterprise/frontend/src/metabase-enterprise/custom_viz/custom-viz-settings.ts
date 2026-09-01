@@ -54,14 +54,8 @@ export function sanitizePluginSettings(
     return {};
   }
 
-  const definitions = Object.entries(settings).flatMap(
+  const objectDefinitions = Object.entries(settings).flatMap(
     ([settingId, definition]): [string, PluginSettingDefinition][] => {
-      if (RESERVED_SETTING_IDS.has(settingId)) {
-        console.warn(
-          `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
-        );
-        return [];
-      }
       if (!isObject(definition)) {
         return [];
       }
@@ -70,7 +64,21 @@ export function sanitizePluginSettings(
     },
   );
 
-  assertValidSettingWidgets(definitions);
+  // Validate widgets on every declared setting — reserved ids included — so a bad widget
+  // name is still reported for a setting that is later dropped for using a reserved id.
+  assertValidSettingWidgets(objectDefinitions);
+
+  const definitions = objectDefinitions.flatMap(
+    ([settingId, definition]): [string, PluginSettingDefinition][] => {
+      if (RESERVED_SETTING_IDS.has(settingId)) {
+        console.warn(
+          `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
+        );
+        return [];
+      }
+      return [[settingId, definition]];
+    },
+  );
 
   const declaredIds = new Set(definitions.map(([settingId]) => settingId));
 

@@ -374,6 +374,17 @@ describe("sanitizePluginSettings", () => {
       ).toThrow();
     });
 
+    it("reports a bad widget name even on a reserved id that is later dropped", () => {
+      const { context } = setupMount();
+
+      expect(() =>
+        sanitizePluginSettings(
+          { column: definePluginSetting({ widget: "dropdown" }) },
+          context,
+        ),
+      ).toThrow();
+    });
+
     it("accepts every allowed built-in widget name", () => {
       const { context } = setupMount();
       const allowedNames = [
