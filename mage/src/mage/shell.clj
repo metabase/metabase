@@ -31,12 +31,6 @@
         (recur (conj lines line)))
       lines)))
 
-(defn- deref-with-timeout [dereffable timeout-ms]
-  (let [result (deref dereffable timeout-ms ::timed-out)]
-    (when (= result ::timed-out)
-      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
-    result))
-
 (def ^:private ns-per-ms 1000000)
 
 ;; How long a signalled process gets to wind itself down before the next, harsher signal.
@@ -45,14 +39,33 @@
 ;; How often we re-ask a signalled process whether it has exited yet.
 (def ^:private exit-poll-interval-ms 50)
 
+(defn- deadline-in
+  "A `nanoTime` instant `timeout-ms` from now, to measure against with [[remaining-ms]].
+  Wall-clock time is no good for this: an NTP correction or a DST shift would move the deadline."
+  [timeout-ms]
+  (+ (System/nanoTime) (* timeout-ms ns-per-ms)))
+
+(defn- remaining-ms
+  "How many milliseconds are left before `deadline`, or 0 once it has passed."
+  [deadline]
+  (max 0 (quot (- deadline (System/nanoTime)) ns-per-ms)))
+
+(defn- deref-by-deadline
+  "Deref `dereffable`, throwing if `deadline` passes first. `timeout-ms` is the budget `deadline` was built
+  from, and is what the message reports."
+  [dereffable deadline timeout-ms]
+  (let [result (deref dereffable (remaining-ms deadline) ::timed-out)]
+    (when (= result ::timed-out)
+      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
+    result))
+
 (defn- wait-for-exit
   "Wait up to `timeout-ms` for every process in `handles` to exit."
   [handles timeout-ms]
-  ;; nanoTime rather than wall-clock time, so an NTP correction or a DST shift cannot move the deadline.
-  (let [deadline (+ (System/nanoTime) (* timeout-ms ns-per-ms))]
+  (let [deadline (deadline-in timeout-ms)]
     (loop []
       (when (and (some #(.isAlive ^ProcessHandle %) handles)
-                 (< (System/nanoTime) deadline))
+                 (pos? (remaining-ms deadline)))
         (Thread/sleep exit-poll-interval-ms)
         (recur)))))
 
@@ -114,13 +127,15 @@
     (.close (.getOutputStream proc))
     (with-open [out-reader (BufferedReader. (InputStreamReader. (.getInputStream proc)))
                 err-reader (BufferedReader. (InputStreamReader. (.getErrorStream proc)))]
-      (let [exit-code (future (.waitFor proc))
+      ;; One deadline covers all three waits: `timeout-ms` is the command's whole budget, not a budget per wait.
+      (let [deadline  (deadline-in timeout-ms)
+            exit-code (future (.waitFor proc))
             out       (future (read-lines out-reader opts))
             err       (future (read-lines err-reader opts))]
         (try
-          {:exit (deref-with-timeout exit-code timeout-ms)
-           :out  (deref-with-timeout out timeout-ms)
-           :err  (deref-with-timeout err timeout-ms)}
+          {:exit (deref-by-deadline exit-code deadline timeout-ms)
+           :out  (deref-by-deadline out deadline timeout-ms)
+           :err  (deref-by-deadline err deadline timeout-ms)}
           (catch clojure.lang.ExceptionInfo e
             (when (:timed-out? (ex-data e))
               (kill-process! proc))
