@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.security
   "Ring middleware for adding security-related headers to API responses."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -130,20 +131,20 @@
   So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
   subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
   [domain-or-url]
-  (let [cleaned-domain (-> domain-or-url
-                           (str/replace #"/$" "")
-                           (str/replace #"www." ""))
-        {:keys [protocol domain port]} (parse-url cleaned-domain)]
-    (when domain
-      (let [split-domain (str/split domain #"\.")
+  (let [{:keys [protocol domain port]} (parse-url (str/replace domain-or-url #"/$" ""))
+        ;; Strip only a *leading* `www.` label (anchored, escaped dot). An unescaped, unanchored
+        ;; `#"www."` ate `www` + the next char — mangling `wwwevil.com` and dropping `www2.*` hosts.
+        base-domain (some-> domain (str/replace #"^www\." ""))]
+    (when base-domain
+      (let [split-domain (str/split base-domain #"\.")
             new-domains  (cond-> (if (= (count split-domain) 2)
-                                   [domain (format "*.%s" domain)]
-                                   [domain])
-                           (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
+                                   [base-domain (format "*.%s" base-domain)]
+                                   [base-domain])
+                           (str/starts-with? domain "www.") (conj (format "www.%s" base-domain)))]
         (for [new-domain new-domains]
           (str (when protocol (format "%s://" protocol))
                new-domain
-               (when (and port (not= domain "*")) (format ":%s" port))))))))
+               (when (and port (not= base-domain "*")) (format ":%s" port))))))))
 
 (def ^:private always-allowed-iframe-hosts
   ["'self'"
@@ -346,12 +347,29 @@
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(def ^:private csp-unsafe-char-re
+  "Chars that let an embedding-origin token escape the `frame-ancestors` directive: `;` (starts a
+   directive), `,` (starts a policy), and control chars (CR/LF header injection). Ordinary
+   whitespace is already removed by tokenizing on it."
+  #"[;,\p{Cntrl}]")
+
+(defn- valid-embedding-origins
+  "Drop any embedding-origin token with a CSP-structural char, so the rest can be spliced into
+   `frame-ancestors`/`X-Frame-Options` without injecting a directive. nil if none remain."
+  [raw]
+  (some->> (str/split (or raw "") #"\s+")
+           (remove str/blank?)
+           (remove #(re-find csp-unsafe-char-re %))
+           seq
+           (str/join " ")))
+
 (defn- interactive-embedding-origins
-  "The configured interactive-embedding app origins, when interactive embedding is
-   enabled; otherwise nil."
+  "The configured interactive-embedding app origins (validated to structurally-safe origins),
+   when interactive embedding is enabled; otherwise nil."
   []
   (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-       (setting/get-value-of-type :string :embedding-app-origins-interactive)))
+       (valid-embedding-origins
+        (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
@@ -421,11 +439,19 @@
    (= reference-port "*")
    (= port reference-port)))
 
-(defn parse-approved-origins
-  "Parses the space separated string of approved origins"
+(defn- parse-approved-origins*
   [approved-origins-raw]
   (let [urls (str/split approved-origins-raw #" +")]
     (keep (comp parse-url strip-origin-path) urls)))
+
+;; [[parse-approved-origins]] runs on essentially every API response via [[approved-origin?]]. Cache the parse (and
+;; its `Invalid URL` logging) against the origins string, which is a slow-moving global. A small LRU bound fits the few
+;; distinct strings callers pass -- the merged SDK+MCP allowlist and the MCP-only one -- without either evicting the
+;; other.
+(def ^{:arglists '([approved-origins-raw])}
+  parse-approved-origins
+  "Parses the space separated string of approved origins. Result is LRU-cached against the string."
+  (memoize/lru parse-approved-origins* :lru/threshold 4))
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.

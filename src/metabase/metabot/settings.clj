@@ -264,6 +264,35 @@
   :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
+(defn- llm-provider-supports-fast-mode?
+  "Whether a model reference names a model we can serve in Anthropic fast mode.
+
+  Anthropic-only and BYOK-only: fast mode is premium-priced, and proxied connections bill through
+  Metabase Cloud rather than the instance's own API key."
+  [model-ref]
+  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (and (= type "anthropic")
+                  (not ai-proxy?)
+                  (claude/fast-mode-model? model)))))
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
+
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})
 
