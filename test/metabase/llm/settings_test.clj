@@ -358,6 +358,25 @@
               (try (llm.settings/rethrow-if-llm-network-policy-error!
                     cause "https://rebound.example/v1")
                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+  (testing "the message names a policy that would actually change the outcome"
+    (mt/with-premium-features #{}
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (testing "under external-only, allow-private is the next step"
+          (is (re-find #"allow-private for a server on your private network"
+                       (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))
+        (testing "under a deployment endpoint's allow-private floor, it is already in force -- name allow-all"
+          (is (re-find #"Set MB_LLM_ALLOWED_NETWORKS=allow-all"
+                       (llm.settings/llm-url-problem :allow-private "http://127.0.0.1/v1")))
+          (is (=? {:llm-host "127.0.0.1"}
+                  (try (llm.settings/rethrow-if-llm-network-policy-error!
+                        (ex-info "blocked" {:ssrf true :policy :allow-private})
+                        "http://127.0.0.1/v1")
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (re-find #"Set MB_LLM_ALLOWED_NETWORKS=allow-all"
+                       (try (llm.settings/rethrow-if-llm-network-policy-error!
+                             (ex-info "blocked" {:ssrf true :policy :allow-private})
+                             "http://127.0.0.1/v1")
+                            (catch clojure.lang.ExceptionInfo e (ex-message e)))))))))
   (testing "unrelated failures pass through the recognizer"
     (let [e (ex-info "provider down" {:status 503})]
       (is (false? (llm.settings/llm-network-policy-error? e)))

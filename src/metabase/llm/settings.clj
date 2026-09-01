@@ -99,11 +99,19 @@
        configured))))
 
 (defn- host-not-allowed-message
-  "Why a base URL on `host` is refused, and what to do about it.
+  "Why a base URL on `host` is refused under `policy`, and what to do about it.
+  `policy` is the one that actually refused, which a deployment-controlled endpoint's floor may have loosened past
+  [[llm-allowed-networks]]: naming a value that is already in force would be advice that changes nothing.
   On Cloud there is nothing to do: private networks are out of reach, and the policy is not the customer's to change."
-  [host]
-  (if (premium-features/is-hosted?)
+  [policy host]
+  (cond
+    (premium-features/is-hosted?)
     (tru "The base URL host {0} is on a private network. Metabase Cloud can only connect to LLM providers on the public internet." host)
+
+    (= :allow-private policy)
+    (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-all for a server on this machine." host)
+
+    :else
     (tru "The base URL host {0} is on a network Metabase is not allowed to connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, or allow-all for one on this machine." host)))
 
 (defn- url-not-allowed-ex
@@ -153,7 +161,7 @@
        (when-not (str/blank? url)
          (let [host (.getHost (URL. ^String url))]
            (when-not (u.http/host-allowed-for-network-policy? network-policy host)
-             (host-not-allowed-message host)))))))
+             (host-not-allowed-message network-policy host)))))))
 
 (defn llm-request-opts
   "clj-http options that put the network policy on a request to `url`: redirects are never followed, and a
@@ -191,13 +199,15 @@
 
 (defn rethrow-if-llm-network-policy-error!
   "Translate a connection-time refusal from the policy DNS resolver in `e` to the 400 a set-time refusal gets.
-  Returns nil when `e` is unrelated. Logs the refusal: it is the only trace a host that rebinds leaves."
+  Returns nil when `e` is unrelated. Logs the refusal: it is the only trace a host that rebinds leaves.
+  The resolver records the policy it refused under, which is what the message and the log line report."
   [e url]
   (when (llm-network-policy-error? e)
-    (let [host (u.http/->hostname url)]
-      (log/warnf "Refused an LLM request to %s: it resolves to an address llm-allowed-networks=%s does not permit"
-                 host (name (llm-allowed-networks)))
-      (throw (url-not-allowed-ex (host-not-allowed-message host) host e)))))
+    (let [host   (u.http/->hostname url)
+          policy (or (:policy (u/all-ex-data e)) (llm-allowed-networks))]
+      (log/warnf "Refused an LLM request to %s: it resolves to an address the %s network policy does not permit"
+                 host (name policy))
+      (throw (url-not-allowed-ex (host-not-allowed-message policy host) host e)))))
 
 ;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
 ;; deleting the connection they key off turns those features off. They should name a connection instead.
