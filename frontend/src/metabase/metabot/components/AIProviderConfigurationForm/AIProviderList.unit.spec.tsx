@@ -2,12 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import {
-  setupLlmModelsEndpoint,
-  setupLlmProviderTypesEndpoint,
-  setupLlmProvidersEndpoint,
-  setupReorderLlmProvidersEndpoint,
-} from "__support__/server-mocks/metabot";
+import { setupLlmProviderEndpoints } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
@@ -36,9 +31,9 @@ const setup = ({ usable = true, models = [], connections }: SetupOpts = {}) => {
 
   const sessionProperties = createMockSettings();
   setupPropertiesEndpoints(sessionProperties);
-  setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
-  setupLlmProvidersEndpoint(
-    connections ?? [
+  setupLlmProviderEndpoints({
+    types: [createMockLlmProviderType()],
+    connections: connections ?? [
       createMockLlmProviderConnection({
         key: "anthropic",
         type: "anthropic",
@@ -51,9 +46,8 @@ const setup = ({ usable = true, models = [], connections }: SetupOpts = {}) => {
         name: "OpenAI",
       }),
     ],
-  );
-  setupLlmModelsEndpoint(models);
-  setupReorderLlmProvidersEndpoint([]);
+    models,
+  });
 
   renderWithProviders(<AIProviderList />, {
     storeInitialState: {
