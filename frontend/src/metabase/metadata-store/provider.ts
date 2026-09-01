@@ -4,7 +4,11 @@ import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import type { DatabaseId } from "metabase-types/api";
 
-import { type MetadataSelectorOpts, getMetadata } from "./selectors";
+import {
+  type MetadataSelectorOpts,
+  getMetadata,
+  getMetadataUnfiltered,
+} from "./selectors";
 
 /**
  * The metabase-lib provider for a database, built from the mirror.
@@ -19,18 +23,7 @@ export const selectMetadataProvider = (
   databaseId: DatabaseId | null,
   opts?: MetadataSelectorOpts,
 ): Lib.MetadataProvider =>
-  Lib.metadataProvider(databaseId, selectMetadata(state, opts));
-
-/**
- * `getMetadata` is memoised per argument list, so `getMetadata(state)` and
- * `getMetadata(state, undefined)` return two different `Metadata` objects.
- * Two objects mean two metabase-lib caches and two parses of the same data.
- *
- * Call it with one argument when there are no options, which is what every
- * `useSelector(getMetadata)` caller already does.
- */
-const selectMetadata = (state: State, opts?: MetadataSelectorOpts) =>
-  opts ? getMetadata(state, opts) : getMetadata(state);
+  Lib.metadataProvider(databaseId, getMetadata(state, opts));
 
 /**
  * `selectMetadataProvider` for components.
@@ -62,7 +55,7 @@ const providerFactories = new WeakMap<
 export const selectMetadataProviderFactory = (
   state: State,
 ): ((databaseId: DatabaseId | null) => Lib.MetadataProvider) => {
-  const metadata = selectMetadata(state);
+  const metadata = getMetadata(state);
   const cached = providerFactories.get(metadata);
 
   if (cached) {
@@ -95,7 +88,7 @@ const metricProviders = new WeakMap<Lib.Metadata, LibMetric.MetadataProvider>();
 export const selectMetricMetadataProvider = (
   state: State,
 ): LibMetric.MetadataProvider => {
-  const metadata = selectMetadata(state);
+  const metadata = getMetadata(state);
   const cached = metricProviders.get(metadata);
 
   if (cached) {
@@ -114,11 +107,6 @@ export const selectMetricMetadataProvider = (
 export const useMetricMetadataProvider = (): LibMetric.MetadataProvider =>
   useSelector(selectMetricMetadataProvider);
 
-const UNFILTERED_OPTS: MetadataSelectorOpts = {
-  includeHiddenTables: true,
-  includeSensitiveFields: true,
-};
-
 /**
  * `selectMetadataProvider` over hidden tables and sensitive fields as well.
  */
@@ -126,11 +114,12 @@ export const selectMetadataProviderUnfiltered = (
   state: State,
   databaseId: DatabaseId | null,
 ): Lib.MetadataProvider =>
-  selectMetadataProvider(state, databaseId, UNFILTERED_OPTS);
+  Lib.metadataProvider(databaseId, getMetadataUnfiltered(state));
 
 /**
  * `useMetadataProvider` over hidden tables and sensitive fields as well.
  */
 export const useMetadataProviderUnfiltered = (
   databaseId: DatabaseId | null,
-): Lib.MetadataProvider => useMetadataProvider(databaseId, UNFILTERED_OPTS);
+): Lib.MetadataProvider =>
+  useSelector((state) => selectMetadataProviderUnfiltered(state, databaseId));
