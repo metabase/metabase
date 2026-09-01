@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  PLUGIN_TENANTS,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import { openEmbedJsWizard } from "metabase/embedding/embed-setup-modal.slice";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 
 import type { EmbeddingHubStep } from "../types";
 
@@ -15,12 +13,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
 
   const openEmbedModal = useCallback(
     (props: { initialState: SdkIframeEmbedSetupModalInitialState }) => {
-      dispatch(
-        setOpenModalWithProps({
-          id: "embed",
-          props,
-        }),
-      );
+      dispatch(openEmbedJsWizard(props.initialState));
     },
     [dispatch],
   );

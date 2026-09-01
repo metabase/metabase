@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-
-import type { SdkIframeEmbedSetupExperience } from "../../types";
 
 interface ParameterVisibilityToggleProps {
   parameterName: string;

@@ -10,9 +10,7 @@ import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-ifram
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { closeModal } from "metabase/redux/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import {
   Box,
@@ -36,7 +34,6 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
-  const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const {
     currentStep,
@@ -48,6 +45,7 @@ export const SdkIframeEmbedSetupContent = () => {
     experience,
     resource,
     settings,
+    onClose,
   } = useSdkIframeEmbedSetupContext();
 
   const StepContent = useMemo(
@@ -68,7 +66,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
     updateSettings({ [settingKey]: true });
 
-    dispatch(closeModal());
+    onClose();
   }
 
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
@@ -192,6 +190,12 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
       {children}
     </ResizableBox>
   );
+};
+
+type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 };
 
 export const SdkIframeEmbedSetupModal = ({

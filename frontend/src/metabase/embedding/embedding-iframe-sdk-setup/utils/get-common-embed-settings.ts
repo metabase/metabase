@@ -1,9 +1,9 @@
 import { hasAuthToSelect } from "metabase/embedding/embedding-iframe-sdk-setup/utils/has-auth-to-select";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import type {
   SdkIframeDashboardEmbedSettings,
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupGuestEmbedSettings,
   SdkIframeEmbedSetupSettings,
   SdkIframeQuestionEmbedSettings,
