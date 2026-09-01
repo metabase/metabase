@@ -260,7 +260,9 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize common/normalize-map
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:page  pos-int?]
    [:items pos-int?]])
 
