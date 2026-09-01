@@ -130,7 +130,12 @@ export const EmbedQuestionSettingsSidebar = ({
   return (
     <Box className={S.container}>
       <Box className={S.header}>
-        <Group w="100%" justify="space-between" align="flex-start">
+        <Group
+          w="100%"
+          justify="space-between"
+          align="flex-start"
+          wrap="nowrap"
+        >
           <Group align="center" p="md">
             <Text size="md" fw="bold">{t`Visualize as`}</Text>
             <Menu position="bottom-start">
