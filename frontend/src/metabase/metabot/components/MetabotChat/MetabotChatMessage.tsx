@@ -2,7 +2,7 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -495,33 +495,38 @@ const AgentErroredTurnAlert = ({
   onRetry?: () => void;
   onRefreshConversation?: () => void;
 }) => {
-  const isOutOfSync = error.type === "conversation_out_of_sync";
-  const isRetriable = !UNRETRIABLE_ERROR_TYPES.has(error.type);
-
-  let cta: ReactNode;
-  if (isOutOfSync && onRefreshConversation) {
-    cta = (
-      <Button
-        size="sm"
-        onClick={onRefreshConversation}
-        data-testid="metabot-chat-message-refresh"
-      >
-        {t`Refresh`}
-      </Button>
-    );
-  } else if (isRetriable && onRetry != null) {
-    cta = (
-      <Button
-        variant="default"
-        size="compact-xs"
-        fz="xs"
-        onClick={onRetry}
-        data-testid="metabot-chat-message-retry"
-      >
-        {t`Retry`}
-      </Button>
-    );
-  }
+  const cta = match({ error, onRefreshConversation, onRetry })
+    .with(
+      {
+        error: { type: "conversation_out_of_sync" },
+        onRefreshConversation: P.nonNullable,
+      },
+      ({ onRefreshConversation }) => (
+        <Button
+          size="sm"
+          onClick={onRefreshConversation}
+          data-testid="metabot-chat-message-refresh"
+        >
+          {t`Refresh`}
+        </Button>
+      ),
+    )
+    .with(
+      {
+        error: { type: P.when((type) => !UNRETRIABLE_ERROR_TYPES.has(type)) },
+        onRetry: P.nonNullable,
+      },
+      ({ onRetry }) => (
+        <Button
+          size="sm"
+          onClick={onRetry}
+          data-testid="metabot-chat-message-retry"
+        >
+          {t`Retry`}
+        </Button>
+      ),
+    )
+    .otherwise(() => undefined);
 
   return (
     <AgentTurnAlert
