@@ -43,8 +43,10 @@ import {
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { Group, GroupId } from "metabase-types/api";
 
-// "*" or a dotted hostname; leading "@" and case are normalized away first
-const TRUSTED_EMAIL_DOMAIN_REGEX = /^(\*|[^\s@,/]+(\.[^\s@,/]+)+)$/;
+// "*" or a dotted hostname; leading "@" and case are normalized away first.
+// Only "*" is a wildcard: matching is exact, so reject strings like "*.mycompany.com"
+const TRUSTED_EMAIL_DOMAIN_REGEX =
+  /^(\*|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,})$/;
 
 export function parseTrustedEmailDomains(value: string | null): string[] {
   if (!value) {

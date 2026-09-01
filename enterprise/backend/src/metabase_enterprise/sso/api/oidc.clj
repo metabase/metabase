@@ -17,59 +17,49 @@
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private trusted-email-domains-schema
-  "\"*\" or a dotted hostname, optionally with a leading @."
+  "\"*\" or a dotted hostname, optionally with a leading @. Only \"*\" is a wildcard: matching is exact,
+   so reject strings like \"*.mycompany.com\" that would otherwise be stored and silently never match."
   [:sequential [:re {:error/message "must be an email domain such as mycompany.com, or *"}
-                #"^\s*@?(\*|[^\s@,/]+(\.[^\s@,/]+)+)\s*$"]])
+                #"^\s*@?(\*|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,})\s*$"]])
+
+(def ^:private group-sync-schema
+  [:map {:closed true}
+   [:enabled {:optional true} :boolean]
+   [:group-attribute {:optional true} :string]
+   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]])
+
+(def ^:private oidc-provider-fields
+  "Field schemas shared by the create/update/response provider schemas."
+  [[:login-prompt :string]
+   [:issuer-uri :string]
+   [:client-id :string]
+   [:client-secret :string]
+   [:scopes [:sequential :string]]
+   [:enabled :boolean]
+   [:attribute-map [:map-of :string :string]]
+   [:auto-link-verified-email :boolean]
+   [:trusted-email-domains trusted-email-domains-schema]
+   [:group-sync group-sync-schema]])
+
+(defn- provider-schema
+  "Closed provider map schema over [[oidc-provider-fields]]; fields in `required` are mandatory, the
+   rest optional. `:with-key?` adds the (immutable, so create/response-only) `:key` field."
+  [& {:keys [required with-key?] :or {required #{}}}]
+  (into (cond-> [:map {:closed true}]
+          with-key? (conj [:key :string]))
+        (map (fn [[k s]]
+               (if (contains? required k) [k s] [k {:optional true} s])))
+        oidc-provider-fields))
 
 (def ^:private oidc-provider-create-schema
-  [:map {:closed true}
-   [:key :string]
-   [:login-prompt :string]
-   [:issuer-uri :string]
-   [:client-id :string]
-   [:client-secret :string]
-   [:scopes {:optional true} [:sequential :string]]
-   [:enabled {:optional true} :boolean]
-   [:attribute-map {:optional true} [:map-of :string :string]]
-   [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
-   [:group-sync {:optional true} [:map {:closed true}
-                                  [:enabled {:optional true} :boolean]
-                                  [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
+  (provider-schema :with-key? true
+                   :required #{:login-prompt :issuer-uri :client-id :client-secret}))
 
 (def ^:private oidc-provider-update-schema
-  [:map {:closed true}
-   [:login-prompt {:optional true} :string]
-   [:issuer-uri {:optional true} :string]
-   [:client-id {:optional true} :string]
-   [:client-secret {:optional true} :string]
-   [:scopes {:optional true} [:sequential :string]]
-   [:enabled {:optional true} :boolean]
-   [:attribute-map {:optional true} [:map-of :string :string]]
-   [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
-   [:group-sync {:optional true} [:map {:closed true}
-                                  [:enabled {:optional true} :boolean]
-                                  [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
+  (provider-schema))
 
 (def ^:private oidc-provider-response-schema
-  [:map {:closed true}
-   [:key :string]
-   [:login-prompt :string]
-   [:issuer-uri :string]
-   [:client-id :string]
-   [:client-secret :string]
-   [:scopes {:optional true} [:sequential :string]]
-   [:enabled {:optional true} :boolean]
-   [:attribute-map {:optional true} [:map-of :string :string]]
-   [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
-   [:group-sync {:optional true} [:map {:closed true}
-                                  [:enabled {:optional true} :boolean]
-                                  [:group-attribute {:optional true} :string]
-                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
+  oidc-provider-create-schema)
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
