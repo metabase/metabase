@@ -161,12 +161,13 @@
    `_meta.ui.resourceUri`, which is why each UI tool gets its own URI in the first place.)
 
    The returned fn takes the `resources/read` options map: `:ui-credential` (the scoped credential
-   the iframe authenticates with) and `:session-id` (the MCP session id it echoes back on
-   callbacks)."
+   the iframe authenticates with, as a delay — forcing it here is what mints one, so resources that
+   do not embed a credential never cause one to exist) and `:session-id` (the MCP session id it
+   echoes back on callbacks)."
   [tag]
   (fn [opts]
     (let [site-url      (system/site-url)
-          ui-credential (:ui-credential opts)
+          ui-credential (force (:ui-credential opts))
           session-id    (:session-id opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template

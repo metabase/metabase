@@ -459,7 +459,9 @@
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check records every
 ;; attempt (not just failures) which is correct here — we want to cap total throughput
 ;; regardless of success to prevent resource exhaustion from a compromised token.
-;; One throttler covers every MCP surface, so the cap bounds a user's total MCP throughput.
+;; One throttler covers every surface built on THIS transport. During the v1 migration that is v2 only —
+;; v1 carries its own copy of this namespace and its own throttler, so a user's total MCP throughput is
+;; currently two caps, not one. That collapses to a single cap when v1's transport is deleted.
 ;; The cap counts JSON-RPC *messages*, not HTTP requests: a POST can carry a batch, so charging
 ;; one attempt per request would let a 1000-message batch cost a single attempt and defeat the cap
 ;; (see [[check-throttle]]/[[jsonrpc-message-count]]).

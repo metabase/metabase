@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.v2.registry :as registry]
@@ -178,6 +179,35 @@
         (let [response (mcp-request (jsonrpc-request "resources/read" {})
                                     {"mcp-session-id" session-id})]
           (is (= -32602 (get-in response [:body :error :code]))))))))
+
+(deftest credential-is-minted-only-where-it-is-embedded-test
+  (testing "GHY-4157: `resources/read` minted a UI credential before it knew what had been asked for, so every
+            read paid for one and handed it to the render — including data resources whose render-fn ignores it,
+            and reads that turn out to be unknown or scope-denied. A credential is a live 5-minute authenticator
+            for the /api/dataset surface; it should exist only where something actually embeds it, so that a
+            resource added later cannot start leaking one by accident."
+    (mcp.ui-resource/with-fallback-template
+      (let [[session-id _] (initialize!)
+            minted (atom 0)
+            real   mcp.session/issue-ui-credential]
+        (with-redefs [mcp.session/issue-ui-credential (fn [& args] (swap! minted inc) (apply real args))]
+          (testing "a data resource does not mint one — its render-fn never asks"
+            (mcp-request (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri})
+                         {"mcp-session-id" session-id})
+            (is (zero? @minted)))
+          (testing "nor does a read that resolves to nothing"
+            (mcp-request (jsonrpc-request "resources/read" {:uri "ui://metabase/nope.html"})
+                         {"mcp-session-id" session-id})
+            (is (zero? @minted)))
+          (testing "the iframe shell still gets exactly one, and still embeds it"
+            (let [text (-> (mcp-request (jsonrpc-request "resources/read"
+                                                         {:uri v2.resources/visualize-query-uri})
+                                        {"mcp-session-id" session-id})
+                           (get-in [:body :result :contents])
+                           first
+                           :text)]
+              (is (= 1 @minted))
+              (is (str/includes? text "uiCredential")))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
