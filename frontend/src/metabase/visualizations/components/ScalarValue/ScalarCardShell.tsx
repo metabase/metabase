@@ -1,5 +1,6 @@
 import { Children, type ReactNode, useState } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Stack, Tooltip } from "metabase/ui";
 import { getRootFontScale } from "metabase/visualizations/lib/scalar_utils";
 import type {
@@ -7,13 +8,12 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 
-import {
-  ScalarActionButtons,
-  ScalarTitle,
-  ScalarWrapper,
-  TITLE_TOOLTIP_OFFSET,
-} from "./ScalarValue";
+import { ScalarActionButtons } from "./ScalarActionButtons";
+import { ScalarTitle } from "./ScalarTitle";
+import { ScalarWrapper } from "./ScalarValue";
 import { type ScalarSizeTier, getScalarSizeTier } from "./sizing";
+
+const TITLE_TOOLTIP_OFFSET = 1;
 
 type ScalarCardProps = VisualizationProps & VisualizationPassThroughProps;
 
@@ -21,8 +21,6 @@ interface UseScalarCardShellOptions {
   hideTitle?: boolean;
 }
 
-// the state and title wiring shared by the Number and Trend cards, so the
-// two visualizations cannot drift apart
 export function useScalarCardShell(
   {
     settings,
@@ -51,7 +49,8 @@ export function useScalarCardShell(
   const rootFontScale = getRootFontScale();
   const availableWidth = Math.max(width - 2 * tier.xPadding * rootFontScale, 0);
 
-  const title = showTitle && !hideTitle ? settings["card.title"] : null;
+  const tc = useTranslateContent();
+  const title = showTitle && !hideTitle ? tc(settings["card.title"]) : null;
   const showsInlineTitle = Boolean(title) && tier.showsTitle;
   const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
   const description =
