@@ -1081,6 +1081,26 @@ export const CombinedWithInvalidSettings = {
   },
 };
 
+export const StackedNormalizedCustomYAxisRange = {
+  render: Template,
+  args: {
+    // metabase#75156: raw values are 10 and 15, so neither falls inside 40-60.
+    // No warning should appear.
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "stackable.stack_type": "normalized",
+        "graph.y_axis.min": 40,
+        "graph.y_axis.max": 60,
+      }),
+    ) as any,
+    renderingContext,
+  },
+};
+
 export const StackedChartCustomYAxisRange = {
   render: Template,
   args: {
