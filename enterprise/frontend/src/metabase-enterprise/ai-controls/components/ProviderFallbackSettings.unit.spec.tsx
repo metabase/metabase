@@ -7,12 +7,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  setupLlmModelsEndpoint,
-  setupLlmProviderTypesEndpoint,
-  setupLlmProvidersEndpoint,
-  setupReorderLlmProvidersEndpoint,
-} from "__support__/server-mocks/metabot";
+import { setupLlmProviderEndpoints } from "__support__/server-mocks/metabot";
 import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -51,21 +46,21 @@ const setup = ({
     }),
   ]);
   setupUpdateSettingEndpoint();
-  setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
-  setupLlmProvidersEndpoint([
-    createMockLlmProviderConnection({
-      key: "anthropic",
-      type: "anthropic",
-      name: "Anthropic",
-    }),
-    createMockLlmProviderConnection({
-      key: "openai",
-      type: "openai",
-      name: "OpenAI",
-    }),
-  ]);
-  setupLlmModelsEndpoint([]);
-  setupReorderLlmProvidersEndpoint([]);
+  setupLlmProviderEndpoints({
+    types: [createMockLlmProviderType()],
+    connections: [
+      createMockLlmProviderConnection({
+        key: "anthropic",
+        type: "anthropic",
+        name: "Anthropic",
+      }),
+      createMockLlmProviderConnection({
+        key: "openai",
+        type: "openai",
+        name: "OpenAI",
+      }),
+    ],
+  });
 
   const storeInitialState = {
     settings: mockSettings(sessionProperties),

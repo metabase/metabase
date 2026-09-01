@@ -278,6 +278,30 @@ export function setupReorderLlmProvidersEndpoint(
   });
 }
 
+export type LlmProviderEndpointsOpts = {
+  types?: LlmProviderType[];
+  connections?: LlmProviderConnection[];
+  models?: LlmConnectionModels[];
+  activeModels?: LlmActiveModels;
+};
+
+/**
+ * One-call, data-driven mock of the read endpoints behind the AI provider surfaces
+ * (provider list, model pickers, fallback settings).
+ */
+export function setupLlmProviderEndpoints({
+  types = [],
+  connections = [],
+  models = [],
+  activeModels = createMockLlmActiveModels(),
+}: LlmProviderEndpointsOpts = {}) {
+  setupLlmProviderTypesEndpoint(types);
+  setupLlmProvidersEndpoint(connections);
+  setupLlmModelsEndpoint(models);
+  setupLlmActiveModelEndpoint(activeModels);
+  setupReorderLlmProvidersEndpoint([]);
+}
+
 const CREATE_LLM_PROVIDER_ROUTE_NAME = "create-llm-provider";
 
 export function setupCreateLlmProviderEndpoint(
