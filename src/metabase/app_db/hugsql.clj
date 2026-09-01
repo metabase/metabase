@@ -50,6 +50,17 @@
     (t2.transformed/transforms model)
     {}))
 
+(defn non-empty-in
+  "Coerce an id collection for use in an `IN (:value*:x)` param: `[]`/`nil` -> `[nil]`, which binds
+  a single NULL and matches no row (an empty `IN ()` is a SQL syntax error). Pure value coercion --
+  takes a seq, returns a seq; builds no SQL.
+
+  Use this only when the query must still run on an empty list (e.g. one arm of a larger query that
+  should contribute zero rows). When an empty list means \"nothing to do\", prefer an early
+  `(when (seq ids) ...)` at the call site -- it skips a pointless query."
+  [ids]
+  (or (seq ids) [nil]))
+
 (defn- direction-fns
   "`{column transform-fn}` for one `direction` (`:in` or `:out`) of `model`'s declared transforms."
   [model direction]

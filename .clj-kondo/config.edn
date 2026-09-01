@@ -884,6 +884,17 @@
               next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through timeline.queries (HugSQL)"}
               metabase.app-db.query/query   {:message "app-db SQL goes through timeline.queries (HugSQL)"}
               metabase.app-db.query/compile {:message "app-db SQL goes through timeline.queries (HugSQL)"}}}}
+  metabase-enterprise.stale.impl
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              toucan2.core/query-one        {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              toucan2.core/count            {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through stale-queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through stale-queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through stale-queries (HugSQL)"}
+              metabase.app-db.query/compile {:message "app-db SQL goes through stale-queries (HugSQL)"}}}}
 
   test-namespaces
   {:linters

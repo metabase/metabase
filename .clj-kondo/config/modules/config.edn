@@ -3786,12 +3786,13 @@
            metabase-enterprise.stale.init}
    :uses #{analytics
            api
+           app-db
            collections
+           embedding
            premium-features
            queries
            request
            settings
-           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
