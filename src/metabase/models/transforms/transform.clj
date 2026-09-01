@@ -41,8 +41,11 @@
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (and (api/is-data-analyst?)
-        (transforms.util/source-tables-readable? instance)
+   ;; A superuser reads every transform without consulting the source query -- they can read everything the
+   ;; query could name, and the check needs a bound user, which an admin-flagged caller need not have.
+   (and (or api/*is-superuser?*
+            (and (api/is-data-analyst?)
+                 (transforms.util/source-tables-readable? instance)))
         (transforms.util/check-feature-enabled instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
