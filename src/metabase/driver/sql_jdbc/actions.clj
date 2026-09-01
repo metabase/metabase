@@ -478,6 +478,7 @@
 
 ;; TODO (Cam 2026-07-23) Update this stuff to use MBQL 5 instead of legacy MBQL
 (mu/defn- model-create! :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
+  ;; the legacy MBQL query schema is deprecated, and goes away with the TODO above
   [action context legacy-queries :- #_{:clj-kondo/ignore [:deprecated-var]} [:sequential driver-api/mbql.schema.Query]]
   (let [database (inputs->db legacy-queries)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.

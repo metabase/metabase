@@ -63,15 +63,28 @@
     ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
 
+(def ^:private CommentHighlight
+  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
+  pick out the point — so the client can re-find it in a result set it is separately authorized to
+  read."
+  [:map {:closed true}
+   [:columnName {:optional true} [:maybe :string]]
+   [:dimensions {:optional true}
+    [:maybe [:sequential [:map {:closed true}
+                          [:columnName {:optional true} [:maybe :string]]
+                          [:value      {:optional true} :any]]]]]])
+
 (def CommentContext
-  "Context stored alongside a comment: a JSON blob whose shape depends on what was commented on. Only `timeline_id` is
-  read back, by [[metabase.comments.models.comment]] when building an exploration comment URL."
+  "Context stored alongside a comment"
   (mu/with-api-error-message
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map {:closed false}
-     [:timeline_id {:optional true} ms/PositiveInt]]]
+    [:map {:closed true}
+     [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
+     [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+     [:highlighted           {:optional true} [:maybe CommentHighlight]]
+     [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
@@ -141,7 +154,10 @@
                                               [:= :target_id target_id]]
                                    :order-by [[:created_at :asc]]})
                        (t2/hydrate :creator :reactions))]
-      {:comments (render-comments comments)})))
+      ;; The read check above only proves the viewer may see the *target*, and for an exploration
+      ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
+      ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
+      {:comments (render-comments (comment/apply-context-gate target_type target_id comments))})))
 
 (defn- mentioned-ids-who-can-read
   "Restrict mentioned user ids to active users who can themselves read `entity`."

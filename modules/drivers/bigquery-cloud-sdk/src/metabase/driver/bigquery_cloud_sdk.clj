@@ -30,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? mapv some empty? not-empty]]
+   ;; sync fix-ups read and write Database/Table/Field rows directly; the metadata provider is read-only
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -117,6 +118,9 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
+        universe-domain (or (:universe-domain details)
+                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
         read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout read-timeout-ms)
@@ -125,6 +129,8 @@
                        (.setCredentials creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
+    (when universe-domain
+      (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))

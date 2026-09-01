@@ -1,22 +1,20 @@
 import { t } from "ttag";
 
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/definition";
-
-import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_BUBBLE_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_DATA_SETTINGS,
+  GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
   SPLIT_PANELS_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "../../lib/settings/graph";
-import type { VisualizationDefinition } from "../../types";
+  type VisualizationDefinition,
+  getDefaultSize,
+  getMinSize,
+} from "metabase/viz-core";
 
 const ScatterViz: Omit<
   VisualizationDefinition,
@@ -38,6 +36,7 @@ const ScatterViz: Omit<
     ...GRAPH_DATA_SETTINGS,
     ...SPLIT_PANELS_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

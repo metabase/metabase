@@ -5,7 +5,7 @@ import type {
   MetabaseCard,
   MetabaseQueryObject,
 } from "metabase/embedding-sdk/types/question";
-import type { QueryParams } from "metabase/query_builder/actions";
+import type { QueryParams } from "metabase/query_builder";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";

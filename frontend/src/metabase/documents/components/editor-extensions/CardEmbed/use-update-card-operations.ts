@@ -1,12 +1,12 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   type UseCardDataResult,
   useEditorHost,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Document, VisualizationSettings } from "metabase-types/api";

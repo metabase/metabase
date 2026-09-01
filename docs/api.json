@@ -6531,6 +6531,48 @@
         },
         "required" : [ "name", "dimension_interestingness", "dimensions" ]
       },
+      "metabase.explorations.api.ExplorationDocument" : {
+        "description" : "Schema for the Summary document attached to an exploration.",
+        "type" : "object",
+        "properties" : {
+          "is_placeholder" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "exploration_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "content_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "exploration_id", "creator_id", "content_type", "is_placeholder", "created_at", "updated_at" ]
+      },
       "metabase.explorations.api.ExplorationMetric" : {
         "description" : "Schema for a metric in the /dimensions response: dimensions referenced by id only.",
         "type" : "object",
@@ -6946,6 +6988,13 @@
             "description" : "value must be an integer greater than zero.",
             "type" : "integer",
             "minimum" : 1
+          },
+          "document" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+            }, {
+              "type" : "null"
+            } ]
           },
           "creator" : {
             "oneOf" : [ {
@@ -15504,6 +15553,207 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
       },
+      "metabase.users-rest.api.current-user-response" : {
+        "description" : "Response for `GET /api/user/current`.",
+        "type" : "object",
+        "properties" : {
+          "permissions" : {
+            "$ref" : "#/components/schemas/metabase.users-rest.api.user-permissions"
+          },
+          "has_model" : {
+            "type" : "boolean"
+          },
+          "login_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sso_source" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "jwt_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_qbnewb" : {
+            "type" : "boolean"
+          },
+          "is_active" : {
+            "type" : "boolean"
+          },
+          "last_login" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "tenant_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "group_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "uniqueItems" : true
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "locale" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "first_login" : { },
+          "is_superuser" : {
+            "type" : "boolean"
+          },
+          "tenant_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "custom_homepage" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "dashboard_id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }
+              },
+              "required" : [ "dashboard_id" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_installer" : {
+            "type" : "boolean"
+          },
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_joined" : { },
+          "has_invited_second_user" : {
+            "type" : "boolean"
+          },
+          "personal_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "common_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "has_question_and_dashboard" : {
+            "type" : "boolean"
+          },
+          "can_write_any_collection" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+      },
+      "metabase.users-rest.api.user-permissions" : {
+        "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
+        "type" : "object",
+        "properties" : {
+          "can_access_subscription" : {
+            "type" : "boolean"
+          },
+          "can_create_native_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_setting" : {
+            "type" : "boolean"
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "is_group_manager" : {
+            "type" : "boolean"
+          },
+          "can_access_monitoring" : {
+            "type" : "boolean"
+          },
+          "can_access_data_model" : {
+            "type" : "boolean"
+          },
+          "can_access_db_details" : {
+            "type" : "boolean"
+          },
+          "can_create_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_transforms" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "can_create_queries", "can_create_native_queries" ]
+      },
       "metabase.users.schema.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -19361,7 +19611,7 @@
       "post" : {
         "operationId" : "post-api-card-card-id-query",
         "summary" : "POST /api/card/{card-id}/query",
-        "description" : "Run the query associated with a Card.",
+        "description" : "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query\n  and optionally re-sorts the rows via the `sort` body param.",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -19421,6 +19671,23 @@
                       "items" : {
                         "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
                       }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "sort" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "value_asc", "value_desc", "label_asc", "label_desc" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "stored_result_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     }, {
                       "type" : "null"
                     } ]
@@ -21301,6 +21568,17 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "show_exploration_documents",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -21769,6 +22047,18 @@
         }, {
           "in" : "query",
           "name" : "show_dashboard_questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show_exploration_documents",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -36974,7 +37264,7 @@
       "post" : {
         "operationId" : "post-api-exploration",
         "summary" : "POST /api/exploration",
-        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns\n  immediately with an empty queries list. Clients should poll `GET /:id` until the queries appear\n  and reach a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
+        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary\n  document in the same collection. Actual planning is async; this endpoint returns immediately\n  with an empty queries list. Clients should poll `GET /:id` until the queries appear and reach\n  a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37167,7 +37457,7 @@
       "get" : {
         "operationId" : "get-api-exploration-mine",
         "summary" : "GET /api/exploration/mine",
-        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration and its creation — see\n  [[my-explorations-honeysql]]. Explorations that were moved into a collection the user can no\n  longer read are excluded, as are archived ones. Returns the collection-items envelope:\n  `{:total :limit :offset :data}`.",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[my-explorations-honeysql]]. Explorations that were moved into a collection the\n  user can no longer read are excluded, as are archived ones. Returns the collection-items\n  envelope: `{:total :limit :offset :data}`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37446,7 +37736,7 @@
       "put" : {
         "operationId" : "put-api-exploration-id",
         "summary" : "PUT /api/exploration/{id}",
-        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.",
+        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37524,7 +37814,7 @@
       "delete" : {
         "operationId" : "delete-api-exploration-id",
         "summary" : "DELETE /api/exploration/{id}",
-        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade\n  FKs configured in the explorations migration.",
+        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`\n  via the on-delete-cascade FKs configured in the explorations migration.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37696,6 +37986,71 @@
                   }
                 },
                 "required" : [ "page_id", "explore_filters" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/{id}/summary/append" : {
+      "post" : {
+        "operationId" : "post-api-exploration-id-summary-append",
+        "summary" : "POST /api/exploration/{id}/summary/append",
+        "description" : "Append a static `cardEmbed` representing a *composite chart* — built from one or more\n  `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's\n  Summary document.\n\n  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry\n  for single-query charts; multiple for combined cartesian / heat-map charts). The BE\n  combines those source snapshots (`metabase.explorations.composite/combine`) into one\n  ephemeral `stored_result` and materializes one ephemeral `report_card` referencing it.\n  The cardEmbed node remains single-card.\n\n  - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE\n    can deep-link the embed title back to the source page, share that page's comment\n    stream (`child_target_id`), and resolve highlight hover and explore-further filter\n    pills via opaque `host_data`.\n  - `display` / `visualization_settings` are required FE-computed render settings (from\n    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.\n\n  All source EQs must belong to a thread of this exploration. Appending clears\n  `is_placeholder` when it was set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display" : {
+                    "type" : "string"
+                  },
+                  "exploration_query_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  },
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "exploration_query_ids", "display", "visualization_settings" ]
               }
             }
           }
@@ -43471,7 +43826,7 @@
       "put" : {
         "operationId" : "put-api-mt-user-id-attributes",
         "summary" : "PUT /api/mt/user/{id}/attributes",
-        "description" : "Update the `login_attributes` for a User.",
+        "description" : "Update the `login_attributes` for a User. Only personal users can have attributes.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -50044,7 +50399,7 @@
       "post" : {
         "operationId" : "post-api-slack-bug-report",
         "summary" : "POST /api/slack/bug-report",
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -50064,10 +50419,145 @@
                 "type" : "object",
                 "properties" : {
                   "diagnosticInfo" : {
-                    "type" : "object"
+                    "type" : "object",
+                    "properties" : {
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "additionalProperties" : false
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "additionalProperties" : false
                   }
                 },
-                "required" : [ "diagnosticInfo" ]
+                "required" : [ "diagnosticInfo" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -57953,7 +58443,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.users-rest.api.current-user-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57989,7 +58486,7 @@
       "get" : {
         "operationId" : "get-api-user-id",
         "summary" : "GET /api/user/{id}",
-        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
+        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.\n  Only personal users can be fetched this way; API-key users and the internal user 404.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -58016,7 +58513,7 @@
       "put" : {
         "operationId" : "put-api-user-id",
         "summary" : "PUT /api/user/{id}",
-        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.",
+        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.\n  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
