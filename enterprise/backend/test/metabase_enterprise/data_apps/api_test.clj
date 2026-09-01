@@ -24,14 +24,6 @@
               :bundle       (.getBytes "BUNDLE" "UTF-8")
               :bundle_hash  "abc123"))
 
-(defn- view-data-permission
-  [group-id database-id table-id]
-  (t2/select-one-fn :perm_value :model/DataPermissions
-                    :group_id group-id
-                    :db_id database-id
-                    :table_id table-id
-                    :perm_type :perms/view-data))
-
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
 (defn- snapshot
@@ -191,74 +183,6 @@
         (is (= #{orders-id products-id}
                (set (:table_ids response))))))))
 
-(deftest superuser-can-reconcile-query-table-permissions-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [database-id (mt/id)
-            first-table-id (mt/id :venues)
-            second-table-id (mt/id :users)]
-        (create-app!)
-        (let [{group-id :permission_group_id}
-              (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
-                                    {:table_ids [first-table-id]})]
-          (is (nil? (view-data-permission group-id database-id nil)))
-          (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (= :blocked (view-data-permission group-id database-id second-table-id)))
-          (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
-                                {:table_ids [second-table-id]})
-          (is (nil? (view-data-permission group-id database-id nil)))
-          (is (= :blocked (view-data-permission group-id database-id first-table-id)))
-          (is (= :unrestricted (view-data-permission group-id database-id second-table-id))))))))
-
-(deftest query-table-permission-reconciliation-skips-unchanged-databases-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [table-id (mt/id :venues)]
-        (create-app!)
-        (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
-                              {:table_ids [table-id]})
-        (let [original-set-database-permission! perms/set-database-permission!
-              original-set-table-permissions!    perms/set-table-permissions!
-              writes                             (atom 0)]
-          (with-redefs [perms/set-database-permission!
-                        (fn [& args]
-                          (when (= :perms/view-data (nth args 3))
-                            (swap! writes inc))
-                          (apply original-set-database-permission! args))
-                        perms/set-table-permissions!
-                        (fn [& args]
-                          (when (= :perms/view-data (nth args 1))
-                            (swap! writes inc))
-                          (apply original-set-table-permissions! args))]
-            (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
-                                  {:table_ids [table-id]}))
-          (is (zero? @writes)))))))
-
-(deftest query-table-permission-reconciliation-rolls-back-on-error-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [database-id (mt/id)
-            first-table-id (mt/id :venues)
-            second-table-id (mt/id :users)]
-        (create-app!)
-        (let [{group-id :permission_group_id}
-              (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
-                                    {:table_ids [first-table-id]})
-              original-set-table-permissions! perms/set-table-permissions!
-              view-data-calls                  (atom 0)]
-          (with-redefs [perms/set-table-permissions!
-                        (fn [& args]
-                          (let [permission-type (nth args 1)]
-                            (when (and (= permission-type :perms/view-data)
-                                       (= 1 (swap! view-data-calls inc)))
-                              (throw (ex-info "permission update failed" {})))
-                            (apply original-set-table-permissions! args)))]
-            (mt/user-http-request :crowberto :put 500 "apps/demo/resources/permissions"
-                                  {:table_ids [second-table-id]}))
-          (is (nil? (view-data-permission group-id database-id nil)))
-          (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (= :blocked (view-data-permission group-id database-id second-table-id))))))))
-
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
@@ -281,16 +205,6 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "apps/demo/query"
                                    {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
-
-(deftest non-superuser-cannot-reconcile-query-table-permissions-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
-                                   {:table_ids [(mt/id :venues)]})))
-      (is (nil? (t2/select-one-fn :permission_group_id :model/DataApp :name "demo"))
-          "the refused call did not create permission resources"))))
 
 (deftest superuser-can-create-or-reuse-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}

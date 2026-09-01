@@ -33,29 +33,6 @@
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (mt/with-full-data-perms-for-all-users!
           (is (not (sandbox.api.util/sandboxed-user?)))))))
-  (testing "A data app group grants non-sandboxed tables without disabling sandboxing"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/DataApp _ {:name                "sandboxes"
-                                     :display_name        "Sandboxes"
-                                     :bundle_path         "data_apps/sandboxes/index.js"
-                                     :permission_group_id group-id}
-                   :model/PermissionsGroupMembership _ {:user_id  user-id
-                                                        :group_id group-id}]
-      (met/with-gtaps-for-user! user-id {:gtaps {:venues {}}}
-        (let [database-id       (mt/id)
-              sandboxed-table-id (mt/id :venues)
-              granted-table-id   (mt/id :users)]
-          (data-perms/set-table-permission! group-id sandboxed-table-id :perms/view-data :unrestricted)
-          (data-perms/set-table-permission! group-id granted-table-id :perms/view-data :unrestricted)
-          (is (sandbox.api.util/sandboxed-user?))
-          (is (= #{sandboxed-table-id}
-                 (into #{} (map :table_id)
-                       (sandbox.api.util/enforced-sandboxes-for-tables #{sandboxed-table-id granted-table-id}))))
-          (is (= :unrestricted
-                 (data-perms/table-permission-for-user user-id :perms/view-data database-id sandboxed-table-id)))
-          (is (= :unrestricted
-                 (data-perms/table-permission-for-user user-id :perms/view-data database-id granted-table-id)))))))
   (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandboxed"
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
     ;; to fail closed

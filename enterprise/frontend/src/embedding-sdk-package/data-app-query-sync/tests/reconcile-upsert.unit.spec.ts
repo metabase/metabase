@@ -4,7 +4,6 @@ import { discoverQueries } from "../discover";
 import { syncResources } from "../sync";
 
 import {
-  isResourcePermissionsRequest,
   jsonResponse,
   makeApp,
   setupResourceSyncTests,
@@ -67,9 +66,6 @@ describe("query reconciliation upserts", () => {
       if (pathname === "/api/card/35" && method === "PUT") {
         return jsonResponse({ id: 35 });
       }
-      if (isResourcePermissionsRequest(pathname, method, slug)) {
-        return jsonResponse({ name: slug, resource_collection_id: 20 });
-      }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
@@ -129,9 +125,6 @@ describe("query reconciliation upserts", () => {
         return jsonResponse({ id: 80 });
       }
 
-      if (isResourcePermissionsRequest(pathname, method, slug)) {
-        return jsonResponse({ name: slug, resource_collection_id: 20 });
-      }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 

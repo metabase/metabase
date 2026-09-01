@@ -14,8 +14,7 @@
   "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.
   This is done by checking whether any *other* group provides `:unrestricted` access to the sandboxed table (without
   its own sandbox). If so, we don't enforce the sandbox."
-  [{:as _sandbox :keys [table_id] {:keys [db_id]} :table} user-group-ids group-id->sandboxes group-id->impersonations
-   data-app-group-ids]
+  [{:as _sandbox :keys [table_id] {:keys [db_id]} :table} user-group-ids group-id->sandboxes group-id->impersonations]
   ;; If any *other* non-sandboxed groups the user is in provide unrestricted view-data access to the table, we don't
   ;; enforce the sandbox.
   (let [sandboxed-groups (into #{} (for [[group-id sandboxes] group-id->sandboxes
@@ -24,7 +23,7 @@
         impersonated-groups (into #{} (for [[group-id impersonations] group-id->impersonations
                                             :when (some #(= (:db_id %) db_id) impersonations)]
                                         group-id))
-        groups-to-exclude (set/union sandboxed-groups impersonated-groups data-app-group-ids)
+        groups-to-exclude (set/union sandboxed-groups impersonated-groups)
         groups-to-check (set/difference user-group-ids groups-to-exclude)]
     (if (seq groups-to-check)
       (not (perms/groups-have-permission-for-table? groups-to-check
@@ -60,10 +59,6 @@
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (t2/select :model/ConnectionImpersonation
                                                      :group_id [:in user-group-ids]))
-          ;; A user's membership in a data-app group must never lift a sandbox another group
-          ;; imposes on them — the app's access path can't leak into product-wide enforcement.
-          ;; So exclude app groups from the set whose access can lift a sandbox.
-          data-app-group-ids (perms/data-app-group-ids)
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids
@@ -72,7 +67,7 @@
                                                  (->> sandboxes
                                                       (filter :table_id)
                                                       (into #{})))))]
-      (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations data-app-group-ids)
+      (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations)
               (reduce set/union #{} (vals group-id->sandboxes))))))
 
 (defn enforced-sandboxes-for-tables

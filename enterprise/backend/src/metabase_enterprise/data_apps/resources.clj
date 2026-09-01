@@ -31,13 +31,21 @@
          (and (nil? table_id)
               (= perm_value value)))))
 
-(defn- restrict-query-creation! [group]
+(defn- block-view-data!
+  "Block the app group's view-data at the database level on every database, so it grants no data access
+   of its own — a viewer reaches an app's data only through access they already hold in another group.
+   `view-data :blocked` cascades `download-results`/`transforms` to `:no`; we reassert whenever any of
+   that has drifted, so a manual grant can't survive a sync."
+  [group]
   (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-        permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})]
+        permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})
+        db-level?    (fn [database-id perm-type value]
+                       (database-level-permission? (get permissions [(:id group) database-id perm-type]) value))]
     (doseq [database-id database-ids
-            :let [rows (get permissions [(:id group) database-id :perms/create-queries])]
-            :when (not (database-level-permission? rows :no))]
-      (perms/set-database-permission! permissions group database-id :perms/create-queries :no))))
+            :when (not (and (db-level? database-id :perms/view-data :blocked)
+                            (db-level? database-id :perms/download-results :no)
+                            (db-level? database-id :perms/transforms :no)))]
+      (perms/set-database-permission! permissions group database-id :perms/view-data :blocked))))
 
 (defn- restore-trashed-collection!
   "Bring `collection` back out of the trash, with everything archived alongside it.
@@ -58,7 +66,7 @@
 
 (defn- apply-resource-permissions!
   [group collection]
-  (restrict-query-creation! group)
+  (block-view-data! group)
   (doseq [permission-group (t2/select :model/PermissionsGroup)
           :when (not= (:id permission-group) (:id (perms/admin-group)))]
     (perms/revoke-collection-permissions! permission-group collection))
@@ -91,48 +99,6 @@
       (apply-resource-permissions! group collection)
       {:permission_group_id    (:id group)
        :resource_collection_id (:id collection)})))
-
-(defn- view-data-permissions-match?
-  [permissions group-id database-id tables table-ids]
-  (let [current-permissions (get permissions [group-id database-id :perms/view-data])
-        selected-table-ids  (into #{} (comp (map :id) (filter table-ids)) tables)]
-    (if (empty? selected-table-ids)
-      (database-level-permission? current-permissions :blocked)
-      (= (into {}
-               (map (fn [{:keys [id]}]
-                      [id (if (contains? selected-table-ids id)
-                            :unrestricted
-                            :blocked)]))
-               tables)
-         (into {}
-               (map (juxt :table_id :perm_value))
-               current-permissions)))))
-
-(defn reconcile-view-data!
-  "Make `table-ids` the authoritative view-data permission set for `app`."
-  [app table-ids]
-  (let [{:keys [permission_group_id]} (ensure-resources! app)
-        group (t2/select-one :model/PermissionsGroup :id permission_group_id)]
-    (perms/with-global-permissions-lock
-      (t2/with-transaction [_conn]
-        (let [all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-              permissions      (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
-              tables-by-db     (group-by :db_id (t2/select [:model/Table :id :db_id]))]
-          (doseq [database-id all-database-ids
-                  :let [tables (get tables-by-db database-id [])
-                        table-permissions (into {}
-                                                (keep (fn [{:keys [id]}]
-                                                        (when (contains? table-ids id)
-                                                          [id :unrestricted])))
-                                                tables)]
-                  :when (not (view-data-permissions-match? permissions
-                                                           (:id group)
-                                                           database-id
-                                                           tables
-                                                           table-ids))]
-            (perms/set-database-permission! permissions group database-id :perms/view-data :blocked)
-            (when (seq table-permissions)
-              (perms/set-table-permissions! group :perms/view-data table-permissions))))))))
 
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."
