@@ -47,7 +47,6 @@ export const isSameTimelineEventsVisibility = (
   b: TimelineEventsVisibility | undefined,
 ) => _.isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
 
-// Returns the settings object itself so selectors memoized on it stay stable.
 export const getRecordedTimelineEventsVisibility = (
   settings: VisualizationSettings | undefined,
 ): TimelineEventsVisibility | undefined =>
@@ -89,8 +88,6 @@ const setTimelineVisible = (
   timeline.events?.forEach((event) => sets.hiddenEventIds.delete(event.id));
 };
 
-// Takes ids, not timelines: callers hold timelines whose events were filtered
-// to a chart's x-axis, and toggling must act on every event a timeline has.
 const setTimelinesVisible = (
   visibility: TimelineEventsVisibility,
   timelineIds: TimelineId[],
@@ -170,7 +167,6 @@ export const showTimelineEvents = (
   return fromSets(sets);
 };
 
-// A new event reveals its whole timeline; a shown timeline keeps its hidden events.
 export const showCreatedTimelineEvent = (
   visibility: TimelineEventsVisibility,
   event: TimelineEvent,

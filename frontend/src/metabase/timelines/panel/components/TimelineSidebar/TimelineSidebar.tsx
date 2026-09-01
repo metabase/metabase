@@ -23,7 +23,6 @@ export interface TimelineSidebarProps {
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  /** Defaults to toggling every event on the timeline. */
   onShowTimeline?: (timeline: Timeline) => void;
   onHideTimeline?: (timeline: Timeline) => void;
   onShowAllEvents?: () => void;

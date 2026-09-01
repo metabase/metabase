@@ -221,7 +221,6 @@ export const timelineEvents = createReducer(
       () => INITIAL_DASHBOARD_STATE.timelineEvents,
     );
     builder.addCase(fetchDashboard.fulfilled, (state) => {
-      // keep the reference stable so memoized selectors skip no-op refetches
       if (Object.keys(state.overrides).length > 0) {
         state.overrides = {};
       }

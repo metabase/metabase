@@ -80,8 +80,6 @@ export const getDashCardTimeseriesXAxis = createCachedSelector(
     dashcard ? computeDashCardTimeseriesXAxis(dashcard, dashcardData) : null,
 )((_state, dashcardId) => dashcardId);
 
-// Events only render on a time series axis, so a categorical cartesian chart
-// must not offer the events UI.
 export const getIsTimelineEventsDashCard = createCachedSelector(
   [getDashCardById, getDashCardTimeseriesXAxis],
   (dashcard, xAxis) =>
@@ -101,8 +99,6 @@ export const getDashCardVisibleTimelineEvents = createCachedSelector(
   selectorCreator: createShallowEqualResultSelector,
 });
 
-// Scoped to the events sidebar rather than cleared by every action that closes
-// it, so no code path can leave a highlight with no UI able to clear it.
 export const getDashCardSelectedTimelineEventIds = (
   state: State,
   dashcardId?: DashCardId,

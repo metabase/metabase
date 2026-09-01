@@ -165,8 +165,6 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("saving after turning events on records them", async () => {
-    // Turning on a timeline the collection fallback already shows changes
-    // nothing, so start from a question that recorded them as off.
     const store = await setupWithTimelines(EVENTS_OFF);
 
     await act(async () => {

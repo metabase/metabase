@@ -821,7 +821,6 @@ export const getFilteredTimelines = createSelector(
   filterTimelinesByXAxis,
 );
 
-// Falls back to the collection's timelines until the question records a selection.
 export const getTimelineEventsVisibility = createSelector(
   [
     (state: QueryBuilderStoreState) =>
