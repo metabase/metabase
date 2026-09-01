@@ -49,12 +49,36 @@ const UNLICENSED_STEP_ORDER = [
   "Create a custom theme",
 ];
 
+// Every plan sees every tab; the gem marks the ones its token can't unlock.
+// OSS and Starter lack all four gated features, so they expect the same.
+const TAB_GEMS_WITHOUT_PAID_FEATURES = [
+  { label: "Get started", hasGem: false },
+  { label: "Security", hasGem: false },
+  { label: "Authentication", hasGem: true },
+  { label: "Permissions", hasGem: false },
+  { label: "Tenancy", hasGem: true },
+  { label: "Appearance", hasGem: true },
+  { label: "Localization", hasGem: true },
+];
+
 function assertStepOrder(titles: string[]) {
   cy.findAllByTestId(CARD)
     .should("have.length", titles.length)
     .each(($card, index) => {
       cy.wrap($card).should("contain.text", titles[index]);
     });
+}
+
+function assertHubTabs(tabs: { label: string; hasGem: boolean }[]) {
+  cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
+    for (const { label, hasGem } of tabs) {
+      cy.findByRole("link", { name: label })
+        .findByTestId("upsell-gem")
+        .should(hasGem ? "exist" : "not.exist");
+    }
+
+    cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
+  });
 }
 
 describe("scenarios > embedding > embedding hub > get started", () => {
@@ -320,21 +344,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
     it("shows every hub tab, gemming the ones this plan lacks", () => {
       cy.visit("/embedding/security");
 
-      cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
-        cy.findByRole("link", { name: "Security" }).should("exist");
-        cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
-
-        for (const label of [
-          "Authentication",
-          "Tenancy",
-          "Appearance",
-          "Localization",
-        ]) {
-          cy.findByRole("link", { name: label })
-            .findByTestId("upsell-gem")
-            .should("exist");
-        }
-      });
+      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
     });
   });
 
@@ -362,21 +372,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
     it("shows every hub tab, gemming the ones this plan lacks", () => {
       cy.visit("/embedding/security");
 
-      cy.findByRole("navigation", { name: "Embedding hub" }).within(() => {
-        cy.findByRole("link", { name: "Security" }).should("exist");
-        cy.findByRole("link", { name: "Guest embeds" }).should("not.exist");
-
-        for (const label of [
-          "Authentication",
-          "Tenancy",
-          "Appearance",
-          "Localization",
-        ]) {
-          cy.findByRole("link", { name: label })
-            .findByTestId("upsell-gem")
-            .should("exist");
-        }
-      });
+      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
     });
   });
 });
