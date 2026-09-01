@@ -632,6 +632,39 @@
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
     (into [] (map annotate) (stored-connections))))
 
+(defonce ^:private warned-captured-base-urls
+  (atom #{}))
+
+(defn- drop-captured-base-url
+  "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
+  URL that came from the app DB, leaving the type's default to stand in.
+
+  [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
+  caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
+  all. That check runs when the base URL is written, so it cannot see a variable the operator sets afterwards: a
+  base URL saved while the connection had nothing worth stealing would capture the credential that arrived later.
+  Deciding it again here makes the rule hold whichever order the two arrived in.
+
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
+  rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
+  URL has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+
+  Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
+  instance is configured with but is not using."
+  [{conn-key :key :keys [type source config] :as conn} env-config]
+  (if-not (and (= :db source)
+               (u/trimmed-string (:base-url config))
+               (not (contains? env-config :base-url))
+               (some #(contains? env-config %) (secret-field-keys type)))
+    conn
+    (do
+      (when-not (contains? @warned-captured-base-urls [conn-key (:base-url config)])
+        (swap! warned-captured-base-urls conj [conn-key (:base-url config)])
+        (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
+                        "environment, so its base URL has to as well. Set %s to keep using it.")
+                   conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))
+      (update conn :config dissoc :base-url))))
+
 (defn connections
   "Every connection this instance can use, in admin-facing order.
 
@@ -641,6 +674,9 @@
   instead of doing nothing, and everything the environment does not supply stays editable. `:env-fields` names the
   config keys the environment owns, and `:env-vars` the variables supplying them, so the form can disable exactly
   those inputs.
+
+  The one field that does not simply stay editable is a stored base URL the environment's secret would travel to:
+  see [[drop-captured-base-url]].
 
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
@@ -652,6 +688,7 @@
                              ;; only a same-typed overlay applies: the fields describe this provider type's config
                              (if (and overlay (= type (:type overlay)))
                                (-> conn
+                                   (drop-captured-base-url env-config)
                                    (update :config merge env-config)
                                    (update :env-vars (fnil into (sorted-set)) (vals vars))
                                    (assoc :env-fields (set (keys env-config))))
