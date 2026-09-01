@@ -1,15 +1,6 @@
 (ns metabase.task-history.models.task-run
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
-  ;; direct-jdbc-access-forbidden: converted module -- app-db SQL runs through the queries ns, not
-  ;; direct t2 sinks. This ns-local ban is the enforced choke point (see metabase.app-db.hugsql).
-  {:clj-kondo/config
-   '{:linters {:discouraged-var
-               {toucan2.core/select              {:message "app-db SQL goes through tr.queries (HugSQL)"}
-                toucan2.core/select-one          {:message "app-db SQL goes through tr.queries (HugSQL)"}
-                toucan2.core/query               {:message "app-db SQL goes through tr.queries (HugSQL)"}
-                toucan2.core/insert-returning-pk! {:message "app-db SQL goes through tr.queries (HugSQL)"}
-                toucan2.core/update!             {:message "app-db SQL goes through tr.queries (HugSQL)"}
-                toucan2.core/delete!             {:message "app-db SQL goes through tr.queries (HugSQL)"}}}}}
+  ;; direct-jdbc-access-forbidden ban is centralized in .clj-kondo/config.edn :config-in-ns.
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]

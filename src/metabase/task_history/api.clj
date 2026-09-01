@@ -1,15 +1,8 @@
 (ns metabase.task-history.api
   "/api/task endpoints"
-  ;; direct-jdbc-access-forbidden: converted module -- app-db SQL runs through the queries nses.
-  ;; The remaining direct t2 calls carry inline #_{:clj-kondo/ignore [:discouraged-var]} with a
-  ;; reason (cross-model name hydration; the bucket-A-hard run-listing sort).
-  {:clj-kondo/config
-   '{:linters {:discouraged-var
-               {toucan2.core/select        {:message "app-db SQL goes through a queries ns (HugSQL)"}
-                toucan2.core/select-one    {:message "app-db SQL goes through a queries ns (HugSQL)"}
-                toucan2.core/select-pk->fn {:message "app-db SQL goes through a queries ns (HugSQL)"}
-                toucan2.core/count         {:message "app-db SQL goes through a queries ns (HugSQL)"}
-                toucan2.core/query         {:message "app-db SQL goes through a queries ns (HugSQL)"}}}}}
+  ;; direct-jdbc-access-forbidden ban is centralized in .clj-kondo/config.edn :config-in-ns.
+  ;; Remaining direct t2 calls carry inline #_{:clj-kondo/ignore [:discouraged-var]} with a reason
+  ;; (cross-model name hydration; the bucket-A-hard run-listing sort).
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]

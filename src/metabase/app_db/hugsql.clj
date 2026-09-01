@@ -41,11 +41,20 @@
                          " is not allowed in Metabase SQL files; use :value/:value*")
                     {:param param}))))
 
+(defn- model-transforms
+  "The model's `t2/deftransforms` map, or `{}` when it declares none. `deftransforms` derives the
+  model from `::transformed.model`; without that marker `transforms` has no matching method and
+  throws, so only call it when the marker is present."
+  [model]
+  (if (isa? model :toucan2.tools.transformed/transformed.model)
+    (t2.transformed/transforms model)
+    {}))
+
 (defn- direction-fns
   "`{column transform-fn}` for one `direction` (`:in` or `:out`) of `model`'s declared transforms."
   [model direction]
   (into {} (keep (fn [[col fns]] (when-let [f (direction fns)] [col f])))
-        (t2.transformed/transforms model)))
+        (model-transforms model)))
 
 (defn- apply-transforms
   "Apply `col->fn` to the matching non-nil keys of `m`. nil values are skipped -- NULL needs no

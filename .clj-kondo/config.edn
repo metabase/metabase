@@ -840,7 +840,52 @@
    :name    mage-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {;; direct-jdbc-access-forbidden: converted app-db namespaces run SQL only through their queries
+  ;; ns -> metabase.app-db.hugsql, never a direct execution sink. The sinks banned here are the
+  ;; app-db query fns (t2 core), raw next.jdbc, and the mdb query helper; t2 model-definition
+  ;; macros (table-name, deftransforms, define-after-select, hydrate) are NOT sinks and stay.
+  ;;
+  ;; INVERSION (end state): this is per-ns for now because each namespace opts in as it converts.
+  ;; The target is the reverse -- ban these sinks GLOBALLY (a plain :discouraged-var entry) and
+  ;; ALLOW them in only a small set: the per-model *-queries nses, metabase.app-db.hugsql, and a
+  ;; named allowlist (audit-db, migrations, QP). Then "where can app-db SQL run?" is that list,
+  ;; not a per-ns opt-in. Stronger still (Ben's): drop the ambient *application-db* default so
+  ;; downstream code has no connection to run against, and no varlist is needed at all.
+  metabase.task-history.models.task-run
+  {:linters {:discouraged-var
+             {toucan2.core/select              {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/select-one          {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/query               {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/query-one           {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/count               {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/insert-returning-pk! {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/update!             {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/delete!             {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              next.jdbc/execute!               {:message "no dropping to raw JDBC; go through a queries ns (HugSQL)"}
+              next.jdbc/execute-one!           {:message "no dropping to raw JDBC; go through a queries ns (HugSQL)"}
+              metabase.app-db.query/query      {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              metabase.app-db.query/compile    {:message "app-db SQL goes through a queries ns (HugSQL)"}}}}
+  metabase.task-history.api
+  {:linters {:discouraged-var
+             {toucan2.core/select        {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/select-one    {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/select-pk->fn {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/count         {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              toucan2.core/query         {:message "app-db SQL goes through a queries ns (HugSQL)"}
+              next.jdbc/execute!         {:message "no dropping to raw JDBC; go through a queries ns (HugSQL)"}
+              next.jdbc/execute-one!     {:message "no dropping to raw JDBC; go through a queries ns (HugSQL)"}
+              metabase.app-db.query/query {:message "app-db SQL goes through a queries ns (HugSQL)"}}}}
+  metabase.timeline.models.timeline
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through timeline.queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through timeline.queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through timeline.queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through timeline.queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through timeline.queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through timeline.queries (HugSQL)"}
+              metabase.app-db.query/compile {:message "app-db SQL goes through timeline.queries (HugSQL)"}}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

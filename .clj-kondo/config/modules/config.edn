@@ -2482,6 +2482,7 @@
            metabase.timeline.core}
    :uses #{analytics
            api
+           app-db
            collections
            events
            models
