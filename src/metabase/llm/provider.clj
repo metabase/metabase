@@ -18,6 +18,8 @@
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -681,6 +683,41 @@
   [conns]
   (llm.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
+(defn stored-connection-index
+  "Where the connection keyed `conn-key` sits in `stored`, or nil when it holds no such connection."
+  [stored conn-key]
+  (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored)))
+
+;;; ----------------------------------------------- Coordinating writes ---------------------------------------------
+
+(def ^:private connections-lock
+  "Cluster lock serializing every read-modify-write of the connection list."
+  ::connections-lock)
+
+(defn do-with-connection-write-lock
+  "Impl for [[with-connection-write-lock]]."
+  [thunk]
+  (cluster-lock/with-cluster-lock {:lock connections-lock :timeout-seconds 10}
+    ;; Settings are cached in process and the cache only notices another instance's write when it polls, once a
+    ;; minute. Reading the list through the cache would hand us a list that predates a sibling's edit, and since
+    ;; every connection lives in one setting, writing that list back drops the sibling's connection entirely.
+    (binding [config/*disable-setting-cache* true]
+      (thunk))))
+
+(defmacro with-connection-write-lock
+  "Run `body` holding the cluster lock on the connection list, with setting reads inside it going to the app DB
+  rather than to the in-process settings cache.
+
+  Every connection lives in the single [[metabase.llm.settings/llm-providers]] setting, so editing one connection
+  means rewriting the whole list. Two instances doing that at once lose one of the two edits, and either instance
+  reading a stale list can reject a legitimate edit — a connection key looks free when a sibling has just taken
+  it, or a connection the sibling added looks absent. Read the list, decide, and write it back inside this macro.
+
+  Do not put a provider network call inside it. Verifying credentials takes retries and seconds, and the lock is
+  held by an app-DB transaction the whole time; probe first, then take the lock to commit the result."
+  [& body]
+  `(do-with-connection-write-lock (fn [] ~@body)))
+
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
 (defn- ->slug
@@ -807,9 +844,7 @@
   [setting-kw new-value]
   (let [[conn-key field] (get setting->connection-field setting-kw)
         group-type       (:type (get single-provider-settings conn-key))
-        value            (u/trimmed-string new-value)
-        stored           (stored-connections)
-        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
+        value            (u/trimmed-string new-value)]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
     ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
     ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
@@ -820,14 +855,17 @@
       (do
         (when value
           (validate-config-field! group-type field {field value}))
-        (cond
-          idx   (set-connections! (update-in stored [idx :config]
-                                             (fn [config]
-                                               (if value (assoc config field value) (dissoc config field)))))
-          value (set-connections! (conj stored {:key    conn-key
-                                                :type   group-type
-                                                :name   (str (:label (provider-type group-type)))
-                                                :config {field value}})))))))
+        (with-connection-write-lock
+          (let [stored (stored-connections)
+                idx    (stored-connection-index stored conn-key)]
+            (cond
+              idx   (set-connections! (update-in stored [idx :config]
+                                                 (fn [config]
+                                                   (if value (assoc config field value) (dissoc config field)))))
+              value (set-connections! (conj stored {:key    conn-key
+                                                    :type   group-type
+                                                    :name   (str (:label (provider-type group-type)))
+                                                    :config {field value}})))))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 

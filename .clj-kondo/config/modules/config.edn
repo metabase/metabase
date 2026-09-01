@@ -1280,6 +1280,7 @@
            metabase.llm.startup}
    :uses #{analytics
            api
+           app-db
            config
            driver
            lib

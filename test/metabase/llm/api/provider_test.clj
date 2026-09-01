@@ -1230,3 +1230,67 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                 {:config {:api-key "sk-ant-rotated"}}))
         (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
+
+;;; --------------------------------- Coordinating writes across instances ------------------------------------------
+
+(defn- connection-credentials
+  "Every connection's key mapped to its API key, so a test can say what survived a write and what it holds."
+  []
+  (into {} (map (juxt :key (comp :api-key :config))) (llm.provider/connections)))
+
+(defn- do-with-a-write-landing-mid-request!
+  [conns thunk]
+  ;; The endpoint refreshes the cache on the way in, so a list committed before the request is one it will see.
+  ;; Committing it from inside the credential probe puts it where the bug actually lives: after this request has
+  ;; read the list it intends to rewrite, and after the only refresh it performs.
+  (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                              (fn [& _]
+                                (let [stale-conns   (get (setting.cache/cache) "llm-providers")
+                                      stale-updated (setting/cache-last-updated-at)]
+                                  (llm.provider/set-connections! (vec conns))
+                                  ;; the write is another instance's, so it reaches the app DB and not this
+                                  ;; instance's cache — which is what makes reading the app DB the only way to see it
+                                  (setting.cache/update-cache! "llm-providers" stale-conns)
+                                  (setting.cache/update-cache! "settings-last-updated" stale-updated))
+                                {:models []})]
+    (try
+      (thunk)
+      (finally
+        (setting.cache/restore-cache!)))))
+
+(defmacro ^:private with-a-write-landing-mid-request!
+  "Run `body` with another instance committing `conns` partway through it — while the request in `body` is out at
+  the provider verifying credentials, which is exactly the window a refreshed cache cannot close."
+  {:style/indent 1}
+  [conns & body]
+  `(do-with-a-write-landing-mid-request! ~conns (fn [] ~@body)))
+
+(deftest update-keeps-a-connection-written-mid-request-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
+    (with-a-write-landing-mid-request! [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})
+                                        (connection "openai" "openai" {:api-key "sk-openai"})]
+      (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                            {:config {:api-key "sk-ant-rotated"}}))
+    (is (= {"anthropic" "sk-ant-rotated" "openai" "sk-openai"}
+           (connection-credentials))
+        "editing one connection rewrites the whole list, so it has to rewrite the list the app DB holds")))
+
+(deftest create-keeps-a-connection-written-mid-request-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+    (with-a-write-landing-mid-request! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                        (connection "openai" "openai" {:api-key "sk-openai"})]
+      (mt/user-http-request :crowberto :post 200 "llm/providers"
+                            {:type "anthropic" :config {:api-key "sk-ant-second"}}))
+    (is (= {"anthropic" "sk-ant" "openai" "sk-openai" "anthropic-2" "sk-ant-second"}
+           (connection-credentials)))))
+
+(deftest create-suffixes-around-a-key-taken-mid-request-test
+  (testing "the key a new connection gets is settled under the lock, against the list as it stands at write time"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+      (with-a-write-landing-mid-request! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                          (connection "anthropic-2" "anthropic" {:api-key "sk-ant-theirs"})]
+        (is (=? {:key "anthropic-3"}
+                (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                      {:type "anthropic" :config {:api-key "sk-ant-ours"}}))))
+      (is (= {"anthropic" "sk-ant" "anthropic-2" "sk-ant-theirs" "anthropic-3" "sk-ant-ours"}
+             (connection-credentials))))))

@@ -256,9 +256,43 @@
   predates the edit, and it decides whether an edit is allowed against that same list: a connection another
   instance has just deleted still looks present, and the type it belonged to still reports itself as connected.
 
-  Costs the one query that reads `settings-last-updated`, unless something has actually changed."
+  Costs the one query that reads `settings-last-updated`, unless something has actually changed.
+
+  This closes the window, it does not make a write safe: for that a write has to decide and commit under
+  [[llm.provider/with-connection-write-lock]]."
   []
   (setting/restore-cache-if-needed! :force-check? true))
+
+(defn- new-connection-key
+  "The key a new connection of `type` will be filed under: the reserved key for the Metabase-managed provider, and
+  otherwise `desired` — defaulting to the type, so the first Anthropic connection is `anthropic` — slugged and
+  suffixed until it does not collide with a connection that already exists."
+  [type desired]
+  (if (llm.provider/managed-type? type)
+    llm.provider/managed-connection-key
+    (llm.provider/unique-key (or (not-empty desired) type))))
+
+(defn- check-can-create-connection!
+  "Reject a create the current connection list has no room for.
+
+  Every check here is a question about what is already stored, so the answer is only as good as the list the
+  caller read. Callers ask twice: once up front to fail before probing the provider, and again under
+  [[llm.provider/with-connection-write-lock]] against a list no sibling instance can be mid-write on."
+  [type conn-key]
+  (api/check-400 (not (and (llm.provider/singleton-type? type)
+                           (some #(= type (:type %)) (llm.provider/connections))))
+                 (tru "The {0} provider is already connected." (pr-str type)))
+  (api/check-400 (not (and (llm.provider/managed-type? type)
+                           (llm.provider/connection llm.provider/managed-connection-key)))
+                 (tru "Another connection holds the {0} key. Remove it before connecting the Metabase AI service."
+                      (pr-str llm.provider/managed-connection-key)))
+  ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other type holding
+  ;; that key would smuggle its requests into managed billing and usage accounting. Checked against the key that
+  ;; will actually be stored, so a value that merely slugs to it cannot slip past.
+  (api/check-400 (or (llm.provider/managed-type? type)
+                     (not= llm.provider/managed-connection-key conn-key))
+                 (tru "The {0} connection key is reserved for the Metabase AI service."
+                      (pr-str llm.provider/managed-connection-key))))
 
 (defn- without-blank-values
   "Drop `config` entries whose value is blank. The form clears a field it hid by sending an empty string — switching
@@ -413,39 +447,33 @@
     (api/check-400 provider-type (tru "Unknown provider type {0}." (pr-str type)))
     (api/check-400 (llm.provider/type-available? type)
                    (tru "The {0} provider is not available on this instance." (pr-str type)))
-    (api/check-400 (not (and (llm.provider/singleton-type? type)
-                             (some #(= type (:type %)) (llm.provider/connections))))
-                   (tru "The {0} provider is already connected." (pr-str type)))
-    (api/check-400 (not (and (llm.provider/managed-type? type)
-                             (llm.provider/connection llm.provider/managed-connection-key)))
-                   (tru "Another connection holds the {0} key. Remove it before connecting the Metabase AI service."
-                        (pr-str llm.provider/managed-connection-key)))
-    (let [conn-key (if (llm.provider/managed-type? type)
-                     llm.provider/managed-connection-key
-                     (llm.provider/unique-key (or (not-empty key) type)))
-          ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other
-          ;; type holding that key would smuggle its requests into managed billing and usage accounting. Checked
-          ;; against the key that will actually be stored, so a value that merely slugs to it cannot slip past.
-          _        (api/check-400 (or (llm.provider/managed-type? type)
-                                      (not= llm.provider/managed-connection-key conn-key))
-                                  (tru "The {0} connection key is reserved for the Metabase AI service."
-                                       (pr-str llm.provider/managed-connection-key)))
-          config   (without-blank-values config)
-          conn     {:key    conn-key
-                    :type   type
-                    :name   (or (not-empty name) (str (:label provider-type)))
-                    :config config}]
+    (let [config (without-blank-values config)
+          conn   {:key    (new-connection-key type key)
+                  :type   type
+                  :name   (or (not-empty name) (str (:label provider-type)))
+                  :config config}]
+      (check-can-create-connection! type (:key conn))
       (llm.provider/validate-config! type config)
-      (let [{:keys [learned-config] :as listed} (verify-credentials! conn config model)
-            conn              (update conn :config merge learned-config)
-            had-usable-model? (metabot-has-a-usable-model?)]
-        (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
-        (when-not had-usable-model?
-          ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
-          ;; the probe exercised, so connecting one leaves the instance working rather than model-less
-          (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
-        (seed-models-cache! conn listed)
-        (connection-response (assoc conn :source :db))))))
+      ;; The probe is a network round trip to the provider, with retries, and it depends on nothing in the stored
+      ;; list beyond the key we would file the connection under, so it runs before the lock rather than holding an
+      ;; app-DB transaction open for its duration.
+      (let [{:keys [learned-config] :as listed} (verify-credentials! conn config model)]
+        (llm.provider/with-connection-write-lock
+          ;; The key is recomputed and the checks re-run against a list no sibling can be mid-write on. A sibling
+          ;; that took this key in the meantime pushes us onto the next suffix instead of overwriting it.
+          (let [conn-key (new-connection-key type key)
+                conn     (-> conn
+                             (assoc :key conn-key)
+                             (update :config merge learned-config))]
+            (check-can-create-connection! type conn-key)
+            (let [had-usable-model? (metabot-has-a-usable-model?)]
+              (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
+              (when-not had-usable-model?
+                ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the
+                ;; model the probe exercised, so connecting one leaves the instance working rather than model-less
+                (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
+              (seed-models-cache! conn listed)
+              (connection-response (assoc conn :source :db)))))))))
 
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
@@ -460,7 +488,7 @@
   (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [stored     (llm.provider/stored-connections)
-        idx        (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
+        idx        (llm.provider/stored-connection-index stored conn-key)
         _          (api/check-404 idx)
         existing   (nth stored idx)
         live       (llm.provider/connection conn-key)
@@ -478,14 +506,22 @@
         ;; what the connection will actually run on: the stored config with the environment layered back over it
         effective  (merge (:config merged) env-config)]
     (llm.provider/validate-config! (:type merged) effective)
+    ;; probed before the lock, for the reason given in the create endpoint
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
           merged                   (update merged :config merge learned-config)
           effective                (merge effective learned-config)]
-      (llm.provider/set-connections! (assoc stored idx merged))
-      (follow-edited-connection-model! (assoc merged :config effective) model)
-      (seed-models-cache! (assoc merged :config effective) listed)
-      (connection-response (assoc (merge live merged) :config effective)))))
+      (llm.provider/with-connection-write-lock
+        ;; The row is located again in a freshly read list. `merged` is still built from the read above — two
+        ;; edits of the *same* connection are a last-write-wins the admin can see — but writing back that read's
+        ;; list would silently drop a connection a sibling instance added or edited since.
+        (let [stored (llm.provider/stored-connections)
+              idx    (llm.provider/stored-connection-index stored conn-key)]
+          (api/check-404 idx)
+          (llm.provider/set-connections! (assoc stored idx merged))
+          (follow-edited-connection-model! (assoc merged :config effective) model)
+          (seed-models-cache! (assoc merged :config effective) listed)
+          (connection-response (assoc (merge live merged) :config effective)))))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
   "Delete a provider connection."
@@ -500,13 +536,15 @@
       ;; removing the managed connection cancels the Store subscription behind it, and everything else that can
       ;; cancel add-ons is superuser-only — settings access must not be enough to end a paid contract
       (api/check-superuser)
+      ;; a call out to the Store, so it stays outside the lock
       (cancel-managed-ai-subscription!))
-    (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
-      (llm.provider/set-connections! remaining)
-      (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-mini-model)))
-        (setting/set! :llm-mini-model nil))
-      (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
-        (repoint-metabot! (fallback-model-ref)))))
+    (llm.provider/with-connection-write-lock
+      (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
+        (llm.provider/set-connections! remaining)
+        (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-mini-model)))
+          (setting/set! :llm-mini-model nil))
+        (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
+          (repoint-metabot! (fallback-model-ref))))))
   nil)
 
 (api.macros/defendpoint :get "/models"

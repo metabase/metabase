@@ -33,8 +33,13 @@
     false
 
     :else
-    (do (llm.provider/set-connections! (conj (llm.provider/stored-connections) (managed-connection)))
-        true)))
+    ;; Every instance runs this as it boots, so the check above is not enough on its own: two instances coming up
+    ;; together would both read a list with no managed connection in it and both append one. Under the lock the
+    ;; question is asked again of a list nobody else is mid-write on.
+    (llm.provider/with-connection-write-lock
+      (or (some? (llm.provider/connection llm.provider/managed-connection-key))
+          (do (llm.provider/set-connections! (conj (llm.provider/stored-connections) (managed-connection)))
+              true)))))
 
 (defn- sync-managed-metabot-provider!
   []
