@@ -459,14 +459,14 @@ describe("setScheduleField", () => {
     });
   });
 
-  it("should keep a minute the type cannot show", () => {
+  it("should reset a minute the type cannot show", () => {
     expect(
       setScheduleField(
         { ...monthly, schedule_minute: 30 },
         "schedule_hour",
         20,
       ),
-    ).toMatchObject({ schedule_hour: 20, schedule_minute: 30 });
+    ).toMatchObject({ schedule_hour: 20, schedule_minute: 0 });
   });
 
   it("should clear the day when the frame becomes mid", () => {

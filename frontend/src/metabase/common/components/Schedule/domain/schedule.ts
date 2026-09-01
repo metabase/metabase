@@ -22,6 +22,26 @@ export const SCHEDULE_FIELDS = [
   "schedule_minute",
 ] as const satisfies readonly ScheduleField[];
 
+/**
+ * Describes each builder type in terms of its fields:
+ *
+ * - `variables` are the fields the user picks in the UI. `unit` names what the
+ *   field means for that type, e.g. `schedule_minute` is a minute past the
+ *   hour for `hourly` but an interval for `every_n_minutes`. `nullable`
+ *   variables may stay unpicked without making the schedule incomplete.
+ * - `constants` are fields the type needs in the cron but never shows, so
+ *   they are pinned to a fixed value.
+ * - `defaults` fill in the variables that have no value yet.
+ *
+ * Every other field is `null` for that type.
+ *
+ * When the type changes, a picked variable is carried over only when the new
+ * type has the same variable with the same unit; everything else comes from
+ * the constants and the defaults of the new type. A loaded value keeps a
+ * constant field as is (e.g. a custom cron may hold a daily schedule at 8:30)
+ * so that saving it unchanged does not alter it, but the first edit in the UI
+ * resets it to the constant so that what the UI shows is what the cron says.
+ */
 export const SCHEDULE_SPECIFICATIONS: Record<
   ScheduleBuilderType,
   ScheduleSpecification
@@ -171,7 +191,11 @@ export const setScheduleField = <TField extends ScheduleField>(
   value: Exclude<ScheduleFields[TField], undefined>,
 ): NormalizedScheduleBuilderValue =>
   finalizeScheduleValue(
-    { ...schedule, [field]: value },
+    {
+      ...schedule,
+      ...SCHEDULE_SPECIFICATIONS[schedule.schedule_type].constants,
+      [field]: value,
+    },
     `${field} cannot be set on a ${schedule.schedule_type} schedule`,
   );
 

@@ -396,16 +396,22 @@ describe("Schedule", () => {
         "0 0 8 ? * 6#1 *",
       ],
       [
-        "switch daily to weekly defaults to Monday, keeps the time and drops the hidden minute",
+        "switch weekly to daily keeps the time",
+        "0 0 20 ? * 6 *",
+        { frequency: "daily" },
+        "0 0 20 * * ? *",
+      ],
+      [
+        "switch daily loaded from a cron with a hidden minute to weekly defaults to Monday, keeps the hour and drops the minute",
         "0 30 15 * * ? *",
         { frequency: "weekly" },
         "0 0 15 ? * 2 *",
       ],
       [
-        "changing the time keeps the hidden minute",
+        "changing the time on a daily loaded from a cron with a hidden minute drops the minute",
         "0 30 15 * * ? *",
         { time: "10:00" },
-        "0 30 22 * * ? *",
+        "0 0 22 * * ? *",
       ],
       [
         "switch monthly to daily clears frame and weekday",
