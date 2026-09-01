@@ -23,7 +23,7 @@ export const ApplicationPermissionsHelp = () => {
         <Text>
           {jt`${(
             <strong key="label">{t`Monitoring:`}</strong>
-          )} monitoring access grants permissions to the Tools, Auditing, and Troubleshooting tabs in the Admin panel.`}
+          )} monitoring access grants permission to use Monitor tools.`}
         </Text>
         <Text>
           {jt`${(

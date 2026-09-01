@@ -4,6 +4,7 @@
    [clojure.string :as str]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -82,6 +83,7 @@
   (let [model     (t2/select-one :model/Card :id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
+                    ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
@@ -96,7 +98,7 @@
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
-        (log/warnf e "Error fetching indexed values for model %s" (:id model))
+        (log/warnf "Error fetching indexed values for model %s: %s" (:id model) (ex-message e))
         [(ex-message e) []]))))
 
 (defn find-changes
@@ -157,8 +159,8 @@
                                      "indexed")}))
         (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
-          (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
-                      (:id model-index) (:model_id model-index))
+          (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
+                      (:id model-index) (:model_id model-index) (ex-message e))
           (t2/update! :model/ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)

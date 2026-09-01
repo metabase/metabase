@@ -7,6 +7,8 @@ summary: Pass parameter values to embedded dashboards and SQL questions in modul
 
 This page covers how to pass parameter values to embedded dashboards and SQL questions.
 
+The props and attributes here set values that whoever's viewing the embed can still change. To set a value your app controls and nobody can see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
+
 ## Modular embedding SDK (React)
 
 ### Pass parameter values to a dashboard
@@ -32,7 +34,6 @@ Push values from your app, and observe every applied change via `onParametersCha
 ```
 
 `onParametersChange` receives the [dashboard parameter change payload](#dashboard-parameter-change-payload).
-
 
 > Don't combine `initialParameters` and `parameters` - pick one. For controlled behavior, only use `parameters`.
 
@@ -83,6 +84,8 @@ Set values on mount via attributes. The component reads them once on load and ig
   initial-sql-parameters='{"product_id": 50}'
 ></metabase-question>
 ```
+
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions). See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
 
@@ -177,3 +180,13 @@ Delivered to `onSqlParametersChange` (SDK) and as `event.detail` for the `sql-pa
 - `initial-state` - first applied state, fired once per question load.
 - `manual-change` - user edited parameters in UI.
 - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+
+## Hide a dashboard filter
+
+To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK).
+
+Hiding filters can be useful when you're embedding a dashboard with SSO authentication, where every filter on the dashboard shows up by default. On a [guest embed](./guest-embedding.md), a filter that you haven't set to **Editable** or **Locked** is already hidden, so there's usually nothing left to hide.
+
+Hiding a filter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.
+
+To control a value that people can't see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.

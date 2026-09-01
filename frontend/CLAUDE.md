@@ -12,7 +12,6 @@ This is a high-level guide. Use available search tools to discover the current s
 - API clients: `frontend/src/metabase/api`
 - Query building and data modeling: `frontend/src/metabase-lib`
 - Shared TypeScript types: `frontend/src/metabase-types`
-- Thin helpers reused across bundles: `frontend/src/metabase-shared`
 - Global and ambient type declarations: `frontend/src/types`
 - Embedding SDK OSS code: `frontend/src/embedding-sdk-bundle` and `frontend/src/embedding-sdk-shared`
 - Enterprise-only features: `enterprise/frontend/src/metabase-enterprise`
@@ -39,13 +38,14 @@ This is a high-level guide. Use available search tools to discover the current s
 
 Read `docs/developers-guide/frontend.md` before frontend work — it's the detailed guide imported above.
 
-### Load the right skill first
+### Load skills before relevant edits
 
-Before starting a frontend task, load the matching skill from `.claude/skills/` — the
-skills hold the authoritative, detailed rules. The guide above and the notes below are a
-summary; when they disagree, follow the skill.
+Skills apply based on the files being changed, including small or incidental edits. Invoke
+each applicable skill by name before the first relevant edit; more than one skill may
+apply. Skills hold the authoritative, detailed rules; when they disagree with the guide
+above or the notes below, follow the skill.
 
-- Writing / refactoring TypeScript or React → **typescript-write**
+- Editing any `.ts`, `.tsx`, `.js`, or `.jsx` file, including tests and configuration → **typescript-write**
 - Reviewing a TypeScript/React diff → **typescript-review**
 - Writing Cypress E2E specs → **e2e-test-create**, **typescript-write**
 - Running / debugging Cypress E2E → **e2e-test**

@@ -21,7 +21,11 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  DashboardId,
+  SeriesCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -197,7 +201,7 @@ export type SdkQuestionProviderProps = PropsWithChildren<
       onDrillThrough?: (
         params: {
           drillName: string | undefined;
-          nextCard: Card;
+          nextCard: SeriesCard;
         },
         defaultNavigate: () => Promise<void>,
       ) => Promise<void>;

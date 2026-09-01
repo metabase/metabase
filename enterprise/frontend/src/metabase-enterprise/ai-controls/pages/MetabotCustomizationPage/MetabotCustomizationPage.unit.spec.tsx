@@ -3,6 +3,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -17,17 +18,22 @@ function setup({
   metabotIcon?: string | null;
   showIllustrations?: boolean;
 } = {}) {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "metabot-name": metabotName,
-      "metabot-icon": metabotIcon,
-      "metabot-show-illustrations": showIllustrations,
-    }),
-  );
+  const settings = createMockSettings({
+    "metabot-name": metabotName,
+    "metabot-icon": metabotIcon,
+    "metabot-show-illustrations": showIllustrations,
+  });
+
+  setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<MetabotCustomizationPage />);
+  // Seed the store state too: without it, the render harness seeds the
+  // settings bootstrap with *defaults*, and assertions can run against the
+  // bootstrap-rendered UI before the mocked properties fetch resolves.
+  renderWithProviders(<MetabotCustomizationPage />, {
+    storeInitialState: { settings: mockSettings(settings) },
+  });
 }
 
 describe("MetabotCustomizationPage", () => {

@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       chunks:
-        required: true
+        required: false
         type: number
         default: 30
       specs:
@@ -21,7 +21,7 @@ on:
 
 jobs:
   build-matrix:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}

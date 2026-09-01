@@ -56,15 +56,14 @@
       "label": ".Team/Metabot",
       "members": [
         "appleby",
-        "noahmoss",
         "retro",
         "sloansparger",
-        "somtom",
         "tsplude",
         "lbrdnk",
-        "piranha",
         "crisptrutski",
-        "undrfined"
+        "undrfined",
+        "andreis",
+        "prascuna"
       ]
     },
     {
@@ -123,6 +122,13 @@
         "gantoreno",
         "losrebellos",
         "tmashara"
+      ]
+    },
+    {
+      "name": "Security Engineering",
+      "label": ".Team/SecurityEngineering",
+      "members": [
+        "enthym-aa"
       ]
     }
   ]

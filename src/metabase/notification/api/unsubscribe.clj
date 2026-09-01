@@ -27,9 +27,9 @@
 (defn- notification-name-by-handler-id
   [notification-handler-id]
   (let [notification (t2/hydrate (t2/select-one :model/Notification
-                                                :id [:in {:select [:notification_id]
-                                                          :from  :notification_handler
-                                                          :where [:= :id notification-handler-id]}])
+                                                :id [:in ^:allow-subquery {:select [:notification_id]
+                                                                           :from  :notification_handler
+                                                                           :where [:= :id notification-handler-id]}])
                                  :payload)]
     (case (:payload_type notification)
       ;; use the card name

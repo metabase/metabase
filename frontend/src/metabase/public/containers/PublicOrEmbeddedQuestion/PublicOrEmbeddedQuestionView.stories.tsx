@@ -20,13 +20,13 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
+import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,
@@ -39,13 +39,9 @@ import {
   type PublicOrEmbeddedQuestionViewProps,
 } from "./PublicOrEmbeddedQuestionView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PivotTable);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(SmartScalar);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
 export default {

@@ -17,12 +17,11 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   ;; asserts on the store's miscellaneous-value slot that the results-metadata middleware writes
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
-   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -231,10 +230,10 @@
         (let [result (run-query-for-card card)]
           (is (=? {:status :completed}
                   result))
-          (is (= [[100]] (mt/rows result))))))))
+          (is (= [[100]] (mt/formatted-rows [int] result))))))))
 
 (deftest nested-query-permissions-test
-  (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
+  (testing "Reading a Card is not enough to run it when its source query is a Card we cannot read"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection allowed-collection    {}
@@ -266,12 +265,14 @@
                      clojure.lang.ExceptionInfo
                      #"\QYou don't have permissions to do that.\E"
                      (process-query-for-card parent-card))))
-              (testing "Should be able to run the child Card (#15131)"
+              (testing "Should not be able to run the child Card either, since it reads the parent"
                 (is (not (mi/can-read? parent-card)))
                 (is (mi/can-read? allowed-collection))
                 (is (mi/can-read? child-card))
-                (is (= [[1] [2]]
-                       (mt/rows (process-query-for-card child-card))))))))))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card"
+                     (mt/rows (process-query-for-card child-card))))))))))))
 
 (deftest ^:parallel archived-source-card-still-queryable-test
   (testing "a card whose source is an archived card can still be run (#52071)"
@@ -379,8 +380,11 @@
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
           (doseq [export-format [:csv :json :xlsx]]
             (testing (str "format: " export-format)
-              (let [response (client/client-full-response
-                              (test.users/username->token :crowberto)
+              ;; through `user-http-request-full-response`, not a raw cached token: that skips the retry in
+              ;; `client-fn`, so a session that was rolled back with the scope that made it comes back here
+              ;; as a bare 401
+              (let [response (mt/user-http-request-full-response
+                              :crowberto
                               :post 200
                               (format "card/%d/query/%s" (:id card) (name export-format))
                               {})]

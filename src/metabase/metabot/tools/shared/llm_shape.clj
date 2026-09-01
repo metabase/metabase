@@ -18,6 +18,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -76,6 +77,47 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
+(defn- query-edn-fallback
+  "Pretty-printed EDN of `query`, minus the `:lib/metadata` provider `normalize-query` attaches."
+  [query]
+  (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
+  map with a `:database` is normalized and exported to the portable representations form
+  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
+  sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
+  export renders nothing at all rather than the fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            mp         (lib-be/application-database-metadata-provider (:database normalized))
+            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
+        (or (repr-data->llm-block exported)
+            (query-edn-fallback normalized)))
+      (catch Exception e
+        (when-not (= 403 (:status-code (ex-data e)))
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback query))))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (query-edn-fallback query)
+    :else (some-> query str)))
+
+(defn transform-query->text
+  "Render a transform source query for model context: native SQL verbatim, anything else
+  through [[export-query-for-llm]]. Portable JSON gets boundary newlines so its Markdown
+  fence remains valid when the result is interpolated inside an XML `<query>` element."
+  [query]
+  (or (when (map? query) (metabot.u/extract-sql-content query))
+      (when-let [text (export-query-for-llm query)]
+        (if (str/starts-with? text "```json\n")
+          (format "\n%s\n" text)
+          text))))
+
 (defn escape-xml
   "Escape XML special characters in a string.
    Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
@@ -88,8 +130,8 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
 
-(defn- escape-xml-content
-  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+(defn escape-xml-content
+  "Like [[escape-xml]] but leaves double-quotes intact. Safe for element/table-cell *content*
   (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
   readably instead of with `&quot;` noise."
   [s]
@@ -174,7 +216,7 @@
         (-> (selmer/render template payload)
             str/trim)
         (catch Exception e
-          (log/error e "Error rendering LLM representations template" {:type type})
+          (log/error "Error rendering LLM representations template" {:type type :error (ex-message e)})
           (pr-str payload)))
       (do
         (log/warn "LLM representations template missing" {:template llm-template-name})
@@ -372,6 +414,40 @@
                   (= k :reference) (json-cell-safe (escape-xml-content v))
                   :else            (escape-pipes (escape-xml (str v)))))}))
 
+(defn- format-join-required-dimensions-table
+  "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
+  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) carried on each dim's `:reference`. For
+  a join-required dim the bare portable FK does NOT resolve (no FK path); only the alias-qualified
+  clause does, so that is the form the LLM must paste."
+  [dims]
+  (te/markdown-table
+   (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
+   {:name "Field Name" :field_id "Field ID" :type "Type"
+    :reference "Reference (copy verbatim into a field clause)"}
+   {:value-fn (fn [k v]
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  (= k :reference) (json-cell-safe (escape-xml-content v))
+                  :else            (escape-pipes (escape-xml (str v)))))}))
+
+(defn- format-metric-join-required-dimensions
+  "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
+  join that its `queryable-dimensions` cannot advertise (no foreign key). For each such join we tell
+  the LLM to paste the exact join clause into `joins:` and reference each field by its alias-qualified
+  Reference. Without this the LLM guesses at the column and dead-ends on a `no foreign key` error
+  (BOT-1612)."
+  [join-required-dimensions]
+  (str/join
+   "\n"
+   (for [{:keys [target_table join dimensions]} join-required-dimensions]
+     (str "To group or filter this metric by **" target_table
+          "** columns, add this join to your query's `joins:` (the metric reaches these columns "
+          "through a join with **no foreign key**, so the join must be present), then reference a "
+          "field using its alias-qualified Reference from the table below:\n\n"
+          "```json\n" (json/encode join {:pretty true}) "\n```\n\n"
+          (format-join-required-dimensions-table dimensions)))))
+
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly, except we additionally surface
@@ -379,7 +455,7 @@
    attributes — the three pieces of information the LLM needs to correctly use the metric
    in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
    metric's base table)."
-  [{:keys [id name description verified queryable-dimensions collection
+  [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
            default_time_dimension_field database_name base_table_portable_fk
            portable_entity_id]}]
   (render-llm-template
@@ -397,7 +473,9 @@
     :metric_collection_xml         (when collection (collection->xml collection))
     :metric_default_time_dimension (:name default_time_dimension_field)
     :metric_dimensions_table       (when (seq queryable-dimensions)
-                                     (format-metric-dimensions-table queryable-dimensions))}))
+                                     (format-metric-dimensions-table queryable-dimensions))
+    :metric_join_required_xml      (when (seq join-required-dimensions)
+                                     (format-metric-join-required-dimensions join-required-dimensions))}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -852,8 +930,7 @@
     :transform_description     description
     :transform_source_type     (some-> (:type source) clojure.core/name)
     :transform_source_database (when-let [db (:source-database source)] (str db))
-    :transform_source_query    (let [q (:query source)]
-                                 (when (string? q) q))
+    :transform_source_query    (transform-query->text (:query source))
     :transform_target          (when target (pr-str target))}))
 
 (def formatters
@@ -909,11 +986,12 @@
   "Render a list-shaped read-resource response.
 
    Input shape:
-     {:list-type :databases     ; keyword, becomes the type attribute
-      :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
-      :total     5
-      :page      1
-      :pages     1}
+     {:list-type      :databases     ; keyword, becomes the type attribute
+      :items          [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
+      :total          5
+      :page           1
+      :pages          1
+      :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
    block ahead of the items; items reference tabs via their `tab_id` attribute.
@@ -923,7 +1001,7 @@
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages tabs]}]
+  [{:keys [list-type items total page pages tabs next-page-uri]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         tabs-xml  (when (seq tabs)
                     (str "<tabs>\n"
@@ -936,7 +1014,8 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
+                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)
          "\" pages=\"" (or pages 1)
@@ -956,28 +1035,3 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
-
-(defn export-query-for-llm
-  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
-  map with a `:database` is normalized and exported to the portable representations form
-  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
-  sources pass through; a `pprint`'d map is the last-resort fallback."
-  [query]
-  (cond
-    (string? query) query
-    (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            database-id (:database normalized)
-            mp (when database-id
-                 (lib-be/application-database-metadata-provider database-id))
-            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-        (if exported
-          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-          (u/pprint-to-str normalized)))
-      (catch Exception _
-        (u/pprint-to-str query)))
-    (string? (get-in query [:native :query])) (get-in query [:native :query])
-    (map? query) (u/pprint-to-str query)
-    :else (some-> query str)))

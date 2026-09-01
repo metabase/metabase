@@ -5,10 +5,10 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";

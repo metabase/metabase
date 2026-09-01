@@ -12,14 +12,14 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
+import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
-import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Ellipsified,
@@ -420,15 +420,16 @@ function DatabaseItemList({
 }
 
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
-  const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isFolder, isHidden, models } =
+    useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
-    include_can_run_adhoc_query: true,
+    ...getCollectionItemsOptions({ models }),
   });
 
   const allItems: CollectionItem[] = (data?.data ?? []).filter(
-    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+    (item) => !isHidden(item),
   );
   const typeFilter = parent.childTypeFilter;
   const items = typeFilter

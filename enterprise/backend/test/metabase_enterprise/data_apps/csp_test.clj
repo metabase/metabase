@@ -22,7 +22,7 @@
            first))))
 
 (deftest data-app-connect-src-allowed-hosts-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps-preview}
     (mt/with-temp [:model/DataApp _ {:name          "boba"
                                      :display_name  "Boba"
                                      :bundle_path   "data_apps/boba/dist/index.js"
@@ -48,14 +48,14 @@
                                    :bundle_path   "x"
                                    :enabled       true
                                    :allowed_hosts ["https://api.example.com"]}]
-    (testing "with the :data-apps feature the EE impl returns the app's allowed_hosts"
-      (mt/with-premium-features #{:data-apps}
+    (testing "with the :data-apps-preview feature the EE impl returns the app's allowed_hosts"
+      (mt/with-premium-features #{:data-apps-preview}
         (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts "boba")))))
     (testing "without the feature it falls back to []"
       (mt/with-premium-features #{}
         (is (= [] (mw.security/data-app-connect-src-hosts "boba")))))
     (testing "a disabled app contributes nothing"
-      (mt/with-premium-features #{:data-apps}
+      (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temp [:model/DataApp _ {:name          "off"
                                          :display_name  "Off"
                                          :bundle_path   "x"

@@ -1,0 +1,47 @@
+## Reinstall v_ai_usage_log as v5 — master's v4 (#78261, forked_from_conversation_id) recreated the
+## view without the explorations CASE branches this branch had put in its own v4, so the
+## `exploration` / `contextual_interestingness` sources were surfacing as raw machine names in AI
+## usage analytics. v5 = master's v4 plus those branches. (This changeset previously lived in
+## 20260713_ai_analytics_views_v4.yaml installing our v4; renamed so includeAll's alphabetical
+## filename sort runs it after 20260721_metabot_fork_origin.yaml, which installs master's v4.)
+##
+## runOnChange so editing the v5 SQL re-runs this on upgrade; master's v4 installer is
+## checksum-pinned, so its files must never be edited in place.
+##
+## v_metabot_conversations gets the same treatment in
+## 20260722_metabot_conversations_v7_explorations_sources.yaml.
+##
+## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-22T20:00:00
+      author: johnswanson
+      runOnChange: true
+      comment: Reinstall v_ai_usage_log (v5) with explorations usage sources in source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v5/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v5/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v5/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v4/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v4/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v4/h2-ai_usage_log.sql
+            relativeToChangelogFile: true

@@ -10,7 +10,14 @@ export function SAML_POPUP_BLOCKED() {
 export function SAML_POPUP_CLOSED() {
   return new MetabaseError(
     "SAML_POPUP_CLOSED",
-    "Authentication was canceled by the user (popup closed).",
+    "Authentication did not complete before the popup was closed.",
+  );
+}
+
+export function SAML_SITE_URL_MISMATCH() {
+  return new MetabaseError(
+    "SAML_SITE_URL_MISMATCH",
+    "SAML authentication requires metabaseInstanceUrl to use the same origin as the configured Site URL.",
   );
 }
 

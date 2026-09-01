@@ -7,9 +7,9 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive ::event :metabase/event)
-(derive :event/card-create ::event)
-(derive :event/card-update ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/card-create ::event)
+(events/derive! :event/card-update ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [topic {card :object :keys [user-id] :as _event}]
@@ -24,4 +24,4 @@
                (nil? (t2/select-one-fn :id :model/PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
-      (log/warnf e "Failed to process persisted-info event. %s" topic))))
+      (log/warnf "Failed to process persisted-info event. %s: %s" topic (ex-message e)))))

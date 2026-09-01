@@ -36,9 +36,9 @@
   [_]
   #{:snippets})
 
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 (doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
-  (derive e ::event))
+  (events/derive! e ::event))
 
 (defn add-template-tags
   "Update the template tags based on the new contents."

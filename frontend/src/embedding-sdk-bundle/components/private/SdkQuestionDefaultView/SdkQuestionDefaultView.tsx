@@ -157,19 +157,32 @@ export const SdkQuestionDefaultView = ({
 
   const { ref: containerRef, isMobile } = useMobileLayout();
 
+  // EMB-2177: the loader and the error states have to sit in the same box as
+  // the rendered state, otherwise the component collapses and then jumps to
+  // the caller's height once the question resolves.
+  const sizeProps = { height, width, className, style };
+
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
   ) {
-    return <SdkLoader />;
+    return (
+      <FlexibleSizeComponent {...sizeProps}>
+        <SdkLoader />
+      </FlexibleSizeComponent>
+    );
   }
 
   if (!isEditorOpen && !question) {
-    if (originalId) {
-      return <QuestionNotFoundError id={originalId} />;
-    } else {
-      return <SdkError message={t`Question not found`} />;
-    }
+    return (
+      <FlexibleSizeComponent {...sizeProps}>
+        {originalId ? (
+          <QuestionNotFoundError id={originalId} />
+        ) : (
+          <SdkError message={t`Question not found`} />
+        )}
+      </FlexibleSizeComponent>
+    );
   }
 
   const showSaveButton =

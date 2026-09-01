@@ -8,9 +8,8 @@ import {
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
@@ -25,7 +24,7 @@ export function NewJobPage() {
     useCreateTransformJobMutation();
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const isSaving = isCreating || isFetching;
 
   const handleNameChange = (name: string) => {
@@ -54,12 +53,12 @@ export function NewJobPage() {
       // prefetch the job to avoid the loader on the job details page
       await fetchJob(newJob.id);
       sendSuccessToast(t`New job created`);
-      dispatch(push(Urls.transformJob(newJob.id)));
+      navigate(Urls.transformJob(newJob.id));
     }
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformJobList()));
+    navigate(Urls.transformJobList());
   };
 
   return (

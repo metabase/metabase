@@ -98,4 +98,5 @@
       (is (contains? excluded-columns :updated_at))
       (is (contains? excluded-columns :collection_id))
       (is (contains? excluded-columns :collection_position))
-      (is (= 8 (count excluded-columns)) "Should exclude exactly 5 metadata fields"))))
+      (is (contains? excluded-columns :public_uuid_prefix))
+      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))

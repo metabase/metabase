@@ -75,6 +75,7 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         className={S.sidebar}
         direction="column"
         flex={1}
+        miw={0}
         h="100%"
         bg="background_page-primary"
         data-testid="job-run-list-sidebar"

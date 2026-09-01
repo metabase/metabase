@@ -1,13 +1,12 @@
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { WritebackAction } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 
 export const canRunAction = (
   action: WritebackAction,
-  databases: Database[],
+  databases: Pick<Database, "id" | "settings">[],
 ) => {
   const database = databases.find(({ id }) => id === action.database_id);
-  return database != null && database.hasActionsEnabled();
+  return Boolean(database?.settings?.["database-enable-actions"]);
 };
 
 export const canEditAction = (action: WritebackAction, model: Question) => {

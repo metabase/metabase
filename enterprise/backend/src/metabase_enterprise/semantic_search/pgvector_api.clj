@@ -11,13 +11,13 @@
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
   (:import
@@ -31,7 +31,6 @@
   (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
   (def index-metadata semantic.index-metadata/default-index-metadata)
 
-  (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
 (defn- fresh-index [index-metadata embedding-model & {:keys [force-reset?]}]
@@ -60,7 +59,7 @@
     (semantic.index/create-index-table-if-not-exists! tx index)
     (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
     (when-not active
-      (log/infof "Configured model does not match active index, switching to new index %s" (u/pprint-to-str index))
+      (log/infof "Configured model does not match active index, switching to new index %s" (pr-str index))
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
     index))
 
@@ -119,10 +118,11 @@
 
   Designed to be called once at application startup (or in tests)."
   [pgvector index-metadata embedding-model & {:as opts}]
-  (semantic.db.connection/with-migrate-tx [tx pgvector]
-    (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
-                                              :embedding-model embedding-model})
-    (initialize-index! tx index-metadata embedding-model opts)))
+  (let [embedding-model (semantic.embedding/resolve-model embedding-model)]
+    (semantic.db.connection/with-migrate-tx [tx pgvector]
+      (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
+                                                :embedding-model embedding-model})
+      (initialize-index! tx index-metadata embedding-model opts))))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup
@@ -203,7 +203,8 @@
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/delete-from-index! pgvector index model ids)))
 
-#_{:clj-kondo/ignore [:unresolved-require :metabase/modules]}
+;; REPL-only requires in the comment block; metabase.test also crosses the module boundary
+#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
   (init-semantic-search! pgvector index-metadata embedding-model)
   (index-documents! pgvector index-metadata [{:model           "card"

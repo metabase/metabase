@@ -20,6 +20,7 @@ TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 RESULT_FILE="${RESULT_FILE:-/tmp/cross-version-result.json}"
+LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -152,9 +153,25 @@ start_metabase() {
     docker compose up -d --quiet-pull
 }
 
+# Docker deletes a container's logs when the container is removed, and both
+# stop_metabase and cleanup remove containers. Append them to a file first so
+# they are still around after the run (CI prints these on failure).
+save_logs() {
+  local service="$1"
+  local label="$2"
+
+  {
+    echo "===== ${service} — ${label} ====="
+    docker compose logs --no-color "$service" 2>&1 || true
+    echo
+  } >> "$LOG_DIR/docker-${service}.log"
+}
+
 # Stop Metabase (but keep postgres)
 stop_metabase() {
+  local label="$1"
   log "Stopping Metabase container..."
+  save_logs metabase "$label"
   docker compose stop metabase
   docker compose rm -f metabase
 }
@@ -240,12 +257,12 @@ migrate_down_step() {
     return 1
   fi
 
-  if echo "$output" | grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception"; then
+  if grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception" <<<"$output"; then
     error "migrate down encountered errors (check logs above)"
     return 1
   fi
 
-  if echo "$output" | grep -q "not rolled back"; then
+  if grep -q "not rolled back" <<<"$output"; then
     error "migrate down had changesets that were not rolled back (check logs above)"
     return 1
   fi
@@ -310,7 +327,7 @@ check_downgrade_refused() {
     # Check container logs for downgrade error
     local logs=$(docker compose logs metabase 2>&1 || true)
 
-    if echo "$logs" | grep -qi "migrate.*down\|downgrade\|database.*newer"; then
+    if grep -qi "migrate.*down\|downgrade\|database.*newer" <<<"$logs"; then
       log "Metabase correctly detected downgrade scenario"
       return 0
     fi
@@ -325,9 +342,21 @@ check_downgrade_refused() {
   done
 }
 
+teardown() {
+  docker compose down -v --remove-orphans 2>/dev/null || true
+}
+
+# Ensure each run starts w/ empty log directory
+init_logs() {
+  mkdir -p "$LOG_DIR"
+  rm -f "$LOG_DIR"/docker-*.log
+}
+
 cleanup() {
   log "Cleaning up..."
-  docker compose down -v --remove-orphans 2>/dev/null || true
+  save_logs metabase "teardown"
+  save_logs postgres "teardown"
+  teardown
 }
 
 check_image_exists() {
@@ -363,7 +392,8 @@ main() {
   log "============================================"
 
   # Ensure clean state
-  cleanup
+  teardown
+  init_logs
 
   trap cleanup EXIT
 
@@ -389,7 +419,7 @@ main() {
 
   log ""
   log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
-  stop_metabase
+  stop_metabase "source $SOURCE_VERSION"
 
   log ""
   log "Step 4: Starting TARGET version ($TARGET_VERSION)..."
@@ -422,7 +452,7 @@ main() {
     fi
 
     # Stop the failed container
-    stop_metabase
+    stop_metabase "target $TARGET_VERSION (downgrade refused)"
 
     log ""
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."

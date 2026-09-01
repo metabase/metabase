@@ -9,6 +9,11 @@ const DATA = [
   { value: "banana", label: "Banana" },
 ];
 
+const GROUPED_DATA = [
+  { group: "Pome", items: [{ value: "apple", label: "Apple" }] },
+  { group: "Berry", items: [{ value: "banana", label: "Banana" }] },
+];
+
 type SetupOpts = Omit<Partial<SelectProps>, "onChange" | "onDropdownOpen">;
 
 function setup({ data = DATA, ...props }: SetupOpts = {}) {
@@ -74,6 +79,41 @@ describe("Select", () => {
       await userEvent.keyboard("{Enter}");
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("grouped data", () => {
+    it("should not render groups whose options are all filtered out", async () => {
+      const { input } = setup({ data: GROUPED_DATA, searchable: true });
+
+      await userEvent.click(input);
+      await userEvent.keyboard("ban");
+
+      expect(screen.getByText("Berry")).toBeInTheDocument();
+      expect(screen.queryByText("Pome")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("group")).toHaveLength(1);
+    });
+
+    it("should apply the same rule to a user-provided filter", async () => {
+      const { input } = setup({
+        data: GROUPED_DATA,
+        searchable: true,
+        filter: ({ options }) =>
+          options.map((option) =>
+            "group" in option
+              ? {
+                  ...option,
+                  items: option.items.filter((item) => item.value === "banana"),
+                }
+              : option,
+          ),
+      });
+
+      await userEvent.click(input);
+
+      expect(screen.getByText("Berry")).toBeInTheDocument();
+      expect(screen.queryByText("Pome")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("group")).toHaveLength(1);
     });
   });
 

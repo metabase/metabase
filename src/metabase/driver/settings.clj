@@ -3,11 +3,39 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting warehouse-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
+  ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
+  ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
+  ;; stricter would break working instances on upgrade.
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
+                    (if (premium-features/is-hosted?)
+                      :external-only
+                      :allow-all)))
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru (str "Invalid warehouse-allowed-networks! Only values of `external-only`, "
+                                    "`allow-private`,` and `allow-all` are allowed."))))
+                (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
@@ -22,7 +50,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -42,6 +70,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -58,6 +87,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -176,6 +206,10 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *impersonation-allow-write?*
+  "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
+  false)
+
 (def ^:dynamic *allow-testing-sqlite-connections*
   "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
   users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
@@ -229,6 +263,7 @@
 
 (defsetting engines
   "Available database engines"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn []

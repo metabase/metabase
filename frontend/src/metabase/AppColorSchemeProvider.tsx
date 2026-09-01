@@ -8,12 +8,12 @@ import {
 import { useMedia } from "react-use";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   ColorSchemeContext,
   type ColorSchemeContextType,
   colorSchemeContextDefaultValue,
 } from "metabase/ui/components/theme/ColorSchemeProvider";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import type { ColorScheme } from "./utils/color-scheme";
 
@@ -56,7 +56,7 @@ export function AppColorSchemeProvider({
     if (forceColorScheme) {
       return forceColorScheme;
     }
-    if (getIsEmbeddingIframe()) {
+    if (isWithinIframe()) {
       return "light";
     }
     return colorScheme === "auto" ? systemColorScheme : colorScheme;

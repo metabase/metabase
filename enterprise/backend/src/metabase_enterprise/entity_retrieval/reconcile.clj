@@ -50,6 +50,47 @@
 ;; semantic-search's migration lock (19991).
 (def ^:private reconcile-lock-id 20012)
 
+(defn- with-index-lock
+  [pgvector lock-function unlock-function f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (jdbc/execute! conn [(format "SELECT %s(%d)" lock-function reconcile-lock-id)])
+        (try
+          (f conn)
+          (finally
+            (jdbc/execute! conn [(format "SELECT %s(%d)" unlock-function reconcile-lock-id)])))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn with-index-read-lock
+  "Run `(f connection)` under a shared cluster-wide library-index lock, returning nil immediately when a
+  reconcile holds the matching exclusive lock.
+
+  Concurrent searches share this lock. The non-blocking acquisition prevents waiting searches from exhausting
+  the pgvector connection pool during a long reconcile. A successful search's compatibility check and vector
+  query cannot straddle a rebuild into another embedding space."
+  [pgvector f]
+  (with-open [^Connection conn (jdbc/get-connection pgvector)]
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (when (:acquired (jdbc/execute-one!
+                          conn
+                          [(format "SELECT pg_try_advisory_lock_shared(%d) AS acquired" reconcile-lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+          (try
+            (f conn)
+            (finally
+              (jdbc/execute! conn [(format "SELECT pg_advisory_unlock_shared(%d)" reconcile-lock-id)]))))
+        (finally
+          (.setAutoCommit conn autocommit))))))
+
+(defn- with-index-write-lock
+  [pgvector f]
+  (with-index-lock pgvector "pg_advisory_lock" "pg_advisory_unlock" f))
+
 (defn doc-id
   "Content-addressed primary key for an index document.
   `instructions` is intentionally not an input: editing it must not re-embed an entity's name/synonyms."
@@ -241,8 +282,8 @@
   [conn]
   (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id])
               (jdbc/execute! conn
-                             [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\""
-                                      index-table/*vectors-table*)]
+                             [(format "SELECT doc_id, entity_type, entity_local_id FROM %s"
+                                      (index-table/vectors-table-sql))]
                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- stored-docs-for-entity
@@ -255,8 +296,8 @@
           (comp (filter #(= target-class (entity-class %)))
                 (map (juxt :doc_id #(select-keys % [:entity_type :entity_local_id]))))
           (jdbc/execute! conn
-                         [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\" WHERE entity_local_id = ?"
-                                  index-table/*vectors-table*)
+                         [(format "SELECT doc_id, entity_type, entity_local_id FROM %s WHERE entity_local_id = ?"
+                                  (index-table/vectors-table-sql))
                           entity-local-id]
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
@@ -289,7 +330,7 @@
                         docs)]
       (when (seq records)
         (jdbc/execute! conn
-                       (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                       (-> (sql.helpers/insert-into (keyword (index-table/vectors-table)))
                            (sql.helpers/values (vec records))
                            (sql.helpers/on-conflict :doc_id)
                            (sql.helpers/do-nothing)
@@ -299,7 +340,7 @@
 (defn- delete-rows! [conn doc-ids]
   (when (seq doc-ids)
     (jdbc/execute! conn
-                   (-> (sql.helpers/delete-from (keyword index-table/*vectors-table*))
+                   (-> (sql.helpers/delete-from (keyword (index-table/vectors-table)))
                        (sql.helpers/where [:in :doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
@@ -316,8 +357,8 @@
         (jdbc/execute-one! conn
                            [(format (str "SELECT count(*) AS documents, "
                                          "count(distinct (entity_type, entity_local_id)) AS entities "
-                                         "FROM \"%s\"")
-                                    index-table/*vectors-table*)]
+                                         "FROM %s")
+                                    (index-table/vectors-table-sql))]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     {:documents documents :entities entities}))
 
@@ -354,8 +395,8 @@
                                (insert-batch! conn embedding-model batch)
                                (catch Exception e
                                  (vswap! failed into (map entity-class batch))
-                                 (log/error e "library entity index: failed to insert batch of"
-                                            (count batch) "docs; will retry next run")
+                                 (log/error "library entity index: failed to insert batch of"
+                                            (count batch) "docs; will retry next run:" (ex-message e))
                                  0)))))
                      0
                      to-insert)
@@ -391,8 +432,8 @@
         inserted    (try
                       (if (seq to-insert) (insert-batch! conn embedding-model to-insert) 0)
                       (catch Exception e
-                        (log/error e "library entity index: failed to reconcile entity"
-                                   entity-type entity-local-id "; will retry next run")
+                        (log/error "library entity index: failed to reconcile entity"
+                                   entity-type entity-local-id "; will retry next run:" (ex-message e))
                         ::failed))
         failed?     (= ::failed inserted)
         to-delete   (if failed? [] orphans)]
@@ -416,28 +457,19 @@
   `ensure-tables!` (which may drop+rebuild on a model/format change) runs under the lock too, so a rebuild
   can't pull the table out from under a concurrent node's in-flight run."
   [pgvector resolve-model f]
-  (with-open [^Connection conn (jdbc/get-connection pgvector)]
-    ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs, so each
-    ;; insert/delete must commit on its own. Some pools hand out autocommit-off connections (which would
-    ;; silently roll the whole run back on close), so force it on and restore the prior setting before the
-    ;; connection goes back to the pool. (ensure-tables! flips this to a transaction for its DDL.)
-    (let [autocommit (.getAutoCommit conn)]
-      (.setAutoCommit conn true)
-      (try
-        (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
-        (try
-          (let [embedding-model (resolve-model)
-                status          (index-table/ensure-tables! conn embedding-model)
-                ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
-                ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
-                emptied?        (contains? #{:created :rebuilt} status)]
-            (when emptied?
-              (log/info "library entity index: vectors table is empty (" status "); repopulating"))
-            (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status)))
-          (finally
-            (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))
-        (finally
-          (.setAutoCommit conn autocommit))))))
+  (with-index-write-lock
+    pgvector
+    (fn [conn]
+      ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs. The
+      ;; shared lock helper forces autocommit on; ensure-tables! temporarily wraps its DDL in a transaction.
+      (let [embedding-model (resolve-model)
+            status          (index-table/ensure-tables! conn embedding-model)
+            ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
+            ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
+            emptied?        (contains? #{:created :rebuilt} status)]
+        (when emptied?
+          (log/info "library entity index: vectors table is empty (" status "); repopulating"))
+        (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status))))))
 
 (defn reconcile!
   "Full reconcile of the pgvector `library_entity_index` with the appdb, blocking until it completes;

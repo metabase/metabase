@@ -20,7 +20,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
@@ -70,7 +70,8 @@ function CreateCollectionForm({
   namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
-  const { location, params } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,

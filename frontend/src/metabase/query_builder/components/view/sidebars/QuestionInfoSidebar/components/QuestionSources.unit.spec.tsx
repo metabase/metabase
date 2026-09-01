@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { setupListDatabaseSchemasEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -12,7 +13,10 @@ import { Route } from "metabase/router";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, NormalizedTable } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { QuestionSources } from "./QuestionSources";
 
@@ -56,6 +60,8 @@ const setup = async ({
       },
     };
   }
+
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 
   return renderWithProviders(<Route path="/" element={<QuestionSources />} />, {
     withRouter: true,

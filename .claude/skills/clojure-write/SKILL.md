@@ -82,10 +82,29 @@ either a bug, or it means callers must handle each case themselves — and
 in *that* case it is the *absence* of the property that must be
 documented. Document deviations from expectation, not conformance to it.
 
-Heuristic: if a sentence would still be true after a full rewrite of the
-body, it may belong in the docstring. If it describes *how the current
-body works*, it belongs in the body — as an inline comment, if it is
-non-obvious.
+Heuristic — a sentence earns its place in the docstring only if it
+passes both tests:
+
+1. Rewrite test (necessary, not sufficient): if rewriting the body to a
+   different implementation with an identical contract could make the
+   sentence false, it describes the implementation, not the contract.
+   Relocate it to an inline comment at the point in the body where it
+   applies.
+
+2. Ownership test: if the sentence states a fact about code this
+   function does not own — a callee's behavior, a library's guarantee —
+   it survives any rewrite trivially, which is exactly why the rewrite
+   test alone is not enough. If this body *relies* on that fact, it is
+   implementation context: relocate it to the call site. If nothing here
+   relies on it, it is blather about someone else's code: delete it, and
+   let the callee's own docstring answer for it.
+
+Say each fact once. Duplicated prose is a stale comment in advance: when
+the fact changes, one copy gets updated and the rest quietly rot. This
+holds even within code you own — a namespace docstring that
+re-summarizes its own multimethods, three sibling functions carrying the
+same paragraph about retry behavior. Give the fact one home, and have
+the other places name it rather than restate it.
 
 Multi-line docstrings are not banned — a genuinely non-obvious constraint
 the code had to deal with can be worth explaining. But be prudent; the
@@ -104,5 +123,5 @@ breakage keeps happening, *that* is the signal a comment was warranted.
 - Spaces on a line with nothing after it is not allowed
 - After changing module boundaries (adding/removing/renaming a `src` namespace, a cross-module `require`
   or `:model/X` reference, or a new module), run `./bin/mage fix-modules-config` to regenerate
-  `.clj-kondo/config/modules/config.edn` and keep `metabase.core.modules-test` green. No-op when nothing
-  drifted; see "Module Boundaries" in the project `CLAUDE.md`.
+  `.clj-kondo/config/modules/config.edn`, then run `./bin/mage project-tests modules`. The fixer is a no-op when
+  nothing drifted; see "Module Boundaries" in the project `CLAUDE.md`.

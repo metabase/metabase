@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Group, Stack, Text } from "metabase/ui";
 import { originalColors, staticVizOverrides } from "metabase/ui/colors";
 

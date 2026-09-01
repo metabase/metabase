@@ -5,8 +5,7 @@ import { useEmbeddingThemeEditor } from "metabase/admin/embedding/hooks/use-embe
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
-import { useDispatch } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Flex, Loader, Stack } from "metabase/ui";
 
 import { EditorPanel } from "./EditorPanel";
@@ -17,13 +16,13 @@ export function EmbeddingThemeEditorApp() {
   const themeId =
     themeIdParam === "new" ? "new" : parseInt(themeIdParam ?? "", 10);
   const editor = useEmbeddingThemeEditor(themeId);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   // Suppresses the unsaved-changes prompt when we navigate away intentionally
   // (save or delete), since those flows leave the editor while `isDirty` is true.
   const isSavingRef = useRef(false);
 
   const goToThemeList = () => {
-    dispatch(push("/admin/embedding/themes"));
+    navigate("/admin/embedding/themes");
   };
 
   const {

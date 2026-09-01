@@ -3,8 +3,8 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { useAdminSetting } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,

@@ -67,6 +67,17 @@
   [model o1 o2]
   (diff-strings* (name model) o1 o2))
 
+(defmulti revision-readable?
+  "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
+  who can read an object's current row can read its whole revision history. Models whose snapshots carry
+  data-permission-sensitive definitions override this to authorize each snapshot on its own terms."
+  {:arglists '([model object])}
+  mi/dispatch-on-model)
+
+(defmethod revision-readable? :default
+  [_model _object]
+  true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
@@ -180,11 +191,13 @@
     (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
-  "Fetch `revisions` for `model` with `id` and add details."
+  "Fetch `revisions` for `model` with `id` that the current user may see, and add details. Diffs and descriptions
+  are computed between consecutive *visible* revisions, so a snapshot the caller is not entitled to never leaks
+  through an adjacent revision's diff."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
-    (loop [acc [], [r1 r2 & more] revisions]
+    (loop [acc [], [r1 r2 & more] (filterv #(revision-readable? model (:object %)) revisions)]
       (if-not r2
         (conj acc (add-revision-details model r1 nil))
         (recur (conj acc (add-revision-details model r1 r2))
@@ -239,15 +252,20 @@
         model-name (name entity)
         serialized-instance (t2/select-one-fn :object :model/Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
-      ;; Do the reversion of the object
-      (revert-to-revision! entity id user-id serialized-instance)
-      ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! :model/Revision
-                                                                 :model        model-name
-                                                                 :model_id     id
-                                                                 :user_id      user-id
-                                                                 :object       serialized-instance
-                                                                 :is_creation  false
-                                                                 :is_reversion true))]
-        (add-revision-details entity new-revision last-revision)))))
+      (let [already-in-target-state? (= serialized-instance
+                                        (t2/select-one-fn :object :model/Revision
+                                                          :model model-name :model_id id {:order-by [[:id :desc]]}))]
+        ;; Do the reversion of the object
+        (revert-to-revision! entity id user-id serialized-instance)
+        ;; Push a new revision to record this change
+        (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})]
+          (if already-in-target-state?
+            last-revision
+            (let [new-revision (first (t2/insert-returning-instances! :model/Revision
+                                                                      :model        model-name
+                                                                      :model_id     id
+                                                                      :user_id      user-id
+                                                                      :object       serialized-instance
+                                                                      :is_creation  false
+                                                                      :is_reversion true))]
+              (add-revision-details entity new-revision last-revision))))))))

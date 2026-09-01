@@ -34,7 +34,7 @@
     stage-number :- :int]
    (:limit (lib.util/query-stage query stage-number))))
 
-(defn ^:export disable-default-limit
+(defn disable-default-limit
   "Sets the `disable-max-results?` middleware option on `query`, which disables the default limit on
   query results. Used by transforms to allow unlimited result rows."
   [query]

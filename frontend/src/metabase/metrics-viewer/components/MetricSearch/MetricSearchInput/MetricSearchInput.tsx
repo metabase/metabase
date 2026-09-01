@@ -32,6 +32,7 @@ import {
   MetricSearchDropdown,
   type MetricSearchDropdownRef,
 } from "../MetricSearchDropdown";
+import { buildFullTextWithIdentities } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 import { buildEditorExtensions } from "./editorExtensions";
@@ -88,7 +89,6 @@ export function MetricSearchInput({
   });
 
   const {
-    editText,
     isFocused,
     isOpen,
     setIsOpen,
@@ -98,6 +98,7 @@ export function MetricSearchInput({
     isExpressionDirty,
     pendingFocusRef,
     handleInputFocus,
+    handleEditorCreate,
     handleInputBlur,
     handleEditExpression,
     handleChange,
@@ -134,6 +135,14 @@ export function MetricSearchInput({
   const metricSlots = useMemo(
     () => computeMetricSlots(formulaEntities),
     [formulaEntities],
+  );
+  // The initial document for a fresh editor: the same text useFormulaEditor
+  // initializes every editing session with. Once the session is active the
+  // document is the source of truth — @uiw/react-codemirror's value-sync
+  // replacement is cancelled by the trustedDocChangesOnly transaction filter.
+  const sessionText = useMemo(
+    () => buildFullTextWithIdentities(formulaEntities, metricNames).text,
+    [formulaEntities, metricNames],
   );
 
   return (
@@ -250,8 +259,9 @@ export function MetricSearchInput({
                 ref={editorRef}
                 basicSetup={false}
                 autoFocus
-                value={editText}
+                value={sessionText}
                 onChange={handleChange}
+                onCreateEditor={handleEditorCreate}
                 extensions={editorExtensions}
                 data-testid="metrics-viewer-search-input"
               />

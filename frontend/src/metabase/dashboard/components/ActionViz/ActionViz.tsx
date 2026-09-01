@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import Action from "./Action";
+import { Action } from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";

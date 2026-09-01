@@ -45,16 +45,17 @@ const ordersDefinition = setupDefinition(allMetadata, ORDERS_METRIC.id);
 const REVENUE_SOURCE_ID: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
 const ORDERS_SOURCE_ID: MetricSourceId = `metric:${ORDERS_METRIC.id}`;
 
+// Listed in the metric's curated dimension order, which the picker preserves.
 const REVENUE_DIMENSIONS: AvailableDimension[] = [
   {
-    icon: "int",
+    icon: "calendar",
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
     dimensionBreakoutInfo: {
-      type: "numeric",
-      label: "Amount",
-      dimensionMapping: { 0: "dim-amount" },
+      type: "time",
+      label: "Created At",
+      dimensionMapping: { 0: "dim-created-at" },
     },
   },
   {
@@ -69,14 +70,14 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     },
   },
   {
-    icon: "calendar",
+    icon: "int",
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
     dimensionBreakoutInfo: {
-      type: "time",
-      label: "Created At",
-      dimensionMapping: { 0: "dim-created-at" },
+      type: "numeric",
+      label: "Amount",
+      dimensionMapping: { 0: "dim-amount" },
     },
   },
   {
@@ -138,6 +139,20 @@ describe("getAvailableDimensionsForPicker", () => {
         [REVENUE_SOURCE_ID]: REVENUE_DIMENSIONS,
       },
     });
+  });
+
+  it("preserves the curated dimension order instead of sorting alphabetically", () => {
+    const result = getAvailableDimensionsForPicker(
+      { [REVENUE_SOURCE_ID]: revenueDefinition },
+      [REVENUE_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
+      new Set(),
+    );
+
+    const labels = (result.bySource[REVENUE_SOURCE_ID] ?? []).map(
+      (dimension) => dimension.dimensionBreakoutInfo.label,
+    );
+    expect(labels).toEqual(["Created At", "Category", "Amount", "Is Active"]);
   });
 
   it("returns dimensions for a second metric source", () => {
@@ -584,6 +599,102 @@ describe("getComparableDimensionMapping", () => {
     projectionConfig: {},
   } satisfies MetricsViewerDimensionBreakoutState;
 
+  it("maps same-named category fields across metrics", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Product - Category",
+      group: { id: "group-a", type: "connection", displayName: "Product" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Product - Category",
+        dimensionMapping: { 0: "dim-sqlite-category" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Product - Category",
+                group: {
+                  id: "group-b",
+                  type: "connection",
+                  displayName: "Product",
+                },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Product - Category",
+                  dimensionMapping: { 1: "dim-pg-category" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-sqlite-category",
+      1: "dim-pg-category",
+    });
+  });
+
+  it("falls back to a same-type dimension for slots without a name match", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Product - Category",
+      group: { id: "group-a", type: "connection", displayName: "Product" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Product - Category",
+        dimensionMapping: { 0: "dim-sqlite-category" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Created At",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-created-at" },
+                },
+              },
+              {
+                icon: "label",
+                name: "Plan Type",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Plan Type",
+                  dimensionMapping: { 1: "dim-plan-type" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-sqlite-category",
+      1: "dim-plan-type",
+    });
+  });
+
   it("maps time fields across metric slots", () => {
     const selectedItem = {
       icon: "calendar",
@@ -897,7 +1008,7 @@ describe("getComparableDimensionMapping", () => {
     });
   });
 
-  it("does not map same-named category fields from different tables", () => {
+  it("maps same-named category fields from different tables", () => {
     const selectedItem = {
       icon: "label",
       name: "Name",
@@ -937,14 +1048,14 @@ describe("getComparableDimensionMapping", () => {
         metricSlots,
         activeDimensionBreakout,
       }),
-    ).toEqual({ 0: "dim-user-name", 1: null });
+    ).toEqual({ 0: "dim-user-name", 1: "dim-product-name" });
   });
 
   it.each([
     ["Address", "dim-revenue-user-address"],
     ["Name", "dim-revenue-user-name"],
   ])(
-    "does not preserve an incompatible active field when selecting %s",
+    "falls back to the other slot's same-type field when selecting %s",
     (fieldName, fieldId) => {
       const selectedItem = {
         icon: "label",
@@ -991,11 +1102,11 @@ describe("getComparableDimensionMapping", () => {
             dimensionMapping: { 1: "dim-accounts-email" },
           },
         }),
-      ).toEqual({ 0: fieldId, 1: null });
+      ).toEqual({ 0: fieldId, 1: "dim-accounts-email" });
     },
   );
 
-  it("does not map same-typed numeric fields from different tables", () => {
+  it("maps same-typed numeric fields from different tables", () => {
     const selectedItem = {
       icon: "int",
       name: "Total",
@@ -1035,7 +1146,7 @@ describe("getComparableDimensionMapping", () => {
         metricSlots,
         activeDimensionBreakout,
       }),
-    ).toEqual({ 0: "dim-orders-total", 1: null });
+    ).toEqual({ 0: "dim-orders-total", 1: "dim-products-price" });
   });
 
   it("maps exact same table and column category fields across metric slots", () => {
@@ -1075,5 +1186,131 @@ describe("getComparableDimensionMapping", () => {
         activeDimensionBreakout,
       }),
     ).toEqual({ 0: "dim-user-name", 1: "dim-user-name" });
+  });
+
+  it("prefers the other slot's same-type default dimension over curated order", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Priority",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Priority",
+                  dimensionMapping: { 1: "dim-priority" },
+                },
+              },
+              {
+                icon: "label",
+                name: "Level",
+                isDefault: true,
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Level",
+                  dimensionMapping: { 1: "dim-level" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: "dim-level" });
+  });
+
+  it("disables slots without a dimension of the picked type", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Created At",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-orders-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: null });
+  });
+
+  it("keeps a deselected slot disabled when refining the same type", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Status",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Status",
+                  dimensionMapping: { 1: "dim-orders-status" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          type: "category",
+          display: "bar",
+          dimensionMapping: { 0: "dim-revenue-other", 1: null },
+        },
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: null });
   });
 });

@@ -88,7 +88,7 @@
       (not aggregation) (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
                                         {:type qp.error-type/invalid-measure, :measure measure}))
       :else (do
-              (log/debugf "Expanding measure %d:\n%s\n->\n%s" id (u/pprint-to-str &match) (u/pprint-to-str aggregation))
+              (log/debugf "Expanding measure %d" id)
               ;; Preserve :lib/uuid and :display-name from the measure clause options if present
               ;; This is important so that :aggregation refs pointing to the measure remain valid
               (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :display-name]))))))

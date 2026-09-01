@@ -95,9 +95,9 @@
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 
 ;; Event type hierarchy for remote-sync tracking
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 (doseq [e [:event/python-library-create :event/python-library-update :event/python-library-delete]]
-  (derive e ::event))
+  (events/derive! e ::event))
 
 (t2/define-after-insert :model/PythonLibrary
   [library]

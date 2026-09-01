@@ -1,12 +1,15 @@
-import { useCallback, useMemo } from "react";
+import { useIntersection } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
+import {
+  DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
+  type DefaultDimensionDisplayType,
+} from "metabase/common/metrics/utils/dimension-types";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   Flex,
@@ -20,37 +23,73 @@ import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  Card,
   CardDisplayType,
   Dataset,
+  MetricDimension,
   SingleSeries,
 } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import S from "./MetricDimensionGrid.module.css";
 import { useMetricDimensionCards } from "./use-metric-dimension-cards";
-import type { DefaultDimension } from "./utils";
+import type { OverviewDimension } from "./utils";
 
 type MetricDimensionGridProps = {
   metricId: MetricId;
+  dimensions: MetricDimension[];
 };
 
 const DEFAULT_SKELETON_COUNT = 3;
 
-const DISPLAY_TYPE_BY_DIMENSION = {
-  time: "line",
-  geo: "map",
-  category: "bar",
-  boolean: "bar",
-  numeric: "bar",
-} as const satisfies Record<DimensionType, CardDisplayType>;
+export function MetricDimensionGrid({
+  metricId,
+  dimensions,
+}: MetricDimensionGridProps) {
+  const {
+    cards,
+    definition,
+    isLoading,
+    autoLoad,
+    canAutoLoad,
+    hasMore,
+    showMore,
+  } = useMetricDimensionCards(metricId, dimensions);
+  const { ref: autoLoadRef, entry } = useIntersection({ threshold: 0.1 });
+  const [hasScrollIntent, setHasScrollIntent] = useState(false);
 
-type DimensionDisplayType = (typeof DISPLAY_TYPE_BY_DIMENSION)[DimensionType];
+  useEffect(() => {
+    setHasScrollIntent(false);
+  }, [metricId]);
 
-export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
-  const { cards, definition, isLoading, hasMore, showMore } =
-    useMetricDimensionCards(metricId);
+  useEffect(() => {
+    if (!canAutoLoad) {
+      return;
+    }
+
+    const handleScrollIntent = () => setHasScrollIntent(true);
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY > 0) {
+        handleScrollIntent();
+      }
+    };
+
+    window.addEventListener("scroll", handleScrollIntent, true);
+    window.addEventListener("touchmove", handleScrollIntent);
+    window.addEventListener("wheel", handleWheel);
+    return () => {
+      window.removeEventListener("scroll", handleScrollIntent, true);
+      window.removeEventListener("touchmove", handleScrollIntent);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [canAutoLoad, metricId]);
+
+  useEffect(() => {
+    if (hasScrollIntent && entry?.isIntersecting && canAutoLoad) {
+      autoLoad();
+    }
+  }, [entry?.isIntersecting, autoLoad, canAutoLoad, hasScrollIntent]);
 
   if (isLoading || !definition) {
     return <DimensionGridSkeleton count={DEFAULT_SKELETON_COUNT} />;
@@ -69,11 +108,18 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
             metricId={metricId}
             definition={definition}
             dimension={card}
-            displayType={DISPLAY_TYPE_BY_DIMENSION[card.dimensionType]}
+            displayType={DEFAULT_DISPLAY_TYPE_BY_DIMENSION[card.dimensionType]}
           />
         ))}
       </SimpleGrid>
-      {hasMore && (
+      {canAutoLoad && (
+        <div
+          ref={autoLoadRef}
+          className={S.autoLoadTrigger}
+          data-testid="metric-dimension-auto-load-trigger"
+        />
+      )}
+      {hasMore && !canAutoLoad && (
         <Button
           fullWidth
           leftSection={<Icon name="chevrondown" />}
@@ -92,8 +138,8 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
 interface MetricDimensionCardProps {
   metricId: MetricId;
   definition: MetricDefinition;
-  dimension: DefaultDimension;
-  displayType: DimensionDisplayType;
+  dimension: OverviewDimension;
+  displayType: DefaultDimensionDisplayType;
 }
 
 function MetricDimensionCard({
@@ -102,7 +148,7 @@ function MetricDimensionCard({
   dimension,
   displayType,
 }: MetricDimensionCardProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
 
   const rawSeries = useMemo(
@@ -111,18 +157,16 @@ function MetricDimensionCard({
   );
 
   const handleClick = useCallback(() => {
-    dispatch(
-      push(
-        Urls.exploreMetricDimension({
-          metricId,
-          dimensionId: dimension.dimensionId,
-          dimensionType: dimension.dimensionType,
-          displayType,
-          label: dimension.label,
-        }),
-      ),
+    navigate(
+      Urls.exploreMetricDimension({
+        metricId,
+        dimensionId: dimension.dimensionId,
+        dimensionType: dimension.dimensionType,
+        displayType,
+        label: dimension.label,
+      }),
     );
-  }, [dispatch, metricId, dimension, displayType]);
+  }, [metricId, dimension, displayType, navigate]);
 
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
@@ -159,14 +203,14 @@ function buildSingleSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
         display: displayType,
         visualization_settings: {
           ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
           ...(metricName ? { "graph.metrics": [metricName] } : {}),
         },
-      } as Card,
+        dataset_query: dataset.json_query ?? STRUCTURED_QUERY_TEMPLATE,
+      },
       data: dataset.data,
     },
   ];

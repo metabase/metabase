@@ -5,7 +5,7 @@ import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
-import { useRoute, useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
@@ -13,17 +13,12 @@ import { isNavigatingToCreateADashboardQuestion } from "./utils";
 export const DashboardLeaveConfirmationModal = () => {
   const isEditing = useSelector(getIsEditing);
   const isDirty = useSelector(getIsDirty);
-  const { router, routes } = useRouter();
-  const route = useRoute();
+  const location = useLocation();
 
   const dispatch = useDispatch();
 
   const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({
     isEnabled: isEditing && isDirty,
-    // `routes` is the matched-route chain; its last entry is this page's own
-    // route.
-    route: route ?? routes[routes.length - 1],
-    router,
   });
 
   const content = isNavigatingToCreateADashboardQuestion(nextLocation)
@@ -33,7 +28,7 @@ export const DashboardLeaveConfirmationModal = () => {
         actionBtn: {
           message: t`Save changes`,
         },
-        onConfirm: () => dispatch(updateDashboardAndCards()),
+        onConfirm: () => dispatch(updateDashboardAndCards(location)),
       }
     : {
         title: t`Discard your changes?`,

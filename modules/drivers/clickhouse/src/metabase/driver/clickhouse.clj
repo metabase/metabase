@@ -10,7 +10,6 @@
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -19,25 +18,31 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
-   (java.sql Connection SQLException Statement PreparedStatement)
+   (java.sql Connection SQLException PreparedStatement)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
 
 (System/setProperty "clickhouse.jdbc.v2" "true")
-(driver/register! :clickhouse :parent #{:sql-mbql5 :sql-jdbc})
+(driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
+;; the connection is made through the proxy when one is set, so it is the host actually contacted.
+(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host"])
+
+(defmethod driver/non-host-parameters :clickhouse
+  [_driver]
+  ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
+   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
-(defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -51,7 +56,6 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
-                              :workspace                        true
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true
@@ -64,6 +68,7 @@
                               :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
@@ -78,7 +83,7 @@
                               :transforms/table                 true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
-                              :window-functions/offset          false}]
+                              :window-functions/offset          true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :clickhouse
@@ -110,11 +115,11 @@
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (when session-timezone
-         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
-               query-settings  (new QuerySettings)]
-           (.setOption query-settings "session_timezone" session-timezone)
-           (.setDefaultQuerySettings clickhouse-conn query-settings)))
+       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+             query-settings (new QuerySettings)]
+         (when session-timezone
+           (.serverSetting query-settings "session_timezone" session-timezone))
+         (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
@@ -185,7 +190,7 @@
              (when (.next rset)
                (.getBoolean rset 1))))))
       (catch Throwable e
-        (log/error e "An exception during ClickHouse connectivity check")
+        (log/errorf "An exception during ClickHouse connectivity check: %s" (ex-message e))
         false))
     ;; During normal usage, fall back to the default implementation
     (sql-jdbc.conn/can-connect? driver details)))
@@ -467,20 +472,22 @@
 (defmethod sql-jdbc/set-role-statement :clickhouse
   [_driver _conn role]
   ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
-  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
-  (let [default-role         (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed      (fn [role]
-                               (if (or (and (str/starts-with? role "\"")
-                                            (str/ends-with? role "\""))
-                                       (= role default-role))
-                                 role
-                                 (str \" role \")))
-        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
-        quoted-role          (->> (str/split role #",")
-                                  (map quote-if-needed)
-                                  (map escape-double-quotes)
-                                  (str/join ","))]
-    (format "SET ROLE %s" quoted-role)))
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side. The whole value is quoted
+  ;; as one identifier, so a role name containing a comma stays a single role. ClickHouse honors backslash
+  ;; escapes inside a quoted identifier, so `:ansi+backslashes` is the style that applies -- a trailing `\`
+  ;; must not be able to escape the closing quote. HoneySQL's ANSI quoting only doubles the quote character,
+  ;; which is why this goes through [[sql.u/quote-identifier]] rather than [[sql.u/quote-name]].
+  (let [default-role (driver.sql/default-database-role :clickhouse nil)
+        ;; a value the caller already quoted is unwrapped first, so its contents are escaped like any other.
+        ;; It takes two characters to be a wrapped value -- a lone `"` is a one-character role name.
+        unwrapped    (if (and (>= (count role) 2)
+                              (str/starts-with? role "\"")
+                              (str/ends-with? role "\""))
+                       (subs role 1 (dec (count role)))
+                       role)]
+    (format "SET ROLE %s" (if (= role default-role)
+                            role
+                            (sql.u/quote-identifier unwrapped :ansi+backslashes)))))
 
 (defmethod driver/set-role! :clickhouse
   [driver ^Connection conn role]
@@ -543,97 +550,6 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
-
-;;; ------------------------------------------ Workspace Isolation ------------------------------------------
-
-(defmethod driver/init-workspace-isolation! :clickhouse
-  [driver database workspace]
-  (let [db-name             (:schema workspace)
-        canonical-db        (:db (driver.conn/effective-details database))
-        read-user           (:database_details workspace)
-        escaped-password    (sql.u/escape-sql (:password read-user) :ansi)
-        quoted-db           (quote-schema db-name)
-        quoted-user         (quote-field (:user read-user))
-        quoted-canonical-db (when-not (str/blank? canonical-db)
-                              (quote-schema canonical-db))]
-    ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
-    ;; immediately. Failure recovery is compensation via the idempotent destroy.
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [stmt (.createStatement conn)]
-         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
-                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
-                                      quoted-user escaped-password)
-                              ;; the user may survive a failed teardown; without this it would keep
-                              ;; its old password while the new one gets persisted
-                              (format "ALTER USER %s IDENTIFIED BY '%s'"
-                                      quoted-user escaped-password)
-                              ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
-                              ;; owner auto-privileges, so grant each verb explicitly):
-                              ;;   SELECT       - read its own tables
-                              ;;   INSERT       - CTAS populate + incremental insert
-                              ;;   CREATE TABLE - transform target
-                              ;;   DROP TABLE   - swap/cleanup
-                              ;; (these four also satisfy the atomic-swap RENAME TABLE.)
-                              (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
-                                      quoted-db quoted-user)]
-                       quoted-canonical-db
-                       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
-                                     quoted-canonical-db quoted-user)))]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
-    nil))
-
-(defmethod driver/grant-workspace-read-access! :clickhouse
-  [driver database workspace schemas]
-  (let [read-user-name (-> workspace :database_details :user)
-        quoted-user    (quote-field read-user-name)]
-    (when-not read-user-name
-      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
-                      {:workspace-id (:id workspace) :step :grant})))
-    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
-    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
-    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
-    (let [sqls (for [schema schemas
-                     :let [_ (when (str/blank? schema)
-                               (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                                               {:database-id (:id database) :step :grant})))]]
-                 (format "GRANT SELECT ON %s.* TO %s"
-                         (quote-schema schema)
-                         quoted-user))]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
-       (fn [^Connection conn]
-         (with-open [stmt (.createStatement conn)]
-           (doseq [sql sqls]
-             (.addBatch ^Statement stmt ^String sql))
-           (try
-             (.executeBatch ^Statement stmt)
-             (catch Throwable t
-               (throw (driver.u/batch-exception t))))))))))
-
-(defmethod driver/destroy-workspace-isolation! :clickhouse
-  [driver database workspace]
-  (let [db-name      (:schema workspace)
-        username     (-> workspace :database_details :user)
-        quoted-db    (quote-schema db-name)
-        quoted-user  (quote-field username)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [stmt (.createStatement conn)]
-         (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                      (format "DROP DATABASE IF EXISTS %s" quoted-db)
-                      (format "DROP USER IF EXISTS %s" quoted-user)]]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")

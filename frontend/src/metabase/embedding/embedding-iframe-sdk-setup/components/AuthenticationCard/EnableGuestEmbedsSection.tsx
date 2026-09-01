@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Anchor, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { UsageConditionsInfoIcon } from "./UsageConditionsInfoIcon";

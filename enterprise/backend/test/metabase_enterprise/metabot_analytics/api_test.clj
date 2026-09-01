@@ -270,7 +270,7 @@
 (defn- with-sortable-conversations-fixture!
   "Seeds three conversations differentiated across every sortable column: user
    (first_name/last_name), profile_id, ip_address, created_at, message_count,
-   and total_tokens. Tests pick a sort key and verify the order of the
+   title, and total_tokens. Tests pick a sort key and verify the order of the
    convo-a / convo-m / convo-z handles. Seeded into a private 2026 date window
    so a `date` filter isolates them from any other rows in the test app DB.
 
@@ -285,8 +285,9 @@
      message_count:     (m, z, a)   counts 1, 2, 3
      total_tokens:      (a, z, m)   tokens 10, 20, 30
      cache_read_tokens: (z, a, m)   cache reads 5, 15 (7+8), 25
-       (all six permutations of three handles are taken, so this one
-        necessarily repeats profile_id's ordering)"
+     title:             (z, m, a)   Alpha request / Middle request / Zebra request
+       (all six permutations of three handles are taken, so these
+        necessarily repeat an earlier column's ordering)"
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {user-a :id} {:email      "metabot-analytics-sort-a@metabase.com"
@@ -316,11 +317,14 @@
                                               :data            [{:type "text" :text "hi"}]}))]
         (try
           (insert-conversation! {:conversation-id convo-a :user-id user-a
-                                 :created-at jan-1 :ip-address "10.0.0.3"})
+                                 :created-at jan-1 :ip-address "10.0.0.3"
+                                 :title "Zebra request"})
           (insert-conversation! {:conversation-id convo-m :user-id user-m
-                                 :created-at jan-2 :ip-address "10.0.0.2"})
+                                 :created-at jan-2 :ip-address "10.0.0.2"
+                                 :title "Middle request"})
           (insert-conversation! {:conversation-id convo-z :user-id user-z
-                                 :created-at jan-3 :ip-address "10.0.0.1"})
+                                 :created-at jan-3 :ip-address "10.0.0.1"
+                                 :title "Alpha request"})
           (seed-msg! convo-a "2-profile" 4)
           (seed-msg! convo-a "2-profile" 3)
           (seed-msg! convo-a "2-profile" 3)
@@ -348,7 +352,8 @@
                ["ip_address"    [convo-z convo-m convo-a]]
                ["message_count" [convo-m convo-z convo-a]]
                ["total_tokens"  [convo-a convo-z convo-m]]
-               ["cache_read_tokens" [convo-z convo-a convo-m]]]]
+               ["cache_read_tokens" [convo-z convo-a convo-m]]
+               ["title"         [convo-z convo-m convo-a]]]]
         (testing (str "sort_by=" sort-by " &sort_dir=asc")
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str response-path "&sort_by=" sort-by "&sort_dir=asc"))]

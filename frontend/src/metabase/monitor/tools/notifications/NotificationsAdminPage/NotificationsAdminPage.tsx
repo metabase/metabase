@@ -11,8 +11,8 @@ import {
 import {
   BulkActionBar,
   BulkActionButton,
-  BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
+import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
@@ -23,7 +23,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push, useParams, useRouter } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
@@ -32,7 +32,6 @@ import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
 import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
-import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
 import { NotificationsTabs } from "../NotificationsTabs";
 import {
@@ -49,14 +48,15 @@ import {
   SORT_COLUMN_VALUES,
 } from "./constants";
 import type { RouteParams } from "./types";
-import { buildListParams, urlStateConfig } from "./utils";
+import { buildListParams, getTabCount, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { notificationId: notificationIdParam } = useParams<RouteParams>();
   const notificationId = Urls.extractEntityId(notificationIdParam);
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelected = useCallback(() => setRowSelection({}), []);
@@ -77,9 +77,18 @@ export const NotificationsAdminPage = () => {
   const selectedCount = selectedNotifications.length;
 
   const {
-    data: failingData,
+    currentData: allCountData,
+    error: allCountError,
+    isFetching: isAllCountFetching,
+  } = useAdminListNotificationsQuery({
+    limit: 1,
+    offset: 0,
+    active: urlState.active ?? undefined,
+  });
+  const {
+    currentData: failingData,
     error: failingError,
-    isLoading: isFailingLoading,
+    isFetching: isFailingFetching,
   } = useAdminListNotificationsQuery({
     limit: 1,
     offset: 0,
@@ -87,33 +96,18 @@ export const NotificationsAdminPage = () => {
     last_check_status: "failing",
   });
   const {
-    data: ownerlessData,
+    currentData: ownerlessData,
     error: ownerlessError,
-    isLoading: isOwnerlessLoading,
+    isFetching: isOwnerlessFetching,
   } = useAdminListNotificationsQuery({
     limit: 1,
     offset: 0,
     active: urlState.active ?? undefined,
     creatorless: true,
   });
+  const allCount = allCountData?.total ?? 0;
   const failingCount = failingData?.total ?? 0;
   const ownerlessCount = ownerlessData?.total ?? 0;
-
-  useEffect(() => {
-    if (
-      (urlState.tab === "failing" && failingData && failingCount === 0) ||
-      (urlState.tab === "ownerless" && ownerlessData && ownerlessCount === 0)
-    ) {
-      patchUrlState({ tab: "all", page: 0 });
-    }
-  }, [
-    urlState.tab,
-    failingData,
-    failingCount,
-    ownerlessData,
-    ownerlessCount,
-    patchUrlState,
-  ]);
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
@@ -167,7 +161,7 @@ export const NotificationsAdminPage = () => {
 
   const handleRowClick = (id: NotificationId) => {
     trackAlertsManagementAlertOpened(id, "table_row");
-    dispatch(push(Urls.monitorNotificationDetail(id)));
+    navigate(Urls.monitorNotificationDetail(id));
   };
 
   const handleSearchChange = (query: string) => {
@@ -178,8 +172,8 @@ export const NotificationsAdminPage = () => {
   };
 
   const handleSidebarClose = useCallback(() => {
-    dispatch(push(Urls.monitorNotifications()));
-  }, [dispatch]);
+    navigate(Urls.monitorNotifications());
+  }, [navigate]);
 
   const deleteNotifications = useCallback(
     async (
@@ -204,7 +198,7 @@ export const NotificationsAdminPage = () => {
           notificationId !== undefined &&
           notificationIds.includes(notificationId)
         ) {
-          dispatch(push(Urls.monitorNotifications()));
+          navigate(Urls.monitorNotifications());
         }
       } catch {
         trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);
@@ -216,7 +210,7 @@ export const NotificationsAdminPage = () => {
         );
       }
     },
-    [bulkAction, clearSelected, dispatch, notificationId],
+    [bulkAction, clearSelected, dispatch, notificationId, navigate],
   );
 
   const handleDeleteBulk = useCallback(() => {
@@ -282,8 +276,18 @@ export const NotificationsAdminPage = () => {
   );
 
   const isSidebarOpen = notificationId !== undefined;
-  const isPageLoading = isLoading || isFailingLoading || isOwnerlessLoading;
   const countError = failingError ?? ownerlessError;
+  const allTabCount = getTabCount(isAllCountFetching, allCountError, allCount);
+  const failingTabCount = getTabCount(
+    isFailingFetching,
+    failingError,
+    failingCount,
+  );
+  const ownerlessTabCount = getTabCount(
+    isOwnerlessFetching,
+    ownerlessError,
+    ownerlessCount,
+  );
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
     useMemo(() => {
@@ -312,10 +316,8 @@ export const NotificationsAdminPage = () => {
       };
     }, [notificationId, notifications]);
 
-  if (isPageLoading || countError) {
-    return (
-      <LoadingAndErrorWrapper loading={isPageLoading} error={countError} />
-    );
+  if (countError) {
+    return <LoadingAndErrorWrapper error={countError} />;
   }
 
   return (
@@ -326,15 +328,16 @@ export const NotificationsAdminPage = () => {
 
           <NotificationsTabs
             tab={urlState.tab}
-            failingCount={failingCount}
-            ownerlessCount={ownerlessCount}
+            allCount={allTabCount}
+            failingCount={failingTabCount}
+            ownerlessCount={ownerlessTabCount}
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
           <Flex gap="md" align="center">
-            <NotificationsSearchInput
+            <DebouncedSearchInput
               value={urlState.query}
-              isLoading={isFetching}
+              placeholder={t`Search by question or owner…`}
               onChange={handleSearchChange}
             />
             <NotificationsFilters state={urlState} onChange={patchUrlState} />
@@ -354,17 +357,29 @@ export const NotificationsAdminPage = () => {
             onRowClick={handleRowClick}
           />
 
-          <Flex justify="end">
-            <PaginationControls
-              page={urlState.page}
-              pageSize={PAGE_SIZE}
-              itemsLength={notifications.length}
-              total={total}
-              showTotal
-              onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
-              onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
-            />
-          </Flex>
+          {!isLoading && error === undefined && (
+            <Flex justify="end">
+              <PaginationControls
+                page={urlState.page}
+                pageSize={PAGE_SIZE}
+                itemsLength={notifications.length}
+                total={total}
+                showTotal
+                onPreviousPage={() =>
+                  patchUrlState(
+                    { page: urlState.page - 1 },
+                    { immediate: true },
+                  )
+                }
+                onNextPage={() =>
+                  patchUrlState(
+                    { page: urlState.page + 1 },
+                    { immediate: true },
+                  )
+                }
+              />
+            </Flex>
+          )}
         </MonitorMain>
 
         {isSidebarOpen && (
@@ -390,12 +405,13 @@ export const NotificationsAdminPage = () => {
             : t`${selectedCount} alerts selected`
         }
       >
-        <BulkActionDangerButton
+        <BulkActionButton
+          danger
           onClick={handleDeleteBulk}
           disabled={isBulkLoading}
         >
           {t`Delete`}
-        </BulkActionDangerButton>
+        </BulkActionButton>
         <BulkActionButton
           onClick={() => setIsChangeOwnerOpened(true)}
           disabled={isBulkLoading}

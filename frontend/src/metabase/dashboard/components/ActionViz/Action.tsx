@@ -11,9 +11,9 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { getMetadata } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
@@ -203,5 +203,4 @@ function getErrorTooltip({
   return t`Something’s gone wrong`;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(ActionFn);
+export const Action = connect(mapStateToProps)(ActionFn);

@@ -10,15 +10,16 @@ import {
   AdminSettingInput,
   BasicAdminSettingInput,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-  useUpdateSettingMutation,
-} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+  useUpdateSettingMutation,
+} from "metabase/settings";
 import {
   Alert,
   Box,

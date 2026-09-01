@@ -2,7 +2,9 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build",
+    "noEmit": true,
     "baseUrl": "./",
+    "rootDir": "..",
     "types": [
       "cypress",
       "@testing-library/cypress",
@@ -17,6 +19,9 @@
       ],
       "@metabase/embedding-sdk-react/data-app": [
         "../enterprise/frontend/src/embedding-sdk-package/data-app.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app-dev": [
+        "../enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts"
       ],
       "*": ["../frontend/src/*"]
     }

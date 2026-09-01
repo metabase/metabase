@@ -10,11 +10,28 @@ import {
 import type { DependencyDiagnosticsMode } from "../types";
 
 export function getColumns(mode: DependencyDiagnosticsMode) {
+  const nameColumn = {
+    ...getNameColumn(mode === "broken" ? t`Dependency` : t`Name`),
+    width: undefined,
+    maxAutoWidth: undefined,
+    minWidth: 200,
+  };
+  const locationColumn = {
+    ...getLocationColumn(),
+    width: undefined,
+    maxAutoWidth: undefined,
+    minWidth: 160,
+  };
+
+  if (mode !== "broken") {
+    return [nameColumn, locationColumn];
+  }
+
   return [
-    getNameColumn(mode === "broken" ? t`Dependency` : t`Name`),
-    getLocationColumn(),
-    ...(mode === "broken" ? [getDependentsErrorsColumn()] : []),
-    ...(mode === "broken" ? [getDependentsWithErrorsColumn()] : []),
+    nameColumn,
+    locationColumn,
+    getDependentsErrorsColumn(),
+    getDependentsWithErrorsColumn(),
   ];
 }
 

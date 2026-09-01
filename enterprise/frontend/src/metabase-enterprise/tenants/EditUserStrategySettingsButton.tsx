@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase-enterprise/urls";
 

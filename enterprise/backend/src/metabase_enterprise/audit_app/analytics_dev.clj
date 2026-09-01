@@ -22,6 +22,7 @@
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -63,6 +64,11 @@
 
   Returns the created database map."
   [user-id]
+  ;; An analytics-dev database is a handle onto the app-db and must not exist outside analytics dev mode; refuse to
+  ;; create one unless the mode is on (mirrors the connection-layer guard in
+  ;; [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]]).
+  (when-not (audit/analytics-dev-mode)
+    (throw (ex-info (tru "Analytics dev mode is not enabled.") {:status-code 400})))
   (let [db-type (mdb/db-type)]
     (if-let [existing (find-analytics-dev-database)]
       (do
@@ -174,7 +180,7 @@
       (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {}))]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
-          (log/warn "Import had errors:" (:errors report)))
+          (log/warn "Import had errors:" (mapv ex-message (:errors report))))
         report)
       (finally
         (when (.exists (io/file temp-dir))
@@ -201,7 +207,7 @@
                                                             (serialization/file-writer (.getPath temp-path))))]
         (log/info "Export complete:" (reduce + 0 (vals (:entity-counts report))) "entities exported")
         (when (seq (:errors report))
-          (log/warn "Export had errors:" (:errors report)))
+          (log/warn "Export had errors:" (mapv ex-message (:errors report))))
         {:report report
          :export-dir (.getPath temp-path)})
       (catch Exception e
@@ -306,12 +312,12 @@
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]
             (cleanup-real-analytics)
-            (log/info "Setting up analytics dev environment with user:" (:email admin-user))
+            (log/info "Setting up analytics dev environment with user:" (:id admin-user))
             (create-analytics-dev-database! (:id admin-user))
             (import-analytics-content! (:email admin-user))
             (log/info "Analytics dev environment ready")))
         (catch Exception e
-          (log/error e "Failed to set up analytics dev environment"))))))
+          (log/errorf "Failed to set up analytics dev environment: %s" (ex-message e)))))))
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_] (analytics-dev-mode-setup))

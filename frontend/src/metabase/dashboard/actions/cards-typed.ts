@@ -1,4 +1,3 @@
-import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,11 +17,8 @@ import {
   getPositionForNewDashCard,
 } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
-import { getDefaultSize } from "metabase/visualizations";
-import {
-  getCardIdsFromColumnValueMappings,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
+import { getRegisteredDefaultSize } from "metabase/viz-core";
 import type {
   Card,
   CardId,
@@ -33,6 +29,7 @@ import type {
   VirtualCard,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import {
   trackCardCreated,
@@ -61,12 +58,14 @@ import {
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
 import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
-  ADD_CARD_TO_DASH,
-  ADD_MANY_CARDS_TO_DASH,
+  MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
   TRASH_DASHBOARD_QUESTION_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
   setDashCardAttributes,
   setDashboardAttributes,
 } from "./core";
@@ -89,20 +88,12 @@ export type AddDashCardOpts = NewDashCardOpts & {
   };
 };
 
-export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-export const markNewCardSeen = createAction<DashCardId>(MARK_NEW_CARD_SEEN);
-
-export const addCardToDash = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
-export const addManyCardsToDash = createAction<NewDashboardCard[]>(
-  ADD_MANY_CARDS_TO_DASH,
-);
-
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
     const display = dashcardOverrides?.card?.display;
     const dashCardSize = display
-      ? getDefaultSize(display) || DEFAULT_CARD_SIZE
+      ? getRegisteredDefaultSize(display) || DEFAULT_CARD_SIZE
       : DEFAULT_CARD_SIZE;
 
     const dashboardState = getState().dashboard;
@@ -606,3 +597,10 @@ const undoTrashDashboardQuestion = createThunkAction(
       dispatch(undoRemoveCardFromDashboard({ dashcardId }));
     },
 );
+
+export {
+  MARK_NEW_CARD_SEEN,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
+};

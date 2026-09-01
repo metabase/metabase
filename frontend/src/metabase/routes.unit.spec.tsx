@@ -1,14 +1,17 @@
+import { waitFor } from "@testing-library/react";
+
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { LegacyBrowseRedirect } from "./routes";
+import { LegacyBrowseRedirect, getRoutes } from "./routes";
 
-function setup(initialRoute: string) {
+function setupLegacyBrowseRedirect(initialRoute: string) {
   setupCurrentUserEndpoint(createMockUser());
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="browse">
       <Route path="databases/:slug" element={<div>browse databases</div>} />
       <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
@@ -16,24 +19,136 @@ function setup(initialRoute: string) {
     { withRouter: true, initialRoute },
   );
 
-  return history;
+  return router;
 }
 
 describe("LegacyBrowseRedirect", () => {
   it("redirects a v48-era /browse/<dbId>-<slug> url onto /browse/databases", async () => {
-    const history = setup("/browse/5-orders");
+    const router = setupLegacyBrowseRedirect("/browse/5-orders");
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/5-orders",
-      ),
+      expect(router?.location.pathname).toBe("/browse/databases/5-orders"),
     );
     expect(screen.getByText("browse databases")).toBeInTheDocument();
   });
 
   it("does not redirect a segment without the legacy hyphenated shape", async () => {
-    const history = setup("/browse/orders");
+    const router = setupLegacyBrowseRedirect("/browse/orders");
 
-    expect(history?.getCurrentLocation().pathname).toBe("/browse/orders");
+    expect(router?.location.pathname).toBe("/browse/orders");
+  });
+});
+
+jest.mock("metabase/AppComponent", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    __esModule: true,
+    App: () => <Outlet />,
+  };
+});
+
+jest.mock("metabase/common/components/NotFoundFallbackPage", () => ({
+  NotFoundFallbackPage: () => null,
+}));
+
+let mockRenderMonitorOutlet = false;
+
+jest.mock("metabase/monitor/components/MonitorLayout", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
+  };
+});
+
+function setupAppRoutes({
+  initialRoute,
+  user = createMockUser({ is_superuser: true }),
+}: {
+  initialRoute: string;
+  user?: ReturnType<typeof createMockUser>;
+}) {
+  const { router } = renderRoutes(getRoutes, {
+    initialRoute,
+    storeInitialState: { currentUser: user },
+  });
+  return { router };
+}
+
+describe("application routes", () => {
+  afterEach(() => {
+    mockRenderMonitorOutlet = false;
+    reinitialize();
+  });
+
+  describe("legacy Admin Tools redirects", () => {
+    it.each([
+      ["/admin/tools/tasks", "/monitor/tasks"],
+      ["/admin/tools/tasks/list", "/monitor/tasks/list"],
+      ["/admin/tools/tasks/list/42", "/monitor/tasks/list/42"],
+      ["/admin/tools/tasks/runs", "/monitor/tasks/runs"],
+      ["/admin/tools/tasks/runs/7", "/monitor/tasks/runs/7"],
+      ["/admin/tools/jobs", "/monitor/jobs"],
+      ["/admin/tools/jobs/sync", "/monitor/jobs/sync"],
+      ["/admin/tools/logs", "/monitor/logs"],
+      ["/admin/tools/logs/levels", "/monitor/logs/levels"],
+      ["/admin/tools/errors", "/monitor/errors"],
+      ["/admin/tools/model-caching", "/monitor/model-persistence-log"],
+      ["/admin/tools/model-caching/9", "/monitor/model-persistence-log/9"],
+      ["/admin/tools/notifications", "/monitor/notifications"],
+      ["/admin/tools/notifications/13", "/monitor/notifications/13"],
+    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+      const { router } = setupAppRoutes({ initialRoute });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe(expectedPathname);
+      });
+    });
+
+    it("redirects the legacy Admin Tools index to the Monitor index", async () => {
+      const { router } = setupAppRoutes({ initialRoute: "/admin/tools" });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/monitor");
+      });
+    });
+  });
+
+  describe("legacy AI Auditing redirects", () => {
+    it.each([
+      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing/usage"],
+      [
+        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
+      ],
+      [
+        "/admin/metabot/usage-auditing/conversations/42",
+        "/monitor/ai-auditing/conversations/42",
+      ],
+      ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
+      ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
+    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+      const { router } = setupAppRoutes({ initialRoute });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe(expectedPathname);
+      });
+    });
+
+    it("applies the AI Auditing guard after redirecting", async () => {
+      mockRenderMonitorOutlet = true;
+      PLUGIN_AUDIT.isAiAuditingEnabled = true;
+      PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+        <Route path="usage" element={<div>AI Auditing</div>} />
+      );
+
+      const { router } = setupAppRoutes({
+        initialRoute: "/admin/metabot/usage-auditing",
+        user: createMockUser({ is_data_analyst: true }),
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+    });
   });
 });

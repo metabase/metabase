@@ -1,6 +1,18 @@
 import type { ComponentType, JSX, ReactNode } from "react";
 
-import type { EngineFieldOption, EngineFieldType } from "metabase-types/api";
+import type {
+  DatabaseData,
+  EngineFieldOption,
+  EngineFieldType,
+} from "metabase-types/api";
+
+/**
+ * `connection-string` is a FE only field used to prefill the form, so it is not
+ * part of the database itself.
+ */
+export type DatabaseFormValues = DatabaseData & {
+  "connection-string"?: string;
+};
 
 export interface EngineOption {
   name: string;

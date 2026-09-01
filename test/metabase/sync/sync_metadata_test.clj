@@ -9,10 +9,12 @@
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
-   [metabase.test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once #'cache-normal-sync-steps-fixture)
 
 (deftest survive-metadata-errors
   (testing "Make sure we survive metadata sync failing"

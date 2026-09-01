@@ -1,14 +1,14 @@
-import { getEngines } from "metabase/databases/selectors";
 import { isDeprecatedEngine } from "metabase/databases/utils/engine";
 import type { State } from "metabase/redux/store";
-import type Database from "metabase-lib/v1/metadata/Database";
+import { getSetting } from "metabase/settings";
+import type { Database } from "metabase-types/api";
 
 interface Props {
-  databases?: Database[];
+  databases?: Pick<Database, "is_sample" | "engine">[];
 }
 
 export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
-  const engines = getEngines(state);
+  const engines = getSetting(state, "engines");
   return (
     props.databases?.some(
       (d) => !d.is_sample && d.engine && isDeprecatedEngine(engines, d.engine),
@@ -19,10 +19,10 @@ export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
 export const isDeprecationNoticeEnabled = (state: State): boolean => {
   // check if the deprecation notice has been dismissed on this version
   return (
-    state.settings?.values?.version?.tag !==
-    state.settings?.values?.["deprecation-notice-version"]
+    getSetting(state, "version")?.tag !==
+    getSetting(state, "deprecation-notice-version")
   );
 };
 
 export const getCurrentVersion = (state: State) =>
-  state.settings?.values.version?.tag ?? "";
+  getSetting(state, "version")?.tag ?? "";

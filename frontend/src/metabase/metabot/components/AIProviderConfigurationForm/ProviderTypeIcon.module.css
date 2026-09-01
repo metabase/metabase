@@ -1,0 +1,10 @@
+.icon {
+  flex-shrink: 0;
+  color: var(--mb-color-icon-brand);
+  background-color: var(--mb-color-background-secondary);
+  border-radius: var(--mantine-radius-md);
+}
+
+.mark {
+  color: var(--mb-color-text-primary);
+}

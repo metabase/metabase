@@ -93,7 +93,7 @@
                     (lib/with-binning (lib/binning col))
                     (lib/with-temporal-bucket (lib/raw-temporal-bucket col))
                     lib/ref
-                    ;; Preserve the pre-nest ref's `:lib/uuid`. Downstream systems (notably the SQL-MBQL5 pivot
+                    ;; Preserve the pre-nest ref's `:lib/uuid`. Downstream systems (notably the SQL pivot
                     ;; compiler's `:pivot :rows`/`:columns` uuid lookups) track refs by uuid.
                     (lib.options/update-options assoc :lib/uuid (lib.options/uuid a-ref)))))]
       ;; temporarily disable enforcement since this stage will be invalid while we're messing with it... it will look

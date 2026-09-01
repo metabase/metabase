@@ -64,6 +64,16 @@
    api/*is-superuser?*
    db-or-id))
 
+(defenterprise routing-token-for-db
+  "Database-routing fingerprint for the current user on router `db-id` (the resolved destination
+  database id), or nil when the user resolves to the router db itself (admins, or non-admins
+  routed via the __METABASE_ROUTER__ sentinel) or when `db-id` is not a router database. May
+  throw when a routed non-admin is missing the required routing attribute."
+  :feature :none
+  [db-id]
+  (when-let [dest (router-db-or-id->destination-db-id db-id)]
+    {:destination-db-id dest}))
+
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
 ;;

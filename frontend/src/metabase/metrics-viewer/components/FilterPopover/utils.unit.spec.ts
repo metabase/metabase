@@ -61,25 +61,14 @@ function makeDefinitionSource(
   };
 }
 
-function getSourceTableDimensionInfo(
+function getDimensionInfo(
   displayName: string,
-  id = "main",
+  group: DimensionDisplayInfo["group"],
 ): DimensionDisplayInfo {
   // Unjustified type cast. FIXME
   return {
     displayName,
-    group: { id, displayName: "Orders", type: "main" },
-  } as DimensionDisplayInfo;
-}
-
-function getJoinedTabledDimensionInfo(
-  displayName: string,
-  id = "conn",
-): DimensionDisplayInfo {
-  // Unjustified type cast. FIXME
-  return {
-    displayName,
-    group: { id, displayName: "Products", type: "connection" },
+    group,
   } as DimensionDisplayInfo;
 }
 
@@ -193,7 +182,7 @@ describe("filterDisplayGroupsBySearch", () => {
 });
 
 describe("getMetricGroups", () => {
-  it("places segments above dimensions in the single source-table section", () => {
+  it("places segments above dimensions in a single unnamed section", () => {
     const source = makeDefinitionSource(0);
     // Unjustified type cast. FIXME
     const dim = {
@@ -209,7 +198,11 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === dim) {
-          return getSourceTableDimensionInfo("Created At");
+          return getDimensionInfo("Created At", {
+            id: "main",
+            displayName: "Orders",
+            type: "main",
+          });
         }
         if (target === seg) {
           return getSegmentInfo("Active customers");
@@ -222,7 +215,7 @@ describe("getMetricGroups", () => {
 
     expect(group.hasSegments).toBe(true);
     expect(group.sections).toHaveLength(1);
-    expect(group.sections[0].isSourceTable).toBe(true);
+    expect(group.sections[0]).not.toHaveProperty("name");
     expect(group.sections[0].items).toEqual([
       expect.objectContaining({ name: "Active customers", segment: seg }),
       expect.objectContaining({ name: "Created At", definitionIndex: 0 }),
@@ -239,7 +232,7 @@ describe("getMetricGroups", () => {
     expect(group.sections).toEqual([]);
   });
 
-  it("synthesizes a source-table section when there are segments but no filterable dimensions", () => {
+  it("shows segments when there are no filterable dimensions", () => {
     const source = makeDefinitionSource(0);
     // Unjustified type cast. FIXME
     const seg = { __seg: "big" } as unknown as LibMetric.SegmentMetadata;
@@ -251,13 +244,13 @@ describe("getMetricGroups", () => {
     const [group] = getMetricGroups([source], {});
     expect(group.hasSegments).toBe(true);
     expect(group.sections).toHaveLength(1);
-    expect(group.sections[0].isSourceTable).toBe(true);
+    expect(group.sections[0]).not.toHaveProperty("name");
     expect(group.sections[0].items).toEqual([
       expect.objectContaining({ name: "Big orders", segment: seg }),
     ]);
   });
 
-  it("only attaches segments to the main section when joined groups exist", () => {
+  it("flattens dimensions across table groups in filterable order", () => {
     const source = makeDefinitionSource(0);
     // Unjustified type cast. FIXME
     const mainDimMeta = {
@@ -280,10 +273,18 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === mainDimMeta) {
-          return getSourceTableDimensionInfo("Created At");
+          return getDimensionInfo("Created At", {
+            id: "main",
+            displayName: "Orders",
+            type: "main",
+          });
         }
         if (target === connDimMeta) {
-          return getJoinedTabledDimensionInfo("Category");
+          return getDimensionInfo("Category", {
+            id: "conn",
+            displayName: "Products",
+            type: "connection",
+          });
         }
         if (target === seg) {
           return getSegmentInfo("Active customers");
@@ -293,70 +294,13 @@ describe("getMetricGroups", () => {
     );
 
     const [group] = getMetricGroups([source], {});
-    expect(group.sections).toHaveLength(2);
-
-    const mainSection = group.sections.find((s) => s.isSourceTable);
-    const connSection = group.sections.find((s) => !s.isSourceTable);
-
-    expect(mainSection?.items).toEqual([
+    expect(group.sections).toHaveLength(1);
+    expect(group.sections[0]).not.toHaveProperty("name");
+    expect(group.sections[0].items).toEqual([
       expect.objectContaining({ name: "Active customers", segment: seg }),
       expect.objectContaining({ name: "Created At" }),
-    ]);
-    expect(connSection?.items).toEqual([
       expect.objectContaining({ name: "Category" }),
     ]);
-    // Segments MUST NOT leak into the joined-table section.
-    expect(
-      connSection?.items?.some(
-        // Unjustified type cast. FIXME
-        (item) => (item as { segment?: unknown }).segment != null,
-      ),
-    ).toBe(false);
-  });
-
-  it("falls back to a synthesized source-table section if no group reports as main", () => {
-    const source = makeDefinitionSource(0);
-    // Unjustified type cast. FIXME
-    const connDimMeta = {
-      __dim: "productCategory",
-    } as unknown as LibMetric.DimensionMetadata;
-    // Unjustified type cast. FIXME
-    const otherDimMeta = {
-      __dim: "other",
-    } as unknown as LibMetric.DimensionMetadata;
-    // Unjustified type cast. FIXME
-    const seg = { __seg: "x" } as unknown as LibMetric.SegmentMetadata;
-
-    mockLibMetric.filterableDimensions.mockReturnValue([
-      connDimMeta,
-      otherDimMeta,
-    ]);
-    mockLibMetric.availableSegments.mockReturnValue([seg]);
-    mockLibMetric.displayInfo.mockImplementation(
-      (_def: unknown, target: unknown) => {
-        if (target === connDimMeta) {
-          return getJoinedTabledDimensionInfo("Category", "conn1");
-        }
-        if (target === otherDimMeta) {
-          return getJoinedTabledDimensionInfo("Other", "conn2");
-        }
-        if (target === seg) {
-          return getSegmentInfo("Seg A");
-        }
-        throw new Error("unexpected displayInfo target");
-      },
-    );
-
-    const [group] = getMetricGroups([source], {});
-    // Two connection sections + one synthesized source-table section at top.
-    expect(group.sections).toHaveLength(3);
-    expect(group.sections[0].isSourceTable).toBe(true);
-    expect(group.sections[0].items).toEqual([
-      expect.objectContaining({ name: "Seg A", segment: seg }),
-    ]);
-    expect(group.sections.slice(1).every((s) => s.isSourceTable !== true)).toBe(
-      true,
-    );
   });
 
   it("scopes segments per definition source index", () => {

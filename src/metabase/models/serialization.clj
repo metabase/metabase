@@ -64,6 +64,7 @@
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -75,6 +76,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [toucan2.core :as t2]
@@ -424,7 +426,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/tracef "Extracting %s" (log-path-str (generate-path model instance)))
+  (log/tracef "Extracting %s %s" model (:id instance))
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -678,18 +680,13 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
-(defn default-load-update!
-  "Default implementation of [[load-update!]]."
-  [model-name ingested local]
+(defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
-    (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
+    (log/tracef "Upserting %s %d" model-name id)
     (t2/update! model id ingested)
     (t2/select-one model pk id)))
-
-(defmethod load-update! :default [model-name ingested local]
-  (default-load-update! model-name ingested local))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -709,7 +706,7 @@
   (fn [model _] model))
 
 (defmethod load-insert! :default [model-name ingested]
-  (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
+  (log/tracef "Inserting %s" model-name)
   (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
 
 (defmulti load-one!
@@ -883,7 +880,7 @@
   `(try
      ~@body
      (catch clojure.lang.ExceptionInfo e#
-       (log/debugf e# "Caught error in fk-elide")
+       (log/debugf "Caught error in fk-elide: %s" (ex-message e#))
        (when-not (= (::type (ex-data e#)) :target-not-found)
          (throw e#))
        nil)))
@@ -1015,13 +1012,13 @@
   [id]
   (reverse
    (t2/select :model/Field
-              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                 {:union-all [{:from   [[:metabase_field :mf]]
-                                               :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                               :where  [:= :id id]}
-                                              {:from   [[:metabase_field :pf]]
-                                               :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                               :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
+              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
+                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
+                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
+                                                                                 :where  [:= :id id]}
+                                                               ^:allow-subquery {:from   [[:metabase_field :pf]]
+                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
+                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
                :from           [:parents]
                :select         [:name :table_id]})))
 
@@ -1031,12 +1028,12 @@
   `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
   [table-id [field & rest]]
   (when field
-    {:from   [:metabase_field]
-     :select [:id]
-     :where  [:and
-              [:= :table_id table-id]
-              [:= :name field]
-              [:= :parent_id (recursively-find-field-q table-id rest)]]}))
+    ^:allow-subquery {:from   [:metabase_field]
+                      :select [:id]
+                      :where  [:and
+                               [:= :table_id table-id]
+                               [:= :name field]
+                               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
 ;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
 ;; database and table exporters above. Fields are unbounded in number (millions on large
@@ -1275,14 +1272,42 @@
     (m :guard map?)
     (import-mbql-map m)))
 
-(defn- normalize-imported [x]
+;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+(def ^:dynamic *skip-schema-validation?*
+  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
+  false)
+
+(defn- validate-imported-query!
+  "Throws when `query` is a full MBQL 5 query that this instance's query schema rejects. Anything else - bare refs,
+  the MBQL fragments inside visualization settings, legacy MBQL 4 queries - is left alone."
+  [query]
+  (when (and (= (:lib/type query) :mbql/query)
+             (not (mr/validate ::lib.schema/query query)))
+    (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
+      ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
+      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export
+      (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
+                           "either exported by a newer Metabase whose query shape this version cannot represent, "
+                           "or stored by an instance that never validated it. Pass continue_on_error to skip just "
+                           "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
+                           "for the whole import.")
+                      ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
+                      ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
+                      {:schema-errors errors}))))
+  query)
+
+(defn- normalize-imported
+  "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization
+  fails."
+  [x]
   (when x
     (try
       (if (mbql-ref? x)
         (normalize-mbql-ref x)
         (lib/normalize x))
       (catch Throwable e
-        (log/warn e "Error normalizing imported MBQL")
+        (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
+        ;; many structures will fail normalization, but that is expected
         x))))
 
 (defn- import-mbql*
@@ -1317,12 +1342,16 @@
     x))
 
 (defn import-mbql
-  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
+  "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
+  IDs embedded, convert the IDs back to raw numeric IDs.
+
+  Throws if an MBQL 5 expression doesn't match the schema."
   [x]
-  (-> x
-      import-mbql*
-      normalize-imported
-      repair-card-template-tag-names))
+  (some-> x
+          import-mbql*
+          normalize-imported
+          (cond-> (not *skip-schema-validation?*) validate-imported-query!)
+          repair-card-template-tag-names))
 
 (declare ^:private mbql-deps-map)
 
@@ -1462,6 +1491,16 @@
        (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
+(defn- export-parameter
+  "Convert a single parameter to portable form. A values source pointing at a Card that no longer exists has no
+  portable id, so the source is dropped and the parameter falls back to its connected fields — the same shape the app
+  produces when the source Card is archived."
+  [parameter]
+  (if (get-in parameter [:values_source_config :card_id])
+    (or (fk-elide (export-mbql parameter))
+        (export-mbql (dissoc parameter :values_source_type :values_source_config)))
+    (export-mbql parameter)))
+
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
@@ -1471,7 +1510,7 @@
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
-       (mapv export-mbql)))
+       (mapv export-parameter)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references

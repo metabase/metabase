@@ -10,6 +10,8 @@ import {
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -22,9 +24,7 @@ import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
-import { push } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
+import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -233,10 +233,10 @@ interface MetricModalProps {
 }
 
 function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleCopy = (newCard: Card) => {
-    dispatch(push(urls.about(newCard.id)));
+    navigate(urls.about(newCard.id));
   };
 
   switch (modalType) {
@@ -253,7 +253,7 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
         <AddToDashSelectDashModal
           card={card}
           onClose={onClose}
-          onChangeLocation={(location) => dispatch(push(location))}
+          onChangeLocation={(location) => navigate(location)}
         />
       );
     case "alert":

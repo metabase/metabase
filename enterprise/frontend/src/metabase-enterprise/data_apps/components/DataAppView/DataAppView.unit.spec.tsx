@@ -1,11 +1,13 @@
 import { act } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
+  DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_READY_MESSAGE_TYPE,
 } from "../../constants";
 
@@ -39,7 +41,14 @@ function setup({
     error,
   } as unknown as ReturnType<typeof useGetDataAppQuery>);
 
-  renderWithProviders(<DataAppView params={{ name }} />);
+  renderWithProviders(
+    <>
+      {/* The empty-name case has no `:name` segment to match. */}
+      <Route path="/" element={<DataAppView />} />
+      <Route path=":name" element={<DataAppView />} />
+    </>,
+    { withRouter: true, initialRoute: `/${name}` },
+  );
 }
 
 describe("DataAppView", () => {
@@ -173,6 +182,95 @@ describe("DataAppView", () => {
       postMessage(window, { type: DATA_APP_READY_MESSAGE_TYPE });
 
       expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+    });
+  });
+
+  describe("load failure", () => {
+    /** Dispatch a `securitypolicyviolation` as if the browser blocked framing. */
+    function dispatchFrameSrcViolation(blockedURI: string) {
+      // jsdom has no `SecurityPolicyViolationEvent` constructor, so build a plain
+      // Event and attach the two fields the handler reads.
+      const event = new Event(
+        "securitypolicyviolation",
+      ) as SecurityPolicyViolationEvent;
+      Object.assign(event, { effectiveDirective: "frame-src", blockedURI });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+    }
+
+    it("shows an error instead of spinning when framing is blocked by CSP", () => {
+      setupIframe();
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+
+      dispatchFrameSrcViolation(window.location.origin);
+
+      expect(
+        screen.getByText("Couldn’t load this data app"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error when the iframe never signals it loaded", () => {
+      jest.useFakeTimers();
+      try {
+        setupIframe();
+        expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+
+        act(() => {
+          jest.advanceTimersByTime(DATA_APP_LOAD_TIMEOUT_MS);
+        });
+
+        expect(
+          screen.getByText("Couldn’t load this data app"),
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("does not error once the app reports ready before the timeout", () => {
+      jest.useFakeTimers();
+      try {
+        const iframe = setupIframe();
+
+        postMessage(iframe.contentWindow, {
+          type: DATA_APP_READY_MESSAGE_TYPE,
+        });
+
+        act(() => {
+          jest.advanceTimersByTime(DATA_APP_LOAD_TIMEOUT_MS);
+        });
+
+        expect(
+          screen.queryByText("Couldn’t load this data app"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTitle("Sales")).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("keeps the first error's reason — the timeout can't overwrite the CSP one", () => {
+      jest.useFakeTimers();
+      try {
+        setupIframe();
+
+        dispatchFrameSrcViolation(window.location.origin);
+
+        act(() => {
+          jest.advanceTimersByTime(DATA_APP_LOAD_TIMEOUT_MS);
+        });
+
+        // The specific CSP detail survives; the generic timeout copy never appears.
+        expect(
+          screen.getByText(/content security policy/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText(/frame may be unreachable/i),
+        ).not.toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });

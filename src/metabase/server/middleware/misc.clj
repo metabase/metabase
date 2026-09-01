@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
+   [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -72,10 +73,12 @@
       (when-let [ssl (or x-forwarded-ssl front-end-https)]
         (when (= "on" (u/lower-case-en ssl)) "https"))))
 
-(defn- maybe-set-site-url* [{headers :headers, uri :uri}]
+(defn- maybe-set-site-url* [{headers :headers, uri :uri, superuser? :is-superuser?}]
   (let [{:strs [origin x-forwarded-host host user-agent]} headers]
     (when (and (mdb/db-is-set-up?)
                (not (system/site-url))
+               (or (not (setup/has-user-setup))
+                   superuser?)
                (not (#{"/api/health" "/livez" "/readyz"} uri))
                (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
       ;; `origin` already carries a scheme; the `*-host` headers normally don't, so prepend the scheme the proxy
@@ -92,7 +95,7 @@
         (try
           (system/site-url! site-url)
           (catch Throwable e
-            (log/warn e "Failed to set site-url")))))))
+            (log/warnf "Failed to set site-url: %s" (ex-message e))))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` setting on the initial setup request"

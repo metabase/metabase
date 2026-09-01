@@ -18,12 +18,20 @@
   [settings]
   (reduce (fn [settings k] (assoc settings k nil)) settings settings-to-reset))
 
+(defn config-file-settings
+  "Filters settings down to those that are valid in a config file template. We include deprecated
+   settings in the env var docs, but we exclude them from the config file template. We likewise
+   exclude read-only (`:setter :none`) settings: the config file sets settings via the same path as
+   the Admin settings, so it can never set them."
+  [settings]
+  (->> settings
+       dox/remove-env-vars-we-should-not-document
+       (filter dox/settable-in-config-file?)))
+
 (defn settings
-  "Gets valid config settings. We include deprecated settings in the env var docs,
-   but we exclude them from the config file template."
+  "Gets valid config settings."
   []
-  (->> (dox/get-settings)
-       dox/remove-env-vars-we-should-not-document))
+  (config-file-settings (dox/get-settings)))
 
 (defn get-name-and-default
   "Get a setting's name and its default."

@@ -14,15 +14,10 @@ import {
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
+import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import * as MetabaseError from "embedding-sdk-shared/errors";
-
-type SdkAuthState = {
-  status: "idle" | "in-progress" | "completed" | "error" | "skipped";
-  session?: any;
-  user?: any;
-  siteSettings?: Record<string, any>;
-  error?: Error;
-};
+import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 
 const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 
@@ -58,7 +53,10 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
 
   // Subscribe to store changes
   const checkForAuthConfigAndStartJwtAuth = () => {
-    const store = win.METABASE_PROVIDER_PROPS_STORE;
+    // The window global stores its props untyped; the bundle pins the type.
+    const store = win.METABASE_PROVIDER_PROPS_STORE as
+      | MetabaseProviderPropsStore<MetabaseProviderPropsStoreExternalProps>
+      | undefined;
 
     if (!store) {
       return false;
@@ -153,7 +151,7 @@ async function performFullAuthFlow(config: {
 }): Promise<{
   session: any;
   user: any;
-  siteSettings: Record<string, any>;
+  siteSettings: SdkAuthState["siteSettings"];
 } | null> {
   const headers = getSdkRequestHeaders();
 

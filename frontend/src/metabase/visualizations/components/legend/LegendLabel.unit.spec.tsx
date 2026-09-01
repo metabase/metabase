@@ -12,7 +12,7 @@ describe("LegendLabel", () => {
     const onFocus = jest.fn();
     const onMouseEnter = jest.fn();
 
-    const { history } = renderWithProviders(
+    const { router } = renderWithProviders(
       <Route
         path="/"
         element={
@@ -30,7 +30,7 @@ describe("LegendLabel", () => {
       { withRouter: true, initialRoute: "/" },
     );
 
-    return { history, onClick, onFocus, onMouseEnter };
+    return { router, onClick, onFocus, onMouseEnter };
   };
 
   it("should be a link when onClick is defined", () => {
@@ -44,11 +44,11 @@ describe("LegendLabel", () => {
   });
 
   it("should not be a link when onClick is not defined", () => {
-    const { history } = setup({ onClick: undefined });
+    const { router } = setup({ onClick: undefined });
 
     expect(screen.getByText("Test")).not.toHaveAttribute("href");
     fireEvent.click(screen.getByText("Test"));
-    expect(history?.getCurrentLocation().pathname).toBe("/");
-    expect(history?.getCurrentLocation().hash).toBe("");
+    expect(router?.location.pathname).toBe("/");
+    expect(router?.location.hash).toBe("");
   });
 });

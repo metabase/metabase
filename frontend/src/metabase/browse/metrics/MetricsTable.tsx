@@ -9,7 +9,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -22,8 +22,8 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import CS from "metabase/css/core/index.css";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   FixedSizeIcon,
@@ -166,7 +166,7 @@ export function MetricsTable({
 }
 
 function MetricRow({ metric }: { metric?: MetricResult }) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -194,10 +194,10 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     },
-    [metric, dispatch],
+    [metric, navigate],
   );
 
   return (
@@ -237,6 +237,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
       <Flex align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
         {metric ? (
           <Link
+            className={CS.overflowHidden}
             to={Urls.metric({
               id: metric.id,
               name: metric.name,
@@ -244,7 +245,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
             })}
             onClick={preventDefault}
           >
-            <EntityItem.Name name={metric.name} variant="list" id={headingId} />
+            <EntityItemName name={metric.name} id={headingId} />
           </Link>
         ) : (
           <SkeletonText />
@@ -319,7 +320,7 @@ type MetricAction = {
 function MenuCell({ metric }: { metric?: MetricResult }) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
 
   const actions = useMemo(() => {
@@ -363,7 +364,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Open collection`,
         icon: "folder",
         action() {
-          dispatch(push(Urls.collection(metric.collection)));
+          navigate(Urls.collection(metric.collection));
         },
       });
     }
@@ -380,7 +381,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     }
 
     return actions;
-  }, [metric, createBookmark, deleteBookmark, dispatch, archive]);
+  }, [metric, createBookmark, deleteBookmark, navigate, archive]);
 
   return (
     <td

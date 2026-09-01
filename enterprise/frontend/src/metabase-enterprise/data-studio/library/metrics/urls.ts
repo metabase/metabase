@@ -5,6 +5,7 @@ export const dataStudioMetricUrls: MetricUrls = {
   about: Urls.dataStudioMetric,
   overview: Urls.dataStudioMetricOverview,
   query: Urls.dataStudioMetricQuery,
+  dimensions: Urls.dataStudioMetricDimensions,
   dependencies: Urls.dataStudioMetricDependencies,
   history: Urls.dataStudioMetricHistory,
   database: (databaseId) => Urls.dataStudioData({ databaseId }),

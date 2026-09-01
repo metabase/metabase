@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -17,7 +18,7 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route {:binding _route-params}, :query {:binding _query-params}}
+      :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
       :body [(neat)]}
 
     '(:post "/move"
@@ -32,8 +33,8 @@
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
-      :params {:route   {:binding _route-params}
-               :query   {:binding _query-params}
+      :params {:route   {:binding _route-params, :schema [:map]}
+               :query   {:binding _query-params, :schema [:map]}
                :body    {:binding {:keys [card_ids], :as body}
                          :schema [:map [:card_ids [:sequential ms/PositiveInt]]]}
                :request {:binding request
@@ -54,8 +55,8 @@
                 (raise e))))
     '{:method :post
       :route  {:path "/move"}
-      :params {:route   {:binding _route-params}
-               :query   {:binding _query-params}
+      :params {:route   {:binding _route-params, :schema [:map]}
+               :query   {:binding _query-params, :schema [:map]}
                :body    {:binding {:keys [card_ids], :as body}, :schema :map}
                :request {:binding _request}
                :respond {:binding respond}
@@ -66,6 +67,7 @@
 
 (mr/def ::id pos-int?)
 
+;; referenced only inside quoted defendpoint args that parse-args resolves at runtime
 #_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private RouteParams
   [:map
@@ -173,5 +175,26 @@
         :route {:path "/test"}
         :docstr "Deprecated endpoint."
         :metadata {:deprecated "0.50.0", :multipart true}
-        :params {:route {:binding _route-params}, :query {:binding _query-params}}
+        :params {:route {:binding _route-params, :schema [:map]}, :query {:binding _query-params, :schema [:map]}}
         :body [(test)]})))
+
+(deftest ^:parallel decode-strips-undeclared-keys-test
+  (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
+    (are [schema value expected] (= expected
+                                    ((#'api.macros/decoder schema) value))
+      [:map [:a {:optional true} :int]]
+      {:a 1, :b 2}
+      {:a 1}
+
+      ;; `{:closed false}` opts out, for the values we deliberately pass through as they arrived -- a query, viz
+      ;; settings, database details, a settings bag
+      [:map {:closed false} [:a {:optional true} :int]]
+      {:a 1, :b 2}
+      {:a 1, :b 2}
+
+      ;; stripping recurses. A parameter's `:options` are spliced into the filter clause the parameter becomes, so an
+      ;; option the schema does not name must not survive decoding. The schema stays open -- an unknown option is not
+      ;; a 400 -- so this is what keeps such a key from reaching the clause.
+      ::lib.schema.parameter/parameter
+      {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
+      {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))

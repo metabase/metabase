@@ -47,8 +47,15 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :presto-jdbc, :parent #{:sql-mbql5 :sql-jdbc
-                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :presto-jdbc
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :presto-jdbc
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
@@ -58,6 +65,7 @@
                               :expressions                      true
                               :metadata/key-constraints         false
                               :native-parameters                true
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
@@ -153,7 +161,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
@@ -197,7 +205,7 @@
 (defmethod sql.qp/inline-value [:presto-jdbc String]
   [_ ^String s]
   (case *inline-param-style*
-    :friendly (str \' (sql.u/escape-sql s :ansi) \')
+    :friendly (sql.u/quote-literal s :ansi)
     :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
@@ -312,7 +320,7 @@
   [driver [_ _opts pred]]
   ;; Presto will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_driver [_ _opts t]]
@@ -574,7 +582,7 @@
   implementation."
   [driver conn catalog schema]
   (let [sql (describe-schema-sql driver catalog schema)]
-    (log/tracef "Running statement in describe-schema: %s" sql)
+    (log/tracef "Running statement in describe-schema for %s.%s" catalog schema)
     (into #{} (comp (filter (fn [{table-name :table}]
                               (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
@@ -587,7 +595,7 @@
   implementation."
   [driver conn catalog]
   (let [sql (describe-catalog-sql driver catalog)]
-    (log/tracef "Running statement in all-schemas: %s" sql)
+    (log/tracef "Running statement in all-schemas for catalog %s" catalog)
     (into []
           (map (fn [{:keys [schema]}]
                  (when-not (contains? excluded-schemas schema)
@@ -623,7 +631,7 @@
      nil
      (fn [^Connection conn]
        (let [sql (describe-table-sql driver catalog schema table-name)]
-         (log/tracef "Running statement in describe-table: %s" sql)
+         (log/tracef "Running statement in describe-table for %s.%s.%s" catalog schema table-name)
          {:schema schema
           :name   table-name
           :fields (into
@@ -661,7 +669,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -677,7 +685,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     stmt))
 
 (defn- pooled-conn->presto-conn
@@ -703,7 +711,7 @@
       (try
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection read-only to %s" (pr-str read-only?)))))))
+          (log/debugf "Error setting connection read-only to %s: %s" (pr-str read-only?) (ex-message e)))))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
   [driver db-or-id-or-spec options f]

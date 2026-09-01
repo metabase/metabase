@@ -3,29 +3,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import { Box, Stack } from "metabase/ui";
-import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
-import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
-import {
-  getTreemapChartColumns,
-  getTreemapData,
-} from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
-import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
-import {
-  getChartPadding,
-  groupHeader,
-} from "metabase/visualizations/echarts/graph/treemap/style";
-import {
-  useCloseTooltipOnScroll,
-  useInjectSeriesColorsClasses,
-} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import {
+  extractRemappings,
+  getTreemapBreadcrumbModel,
+  getTreemapChartColumns,
+  getTreemapChartOption,
+  getTreemapColors,
+  getTreemapContainerPadding,
+  getTreemapData,
+  getTreemapFormatters,
+  getTreemapInlineValueIds,
+  groupHeader,
+  isOverview,
+  shouldShowParentLabels,
+  useCloseTooltipOnScroll,
+  useInjectSeriesColorsClasses,
+} from "metabase/viz-core";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";
@@ -37,7 +33,7 @@ import { useLabelMeasurement } from "./use-label-measurement";
 import { usePointerTracking } from "./use-pointer-tracking";
 import { useTreemapNavigation } from "./use-treemap-navigation";
 
-export const TreemapChart = ({
+const TreemapChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
@@ -274,7 +270,7 @@ export const TreemapChart = ({
       )}
       <Box
         className={S.root}
-        p={getChartPadding(isDashboard)}
+        p={getTreemapContainerPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >
@@ -292,4 +288,7 @@ export const TreemapChart = ({
   );
 };
 
-Object.assign(TreemapChart, TREEMAP_CHART_DEFINITION);
+export const TreemapChart = Object.assign(
+  TreemapChartComponent,
+  TREEMAP_CHART_DEFINITION,
+);

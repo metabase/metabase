@@ -391,7 +391,11 @@
    (cond-> {:request-method   method
             :uri              path
             :metabase-user-id api/*current-user-id*
-            :token-scopes     token-scopes}
+            :token-scopes     token-scopes
+            ;; Marks this as MCP's synthetic in-process dispatch so the Agent API usage recorder
+            ;; skips it — these calls are already counted in mcp_tool_call_log; recording them as
+            ;; agent_api_call_log rows too would double-count.
+            :agent-api-internal-request? true}
      ;; POST/PUT/PATCH carry params in the body; GET/DELETE carry them as query params.
      (and (seq params) (#{:post :put :patch} method))    (assoc :body params)
      (and (seq params) (not (#{:post :put :patch} method))) (assoc :query-params params))
@@ -569,7 +573,8 @@
                     (when error? (some-> result :content first :text)))
            ;; `::error-code` is an internal classification marker — never expose it to the client.
            (let [result (dissoc result ::error-code)]
-             (ait/record! {:ai/tool-output result})
+             (when (ait/capture-active?)
+               (ait/record! {:ai/tool-output (mcp.resources/redact-ui-credential result)}))
              result))
          (catch Throwable e
            ;; A handler that throws instead of returning error content (notably a UI tool

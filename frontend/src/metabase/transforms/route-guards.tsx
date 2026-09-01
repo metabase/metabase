@@ -1,5 +1,5 @@
 import { createRedirectGuard } from "metabase/route-guards";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 export const TransformsNotDisabled = createRedirectGuard(

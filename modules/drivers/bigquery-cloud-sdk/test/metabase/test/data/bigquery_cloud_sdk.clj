@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
-   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
@@ -39,7 +38,8 @@
     Schema
     StandardTableDefinition
     TableId
-    TableInfo)))
+    TableInfo)
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -153,8 +153,7 @@
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Case
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Deleting dataset: " dataset-id)
+  (tx/print-progress! :bigquery-cloud-sdk "deleting %s" dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
@@ -349,129 +348,101 @@
               (recur (dec num-retries))
               (throw e))))))))
 
+(def ^:private ^Duration reap-after
+  "How long [[delete-old-datasets!]] lets a dataset sit before deleting it - since its last recorded use if it is
+  tracked, since its creation if it is not."
+  (t/duration 14 :days))
+
+(def ^:private ^Duration track-debounce
+  "How stale a dataset's `accessed_at` may be before another use is worth recording.
+
+  Half of [[reap-after]], so a dataset that keeps being used is re-recorded with a full reap interval to spare.
+  Anything past that halfway point leaves a dataset that is still in use eligible for deletion."
+  (.dividedBy reap-after 2))
+
+(defn- track-debounce-seconds
+  "[[track-debounce]] shortened by a random margin.
+
+  Without the margin, every job using a given dataset crosses the threshold at the same moment and writes at once.
+  [[tx/track-dataset]] writes to one table shared by every branch and release stream, and BigQuery runs only two
+  mutating statements per table concurrently, queueing twenty more before it starts rejecting them."
+  []
+  (let [seconds (.toSeconds track-debounce)]
+    (- seconds (rand-int (quot seconds 4)))))
+
+(def ^:private recently-tracked-hashes
+  "Hashes of datasets used recently enough that recording another use would be redundant, read once per process.
+
+  Nothing reads `accessed_at` during a test run, so a snapshot going stale mid-run costs at worst a redundant write.
+  Nil if the tracking table cannot be read: on a fresh project nothing has been tracked, which is the same answer."
+  (delay
+    (u/ignore-exceptions
+      (into #{}
+            (map first)
+            (execute! (str "SELECT `hash` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d SECOND)")
+                      (project-id)
+                      (track-debounce-seconds))))))
+
+(def ^:private old-dataset-name-pattern "sha_%")
+
+(defn- old-dataset-names
+  "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
+  created that long ago. Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway.
+
+  Shared by [[delete-old-datasets!]] and the nightly sweep ([[tx/gc-orphans!]]), which differ only in `hours`."
+  [hours]
+  (let [current-test-data (test-dataset-id (tx/get-dataset-definition
+                                            (data.impl/resolve-dataset-definition *ns* 'test-data)))]
+    (into []
+          (comp (map first)
+                (remove #(= % current-test-data)))
+          (execute! (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                         " WHERE `name` LIKE '%2$s'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))"
+                         " UNION ALL "
+                         "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
+                           and d.schema_name like '%2$s'
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))")
+                    (project-id)
+                    old-dataset-name-pattern
+                    hours))))
+
+(defn- drop-datasets!
+  "Delete each named dataset, reporting per dataset whether it went. See [[tx/gc-orphans!]] for the shape."
+  [dataset-ids]
+  (mapv (fn [dataset-id]
+          (try
+            (destroy-dataset! dataset-id)
+            {:name dataset-id, :status :deleted}
+            ;; usually just another job deleting the same dataset at the same time
+            (catch Exception e
+              {:name dataset-id, :status :failed, :error (ex-message e)})))
+        dataset-ids))
+
 (defn delete-old-datasets! []
-  (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
-                           " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
-                             and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
-                      (project-id)
-                      (project-id)
-                      (project-id))]
-    (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
-
-;;; ---------------------- Workspace isolation orphan cleanup ----------------------
-;;;
-;;; Split into pure enumerators (`orphan-isolation-*`) and destructive drops
-;;; (`drop-orphan-isolation-*!`). REPL-preview without the destructive side:
-;;;
-;;;     (#'bq-tx/orphan-isolation-datasets)
-;;;     ;; => ("mb__isolation_..." ...)
-;;;     (#'bq-tx/orphan-isolation-service-accounts)
-;;;     ;; => ("mb-ws-..." ...)
-;;;
-;;; The whole-orchestration entry point is the existing
-;;; [[delete-old-datasets-if-needed!]].
-
-(defn- orphan-isolation-datasets
-  "Return iso dataset names (`mb__isolation_*`) older than 3 hours.
-   Pure: queries `INFORMATION_SCHEMA.SCHEMATA`, returns a seq of strings."
-  []
-  (->> (execute!
-        (str "SELECT schema_name FROM `%s`.INFORMATION_SCHEMA.SCHEMATA "
-             ;; Prefix must match driver.u/workspace-isolated-prefix
-             "WHERE schema_name LIKE 'mb__isolation_%%' "
-             "AND creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -3 hour)")
-        (project-id))
-       (map first)))
-
-(defn- orphan-isolation-service-accounts
-  "Return iso SA email addresses (`mb-ws-*@...`) older than 3 hours.
-
-   Age comes from the `created-at:<iso-instant>` marker encoded in the SA
-   `description` field by
-   [[metabase.driver.bigquery-cloud-sdk/ws-sa-description->created-at]].
-   SAs without that marker are NOT returned (we don't know their age).
-
-   Pure: lists SAs via the IAM client and filters in-memory."
-  []
-  (let [details    (test-db-details)
-        iam-client (#'bigquery.ws/ws-database-details->iam-client details)
-        proj-name  (format "projects/%s" (project-id))
-        threshold  (.minus (java.time.Instant/now) 3 java.time.temporal.ChronoUnit/HOURS)]
-    (try
-      (let [request  (-> (com.google.iam.admin.v1.ListServiceAccountsRequest/newBuilder)
-                         (.setName proj-name)
-                         (.build))
-            response (.listServiceAccounts ^com.google.cloud.iam.admin.v1.IAMClient iam-client request)]
-        (->> (.iterateAll response)
-             (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
-                     (let [sa-email   (.getEmail sa)
-                           created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
-                       (when (and (str/starts-with? sa-email "mb-ws-")
-                                  created-at
-                                  (.isBefore ^java.time.Instant created-at threshold))
-                         sa-email))))
-             ;; Realize before the iam-client is closed in `finally`.
-             vec))
-      (finally
-        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
-
-(defn- drop-orphan-isolation-datasets!
-  "Destroy iso datasets returned by [[orphan-isolation-datasets]].
-   Per-entry try/catch: one failure won't block the others."
-  []
-  (doseq [dataset-name (orphan-isolation-datasets)]
-    (log/info (u/format-color 'blue "Deleting orphan workspace isolation dataset older than 3h: %s" dataset-name))
-    (try
-      (destroy-dataset! dataset-name)
-      (catch Throwable e
-        (log/warnf "Failed to drop orphan iso dataset %s: %s" dataset-name (ex-message e))))))
-
-(defn- drop-orphan-isolation-service-accounts!
-  "Delete iso service accounts returned by [[orphan-isolation-service-accounts]].
-   Per-entry try/catch: one failure won't block the others. Opens its own IAM
-   client (separate from the enumerator's) so the lifecycle is local."
-  []
-  (let [details    (test-db-details)
-        iam-client (#'bigquery.ws/ws-database-details->iam-client details)]
-    (try
-      (doseq [sa-email (orphan-isolation-service-accounts)]
-        (log/info (u/format-color 'blue "Deleting orphan workspace isolation SA older than 3h: %s" sa-email))
-        (try
-          (let [del-req (-> (com.google.iam.admin.v1.DeleteServiceAccountRequest/newBuilder)
-                            (.setName (format "projects/%s/serviceAccounts/%s" (project-id) sa-email))
-                            (.build))]
-            (.deleteServiceAccount ^com.google.cloud.iam.admin.v1.IAMClient iam-client del-req))
-          (catch Throwable e
-            (log/warnf "Failed to delete orphan iso SA %s: %s" sa-email (ex-message e)))))
-      (finally
-        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
+  (drop-datasets! (old-dataset-names (.toHours reap-after))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
 (defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]] (+ workspace-iso sweep), only if we haven't
-  done so already."
+  "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
   (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)
-    ;; Sweep orphan workspace-isolation resources. Per-entry try/catch already
-    ;; inside each `drop-orphan-*!`; the outer try/catch here guards against
-    ;; an enumerator-side failure (e.g. transient IAM 5xx) blocking test-data
-    ;; setup.
-    (try (drop-orphan-isolation-datasets!)
-         (catch Throwable e
-           (log/warnf "drop-orphan-isolation-datasets! failed: %s" (ex-message e))))
-    (try (drop-orphan-isolation-service-accounts!)
-         (catch Throwable e
-           (log/warnf "drop-orphan-isolation-service-accounts! failed: %s" (ex-message e))))))
+    (delete-old-datasets!)))
+
+;; Nightly garbage collection of orphaned test datasets.
+(defmethod tx/gc-orphans! :bigquery-cloud-sdk
+  [_driver {:keys [fixture-hours]}]
+  (let [project (project-id)]
+    (mapv #(assoc % :server project) (drop-datasets! (old-dataset-names fixture-hours)))))
+
+(defmethod tx/count-datasets :bigquery-cloud-sdk
+  [_driver]
+  (let [project (project-id)]
+    {project (ffirst (execute! "SELECT COUNT(*) FROM `%s`.INFORMATION_SCHEMA.SCHEMATA" project))}))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"
@@ -529,17 +500,23 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
+  ;; BigQuery has a limit of 20 pending DML statements per table.
+  ;; https://cloud.google.com/blog/products/data-analytics/dml-without-limits-now-in-bigquery
+  ;; Repeatedly tracking the same dataset each time it's touched causes us to run up against
+  ;; that limit in CI. Debounce tracking recently tracked datasets so we don't create nearly as much
+  ;; dataset tracking noise.
+  (when-not (contains? @recently-tracked-hashes (tx/hash-dataset db-def))
+    (setup-tracking-dataset!)
+    ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
+    (u/ignore-exceptions
+      (execute-params!
+       (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                    "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                    "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                    "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+       [(tx/hash-dataset db-def)
+        (test-dataset-id db-def)
+        (tx/tracking-access-note)]))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]

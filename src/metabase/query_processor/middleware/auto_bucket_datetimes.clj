@@ -54,7 +54,7 @@
                                                                                field-ids)
                                           ;; don't fail if some of the Fields are invalid.
                                           (catch Throwable e
-                                            (log/errorf e "Error fetching Fields: %s" (ex-message e))
+                                            (log/errorf "Error fetching Fields: %s" (ex-message e))
                                             nil))]
                 [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
@@ -74,7 +74,7 @@
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
                               (catch Throwable e
-                                (log/errorf e "Error calculating expression type: %s" (ex-message e))
+                                (log/errorf "Error calculating expression type: %s" (ex-message e))
                                 nil))]
          (isa? expr-type :type/Boolean))))
 

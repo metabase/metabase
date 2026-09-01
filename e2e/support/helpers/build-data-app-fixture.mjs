@@ -43,9 +43,23 @@ const { dataAppConfig } = await import(pathToFileURL(dataAppDevEntry).href);
 
 process.chdir(appDir);
 
+const buildInfoDefine = Object.fromEntries(
+  [
+    "VERSION",
+    "GIT_BRANCH",
+    "GIT_COMMIT_SHA",
+    "BUILD_TIME",
+    "EMBEDDING_SDK_BUNDLE_HOST",
+  ].map((key) => [`process.env.${key}`, '""']),
+);
+
 await build({
   root: appDir,
   configFile: false,
   logLevel: "warn",
+  define: {
+    ...buildInfoDefine,
+    "process.env.IS_EMBEDDING_SDK": '"true"',
+  },
   plugins: dataAppConfig().plugins,
 });

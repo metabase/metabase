@@ -1,7 +1,6 @@
 name: Orders by Category (Stacked Bar)
 entity_id: ciG63nSLHKRTImt5iWEte
 created_at: '2026-04-02T02:59:02.778668Z'
-last_used_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: bar
 collection_id: cOlViZsEtTiNgS0ExAmP1
@@ -118,7 +117,7 @@ visualization_settings:
   graph.x_axis.title_text: Quarter
   graph.y_axis.title_text: Order Count
   stackable.stack_type: stacked
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: ciG63nSLHKRTImt5iWEte
   label: orders_by_category__stacked_bar_

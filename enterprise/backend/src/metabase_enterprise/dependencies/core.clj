@@ -77,7 +77,7 @@
             :let [bad-refs (try
                              (deps.analysis/check-entity provider entity-type id)
                              (catch Exception e
-                               (log/warnf e "Error checking %s %s" entity-type id)
+                               (log/warnf "Error checking %s %s: %s" entity-type id (ex-message e))
                                #{(lib/validation-exception-error (ex-message e))}))]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
@@ -142,8 +142,8 @@
                        (merge errors)))
                  {} by-db))))))
 
-#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
+  (require '[metabase.premium-features.core])
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)

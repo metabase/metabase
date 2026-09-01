@@ -78,9 +78,6 @@
             :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
-            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
-                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
-                                                                                                     :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
@@ -109,15 +106,17 @@
     (empty tables)
 
     :else
-    (filter
-     (fn [{table-id :id db-id :db_id}]
-       (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        db-id
-        table-id))
-     tables)))
+    (do
+      (perms/prime-table-perms-cache {:db-ids (into #{} (map :db_id) tables)})
+      (filter
+       (fn [{table-id :id db-id :db_id}]
+         (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/manage-table-metadata
+          :yes
+          db-id
+          table-id))
+       tables))))
 
 (defn filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
@@ -168,7 +167,7 @@
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases."
-  :feature :advanced-permissions
+  :feature :none ;; fail CLOSED if the feature is unavailable
   [db-ids]
   (if (empty? db-ids)
     {}
@@ -182,22 +181,21 @@
           impersonation-db-ids (t2/select-fn-set :db_id :model/ConnectionImpersonation
                                                  :group_id all-users-group-id
                                                  :db_id [:in db-ids])
-          sandbox-db-ids     (when (premium-features/enable-sandboxes?)
-                               (into #{}
-                                     (map :db_id)
-                                     (t2/query {:select [[:t.db_id :db_id]]
-                                                :from   [[(t2/table-name :model/Sandbox) :s]]
-                                                :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]
-                                                :where  [:and
-                                                         [:= :s.group_id all-users-group-id]
-                                                         [:in :t.db_id db-ids]]})))
+          sandbox-db-ids     (into #{}
+                                   (map :db_id)
+                                   (t2/query {:select [[:t.db_id :db_id]]
+                                              :from   [[(t2/table-name :model/Sandbox) :s]]
+                                              :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]
+                                              :where  [:and
+                                                       [:= :s.group_id all-users-group-id]
+                                                       [:in :t.db_id db-ids]]}))
           blocked-dbs        (into (or blocked-db-ids #{})
                                    (concat impersonation-db-ids sandbox-db-ids))]
       (zipmap db-ids (map #(if (blocked-dbs %) :blocked :unrestricted) db-ids)))))
 
 (defenterprise new-database-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups."
-  :feature :advanced-permissions
+  :feature :none ;; fail CLOSED if the feature is unavailable
   [group-ids]
   (if (empty? group-ids)
     {}
@@ -208,16 +206,15 @@
                                                 {:select-distinct [:group_id]})
           impersonation-group-ids (t2/select-fn-set :group_id :model/ConnectionImpersonation
                                                     :group_id [:in group-ids])
-          sandbox-group-ids   (when (premium-features/enable-sandboxes?)
-                                (t2/select-fn-set :group_id :model/Sandbox
-                                                  :group_id [:in group-ids]))
+          sandbox-group-ids   (t2/select-fn-set :group_id :model/Sandbox
+                                                :group_id [:in group-ids])
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
-  :feature :advanced-permissions
+  :feature :none ;; fail CLOSED if the feature is unavailable.
   [db-id group-ids]
   (if (empty? group-ids)
     {}
@@ -229,15 +226,14 @@
                                               :perm_value :blocked
                                               :group_id [:in group-ids]
                                               {:select-distinct [:group_id]})
-          sandbox-group-ids (when (premium-features/enable-sandboxes?)
-                              (into #{}
-                                    (map :group_id)
-                                    (t2/query {:select [[:s.group_id :group_id]]
-                                               :from   [[(t2/table-name :model/Sandbox) :s]]
-                                               :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
-                                               :where  [:and
-                                                        [:in :s.group_id group-ids]
-                                                        [:= :t.db_id db-id]]})))
+          sandbox-group-ids (into #{}
+                                  (map :group_id)
+                                  (t2/query {:select [[:s.group_id :group_id]]
+                                             :from   [[(t2/table-name :model/Sandbox) :s]]
+                                             :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+                                             :where  [:and
+                                                      [:in :s.group_id group-ids]
+                                                      [:= :t.db_id db-id]]}))
           blocked-groups    (into (or blocked-group-ids #{})
                                   sandbox-group-ids)]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))

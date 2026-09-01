@@ -13,9 +13,13 @@ import {
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
 import {
   PLUGIN_DATA_APPS,
@@ -27,11 +31,7 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/selectors/user";
+import { useSetting, useUserSetting } from "metabase/settings";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";

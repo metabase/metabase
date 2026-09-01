@@ -1,5 +1,4 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
-export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
@@ -41,7 +40,10 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
-export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
+export {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -176,10 +178,6 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
-export {
-  PLUGIN_WORKSPACES,
-  type WorkspaceDatabaseSectionProps,
-} from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
@@ -193,9 +191,9 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-// Export a single reinitialize function that calls all individual reinitialize functions
+import { reinitializeRequestHandlers } from "metabase/api/client";
+
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
-import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
@@ -233,7 +231,6 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-import { reinitialize as reinitializeWorkspaces } from "./oss/workspaces";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -244,7 +241,7 @@ export function reinitialize() {
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
-  reinitializeApi();
+  reinitializeRequestHandlers();
   reinitializeAudit();
   reinitializeAuth();
   reinitializeCaching();
@@ -281,6 +278,5 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
-  reinitializeWorkspaces();
   reinitializeWritableConnection();
 }

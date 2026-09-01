@@ -70,8 +70,7 @@
                       :query-id query-id
                       :chart-type chart-type}]
       (log/info "Created chart" {:chart-id chart-id
-                                 :chart-type chart-type
-                                 :results-url results-url})
+                                 :chart-type chart-type})
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)

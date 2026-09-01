@@ -9,15 +9,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api/dataset";
-import { exportFormatPng } from "metabase/common/types/export";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
-import { openSaveDialog } from "metabase/utils/dom";
+import { openSaveDialog, waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
 import { checkNotNull } from "metabase/utils/types";
@@ -28,7 +26,7 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -37,6 +35,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import { exportFormatPng } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";

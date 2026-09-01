@@ -41,7 +41,7 @@
         ;; that stays on the log-and-continue path like any other bogus group id.
         (if (some (comp some? :group-is-tenant?) (:bad-user-group-pairs (ex-data e)))
           (throw e)
-          (log/errorf e "Error adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id)))))))
+          (log/errorf "Error adding user %s to group %s: %s" (u/the-id user-or-id) (u/the-id group-or-id) (ex-message e)))))))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is

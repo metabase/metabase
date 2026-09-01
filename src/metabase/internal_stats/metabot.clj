@@ -43,6 +43,7 @@
                 :metabot-queries    (t2/select-one-fn :cnt
                                                       [:model/MetabotMessage [:%count.id :cnt]]
                                                       :role "user"
+                                                      :forked_from_message_id nil
                                                       {:where [:and
                                                                :ai_proxied
                                                                [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
@@ -54,6 +55,7 @@
                                                          :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
                                                          :where  [:and
                                                                   :ai_proxied
+                                                                  [:= :m.forked_from_message_id nil]
                                                                   [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
                 :metabot-usage-date (str (t/local-date yesterday-utc))})
         (seq rolling-usage)

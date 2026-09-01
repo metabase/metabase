@@ -18,3 +18,11 @@
 .bodyCellWithImage img {
   vertical-align: middle;
 }
+
+.highlightedCell {
+  border: none;
+}
+
+.dimmedCell {
+  opacity: 0.3;
+}

@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
-import { Link } from "metabase/router";
 import {
   Anchor,
   Card,
@@ -28,9 +28,7 @@ export const BehaviorCard = () => {
 
   const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only admins can see the EmbedJS Wizard
-  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "", {
-    anchor: behaviorDocsParams?.anchor,
-  });
+  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "");
 
   const behaviorSection = useMemo(() => {
     return match(settings)

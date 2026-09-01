@@ -23,6 +23,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -44,6 +45,75 @@
     (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
       (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
              (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
+
+(deftest relative-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "When a `:relative-datetime` filter value is compared against a `datetimeoffset` column, the value "
+                "must be tagged with the report timezone. Otherwise SQL Server implicitly treats the naive "
+                "`datetime2` result as offset +00:00 during the comparison, shifting the filter window by the "
+                "report tz offset (#78612).")
+    (driver/with-driver :sqlserver
+      (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+        (let [today    [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]
+              tomorrow [:relative-datetime {:lib/uuid (str (random-uuid))} 1 :day]]
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(DATEADD(day, 1, GETDATE())),"
+                           " MONTH(DATEADD(day, 1, GETDATE())),"
+                           " DAY(DATEADD(day, 1, GETDATE()))) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver tomorrow))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))))
+      (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+        (qp.test-util/with-report-timezone-id! nil
+          (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                            :effective-type :type/DateTimeWithZoneOffset}]
+            (is (= ["CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), DAY(GETDATE())) AS datetime2)"]
+                   (sql.qp/format-honeysql
+                    :sqlserver
+                    (sql.qp/->honeysql :sqlserver
+                                       [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]))))))))))
+
+(deftest absolute-datetime-against-datetimeoffset-uses-report-timezone-test
+  (testing (str "`:absolute-datetime` filter values compared against a `datetimeoffset` column suffer the same "
+                "class of bug as `:relative-datetime` (#78612): a naive `datetime2` RHS is silently treated as "
+                "offset +00:00 during the comparison. Attach the report timezone to the naive literal.")
+    (driver/with-driver :sqlserver
+      (let [today [:absolute-datetime {:lib/uuid (str (random-uuid))} (t/local-date 2026 8 2) :day]]
+        (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
+          (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= [(str "(CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                           " AT TIME ZONE 'New Zealand Standard Time')")
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today))))))
+          (testing "plain datetime2 LHS: RHS is unchanged (no AT TIME ZONE wrap)"
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetime2"
+                                                              :effective-type :type/DateTime}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))
+        (testing "with no report timezone set, RHS is unchanged even for a datetimeoffset LHS (nothing to attach)"
+          (qp.test-util/with-report-timezone-id! nil
+            (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
+                                                              :effective-type :type/DateTimeWithZoneOffset}]
+              (is (= ["CAST(DATEFROMPARTS(YEAR(?), MONTH(?), DAY(?)) AS datetime2)"
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)
+                      (t/local-date 2026 8 2)]
+                     (sql.qp/format-honeysql :sqlserver (sql.qp/->honeysql :sqlserver today)))))))))))
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
@@ -363,6 +433,7 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          ;; pr renders the value into the testing label via with-out-str; nothing hits the console
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
@@ -591,12 +662,11 @@
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}
-            bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value opts b))]
+      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}]
         (letfn [(expression-ref [expression-name]
-                  (sql.qp/mbql-clause :sqlserver :expression expression-name))
+                  [:expression {} expression-name])
                 (orders-query [{:keys [expressions fields filters]
-                                :or {expressions [["MyTrue" (bool-val true)] ["MyFalse" (bool-val false)]]
+                                :or {expressions [["MyTrue" [:value opts true]] ["MyFalse" [:value opts false]]]
                                      fields ["MyTrue"]}}]
                   (let [returned-expression? (fn [[expr-name _]] ((set fields) expr-name))
                         returned-exprs (filter returned-expression? expressions)
@@ -604,19 +674,19 @@
                         mp    (mt/metadata-provider)
                         query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         query (reduce (fn [query [expression-name expression]]
-                                        (lib/expression query expression-name expression))
+                                        (lib/expression query expression-name (lib/normalize expression)))
                                       query
                                       returned-exprs)
                         query (lib/with-fields query (mapv #(lib/expression-ref query %) fields))
                         query (reduce (fn [query [expr-name expr]]
-                                        (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
+                                        (lib.expression/expression query -1 expr-name (lib/normalize expr) {:add-to-fields? false}))
                                       query
                                       hidden-exprs)]
-                    (-> (reduce lib/filter query filters) (lib/limit 1))))]
+                    (-> (reduce #(lib/filter %1 (lib/normalize %2)) query filters) (lib/limit 1))))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
-                    (orders-query {:filters [(bool-val true)]})
+                    (orders-query {:filters [[:value opts true]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -628,7 +698,7 @@
                     :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
-                    (orders-query {:filters [(bool-val false)]})
+                    (orders-query {:filters [[:value opts false]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -640,7 +710,7 @@
                     :expected-rows  []}
                    {:desc "not filter"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (bool-val false))]})
+                    (orders-query {:filters [[:not {} [:value opts false]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -652,13 +722,9 @@
                     :expected-rows  [[true]]}
                    {:desc "nested logical operators"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause
-                                              :sqlserver :and
-                                              (sql.qp/mbql-clause :sqlserver :not (bool-val false))
-                                              (sql.qp/mbql-clause
-                                               :sqlserver :or
-                                               (expression-ref "MyFalse")
-                                               (expression-ref "MyTrue")))]})
+                    (orders-query {:filters [[:and {}
+                                              [:not {} [:value opts false]]
+                                              [:or {} (expression-ref "MyFalse") (expression-ref "MyTrue")]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -674,12 +740,11 @@
                     :expected-rows  [[true]]}
                    {:desc "case expression"
                     :query (orders-query
-                            {:expressions [["MyTrue" (bool-val true)]
-                                           ["MyFalse" (bool-val false)]
-                                           ["MyCase" (sql.qp/mbql-clause
-                                                      :sqlserver :case
-                                                      [[(expression-ref "MyFalse") (bool-val false)]
-                                                       [(expression-ref "MyTrue") (bool-val true)]])]]
+                            {:expressions [["MyTrue" [:value opts true]]
+                                           ["MyFalse" [:value opts false]]
+                                           ["MyCase" [:case {}
+                                                      [[(expression-ref "MyFalse") [:value opts false]]
+                                                       [(expression-ref "MyTrue") [:value opts true]]]]]]
                              :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"
@@ -697,7 +762,7 @@
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (bool-val true) (bool-val true))]})
+                    (orders-query {:filters [[:= {} [:value opts true] [:value opts true]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -846,10 +911,9 @@
                                           :from   [:attempts]
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
-                                                   (sql.qp/mbql-clause
-                                                    :sqlserver :=
-                                                    (sql.qp/mbql-clause :sqlserver :field (mt/id :attempts :datetime))
-                                                    (sql.qp/compiled [:raw "?"])))})))]
+                                                   [:= {}
+                                                    [:field {} (mt/id :attempts :datetime)]
+                                                    (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
             (testing (pr-str query)
@@ -888,22 +952,22 @@
   (driver/with-driver :sqlserver
     (qp.store/with-metadata-provider (mt/id)
       (binding [sql.qp/*inner-query* {:expressions
-                                      [(sql.qp/mbql-clause-with-opts
-                                        :sqlserver := {:lib/expression-name "NameEquals"}
-                                        (sql.qp/mbql-clause-with-opts
-                                         :sqlserver :field
+                                      [[:= {:lib/expression-name "NameEquals"
+                                            :lib/uuid            "00000000-0000-0000-0000-000000000000"}
+                                        [:field
                                          {:base-type                      :type/Text
                                           :join-alias                     "JoinedCategories"
+                                          :lib/uuid                       "00000000-0000-0000-0000-000000000001"
                                           driver-api/qp.add.source-table  "JoinedCategories"
                                           driver-api/qp.add.source-alias  "LiteralString"
                                           driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}
-                                         "LiteralString")
-                                        (sql.qp/mbql-clause-with-opts
-                                         :sqlserver :field
-                                         {driver-api/qp.add.source-table  (mt/id :venues)
+                                         "LiteralString"]
+                                        [:field
+                                         {:lib/uuid                       "00000000-0000-0000-0000-000000000002"
+                                          driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}
-                                         (mt/id :venues :name)))]}]
+                                         (mt/id :venues :name)]]]}]
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -914,12 +978,11 @@
                 :sqlserver
                 :filters
                 {}
-                {:filters [(sql.qp/mbql-clause-with-opts
-                            :sqlserver :expression
+                {:filters [[:expression
                             {:base-type :type/Boolean
                              driver-api/qp.add.source-table  driver-api/qp.add.none
                              driver-api/qp.add.desired-alias nil}
-                            "NameEquals")]})))))))
+                            "NameEquals"]]})))))))
 
 (mt/defdataset ^:private bigint-identity-data
   [["bigint_identity_test"
@@ -945,9 +1008,23 @@
       :type/Float              [:float]
       :type/Integer            [:int]
       :type/Number             [:bigint]
-      :type/Text               [:text]
+      :type/Text               [[:raw "nvarchar(max)"]]
       :type/Time               [:time]
-      :type/UUID               [:uniqueidentifier])))
+      :type/UUID               [:uniqueidentifier]))
+  (testing ":type/Text must not compile to `text`/`ntext` -- SQL Server rejects those in GROUP BY, ORDER BY,
+            and comparisons (\"The text, ntext, and image data types cannot be compared or sorted\")"
+    (let [ddl (#'driver.sql-jdbc/create-table!-sql :sqlserver :dbo/t
+                                                   [["state" (driver/type->database-type :sqlserver :type/Text)]])]
+      (is (re-find #"(?i)nvarchar\(max\)" ddl))
+      (is (not (re-find #"(?i)\bn?text\b" ddl))))))
+
+(deftest ^:parallel insert-boolean-values-test
+  (testing "SQL Server has no boolean literal -- a bare TRUE/FALSE token parses as an unquoted identifier
+            (\"Invalid column name 'TRUE'\") -- so boolean row values must bind as parameters"
+    (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls :sqlserver :dbo/t ["id" "flag"]
+                                                                     [[1 true] [2 false]] false))]
+      (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+      (is (= [1 true 2 false] params)))))
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
@@ -1134,3 +1211,10 @@
           "column is a doubled-quote identifier")
       (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
           "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))
+
+(deftest ^:parallel connection-parameter-hosts-test
+  (testing "`serverName` in additional-options overrides the host in the URL, so it counts as a connection host"
+    (let [details {:host "real.example.com" :port 1433 :db "db"}
+          hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
+      (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
+      (is (not (contains? (hosts details) "10.0.0.1"))))))

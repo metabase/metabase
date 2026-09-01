@@ -2,8 +2,8 @@ import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
 import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
@@ -52,6 +52,7 @@ export function SyncProgressModal({
         message,
         icon: "warning",
         toastColor: "feedback-negative",
+        timeout: 60000,
       });
 
       if (message.match(/no active task/i)) {

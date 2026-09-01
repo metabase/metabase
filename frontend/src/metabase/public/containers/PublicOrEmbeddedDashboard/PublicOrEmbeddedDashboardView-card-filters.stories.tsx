@@ -17,8 +17,8 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -35,9 +35,7 @@ import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Heading);
 
 export default {

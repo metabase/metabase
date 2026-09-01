@@ -190,4 +190,107 @@ describe("scenarios > visualizations > sankey", () => {
       });
     });
   });
+
+  it("should send the clicked node's own value to a mapped dashboard filter for both source and target column mappings (metabase#78113)", () => {
+    const CROSSFILTER_QUERY = `
+SELECT 'Start A' AS source, 'Middle X' AS target, 1 AS amount
+UNION ALL
+SELECT 'Start B', 'Middle X', 2
+UNION ALL
+SELECT 'Start C', 'Middle Y', 3
+UNION ALL
+SELECT 'Middle X', 'End', 3
+UNION ALL
+SELECT 'Middle Y', 'End', 3;
+`;
+
+    const TEXT_FILTER = {
+      id: "fd8e98d1",
+      name: "Text filter",
+      slug: "text_filter",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const crossfilterOn = (columnName) => ({
+      click_behavior: {
+        type: "crossfilter",
+        parameterMapping: {
+          [TEXT_FILTER.id]: {
+            id: TEXT_FILTER.id,
+            source: { type: "column", id: columnName, name: columnName },
+            target: { type: "parameter", id: TEXT_FILTER.id },
+          },
+        },
+      },
+    });
+
+    const clickNode = (cardIndex, nodeName) =>
+      H.getDashboardCard(cardIndex)
+        .findByTestId("chart-container")
+        .findByText(nodeName)
+        .click();
+
+    H.createNativeQuestion({
+      name: "Sankey crossfilter",
+      native: {
+        query: CROSSFILTER_QUERY,
+      },
+      display: "sankey",
+      visualization_settings: {
+        "sankey.source": "SOURCE",
+        "sankey.target": "TARGET",
+        "sankey.value": "AMOUNT",
+      },
+    }).then(({ body: card }) => {
+      H.createDashboard({
+        name: "Sankey crossfilter dashboard",
+        parameters: [TEXT_FILTER],
+      }).then(({ body: dashboard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: card.id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
+              visualization_settings: crossfilterOn("TARGET"),
+            },
+            {
+              card_id: card.id,
+              row: 0,
+              col: 12,
+              size_x: 12,
+              size_y: 8,
+              visualization_settings: crossfilterOn("SOURCE"),
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard.id);
+      });
+    });
+
+    cy.log(
+      "TARGET mapping: a start node sends its own name, not its downstream neighbor's",
+    );
+    clickNode(0, "Start A");
+    cy.location("search").should("eq", "?text_filter=Start+A");
+
+    cy.log("TARGET mapping: a receiving node keeps working");
+    clickNode(0, "End");
+    cy.location("search").should("eq", "?text_filter=End");
+
+    cy.log(
+      "SOURCE mapping: a receiving node sends its own name, not an upstream neighbor's",
+    );
+    clickNode(1, "Middle X");
+    cy.location("search").should("eq", "?text_filter=Middle+X");
+
+    cy.log("SOURCE mapping: a start node keeps working");
+    clickNode(1, "Start A");
+    cy.location("search").should("eq", "?text_filter=Start+A");
+  });
 });

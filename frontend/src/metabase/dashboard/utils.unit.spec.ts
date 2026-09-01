@@ -14,7 +14,6 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockLocation } from "metabase/redux/store/mocks";
-import type { Location } from "metabase/router";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -43,8 +42,13 @@ const DISABLED_ACTIONS_DATABASE = createMockDatabase({
 });
 const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
 
-function getMockLocationWithTab(slug: Location["query"][string]) {
-  return createMockLocation({ query: { tab: slug } });
+function getMockLocationWithTab(slug: string | string[] | null | undefined) {
+  const params = new URLSearchParams();
+  for (const value of slug == null ? [] : [slug].flat()) {
+    params.append("tab", value);
+  }
+  const search = params.toString();
+  return createMockLocation({ search: search ? `?${search}` : "" });
 }
 
 describe("Dashboard utils", () => {
@@ -516,9 +520,7 @@ describe("Dashboard utils", () => {
           getMockLocationWithTab(["1-tab-name", "2-another-tab-name"]),
         ),
       ).toBe(null);
-      expect(parseTabSlug({ ...getMockLocationWithTab(""), query: {} })).toBe(
-        null,
-      );
+      expect(parseTabSlug(createMockLocation())).toBe(null);
     });
   });
 

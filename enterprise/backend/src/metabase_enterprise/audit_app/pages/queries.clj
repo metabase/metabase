@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.pages.queries
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
@@ -70,7 +71,7 @@
                                 [(common/user-full-name :u) :user_name]
                                 [:card.updated_at :updated_at]
                                 ;; Keep this last: the streaming xform strips it positionally and hoists it to the root.
-                                [[:over [[:count :*] {} :total_count]]]]
+                                [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
                     :from      [[:report_card :card]]
                     :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                                 [:metabase_database :db]           [:= :card.database_id :db.id]
@@ -86,4 +87,5 @@
                    (common/add-search-clause search-term :card.name :latest_qe.error :db.name coll-name)
                    (common/add-sort-clause
                     (or sort-column "card.name")
-                    (or sort-direction "asc")))))})))
+                    (or sort-direction "asc"))
+                   (sql.helpers/order-by [:card.id :asc]))))})))

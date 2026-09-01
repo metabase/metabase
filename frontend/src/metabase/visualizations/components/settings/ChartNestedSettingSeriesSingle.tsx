@@ -47,6 +47,7 @@ const ChartNestedSettingsSeriesSingle = ({
         />
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
+          resetOnEsc
           value={computedSettings.title}
           description={
             seriesCardName === computedSettings.title ? "" : seriesCardName

@@ -171,9 +171,8 @@ describe("QuestionSharingMenu", () => {
             "http://localhost:3000/question/1-my-cool-question",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link from the menu", async () => {
@@ -291,6 +290,7 @@ describe("QuestionSharingMenu", () => {
 
     it("opens the invite modal for the question", async () => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       await setupQuestionSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));

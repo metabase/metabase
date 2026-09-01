@@ -7,8 +7,11 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -22,17 +25,13 @@ import type {
   State,
   StoreDashboard,
 } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getIsWebApp } from "metabase/selectors/web-app";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { extendCardWithDashcardSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -52,6 +51,13 @@ import type {
 } from "metabase-types/api";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
+import {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+} from "./shell-selectors";
 import {
   canResetFilter,
   findDashCardForInlineParameter,
@@ -75,19 +81,12 @@ function isEditParameterSidebar(
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
 
-export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.editingDashboard;
-
-export const getIsEditing = (state: State) =>
-  Boolean(getDashboardBeforeEditing(state));
-
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
   return isClickBehaviorSidebar(sidebar)
     ? dashcards[sidebar.props?.dashcardId]
     : null;
 };
-export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
@@ -161,14 +160,6 @@ export const getIsShowDashboardSettingsSidebar = createSelector(
   (sidebar) => sidebar.name === SIDEBAR_NAME.settings,
 );
 
-export const getDashboardId = (state: State) => state.dashboard.dashboardId;
-
-export const getDashboard = createSelector(
-  [getDashboardId, getDashboards],
-  (dashboardId, dashboards) =>
-    dashboardId !== null ? dashboards[dashboardId] : undefined,
-);
-
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
@@ -188,6 +179,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+export const getLinkTargetEntities = (state: State) =>
+  state.dashboard.linkTargets;
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
@@ -547,7 +541,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -555,7 +549,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );
@@ -604,7 +598,7 @@ function getInitialSelectedTabId(
   siteUrl: string,
   isWebApp: boolean,
 ) {
-  const pathname = window.location.pathname.replace(siteUrl, "");
+  const pathname = getPathnameWithoutSubPath(window.location.pathname, siteUrl);
   const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {
@@ -723,3 +717,13 @@ export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
 );
+
+// Defined in a leaf module so the app shell can read them without pulling this
+// one in. Re-exported so every existing call site is unchanged.
+export {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+};

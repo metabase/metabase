@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo } from "react";
 
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
-import { push } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useNavigate } from "metabase/router";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -13,7 +13,7 @@ import type { OpaqueDatasetQuery } from "metabase-types/api";
 type UseAdHocTableQueryProps = {
   tableId: number;
   databaseId: number;
-  location: Location<{ query?: string }>;
+  location: Location;
 };
 
 export const useAdHocTableQuery = ({
@@ -23,14 +23,12 @@ export const useAdHocTableQuery = ({
 }: UseAdHocTableQueryProps) => {
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const queryParam = useMemo(
-    () =>
-      location.query?.query
-        ? deserializeQueryFromUrl(location.query.query)
-        : null,
-    [location.query.query],
-  );
+  const queryParam = useMemo(() => {
+    const query = new URLSearchParams(location.search).get("query");
+    return query ? deserializeQueryFromUrl(query) : null;
+  }, [location.search]);
 
   const metadataProvider = useMemo(
     () => Lib.metadataProvider(databaseId, metadata),
@@ -72,14 +70,12 @@ export const useAdHocTableQuery = ({
       if (newFilters.length > 0 || newOrderBys.length > 0) {
         const searchParams = new URLSearchParams();
         searchParams.set("query", serializeQueryToUrl(Lib.toJsQuery(newQuery)));
-        dispatch(
-          push(`${window.location.pathname}?${searchParams.toString()}`),
-        );
+        navigate(`${window.location.pathname}?${searchParams.toString()}`);
       } else {
-        dispatch(push(window.location.pathname));
+        navigate(window.location.pathname);
       }
     },
-    [dispatch],
+    [navigate],
   );
 
   const tableQuery = useMemo(() => {

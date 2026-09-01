@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defmethod specialization/table-schema :h2 [base-schema]
@@ -34,7 +35,7 @@
   (->> (str/split search-term #"\s+")
        (map #(u/lower-case-en (str/trim %)))
        (remove str/blank?)
-       (map (fn [s] (str "%" s "%")))))
+       (map h2x/like-substring)))
 
 (defmethod specialization/base-query :h2
   [active-table search-term search-ctx select-items]

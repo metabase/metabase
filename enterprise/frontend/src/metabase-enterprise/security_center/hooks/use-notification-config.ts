@@ -9,9 +9,8 @@ import {
 import {
   useGetChannelInfoQuery,
   useListUserRecipientsQuery,
-  useUpdateSettingsMutation,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import type {
   ChannelApiResponse,
   NotificationHandlerEmail,

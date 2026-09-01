@@ -26,9 +26,53 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
+### [Modular embedding components](./components.md)
+
+A map of the components you can embed, with links to each component's docs and its attribute and prop reference.
+
+### [Embed a dashboard](./dashboard.md)
+
+Embed a dashboard, view-only or interactive, with web components or the React SDK. Let people edit and create dashboards from your app.
+
+### [Dashboard component reference](./dashboard-reference.md)
+
+Every `<metabase-dashboard>` attribute, the `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` props, and the `dashboardCardMenu` plugin.
+
+### [Embed a chart](./chart.md)
+
+Embed a single chart, view-only or interactive, with web components or the React SDK.
+
+### [Embed the query builder](./query-builder.md)
+
+Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
+
+### [Question component reference](./question-reference.md)
+
+Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
+### [Embed a collection browser](./browser.md)
+
+Embed a browsable collection with web components or the React SDK, so people can find and open dashboards and questions themselves.
+
+### [Browser component reference](./browser-reference.md)
+
+Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
+
+### [Embed an AI chat](./ai-chat.md)
+
+Embed an AI chat with web components or the React SDK, so people can ask questions of their data in natural language.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
+
+### [Customize loading, error, and empty states](./sdk/loading-and-errors.md)
+
+Replace the React SDK's default loading screen, error screen, and no-results image with your own.
+
+### [Custom visualizations in embeds](./custom-visualizations.md)
+
+Allowlist the custom visualizations that your embedded components can load. Available in modular embeds that use SSO, with web components or the React SDK.
 
 ### [Translating embeds](./translations.md)
 

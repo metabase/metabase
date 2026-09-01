@@ -9,6 +9,7 @@
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -81,7 +82,7 @@
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
                                             :margin-bottom :8px})}
-                 (markdown/process-markdown description :html)]})))
+                 (markdown/process-markdown description :html (system/site-url))]})))
 
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
@@ -138,14 +139,14 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
         map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
-                          tyype (pr-str card-name) (apply format reason args))
+                          tyype (:id card) (apply format reason args))
               tyype)]
       (cond
         (or (empty? rows)
@@ -228,10 +229,10 @@
 
           (:card-error data)
           (do
-            (log/error e "Pulse card query error")
+            (log/errorf "Pulse card query error: %s" (ex-message e))
             (body/render :card-error nil nil nil nil nil))
           :else (do
-                  (log/error e "Pulse card render error")
+                  (log/errorf "Pulse card render error: %s" (ex-message e))
                   (body/render :render-error nil nil nil nil nil)))))))
 
 (mu/defn error-rendered-part :- ::body/RenderedPartCard

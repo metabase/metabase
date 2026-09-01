@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,

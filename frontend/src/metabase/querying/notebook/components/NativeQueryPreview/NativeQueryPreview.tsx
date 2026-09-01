@@ -11,8 +11,10 @@ import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { NativeDatasetResponse } from "metabase-types/api";
+import type {
+  NativeDatasetResponse,
+  NormalizedQueryParameter,
+} from "metabase-types/api";
 
 import { language } from "../../../components/CodeMirrorEditor/language";
 
@@ -23,7 +25,7 @@ export function NativeQueryPreview({
   parameters = [],
 }: {
   query: Lib.Query;
-  parameters?: UiParameter[];
+  parameters?: NormalizedQueryParameter[];
 }) {
   const { data, error, isFetching } = useGetNativeDatasetQuery({
     ...Lib.toJsQuery(query),

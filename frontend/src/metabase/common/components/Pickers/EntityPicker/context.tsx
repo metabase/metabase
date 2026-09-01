@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
+
 import { useGetPathFromValue } from "./hooks/use-get-path-from-value";
 import type {
   EntityPickerProps,
@@ -7,11 +9,7 @@ import type {
   OmniPickerItem,
   SearchScope,
 } from "./types";
-import {
-  getItemFunctions,
-  getNamespacesFromModels,
-  getValidCollectionItemModels,
-} from "./utils";
+import { getItemFunctions, getNamespacesFromModels } from "./utils";
 
 export const OmniPickerContext = createContext<
   OmniPickerContextValue | undefined

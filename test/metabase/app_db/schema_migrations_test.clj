@@ -2022,6 +2022,7 @@
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
 
+;; every scenario reuses one expensive test-migrations rollback window; splitting re-runs it per case
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test split-data-permissions-legacy-no-self-service-migration-test
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
@@ -2791,67 +2792,58 @@
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
 
-(deftest workspace-input-normalization-migration-test
-  (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
-            Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
-    (impl/test-migrations ["v60.2026-02-09T12:00:00" "v60.2026-02-09T12:00:14"] [migrate!]
-      ;; Create workspace
-      (let [ws-id (first (t2/insert-returning-pks! :workspace
-                                                   {:name           "Test Workspace"
-                                                    :creator_id     1
-                                                    :api_key_id     1
-                                                    :execution_user 1
-                                                    :database_id    1
-                                                    :db_status      "ready"
-                                                    :base_status    "active"
-                                                    :graph_version  1
-                                                    :created_at     :%now
-                                                    :updated_at     :%now}))]
-        ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
-        (t2/insert-returning-pks! :workspace_input
-                                  {:workspace_id      ws-id
-                                   :db_id             1
-                                   :schema            "public"
-                                   :table             "orders"
-                                   :ref_id            (str (random-uuid))
-                                   :access_granted    true
-                                   :transform_version 1
-                                   :created_at        :%now
-                                   :updated_at        :%now})
+(deftest dedupe-data-permissions-and-add-unique-constraint-test
+  (testing "v58.2026-07-31: duplicate data_permissions rows are deleted (most restrictive value, lowest id survives) and a unique constraint prevents recurrence"
+    (impl/test-migrations ["v58.2026-07-31T00:00:00" "v58.2026-07-31T00:00:02"] [migrate!]
+      (let [group-id (t2/insert-returning-pk! :permissions_group {:name "Dedupe Test Group"})
+            db-id    (t2/insert-returning-pk! :metabase_database {:name       "Dedupe Test DB"
+                                                                  :engine     "postgres"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active     true
+                                                               :db_id      db-id
+                                                               :name       "a table"
+                                                               :created_at :%now
+                                                               :updated_at :%now})
+            perm!    (fn [m]
+                       (t2/insert-returning-pk! :data_permissions
+                                                (merge {:group_id group-id :db_id db-id} m)))
+            ;; the incident shape: two identical DB-level rows
+            vd-keep  (perm! {:perm_type "perms/view-data" :perm_value "unrestricted"})
+            _vd-dup  (perm! {:perm_type "perms/view-data" :perm_value "unrestricted"})
+            ;; differing values: the more restrictive row must survive even with a higher id
+            _cq-perm (perm! {:perm_type "perms/create-queries" :perm_value "query-builder-and-native"})
+            cq-keep  (perm! {:perm_type "perms/create-queries" :perm_value "no"})
+            ;; table-level duplicates dedupe too
+            _dl-perm (perm! {:perm_type   "perms/download-results"
+                             :perm_value  "one-million-rows"
+                             :table_id    table-id
+                             :schema_name "public"})
+            dl-keep  (perm! {:perm_type   "perms/download-results"
+                             :perm_value  "ten-thousand-rows"
+                             :table_id    table-id
+                             :schema_name "public"})
+            ;; not a duplicate: same perm-type on a different scope must be untouched
+            md-keep  (perm! {:perm_type "perms/manage-database" :perm_value "no"})]
         (migrate!)
-        ;; 1. Old workspace_input data is dropped (table recreated with new schema)
-        (testing "workspace_input table is empty after drop/recreate"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
-        ;; 2. ref_id and transform_version columns no longer exist
-        (testing "ref_id column removed"
+        (testing "exact duplicates: the lowest id survives"
+          (is (= [vd-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/view-data")))))
+        (testing "differing values: the most restrictive survives regardless of id order"
+          (is (= [cq-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/create-queries")))))
+        (testing "table-level duplicates dedupe by the same rule"
+          (is (= [dl-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/download-results")))))
+        (testing "non-duplicate rows are untouched"
+          (is (some? (t2/select-one :data_permissions :id md-keep))))
+        (testing "the generated column coalesces NULL table_id to -1"
+          (is (= -1 (t2/select-one-fn :unique_perms_helper :data_permissions :id vd-keep)))
+          (is (= table-id (t2/select-one-fn :unique_perms_helper :data_permissions :id dl-keep))))
+        (testing "the unique constraint rejects a new DB-level duplicate"
           (is (thrown? Exception
-                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
-        (testing "transform_version column removed"
-          (is (thrown? Exception
-                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
-        ;; 3. workspace_input_transform table exists
-        (testing "workspace_input_transform table created"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
-        ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
-        (testing "can insert into new schema"
-          (t2/insert-returning-pks! :workspace_input
-                                    {:workspace_id   ws-id
-                                     :db_id          1
-                                     :schema         "public"
-                                     :table          "orders"
-                                     :access_granted false
-                                     :created_at     :%now
-                                     :updated_at     :%now}))
-        (testing "unique constraint prevents duplicate table entries"
-          (is (thrown? Exception
-                       (t2/insert-returning-pks! :workspace_input
-                                                 {:workspace_id   ws-id
-                                                  :db_id          1
-                                                  :schema         "public"
-                                                  :table          "orders"
-                                                  :access_granted false
-                                                  :created_at     :%now
-                                                  :updated_at     :%now}))))))))
+                       (perm! {:perm_type "perms/view-data" :perm_value "blocked"}))))))))
 
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing

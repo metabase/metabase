@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 

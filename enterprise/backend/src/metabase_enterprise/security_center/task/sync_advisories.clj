@@ -52,8 +52,8 @@
     (try
       (notification/notify-advisory! advisory)
       (catch Exception e
-        (log/warnf e "Failed to send repeat notification for advisory %s"
-                   (:advisory_id advisory))))))
+        (log/warnf "Failed to send repeat notification for advisory %s: %s"
+                   (:advisory_id advisory) (ex-message e))))))
 
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
@@ -66,15 +66,15 @@
       (fetch/sync-advisories!)
       (settings/security-center-last-synced-at! (t/offset-date-time))
       (catch Exception e
-        (log/warn e "Error fetching advisories from HM")))
+        (log/warnf "Error fetching advisories from HM: %s" (ex-message e))))
     (try
       (matching/evaluate-all-advisories!)
       (catch Exception e
-        (log/warn e "Error re-evaluating advisories")))
+        (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
     (try
       (send-repeat-notifications!)
       (catch Exception e
-        (log/warn e "Error sending repeat notifications")))
+        (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
     (metrics/refresh-metrics!)))
 
 (task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."

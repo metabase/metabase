@@ -42,6 +42,9 @@ docs/api.json # auto-generated
 docs/configuring-metabase/environment-variables.md # auto-generated
 docs/configuring-metabase/config-template.md # auto-generated
 docs/installation-and-operation/commands.md # auto-generated
+docs/ai/providers.md # auto-generated
+docs/embedding/sdk/api # auto-generated
+docs/embedding/eajs/snippets # auto-generated
 
 # @metabase/devexp
 .github @metabase/devexp

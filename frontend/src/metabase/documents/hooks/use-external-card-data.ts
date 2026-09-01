@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { useExternalCardData } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
+
+import { useExternalCardData } from "../components/editor-extensions/CardEmbed/ExternalCardDataContext";
 
 function buildSeries(card: Card, dataset: Dataset): RawSeries {
   return [

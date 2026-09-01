@@ -214,7 +214,7 @@
   (try
     (.deleteObject s3-client (delete-object-request bucket-name key))
     (catch Exception e
-      (log/debugf e "Error deleting s3 object %s" key)
+      (log/debugf "Error deleting s3 object %s: %s" key (ex-message e))
       ;; Ignore deletion errors - object might not exist, or we might not have permissions
       ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
       nil)))

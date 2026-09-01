@@ -4,16 +4,15 @@ import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -108,7 +107,7 @@ function ModalBody({
   });
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data: dataCollection, isLoading: isLoadingDataCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-data",
@@ -136,7 +135,7 @@ function ModalBody({
     if (collection != null) {
       sendSuccessToast(
         t`Published`,
-        () => dispatch(push(Urls.dataStudioLibrary())),
+        () => navigate(Urls.dataStudioLibrary()),
         t`Go to ${collection.name}`,
       );
     } else {

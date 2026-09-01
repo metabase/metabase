@@ -14,6 +14,7 @@
    [metabase.models.init]
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -140,6 +141,14 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 62+
+    :model/Exploration
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/ExplorationQuery
+    :model/ExplorationBookmark
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
@@ -149,10 +158,7 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin
-      :model/Workspace
-      :model/WorkspaceDatabase
-      :model/TableRemapping])))
+      :model/CustomVizPlugin])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -179,7 +185,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
 (def ^:dynamic *copy-h2-database-details*
@@ -214,7 +220,7 @@
            (cond-> database
              (or (:is_attached_dwh database)
                  (and (not *copy-h2-database-details*)
-                      (= (:engine database) "h2"))) (assoc :details "{}"))))
+                      (= (:engine database) "h2"))) (assoc :details (encryption/maybe-encrypt "{}")))))
 
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.
@@ -228,6 +234,10 @@
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
+    :model/DataPermissions
+    ;; unique_perms_helper is a computed/generated column
+    (map #(dissoc % :unique_perms_helper))
 
     ;; else
     identity))
@@ -357,7 +367,6 @@
         (let [save-point (.setSavepoint conn)]
           (try
             (letfn [(add-batch! [^String sql]
-                      (log/debug (u/colorize :yellow sql))
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
               (doseq [table-name (map t2/table-name (reverse entities))]
@@ -448,14 +457,18 @@
                     (not config/ee-available?)
                     (remove #(str/starts-with? (str %) "metabase-enterprise")))]
     (classloader/require ns-symb))
-  ;; make sure the source database is up-do-date
+  ;; make sure the source database is up-do-date. Skip the encryption check: the source may legitimately be unencrypted
+  ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2); rows are copied
+  ;; as-is and [[metabase.cmd.load-from-h2/load-from-h2!]] encrypts the target afterwards.
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-data-source true false))
+    (mdb.setup/setup-db! source-db-type source-data-source {:manage-encryption-state? false}))
   ;; make sure the dest DB is up-to-date
   ;;
-  ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
+  ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately.
+  ;; Skip the encryption check too: whatever it would write is truncated below along with the other migration-created
+  ;; rows, and the caller decides the target's encryption state from the copied sentinel afterwards.
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (mdb.setup/setup-db! target-db-type target-data-source true false))
+    (mdb.setup/setup-db! target-db-type target-data-source {:manage-encryption-state? false}))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-has-no-users target-data-source))

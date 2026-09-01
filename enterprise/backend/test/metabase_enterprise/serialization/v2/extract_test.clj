@@ -109,6 +109,7 @@
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
+;; dozens of extraction cases share one hand-built dashboard/card graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db!
@@ -700,6 +701,44 @@
             (is (contains? targets-without-skip ["Card" card-in-active-id]))
             (is (contains? targets-without-skip ["Card" card-in-archived-id]))))))))
 
+(defn- resolve-targets-ex
+  "Returns the ExceptionInfo thrown by `resolve-targets` for `targets`, or nil if it did not throw."
+  [targets]
+  (try
+    (#'extract/resolve-targets {:targets targets} nil)
+    nil
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(deftest resolve-targets-missing-id-test
+  (testing "a target id that does not exist is rejected as client input, not left to fail deep in extraction"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Real Collection"}
+                         :model/Card       {card-id :id} {:name          "Real Card"
+                                                          :collection_id coll-id}]
+        (let [missing-id Integer/MAX_VALUE]
+          (testing "nonexistent Collection id"
+            (let [e (resolve-targets-ex [["Collection" missing-id]])]
+              (is (some? e))
+              (is (re-find #"Could not find Collection with ID" (ex-message e)))
+              (is (re-find (re-pattern (str missing-id)) (ex-message e))
+                  "the offending id is named so the user can correct it")
+              (is (= {:status-code 400 :model "Collection" :id missing-id}
+                     (select-keys (ex-data e) [:status-code :model :id]))
+                  "carries a :status-code so the API layer renders a 4xx instead of a server error")))
+          (testing "nonexistent id of a model other than Collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Could not find Card with ID"
+                                  (#'extract/resolve-targets {:targets [["Card" missing-id]]} nil))))
+          (testing "nil id, which a caller can produce by parsing a non-numeric id"
+            ;; without this check nil reaches `serdes/descendants`, which happily queries
+            ;; `collection_id IS NULL` and exports root-level content instead of failing
+            (let [e (resolve-targets-ex [["Collection" nil]])]
+              (is (some? e))
+              (is (= 400 (:status-code (ex-data e))))))
+          (testing "ids that do exist still resolve"
+            (let [targets (#'extract/resolve-targets {:targets [["Collection" coll-id]]} nil)]
+              (is (contains? targets ["Collection" coll-id]))
+              (is (contains? targets ["Card" card-id])))))))))
+
 (deftest extract-skip-archived-test
   (testing "extract with skip-archived: true excludes archived items from final extraction"
     (mt/with-empty-h2-app-db!
@@ -1251,6 +1290,47 @@
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
           (is (not (contains? ser :made_public_by_id))))))))
 
+(deftest parameters-with-deleted-source-card-test
+  (testing (str "A parameter whose values-source Card is gone — e.g. it was hard-deleted along with its Database — "
+                "exports with the source dropped rather than knocking the whole entity out of the export (GHY-3259)")
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc
+        [:model/Collection {coll-id :id}   {:name "Dropdowns"}
+         ;; non-H2 engine so the Database isn't filtered out of the export before we delete it
+         :model/Database   {db-id :id}     {:name "Doomed Database" :engine :postgres}
+         :model/Card       {source-id :id} {:name          "Dropdown List Options"
+                                            :database_id   db-id
+                                            :collection_id coll-id}
+         :model/Card       _               {:name          "Card with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "abc"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}
+         :model/Dashboard  _               {:name          "Dashboard with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "def"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}]
+        ;; deleting a Database hard-deletes its Cards, leaving the parameters above pointing at a row that is gone
+        (t2/delete! :model/Database :id db-id)
+        (is (not (t2/exists? :model/Card :id source-id))
+            "deleting the Database should have taken its Card with it")
+        (let [ser      (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                  :no-settings   true
+                                                  :no-data-model true}))
+              by-model (group-by (comp :model last :serdes/meta) (remove #(instance? Exception %) ser))]
+          (is (empty? (filter #(instance? Exception %) ser))
+              "nothing should be skipped because of the dangling reference")
+          (is (= [{:id "abc" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Card")))))
+          (is (= [{:id "def" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Dashboard"))))))))))
+
+;; the selective-serialization cases all walk one shared entity graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db!

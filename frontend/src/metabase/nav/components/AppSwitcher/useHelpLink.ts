@@ -1,10 +1,9 @@
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
-import { useSetting } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-
-import { getUser } from "../../../selectors/user";
+import { useSetting } from "metabase/settings";
 
 export const useHelpLink = (): { visible: boolean; href: string } => {
   const helpLinkSetting = useSetting("help-link");

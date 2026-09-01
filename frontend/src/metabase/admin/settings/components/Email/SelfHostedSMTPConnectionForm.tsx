@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import {
   useDeleteEmailSMTPSettingsMutation,
   useUpdateEmailSMTPSettingsMutation,
-} from "metabase/api/email";
+} from "../../api/email";
 
 import { BaseSMTPConnectionForm } from "./BaseSMTPConnectionForm";
 import { trackSMTPSetupSuccess } from "./analytics";

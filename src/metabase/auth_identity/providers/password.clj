@@ -61,7 +61,7 @@
                :error :invalid-credentials
                :message \"...\"}"
   [_provider {:keys [email password] :as _request}]
-  (log/debugf "Authenticating with password provider for email: %s" email)
+  (log/debug "Authenticating with password provider")
 
   (cond
     (not email)

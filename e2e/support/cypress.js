@@ -3,12 +3,16 @@ registerCypressGrep();
 // No-op when the bundle isn't instrumented (window.__coverage__ undefined),
 // so always-on is safe and avoids env-conditional support imports.
 import "@cypress/code-coverage/support";
-import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
+// Must stay imported after "@cypress/code-coverage/support": its afterEach
+// zeroes the window coverage counters after collecting each test's fires,
+// which must happen after the plugin's own afterEach has sent them to its
+// accumulator.
+import "./per-test-capture";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
@@ -20,6 +24,10 @@ const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 if (Cypress.expose("codeCoverageTasksRegistered") === true) {
   before(() => {
     cy.task("resetCoverage", { isInteractive: true }, { log: false });
+    // Companion reset for the per-test capture state (per-test-capture.js);
+    // headless runs also reset it in after:spec, but that event doesn't fire
+    // between interactive re-runs.
+    cy.task("resetTestCapture", null, { log: false });
   });
 }
 

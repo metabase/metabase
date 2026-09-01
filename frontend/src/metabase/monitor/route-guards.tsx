@@ -1,4 +1,5 @@
 import {
+  canAccessAiAuditing,
   canAccessAlertsManagement,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
@@ -31,6 +32,11 @@ const UserCanAccessAlertsManagement = createRedirectGuard(
   "/unauthorized",
 );
 
+const UserCanAccessAiAuditing = createRedirectGuard(
+  (state) => canAccessAiAuditing(state),
+  "/unauthorized",
+);
+
 export const CanAccessMonitor = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
@@ -57,4 +63,10 @@ export const CanAccessAlertsManagement = () => (
   <UserCanAccessAlertsManagement>
     <Outlet />
   </UserCanAccessAlertsManagement>
+);
+
+export const CanAccessAiAuditing = () => (
+  <UserCanAccessAiAuditing>
+    <Outlet />
+  </UserCanAccessAiAuditing>
 );

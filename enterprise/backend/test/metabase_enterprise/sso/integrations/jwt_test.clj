@@ -4,8 +4,10 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.providers.jwt :as providers.jwt]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
@@ -535,6 +537,31 @@
                                      (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com")))
                                     "admins")))))))))))
 
+(deftest group-names->ids-no-mappings-input-validation-test
+  (testing "with no mappings, group names are matched by exact value"
+    (mt/with-temporary-setting-values [jwt-group-mappings nil]
+      (let [captured (atom nil)]
+        (with-redefs [t2/select-pks-set (fn [_model _col in-clause]
+                                          (reset! captured (second in-clause))
+                                          #{})]
+          (testing "a string group name is bound as a parameter"
+            (#'providers.jwt/group-names->ids ["developers"])
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))))
+          (testing "non-string group names are ignored"
+            (reset! captured nil)
+            (#'providers.jwt/group-names->ids ["developers" {:select :x}])
+            (is (= #{"developers"} @captured))
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))
+              (is (not (str/includes? query "select"))))))))))
+
 (deftest login-as-existing-user-test
   (testing "login as an existing user works"
     (testing "An existing user will be reactivated upon login"
@@ -1016,8 +1043,8 @@
                     "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
+            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
             (is (some #(re-find #"Dropping attribute '@attribute', keys beginning with `@` are reserved" %) (map :message (jwt-log-messages)))))
           (testing "no warning for valid string attribute"

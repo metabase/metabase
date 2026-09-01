@@ -73,16 +73,14 @@ describe("BrowseDatabases", () => {
       });
 
     it("opens the database under its name url when the name is unique", async () => {
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"]),
       ]);
 
       await userEvent.click(await screen.findByText("Sales"));
 
       expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/Sales",
-      );
+      expect(router?.location.pathname).toBe("/browse/databases/Sales");
     });
 
     it.each([
@@ -105,16 +103,14 @@ describe("BrowseDatabases", () => {
 
     it("opens a database whose name starts with a digit", async () => {
       // "7-sales" as a url segment would be read back as database 7
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(3, "7-sales", ["ONE", "TWO"]),
       ]);
 
       await userEvent.click(await screen.findByText("7-sales"));
 
       expect(await screen.findByText("ONE")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).not.toBe(
-        "/browse/databases/7-sales",
-      );
+      expect(router?.location.pathname).not.toBe("/browse/databases/7-sales");
     });
   });
 

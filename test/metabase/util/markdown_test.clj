@@ -1,12 +1,15 @@
 (ns metabase.util.markdown-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.markdown :as markdown]))
 
 (defn- slack
-  [markdown]
-  (markdown/process-markdown markdown :slack))
+  ([markdown]
+   (slack markdown nil))
+  ([markdown site-url]
+   (markdown/process-markdown markdown :slack site-url)))
 
 (defn- escape
   [text]
@@ -86,10 +89,9 @@
     (is (= "<https://metabase.com|*Metabase*>" (slack "[__Metabase__](https://metabase.com)")))
     (is (= "<https://metabase.com|`Metabase`>" (slack "[`Metabase`](https://metabase.com)")))))
 
-(deftest process-markdown-slack-test-9
-  (testing "Relative links are resolved to the current site URL"
-    (tu/with-temporary-setting-values [site-url "https://example.com"]
-      (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)"))))))
+(deftest ^:parallel process-markdown-slack-test-9
+  (testing "Relative links are resolved to the provided site URL"
+    (is (= "<https://example.com/foo|Metabase>" (slack "[Metabase](/foo)" "https://example.com")))))
 
 (deftest ^:parallel process-markdown-slack-test-10
   (testing "Auto-links are preserved"
@@ -203,10 +205,12 @@
     (is (= "[test]" (slack "[test]")))))
 
 (defn- html
-  [markdown]
-  (markdown/process-markdown markdown :html))
+  ([markdown]
+   (html markdown nil))
+  ([markdown site-url]
+   (markdown/process-markdown markdown :html site-url)))
 
-(deftest process-markdown-email-test
+(deftest ^:parallel process-markdown-email-test
   (testing "HTML is generated correctly from Markdown input for emails. Not an exhaustive test suite since parsing and
            rendering is fully handled by flexmark."
     (is (= "<h1>header</h1>\n"
@@ -219,14 +223,13 @@
            (html "1. foo\n   1. bar")))
     (is (= "<p>/</p>\n"
            (html "\\/")))
-    (doseq [temp-setting ["https://example.com" "https://example.com/"]]
-      (tu/with-temporary-setting-values [site-url temp-setting]
-        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
-               (html "![alt-text](/image.png)")))
-        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
-               (html "![alt-text](image.png)")))
-        (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
-               (html "[dashboard 1](/dashboard/1)")))))))
+    (doseq [site-url ["https://example.com" "https://example.com/"]]
+      (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+             (html "![alt-text](/image.png)" site-url)))
+      (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+             (html "![alt-text](image.png)" site-url)))
+      (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
+             (html "[dashboard 1](/dashboard/1)" site-url))))))
 
 (deftest ^:parallel process-markdown-email-test-2
   (testing "Bare URLs and email addresses are converted to links"
@@ -249,3 +252,53 @@
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
     (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))
+
+(deftest ^:parallel process-markdown-link-scheme-test
+  (testing "Only links/images with allow-listed URI schemes are rendered"
+    (doseq [markdown ["[x](javascript:alert(1))"
+                      "[x](JaVaScRiPt:alert(1))"
+                      "[x](JAVASCRIPT:alert(1))"
+                      "[x](javascript&#58;alert(1))"
+                      "[x](vbscript:msgbox(1))"
+                      "[x](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)"
+                      "![x](data:text/html;base64,PHNjcmlwdD4=)"]
+            :let     [rendered (u/lower-case-en (html markdown))]
+            scheme   ["javascript" "vbscript" "data:"]]
+      (testing (str markdown " does not render " scheme)
+        (is (not (str/includes? rendered scheme)))))))
+
+(deftest ^:parallel process-markdown-link-scheme-slack-test
+  (testing "Links with non-allow-listed schemes render as their text alone in Slack"
+    (is (= "x" (slack "[x](javascript:alert(1))")))
+    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "x" (slack "[x][ref]\n\n[ref]: javascript:alert(1)")))
+    (is (= "[x]" (slack "[x]")) "a bare bracket pair with no reference is still restored"))
+  (testing "Images with non-allow-listed schemes render as their placeholder alone in Slack"
+    (is (= "[Image: x]" (slack "![x](javascript:alert(1))")))
+    (is (= "[Image]"    (slack "![](data:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "[Image: x]" (slack "![x][ref]\n\n[ref]: javascript:alert(1)"))))
+  (testing "Slack image sources are resolved against the site URL and allow inline base64 images"
+    (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x](/a.png)" "https://example.com")))
+    (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x][ref]\n\n[ref]: a.png" "https://example.com")))
+    (is (= "<data:image/png;base64,iVBORw0KGgo=|[Image: x]>" (slack "![x](data:image/png;base64,iVBORw0KGgo=)")))))
+
+(deftest ^:parallel process-markdown-allowed-scheme-case-test
+  (testing "Scheme allow-listing is case-insensitive for allowed schemes too"
+    (is (= "<p><a href=\"HTTPS://metabase.com\">x</a></p>\n" (html "[x](HTTPS://metabase.com)")))))
+
+(deftest ^:parallel process-markdown-data-image-test
+  (testing "Inline base64 images render like they do in the app's markdown renderer"
+    (is (= "<p><img src=\"data:image/png;base64,iVBORw0KGgo=\" alt=\"x\" /></p>\n"
+           (html "![x](data:image/png;base64,iVBORw0KGgo=)" "https://example.com")))
+    (is (= "<p><img src=\"data:image/svg+xml;base64,PHN2Zy8+\" alt=\"x\" /></p>\n"
+           (html "![x](data:image/svg+xml;base64,PHN2Zy8+)" "https://example.com")))))
+
+(deftest ^:parallel process-markdown-malformed-uri-test
+  (testing "A link destination that isn't a parseable URI drops the link instead of aborting the render"
+    (doseq [markdown ["[x](data:text/html,<b>y</b>)"
+                      "[x](<http://exa mple.com/foo>)"]
+            channel  [:html :slack]
+            :let     [rendered (markdown/process-markdown markdown channel "https://example.com")]]
+      (testing (format "%s via %s" markdown channel)
+        (is (string? rendered))
+        (is (not (str/includes? (u/lower-case-en rendered) "data:text")))))))

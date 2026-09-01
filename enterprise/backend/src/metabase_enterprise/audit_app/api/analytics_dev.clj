@@ -46,7 +46,7 @@
         {:archive  (when (.exists dst) dst)
          :cleanup! cleanup!}
         (catch Exception e
-          (log/error e "Error during analytics export")
+          (log/errorf "Error during analytics export: %s" (ex-message e))
           (try (cleanup!) (catch Error _))
           {:error-message (.getMessage e)})))))
 

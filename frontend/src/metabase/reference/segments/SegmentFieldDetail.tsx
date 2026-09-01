@@ -1,11 +1,13 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { updateField } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -14,23 +16,21 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getFieldBySegment,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
+  ReferenceLoadingProps,
   StubbedField,
   StubbedTable,
 } from "../types";
@@ -84,9 +84,6 @@ const mapStateToProps = (
   return {
     entity,
     table: getTable(state, props),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -95,7 +92,7 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateSegmentFieldDetail,
 };
@@ -112,7 +109,7 @@ interface SegmentFieldDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => void;
+  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => Promise<void>;
 }
 
 const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
@@ -130,6 +127,8 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -138,8 +137,14 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     handleReset,
   } = useFormik<SegmentFieldDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -174,8 +179,8 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -259,4 +264,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(SegmentFieldDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentFieldDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

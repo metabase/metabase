@@ -265,6 +265,14 @@
   (update (#'kondo-ratchet/remove-ignores-at text rows)
           :sites (partial mapv #(dissoc % :original :removed-line))))
 
+(deftest ignored-linters-at-test
+  (testing "reads the complete file when an ignore vector spans more than three lines"
+    (is (= [:a :b :c :d]
+           (#'kondo-ratchet/ignored-linters-at
+            (vec (str/split-lines
+                  "#_{:clj-kondo/ignore [:a\n                      :b\n                      :c\n                      :d]}\n(foo)"))
+            1)))))
+
 (deftest remove-ignores-at-originals-test
   (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"
     (is (= [{:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}]
@@ -279,7 +287,16 @@
            (map :original
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
-                         [2])))))))
+                         [2]))))))
+  (testing "a `#` before the form is left for a human -- `#^` metadata and a gensym's `#` need a reader to tell apart"
+    (doseq [[description text] [["legacy #^ metadata"        "(def #^{:clj-kondo/ignore [:x]} y 1)\n"]
+                                ["a syntax-quote gensym"     "`(m x#^{:clj-kondo/ignore [:x]} y)\n"]
+                                ["a quote macro before it"   "(def x '#^{:clj-kondo/ignore [:z]} y)\n"]]]
+      (testing description
+        (let [{removed :text, :keys [sites skipped]} (#'kondo-ratchet/remove-ignores-at text [1])]
+          (is (= text removed) "the source is left exactly as it was")
+          (is (= [] sites) "nothing is excised")
+          (is (= [1] skipped) "the row is reported instead"))))))
 
 (deftest inline-ignore-separator-round-trip-test
   (doseq [[description separator text]
@@ -321,6 +338,10 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
+  (testing "a prefixless match is left for manual removal rather than risking a dangling reader discard"
+    (let [text "#_ ;; rationale\n{:clj-kondo/ignore [:x]}\n(a)\n"]
+      (is (= {:text text, :sites [], :skipped [2]}
+             (remove-ignores-at' text [2])))))
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
     (is (= {:text      "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             :sites     [{:row 1, :linters [:x]}]

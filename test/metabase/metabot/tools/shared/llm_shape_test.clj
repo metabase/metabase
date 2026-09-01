@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
@@ -99,7 +103,30 @@
     (let [metric {:id 1 :name "Test" :verified false}
           xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
-      (is (not (str/includes? xml "### Dimensions"))))))
+      (is (not (str/includes? xml "### Dimensions")))))
+  (testing "surfaces join-required (FK-less join) dimensions with the pasteable join clause (BOT-1612)"
+    (let [metric {:id 42 :name "Order Count by Campaign" :verified true
+                  :join-required-dimensions
+                  [{:join_alias   "Campaign"
+                    :target_table "CAMPAIGNS"
+                    :join         {"lib/type" "mbql/join" "strategy" "left-join" "alias" "Campaign"
+                                   "stages" [{"lib/type" "mbql.stage/mbql"
+                                              "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]}
+                    :dimensions   [{:name "NAME" :field_id 301 :type "string"
+                                    :portable_fk ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]
+                                    :reference   ["field" {"join-alias" "Campaign"}
+                                                  ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]}]}]}
+          xml    (llm-shape/metric->xml metric)]
+      (is (str/includes? xml "### Dimensions that require an explicit join"))
+      (is (str/includes? xml "no foreign key"))
+      (testing "the exact join clause is embedded as JSON for the LLM to paste"
+        (is (str/includes? xml "\"mbql/join\""))
+        (is (str/includes? xml "\"source-table\"")))
+      (testing "the per-dimension Reference is the ALIAS-QUALIFIED field clause, not a bare FK"
+        (is (str/includes? xml "NAME"))
+        ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
+        ;; dead-end on :no-fk-path (BOT-1612)
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
@@ -885,3 +912,99 @@
       (testing "identity-only related tables render both the FK field name and id"
         (is (str/includes? xml "related_by_field_name=\"user_id\" related_by_field_id=\"303\""))
         (is (str/includes? xml "related_by_field_name=\"review_id\" related_by_field_id=\"404\""))))))
+
+(deftest ^:parallel transform-query->text-native-test
+  (testing "native SQL renders verbatim"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+      {:native {:query "SELECT 1"}}
+      "SELECT 1")))
+
+(deftest ^:parallel transform-query->text-orphaned-source-test
+  (testing "orphaned sources skip normalization and still render as SQL through their string keys"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {"database" nil "native" {"query" "SELECT 1"}}
+      {"database" nil "stages" [{"native" "SELECT 1"}]})))
+
+(deftest ^:parallel transform-query->text-nil-test
+  (testing "nil stays nil"
+    (is (nil? (llm-shape/transform-query->text nil)))))
+
+(deftest ^:parallel transform-query->text-portable-mbql-test
+  (testing "an MBQL query exports to portable form, referencing tables by FK path"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/query mp (lib.metadata/table mp (mt/id :products))))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (not (contains? exported "lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-export-failure-fallback-test
+  (testing "a query that fails to export falls back to EDN without the metadata provider"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-existing-metadata-fallback-test
+  (testing "the EDN fallback strips an existing provider even when there is no database to normalize"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type     :mbql/query
+                 :lib/metadata :fake-provider
+                 :stages       [{:lib/type :mbql.stage/mbql}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-multi-stage-test
+  (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/append-stage (lib/native-query mp "SELECT * FROM PRODUCTS")))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= 2 (count (get exported "stages"))))
+      (is (= "SELECT * FROM PRODUCTS" (get-in exported ["stages" 0 "native"]))))))
+
+(deftest transform-query->text-source-card-permission-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id, entity-id :entity_id}
+                   {:collection_id collection-id
+                    :database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}]
+      (let [query       {:lib/type :mbql/query
+                         :database (mt/id)
+                         :stages   [{:lib/type :mbql.stage/mbql
+                                     :source-card card-id}]}
+            render-as   (fn [user-id]
+                          (mt/with-current-user user-id
+                            (llm-shape/transform-query->text query)))
+            readable    (render-as (mt/user->id :crowberto))
+            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))]
+        (testing "a user who can read the source Card gets its portable entity id"
+          (is (= entity-id (get-in exported ["stages" 0 "source-card"]))))
+        (testing "a user who cannot read the source Card gets nothing at all"
+          (is (nil? (render-as (mt/user->id :rasta)))))))))
+
+(deftest ^:parallel transform->xml-source-query-test
+  (testing "a native source query renders as verbatim SQL text"
+    (let [xml (llm-shape/transform->xml
+               {:id     7
+                :name   "Orders rollup"
+                :source {:type  :query
+                         :query {:stages [{:lib/type :mbql.stage/native
+                                           :native   "SELECT * FROM orders WHERE total < 100"}]}}})]
+      (is (str/includes? xml "<query>SELECT * FROM orders WHERE total < 100</query>"))))
+  (testing "an MBQL source query renders as a JSON code block"
+    (let [xml (llm-shape/transform->xml
+               {:id     8
+                :name   "Notebook rollup"
+                :source {:type  :query
+                         :query (lib/query (mt/metadata-provider)
+                                           (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})]
+      (is (str/includes? xml "<query>\n```json"))
+      (is (str/includes? xml "```\n</query>"))
+      (is (str/includes? xml "\"PRODUCTS\"")))))

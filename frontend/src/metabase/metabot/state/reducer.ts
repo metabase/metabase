@@ -1,9 +1,15 @@
-import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
-import { castDraft } from "immer";
+import {
+  type PayloadAction,
+  type UnknownAction,
+  createSlice,
+} from "@reduxjs/toolkit";
+import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
+import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
-import { uuid } from "metabase/utils/uuid";
+import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type {
   MetabotCodeEdit,
   MetabotStateContext,
@@ -12,53 +18,115 @@ import type {
 } from "metabase-types/api";
 
 import type { MetabotProfileId } from "../constants";
+import { isContextWindowFull } from "../utils/context-usage";
 
 import { sendAgentRequest } from "./actions";
 import {
+  type AgentPayloadAction,
   type ConvoPayloadAction,
+  addChainTool,
+  agentReducer,
   appendAgentTurnAborted,
   appendAgentTurnErrored,
+  appendAgentTurnIncomplete,
+  appendChainReasoning,
+  closeChain,
   convoReducer,
+  createAgentState,
   createConversation,
+  createConversationForAgent,
+  endChainTool,
+  evictConversationIfUnused,
   findLastToolCallMessage,
+  getAgentOrThrow,
   getMetabotInitialState,
   getRequestConversation,
+  openChain,
   pushNewToolCall,
   resetReactionState,
+  resetReactionStateForConversation,
+  setChainToolSearchResults,
+  setChainToolTitle,
+  startChainReasoning,
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentId,
   MetabotChatMessage,
+  MetabotState,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId, hasInProgressMessage } from "./utils";
+
+const isLocationChange = (
+  action: UnknownAction,
+): action is PayloadAction<Location, typeof LOCATION_CHANGE> =>
+  action.type === LOCATION_CHANGE;
+
+const startNewConversationForAgent = (
+  state: WritableDraft<MetabotState>,
+  agentId: MetabotAgentId,
+) => {
+  const agent = getAgentOrThrow(state, agentId);
+  const previousConversationId = agent.conversationId;
+  const convo = createConversationForAgent(agentId);
+  state.conversations[convo.conversationId] = castDraft(convo);
+  agent.conversationId = convo.conversationId;
+  resetReactionState(state, agentId);
+  evictConversationIfUnused(state, previousConversationId);
+};
+
+const attachAgent = (
+  state: WritableDraft<MetabotState>,
+  agentId: MetabotAgentId,
+  conversationId: string,
+) => {
+  const agent = getAgentOrThrow(state, agentId);
+  if (agent.conversationId === conversationId) {
+    return;
+  }
+  const previousConversationId = agent.conversationId;
+  state.conversations[conversationId] ??= castDraft(
+    createConversationForAgent(agentId, { conversationId }),
+  );
+  agent.conversationId = conversationId;
+  resetReactionState(state, agentId);
+  evictConversationIfUnused(state, previousConversationId);
+};
 
 export const metabot = createSlice({
   name: "metabase/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
     // TOP-LEVEL STATE REDUCERS
-    createAgent: (state, action: ConvoPayloadAction<{ visible?: boolean }>) => {
+    createAgent: (state, action: AgentPayloadAction<{ visible?: boolean }>) => {
       const { agentId, ...options } = action.payload;
-      if (!state.conversations[agentId]) {
-        const newConvo = createConversation(agentId, options);
-        state.conversations[agentId] = castDraft(newConvo);
-      } else {
-        console.warn("Conversation already exists for agentId: ", agentId);
+      if (state.agents[agentId]) {
+        console.warn("Agent already exists for agentId: ", agentId);
+        return;
+      }
+      const convo = createConversationForAgent(agentId);
+      state.conversations[convo.conversationId] = castDraft(convo);
+      state.agents[agentId] = createAgentState(convo.conversationId, options);
+    },
+    destroyAgent: (state, action: AgentPayloadAction) => {
+      const { agentId } = action.payload;
+      const conversationId = state.agents[agentId]?.conversationId;
+      delete state.agents[agentId];
+      resetReactionState(state, agentId);
+      if (conversationId) {
+        evictConversationIfUnused(state, conversationId);
       }
     },
-    destroyAgent: (state, action: ConvoPayloadAction) => {
-      const { agentId } = action.payload;
-      delete state.conversations[agentId];
-      resetReactionState(state, agentId);
+    startNewConversation: (state, action: AgentPayloadAction) => {
+      startNewConversationForAgent(state, action.payload.agentId);
     },
-    resetConversation: (state, action: ConvoPayloadAction) => {
-      const { agentId } = action.payload;
-      const visible = state.conversations[agentId]?.visible ?? false;
-      const newConvo = createConversation(agentId, { visible });
-      state.conversations[agentId] = castDraft(newConvo);
-      resetReactionState(state, agentId);
+    attachAgentToConversation: (
+      state,
+      action: AgentPayloadAction<{ conversationId: string }>,
+    ) => {
+      attachAgent(state, action.payload.agentId, action.payload.conversationId);
     },
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
@@ -99,7 +167,8 @@ export const metabot = createSlice({
         convo,
         action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
       ) => {
-        const { id, message, agentId, ...rest } = action.payload;
+        const { id, message, conversationId, ...rest } = action.payload;
+        convo.hasMessagedInSession = true;
         // Unjustified type cast. FIXME
         convo.messages.push({ id, role: "user", ...rest, message } as any);
       },
@@ -112,6 +181,7 @@ export const metabot = createSlice({
         >,
       ) => {
         convo.activeToolCalls = [];
+        closeChain(convo);
         const externalId = convo.pendingMessageExternalId;
         // Unjustified type cast. FIXME
         convo.messages.push({
@@ -125,8 +195,18 @@ export const metabot = createSlice({
         } as any);
       },
     ),
+    reasoningStart: convoReducer(
+      (convo, action: ConvoPayloadAction<{ nowMs?: number }>) => {
+        startChainReasoning(convo, action.payload.nowMs);
+      },
+    ),
+    reasoningDelta: convoReducer(
+      (convo, action: ConvoPayloadAction<{ text: string; nowMs?: number }>) => {
+        appendChainReasoning(convo, action.payload.text, action.payload.nowMs);
+      },
+    ),
     addAgentTextDelta: convoReducer(
-      (convo, action: ConvoPayloadAction<{ text: string }>) => {
+      (convo, action: ConvoPayloadAction<{ text: string; nowMs?: number }>) => {
         const hasToolCalls = convo.activeToolCalls.length > 0;
         const lastMessage = _.last(convo.messages);
         const canAppend =
@@ -137,6 +217,7 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
+          closeChain(convo, action.payload.nowMs);
           const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
             id: createMessageId(),
@@ -176,10 +257,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args?: string;
+          nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args } = action.payload;
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         // idempotent: both tool-input-start and tool-input-available are
         // able to signal the start of a tool call
         if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
@@ -194,10 +278,13 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<{
           toolCallId: string;
           toolName: string;
+          title?: string;
           args: string;
+          nowMs?: number;
         }>,
       ) => {
-        const { toolCallId, toolName, args } = action.payload;
+        const { toolCallId, toolName, title, args, nowMs } = action.payload;
+        addChainTool(convo, { id: toolCallId, name: toolName, title, nowMs });
         const existingMsg = findLastToolCallMessage(convo, toolCallId);
         if (existingMsg) {
           // if toolCallStart was called (tool-input-start event is optional)
@@ -215,11 +302,13 @@ export const metabot = createSlice({
           toolCallId: string;
           result?: string;
           isError?: boolean;
+          nowMs?: number;
         }>,
       ) => {
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
+        endChainTool(convo, action.payload.toolCallId, action.payload.nowMs);
 
         // Update the message in messages array with result for debug history
         const message = findLastToolCallMessage(
@@ -233,6 +322,28 @@ export const metabot = createSlice({
             message.is_error = true;
           }
         }
+      },
+    ),
+    toolCallSearchResults: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          totalCount: number;
+          results: SearchResultItem[];
+        }>,
+      ) => {
+        const { toolCallId, totalCount, results } = action.payload;
+        setChainToolSearchResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    toolCallTitled: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{ toolCallId: string; title: string }>,
+      ) => {
+        const { toolCallId, title } = action.payload;
+        setChainToolTitle(convo, toolCallId, title);
       },
     ),
     // only the last turn is rewindable (retry), so a single pre-turn snapshot
@@ -257,22 +368,22 @@ export const metabot = createSlice({
         state.isProcessing = action.payload.processing;
       },
     ),
-    setVisible: convoReducer(
-      (state, action: ConvoPayloadAction<{ visible: boolean }>) => {
-        state.visible = action.payload.visible;
+    setVisible: agentReducer(
+      (agent, action: AgentPayloadAction<{ visible: boolean }>) => {
+        agent.visible = action.payload.visible;
       },
     ),
     setMetabotReqIdOverride: convoReducer(
-      (state, action: ConvoPayloadAction<{ id: string | undefined }>) => {
-        state.experimental.metabotReqIdOverride = action.payload.id;
+      (convo, action: ConvoPayloadAction<{ id: string | undefined }>) => {
+        convo.experimental.metabotReqIdOverride = action.payload.id;
       },
     ),
     setProfileOverride: convoReducer(
       (
-        state,
+        convo,
         action: ConvoPayloadAction<{ profile: MetabotProfileId | undefined }>,
       ) => {
-        state.profileOverride = action.payload.profile;
+        convo.profileOverride = action.payload.profile;
       },
     ),
     // REACTIONS REDUCERS
@@ -345,51 +456,67 @@ export const metabot = createSlice({
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },
-    setConversationSnapshot: convoReducer(
-      (
-        convo,
-        action: ConvoPayloadAction<{
-          messages: MetabotChatMessage[];
-          state?: MetabotStateContext;
-          activeToolCalls?: MetabotToolCall[];
-          conversationId: string;
-          title?: string;
-        }>,
-        state,
-      ) => {
-        const {
-          agentId,
-          messages,
-          state: snapshotState,
-          activeToolCalls,
-          conversationId,
-          title,
-        } = action.payload;
+    setConversationSnapshot: (
+      state,
+      action: PayloadAction<{
+        messages: MetabotChatMessage[];
+        state?: MetabotStateContext;
+        activeToolCalls?: MetabotToolCall[];
+        conversationId: string;
+        title?: string;
+        forkedFromConversationId?: string;
+      }>,
+    ) => {
+      const {
+        messages = [],
+        state: snapshotState,
+        activeToolCalls,
+        conversationId,
+        title,
+        forkedFromConversationId,
+      } = action.payload;
 
-        convo.messages = castDraft(messages ?? []);
-        convo.state = snapshotState ?? {};
-        convo.activeToolCalls = activeToolCalls ?? [];
-        convo.conversationId = conversationId ?? uuid();
-        convo.loadId = nanoid();
-        convo.title = title;
-        convo.isProcessing = hasInProgressMessage(messages ?? []);
-        convo.stateBeforeTurn = undefined;
-        convo.pendingMessageExternalId = undefined;
+      const convo =
+        state.conversations[conversationId] ??
+        castDraft(createConversation({ conversationId }));
 
-        // NOTE: live reactions aren't reconstructed from a fetched snapshot
-        resetReactionState(state, agentId);
-      },
-    ),
+      convo.messages = castDraft(messages);
+      convo.state = snapshotState ?? {};
+      convo.activeToolCalls = activeToolCalls ?? [];
+      convo.activeChainId = undefined;
+      convo.title = title;
+      convo.forkedFromConversationId = forkedFromConversationId;
+      convo.lastTokenUsage = undefined;
+      convo.isProcessing = hasInProgressMessage(messages);
+      if (convo.isProcessing) {
+        openChain(convo); // resuming mid-response
+      }
+      convo.stateBeforeTurn = undefined;
+      convo.pendingMessageExternalId = undefined;
+      state.conversations[conversationId] = convo;
+
+      // NOTE: live reactions aren't reconstructed from a fetched snapshot
+      resetReactionStateForConversation(state, conversationId);
+
+      // a snapshot can land after every agent moved on (e.g. rapid history
+      // selections) — don't let it resurrect an evicted conversation
+      evictConversationIfUnused(state, conversationId);
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logout.pending, getMetabotInitialState)
+      .addCase(logout.pending, (state) => {
+        Object.assign(state, getMetabotInitialState());
+      })
       // CONVERSATION REQUEST REDUCERS
       .addCase(sendAgentRequest.pending, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
+          convo.hasMessagedInSession = true;
           convo.stateBeforeTurn = convo.state;
+          convo.activeChainId = undefined;
+          openChain(convo);
           convo.pendingMessageExternalId = action.meta.arg.assistant_message_id;
         }
       })
@@ -399,7 +526,27 @@ export const metabot = createSlice({
           if (action.payload?.state) {
             convo.state = { ...action.payload.state };
           }
+
+          const metadata = action.payload?.processedResponse.messageMetadata;
+          if (metadata?.contextTokens && metadata.contextWindowTokens) {
+            convo.lastTokenUsage = {
+              contextTokens: metadata.contextTokens,
+              contextWindowTokens: metadata.contextWindowTokens,
+            };
+          }
+
+          const finishReason = action.payload?.processedResponse.finishReason;
+          const isResumableFinishReason =
+            finishReason && finishReason !== "stop" && finishReason !== "error";
+          if (isResumableFinishReason) {
+            const contextWindowFull =
+              finishReason === "length" &&
+              isContextWindowFull(convo.lastTokenUsage);
+            appendAgentTurnIncomplete(convo, finishReason, contextWindowFull);
+          }
+
           convo.activeToolCalls = [];
+          closeChain(convo);
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
           convo.pendingMessageExternalId = undefined;
@@ -443,7 +590,24 @@ export const metabot = createSlice({
 
           convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
+          closeChain(convo);
           convo.isProcessing = false;
+        }
+      })
+      // The URL owns which conversation the full-page ask agent is on: a
+      // conversation route attaches the agent, and the new-question ask route
+      // starts a fresh conversation. Same-path navigations emit LOCATION_CHANGE
+      // too, so re-entering the ask route always resets.
+      .addMatcher(isLocationChange, (state, action) => {
+        const pathname = action.payload.pathname;
+        const convoId = matchPath(
+          `/${Urls.CONVERSATION_BASE_PATH}/:convoId`,
+          pathname,
+        )?.params.convoId;
+        if (convoId) {
+          attachAgent(state, "ask", convoId);
+        } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
+          startNewConversationForAgent(state, "ask");
         }
       });
   },

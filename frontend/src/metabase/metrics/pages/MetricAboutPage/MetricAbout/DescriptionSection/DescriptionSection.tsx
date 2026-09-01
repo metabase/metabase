@@ -8,11 +8,11 @@ import {
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Card as CardApiType, CardType } from "metabase-types/api";

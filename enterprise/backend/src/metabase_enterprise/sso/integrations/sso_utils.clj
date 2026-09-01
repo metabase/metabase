@@ -71,15 +71,21 @@
                          (= (.getHost redirect) our-host)))
       redirect-url)
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
+(defn group-names->strings
+  "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.
+  Non-string entries are ignored."
+  [group-names]
+  (into [] (filter string?) (cond-> group-names (string? group-names) vector)))
+
 (defn group-names->ids
   "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
   [group-names group-mappings]
-  (->> (cond-> group-names (string? group-names) vector)
+  (->> (group-names->strings group-names)
        (map keyword)
        (mapcat group-mappings)
        set))
@@ -98,7 +104,7 @@
        (keep (fn [[key value]]
                (cond
                  (or (map? value) (nil? value))
-                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 (log/warnf "Dropping attribute '%s' with non-stringable value" (name key))
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))

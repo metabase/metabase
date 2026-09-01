@@ -4,14 +4,14 @@ import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import S from "./SearchButton.module.css";
 
 export const SearchButton = (props: ButtonProps) => {
-  const { location } = useRouter();
+  const location = useLocation();
   const kbar = useKBar();
   const { setVisualState } = kbar.query;
   const searchText = getSearchTextFromLocation(location);

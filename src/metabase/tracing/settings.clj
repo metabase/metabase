@@ -18,6 +18,7 @@
 
 (defsetting tracing-endpoint
   (deferred-tru "OTLP HTTP collector endpoint for trace export (e.g., http://localhost:4318/v1/traces).")
+  :encryption :when-encryption-key-set
   :type       :string
   :default    "http://localhost:4318/v1/traces"
   :visibility :internal
@@ -26,6 +27,7 @@
 
 (defsetting tracing-groups
   (deferred-tru "Comma-separated list of trace groups to enable, or \"all\" for everything.")
+  :encryption :no
   :type       :string
   :default    "all"
   :visibility :internal
@@ -34,6 +36,7 @@
 
 (defsetting tracing-log-level
   (deferred-tru "Log level threshold during traced spans. When a span is active, log events at this level and above bypass per-logger level gates via Log4j2 DynamicThresholdFilter. Requires the filter in log4j2.xml. Valid values: \"INFO\", \"DEBUG\", \"TRACE\".")
+  :encryption :no
   :type       :string
   :default    "INFO"
   :visibility :internal
@@ -45,7 +48,7 @@
                   (if (#{"TRACE" "DEBUG" "INFO"} v)
                     v
                     (do
-                      (log/warnf "MB_TRACING_LOG_LEVEL value '%s' is not valid, expected 'TRACE', 'DEBUG', or 'INFO'. Defaulting to 'INFO'." v)
+                      (log/warn "MB_TRACING_LOG_LEVEL value is not valid, expected 'TRACE', 'DEBUG', or 'INFO'. Defaulting to 'INFO'.")
                       "INFO")))))
 
 (defsetting tracing-max-queue-size
@@ -74,6 +77,7 @@
 
 (defsetting tracing-service-name
   (deferred-tru "Service name reported in traces. Defaults to the hostname.")
+  :encryption :no
   :type       :string
   :visibility :internal
   :export?    false

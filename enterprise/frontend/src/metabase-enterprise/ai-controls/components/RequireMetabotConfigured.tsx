@@ -1,8 +1,7 @@
 import { useLayoutEffect } from "react";
 
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { Outlet, replace } from "metabase/router";
+import { Outlet, useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 
 const FALLBACK_PATH = "/admin/metabot/";
 
@@ -13,13 +12,13 @@ export const RequireMetabotConfigured = ({
   children?: React.ReactNode;
 }) => {
   const isConfigured = useSetting("llm-metabot-configured?");
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useLayoutEffect(() => {
     if (!isConfigured) {
-      dispatch(replace(FALLBACK_PATH));
+      navigate(FALLBACK_PATH, { replace: true });
     }
-  }, [isConfigured, dispatch]);
+  }, [isConfigured, navigate]);
 
   if (!isConfigured) {
     return null;

@@ -23,7 +23,7 @@ function setup({ detailed, params = {} }: SetupOpts) {
     ? Urls.transformRunList()
     : Urls.transformGraphRunList();
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="*"
       element={<DetailedViewSwitch detailed={detailed} params={params} />}
@@ -31,33 +31,31 @@ function setup({ detailed, params = {} }: SetupOpts) {
     { withRouter: true, initialRoute },
   );
 
-  return { history };
+  return { router };
 }
 
 describe("DetailedViewSwitch", () => {
   it("tracks a toggle to the detailed view and navigates there", async () => {
-    const { history } = setup({ detailed: false });
+    const { router } = setup({ detailed: false });
 
     await userEvent.click(screen.getByLabelText("Detailed view"));
 
     expect(trackTransformRunsViewToggled).toHaveBeenCalledWith({
       view: "detailed",
     });
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       "/data-studio/transforms/runs/individual",
     );
   });
 
   it("tracks a toggle to the grouped view and navigates there", async () => {
-    const { history } = setup({ detailed: true });
+    const { router } = setup({ detailed: true });
 
     await userEvent.click(screen.getByLabelText("Detailed view"));
 
     expect(trackTransformRunsViewToggled).toHaveBeenCalledWith({
       view: "grouped",
     });
-    expect(history?.getCurrentLocation().pathname).toBe(
-      "/data-studio/transforms/runs",
-    );
+    expect(router?.location.pathname).toBe("/data-studio/transforms/runs");
   });
 });

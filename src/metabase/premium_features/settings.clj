@@ -14,7 +14,7 @@
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -32,6 +32,7 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :encryption :no
   :visibility :admin
   :type       :json
   :audit      :never
@@ -293,9 +294,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
+(define-premium-feature ^{:added "0.65.0"} enable-data-apps?
   "Should we allow users to publish and run data apps?"
-  :data-apps)
+  :data-apps-preview)
 
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
@@ -380,10 +381,6 @@
   "Should we allow users to view database schemas as ER diagrams?"
   :schema-viewer)
 
-(define-premium-feature enable-workspaces?
-  "Should we allow users to manage workspaces?"
-  :workspaces)
-
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -441,13 +438,13 @@
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :workspaces                     (enable-workspaces?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     -token-features

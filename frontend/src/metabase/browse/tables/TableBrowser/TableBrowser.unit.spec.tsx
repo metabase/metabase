@@ -11,6 +11,11 @@ import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { TableBrowser } from "./TableBrowser";
 
 describe("TableBrowser", () => {
+  beforeEach(() => {
+    // The database breadcrumb reads the database list that the app fetches on launch.
+    fetchMock.get("path:/api/database", { data: [], total: 0 });
+  });
+
   it("should poll until tables have completed initial sync", async () => {
     // initially, initial_sync_status='incomplete'
     fetchMock.get(
@@ -69,9 +74,11 @@ describe("TableBrowser", () => {
       expect(screen.getByText("foo")).toBeInTheDocument();
     });
 
-    expect(
-      fetchMock.callHistory.calls("path:/api/database/1/metadata"),
-    ).toHaveLength(1);
+    const metadataCalls = fetchMock.callHistory.calls(
+      "path:/api/database/1/metadata",
+    );
+    expect(metadataCalls).toHaveLength(1);
+    expect(metadataCalls[0].url).toContain("skip_fields=true");
     expect(
       fetchMock.callHistory.calls("path:/api/database/1/schema/"),
     ).toHaveLength(0);

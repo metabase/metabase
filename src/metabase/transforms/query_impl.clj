@@ -3,7 +3,7 @@
    [clojure.core.async :as a]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -15,26 +15,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise resolve-transform-target
-  "Hook for workspace isolation: given a database id and a transform's canonical target
-  `{:schema ..., :name ...}`, returns the target the transform should actually write to.
-
-  When workspace isolation is active for `db-id`, the EE impl rewrites the target's
-  `:schema` to the workspace's output schema and records a `TableRemapping` so that
-  subsequent queries against the canonical `(schema, name)` pair resolve to the
-  workspace copy via the QP middleware.
-
-  OSS / no-workspace fallback: returns the target unchanged."
-  metabase-enterprise.workspaces.transform-hooks
-  [_db-id target]
-  target)
-
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method on-start user-id parent-run]}]
-   ;; `:target` is already workspace-rewritten — `resolve-transform-target` runs in
-   ;; `metabase.transforms.execute/execute!` before dispatch.
    (try
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
@@ -42,6 +26,13 @@
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
+           ;; Authorized as the user the run executes as -- the requester for a manual run, the owner (or
+           ;; creator) otherwise -- and before the run row is booked. A manual refusal surfaces as a 403 on
+           ;; the request that asked for the run rather than as a failed run.
+           _           (do (when-not run-user-id
+                             (throw (ex-info "Transform has no owner or creator to run as" {:transform-id id})))
+                           (request/with-current-user run-user-id
+                             (transforms.u/check-source-query-permissions! transform)))
            {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id
                                                                        :parent-run parent-run)]
        (when on-start (on-start run-id))
@@ -80,7 +71,7 @@
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
-         (log/error t "Error executing transform"))
+         (log/errorf "Error executing transform: %s" (ex-message t)))
        (throw t)))))
 
 (defmethod transforms.i/execute! :query [transform opts]

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Group, Icon } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 

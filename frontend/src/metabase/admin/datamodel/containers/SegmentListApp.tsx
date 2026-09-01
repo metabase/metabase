@@ -11,11 +11,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { getShallowTables } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
-import { getShallowTables } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useLocation } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -95,7 +95,7 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
 const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
 
 export function SegmentListApp() {
-  const { location } = useRouter();
+  const location = useLocation();
   const { data: segments, isLoading, error } = useListSegmentsQuery();
 
   if (isLoading || error || !segments) {

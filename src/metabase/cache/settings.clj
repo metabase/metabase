@@ -42,6 +42,17 @@
                              global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
              (setting/set-value-of-type! :integer :query-caching-max-kb new-value)))
 
+(defsetting query-caching-early-refresh-ratio
+  (deferred-tru "Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.")
+  ;; Expressed as a fraction of each entry's own cache duration rather than an absolute time so that it scales with
+  ;; the configured duration: a flat window longer than a short duration would refresh on every request. Values
+  ;; outside [0, 1) are allowed and behave sensibly at the limits -- 0 or less refreshes nothing early, 1 or more
+  ;; refreshes on every request that can take the lease, so cached results stop being reused.
+  :type    :double
+  :default 0.1
+  :export? false
+  :audit   :getter)
+
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double

@@ -64,7 +64,8 @@
         (request/as-admin
           (run! generate-suggested-prompts-for-metabot! config-ids))))
     (catch Exception e
-      (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
+      (when-not (= :api-key-missing (:error-code (ex-data e)))
+        (log/errorf "Suggested prompts generation failed: %s" (.getMessage e))))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."}

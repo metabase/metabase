@@ -3,7 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.context :as context]
-   [metabase.test :as mt]))
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -286,6 +290,40 @@
           (is (some? result))
           (is (str/includes? result "FK->users.id")))))))
 
+(deftest get-tables-with-columns-hides-unreadable-fk-target-test
+  (testing "an FK on a readable table does not reveal an unreadable target table or field"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) source :perms/create-queries :query-builder-and-native)
+        (mt/with-test-user :rasta
+          (let [result (context/get-tables-with-columns (:id db) #{(:id source)})
+                fk-col (some #(when (= "user_id" (:name %)) %) (-> result first :columns))]
+            (is (some? fk-col) "the readable source FK column is returned")
+            (is (not (contains? fk-col :fk_target)))
+            (is (not (str/includes? (pr-str result) "secret_table")))
+            (is (not (str/includes? (pr-str result) "secret_id")))))))))
+
 (deftest build-schema-context-with-field-values-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database   db    {}
@@ -321,6 +359,113 @@
           (is (some? result))
           (is (str/includes? result "-- Customer purchase transactions"))
           (is (str/includes? result "CREATE TABLE")))))))
+
+(deftest build-schema-context-constrains-tables-to-requested-database-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database other-db {}
+                   :model/Table    other-table {:db_id (:id other-db) :name "secret" :schema "public"}
+                   :model/Field    _of {:table_id      (:id other-table)
+                                        :name          "id"
+                                        :database_type "INTEGER"
+                                        :base_type     :type/Integer}
+                   :model/Database db {}
+                   :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                   :model/Field    _f {:table_id      (:id table)
+                                       :name          "id"
+                                       :database_type "INTEGER"
+                                       :base_type     :type/Integer}]
+      (testing "a table ID from a different database is not included in the DDL, even though the user can read it"
+        (let [{:keys [ddl tables]} (context/build-schema-context (:id db) #{(:id table) (:id other-table)})]
+          (is (str/includes? ddl "orders"))
+          (is (not (str/includes? ddl "secret")))
+          (is (= [(:id table)] (map :id tables)))))
+      (testing "requesting only the other database's table returns nil (no accessible tables in the requested db)"
+        (is (nil? (context/build-schema-context (:id db) #{(:id other-table)})))))))
+
+(deftest build-schema-context-requires-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database is denied, rather than silently returning nil"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                                (context/build-schema-context (:id db) #{(:id table)}))))))))
+
+(deftest get-tables-with-columns-does-not-require-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database gets an empty result, rather than a hard 403 -- this
+                  endpoint (POST /api/llm/extract-sources) shares fetch-accessible-tables-with-columns with
+                  build-schema-context, but must not deny its :card_ids behavior over unrelated table access
+                  (that 403 belongs to generate-sql, see build-schema-context-requires-database-read-access-test)"
+          (is (nil? (context/get-tables-with-columns (:id db) #{(:id table)}))))))))
+
+(deftest fetch-field-values-caps-restricted-columns-test
+  (testing "columns of a row-restricted table are capped at max-restricted-field-values-fetches per request;
+            columns of an unrestricted table are not capped"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    restricted-table {:db_id (:id db)}
+                   :model/Table    open-table       {:db_id (:id db)}]
+      (let [field-defs (fn [table n prefix]
+                         (for [i (range n)]
+                           {:table_id (:id table) :name (str prefix i) :database_type "VARCHAR"
+                            :base_type :type/Text :has_field_values :list}))
+            restricted-fields (t2/insert-returning-instances!
+                               :model/Field (field-defs restricted-table 40 "r"))
+            open-fields       (t2/insert-returning-instances!
+                               :model/Field (field-defs open-table 3 "o"))
+            columns (fn [fields table-id]
+                      (mapv (fn [f] {:id (:id f) :table-id table-id}) fields))
+            all-columns (into (columns restricted-fields (:id restricted-table))
+                              (columns open-fields (:id open-table)))
+            calls (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [params.field-values/get-or-create-field-values!
+                                      (fn [_field] (swap! calls inc) nil)]
+            (#'context/fetch-field-values all-columns #{(:id restricted-table)}))
+          (is (= (+ 3 @#'context/max-restricted-field-values-fetches) @calls)
+              "3 unrestricted + the restricted cap, not all 40 restricted columns")
+          (finally
+            (t2/delete! :model/Field :id [:in (map :id (concat restricted-fields open-fields))])))))))
+
+(deftest fetch-field-values-applies-cap-after-eligibility-filter-test
+  (testing "the restricted-table cap is applied after narrowing to fields that should have FieldValues,
+            so ineligible fields ahead of an eligible one can't consume its budget"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    restricted-table {:db_id (:id db)}]
+      (let [ineligible-fields (t2/insert-returning-instances!
+                               :model/Field
+                               (for [i (range (inc @#'context/max-restricted-field-values-fetches))]
+                                 {:table_id (:id restricted-table) :name (str "ineligible" i)
+                                  :database_type "TEXT" :base_type :type/Text
+                                  :has_field_values :none}))
+            eligible-field    (first (t2/insert-returning-instances!
+                                      :model/Field
+                                      [{:table_id (:id restricted-table) :name "eligible"
+                                        :database_type "VARCHAR" :base_type :type/Text
+                                        :has_field_values :list}]))
+            all-columns (mapv (fn [f] {:id (:id f) :table-id (:id restricted-table)})
+                              (concat ineligible-fields [eligible-field]))
+            calls (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [params.field-values/get-or-create-field-values!
+                                      (fn [_field] (swap! calls inc) nil)]
+            (#'context/fetch-field-values all-columns #{(:id restricted-table)}))
+          (is (= 1 @calls)
+              "only the one eligible field is fetched -- the ineligible fields ahead of it in the raw
+               column list didn't consume its slot in the cap")
+          (finally
+            (t2/delete! :model/Field :id [:in (map :id (conj ineligible-fields eligible-field))])))))))
 
 ;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
 

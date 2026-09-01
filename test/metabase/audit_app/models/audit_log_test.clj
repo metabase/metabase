@@ -6,11 +6,12 @@
    [clojure.test.check.properties :as prop]
    [malli.generator :as mg]
    [metabase.audit-app.models.audit-log :as audit-log]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(derive :event/test-event :metabase/event)
+(events/derive! :event/test-event :metabase/event)
 
 (def topic-generator (gen/fmap (fn [k] (keyword "event" (name k))) (mg/generator :keyword)))
 

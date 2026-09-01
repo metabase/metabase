@@ -1,10 +1,11 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
+import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, Tenant } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -12,45 +13,28 @@ import {
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
-  type ExpandedCollectionNode,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
-  mergeSharedCollections,
-  useCollectionsWithTenants,
-} from "./use-collections-with-tenants";
+} from "../utils/tenant-collection-tree";
 
-const createMockExpandedCollection = (
-  overrides: Partial<Collection> & { path?: CollectionId[] | null },
-): Collection & {
-  parent: Collection | null;
-  path: CollectionId[];
-  children: Collection[];
-} => ({
-  ...createMockCollection(overrides),
-  path: overrides.path ?? [],
-  parent: null,
-  children: [],
-  is_personal: false,
-});
+import { useCollectionsWithTenants } from "./use-collections-with-tenants";
+
+type SetupHookOptions = {
+  useTenants?: boolean;
+  sharedCollections?: Collection[];
+  tenants?: Tenant[];
+};
 
 function setupHook({
   useTenants = false,
-  // Unjustified type cast. FIXME
-  sharedCollections = [] as Collection[],
-} = {}) {
+  sharedCollections = [],
+  tenants = [],
+}: SetupHookOptions = {}) {
   setupCollectionTreeEndpoint(sharedCollections);
-
-  const baseRoot = createMockExpandedCollection({
-    ...ROOT_COLLECTION,
-    path: [],
-  });
-
-  // Unjustified type cast. FIXME
-  const collectionsById = {
-    [ROOT_COLLECTION.id]: baseRoot,
-  } as Record<CollectionId, Collection>;
+  setupTenantEntpoints(tenants);
 
   return renderHookWithProviders(
-    () => useCollectionsWithTenants(collectionsById),
+    () =>
+      useCollectionsWithTenants(getExpandedCollectionsById([], null), false),
     {
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -71,34 +55,28 @@ describe("useCollectionsWithTenants", () => {
     setupEnterprisePlugins();
   });
 
-  it("should return collectionsById unchanged when tenants are disabled", () => {
-    const { result } = setupHook({ useTenants: false });
+  it("returns collectionsById unchanged when tenants are disabled", () => {
+    const { result } = setupHook();
 
     expect(result.current).not.toHaveProperty(String(COLLECTIONS_TOP_LEVEL_ID));
-
     expect(result.current).not.toHaveProperty(
       String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
     );
   });
 
-  it("should return collectionsById unchanged when tenants are enabled but no shared collections exist", async () => {
-    const { result } = setupHook({ useTenants: true, sharedCollections: [] });
+  it("returns collectionsById unchanged when tenant collections are empty", async () => {
+    const { result } = setupHook({ useTenants: true });
 
     await waitFor(() => {
       expect(result.current).not.toHaveProperty(
         String(COLLECTIONS_TOP_LEVEL_ID),
       );
     });
-
-    expect(result.current).not.toHaveProperty(
-      String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
-    );
   });
 
-  it("should merge shared collections when tenants are enabled", async () => {
-    const tenantCollection = createMockCollection({
-      // Unjustified type cast. FIXME
-      id: 100 as CollectionId,
+  it("merges shared collections when tenants are enabled", async () => {
+    const sharedCollection = createMockCollection({
+      id: 100,
       name: "Tenant A",
       location: "/",
       namespace: "shared-tenant-collection",
@@ -106,7 +84,7 @@ describe("useCollectionsWithTenants", () => {
 
     const { result } = setupHook({
       useTenants: true,
-      sharedCollections: [tenantCollection],
+      sharedCollections: [sharedCollection],
     });
 
     await waitFor(() => {
@@ -116,156 +94,5 @@ describe("useCollectionsWithTenants", () => {
     expect(result.current).toHaveProperty(
       String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
     );
-  });
-});
-
-function setup() {
-  const baseRoot = createMockExpandedCollection({
-    ...ROOT_COLLECTION,
-    path: [],
-  });
-
-  const ourAnalyticsSubCollection = createMockExpandedCollection({
-    id: 200,
-    name: "Our Analytics Sub",
-    location: "/",
-    path: ["root"],
-  });
-
-  const ourAnalyticsNestedCollection = createMockExpandedCollection({
-    id: 201,
-    name: "Nested Sub",
-    location: "/200/",
-    path: ["root", 200],
-  });
-
-  baseRoot.children = [ourAnalyticsSubCollection];
-  ourAnalyticsSubCollection.parent = baseRoot;
-  ourAnalyticsSubCollection.children = [ourAnalyticsNestedCollection];
-  ourAnalyticsNestedCollection.parent = ourAnalyticsSubCollection;
-
-  // Unjustified type cast. FIXME
-  const baseCollectionsById = {
-    [ROOT_COLLECTION.id]: baseRoot,
-    // Unjustified type cast. FIXME
-    [200 as CollectionId]: ourAnalyticsSubCollection,
-    // Unjustified type cast. FIXME
-    [201 as CollectionId]: ourAnalyticsNestedCollection,
-  } as Record<CollectionId, Collection>;
-
-  const sharedRoot = createMockExpandedCollection({
-    ...ROOT_COLLECTION,
-    path: [],
-  });
-
-  const tenantA = createMockExpandedCollection({
-    id: 100,
-    name: "Tenant A",
-    location: "/",
-    path: ["root"],
-  });
-
-  const subCollection = createMockExpandedCollection({
-    id: 300,
-    name: "Subcollection",
-    location: "/100/",
-    path: ["root", 100],
-  });
-
-  sharedRoot.children = [tenantA];
-  tenantA.parent = sharedRoot;
-  tenantA.children = [subCollection];
-  subCollection.parent = tenantA;
-
-  const collectionsById = mergeSharedCollections(
-    baseCollectionsById,
-    {
-      [ROOT_COLLECTION.id]: sharedRoot,
-      // Unjustified type cast. FIXME
-      [100 as CollectionId]: tenantA,
-      // Unjustified type cast. FIXME
-      [300 as CollectionId]: subCollection,
-    },
-    "Shared collections",
-  );
-
-  return {
-    collectionsById,
-    ourAnalyticsSubCollection,
-    ourAnalyticsNestedCollection,
-    tenantA,
-    subCollection,
-  };
-}
-
-describe("mergeSharedCollections", () => {
-  it("should create a top-level Collections node with Our analytics and Shared collections as siblings", () => {
-    const { collectionsById } = setup();
-    // Unjustified type cast. FIXME
-    const expanded = collectionsById as Record<
-      CollectionId,
-      ExpandedCollectionNode
-    >;
-
-    const topLevel = expanded[COLLECTIONS_TOP_LEVEL_ID];
-    expect(topLevel.name).toBe("Collections");
-    expect(topLevel.parent).toBeNull();
-    expect(topLevel.children).toHaveLength(2);
-    expect(topLevel.children[0].id).toBe(ROOT_COLLECTION.id);
-    expect(topLevel.children[1].id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
-
-    const root = expanded[ROOT_COLLECTION.id];
-    expect(root.parent?.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
-    expect(root.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
-
-    const syntheticRoot = expanded[SHARED_TENANT_COLLECTIONS_ROOT_ID];
-    expect(syntheticRoot.name).toBe("Shared collections");
-    expect(syntheticRoot.parent?.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
-    expect(syntheticRoot.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
-  });
-
-  it("should rewrite paths for Our Analytics sub-collections to include the top-level Collections node", () => {
-    const {
-      collectionsById,
-      ourAnalyticsSubCollection,
-      ourAnalyticsNestedCollection,
-    } = setup();
-
-    expect(collectionsById[ourAnalyticsSubCollection.id].path).toEqual([
-      COLLECTIONS_TOP_LEVEL_ID,
-      "root",
-    ]);
-
-    expect(collectionsById[ourAnalyticsNestedCollection.id].path).toEqual([
-      COLLECTIONS_TOP_LEVEL_ID,
-      "root",
-      ourAnalyticsSubCollection.id,
-    ]);
-  });
-
-  it("should re-parent children and rewrite paths through the top-level and synthetic root", () => {
-    const { collectionsById, tenantA, subCollection } = setup();
-    // Unjustified type cast. FIXME
-    const expanded = collectionsById as Record<
-      CollectionId,
-      ExpandedCollectionNode
-    >;
-
-    const mergedTenantA = expanded[tenantA.id];
-
-    expect(mergedTenantA.parent?.id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
-    expect(mergedTenantA.path).toEqual([
-      COLLECTIONS_TOP_LEVEL_ID,
-      SHARED_TENANT_COLLECTIONS_ROOT_ID,
-    ]);
-
-    const mergedSubCollection = expanded[subCollection.id];
-
-    expect(mergedSubCollection.parent?.id).toBe(tenantA.id);
-    expect(mergedSubCollection.path).toEqual([
-      COLLECTIONS_TOP_LEVEL_ID,
-      SHARED_TENANT_COLLECTIONS_ROOT_ID,
-      tenantA.id,
-    ]);
   });
 });

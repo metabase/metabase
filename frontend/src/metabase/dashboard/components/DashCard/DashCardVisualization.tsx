@@ -3,8 +3,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -19,13 +21,13 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import type { Path } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
@@ -33,33 +35,51 @@ import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
 } from "metabase/visualizations/components/legend/LegendCaption";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { CardSlownessStatus } from "metabase/visualizations/types";
+import type {
+  CardSlownessStatus,
+  ClickObject,
+} from "metabase/visualizations/types";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import {
   createDataSource,
-  isVisualizerDashboardCard,
+  formatVisualizerClickObject,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+import {
+  extendCardWithDashcardSettings,
+  getComputedSettingsForSeries,
+  getVisualizationRaw,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   CardId,
   DashCardId,
+  DashCardSeries,
+  DashCardSeriesItem,
   DashboardCard,
   Dataset,
   DatasetData,
   IconName,
-  RawSeries,
   Series,
+  SeriesCard,
   VirtualCardDisplay,
   VisualizationSettings,
   VisualizerDataSourceId,
+  VisualizerSeries,
+  VisualizerSeriesItem,
 } from "metabase-types/api";
+import {
+  isDashCardDataSeries,
+  isVisualizerDashboardCard,
+  isVisualizerDataSeries,
+} from "metabase-types/guards/dashboard";
 
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
@@ -70,6 +90,7 @@ import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
 import {
+  getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
 } from "./utils";
@@ -81,23 +102,26 @@ import {
  *
  * @param series the series to sanitize
  */
-function sanitizeSeriesData(series: Series): Series {
+function sanitizeSeriesData(
+  series: (DashCardSeriesItem | VisualizerSeriesItem)[],
+): Series {
+  // TODO: all the settings code assumes we have a Series
+  // but VirtualCards don't have a dataset_query
   return series.map((s) => {
-    if ("data" in s) {
+    if ("data" in s && s.data != null) {
       // If the series already has data, we're good
       return s;
     }
 
     return {
-      // @ts-expect-error according to TS this branch is impossible
       ...s,
       data: { cols: [], rows: [] },
     };
-  });
+  }) as Series;
 }
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
-  series: Series;
+  series: DashCardSeries;
   question: Question | null;
   metadata: Metadata;
   getHref?: () => string | undefined;
@@ -174,13 +198,18 @@ export function DashCardVisualization({
   } = useDashboardContext();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onSameOriginNavigation = useCallback(
-    (location: LocationDescriptorObject) => {
-      dispatch(push(location));
-      dispatch(setParameterValuesFromQueryParams(location.query));
+    (location: Partial<Path>) => {
+      navigate(location);
+      dispatch(
+        setParameterValuesFromQueryParams(
+          parseSearchQuery(location.search ?? ""),
+        ),
+      );
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -194,7 +223,8 @@ export function DashCardVisualization({
       !dashcard ||
       !rawSeries ||
       rawSeries.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
+      !isVisualizerDashboardCard(dashcard) ||
+      !isDashCardDataSeries(rawSeries)
     ) {
       return;
     }
@@ -214,14 +244,13 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
-  const untranslatedSeries = useMemo(() => {
-    if (
-      !dashcard ||
-      !rawSeries ||
-      rawSeries.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
-    ) {
+  const untranslatedSeries: DashCardSeries | VisualizerSeries = useMemo(() => {
+    if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
+    }
+
+    if (!isVisualizerDashboardCard(dashcard)) {
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -256,24 +285,25 @@ export function DashCardVisualization({
       dataSourceDatasets,
       dataSources,
     );
-    const card = extendCardWithDashcardSettings(
-      // Unjustified type cast. FIXME
+
+    const card: SeriesCard = extendCardWithDashcardSettings(
       {
         // Visualizer click handling code expect visualizer cards not to have card.id
         name: dashcard.card.name,
         description: dashcard.card.description,
-        display,
+        display: display ?? DEFAULT_VISUALIZER_DISPLAY,
         visualization_settings: settings,
-      } as Card,
+        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+      },
       _.omit(dashcard.visualization_settings, "visualization"),
     );
 
     if (!everyDatasetLoaded) {
       // No `data` so the parent <Visualization> picks its error or loading view.
-      return [{ card }] as RawSeries;
+      return [{ card, _isVisualizer: true }];
     }
 
-    const series: RawSeries = [
+    const series: VisualizerSeries = [
       {
         card,
         // Unjustified type cast. FIXME
@@ -283,21 +313,20 @@ export function DashCardVisualization({
           datasets: dataSourceDatasets,
           dataSources,
         }) as DatasetData,
-
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-
         columnValuesMapping,
-
         json_query: rawSeries[0].json_query,
+        _isVisualizer: true,
       },
     ];
 
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping)
+      shouldSplitVisualizerSeries(columnValuesMapping) &&
+      isVisualizerDataSeries(series)
     ) {
       const dataSourceNameMap = Object.fromEntries(
         dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
@@ -306,14 +335,15 @@ export function DashCardVisualization({
         series,
         columnValuesMapping,
         dataSourceNameMap,
-      );
+      ).map((s) => ({ ...s, _isVisualizer: true })) satisfies VisualizerSeries;
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets]);
+  }, [rawSeries, dashcard, datasets, metadata]);
 
-  const series =
-    PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
+  const series = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries<
+    DashCardSeriesItem | VisualizerSeriesItem
+  >(untranslatedSeries);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -382,32 +412,46 @@ export function DashCardVisualization({
   const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
 
   const findCardById = useCallback(
-    (cardId?: CardId | null) => {
-      const lookupSeries = isVisualizerDashboardCard(dashcard)
-        ? rawSeries
-        : series;
-      return (
-        lookupSeries.find((series) => series.card.id === cardId)?.card ??
-        lookupSeries[0].card
+    (cardId?: CardId | null): Card | undefined => {
+      const cards = getCardsFromSeries(
+        isVisualizerDashboardCard(dashcard) ? rawSeries : series,
       );
+      return cards.find((card) => card.id === cardId) ?? cards[0];
     },
     [rawSeries, dashcard, series],
+  );
+
+  const handleChangeCardAndRun = useCallback(
+    ({ nextCard, objectId }: { nextCard: SeriesCard; objectId?: number }) => {
+      const previousCard = findCardById(nextCard?.id);
+      if (previousCard) {
+        onChangeCardAndRun?.({
+          previousCard,
+          nextCard: nextCard,
+          objectId,
+        });
+      }
+    },
+    [onChangeCardAndRun, findCardById],
   );
 
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
-      onChangeCardAndRun?.({
-        previousCard: findCardById(card?.id),
-        nextCard: card,
-      });
+      if (card) {
+        handleChangeCardAndRun({
+          nextCard: card,
+        });
+      }
     },
-    [findCardById, onChangeCardAndRun],
+    [findCardById, handleChangeCardAndRun],
   );
 
   const titleMenuItems = useMemo(
     () =>
-      !isEditing && isVisualizerDashboardCard(dashcard) && rawSeries
+      !isEditing &&
+      isVisualizerDashboardCard(dashcard) &&
+      isDashCardDataSeries(rawSeries)
         ? rawSeries.map((series, index) => (
             <Menu.Item
               key={index}
@@ -448,6 +492,9 @@ export function DashCardVisualization({
     const cardResult = cardId ? datasets?.[cardId] : undefined;
     // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
+    const isVisualizerCard = isVisualizerDashboardCard(dashcard);
+    const openUnderlyingQuestionItems =
+      onChangeCardAndRun && !cardTitle ? titleMenuItems : undefined;
 
     const showMenu =
       question &&
@@ -456,6 +503,8 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
+        canEdit: !isVisualizerCard,
+        openUnderlyingQuestionItems,
       });
 
     const errorStatus =
@@ -488,15 +537,11 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
-            canEdit={!isVisualizerDashboardCard(dashcard)}
+            canEdit={!isVisualizerCard}
             onEditVisualization={
-              isVisualizerDashboardCard(dashcard)
-                ? onEditVisualization
-                : undefined
+              isVisualizerCard ? onEditVisualization : undefined
             }
-            openUnderlyingQuestionItems={
-              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
-            }
+            openUnderlyingQuestionItems={openUnderlyingQuestionItems}
           />
         )}
       </Group>
@@ -522,6 +567,21 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  // Visualizer cards render remapped columns,
+  // so click objects must be mapped back to the columns of the underlying questions before computing actions.
+  const transformClickObject = useMemo(() => {
+    if (
+      !isVisualizerDashboardCard(dashcard) ||
+      !isDashCardDataSeries(rawSeries)
+    ) {
+      return undefined;
+    }
+    const { columnValuesMapping } =
+      dashcard.visualization_settings.visualization;
+    return (clicked: ClickObject) =>
+      formatVisualizerClickObject(clicked, rawSeries, columnValuesMapping);
+  }, [dashcard, rawSeries]);
+
   const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
@@ -543,10 +603,13 @@ export function DashCardVisualization({
           dashcard={dashcard}
           rawSeries={series}
           visualizerRawSeries={
-            isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+            isVisualizerDashboardCard(dashcard) &&
+            isDashCardDataSeries(rawSeries)
+              ? rawSeries
+              : undefined
           }
           metadata={metadata}
-          mode={getClickActionMode}
+          mode={getClickActionMode ?? getDashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
@@ -567,9 +630,12 @@ export function DashCardVisualization({
           actionButtons={actionButtons}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
+          transformClickObject={transformClickObject}
           onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
           onTogglePreviewing={onTogglePreviewing}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={
+            onChangeCardAndRun ? handleChangeCardAndRun : null
+          }
           onChangeLocation={onChangeLocation}
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}

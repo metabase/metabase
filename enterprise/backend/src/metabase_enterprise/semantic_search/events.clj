@@ -5,7 +5,7 @@
    [metabase.events.core :as events]
    [methodical.core :as methodical]))
 
-(derive :event/semantic-search-hnsw-enabled ::build-hnsw-index)
+(events/derive! :event/semantic-search-hnsw-enabled ::build-hnsw-index)
 
 ;; Handled via an event so settings stays decoupled from the index-building code, which requires settings.
 (methodical/defmethod events/publish-event! ::build-hnsw-index

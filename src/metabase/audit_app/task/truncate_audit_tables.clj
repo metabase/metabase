@@ -25,13 +25,13 @@
      {:delete-from (keyword table-name)
       :where [:in
               :id
-              {:select [:id]
-               :from (keyword table-name)
-               :where [:<=
-                       (keyword time-column)
-                       (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-               :order-by [[:id :asc]]
-               :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+              ^:allow-subquery {:select [:id]
+                                :from (keyword table-name)
+                                :where [:<=
+                                        (keyword time-column)
+                                        (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
+                                :order-by [[:id :asc]]
+                                :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
 
      (:mysql :mariadb)
      {:delete-from (keyword table-name)
@@ -59,13 +59,16 @@
                   (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
                   (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
           (catch Throwable e
-            (log/errorf e "%s cleanup failed" table-name)))))))
+            (log/errorf "%s cleanup failed: %s" table-name (ex-message e))))))))
 
 (defenterprise audit-models-to-truncate
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
-  [{:model :model/QueryExecution :timestamp-col :started_at}])
+  ;; postgres has partitioned query_execution; we detach partitions instead of deleting
+  (if (= :postgres (mdb/db-type))
+    []
+    [{:model :model/QueryExecution :timestamp-col :started_at}]))
 
 (defn- truncate-audit-tables!
   []

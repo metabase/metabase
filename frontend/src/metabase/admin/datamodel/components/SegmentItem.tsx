@@ -1,6 +1,6 @@
+import { Link } from "metabase/common/components/Link";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { Link } from "metabase/router";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";

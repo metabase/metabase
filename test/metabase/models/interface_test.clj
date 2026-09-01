@@ -9,12 +9,33 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (com.fasterxml.jackson.core JsonParseException)))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914
+
+(deftest decrypt-error-context-test
+  (encryption-test/with-secret-key "0123456789abcdef"
+    (testing "a decrypt failure in an encrypted transform names the column in the message (and never the value)"
+      (doseq [[transform source] {(mi/transform-encrypted-json "metabase_database.details") "metabase_database.details"
+                                  (mi/transform-encrypted-text "report_card.public_uuid")   "report_card.public_uuid"}]
+        (testing source
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "Error decrypting " source ": Expected an encrypted value"))
+                                ((:out transform) "plaintext-sekret")))
+          (try ((:out transform) "plaintext-sekret")
+               (catch Exception e
+                 (is (not (re-find #"sekret" (ex-message e))))
+                 (is (= source (:source (ex-data e)))))))))
+    (testing "a value written through the transform still round-trips"
+      (let [{:keys [in out]} (mi/transform-encrypted-text "report_card.public_uuid")]
+        (is (= "some-uuid" (out (in "some-uuid"))))))
+    (testing "bytes: a plaintext secret value names the column too"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Error decrypting secret\.value: Expected an encrypted value"
+                            ((:out (mi/transform-secret-value "secret.value")) (.getBytes "plaintext-sekret")))))))
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
@@ -108,19 +129,19 @@
         (mi/encrypted-json-out
          (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
         (is (=? [{:level   :error
-                  :e       JsonParseException
+                  :e       nil
                   :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
                 (messages)))))
     (testing "Invalid JSON throws correct error"
       (mt/with-log-messages-for-level [messages :error]
         (mi/encrypted-json-out "{\"a\": 1")
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages))))
       (mt/with-log-messages-for-level [messages :error]
         (encryption-test/with-secret-key "qwe"
           (mi/encrypted-json-out
            (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages)))))))
 
 (deftest ^:parallel instances-with-hydrated-data-test

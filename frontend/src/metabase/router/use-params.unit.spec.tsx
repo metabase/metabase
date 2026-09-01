@@ -1,7 +1,11 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  MemoryRouter,
+  Route as ReactRouterRoute,
+  Routes as ReactRouterRoutes,
+} from "react-router";
 
-import { Route } from "./route";
-import { useParams } from "./use-params";
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route, useParams } from "metabase/router";
 
 function ParamsProbe() {
   const { segmentId, fieldId } = useParams();
@@ -48,5 +52,17 @@ describe("router/useParams", () => {
 
     expect(screen.getByTestId("splat")).toHaveTextContent("a/b");
     expect(screen.getByTestId("has-splat-key")).toHaveTextContent("false");
+  });
+
+  it("works outside the facade route tree, reading the host's own match", () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/files/a/b"]}>
+        <ReactRouterRoutes>
+          <ReactRouterRoute path="files/*" element={<SplatProbe />} />
+        </ReactRouterRoutes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("splat")).toHaveTextContent("a/b");
   });
 });

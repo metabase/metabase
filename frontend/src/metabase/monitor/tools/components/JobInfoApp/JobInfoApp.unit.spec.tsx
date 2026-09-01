@@ -94,7 +94,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should open the triggers sidebar in the Monitor outlet when a row is clicked", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -111,7 +111,7 @@ describe("JobInfoApp", () => {
     const row = await screen.findByTestId("job");
     await userEvent.click(row);
 
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.monitorJobTriggers("a-job-key"),
     );
 
@@ -129,7 +129,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should open the triggers sidebar via keyboard row activation", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -145,7 +145,7 @@ describe("JobInfoApp", () => {
     // ArrowDown activates the first row, Enter opens its triggers
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.monitorJobTriggers("a-job-key"),
     );
 
@@ -211,7 +211,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should close the triggers sidebar", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -228,7 +228,7 @@ describe("JobInfoApp", () => {
       within(sidebar).getByRole("button", { name: "Close" }),
     );
 
-    expect(history?.getCurrentLocation().pathname).toBe(Urls.monitorJobs());
+    expect(router?.location.pathname).toBe(Urls.monitorJobs());
     expect(
       screen.queryByTestId("job-triggers-sidebar"),
     ).not.toBeInTheDocument();

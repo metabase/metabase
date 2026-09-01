@@ -1,0 +1,26 @@
+/* The hidden pseudo-elements hold both label texts in the same grid cell as
+   the visible label, so the button keeps the width of the wider label and the
+   popover doesn't resize when the label swaps. */
+.labelStack {
+  display: inline-grid;
+  text-align: center;
+}
+
+.labelStack > span,
+.labelStack::before,
+.labelStack::after {
+  grid-area: 1 / 1;
+}
+
+.labelStack::before,
+.labelStack::after {
+  visibility: hidden;
+}
+
+.labelStack::before {
+  content: attr(data-copy-label);
+}
+
+.labelStack::after {
+  content: attr(data-copied-label);
+}
