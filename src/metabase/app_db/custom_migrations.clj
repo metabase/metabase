@@ -2243,6 +2243,24 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
+(define-migration PersistDemotedMetabotEnvVars
+  ;; These seven settings stop reading their MB_METABOT_* env vars. The environment used to override
+  ;; the setting table, so a still-set env var is persisted here (overwriting any stored row) to keep
+  ;; the instance's effective configuration across the upgrade. MB_METABOT_ADVANCED_PERMISSIONS is
+  ;; the critical one: without this, an env-forced advanced mode falls back to simple mode, whose
+  ;; seeded All Users permission rows grant what the advanced-mode group rows deny.
+  (doseq [[env-var setting-key] [[:mb-metabot-chat-system-prompt    "metabot-chat-system-prompt"]
+                                 [:mb-metabot-nlq-system-prompt     "metabot-nlq-system-prompt"]
+                                 [:mb-metabot-sql-system-prompt     "metabot-sql-system-prompt"]
+                                 [:mb-metabot-limit-unit            "metabot-limit-unit"]
+                                 [:mb-metabot-limit-reset-rate      "metabot-limit-reset-rate"]
+                                 [:mb-metabot-quota-reached-message "metabot-quota-reached-message"]
+                                 [:mb-metabot-advanced-permissions  "metabot-advanced-permissions"]]]
+    (when-some [value (config/config-str env-var)]
+      (if (t2/query-one {:select [:key] :from [:setting] :where [:= :key setting-key]})
+        (t2/query {:update :setting :set {:value value} :where [:= :key setting-key]})
+        (t2/query {:insert-into :setting :values [{:key setting-key :value value}]})))))
+
 (define-migration EncryptAuthIdentityCredentials
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id credentials]}]

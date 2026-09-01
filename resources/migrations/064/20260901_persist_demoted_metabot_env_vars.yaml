@@ -1,0 +1,14 @@
+## BOT-2052 stops reading seven Metabot settings from the environment. The environment used to
+## override the setting table, so an instance configured through those env vars must have the
+## values persisted on upgrade or its effective configuration changes silently. For
+## MB_METABOT_ADVANCED_PERMISSIONS that would widen access: the mode would fall back to simple,
+## whose seeded All Users permission rows grant what the advanced-mode group rows deny.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.kw52hx
+      author: andreis
+      comment: Persist the demoted MB_METABOT_* env var values into the setting table
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.PersistDemotedMetabotEnvVars
