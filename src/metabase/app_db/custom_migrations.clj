@@ -2064,13 +2064,13 @@
    rows inserted during the migration."
   [from-values case-expr]
   (let [batch-size 500000
-        {:keys [min-id max-id]} (t2/query-one
-                                 {:select [[[:min :id] :min-id]
-                                           [[:max :id] :max-id]]
+        {:keys [min_id max_id]} (t2/query-one
+                                 {:select [[[:min :id] :min_id]
+                                           [[:max :id] :max_id]]
                                   :from   [:metabase_table]})]
-    (when (and min-id max-id)
-      (loop [start (long min-id)]
-        (when (<= start (long max-id))
+    (when (and min_id max_id)
+      (loop [start (long min_id)]
+        (when (<= start (long max_id))
           (t2.execute/query-one
            {:update :metabase_table
             :set    {:data_layer case-expr}
@@ -2079,12 +2079,12 @@
                      [:< :id (+ start batch-size)]
                      [:not-in :data_layer from-values]]})
           (recur (+ start batch-size))))
-      ;; catch any rows inserted above the original max-id during the migration
+      ;; catch any rows inserted above the original max_id during the migration
       (t2.execute/query-one
        {:update :metabase_table
         :set    {:data_layer case-expr}
         :where  [:and
-                 [:> :id max-id]
+                 [:> :id max_id]
                  [:not-in :data_layer from-values]]}))))
 
 ;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
