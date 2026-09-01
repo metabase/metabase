@@ -41,7 +41,7 @@
 
 (mu/defn secret-key->hash :- bytes?
   "Generate a 64-byte byte array hash of `secret-key` using 100,000 iterations of PBKDF2+SHA512."
-  ^bytes [^String secret-key :- :string]
+  ^bytes [^String secret-key :- [:maybe :string]]
   (kdf/get-bytes (kdf/engine {:alg        :pbkdf2+sha512
                               :key        secret-key
                               :iterations 100000}) ; 100,000 iterations takes about ~160ms on my laptop
@@ -202,7 +202,7 @@
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream :- InputStreamSchema]
    (encrypt-stream default-secret-key input-stream))
-  (^InputStream [secret-key                :- bytes?
+  (^InputStream [secret-key                :- [:maybe bytes?]
                  ^InputStream input-stream :- InputStreamSchema]
    (let [spec aes-streaming-spec
          spec-header (codecs/to-bytes (format "%-32s" spec))
@@ -216,7 +216,7 @@
   {:added "0.53.0"}
   (^bytes [^bytes input :- bytes?]
    (encrypt-for-stream default-secret-key input))
-  (^bytes [secret-key   :- bytes?
+  (^bytes [secret-key   :- [:maybe bytes?]
            ^bytes input :- bytes?]
    (with-open [encrypted (encrypt-stream secret-key (ByteArrayInputStream. input))]
      (.readAllBytes encrypted))))
@@ -226,7 +226,7 @@
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream :- InputStreamSchema]
    (maybe-decrypt-stream default-secret-key input-stream))
-  (^InputStream [secret-key                :- bytes?
+  (^InputStream [secret-key                :- [:maybe bytes?]
                  ^InputStream input-stream :- InputStreamSchema]
    (let [spec-array (byte-array 32)
          spec-array-length (.read input-stream spec-array)
