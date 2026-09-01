@@ -87,6 +87,7 @@ export const ScalarTitle = ({
         >
           <Box
             component="span"
+            tabIndex={0}
             className={cx(
               S.descriptionIcon,
               CS.hoverChild,

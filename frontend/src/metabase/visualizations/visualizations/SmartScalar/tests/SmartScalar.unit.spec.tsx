@@ -487,6 +487,49 @@ describe("SmartScalar", () => {
       ).toBeInTheDocument();
       expect(within(tooltip).getByText("50")).toBeInTheDocument();
     });
+
+    it("should open the panel with keyboard navigation", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 50],
+        ["2019-11-01T00:00:00", 100],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      setup(
+        series({
+          rows,
+          insights,
+          comparisonTypes: [
+            { id: "1", type: "previousPeriod" },
+            { id: "2", type: "periodsAgo", value: 2 },
+          ],
+        }),
+        400,
+      );
+
+      await userEvent.tab();
+
+      expect(screen.getByTestId("scalar-previous-value")).toHaveFocus();
+      const tooltip = await screen.findByRole("tooltip");
+      expect(
+        within(tooltip).getByText("vs. previous month"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not be keyboard-focusable when there is no panel", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 50],
+        ["2019-11-01T00:00:00", 100],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      // one fully-displayed comparison — no panel, so nothing to focus
+      setup(series({ rows, insights }), 400);
+
+      expect(screen.getByTestId("scalar-previous-value")).not.toHaveAttribute(
+        "tabindex",
+      );
+    });
   });
 
   describe("scalar.show_comparison_value", () => {

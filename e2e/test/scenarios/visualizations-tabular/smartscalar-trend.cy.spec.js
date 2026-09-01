@@ -678,6 +678,65 @@ describe("scenarios > visualizations > trend chart on dashboards and public ques
       .should("be.visible");
   });
 
+  it("should open the description tooltip and comparison panel with keyboard navigation", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Trend keyboard",
+        description: "Trend keyboard description",
+        query: TREND_QUERY,
+        display: "smartscalar",
+        visualization_settings: {
+          "scalar.comparisons": [
+            { id: "1", type: "previousPeriod" },
+            { id: "2", type: "periodsAgo", value: 2 },
+          ],
+        },
+      },
+      cardDetails: { size_x: 8, size_y: 4 },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // the hover-hidden description icon is the next tab stop after the
+    // title link; focusing it reveals it and opens its tooltip
+    cy.findByTestId("scalar-title").findByTestId("legend-label").focus();
+    cy.realPress("Tab");
+
+    cy.focused().should("have.css", "opacity", "1");
+    cy.findByRole("tooltip")
+      .findByText("Trend keyboard description")
+      .should("be.visible");
+
+    // the comparison row is the tab stop after the icon
+    cy.realPress("Tab");
+
+    cy.findByTestId("scalar-previous-value").should("have.focus");
+    cy.findByRole("tooltip")
+      .findByText("vs. previous month")
+      .should("be.visible");
+
+    // moving keyboard focus back to the title link shows a visible ring
+    cy.realPress(["Shift", "Tab"]);
+    cy.realPress(["Shift", "Tab"]);
+    cy.findByTestId("scalar-title")
+      .findByTestId("legend-label")
+      .should("have.focus")
+      .then(($link) => {
+        const styles = getComputedStyle($link[0]);
+        const brandColor = getComputedStyle(
+          $link[0].ownerDocument.documentElement,
+        )
+          .getPropertyValue("--mb-color-core-brand")
+          .trim();
+
+        expect(styles.outlineStyle).to.equal("solid");
+        expect(parseFloat(styles.outlineWidth)).to.be.greaterThan(0);
+        expect(Color(styles.outlineColor).hex()).to.equal(
+          Color(brandColor).hex(),
+        );
+      });
+  });
+
   it("should show the full comparison list in public question views", () => {
     H.createQuestion({
       name: "Public trend",

@@ -83,6 +83,7 @@ export function TrendComparisonRow({
         maw="100%"
         fz={size}
         lh={size}
+        tabIndex={showsPanel ? 0 : undefined}
         data-testid="scalar-previous-value"
       >
         <Box ref={comparisonTextRef} className={S.comparisonText}>
