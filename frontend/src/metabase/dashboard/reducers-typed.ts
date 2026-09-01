@@ -442,7 +442,11 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          // mutate the draft rather than assocIn: icepick freezes its result in
+          // dev, which stops immer from finalizing the draft children embedded
+          // in it and leaves revoked proxies in the state
+          state[dashcard_id] ??= {};
+          state[dashcard_id][card_id] = result;
         }
       })
       .addCase(clearCardData, (state, action) => {

@@ -47,6 +47,10 @@ export function isTransientId(id: unknown) {
   return typeof id === "string" && /\/auto\/dashboard/.test(id);
 }
 
+export function isAdhocDashboardId(id: unknown) {
+  return typeof id === "string" && id.startsWith("/dashboard/adhoc");
+}
+
 export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
@@ -57,6 +61,8 @@ export function getDashboardType(id: unknown) {
     return "embed";
   } else if (isTransientId(id)) {
     return "transient";
+  } else if (isAdhocDashboardId(id)) {
+    return "adhoc";
   } else {
     return "normal";
   }
