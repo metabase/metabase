@@ -13,17 +13,23 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- clear-setting-cache!
+  "Empty the Setting cache so values have to be fetched from the DB again. Emptied rather than restored: restoring
+  reads and decrypts every setting row there and then, which fails on rows written under a key other than the one in
+  effect at the boundary -- exactly what changing keys leaves behind."
+  []
+  (reset! (#'setting.cache/cache*) nil))
+
 (defn do-with-secret-key! [^String secret-key thunk]
-  ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
   (initialize/initialize-if-needed! :db)
-  (setting.cache/restore-cache!)
+  (clear-setting-cache!)
   (try
     (with-redefs [encryption/default-secret-key (when (seq secret-key)
                                                   (encryption/secret-key->hash secret-key))]
       (thunk))
     (finally
-      ;; reset the cache again so nothing that happened during the test is persisted.
-      (setting.cache/restore-cache!))))
+      ;; clear the cache again so nothing that happened during the test is persisted.
+      (clear-setting-cache!))))
 
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave

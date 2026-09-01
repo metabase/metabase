@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.settings.util :as settings.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -617,11 +618,24 @@
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
-(defn- actual-value-in-db [setting-key]
-  (-> (mdb/query {:select [:value]
+(defn- raw-setting-details
+  "The setting's `details` exactly as they sit in the DB, bypassing the model's decrypting, unwrapping read."
+  [setting-key]
+  (-> (mdb/query {:select [:details]
                   :from   [:setting]
                   :where  [:= :key (name setting-key)]})
-      first :value))
+      first :details))
+
+(defn- wrap-setting-value
+  "The JSON envelope a Setting row stores `value` in, before any encryption is applied to it."
+  [setting-key value]
+  (settings.util/wrap-value (name setting-key) value))
+
+(defn- insert-raw-setting!
+  "Insert a row at rest, bypassing the model: `details` holds `stored`, and `value` the bare form a version predating
+  that column reads."
+  [setting-key stored value]
+  (t2/insert! :setting {:key (name setting-key), :value value, :details stored}))
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
@@ -632,37 +646,83 @@
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (toucan-name! "Sad Can")
-        (is (u/base64-string? (actual-value-in-db :toucan-name)))
+        (is (u/base64-string? (raw-setting-details :toucan-name)))
+        (testing "what is encrypted is the envelope, so the ciphertext carries the setting it belongs to"
+          (is (= (wrap-setting-value :toucan-name "Sad Can")
+                 (encryption/decrypt (raw-setting-details :toucan-name)))))
         (testing "make sure it can be decrypted as well..."
           (is (= "Sad Can"
-                 (toucan-name)))))
+                 (toucan-name))))
+        ;; Drop the row before dropping the key: its ciphertext is not a readable envelope without one, and the write
+        ;; below starts by restoring the whole settings cache over it.
+        (t2/delete! (t2/table-name :model/Setting) :key "toucan-name"))
       (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
         (encryption-test/with-secret-key nil
           (toucan-name! "Sad Can")
-          (is (= "Sad Can"
-                 (actual-value-in-db :toucan-name))))))))
+          (is (= (wrap-setting-value :toucan-name "Sad Can")
+                 (raw-setting-details :toucan-name))))))))
 
 (deftest decrypt-error-names-setting-test
   (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
     (encryption-test/with-secret-key "0123456789abcdef"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"Error decrypting setting \"toucan-name\": Expected an encrypted value"
-                                    (#'setting/decrypt-setting-value-on-read {:key "toucan-name" :value "plaintext-sekret"})))]
+                                    #"Error reading setting \"toucan-name\": Expected an encrypted value"
+                                    (#'setting/read-setting-value {:key "toucan-name" :details "plaintext-sekret"})))]
         (is (not (re-find #"sekret" (ex-message e))))
         (is (= "toucan-name" (:setting-key (ex-data e))))))))
+
+(deftest setting-value-envelope-test
+  (let [wrap settings.util/wrap-value
+        read #'setting/read-setting-value]
+    (encryption-test/with-secret-key nil
+      (testing "a value round trips through the envelope its details hold"
+        (is (= "Sad Can"
+               (:value (read {:key "test-setting-1" :details (wrap "test-setting-1" "Sad Can")})))))
+      (testing "the envelope carries the key it was written against"
+        (is (= "{\"setting-key\":\"test-setting-1\",\"setting-value\":\"Sad Can\"}"
+               (wrap "test-setting-1" "Sad Can"))))
+      (testing "a value moved to another setting's row is rejected"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"Setting \"test-setting-2\" is stored under the key \"test-setting-1\""
+                                      (read {:key "test-setting-2" :details (wrap "test-setting-1" "Sad Can")})))]
+          (is (not (re-find #"Sad Can" (ex-message e))))))
+      (testing "details that are not an envelope at all are rejected"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Setting \"test-setting-1\" is not stored as JSON"
+                              (read {:key "test-setting-1" :details "Sad Can"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Setting \"test-setting-1\" is not stored as a JSON object"
+                              (read {:key "test-setting-1" :details "123456"}))))
+      (testing "a row written only by a version predating `details` reads as no value at all"
+        (is (= {:key "test-setting-1" :value nil :details nil}
+               (read {:key "test-setting-1" :value "Sad Can" :details nil})))))
+    (testing "a key with no `defsetting` reads as no value at all, and its details are not even decrypted"
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (let [details (encryption/encrypt (wrap "no-such-setting" "Sad Can"))]
+          (is (= {:key "no-such-setting" :value nil :details details}
+                 (read {:key "no-such-setting" :details details})))
+          (testing "including details nothing could make sense of anyway"
+            (is (= {:key "no-such-setting" :value nil :details "not an envelope"}
+                   (read {:key "no-such-setting" :details "not an envelope"})))))))
+    (testing "a key with no `defsetting` cannot be written: how it is stored is the setting's to decide"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
+                            (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (mt/discard-setting-changes [test-json-setting]
-        (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-          (test-json-setting! {:abc 123})
-          (is (not= "{\"abc\":123}"
-                    (actual-value-in-db :test-json-setting))))
-        (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
-                      "rather than failing entirely")
-          (encryption-test/with-secret-key nil
+      ;; No `discard-setting-changes`: restoring the setting means writing it back without the key it was written
+      ;; under, and a write restores the whole settings cache over the row it cannot read. The temp app DB is thrown
+      ;; away either way.
+      (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+        (test-json-setting! {:abc 123})
+        (is (not= (wrap-setting-value :test-json-setting "{\"abc\":123}")
+                  (raw-setting-details :test-json-setting))))
+      (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                    "rather than failing entirely")
+        (encryption-test/with-secret-key nil
+          (binding [config/*disable-setting-cache* true]
             (is (= {:key            :test-json-setting
                     :value          nil
                     :is_env_setting false
@@ -707,8 +767,8 @@
   (encryption-test/with-secret-key nil
     (testing "make sure uncached setting still saves to the DB"
       (uncached-setting! "ABCDEF")
-      (is (= "ABCDEF"
-             (actual-value-in-db "uncached-setting"))))
+      (is (= (wrap-setting-value :uncached-setting "ABCDEF")
+             (raw-setting-details "uncached-setting"))))
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
       (t2/update! :model/Setting {:key "uncached-setting"}
@@ -1770,23 +1830,24 @@
   ;; which would poison the shared test DB for later tests running with a different (or no) key.
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? false)
-    (testing "It works when a secret key is set"
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
-        ;; Sanity check: the value is encrypted
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
-    (testing "It doesn't do anything when the secret key is not set"
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/delete! :setting :key "test-never-encrypted-setting")
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
-      (encryption-test/with-secret-key nil
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-        (setting/migrate-encrypted-settings!)
-        (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))))
+    (let [stored (wrap-setting-value :test-never-encrypted-setting "foobar")]
+      (testing "It works when a secret key is set"
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (insert-raw-setting! :test-never-encrypted-setting (encryption/maybe-encrypt stored) "foobar")
+          ;; Sanity check: the value is encrypted
+          (is (not= stored (raw-setting-details :test-never-encrypted-setting)))
+          (setting/migrate-encrypted-settings!)
+          (is (= stored (raw-setting-details :test-never-encrypted-setting)))
+          (setting/migrate-encrypted-settings!)
+          (is (= stored (raw-setting-details :test-never-encrypted-setting)))))
+      (testing "It doesn't do anything when the secret key is not set"
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (t2/delete! :setting :key "test-never-encrypted-setting")
+          (insert-raw-setting! :test-never-encrypted-setting (encryption/maybe-encrypt stored) "foobar"))
+        (encryption-test/with-secret-key nil
+          (is (not= stored (raw-setting-details :test-never-encrypted-setting)))
+          (setting/migrate-encrypted-settings!)
+          (is (not= stored (raw-setting-details :test-never-encrypted-setting))))))))
 
 (deftest migrate-encrypted-settings!-does-not-depend-on-settings-cache-test
   ;; The cloud-migration read-only-mode guard (a `t2.pipeline/build :before` method registered when
@@ -1797,7 +1858,7 @@
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+      (insert-raw-setting! :toucan-name (wrap-setting-value :toucan-name "Lenny") "Lenny")
       (binding [config/*disable-setting-cache* false]
         ;; Simulate a fresh JVM. `setting.cache/cache*` is the atom holding this app DB's in-memory settings map; nil
         ;; means never populated, so the next cached read must do the full (strictly decrypting) restore. And
@@ -1806,8 +1867,9 @@
         (reset! (#'setting.cache/cache*) nil)
         (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0)
         (setting/migrate-encrypted-settings!))
-      (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-      (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name)))))))
+      (is (encryption/decryptable-string? (raw-setting-details :toucan-name)))
+      (is (= (wrap-setting-value :toucan-name "Lenny")
+             (encryption/decrypt (raw-setting-details :toucan-name)))))))
 
 (deftest migrate-encrypted-settings!-encrypts-strict-settings
   ;; raw :setting (not :model/Setting) throughout: the model's before-insert would encrypt the value, and these tests
@@ -1816,21 +1878,23 @@
     (mdb/setup-db! :create-sample-content? false)
     (testing "a plaintext row of a setting that encrypts is encrypted at rest on startup (e.g. after a downgraded boot decrypted it)"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
-        (is (not (encryption/decryptable-string? (actual-value-in-db :toucan-name))))
+        (insert-raw-setting! :toucan-name (wrap-setting-value :toucan-name "Lenny") "Lenny")
+        (is (not (encryption/decryptable-string? (raw-setting-details :toucan-name))))
         (setting/migrate-encrypted-settings!)
-        (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
-        (is (= "Lenny" (encryption/decrypt (actual-value-in-db :toucan-name))))
+        (is (encryption/decryptable-string? (raw-setting-details :toucan-name)))
+        (is (= (wrap-setting-value :toucan-name "Lenny")
+               (encryption/decrypt (raw-setting-details :toucan-name))))
         (testing "already-encrypted rows are left byte-identical"
-          (let [before (actual-value-in-db :toucan-name)]
+          (let [before (raw-setting-details :toucan-name)]
             (setting/migrate-encrypted-settings!)
-            (is (= before (actual-value-in-db :toucan-name)))))))
+            (is (= before (raw-setting-details :toucan-name)))))))
     (testing "without an encryption key nothing happens"
       (encryption-test/with-secret-key nil
         (t2/delete! :setting :key "toucan-name")
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+        (insert-raw-setting! :toucan-name (wrap-setting-value :toucan-name "Lenny") "Lenny")
         (setting/migrate-encrypted-settings!)
-        (is (= "Lenny" (actual-value-in-db :toucan-name)))))))
+        (is (= (wrap-setting-value :toucan-name "Lenny")
+               (raw-setting-details :toucan-name)))))))
 
 (deftest setter-none-does-not-imply-encryption-test
   (testing "`:setter :none` does not imply encryption -- it is decided by type or stated explicitly, like any setting"

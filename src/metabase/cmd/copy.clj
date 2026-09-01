@@ -13,6 +13,7 @@
    [metabase.config.core :as config]
    [metabase.models.init]
    [metabase.models.resolution :as models.resolution]
+   [metabase.settings.util :as settings.util]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
@@ -225,7 +226,15 @@
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.
     ;; It will be confusing to restore from and prevent key rotation.
-    (remove (fn [{k :key}] (= k "read-only-mode")))
+    (comp (remove (fn [{k :key}] (= k "read-only-mode")))
+          ;; A row out of a database predating `setting.details` has none, so fill it in the way the migration that
+          ;; added the column does: encryption wraps the envelope exactly as it wrapped the bare value.
+          (map (fn [{k :key, v :value, :as setting}]
+                 (cond-> setting
+                   (and (nil? (:details setting)) (seq v))
+                   (assoc :details (let [encrypted? (encryption/decryptable-string? v)
+                                         envelope   (settings.util/wrap-value k (cond-> v encrypted? encryption/decrypt))]
+                                     (cond-> envelope encrypted? encryption/encrypt)))))))
 
     :model/Table
     ;; unique_table_helper is a computed/generated column

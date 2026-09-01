@@ -5,6 +5,7 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.settings.util :as settings.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -68,22 +69,30 @@
   "Internal key used to store the last updated timestamp for Settings."
   "settings-last-updated")
 
+(defn- db-timestamp
+  "The application DB's own current timestamp, as the string `settings-last-updated` records it as. Read from the DB
+  rather than from this machine's clock because instances compare these timestamps to each other."
+  ^String []
+  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
+  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
+                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
+    (-> (t2/query-one {:select [[current-timestamp-as-string-honeysql :timestamp]]}) :timestamp)))
+
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
-  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
-                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
+  (let [now      (db-timestamp)
+        envelope (settings.util/wrap-value settings-last-updated-key now)]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
+    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value now, :details envelope}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
         ;; and ignore that Exception if one is thrown.
         (try
-          ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
-          (t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
+          (t2/insert! (t2/table-name (t2/resolve-model :model/Setting))
+                      :key settings-last-updated-key, :value now, :details envelope)
           (catch java.sql.SQLException e
             ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
             ;; race condition issue
@@ -118,10 +127,12 @@
       (when-let [last-known-update (cache-last-updated-at)]
         ;; compare it to the value in the DB. This is done be seeing whether a row exists
         ;; WHERE value > <local-value>
+        ;; envelopes of the same setting differ only in the value inside them, so comparing them compares timestamps
         (u/prog1 (t2/select-one-fn :value :model/Setting
                                    {:where [:and
                                             [:= :key settings-last-updated-key]
-                                            [:> :value last-known-update]]})
+                                            [:> :details (settings.util/wrap-value settings-last-updated-key
+                                                                                   last-known-update)]]})
           (log/trace "last known Settings update: " (pr-str last-known-update))
           (log/trace "actual last Settings update:" (pr-str <>))
           (when <>

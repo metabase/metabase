@@ -1,5 +1,6 @@
 (ns metabase.app-db.encryption
   (:require
+   [metabase.settings.util :as settings.util]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -72,15 +73,27 @@
     :invalid - the sentinel exists but does not decrypt (wrong or unset key, corruption)
     :absent  - no sentinel: a `setting` table that does not exist yet (before migrations on a fresh database), no
                row, or the plaintext \"unencrypted\" marker (inserted by the v53 migration, and written back when
-               the database is decrypted) -- an explicit statement of the same thing a missing row means"
+               the database is decrypted) -- an explicit statement of the same thing a missing row means
+
+  Read raw, and from `details` only if it is populated: this runs before migrations, so on the first boot after the
+  upgrade that adds `details` the sentinel is still the bare value in `value` -- and on the boot before that, the
+  column does not exist at all."
   []
-  (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting :key encryption-check-key))]
+  (let [;; `select *`, not the two columns by name: this runs before migrations, so on a database that predates
+        ;; `details` the column itself is not there yet
+        {:keys [value details]} (u/ignore-exceptions
+                                  (t2/query-one {:select [:*]
+                                                 :from   [:setting]
+                                                 :where  [:= :key encryption-check-key]}))
+        ;; `details` holds the sentinel in the same envelope as any other setting; `value` holds it bare
+        raw          (or details value)
+        maybe-unwrap #(if details (settings.util/unwrap-value encryption-check-key %) %)]
     (cond
-      (or (nil? raw) (= raw "unencrypted"))
+      (or (nil? raw) (= "unencrypted" (u/ignore-exceptions (maybe-unwrap raw))))
       :absent
 
       (and (encryption/default-encryption-enabled?)
-           (u/ignore-exceptions (string/valid-uuid? (encryption/maybe-decrypt raw))))
+           (u/ignore-exceptions (string/valid-uuid? (maybe-unwrap (encryption/maybe-decrypt raw)))))
       :valid
 
       :else
@@ -147,13 +160,17 @@
 
 (defn- replace-encryption-check!
   "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with the
-  plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted)."
+  plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted).
+
+  Written to `details` and to the legacy `value` both, so that a version predating `details` reads the same answer
+  from the same database."
   [conn encrypt-fn]
-  (t2/delete! :conn conn :setting :key encryption-check-key)
-  (t2/insert! :conn conn :setting {:key   encryption-check-key
-                                   :value (if encrypt-fn
-                                            (encrypt-fn (str (random-uuid)))
-                                            "unencrypted")}))
+  (let [sentinel  (if encrypt-fn (str (random-uuid)) "unencrypted")
+        encrypt   (or encrypt-fn identity)]
+    (t2/delete! :conn conn :setting :key encryption-check-key)
+    (t2/insert! :conn conn :setting {:key     encryption-check-key
+                                     :value   (encrypt sentinel)
+                                     :details (encrypt (settings.util/wrap-value encryption-check-key sentinel))})))
 
 (defn- write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
@@ -304,6 +321,14 @@
                   (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
               (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))))))
 
+(defn- db-timestamp
+  "The application DB's own current timestamp, as the string `settings-last-updated` records it as."
+  ^String [db-type]
+  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
+  (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text)
+                            (h2x/current-datetime-honeysql-form db-type))]
+    (-> (t2/query-one {:select [[cast-form :timestamp]]}) :timestamp)))
+
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 
@@ -324,15 +349,22 @@
       ;; a setting that is plaintext at rest while a key is configured (e.g. one newly designated encrypted but not yet
       ;; re-encrypted) is exactly what this operation exists to fix, so we decrypt it leniently here rather than reject
       ;; it. A value that looks encrypted but can't be decrypted with the current key still aborts.
-      (doseq [[key value] (t2/select-fn->fn :key :value :setting)]
+      ;;
+      ;; Both columns are re-encrypted: this version stores a setting's value in `details`, and `value` is what a
+      ;; version predating that column reads, so a rollback must not land on ciphertext under the old key.
+      (doseq [{:keys [key value details]} (t2/select :setting)]
         (case key
-          "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
-                                                                                       (h2x/current-datetime-honeysql-form db-type))]
-                                    (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
+          "settings-last-updated" (let [now (db-timestamp db-type)]
+                                    (t2/update! :conn conn :setting {:key key}
+                                                {:value   now
+                                                 :details (settings.util/wrap-value key now)}))
           "encryption-check" nil
-          (t2/update! :conn conn :setting
-                      {:key key}
-                      {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
+          (let [reencrypt #(encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext %))
+                changes   (cond-> {}
+                            (seq value)   (assoc :value (reencrypt value))
+                            (seq details) (assoc :details (reencrypt details)))]
+            (when (seq changes)
+              (t2/update! :conn conn :setting {:key key} changes)))))
       (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))

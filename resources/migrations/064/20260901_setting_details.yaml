@@ -1,0 +1,38 @@
+## Add `setting.details`, which stores a setting's value as the JSON envelope {"key": ..., "value": ...}
+## rather than as the bare value `setting.value` holds, so that a stored value carries the setting it
+## belongs to. Without it a stored value says nothing about which row it came from -- and neither does
+## an encrypted setting's ciphertext -- so a direct DB write could give one setting another's value,
+## and the read would trust it. Encryption wraps the envelope, exactly as it wrapped the bare value.
+##
+## `value` is kept: this version writes both columns and reads only `details`, so a version that predates
+## the column keeps working through a rolling upgrade, and a rollback is just dropping `details` again.
+## What such a version writes is invisible here, though -- it does not know to fill `details` in.
+##
+## Every row moves, `encryption-check` and `settings-last-updated` included -- the two the Setting model
+## never writes. The encryption tooling reads the sentinel before these migrations have run, so it falls
+## back to `value` while `details` is still empty, and the settings cache compares `settings-last-updated`
+## by comparing envelopes, which order by the timestamp inside them.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.azhrnr
+      author: ranquild
+      comment: Add setting.details, holding the setting's value in a JSON envelope
+      changes:
+        - addColumn:
+            tableName: setting
+            columns:
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: "The setting's value, as a JSON envelope carrying the setting key"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.qk4wm2
+      author: ranquild
+      comment: Populate setting.details from setting.value
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.PopulateSettingDetails
