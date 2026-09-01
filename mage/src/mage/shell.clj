@@ -23,14 +23,23 @@
       (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
     result))
 
+(def ^:private ns-per-ms 1000000)
+
+;; How long a signalled process gets to wind itself down before the next, harsher signal.
+(def ^:private kill-grace-period-ms (* 5 1000)) ; 5 seconds
+
+;; How often we re-ask a signalled process whether it has exited yet.
+(def ^:private exit-poll-interval-ms 50)
+
 (defn- wait-for-exit
   "Wait up to `timeout-ms` for every process in `handles` to exit."
   [handles timeout-ms]
-  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+  ;; nanoTime rather than wall-clock time, so an NTP correction or a DST shift cannot move the deadline.
+  (let [deadline (+ (System/nanoTime) (* timeout-ms ns-per-ms))]
     (loop []
       (when (and (some #(.isAlive ^ProcessHandle %) handles)
-                 (< (System/currentTimeMillis) deadline))
-        (Thread/sleep 50)
+                 (< (System/nanoTime) deadline))
+        (Thread/sleep exit-poll-interval-ms)
         (recur)))))
 
 (defn- kill-process!
@@ -42,12 +51,12 @@
   (let [root    (.toHandle proc)
         handles (cons root (iterator-seq (.iterator (.descendants root))))]
     (run! #(.destroy ^ProcessHandle %) handles)
-    (wait-for-exit handles 5000)
+    (wait-for-exit handles kill-grace-period-ms)
     (run! (fn [^ProcessHandle handle]
             (when (.isAlive handle)
               (.destroyForcibly handle)))
           handles)
-    (wait-for-exit handles 5000)))
+    (wait-for-exit handles kill-grace-period-ms)))
 
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
