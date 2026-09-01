@@ -148,7 +148,7 @@
    "198.20.0.0"                    ; one above the benchmarking range
    "64:ff9b::1"                    ; globally reachable IPv4/IPv6 translation prefix
    "2000::1"                       ; bottom of the allocated global-unicast space 2000::/3
-   "3fff:1000::1"                  ; inside 2000::/3, just past the 3fff::/20 documentation block
+   "2c0f:ffff::1"                  ; top of the allocated global-unicast space
    "2001:1::1"                     ; globally reachable exceptions inside 2001::/23
    "2001:1::2"
    "2001:1::3"
@@ -182,13 +182,22 @@
    "2001:10::1"                   ; deprecated ORCHID
    "2001:db8::1"                  ; documentation
    "2002::1"                      ; 6to4
-   "3fff::1"                      ; documentation
    "5f00::1"                      ; segment-routing SIDs
    "1::1"                         ; reserved IPv6 space outside 2000::/3
    "4000::1"
    "6000::1"
    "8000::1"
    "e000::1"])
+
+(def ^:private reserved-global-unicast-ips
+  ;; inside 2000::/3, but above the part IANA has allocated
+  ["2d00::1"
+   "2e00::1"
+   "3000::1"
+   "3ffe::1"
+   "3fff::1"                      ; documentation
+   "3fff:1000::1"                 ; just past the documentation block, still reserved
+   "3fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"])
 
 (def ^:private non-public-ips
   (into ["127.0.0.1"               ; loopback
@@ -212,7 +221,7 @@
          "255.255.255.255"        ; limited broadcast (inside 240.0.0.0/4)
          "::ffff:127.0.0.1"       ; IPv4-mapped loopback
          "::ffff:10.0.0.1"]       ; IPv4-mapped RFC1918
-        non-global-special-ips))
+        (concat non-global-special-ips reserved-global-unicast-ips)))
 
 (deftest ^:parallel public-address?-test
   (testing "globally reachable addresses are allowed"
