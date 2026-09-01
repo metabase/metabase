@@ -2,9 +2,17 @@
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.lib.core]
+   [metabase.lib.schema.binning :as-alias lib.schema.binning]
    [metabase.lib.serialize :as lib.serialize]))
 
 (comment metabase.lib.core/keep-me)
+
+(deftest ^:parallel strip-internal-keys-from-binning-test
+  (doseq [f [lib.serialize/prepare-after-deserialization
+             lib.serialize/prepare-for-serialization]]
+    (is (= {:strategy :num-bins, :num-bins 8}
+           (f ::lib.schema.binning/binning
+              {:strategy :num-bins, :num-bins 8, :a/b 1})))))
 
 (deftest ^:parallel remove-info-test
   (is (= {:lib/type :mbql/query
