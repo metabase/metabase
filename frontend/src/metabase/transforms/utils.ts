@@ -239,20 +239,23 @@ function validateTemplateTag(tag: TemplateTag): ValidationResult {
 
 export const getLibQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
   if (source.type !== "query") {
     return null;
   }
-  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+  return Lib.fromJsQuery(
+    getMetadataProvider(source.query.database),
+    source.query,
+  );
 };
 
 // Check if this is an MBQL query (not native SQL or Python)
 export const isMbqlQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
-  const query = getLibQuery(source, metadata);
+  const query = getLibQuery(source, getMetadataProvider);
   if (!query) {
     return false;
   }
