@@ -332,6 +332,41 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
 
+(deftest resource-scope-gate-is-enforced-over-http-test
+  (testing "GHY-4157: every v2 resource carries a required scope, but `resources-list-and-read-test` above drives a
+            cookie session — which is stamped unrestricted, so it never exercises the gate at all. Over a real
+            bearer token the gate is the only thing between a read-only client and the iframe shell, and reading
+            that shell is what mints a UI credential. That has to be asserted on the wire, not just in the
+            registry."
+    (mcp.ui-resource/with-fallback-template
+      (do-with-bearer-token!
+       #{"agent:content:read"}
+       (fn [headers]
+         (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                           {:request-options {:headers headers}}
+                                                           (jsonrpc-request "initialize" {:capabilities {}}))
+                              (get-in [:headers "Mcp-Session-Id"]))
+               session!   (fn [body]
+                            (client/client-full-response
+                             :post 200 endpoint
+                             {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                             body))
+               read!      #(session! (jsonrpc-request "resources/read" {:uri %}))]
+           (testing "the UI shell is refused — it gates on agent:query:run, which this token does not carry"
+             (let [response (read! v2.resources/visualize-query-uri)]
+               (is (= -32602 (get-in response [:body :error :code])))
+               (testing "with the same message an unknown URI gets, so a scope denial is not an existence oracle"
+                 (is (= "Resource not found" (get-in response [:body :error :message])))
+                 (is (= (get-in (read! "ui://metabase/does-not-exist.html") [:body :error :message])
+                        (get-in response [:body :error :message]))))
+               (testing "and no credential is minted into the response"
+                 (is (not (str/includes? (str (:body response)) "uiCredential"))))))
+           (testing "the fields catalog is refused too — agent:resource:read, also absent from this token"
+             (is (= -32602 (get-in (read! v2.resources/fields-catalog-uri) [:body :error :code]))))
+           (testing "and nothing is advertised to this token in the first place"
+             (is (empty? (-> (session! (jsonrpc-request "resources/list"))
+                             (get-in [:body :result :resources])))))))))))
+
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
