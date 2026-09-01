@@ -65,6 +65,9 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
       no_source_code_changes: >-
         ${{ steps.changes.outputs.documentation == 'true'
         && steps.changes.outputs.backend_all == 'false'
@@ -215,6 +218,9 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' &&
         needs.static-viz-files-changed.outputs.static_viz != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
+      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
+      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
 
   semantic-search-tests:
     if: |
