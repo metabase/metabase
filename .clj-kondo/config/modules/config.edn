@@ -2485,6 +2485,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}
