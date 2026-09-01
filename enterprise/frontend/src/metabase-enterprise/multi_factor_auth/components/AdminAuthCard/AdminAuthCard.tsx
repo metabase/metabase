@@ -146,9 +146,8 @@ export function AdminAuthCard() {
     }
     if (enforcement === "required" && deadline !== null) {
       return "required-date";
-    } else {
-      return "required";
     }
+    return "required";
   };
 
   const handleDeadlineChange = (date: string | null) => {
@@ -158,8 +157,8 @@ export function AdminAuthCard() {
     });
   };
 
-  // Shared so the visible header and the group's accessible name can't drift apart.
-  const enforcementLabel = t`Require two-factor authentication`;
+  const showEnforcementOptions =
+    enforcement === "required" || enforcement === "optional";
 
   return (
     <SettingsSection
@@ -173,10 +172,10 @@ export function AdminAuthCard() {
         onChange={(event) => handleEnable(event.currentTarget.checked)}
         size="sm"
       />
-      {enforcement !== "off" && (
+      {showEnforcementOptions && (
         <Box>
           <Radio.Group
-            label={enforcementLabel}
+            label={t`Require two-factor authentication`}
             labelProps={{ fw: "bold", mb: "sm" }}
             value={getEnforcementValue()}
             onChange={(value) =>
@@ -202,7 +201,7 @@ export function AdminAuthCard() {
                   component={Link}
                   to={ACCOUNT_AUTHENTICATION_PATH}
                 >{t`Set up two-factor authentication`}</Anchor>
-              )} for your own account before requiring it, so you don't lock yourself out.`}
+              )} for your own account before requiring it, so you don't log yourself out.`}
             </Text>
           )}
         </Box>
@@ -214,7 +213,7 @@ export function AdminAuthCard() {
           description={t`Users must enroll before this date`}
           value={toDeadlineInput(deadline)}
           onChange={handleDeadlineChange}
-          minDate={dayjs().format(DEADLINE_INPUT_FORMAT)}
+          minDate={dayjs().add(1, "day").format(DEADLINE_INPUT_FORMAT)}
           disabled={!hasFeature}
           maw="20rem"
           data-1p-ignore // 1Password will try to fill this in for some reason

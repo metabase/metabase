@@ -21,7 +21,6 @@ export function TotpEnrollInstructions({
       <Stack gap="sm">
         <Box>{t`Scan this QR code with an authenticator app:`}</Box>
         <Center>
-          {/* white background so the code stays scannable in dark mode */}
           <Box bg="white" p="md">
             <QRCode value={otpauthUri} size={QR_CODE_SIZE} />
           </Box>

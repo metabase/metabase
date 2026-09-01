@@ -272,13 +272,14 @@ describe("AdminAuthCard", () => {
   });
 
   describe("requiring immediately", () => {
+    const CONFIRMATION_MODAL_TEXT = /This will require everyone/;
     it("should warn that signed-in users will be signed out", async () => {
       setup({ enforcement: "optional" });
 
       await selectEnforcement("Require now");
 
       expect(
-        await screen.findByText("Require 2FA right now?"),
+        await screen.findByText(CONFIRMATION_MODAL_TEXT),
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -297,13 +298,17 @@ describe("AdminAuthCard", () => {
       setup({ enforcement: "optional" });
 
       await selectEnforcement("Require now");
+      expect(
+        await screen.findByText(CONFIRMATION_MODAL_TEXT),
+      ).toBeInTheDocument();
+
       await userEvent.click(
         await screen.findByRole("button", { name: "Cancel" }),
       );
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Require two-factor authentication now?"),
+          screen.queryByText(CONFIRMATION_MODAL_TEXT),
         ).not.toBeInTheDocument();
       });
       expect(await findRequests("PUT")).toHaveLength(0);
@@ -319,7 +324,7 @@ describe("AdminAuthCard", () => {
         await findBulkSettingUpdate();
       });
       expect(
-        screen.queryByText("Require two-factor authentication now?"),
+        screen.queryByText(CONFIRMATION_MODAL_TEXT),
       ).not.toBeInTheDocument();
     });
   });
