@@ -2,6 +2,7 @@ import {
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
   getXmlElementLocalName,
+  toString,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 const isStyleTag = (tag: string) => tag.toLowerCase() === "style";
@@ -39,15 +40,16 @@ export function makeCreateElementDistortion(
       tag: string,
       options?: ElementCreationOptions,
     ) {
+      const tagName = toString(tag);
       // Data-app bundles inline imported CSS with
       // `vite-plugin-css-injected-by-js`, which creates a `<style>` tag at
       // runtime. Allow only that tag while keeping the shared dangerous-tag
       // blocklist for `script` and other DOM creation.
-      if (isStyleTag(tag)) {
-        return CREATE_ELEMENT.call(this, tag, options);
+      if (isStyleTag(tagName)) {
+        return CREATE_ELEMENT.call(this, tagName, options);
       }
 
-      return sharedCreateElement.call(this, tag, options);
+      return sharedCreateElement.call(this, tagName, options);
     };
   }
 
@@ -62,23 +64,14 @@ export function makeCreateElementDistortion(
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) {
-      if (isStyleQualifiedName(qualifiedName)) {
+      const name = toString(qualifiedName);
+      if (isStyleQualifiedName(name)) {
         // Same exception as `createElement("style")`, but for namespaced
         // creation paths.
-        return CREATE_ELEMENT_NS.call(
-          this,
-          namespaceURI,
-          qualifiedName,
-          options,
-        );
+        return CREATE_ELEMENT_NS.call(this, namespaceURI, name, options);
       }
 
-      return sharedCreateElementNS.call(
-        this,
-        namespaceURI,
-        qualifiedName,
-        options,
-      );
+      return sharedCreateElementNS.call(this, namespaceURI, name, options);
     };
   }
 
