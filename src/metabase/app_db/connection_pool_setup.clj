@@ -186,7 +186,7 @@
 ;; Wall-clock bound on how long we wait for a newly-built pool to hand out its first connection when priming it (see
 ;; `connection-pool-data-source`). Chosen so a slow first connect (cold DNS, TLS handshake, cross-region
 ;; latency) does not trip us into a false-positive rebuild.
-(def ^:private ^long prime-timeout-ms 3000)
+(def ^:private prime-timeout-ms 3000)
 
 (defn- prime-pool!
   "Do a bounded-wall-clock `.getConnection()` on `pool` to detect the born-wedged c3p0 state described in
