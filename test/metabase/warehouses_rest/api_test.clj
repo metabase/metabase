@@ -413,7 +413,10 @@
                           [:updated_at                  (ms/InstanceOfClass java.time.temporal.Temporal)]
                           [:name                        ms/NonBlankString]
                           [:features                    [:= (driver.u/features ::test-driver (mt/db))]]
-                          [:creator_id                  [:= (mt/user->id :crowberto)]]]]
+                          [:creator_id                  [:= (mt/user->id :crowberto)]]
+                          ;; creating a Database kicks off a sync, which writes `dbms_version` ("1.0" for
+                          ;; `::test-driver`); whether it lands before this row is read back is a race
+                          [:dbms_version                :any]]]
                         db))
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
