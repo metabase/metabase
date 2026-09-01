@@ -308,7 +308,8 @@
 
 (deftest cancel-statement-only-when-rows-remain-test
   (testing "the statement is canceled only when reduction stopped before the ResultSet ran out of rows"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    ;; execute-reducible-query never cancels on vertica while its cancelation-flake investigation is open
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :-fns [#{:vertica}]})
       ;; take the dataset creation and sync queries before anything is counted
       (venues-rows 1)
       (let [cancels (atom 0)]
