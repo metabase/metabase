@@ -2,9 +2,9 @@ import { makeDistortionCallback } from "./distortions";
 import type { SandboxRealm } from "./types";
 
 // A minimal stand-in for the iframe window the data-app sandbox is built on.
-// `fetch`/`XMLHttpRequest` are the native refs the membrane passes to the
-// distortion callback; `makeDistortionCallback` should route those to the
-// allowlist wrappers and delegate everything else to the shared callback.
+// These are the native refs the membrane passes to the distortion callback;
+// `makeDistortionCallback` should route them to the data-app-specific wrappers
+// and delegate everything else to the shared callback.
 const fakeWindow = (): SandboxRealm => ({
   fetch: async () => new Response("native"),
   XMLHttpRequest: class NativeXHR extends XMLHttpRequest {},
@@ -15,6 +15,23 @@ const fakeWindow = (): SandboxRealm => ({
 });
 
 describe("makeDistortionCallback", () => {
+  it("calls getComputedStyle with the real target window", () => {
+    const win = fakeWindow();
+    const nativeGetComputedStyle = jest.fn(window.getComputedStyle);
+    win.getComputedStyle = nativeGetComputedStyle;
+    const callback = makeDistortionCallback("sales", win, []);
+    // The membrane types a distortion as `object -> object`, erasing the call
+    // signature of the native ref it replaces — restore it to invoke it.
+    const distorted = callback(win.getComputedStyle) as typeof getComputedStyle;
+    const element = document.createElement("div");
+
+    distorted.call({ membrane: "window proxy" }, element);
+
+    expect(distorted).not.toBe(nativeGetComputedStyle);
+    expect(nativeGetComputedStyle).toHaveBeenCalledWith(element, undefined);
+    expect(nativeGetComputedStyle.mock.contexts[0]).toBe(win);
+  });
+
   it("allows style elements for bundled CSS injection", () => {
     const win = fakeWindow();
     const callback = makeDistortionCallback("sales", win, []);
@@ -88,11 +105,12 @@ describe("makeDistortionCallback", () => {
   // The sandboxed iframe is same-origin with the main app, and Near-Membrane
   // remaps the guest's `window.parent` to the target's real parent — an ungated
   // realm whose fetch carries the session. The callback must redirect every
-  // ancestor (and the frame element) back to the gated target window.
-  it("redirects ancestor windows and the frame element to the gated target", () => {
+  // ancestor to the gated target window and hide the host frame element.
+  it("redirects ancestor windows and hides the frame element", () => {
     const grandparent = { name: "top" };
     const parent = { name: "main-app", parent: grandparent };
     const frameElement = { tagName: "IFRAME" };
+
     // The real realm is a `Window`; the distortion only reads `parent`/`top`/
     // `frameElement` off it, which this stand-in supplies. Cast through the
     // narrow `SandboxRealm` the callback is typed against.
@@ -100,15 +118,27 @@ describe("makeDistortionCallback", () => {
       ...fakeWindow(),
       parent,
       top: grandparent,
-      frameElement,
     } as unknown as SandboxRealm;
 
+    Object.defineProperty(win, "frameElement", {
+      configurable: true,
+      get: () => frameElement,
+    });
+
     const callback = makeDistortionCallback("sales", win, []);
+    const frameElementGetter = Object.getOwnPropertyDescriptor(
+      win,
+      "frameElement",
+    )?.get;
 
     // Every ancestor reachable from the realm resolves back to the gated realm.
     expect(callback(parent)).toBe(win);
     expect(callback(grandparent)).toBe(win);
-    expect(callback(frameElement)).toBe(win);
+
+    expect(frameElementGetter).toBeDefined();
+    expect(callback(frameElementGetter!)).not.toBe(frameElementGetter);
+    expect(callback(frameElementGetter!)()).toBeNull();
+    expect(callback(frameElement)).toBe(frameElement);
   });
 
   it("leaves the target window itself untouched (parent chain stops at self)", () => {
