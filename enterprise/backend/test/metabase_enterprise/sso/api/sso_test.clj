@@ -30,11 +30,12 @@
                                            saml-identity-provider-slo-uri     "http://idp.example.com/logout"]
           (with-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
             (binding [client/*url-prefix* ""]
-              (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                             :model/Session {session-id :id} {:user_id (:id user) :id (session/generate-session-id) :key_hashed (session/hash-session-key (session/generate-session-key))}]
-                (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-id)]
+              (let [session-key (session/generate-session-key)]
+                (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                               :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed (session/hash-session-key session-key)}]
                   (testing "logout is redirected to idp"
-                    (let [response  (client/client :post "/auth/sso/logout" req-options)]
+                    (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)
+                          response    (client/client :post "/auth/sso/logout" req-options)]
                       (is (= (str
                               "http://idp.example.com/logout?SAMLRequest=nZFBa4Qw"
                               "EIXv%2FRWSezQa165B3RakIOz20G576KVEDduASawTy%2F78Rl"

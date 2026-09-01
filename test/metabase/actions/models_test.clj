@@ -181,6 +181,26 @@
               (is (partial= {:name "New name"
                              :kind :row/update} new-action)))))))))
 
+(deftest query-action-database-id-derived-from-query-test
+  (mt/with-actions-enabled
+    (mt/with-actions [{model-id :id, model-db-id :database_id} {:type :model, :dataset_query (mt/mbql-query categories)}]
+      (testing "insert! derives :database_id from the query's database"
+        (let [action-id (action/insert! {:type          :query
+                                         :name          "derive db insert"
+                                         :model_id      model-id
+                                         :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
+                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})]
+          (is (= model-db-id (:database_id (action/select-action :id action-id))))))
+      (testing "update! re-derives :database_id from the query"
+        (let [action-id (action/insert! {:type          :query
+                                         :name          "derive db update"
+                                         :model_id      model-id
+                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})
+              existing  (action/select-action :id action-id)]
+          ;; a :database_id-only update can't repoint the action away from the query's database
+          (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
+          (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
+
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled

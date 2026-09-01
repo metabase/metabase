@@ -12,6 +12,7 @@ import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   configureDbRoutingViaAPI,
   createDestinationDatabasesViaAPI,
+  grantDatabaseManagementViaAPI,
 } from "./helpers/e2e-database-routing-helpers";
 
 const { H } = cy;
@@ -128,7 +129,7 @@ describe("admin > database > database routing", () => {
       // bulk creation via api (this is how we expect most users to create destination dbs)
       cy.log("should be able to bulk create destination dbs via API");
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: _.range(2, 7).map((i) => ({
           ...BASE_POSTGRES_DESTINATION_DB_INFO,
           name: `Destination DB ${i}`,
@@ -209,15 +210,15 @@ describe("admin > database > database routing", () => {
 
     it("should not leak destinations databases in the application", () => {
       cy.log("setup db routing via API");
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       cy.log("disable model actions");
       cy.findByLabelText("Model actions").click({ force: true });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
       });
 
@@ -331,11 +332,11 @@ describe("admin > database > database routing", () => {
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
       cy.log("setup");
-      cy.request("PUT", "/api/database/2", {
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
         settings: { "database-enable-actions": false },
       });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
 
@@ -346,13 +347,15 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}/database/2`);
+      cy.visit(
+        `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${WRITABLE_DB_ID}`,
+      );
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit("/admin/permissions/data/database/2");
+      cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
@@ -377,77 +380,48 @@ describe("admin > database > database routing", () => {
         dbRoutingSection().should("not.exist");
       });
 
-      it("should show for users with db management permissions but prevent removal of destination databases", () => {
-        cy.log("setup - db routing");
-        cy.visit("/admin/databases/2");
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        cy.findAllByTestId("database-model-features-section")
-          .findByLabelText("Model actions")
-          .click({ force: true });
+      it("should let a database manager edit but not remove a destination database", () => {
+        cy.log("setup - routing enabled with one destination database");
+        disableModelActionsViaApi(WRITABLE_DB_ID);
         configureDbRoutingViaAPI({
-          router_database_id: 2,
+          router_database_id: WRITABLE_DB_ID,
           user_attribute: "role",
         });
         createDestinationDatabasesViaAPI({
-          router_database_id: 2,
+          router_database_id: WRITABLE_DB_ID,
           databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
+        })
+          .its("body.0.id")
+          .as("destinationDbId");
+
+        cy.log("grant database management permission to all users");
+        grantDatabaseManagementViaAPI({
+          groupId: ALL_USERS_GROUP,
+          databaseId: WRITABLE_DB_ID,
         });
 
-        cy.log("normal user should not see db routing");
-        cy.signOut();
-        cy.signInAsNormalUser();
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        cy.get("main").findByText(
-          "Sorry, you don’t have permission to see that.",
-        );
-
-        cy.log("grant db management permissions to all users");
-        cy.signOut();
-        cy.signInAsAdmin();
-        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-        // NOTE: manage db permissions currently do not work in master w/o having create queries permissions
-        // so we have to grant this permission in addition to db management
-        const CREATE_QUERIES_PERMISSION_INDEX = 1;
-        H.modifyPermission(
-          "Writable Postgres12",
-          CREATE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
-        );
-        const MANAGE_DATABASE_PERMISSION_INDEX = 4;
-        H.modifyPermission(
-          "Writable Postgres12",
-          MANAGE_DATABASE_PERMISSION_INDEX,
-          "Yes",
-        );
-        cy.button("Save changes").click();
-        H.modal().button("Yes").click();
-
-        cy.log("normal user should see db");
         cy.signOut();
         cy.signIn("normal");
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        dbRoutingSection().should("exist");
-        dbRoutingSection().within(() => {
-          cy.log("should not be able to manage db routing settings");
-          cy.findByLabelText("Enable database routing").should("be.disabled");
-          cy.findByTestId("db-routing-user-attribute").should("be.disabled");
-          cy.findByRole("button", { name: /Add/ }).should("not.exist");
-        });
 
-        cy.log("should be able to edit databases");
-        dbRoutingSection()
-          .findByTestId("destination-db-list-item")
-          .icon("ellipsis")
-          .click();
-        H.popover().within(() => {
-          cy.findByText("Remove").should("not.exist");
-          cy.findByText("Edit").should("exist").click();
+        cy.log("editing a destination database is allowed by direct URL");
+        cy.get("@destinationDbId").then((destinationDbId) => {
+          cy.visit(
+            `/admin/databases/${WRITABLE_DB_ID}/destination-databases/${destinationDbId}`,
+          );
         });
-        H.modal().within(() => {
-          H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
-          cy.button("Save changes").click();
-          cy.wait("@databaseUpdate");
+        H.modal().findByText("Edit destination database").should("be.visible");
+
+        cy.log("removing a destination database is refused by direct URL");
+        cy.get("@destinationDbId").then((destinationDbId) => {
+          cy.visit(
+            `/admin/databases/${WRITABLE_DB_ID}/destination-databases/${destinationDbId}/remove`,
+          );
         });
+        cy.location("pathname").should("eq", "/unauthorized");
+        cy.findByRole("status").should(
+          "contain.text",
+          "Sorry, you don\u2019t have permission to see that.",
+        );
       });
     });
 
@@ -602,7 +576,7 @@ describe("admin > database > database routing", () => {
 
   describe("OSS", { tags: ["@OSS"] }, () => {
     it("should not show the feature if not enabled in token features", () => {
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       dbConnectionInfoSection().should("exist");
       dbRoutingSection().should("not.exist");
     });

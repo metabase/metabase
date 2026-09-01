@@ -6,7 +6,7 @@
 
 (defsetting ee-embedding-provider
   (deferred-tru "The embedding provider to use (:openai, :ollama, or :ai-service)")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "ai-service"
   :type :string

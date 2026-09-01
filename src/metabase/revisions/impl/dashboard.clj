@@ -20,7 +20,7 @@
     ;;   lower-numbered positions appearing before higher numbered ones.
     ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
     :dependency_analysis_version
-    :public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type
+    :public_uuid :public_uuid_prefix :made_public_by_id :enable_embedding :embedding_params :embedding_type
     :position :initially_published_at :view_count
     :last_viewed_at})
 

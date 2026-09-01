@@ -15,6 +15,7 @@
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -51,7 +52,7 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -68,9 +69,12 @@
                                  [:token     string?]
                                  [:param-key string?]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-values {:unsigned-token unsigned-token
                                          :card           card
                                          :param-key      param-key})))
@@ -86,9 +90,12 @@
                                  [:param-key ms/NonBlankString]]
    {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
                                                  :card           card
                                                  :param-key      param-key
@@ -115,7 +122,7 @@
   [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
@@ -130,7 +137,7 @@
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
@@ -147,7 +154,7 @@
   [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]}]
+   {:keys [value]} :- [:map [:value :string]]]
   (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
@@ -161,7 +168,7 @@
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -183,7 +190,7 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -204,7 +211,7 @@
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])

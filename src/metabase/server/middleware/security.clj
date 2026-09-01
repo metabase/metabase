@@ -251,12 +251,13 @@
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
             origin        (parse-url raw-origin)]
-        (some (fn [approved-origin]
-                (and
-                 (approved-domain? (:domain origin) (:domain approved-origin))
-                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                 (approved-port? (:port origin) (:port approved-origin))))
-              approved-list))))))
+        (when origin
+          (some (fn [approved-origin]
+                  (and
+                   (approved-domain? (:domain origin) (:domain approved-origin))
+                   (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                   (approved-port? (:port origin) (:port approved-origin))))
+                approved-list)))))))
 
 (defn access-control-headers
   "Returns headers for CORS requests"

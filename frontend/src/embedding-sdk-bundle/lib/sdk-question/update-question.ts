@@ -72,7 +72,9 @@ export const updateQuestionSdk =
       shouldRunQueryOnQuestionChange = false;
     }
 
-    nextQuestion = nextQuestion.applyTemplateTagParameters();
+    if (!isGuestEmbed) {
+      nextQuestion = nextQuestion.applyTemplateTagParameters();
+    }
 
     const rawSeries = createRawSeries({
       card: nextQuestion.card(),

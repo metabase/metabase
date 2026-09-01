@@ -128,7 +128,7 @@
   :feature    :embedding
   :export?    false
   :visibility :public
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting enable-embedding-static
@@ -184,7 +184,7 @@
   :visibility :public
   :feature    :embedding-sdk
   :default    ""
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter
   :getter     #'-embedding-app-origins-sdk
   :setter     #'-embedding-app-origins-sdk!)

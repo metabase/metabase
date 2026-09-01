@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -184,9 +185,10 @@
                   (is (some #(= "changed the source." (:description %)) revisions))))
               (mt/with-data-analyst-role! (mt/user->id :rasta)
                 (mt/with-restored-data-perms!
-                  ;; rasta may query the transform's current source database but not its previous one
+                  ;; rasta holds the transforms entitlement on the current source database but none on the prior one
                   (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
-                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder-and-native)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/transforms :yes)
                   (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
                   (testing "an analyst entitled only to the current source can still read the transform"
                     (let [revisions (list-fn :rasta 200)]
@@ -1215,3 +1217,70 @@
                                                          :database database-id}}}
                     :description  "created this."}]
                   (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id)))))))))
+
+(defn- segment-definition
+  "Build an MBQL 5 segment definition (a single-stage filtered query on `table-id`) via lib."
+  [table-id filter-field-id]
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/> (lib.metadata/field mp filter-field-id) 0)))))
+
+(defn- measure-definition
+  "Build an MBQL 5 measure definition (a count aggregation on `table-id`) via lib."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(deftest segment-revert-definition-table-permissions-test
+  (testing "POST /api/revision/revert <Segment>"
+    (mt/with-temp
+      [:model/Segment  {:keys [id]}             {:table_id   (mt/id :venues)
+                                                 :definition (segment-definition (mt/id :venues) (mt/id :venues :price))}
+       :model/Revision {users-revision-id :id}  {:model    "Segment"
+                                                 :model_id id
+                                                 :object   {:name       "Users segment"
+                                                            :table_id   (mt/id :venues)
+                                                            :definition (segment-definition (mt/id :users) (mt/id :users :id))}}
+       :model/Revision {no-def-revision-id :id} {:model    "Segment"
+                                                 :model_id id
+                                                 :object   {:name     "No definition"
+                                                            :table_id (mt/id :users)}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (mt/id :venues) :perms/view-data :unrestricted
+            (testing "write perms are checked against the table of the restored revision's definition, not its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "segment", :revision_id users-revision-id}))))
+            (testing "when the restored revision has no definition, perms fall back to its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "segment", :revision_id no-def-revision-id}))))))))))
+
+(deftest measure-revert-definition-table-permissions-test
+  (testing "POST /api/revision/revert <Measure>"
+    (mt/with-temp
+      [:model/Measure  {:keys [id]}             {:name       "Venue count"
+                                                 :table_id   (mt/id :venues)
+                                                 :definition (measure-definition (mt/id :venues))}
+       :model/Revision {users-revision-id :id}  {:model    "Measure"
+                                                 :model_id id
+                                                 :object   {:name       "Users count"
+                                                            :table_id   (mt/id :venues)
+                                                            :definition (measure-definition (mt/id :users))}}
+       :model/Revision {no-def-revision-id :id} {:model    "Measure"
+                                                 :model_id id
+                                                 :object   {:name     "No definition"
+                                                            :table_id (mt/id :users)}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (mt/id :venues) :perms/view-data :unrestricted
+            (testing "write perms are checked against the table of the restored revision's definition, not its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "measure", :revision_id users-revision-id}))))
+            (testing "when the restored revision has no definition, perms fall back to its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "measure", :revision_id no-def-revision-id}))))))))))

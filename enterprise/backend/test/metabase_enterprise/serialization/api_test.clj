@@ -184,7 +184,14 @@
                                                      :collection fake-eid :data_model false :settings false)
                       log      (slurp (io/input-stream res))]
                   (is (re-find #"Could not find Collection with entity ID" log))
-                  (is (re-find #"abcdefghijklmnopqrstu" log))))))))
+                  (is (re-find #"abcdefghijklmnopqrstu" log))))
+              (testing "Nonexistent collection ID names the collection the user asked for"
+                (let [missing-id Integer/MAX_VALUE
+                      res        (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                       :collection missing-id :data_model false :settings false)
+                      log        (slurp (io/input-stream res))]
+                  (is (re-find #"Could not find Collection with ID" log))
+                  (is (re-find (re-pattern (str missing-id)) log))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files

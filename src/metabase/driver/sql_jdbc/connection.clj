@@ -4,6 +4,8 @@
   (:refer-clojure :exclude [get-in select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.audit-app.core :as audit-app]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
@@ -514,11 +516,17 @@
           details-hash (jdbc-spec-hash db)]
       (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
       (cond
-        ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-        ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
-        ;; not in [[pool-cache-key->connection-pool]].
-        (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+        (or (:is-audit db)
+            (and (audit-app/analytics-dev-mode)
+                 (get-in db [:details :is-audit-dev])))
         {:datasource (driver-api/data-source)}
+
+        ;; An analytics-dev db is only a valid handle onto the app-db while analytics dev mode is on; reaching here with
+        ;; the mode off is an invariant violation, so fail loudly rather than silently building a credential-less pool
+        ;; against the wrong host.
+        (get-in db [:details :is-audit-dev])
+        (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
+                        {:database-id (:id db)}))
 
         ;; Swapped pool: use Guava cache with TTL
         has-swap?
@@ -586,9 +594,16 @@
   "Default implementation of [[driver/can-connect?]] for SQL JDBC drivers. Checks whether we can perform a simple
   `SELECT 1` query."
   [driver details]
-  (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (or (:is-audit-dev details)
-        (can-connect-with-spec? jdbc-spec))))
+  ;; An `:is-audit-dev` database is a handle onto the app-db (see [[db->pooled-connection-spec]]); it has no real
+  ;; connection to test. That is only a valid state while analytics dev mode is on — otherwise reaching here is an
+  ;; invariant violation, so throw rather than reporting the database as connectable.
+  (if (:is-audit-dev details)
+    (if (audit-app/analytics-dev-mode)
+      true
+      (throw (ex-info (tru "Cannot connect to an analytics-dev database unless analytics dev mode is enabled.")
+                      {})))
+    (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+      (can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))

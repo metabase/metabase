@@ -539,8 +539,8 @@
 
     :else
     (let [expr' (h2x/->pg-timestamp expr)]
-      (-> [:date_trunc (h2x/literal unit) expr']
-          (h2x/with-database-type-info (h2x/database-type expr'))))))
+      (cond-> [:date_trunc (h2x/literal unit) expr']
+        (h2x/type-info expr') (h2x/with-type-info (h2x/type-info expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (h2x/->pg-timestamp expr)))
@@ -613,7 +613,30 @@
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
                                                   expr)]]
-    (h2x/with-database-type-info expr "timestamp")))
+    (h2x/with-type-info expr {:database-type "timestamp"
+                              ::target-timezone target-timezone})))
+
+(defn- current-datetime-in-parent-lhs-timezone
+  "Return a HoneySQL form for the current datetime that shares the wall-clock frame of the enclosing filter's LHS.
+  When the LHS is a convertTimezone expression targeting `target-tz`, wrap the driver's default NOW() with
+  `TIMEZONE(target-tz, ...)` so both sides compare as plain timestamps in the same zone (#80155). Otherwise
+  return the driver's default unchanged."
+  [driver]
+  (let [now (sql.qp/current-datetime-honeysql-form driver)]
+    (if-let [target-tz (::target-timezone sql.qp/*parent-honeysql-col-type-info*)]
+      (h2x/with-database-type-info [:timezone target-tz now] "timestamp")
+      now)))
+
+(defmethod sql.qp/->honeysql [:postgres :relative-datetime]
+  [driver [_ amount unit]]
+  (let [now (current-datetime-in-parent-lhs-timezone driver)]
+    (sql.qp/date driver unit (if (zero? amount)
+                               now
+                               (sql.qp/add-interval-honeysql-form driver now amount unit)))))
+
+(defmethod sql.qp/->honeysql [:postgres :now]
+  [driver _clause]
+  (current-datetime-in-parent-lhs-timezone driver))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -747,8 +770,13 @@
   [_fn [parent-identifier field-type names]]
   (let [names-text-array                 (into [::text-array] names)
         [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
-        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
-    (into [(format "(%s#>> %s)::%s" parent-id-sql path-sql field-type)]
+        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})
+        ;; same rule as [[h2x/cast]]: a plain type name is spliced as-is, anything else (the field's synced
+        ;; `database-type`, which we can't trust to be a plain type name) is quoted as an identifier
+        [type-sql]                       (if (h2x/raw-type-name? field-type)
+                                           [field-type]
+                                           (sql/format-expr (h2x/identifier :type-name field-type) {:nested true}))]
+    (into [(format "(%s#>> %s)::%s" parent-id-sql path-sql type-sql)]
           cat
           [parent-id-args path-args])))
 
