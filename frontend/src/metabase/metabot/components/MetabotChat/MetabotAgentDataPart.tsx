@@ -115,7 +115,11 @@ export const AgentDataPart = ({
       ({ part }) => (
         <Stack gap="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineDashboardLink value={part.data} />
+          <MetabotInlineDashboardLink
+            value={part.data}
+            readonly={readonly}
+            conversationId={conversationId}
+          />
         </Stack>
       ),
     )
