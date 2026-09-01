@@ -45,6 +45,8 @@ const setup = ({
         <FormSubmitButton />
       </Form>
     </FormProvider>,
+    // The failure path asserts on the error toast, which only renders here.
+    { withUndos: true },
   );
 
   return { onSubmit };
@@ -166,6 +168,22 @@ describe("FormSecretKey", () => {
       });
       expect(keyInput).not.toHaveValue(GENERATED_TOKEN);
       await waitFor(() => expect(keyInput).toHaveValue(REGENERATED_TOKEN));
+    });
+
+    it("closes the modal when generating the secret key fails", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      fetchMock.modifyRoute("generate-random-token", { response: 500 });
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+
+      expect(
+        await screen.findByText("Error generating secret key."),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Create a secret key" }),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("does not update the value after clicking 'Cancel'", async () => {

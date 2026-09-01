@@ -49,8 +49,11 @@ export const SecretKeyModal = ({
       setSecretKey(token);
     } catch {
       sendErrorToast(t`Error generating secret key.`);
+      // Nothing to protect from an accidental dismissal, and the modal offers
+      // no other way out.
+      onClose();
     }
-  }, [generateRandomToken, sendErrorToast]);
+  }, [generateRandomToken, sendErrorToast, onClose]);
 
   useMount(() => {
     void generateToken();
