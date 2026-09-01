@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
 import { formatValue } from "metabase/value-formatting";
-import type {
-  ComputedVisualizationSettings,
-  LegacyDrill,
-} from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 

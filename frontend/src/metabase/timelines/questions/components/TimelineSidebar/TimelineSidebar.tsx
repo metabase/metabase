@@ -13,7 +13,7 @@ import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+} from "metabase/viz-core";
 import type {
   CollectionId,
   DatetimeUnit,

@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 
 import { useDispatch } from "metabase/redux";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
+import {
+  type ComputedVisualizationSettings,
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { IconName, RawSeries, Series } from "metabase-types/api";

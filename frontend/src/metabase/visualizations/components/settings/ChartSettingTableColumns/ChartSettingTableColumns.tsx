@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { FieldPanel } from "metabase/querying/fields/components/FieldPanel";
 import { Button } from "metabase/ui";
-import type { ChartSettingTableColumnsProps } from "metabase/visualizations/types";
+import type { ChartSettingTableColumnsProps } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
 
 import { TableColumnPanel } from "./TableColumnPanel";

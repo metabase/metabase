@@ -50,9 +50,12 @@
 
 (def ^:private transform-chart-stats
   "[[metabase.models.interface/transform-encrypted-json]] with a schema-aware codec in place of the
-  bare JSON one."
+  bare JSON one. Wrapped in [[mi/decrypt-error-context]] like the columns beside it, so a decrypt
+  failure names the column in the message rather than surfacing as a bare \"Expected an encrypted
+  value\" with no way back to the row."
   {:in  (comp encryption/maybe-encrypt chart-stats-in)
-   :out (comp chart-stats-out encryption/maybe-decrypt)})
+   :out (comp chart-stats-out
+              (mi/decrypt-error-context "exploration_query_result.chart_stats" encryption/maybe-decrypt))})
 
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the
@@ -61,8 +64,8 @@
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
   {:chart_stats        transform-chart-stats
-   :metric_description mi/transform-encrypted-text
-   :chart_description  mi/transform-encrypted-text})
+   :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
+   :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
 
 (defn stored-results
   "Resolve the cached stored_result for an exploration_query_id via the EQR FK. Returns the

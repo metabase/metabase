@@ -62,7 +62,7 @@
   :default    []
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defn- strip-scheme
@@ -105,7 +105,7 @@
   :default    ""
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter
   :setter     #'-mcp-apps-cors-custom-origins!)
 
