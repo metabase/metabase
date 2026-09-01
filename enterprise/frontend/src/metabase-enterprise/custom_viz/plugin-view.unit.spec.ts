@@ -1,5 +1,5 @@
 import { createMockSingleSeries } from "metabase-types/api/mocks";
-import { isObject } from "metabase-types/guards";
+import { isFunction, isObject } from "metabase-types/guards";
 
 import {
   type PluginSeries,
@@ -48,6 +48,31 @@ describe("toPluginSeries", () => {
 
     expect(toPluginSeries(series)).toBe(toPluginSeries(series));
     expect(toPluginSeries([...series])).not.toBe(toPluginSeries(series));
+  });
+
+  it("preserves Map and Date column values a JSON round-trip would corrupt", () => {
+    const remapping = new Map([[1, "One"]]);
+    const series = [createMockSingleSeries({})];
+    series[0].data.cols[0].remapping = remapping;
+    series[0].data.rows = [[new Date("2020-01-01T00:00:00.000Z")]];
+
+    const pluginSeries = toPluginSeries(series);
+    const pluginRemapping = Reflect.get(
+      pluginSeries[0].data.cols[0],
+      "remapping",
+    );
+
+    // A JSON round-trip would corrupt the Map into `{}` and the Date into a string.
+    const getEntry =
+      isObject(pluginRemapping) && isFunction(pluginRemapping.get)
+        ? pluginRemapping.get
+        : null;
+    if (!getEntry) {
+      throw new Error("Expected the plugin column to keep its remapping Map");
+    }
+    expect(pluginRemapping).not.toBe(remapping);
+    expect(getEntry.call(pluginRemapping, 1)).toBe("One");
+    expect(typeof pluginSeries[0].data.rows[0][0]).not.toBe("string");
   });
 });
 

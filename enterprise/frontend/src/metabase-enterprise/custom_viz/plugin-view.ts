@@ -24,9 +24,11 @@ export function toPluginSeries(series: Series): PluginSeries {
     return cached;
   }
 
-  // The plugin API mirrors the internal Metabase series shape with looser types
+  // The plugin API mirrors the internal Metabase series shape with looser types.
+  // `structuredClone` (baseline in supported browsers) preserves Map (`col.remapping`), Date
+  // and BigInt values that a JSON round-trip would corrupt — don't fall back to a JSON clone.
   const pluginSeries = series.map((single) =>
-    clone(single),
+    structuredClone(single),
   ) as unknown as PluginSeries;
 
   pluginSeriesCache.set(series, pluginSeries);
