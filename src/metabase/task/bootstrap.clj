@@ -1,6 +1,7 @@
 (ns metabase.task.bootstrap
   (:require
-   [metabase.classloader.core :as classloader]))
+   [metabase.classloader.core :as classloader]
+   [metabase.task.secure-delegate :as secure-delegate]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,7 +58,10 @@
 (defn set-jdbc-backend-properties!
   "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
-  `quartz.properties` file.)"
+  `quartz.properties` file.)
+
+  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate]]): a
+  `StdJDBCDelegate`/`PostgreSQLDelegate` subclass that reads BLOB columns through a class allow-list, so
+  Quartz reconstructs only the plain-data classes Metabase's job data is made of."
   [db-type]
-  (when (= db-type :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
+  (secure-delegate/install! db-type))

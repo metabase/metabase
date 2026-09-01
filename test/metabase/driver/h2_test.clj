@@ -486,3 +486,16 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-check-constraint nil :model.row/create
             "Check constraint violation: \"users_email_check\"")))))
+
+;;; Metabase never reads Java objects out of H2 query results. Requiring the h2 driver registers a
+;;; JavaObjectSerializer that refuses to reconstruct them, so reading a JAVA_OBJECT value fails rather
+;;; than deserializing arbitrary classes. This verifies that refusal at the serializer itself.
+
+(deftest ^:parallel java-object-deserialization-is-refused-test
+  (testing "the registered H2 serializer refuses to reconstruct a Java object"
+    (let [^org.h2.api.JavaObjectSerializer serializer @#'h2/java-object-serializer]
+      (is (thrown-with-msg? Exception #"(?i)not supported"
+                            (.deserialize serializer (byte-array 0))))))
+  (testing "ordinary values still read normally"
+    (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
+      (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))

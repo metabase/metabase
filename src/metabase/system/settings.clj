@@ -70,7 +70,11 @@
                   (setting/set-value-of-type! :string :site-url new-value)))
   :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
-        Make sure that the address defined is how Metabase is being accessed.")
+        Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.")
 
 ;;; TODO -- we might want to move this into a separate `metabase.i18n` module
 (defsetting site-locale
