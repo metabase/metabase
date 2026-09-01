@@ -270,8 +270,8 @@ describe("AgentMessage", () => {
 
       expect(
         screen.getByRole("link", { name: "Open dashboard" }),
-      ).toHaveAttribute("href", Urls.generatedDashboard(dashboard));
-      expect(Urls.generatedDashboard(dashboard)).toMatch(
+      ).toHaveAttribute("href", Urls.generatedDashboard(dashboard, "convo-1"));
+      expect(Urls.generatedDashboard(dashboard, "convo-1")).toMatch(
         /^\/dashboard\/adhoc#/,
       );
       expect(screen.getByText("Ops overview")).toBeInTheDocument();

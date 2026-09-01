@@ -7,11 +7,13 @@ import {
   setupBookmarksEndpoints,
   setupCardDataset,
   setupCardsEndpoints,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -22,7 +24,9 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -329,17 +333,28 @@ describe("DashboardApp ad-hoc dashboards", () => {
     ],
   };
 
-  it("renders a hash-defined dashboard through the regular dashboard page, read-only", async () => {
+  const setupAdhoc = (adhocDefinition: AdhocDashboardDefinition) => {
     setupNotificationChannelsEndpoints({});
     setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
     setupCollectionsEndpoints({ collections: [] });
+    setupCollectionByIdEndpoint({ collections: [] });
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+    setupRecentViewsAndSelectionsEndpoints(
+      [],
+      ["selections", "views"],
+      {},
+      false,
+    );
     setupBookmarksEndpoints([]);
     setupCardDataset();
 
-    renderWithProviders(
-      <Route path="/dashboard/adhoc" element={<DashboardApp />} />,
+    return renderWithProviders(
+      <>
+        <Route path="/dashboard/adhoc" element={<DashboardApp />} />
+        <Route path="/dashboard/:slug" element={<div>saved dashboard</div>} />
+      </>,
       {
-        initialRoute: Urls.adhocDashboard(definition),
+        initialRoute: Urls.adhocDashboard(adhocDefinition),
         withRouter: true,
         storeInitialState: {
           dashboard: createMockDashboardState(),
@@ -350,10 +365,48 @@ describe("DashboardApp ad-hoc dashboards", () => {
         },
       },
     );
+  };
+
+  it("renders a hash-defined dashboard through the regular dashboard page, read-only", async () => {
+    setupAdhoc(definition);
 
     expect(await screen.findByText("Ops overview")).toBeInTheDocument();
     expect(await screen.findByText("Venues by price")).toBeInTheDocument();
     expect(await screen.findByText("All venues")).toBeInTheDocument();
     expect(screen.queryByLabelText("Edit dashboard")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("save-adhoc-dashboard-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers to save a Metabot-generated dashboard and opens the saved dashboard", async () => {
+    fetchMock.post(
+      "express:/api/metabot/conversations/:id/saved-dashboard",
+      { id: 9, name: "Ops overview", description: null, collection_id: null },
+      {
+        name: "save-dashboard",
+        matchPartialBody: true,
+        body: { dashboard_id: "dash-1", dashboard: { name: "Ops overview" } },
+      },
+    );
+    setupAdhoc({
+      ...definition,
+      metabot: { conversation_id: "convo-1", dashboard_id: "dash-1" },
+    });
+
+    await userEvent.click(
+      await screen.findByTestId("save-adhoc-dashboard-button"),
+    );
+    const modal = await screen.findByTestId("save-dashboard-modal");
+    expect(within(modal).getByLabelText("Name")).toHaveValue("Ops overview");
+
+    const saveButton = within(modal).getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("save-dashboard")).toBe(true);
+    });
+    expect(await screen.findByText("saved dashboard")).toBeInTheDocument();
   });
 });

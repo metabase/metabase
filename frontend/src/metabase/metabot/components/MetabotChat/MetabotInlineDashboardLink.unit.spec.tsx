@@ -97,7 +97,7 @@ describe("MetabotInlineDashboardLink", () => {
 
     expect(
       screen.getByRole("link", { name: "Open dashboard" }),
-    ).toHaveAttribute("href", Urls.generatedDashboard(dashboard));
+    ).toHaveAttribute("href", Urls.generatedDashboard(dashboard, "convo-1"));
   });
 
   it("does not offer saving for x-ray dashboards or in readonly mode", () => {

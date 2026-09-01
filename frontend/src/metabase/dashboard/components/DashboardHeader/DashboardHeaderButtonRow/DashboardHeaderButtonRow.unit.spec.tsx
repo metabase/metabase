@@ -111,6 +111,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   DASHBOARD_SUBSCRIPTIONS: {},
   REFRESH_INDICATOR: {},
+  SAVE_ADHOC_DASHBOARD: {},
 };
 
 const setup = ({

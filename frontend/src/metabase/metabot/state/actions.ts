@@ -577,7 +577,9 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                const path = Urls.generatedEntity(part.data);
+                const path = Urls.generatedEntity(part.data, {
+                  conversationId,
+                });
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
