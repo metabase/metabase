@@ -1,10 +1,10 @@
 import cx from "classnames";
 import type { CSSProperties, ComponentType } from "react";
-import { noop } from "underscore";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
@@ -92,9 +92,8 @@ const ChartSettingsWidget = ({
               ...props, // spread here intentionally, to prevent overriding the base props below
               id: extraWidgetProps.id,
               value: extraWidgetProps.value,
-              // A widget mount without handlers renders read-only rather than crashing the panel.
-              onChange: extraWidgetProps.onChange ?? noop,
-              onChangeSettings: extraWidgetProps.onChangeSettings ?? noop,
+              onChange: checkNotNull(extraWidgetProps.onChange),
+              onChangeSettings: checkNotNull(extraWidgetProps.onChangeSettings),
             }}
           />
         ) : (

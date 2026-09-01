@@ -77,26 +77,4 @@ describe("ChartSettingsWidget", () => {
       onChangeSettings,
     });
   });
-
-  it("falls back to no-op handlers instead of crashing when none are provided", () => {
-    const mount: WidgetMount = () => ({
-      update: () => undefined,
-      unmount: () => undefined,
-    });
-    const { mountedProps } = setup({
-      props: {
-        id: "threshold",
-        question: {},
-        title: "Threshold",
-        value: 1,
-        widget: mount,
-        onChangeSeriesColor: jest.fn(),
-        onShowWidget: jest.fn(),
-      },
-    });
-
-    expect(typeof mountedProps?.onChange).toBe("function");
-    expect(typeof mountedProps?.onChangeSettings).toBe("function");
-    expect(() => mountedProps?.onChange?.(2)).not.toThrow();
-  });
 });
