@@ -2,7 +2,7 @@ import slugg from "slugg";
 
 import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
-import { ADHOC_DASHBOARD_PATH } from "metabase/utils/dashboard";
+import { getAdhocDashboardId } from "metabase/utils/dashboard";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
@@ -36,7 +36,7 @@ export type AdhocDashboardDefinition = {
 };
 
 export function adhocDashboard(definition: AdhocDashboardDefinition) {
-  return `${ADHOC_DASHBOARD_PATH}#${utf8_to_b64url(JSON.stringify(definition))}`;
+  return getAdhocDashboardId(utf8_to_b64url(JSON.stringify(definition)));
 }
 
 type DashboardUrlBuilderOpts = {

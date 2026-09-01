@@ -190,7 +190,11 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
     isDashboardLoading ||
     isDocumentLoading
   ) {
-    return <Skeleton h="1rem" w="18rem" data-testid="entity-saved-loading" />;
+    return (
+      <Skeleton visible w="18rem" data-testid="entity-saved-loading">
+        <Text>&nbsp;</Text>
+      </Skeleton>
+    );
   }
 
   const savedEntity = match({ card, savedDashboard })
