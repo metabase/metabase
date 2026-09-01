@@ -49,20 +49,23 @@ export const useChartSettingsState = ({
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
   const display = series[0]?.card?.display;
+  // For a custom viz this is defined only once the plugin bundle has loaded and registered.
+  // The registry isn't reactive, so a registration is picked up on the re-render that
+  // `useAutoLoadCustomVizPlugin` (in `useSettingsWidgets`) triggers when loading finishes.
   const visualization = getVisualizationRaw(series);
   const chartSettings = useMemo(() => {
     if (settings) {
       return settings;
     }
 
-    // Only custom viz needs the stored-settings migration
-    return isCustomVizDisplay(display)
-      ? getStoredSettingsForSeries(series)
-      : series[0].card.visualization_settings;
+    // Only custom viz needs the stored-settings migration, and only once its plugin has
+    // registered its setting definitions. Every other case keeps the raw stored settings
+    // so an unrelated edit doesn't rewrite the stored shape.
+    if (!isCustomVizDisplay(display) || !visualization) {
+      return series[0].card.visualization_settings;
+    }
 
-    // getStoredSettingsForSeries reads the registry internally; `visualization`
-    // forces a recompute once an async custom viz plugin registers.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return getStoredSettingsForSeries(series);
   }, [series, settings, display, visualization]);
 
   const handleChangeSettings = useCallback(
