@@ -5,6 +5,7 @@ import {
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
+  clickNewEmbedButton,
   getEmbedSidebar,
   navigateToEntitySelectionStep,
   navigateToGetCodeStep,
@@ -43,7 +44,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
 
     H.modal().should("not.exist");
-    cy.findAllByTestId("sdk-setting-card").should("be.visible");
+    cy.findByTestId("embedding-hub-main")
+      .findByRole("heading", { name: "Security" })
+      .should("be.visible");
   });
 
   it("should close wizard when clicking `Done` button on the last step", () => {
@@ -62,7 +65,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     });
 
     H.modal().should("not.exist");
-    cy.findAllByTestId("sdk-setting-card").should("be.visible");
+    cy.findByTestId("embedding-hub-main")
+      .findByRole("heading", { name: "Security" })
+      .should("be.visible");
   });
 
   it("should close wizard when navigating back in browser history", () => {
@@ -72,13 +77,11 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       .should("be.visible");
 
     cy.visit("/embedding/security");
-    cy.findAllByTestId("sdk-setting-card").should("be.visible");
+    cy.findByTestId("embedding-hub-main")
+      .findByRole("heading", { name: "Security" })
+      .should("be.visible");
 
-    cy.findAllByTestId("sdk-setting-card")
-      .first()
-      .within(() => {
-        cy.findByText("New embed").click();
-      });
+    clickNewEmbedButton();
 
     cy.wait("@dashboard");
 
@@ -126,22 +129,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
           .click();
       };
 
-      const openFromAdminEmbedding = () => {
+      const openFromEmbeddingHub = () => {
         cy.visit("/embedding/security");
-        cy.findAllByTestId("sdk-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
-      };
-
-      const openFromAdminGuestEmbeds = () => {
-        cy.visit("/embedding/security");
-        cy.findAllByTestId("guest-embeds-setting-card")
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
       };
 
       const openFromSharingMenu = () => {
@@ -168,29 +158,21 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
         openFromCommandPalette();
         assertCheckedAuth("sso");
 
-        openFromAdminEmbedding();
+        openFromEmbeddingHub();
         assertCheckedAuth("sso");
 
         openFromSharingMenu();
         assertCheckedAuth("sso");
-
-        // The Guest embeds admin section is intentionally guest-only and
-        // forces guest mode regardless of SSO configuration.
-        openFromAdminGuestEmbeds();
-        assertCheckedAuth("guest");
       });
 
       it("defaults to Guest from all entry points when SSO is not configured", () => {
         openFromCommandPalette();
         assertCheckedAuth("guest");
 
-        openFromAdminEmbedding();
+        openFromEmbeddingHub();
         assertCheckedAuth("guest");
 
         openFromSharingMenu();
-        assertCheckedAuth("guest");
-
-        openFromAdminGuestEmbeds();
         assertCheckedAuth("guest");
       });
     });
