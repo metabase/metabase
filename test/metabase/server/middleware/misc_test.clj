@@ -67,11 +67,11 @@
             ((mw.misc/maybe-set-site-url (fn [_req respond _raise] (respond nil)))
              req identity (fn [e] (throw e))))]
     (testing "site-url is NOT derived from a non-superuser request, even before the first user exists"
-      (mt/with-temporary-setting-values [site-url nil]
-        (run-middleware (assoc (mock-request "/api/setup" nil nil "evil.attacker.example")
+      (mt/with-temporary-setting-values [site-url nil, has-user-setup false]
+        (run-middleware (assoc (mock-request "/api/setup" nil nil "attacker.example")
                                :is-superuser? false))
         (is (nil? (system/site-url))
-            "an anonymous pre-setup request must not set site-url")))
+            "a pre-setup request does not set site-url")))
     (testing "site-url IS derived from an authenticated superuser request"
       (mt/with-temporary-setting-values [site-url nil]
         (run-middleware (assoc (mock-request "/" nil nil "mb.example.com")
