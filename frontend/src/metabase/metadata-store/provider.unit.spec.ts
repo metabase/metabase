@@ -84,9 +84,6 @@ describe("selectMetadataProviderFactory", () => {
 
 describe("the Metadata object these selectors build on", () => {
   it("is the one plain getMetadata callers already hold", () => {
-    // getMetadata is memoised per argument list, so passing an explicit
-    // undefined would build a second Metadata, and with it a second set of
-    // metabase-lib caches over the same data.
     const provider = selectMetadataProvider(state, SAMPLE_DB_ID);
     const fromPlainSelector = Lib.metadataProvider(
       SAMPLE_DB_ID,
@@ -96,7 +93,10 @@ describe("the Metadata object these selectors build on", () => {
     expect(provider === fromPlainSelector).toBe(true);
   });
 
-  it("splits when getMetadata is called with a different arity", () => {
-    expect(getMetadata(state) === getMetadata(state, undefined)).toBe(false);
+  it("does not split when getMetadata is called with a different arity", () => {
+    // Reselect keys its cache on the argument list, so getMetadata
+    // canonicalises its options. Without that, a bare call and an explicit
+    // undefined build two Metadata objects over the same records.
+    expect(getMetadata(state) === getMetadata(state, undefined)).toBe(true);
   });
 });
