@@ -146,7 +146,7 @@
    "192.175.48.1"                  ; direct delegation AS112 service
    "198.17.255.255"                ; one below the benchmarking range
    "198.20.0.0"                    ; one above the benchmarking range
-   "64:ff9b::1"                    ; globally reachable IPv4/IPv6 translation prefix
+   "64:ff9b::808:808"              ; NAT64 well-known prefix, translating to 8.8.8.8
    "2000::1"                       ; bottom of the allocated global-unicast space 2000::/3
    "2c0f:ffff::1"                  ; top of the allocated global-unicast space
    "2001:1::1"                     ; globally reachable exceptions inside 2001::/23
@@ -174,6 +174,9 @@
    "198.51.100.1"                 ; TEST-NET-2
    "203.0.113.1"                  ; TEST-NET-3
    "64:ff9b:1::1"                 ; local-use IPv4/IPv6 translation
+   "64:ff9b::1"                   ; NAT64 of 0.0.0.1, in "this network"
+   "64:ff9b::7f00:1"              ; NAT64 of 127.0.0.1
+   "64:ff9b::a9fe:a9fe"           ; NAT64 of the 169.254.169.254 metadata address
    "100::1"                       ; discard-only
    "100:0:0:1::1"                 ; dummy IPv6 prefix
    "2001::1"                      ; non-global entry inside IETF protocol assignments
@@ -223,6 +226,18 @@
          "::ffff:10.0.0.1"]       ; IPv4-mapped RFC1918
         (concat non-global-special-ips reserved-global-unicast-ips)))
 
+(deftest ^:parallel nat64-address-is-judged-by-the-ipv4-it-reaches-test
+  (testing (str "a NAT64 gateway translates the low 32 bits of 64:ff9b::/96 to an IPv4 address, so the prefix "
+                "being globally reachable says nothing about where a connection to it ends up")
+    (are [ip expected] (= expected (http/public-address? (InetAddress/getByName ip)))
+      "64:ff9b::808:808"    true       ; 8.8.8.8
+      "64:ff9b::7f00:1"     false      ; 127.0.0.1
+      "64:ff9b::a00:1"      false      ; 10.0.0.1
+      "64:ff9b::a9fe:a9fe"  false))    ; 169.254.169.254
+  (testing "and allow-private admits the private ones the way it admits the IPv4 they reach"
+    (is (true? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName "64:ff9b::a00:1"))))
+    (is (false? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName "64:ff9b::7f00:1"))))))
+
 (deftest ^:parallel public-address?-test
   (testing "globally reachable addresses are allowed"
     (doseq [ip public-ips]
@@ -258,7 +273,8 @@
       (is (false? (http/address-allowed-for-network-policy? :external-only (InetAddress/getByName ip))) ip)))
   (testing "allow-private re-admits exactly the private ranges -- RFC1918, IPv6 ULA and CGNAT"
     (doseq [ip ["10.1.2.3" "172.16.0.1" "172.31.255.255" "192.168.0.1"
-                "100.64.0.1" "100.127.255.255" "fc00::1" "fd12:3456::1"]]
+                "100.64.0.1" "100.127.255.255" "fc00::1" "fd12:3456::1"
+                "64:ff9b::a00:1"]]
       (is (true? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName ip))) ip)))
   (testing "allow-private still refuses loopback, link-local, any-local and multicast"
     (doseq [ip ["127.0.0.1" "::1" "169.254.169.254" "fe80::1" "0.0.0.0" "224.0.0.1" "ff02::1"]]
