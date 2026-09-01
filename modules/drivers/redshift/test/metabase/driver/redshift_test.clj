@@ -816,3 +816,18 @@
           predicate-lines (filter #(re-find #"^\s*(where|and)\b" %) (str/split-lines sql))]
       (is (str/includes? sql "as selectable"))
       (is (not-any? #(re-find #"has_(table|any_column)_privilege" %) predicate-lines)))))
+
+(deftest describe-database-tables-drops-unselectable-test
+  (testing "the query no longer filters on privilege, so the caller must, and only a boolean true passes"
+    ;; The other half of the guard above: moving the privilege calls into the select list means an unreadable
+    ;; relation now reaches Clojure, and this is the one place that drops it.
+    (mt/with-temp [:model/Database db {:engine :redshift, :details {}}]
+      (with-redefs [sql-jdbc.execute/reducible-query
+                    (fn [_database _sql]
+                      (for [[nm selectable] [["readable" true]
+                                             ["unreadable" false]
+                                             ["missing" nil]
+                                             ["stringly" "false"]]]
+                        {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
+        (is (= [{:name "readable", :schema "s", :description nil}]
+               (into [] (#'redshift/describe-database-tables db))))))))

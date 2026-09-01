@@ -227,11 +227,12 @@
         syncable? (fn [schema]
                     (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
     (eduction
-     ;; `selectable` is filtered here rather than in the SQL on purpose; `get-tables-sql` says why.
+     ;; `selectable` is filtered here rather than in the SQL on purpose; `get-tables-sql` says why. `true?` rather
+     ;; than truthiness so that a driver someday handing back the string "false" fails closed.
      ;;
      ;; `syncable?` is kept over the narrowed query too: it stays the definition of what syncs, and an exclusion
      ;; filter still arrives here with every schema.
-     (comp (filter :selectable)
+     (comp (filter (comp true? :selectable))
            (filter (comp syncable? :schema))
            (map #(dissoc % :type :selectable)))
      (sql-jdbc.execute/reducible-query database (get-tables-sql (exactly-named-schemas inclusion-patterns))))))
