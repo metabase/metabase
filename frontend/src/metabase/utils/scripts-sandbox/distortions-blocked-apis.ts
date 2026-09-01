@@ -112,6 +112,10 @@ for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
   const handler = `on${eventType}`;
   block(setter(Document.prototype, handler), `Document.set ${handler}`);
   block(setter(window, handler), `Window.set ${handler}`);
+  // Shouldn't be needed — per spec the accessor is on the instance — but
+  // `block` skips missing refs, so this is harmless and fails closed if an
+  // engine ever places it on the prototype.
+  block(setter(Window.prototype, handler), `Window.set ${handler}`);
 }
 
 // Referrer — URL of the page that linked here, which can leak internal
