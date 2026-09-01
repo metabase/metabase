@@ -24,8 +24,7 @@ export const getResourceSelectorButton = (
   options?: Partial<Cypress.Timeoutable>,
 ) => cy.findByTestId("embed-browse-entity-button", options);
 
-// "New embed" is a button in the embedding hub's nav, not inside a settings
-// card, since the embedding admin settings were removed.
+// "New embed" is a button in the embedding hub's nav.
 export const clickNewEmbedButton = () =>
   cy.findByRole("button", { name: "New embed" }).click();
 
