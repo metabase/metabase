@@ -37,7 +37,7 @@
 (def supported-models
   "Z.AI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576}
+  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :surface-reasoning? true}
    "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
 
 (defn context-window-tokens
@@ -45,16 +45,10 @@
   [model]
   (get-in supported-models [model :context-window]))
 
-(def ^:private reasoning-models
-  "Models whose streamed reasoning we forward. GLM-5.3 always reasons (its `thinking` directive
-  cannot be disabled) and streams the content back as `reasoning_content` deltas. GLM-5.2 also
-  reasons by default, but predates reasoning display and keeps its output hidden."
-  #{"glm-5.3"})
-
 (defn reasoning-model?
   "Whether `model` streams reasoning back to us that we surface."
   [model]
-  (contains? reasoning-models model))
+  (true? (get-in supported-models [model :surface-reasoning?])))
 
 (defn- supported-model?
   "Whether a `/models` catalog entry is one of the [[supported-models]]."

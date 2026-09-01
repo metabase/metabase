@@ -77,7 +77,8 @@
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000}
-   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576}
+   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576
+                                      :surface-reasoning? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
 
 (defn context-window-tokens
@@ -85,16 +86,10 @@
   [model]
   (get-in supported-models [model :context-window]))
 
-(def ^:private reasoning-models
-  "Models whose streamed reasoning we forward. GLM-5.3 always reasons (OpenRouter reports it cannot
-  be disabled) and streams the content back as reasoning deltas. The other whitelisted models either
-  are not asked to reason or, like GLM-5.2, predate reasoning display and keep their output hidden."
-  #{"z-ai/glm-5.3"})
-
 (defn reasoning-model?
   "Whether `model` streams reasoning back to us that we surface."
   [model]
-  (contains? reasoning-models model))
+  (true? (get-in supported-models [model :surface-reasoning?])))
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
