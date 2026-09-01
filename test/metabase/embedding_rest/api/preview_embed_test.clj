@@ -36,7 +36,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (card-url card)))))
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular false]
             (is (= "Embedding is not enabled."
                    (embed-test/with-temp-card [card]
                      (mt/user-http-request :crowberto :get 400 (card-url card)))))))
@@ -86,7 +86,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (card-query-url card)))))
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
@@ -232,7 +232,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (dashboard-url dash)))))
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (dashboard-url dash))))))
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
@@ -276,7 +276,7 @@
                  (mt/user-http-request :rasta :get 403 (dashcard-url dashcard)))))
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (is (= "Embedding is not enabled."
-                 (mt/with-temporary-setting-values [enable-embedding-static false]
+                 (mt/with-temporary-setting-values [enable-embedding-modular false]
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
@@ -468,7 +468,7 @@
                      (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))
             (testing "should fail if embedding is disabled"
               (is (= "Embedding is not enabled."
-                     (mt/with-temporary-setting-values [enable-embedding-static false]
+                     (mt/with-temporary-setting-values [enable-embedding-modular false]
                        (embed-test/with-new-secret-key!
                          (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
             (testing "should fail if embedding is enabled and the wrong key is used"
@@ -533,7 +533,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-modular true]
      (with-new-secret-key!
        ~@body)))
 
@@ -547,7 +547,7 @@
 
 (deftest card-params-values-test
   (testing "GET /api/preview_embed/card/:token/params/:param-key/values"
-    ;; Card endpoint uses check-and-unsign which requires enable-embedding-static,
+    ;; Card endpoint uses check-and-unsign which requires enable-embedding-modular,
     ;; unlike dashboard endpoints which skip the check in preview mode
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)

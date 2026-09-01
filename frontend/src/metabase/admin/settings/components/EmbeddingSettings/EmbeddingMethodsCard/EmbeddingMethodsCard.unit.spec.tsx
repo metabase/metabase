@@ -27,13 +27,7 @@ type SetupOpts = {
   envSettingKeys?: (keyof Settings)[];
   showEmbedTerms?: boolean;
 } & Partial<
-  Pick<
-    Settings,
-    | "enable-embedding-simple"
-    | "enable-embedding-sdk"
-    | "enable-embedding-static"
-    | "enable-embedding-interactive"
-  >
+  Pick<Settings, "enable-embedding-modular" | "enable-embedding-interactive">
 >;
 
 async function setup({
@@ -44,11 +38,9 @@ async function setup({
   ...values
 }: SetupOpts = {}) {
   const settingValues = createMockSettings({
-    "enable-embedding-simple": false,
-    "enable-embedding-sdk": false,
-    "enable-embedding-static": false,
+    "enable-embedding-modular": false,
     "enable-embedding-interactive": false,
-    "show-simple-embed-terms": showEmbedTerms,
+    "show-modular-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
       embedding: hasFullAppEmbedding,
@@ -57,12 +49,7 @@ async function setup({
   });
 
   const definitions = (
-    [
-      "enable-embedding-simple",
-      "enable-embedding-sdk",
-      "enable-embedding-static",
-      "enable-embedding-interactive",
-    ] as const
+    ["enable-embedding-modular", "enable-embedding-interactive"] as const
   ).map((key) =>
     createMockSettingDefinition({
       key,
@@ -114,72 +101,70 @@ describe("EmbeddingMethodsCard", () => {
   });
 
   describe("the merged switch", () => {
-    it.each([
-      "enable-embedding-simple",
-      "enable-embedding-sdk",
-      "enable-embedding-static",
-    ] as const)("reads on when only %s is on", async (settingKey) => {
-      await setup({ [settingKey]: true });
+    it("reads on when enable-embedding-modular is on", async () => {
+      await setup({ "enable-embedding-modular": true });
 
       // The merged row comes first, full-app second.
       const [mergedSwitch] = await screen.findAllByRole("switch");
       expect(mergedSwitch).toBeChecked();
     });
 
-    it("reads off only when all three are off", async () => {
+    it("reads off when enable-embedding-modular is off", async () => {
       await setup();
 
-      const switches = await screen.findAllByRole("switch");
-      expect(switches[0]).not.toBeChecked();
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      expect(mergedSwitch).not.toBeChecked();
     });
 
-    it("writes all three settings at once", async () => {
+    it("writes the one setting the three methods now share", async () => {
       await setup();
 
-      const switches = await screen.findAllByRole("switch");
-      await userEvent.click(switches[0]);
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(mergedSwitch);
 
       await waitFor(async () => {
         expect(await findRequests("PUT")).toHaveLength(1);
       });
 
       const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({
-        "enable-embedding-simple": true,
-        "enable-embedding-sdk": true,
-        "enable-embedding-static": true,
-      });
+      expect(body).toEqual({ "enable-embedding-modular": true });
     });
 
-    // The terms modal intercepts the first enable, so it writes the settings
-    // that switch stands for rather than the switch's own handler.
-    it("writes all three from the terms modal on the first enable", async () => {
+    it("asks the admin to accept the terms before turning embedding on", async () => {
       await setup({ showEmbedTerms: true });
 
-      const switches = await screen.findAllByRole("switch");
-      await userEvent.click(switches[0]);
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(mergedSwitch);
 
+      expect(
+        await screen.findByText(
+          "Each end user needs their own Metabase account",
+        ),
+      ).toBeInTheDocument();
       expect(await findRequests("PUT")).toHaveLength(0);
+    });
 
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Agree" }),
-      );
+    // The terms are about paid methods and about shared accounts as unfair use
+    // of a paid seat, so guest embeds below the paywall never trigger them.
+    it("does not ask an OSS admin to accept the terms", async () => {
+      await setup({ hasSimpleEmbedding: false, showEmbedTerms: true });
+
+      const [guestSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(guestSwitch);
 
       await waitFor(async () => {
         expect(await findRequests("PUT")).toHaveLength(1);
       });
 
       const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({
-        "enable-embedding-simple": true,
-        "enable-embedding-sdk": true,
-        "enable-embedding-static": true,
-        "show-simple-embed-terms": false,
-      });
+      expect(body).toEqual({ "enable-embedding-modular": true });
+      expect(
+        screen.queryByText("Each end user needs their own Metabase account"),
+      ).not.toBeInTheDocument();
     });
 
-    it("locks the row when any of the three is pinned to an env var", async () => {
-      await setup({ envSettingKeys: ["enable-embedding-sdk"] });
+    it("locks the row when the setting is pinned to an env var", async () => {
+      await setup({ envSettingKeys: ["enable-embedding-modular"] });
 
       expect(
         await screen.findByText("Set via environment variable"),

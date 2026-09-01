@@ -19,7 +19,7 @@ import {
 import { EmbeddingHubSecurityPage } from "./EmbeddingHubSecurityPage";
 
 interface SetupOpts {
-  isGuestEmbedsEnabled?: Settings["enable-embedding-static"];
+  isGuestEmbedsEnabled?: Settings["enable-embedding-modular"];
   isFullAppEmbeddingEnabled?: Settings["enable-embedding-interactive"];
   hasSimpleEmbedding?: boolean;
   dashboards?: Dashboard[];
@@ -34,7 +34,7 @@ function setup({
   cards = [],
 }: SetupOpts) {
   const settings = createMockSettings({
-    "enable-embedding-static": isGuestEmbedsEnabled,
+    "enable-embedding-modular": isGuestEmbedsEnabled,
     "enable-embedding-interactive": isFullAppEmbeddingEnabled,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,

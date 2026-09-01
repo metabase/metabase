@@ -12,7 +12,7 @@
                   :consistent-alias                                                    2
                   :def-fn                                                              1
                   :deprecated-namespace                                                95
-                  :deprecated-var                                                      86
+                  :deprecated-var                                                      96
                   :discouraged-java-method                                             4
                   :discouraged-namespace                                               81
                   :discouraged-var                                                     130

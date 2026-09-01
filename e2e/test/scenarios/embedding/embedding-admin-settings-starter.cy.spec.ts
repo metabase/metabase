@@ -7,7 +7,7 @@ describe("scenarios > embedding > admin settings > starter", () => {
 
     H.activateToken("starter");
 
-    H.updateSetting("show-sdk-embed-terms", false);
+    H.updateSetting("show-modular-embed-terms", false);
   });
 
   it("shows all embedding types without the setup guide", () => {

@@ -1,26 +1,10 @@
 import { useState } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Modal, type ModalProps, Text } from "metabase/ui";
 
-type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
-
-export const EmbeddingLegaleseModal = ({
-  setting,
-  mergedSettingKeys = [],
-  opened,
-  onClose,
-}: ModalProps & {
-  setting: SettingKey;
-  /**
-   * The other settings the switch that opened this modal writes. Accepting has
-   * to write them too, or the switch reads on while the methods it stands for
-   * stay off.
-   */
-  mergedSettingKeys?: string[];
-}) => {
+export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -28,11 +12,8 @@ export const EmbeddingLegaleseModal = ({
     setLoading(true);
 
     await updateSettings({
-      [setting]: true,
-      ...Object.fromEntries(mergedSettingKeys.map((key) => [key, true])),
-
-      // hide the legalese modal and popups.
-      [getShowEmbedTermsSetting(setting)]: false,
+      "enable-embedding-modular": true,
+      "show-modular-embed-terms": false,
     });
 
     setLoading(false);
@@ -67,9 +48,3 @@ export const EmbeddingLegaleseModal = ({
     </Modal>
   );
 };
-
-const getShowEmbedTermsSetting = (key: SettingKey) =>
-  match(key)
-    .with("enable-embedding-sdk", () => "show-sdk-embed-terms")
-    .with("enable-embedding-simple", () => "show-simple-embed-terms")
-    .exhaustive();

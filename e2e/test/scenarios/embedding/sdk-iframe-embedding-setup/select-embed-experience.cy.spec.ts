@@ -24,8 +24,7 @@ describe(suiteTitle, () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
 
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("enable-embedding-modular", true);
     H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");

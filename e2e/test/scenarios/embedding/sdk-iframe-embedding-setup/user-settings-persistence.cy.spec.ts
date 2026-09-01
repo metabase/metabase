@@ -46,7 +46,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-modular", true);
 
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",

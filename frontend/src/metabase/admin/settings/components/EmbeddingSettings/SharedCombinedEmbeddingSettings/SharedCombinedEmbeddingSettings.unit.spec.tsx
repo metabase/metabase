@@ -21,7 +21,9 @@ import {
 import { SharedCombinedEmbeddingSettings } from "./SharedCombinedEmbeddingSettings";
 
 const setup = async ({ enabled }: { enabled: boolean }) => {
-  const settings = createMockSettings({ "enable-embedding-static": enabled });
+  const settings = createMockSettings({
+    "enable-embedding-modular": enabled,
+  });
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
@@ -59,7 +61,7 @@ describe("SharedCombinedEmbeddingSettings", () => {
     const [{ url, body }] = puts;
     expect(url).toContain("/setting");
     expect(body).toEqual({
-      "enable-embedding-static": true,
+      "enable-embedding-modular": true,
     });
   });
 

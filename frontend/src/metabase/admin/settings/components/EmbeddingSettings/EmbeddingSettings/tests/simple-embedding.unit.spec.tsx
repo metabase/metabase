@@ -18,9 +18,8 @@ const setup = (opts: SetupOpts = {}) =>
 describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
   it("should show both SDK and Simple Embedding toggles", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      isEmbeddingEnabled: false,
+      showModularEmbedTerms: false,
     });
 
     const toggles = screen.getAllByRole("switch");
@@ -41,9 +40,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      isEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
     });
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -66,9 +64,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
   it("should update simple embedding settings when user accepts terms", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      isEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
     });
 
     const toggle = await screen.findByRole("switch", {
@@ -84,16 +81,34 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     const [{ body }] = puts;
     expect(body).toEqual({
-      "enable-embedding-simple": true,
-      "show-simple-embed-terms": false,
+      "enable-embedding-modular": true,
+      "show-modular-embed-terms": false,
     });
+  });
+
+  // Guest embeds are free and prompt for nothing, so an OSS admin can turn
+  // embedding on and arrive on Pro with the terms never accepted. The toggle
+  // prompts on off -> on only, so it stays quiet here by design -- the embed
+  // flow asks for the terms instead. Agreed in EMB-2253.
+  it("does not prompt for the terms when embedding is already on, as after an upgrade from OSS", async () => {
+    await setup({
+      isEmbeddingEnabled: true,
+      showModularEmbedTerms: true,
+    });
+
+    expect(
+      await screen.findByRole("switch", {
+        name: "Enable modular embedding toggle",
+      }),
+    ).toBeChecked();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("should show embed button and docs when simple embedding is available", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      isEmbeddingEnabled: true,
+      showModularEmbedTerms: false,
     });
 
     const card = screen

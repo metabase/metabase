@@ -452,9 +452,7 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
-  "enable-embedding-static": boolean;
-  "enable-embedding-sdk": boolean;
-  "enable-embedding-simple": boolean;
+  "enable-embedding-modular": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
@@ -507,8 +505,7 @@ interface AdminSettings {
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "show-sdk-embed-terms": boolean | null;
-  "show-simple-embed-terms": boolean | null;
+  "show-modular-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
