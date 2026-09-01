@@ -131,18 +131,11 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
-    markChartSaved: (
+    markEntitySaved: (
       state,
-      action: PayloadAction<{ entityId: string; cardId: number }>,
+      action: PayloadAction<{ entityId: string; savedId: number }>,
     ) => {
-      state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
-    },
-    markDashboardSaved: (
-      state,
-      action: PayloadAction<{ entityId: string; dashboardId: number }>,
-    ) => {
-      state.savedDashboardIds[action.payload.entityId] =
-        action.payload.dashboardId;
+      state.savedEntityIds[action.payload.entityId] = action.payload.savedId;
     },
     // CONVERSATION REDUCERS
     setConversationTitle: convoReducer(

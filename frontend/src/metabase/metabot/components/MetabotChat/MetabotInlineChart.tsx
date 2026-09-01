@@ -14,7 +14,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
+import { getSavedEntityId, markEntitySaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -60,7 +60,7 @@ export function MetabotInlineChart({
   const datasetQuery = query.query;
   const clipboard = useClipboard();
   const recordedCardId = useSelector((state) =>
-    getSavedChartCardId(state, chartId),
+    getSavedEntityId(state, chartId),
   );
   const siteUrl = useSetting("site-url");
 
@@ -219,7 +219,7 @@ function SaveChartAction({
       },
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ entityId: chartId, cardId: created.id }));
+    dispatch(markEntitySaved({ entityId: chartId, savedId: created.id }));
     dispatch(
       addUndo({
         icon: "check_filled",
