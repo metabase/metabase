@@ -259,7 +259,12 @@
       (doseq [token-uri ["http://169.254.169.254/latest/meta-data/"
                          "https://127.0.0.1/token"
                          "https://evil.example.com/token"
-                         "http://oauth2.googleapis.com/token"]]
+                         "http://oauth2.googleapis.com/token"
+                         ;; the whole URI is pinned, not just its origin
+                         "https://accounts.google.com/not-a-token-endpoint"
+                         "https://oauth2.googleapis.com:8443/token"
+                         "https://oauth2.googleapis.com/token?x=1"
+                         "https://oauth2.googleapis.com/token/../../evil"]]
         (testing token-uri
           (is (=? {:api-error   true
                    :status-code 400
