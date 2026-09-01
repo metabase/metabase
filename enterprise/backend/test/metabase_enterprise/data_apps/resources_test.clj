@@ -73,6 +73,8 @@
                                           :group_id permission_group_id
                                           :db_id (mt/id)
                                           :perm_type perm-type))]
+      (testing "the app group is flagged as a data-app group (its own namespace)"
+        (is (true? (t2/select-one-fn :is_data_app_group :model/PermissionsGroup :id permission_group_id))))
       (testing "the app group is blocked at the database level, granting no data access of its own"
         (is (=? [{:table_id nil, :perm_value :blocked}] (perm :perms/view-data)))
         (testing "view-data :blocked cascades download-results/transforms to :no"
@@ -88,6 +90,38 @@
         (data-app.resources/ensure-resources! app)
         (is (=? [{:table_id nil, :perm_value :no}] (perm :perms/download-results)))
         (is (=? [{:table_id nil, :perm_value :blocked}] (perm :perms/view-data)))))))
+
+(deftest data-app-groups-in-the-groups-api-test
+  (testing "GET /api/permissions/group hides data-app groups from every consumer; only the admin Groups
+            page opts in (include_stale_app_groups) to also see a stale one so it can be deleted"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"}]
+        (let [app     (create-data-app! "some-app")
+              {app-group-id :permission_group_id} (data-app.resources/ensure-resources! app)
+              group   (fn [url id] (some #(when (= id (:id %)) %)
+                                         (mt/user-http-request :crowberto :get 200 url)))
+              default #(group "permissions/group" %)
+              admin   #(group "permissions/group?include_stale_app_groups=true" %)]
+          (testing "a normal group is always listed"
+            (is (some? (default normal-group-id)))
+            (is (some? (admin normal-group-id))))
+          (testing "an active data-app group is hidden from both views"
+            (is (nil? (default app-group-id)))
+            (is (nil? (admin app-group-id))))
+          (testing "when the app is gone but its group remains (stale) the group is"
+            ;; Delete only the data_app row (raw, no cascade), leaving its group behind — the stale case.
+            (t2/delete! :data_app :id (:id app))
+            (testing "still hidden from the default view every other consumer uses"
+              (is (nil? (default app-group-id))))
+            (testing "surfaced and flagged only for the admin Groups page"
+              (is (=? {:id app-group-id, :is_data_app_group true} (admin app-group-id))))))))))
+
+(deftest stale-data-app-group-can-be-deleted-test
+  (testing "a stale data-app group (flagged, no app) is removable through the standard endpoint, so an
+            admin can clean it up from the groups page"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Data App: orphaned" :is_data_app_group true}]
+      (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
+      (is (not (t2/exists? :model/PermissionsGroup :id group-id))))))
 
 (deftest sso-group-sync-does-not-add-a-user-to-a-data-app-group-test
   (testing "a data app's permission group is server-managed: membership is granted by an admin, not

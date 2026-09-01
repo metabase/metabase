@@ -51,6 +51,65 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
+  it("keeps a data app's server-managed permission group out of the admin Groups list", () => {
+    // Provisioning a data app draft creates its permission group as a side effect.
+    cy.request("POST", "/api/apps/hidden-app/draft").then(({ body }) => {
+      expect(
+        body.permission_group_id,
+        "the draft provisions a permission group",
+      ).to.be.a("number");
+      const dataAppGroupId = body.permission_group_id;
+
+      // The groups API — the source for the admin Groups list — omits it.
+      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+        const ids = groups.map((group: { id: number }) => group.id);
+        expect(ids).not.to.include(dataAppGroupId);
+      });
+    });
+
+    cy.visit("/admin/people/groups");
+    cy.findByTestId("admin-panel").within(() => {
+      cy.findByText("All Users").should("be.visible");
+      cy.findByText("Data App: hidden-app").should("not.exist");
+    });
+  });
+
+  it("surfaces a stale data-app group only on the Groups page, where it can be deleted", () => {
+    const STALE_GROUP = "Data App: orphaned";
+
+    // A stale group is a leftover no product flow can create (the app is gone but its group survives),
+    // so a test-only endpoint seeds one directly: flagged, with no backing app.
+    cy.request("POST", "/api/testing/stale-data-app-group", {
+      name: STALE_GROUP,
+    }).then(({ body: staleGroup }) => {
+      // It is hidden from the shared groups endpoint every other consumer uses.
+      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+        const ids = groups.map((group: { id: number }) => group.id);
+        expect(ids).not.to.include(staleGroup.id);
+      });
+
+      cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+      cy.visit("/admin/people/groups");
+
+      cy.findByLabelText(`group-${staleGroup.id}-row`).within(() => {
+        cy.findByText(STALE_GROUP).should("be.visible");
+        cy.findByText("Stale").should("be.visible");
+        // Shown as plain text, not a link to a detail page.
+        cy.findByRole("link", { name: new RegExp(STALE_GROUP) }).should(
+          "not.exist",
+        );
+        // A direct trash action rather than the "…" menu.
+        cy.findByLabelText("group-action-button").should("not.exist");
+        cy.findByLabelText("Remove Group").click();
+      });
+
+      H.modal().findByRole("button", { name: "Remove group" }).click();
+      cy.wait("@deleteGroup");
+
+      cy.findByLabelText(`group-${staleGroup.id}-row`).should("not.exist");
+    });
+  });
+
   it("dismisses the promo banner and keeps it hidden across a reload", () => {
     cy.intercept("GET", "/api/apps/repo-status", { configured: true });
     cy.intercept("GET", "/api/apps", []);

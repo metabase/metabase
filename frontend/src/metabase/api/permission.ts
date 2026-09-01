@@ -53,7 +53,12 @@ export const permissionApi = Api.injectEndpoints({
     }),
     listPermissionsGroups: builder.query<
       GroupListQuery[],
-      { tenancy?: "external" | "internal" } | undefined
+      | {
+          tenancy?: "external" | "internal";
+          // Admin Groups page only: also return stale data-app groups so they can be deleted.
+          include_stale_app_groups?: boolean;
+        }
+      | undefined
     >({
       query: (params) => ({
         method: "GET",

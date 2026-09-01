@@ -84,8 +84,15 @@
   (next-method (dissoc data-app :bundle) json-generator))
 
 (defenterprise data-app-group-ids
-  "The data-app permission groups (the `permission_group_id` of every data app). SSO group sync must
-   never touch their membership, and newly-synced tables default to `:blocked` for them."
+  "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
+   their membership, and newly-synced tables default to `:blocked` for them."
   :feature :none
   []
-  (into #{} (t2/select-fn-set :permission_group_id :model/DataApp :permission_group_id [:not= nil])))
+  (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
+
+(defenterprise active-data-app-group-ids
+  "Group ids a live `data_app` row still points at — the data-app groups whose app has not been removed."
+  :feature :none
+  []
+  (into #{} (keep :permission_group_id)
+        (t2/select [:model/DataApp :permission_group_id] :permission_group_id [:not= nil])))

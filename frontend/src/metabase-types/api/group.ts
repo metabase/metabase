@@ -31,6 +31,8 @@ export type GroupInfo = {
     | "data-analyst"
     | null;
   is_tenant_group?: boolean;
+  // Server-managed data-app group. Only stale ones (their app removed) reach the groups UI.
+  is_data_app_group?: boolean;
 };
 
 export type Group = GroupInfo & {

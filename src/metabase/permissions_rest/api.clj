@@ -156,10 +156,14 @@
   Optional query parameter `tenancy` can be used to filter groups:
   - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
-  - No `tenancy` parameter: Returns all groups (default behavior)"
+  - No `tenancy` parameter: Returns all groups (default behavior)
+
+  Data-app groups are hidden by default. `include_stale_app_groups=true` (used only by the admin Groups
+  page) additionally returns *stale* ones — flagged groups whose app was removed — so they can be deleted."
   [_route_params
-   {:keys [tenancy]} :- [:map
-                         [:tenancy {:optional true} [:enum "external" "internal"]]]]
+   {:keys [tenancy include_stale_app_groups]} :- [:map
+                                                  [:tenancy {:optional true} [:enum "external" "internal"]]
+                                                  [:include_stale_app_groups {:default false} [:maybe ms/BooleanValue]]]]
   (try
     (perms/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
@@ -174,6 +178,13 @@
                                       :where  [:and
                                                [:= :user_id api/*current-user-id*]
                                                [:= :is_group_manager true]]}])
+         ;; Data-app groups are a server-managed namespace, hidden from the groups UI everywhere. Only the
+         ;; admin Groups page opts in to also see a stale one (its app removed) so it can be deleted;
+         ;; active app groups stay hidden even then.
+         (if include_stale_app_groups
+           (when-let [active-app-group-ids (not-empty (perms/active-data-app-group-ids))]
+             [:not [:in :id active-app-group-ids]])
+           [:not :is_data_app_group])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
          (when-not (premium-features/enable-advanced-permissions?)
