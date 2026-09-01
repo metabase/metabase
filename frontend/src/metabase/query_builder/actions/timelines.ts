@@ -5,6 +5,8 @@ import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   hideTimelineEvents as hideEventsInVisibility,
   hideTimelines as hideTimelinesInVisibility,
+  isSameTimelineEventsVisibility,
+  showCreatedTimelineEvent as showCreatedEventInVisibility,
   showTimelineEvents as showEventsInVisibility,
   showTimelines as showTimelinesInVisibility,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -26,16 +28,22 @@ const updateTimelineEventsVisibility =
   (update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const visibility = update(
-      getTimelineEventsVisibility(state),
-      getTransformedTimelines(state),
-    );
-    dispatch(onUpdateVisualizationSettings(visibility));
+    const visibility = getTimelineEventsVisibility(state);
+    const nextVisibility = update(visibility, getTransformedTimelines(state));
+
+    if (!isSameTimelineEventsVisibility(visibility, nextVisibility)) {
+      dispatch(onUpdateVisualizationSettings(nextVisibility));
+    }
   };
 
 export const showTimelineEvents = (events: TimelineEvent[]) =>
   updateTimelineEventsVisibility((visibility, timelines) =>
     showEventsInVisibility(visibility, events, timelines),
+  );
+
+export const showCreatedTimelineEvent = (event: TimelineEvent) =>
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    showCreatedEventInVisibility(visibility, event, timelines),
   );
 
 export const hideTimelineEvents = (events: TimelineEvent[]) =>

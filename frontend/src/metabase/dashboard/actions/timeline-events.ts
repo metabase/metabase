@@ -1,5 +1,4 @@
 import { createAction } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getDashCardTimelineEventsVisibility } from "metabase/dashboard/timeline-events/selectors";
@@ -10,6 +9,7 @@ import type {
   TimelineEventsSelection,
 } from "metabase/redux/store";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { isSameTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
@@ -41,7 +41,7 @@ export const updateDashCardsTimelineEventsVisibility =
         const visibility =
           getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
         const nextVisibility = update(visibility, timelines);
-        return _.isEqual(visibility, nextVisibility)
+        return isSameTimelineEventsVisibility(visibility, nextVisibility)
           ? []
           : [[dashcardId, nextVisibility]];
       },
