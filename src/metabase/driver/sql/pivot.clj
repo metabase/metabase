@@ -16,6 +16,7 @@
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.performance :refer [empty? mapv some]]))
 
 (set! *warn-on-reflection* true)
@@ -203,10 +204,9 @@
   UA pivot compiler. `breakout-expr` is the compiled breakout HoneySQL, kept as an argument so
   driver overrides can read its `:database-type` metadata (via [[h2x/database-type]]).
 
-  Default is a bare `NULL`, which every dialect except BigQuery infers from sibling `UNION ALL`
-  branches. Drivers with strict `UNION ALL` type coercion (BigQuery infers untyped `NULL` as
-  `INT64` and then rejects the union against `TIMESTAMP` / `STRING` siblings) override this to
-  emit a typed `CAST(NULL AS <type>)`."
+  Default is a bare `NULL`, which most dialects infer from sibling `UNION ALL` branches. Dialects
+  that leave untyped `NULL` untyped and reject the union override this and typically call
+  [[typed-cast-null-hsql]] to emit `CAST(NULL AS <breakout-db-type>)`."
   {:added "0.64.0", :arglists '([driver breakout-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -214,6 +214,14 @@
 (defmethod null-pad-breakout-hsql :sql
   [_driver _breakout-expr]
   nil)
+
+(defn typed-cast-null-hsql
+  "Returns `CAST(NULL AS <db-type>)` when `breakout-expr` carries a `:database-type`
+  compatible with the dialect's raw type grammar, otherwise falls back to bare `NULL`."
+  [breakout-expr]
+  (if-let [db-type (h2x/database-type breakout-expr)]
+    (h2x/cast db-type nil)
+    nil))
 
 (defn- compile-union-all-pivot
   "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
