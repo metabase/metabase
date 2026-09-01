@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.dashboards.constants :as dashboard.constants]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -119,6 +120,33 @@
     chart_id (assoc :chart_id chart_id)
     query_id (assoc :query_id query_id)))
 
+(defn- tile->definition [{:keys [chart_id query_id title row col size_x size_y]}]
+  (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
+        query (if chart
+                (or (first (:queries chart))
+                    (get (shared/current-queries-state) (:query_id chart)))
+                (get (shared/current-queries-state) query_id))]
+    (when-not query
+      (agent-error!
+       (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
+            (or chart_id query_id))))
+    {:title         title
+     :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
+                        (some-> (get-in chart [:chart_config :display_type]) name)
+                        "table")
+     :dataset_query (links/->legacy-mbql query)
+     :row           row
+     :col           col
+     :size_x        size_x
+     :size_y        size_y}))
+
+(defn- dashboard-url [dashboard-name description positioned-tiles]
+  (str "/dashboard/adhoc#"
+       (streaming/->url-hash
+        (cond-> {:name  dashboard-name
+                 :tiles (mapv tile->definition positioned-tiles)}
+          description (assoc :description description)))))
+
 (mu/defn ^{:tool-name "create_dashboard"
            :scope     scope/agent-dashboard-create}
   create-dashboard-tool
@@ -148,13 +176,12 @@
   (try
     (run! validate-tile! tiles)
     (let [dashboard-id (str (random-uuid))
+          positioned   (layout-tiles tiles)
           dashboard    (cond-> {:dashboard_id dashboard-id
                                 :name         dashboard-name
-                                :tiles        (mapv tile->state (layout-tiles tiles))}
+                                :tiles        (mapv tile->state positioned)}
                          description (assoc :description description))
-          url          (when-let [conversation-id (shared/current-conversation-id)]
-                         (str "/metabot/conversation/" conversation-id
-                              "/dashboard/" dashboard-id))]
+          url          (dashboard-url dashboard-name description positioned)]
       (when shared/*memory-atom*
         (swap! shared/*memory-atom* memory/set-dashboard dashboard-id dashboard))
       {:output            (str "<result>\nCreated dashboard \"" dashboard-name "\" with "

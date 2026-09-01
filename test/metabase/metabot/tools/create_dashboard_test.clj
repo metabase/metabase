@@ -1,11 +1,21 @@
 (ns metabase.metabot.tools.create-dashboard-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.create-dashboard :as create-dashboard]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json])
+  (:import
+   (java.util Base64)))
+
+(defn- decode-url-hash [url]
+  (-> (subs url (inc (str/index-of url "#")))
+      (->> (.decode (Base64/getDecoder)))
+      (String. "UTF-8")
+      json/decode+kw))
 
 (defn- tile [title width height]
   {:title title :width width :height height})
@@ -88,23 +98,21 @@
              (get-in @memory [:state :dashboards dashboard-id])))
       (is (= (get-in @memory [:state :dashboards])
              (get-in @memory [:turn-state :dashboards]))))
-    (testing "emits a generated_entity dashboard data part without a url outside a conversation"
-      (is (= [{:type      :data
-               :data-type "generated_entity"
-               :data      {:type "dashboard" :id dashboard-id :title "Ops overview"}}]
-             (:data-parts result))))
+    (testing "emits a generated_entity dashboard data part linking to the ad-hoc dashboard page"
+      (let [part-data (get-in result [:data-parts 0 :data])]
+        (is (= {:type "dashboard" :id dashboard-id :title "Ops overview"}
+               (dissoc part-data :url)))
+        (is (str/starts-with? (:url part-data) "/dashboard/adhoc#"))))
+    (testing "the url hash carries the full self-contained dashboard definition"
+      (let [payload (decode-url-hash (get-in result [:data-parts 0 :data :url]))]
+        (is (= "Ops overview" (:name payload)))
+        (is (= "Key ops charts." (:description payload)))
+        (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 6}
+                {:title "All venues" :display "table" :row 0 :col 12 :size_x 12 :size_y 9}]
+               (map #(dissoc % :dataset_query) (:tiles payload))))
+        (is (every? #(map? (:dataset_query %)) (:tiles payload)))))
     (testing "tells the model the dashboard is not saved yet"
       (is (re-find #"not saved anywhere yet" (:output result))))))
-
-(deftest create-dashboard-conversation-url-test
-  (let [memory (doto (chart-memory) (swap! assoc :conversation-id "convo-9"))
-        result (create! memory
-                        {:name  "Ops overview"
-                         :tiles [{:chart_id "c-1" :title "Venues by price" :width 12 :height 6}]})
-        dashboard-id (get-in result [:structured-output :dashboard_id])]
-    (testing "inside a conversation the data part links to the generated-dashboard page"
-      (is (= (str "/metabot/conversation/convo-9/dashboard/" dashboard-id)
-             (get-in result [:data-parts 0 :data :url]))))))
 
 (deftest create-dashboard-unknown-chart-test
   (let [result (create! (chart-memory)
