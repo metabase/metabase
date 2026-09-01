@@ -1727,7 +1727,6 @@
            request
            session
            settings
-           setup
            system
            users
            util
@@ -1871,6 +1870,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            util}}
 
   task-history

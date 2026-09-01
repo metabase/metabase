@@ -163,7 +163,9 @@
    {:decode/normalize (fn [tag]
                         (when-some [tag (common/normalize-map tag)]
                           (cond-> tag
-                            (:type tag) (update :type common/normalize-keyword))))}
+                            (:type tag) (update :type common/normalize-keyword))))
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
