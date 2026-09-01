@@ -15,10 +15,7 @@ import type {
   EmbeddingDataPicker,
   EmbeddingEntityType,
 } from "metabase/redux/store/embedding-data-picker";
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-} from "metabase/visualizations/types";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -179,7 +176,7 @@ export type SdkQuestionProviderProps = PropsWithChildren<
       /**
        * @internal
        */
-      getClickActionMode?: ClickActionModeGetter | undefined;
+      clickActionMode?: ClickActionsMode | undefined;
 
       /**
        * @internal
@@ -221,7 +218,7 @@ export type SdkQuestionContextType = Omit<
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: ClickActionsMode | null | undefined;
+    mode: ClickActionsMode;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     lastVisibleStageIndex: number;

@@ -14,17 +14,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export type ClickActionModeGetter = ((data: {
-  question: Question;
-}) => ClickActionsMode) & {
-  /**
-   * Answers whether the wrapped query mode has legacy actions for the given click.
-   * Only queryModeToClickActionMode defines it,
-   * so TableInteractive's add-column shortcut stays off for every other mode.
-   */
-  hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
-};
-
 export type {
   BrushClickObject,
   BrushRange,
@@ -218,12 +207,23 @@ export type Drill<
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 
+export type ClickActionModeContext = {
+  question?: Question;
+  settings?: VisualizationSettings;
+};
+
 export interface ClickActionsMode {
   actionsForClick(
     clicked: ClickObject,
-    settings?: Record<string, any>,
-    extraData?: Record<string, any>,
+    context?: ClickActionModeContext,
   ): ClickAction[];
+
+  /**
+   * Answers whether the mode has legacy actions for the given click.
+   * Only modes that opt in define it,
+   * so TableInteractive's add-column shortcut stays off for every other mode.
+   */
+  hasColumnShortcutActions?(props: ClickActionProps): boolean;
 }
 
 export function isClickActionsMode(value: unknown): value is ClickActionsMode {

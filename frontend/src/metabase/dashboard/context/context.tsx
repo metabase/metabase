@@ -160,7 +160,7 @@ const DashboardContextProviderInner = forwardRef(
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
-      getClickActionMode = undefined,
+      clickActionMode = undefined,
       withFooter = true,
       enableEntityNavigation = true, // true in core app, SDK passes it down as false
 
@@ -447,7 +447,7 @@ const DashboardContextProviderInner = forwardRef(
           autoScrollToDashcardId,
           reportAutoScrolledToDashcard,
           cardTitled,
-          getClickActionMode,
+          clickActionMode,
           withFooter,
           enableEntityNavigation,
 

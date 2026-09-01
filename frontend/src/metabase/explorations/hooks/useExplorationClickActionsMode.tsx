@@ -15,6 +15,7 @@ import {
 } from "metabase/explorations/components/ExplorationVisualization/utils";
 import type {
   ClickAction,
+  ClickActionModeContext,
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
@@ -65,8 +66,10 @@ export function useExplorationClickActionsMode({
     return {
       actionsForClick: (
         clicked: ClickObject,
-        settings?: ComputedVisualizationSettings,
+        context?: ClickActionModeContext,
       ) => {
+        const settings: ComputedVisualizationSettings | undefined =
+          context?.settings;
         const actions: ClickAction[] = [];
 
         if (explorationId == null || pageId == null) {

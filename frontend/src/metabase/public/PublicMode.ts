@@ -1,5 +1,8 @@
-import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import type {
+  ClickActionsMode,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 
 export const PublicMode: QueryClickActionsMode = {
   name: "public",
@@ -7,4 +10,6 @@ export const PublicMode: QueryClickActionsMode = {
   clickActions: [],
 };
 
-export const publicClickActionMode = queryModeToClickActionMode(PublicMode);
+export const publicClickActionMode: ClickActionsMode = new Mode(
+  () => PublicMode,
+);

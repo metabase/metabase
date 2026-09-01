@@ -39,7 +39,6 @@ import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
-  type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
   type OnBrush,
@@ -148,12 +147,14 @@ type VisualizationOwnProps = {
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | ClickActionsMode;
+  // There is no built-in default mode: composition sites must pass their own.
+  // Without one, clicks resolve no actions.
+  mode?: ClickActionsMode;
   /**
    * Resolves click actions when no `mode` is passed.
    * It is not forwarded to the chart, so table affordances keyed on `mode` stay off.
    */
-  defaultMode?: ClickActionModeGetter | ClickActionsMode;
+  defaultMode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -441,7 +442,7 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode: ClickActionModeGetter | ClickActionsMode | undefined,
+    mode: ClickActionsMode | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -473,7 +474,10 @@ class Visualization extends PureComponent<
       visualizerRawSeries,
     );
     const question = Visualization.getQuestionForCard(metadata, card);
-    const modeInstance = Visualization.getMode(mode, question);
+
+    // Untyped callers can still pass a bare QueryClickActionsMode.
+    // Treat anything without actionsForClick as no mode rather than crashing.
+    const modeInstance = isClickActionsMode(mode) ? mode : undefined;
 
     return modeInstance
       ? modeInstance.actionsForClick(
@@ -484,27 +488,9 @@ class Visualization extends PureComponent<
               isRawTable,
             },
           },
-          computedSettings,
+          { question, settings: computedSettings },
         )
       : [];
-  }
-
-  // There is no default mode: composition sites must pass their own.
-  // Without one, clicks resolve no actions.
-  private static getMode(
-    modeOrModeGetter: ClickActionModeGetter | ClickActionsMode | undefined,
-    question: Question | undefined,
-  ) {
-    const mode =
-      typeof modeOrModeGetter === "function"
-        ? question
-          ? modeOrModeGetter({ question })
-          : undefined
-        : modeOrModeGetter;
-
-    // Untyped callers can still pass a bare QueryClickActionsMode.
-    // Treat anything without actionsForClick as no mode rather than crashing.
-    return isClickActionsMode(mode) ? mode : undefined;
   }
 
   getClickActions(clickedObject?: ClickObject | null) {

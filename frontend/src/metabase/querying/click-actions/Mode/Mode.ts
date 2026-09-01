@@ -3,48 +3,55 @@ import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type {
   ClickAction,
+  ClickActionModeContext,
   ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
+
+type ModeOptions = {
+  plugins?: MetabasePluginsConfig;
+  hasColumnShortcutActions?: boolean;
+};
 
 export class Mode implements ClickActionsMode {
-  _question: Question;
-  _queryMode: QueryClickActionsMode;
-  _plugins?: MetabasePluginsConfig;
+  private readonly _getQueryMode: (question: Question) => QueryClickActionsMode;
+  private readonly _plugins?: MetabasePluginsConfig;
+
+  hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
 
   constructor(
-    question: Question,
-    queryMode: QueryClickActionsMode,
-    plugins?: MetabasePluginsConfig,
+    getQueryMode: (question: Question) => QueryClickActionsMode,
+    { plugins, hasColumnShortcutActions = false }: ModeOptions = {},
   ) {
-    this._question = question;
-    this._queryMode = queryMode;
+    this._getQueryMode = getQueryMode;
     this._plugins = plugins;
-  }
 
-  queryMode() {
-    return this._queryMode;
-  }
-
-  name() {
-    return this._queryMode.name;
+    if (hasColumnShortcutActions) {
+      this.hasColumnShortcutActions = (props) =>
+        this._getQueryMode(props.question).clickActions.some(
+          (action) => action(props)?.length > 0,
+        );
+    }
   }
 
   actionsForClick(
     clicked: ClickObject,
-    settings: Record<string, any>,
-    extraData?: Record<string, any>,
+    { question, settings }: ClickActionModeContext = {},
   ): ClickAction[] {
-    const mode = this._queryMode;
-    const question = this._question;
-    const props = { question, settings, clicked, extraData };
+    if (!question) {
+      return [];
+    }
+
+    const mode = this._getQueryMode(question);
+    const props = { question, settings, clicked };
 
     let actions = [
       ...(mode.hasDrills
-        ? queryDrill(question, clicked, this.isDrillEnabled)
+        ? queryDrill(question, clicked, (drill) => isDrillEnabled(mode, drill))
         : []),
       ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
     ];
@@ -88,14 +95,15 @@ export class Mode implements ClickActionsMode {
 
     return actions;
   }
+}
 
-  private isDrillEnabled = (drill: DrillThruDisplayInfo): boolean => {
-    const mode = this._queryMode;
+function isDrillEnabled(
+  mode: QueryClickActionsMode,
+  drill: DrillThruDisplayInfo,
+): boolean {
+  if (mode.hasDrills && mode.availableOnlyDrills != null) {
+    return mode.availableOnlyDrills.includes(drill.type);
+  }
 
-    if (mode.hasDrills && mode.availableOnlyDrills != null) {
-      return mode.availableOnlyDrills.includes(drill.type);
-    }
-
-    return true;
-  };
+  return true;
 }

@@ -12,11 +12,7 @@ import { ArchivedMode } from "../modes/ArchivedMode";
 import { DefaultMode } from "../modes/DefaultMode";
 import { ListMode } from "../modes/ListMode";
 
-import {
-  getDefaultClickActionMode,
-  getMode,
-  queryModeToClickActionMode,
-} from "./modes";
+import { defaultClickActionMode, getQueryMode } from "./modes";
 
 const metadata = createMockMetadata({});
 
@@ -24,38 +20,27 @@ function createQuestion(card: Partial<Card> = {}) {
   return new Question(createMockCard(card), metadata);
 }
 
-describe("getMode", () => {
+describe("getQueryMode", () => {
   it("returns ArchivedMode for an archived question", () => {
-    const mode = getMode(createQuestion({ archived: true }));
-    expect(mode.queryMode()).toBe(ArchivedMode);
+    expect(getQueryMode(createQuestion({ archived: true }))).toBe(ArchivedMode);
   });
 
   it("returns ListMode for a list question", () => {
-    const mode = getMode(createQuestion({ display: "list" }));
-    expect(mode.queryMode()).toBe(ListMode);
+    expect(getQueryMode(createQuestion({ display: "list" }))).toBe(ListMode);
   });
 
   it("returns DefaultMode for other questions", () => {
-    const mode = getMode(createQuestion());
-    expect(mode.queryMode()).toBe(DefaultMode);
+    expect(getQueryMode(createQuestion())).toBe(DefaultMode);
   });
 });
 
-describe("getDefaultClickActionMode", () => {
-  it("resolves the stock mode for the given question", () => {
-    const mode = getDefaultClickActionMode({ question: createQuestion() });
-    if (!(mode instanceof Mode)) {
-      throw new Error("expected a Mode instance");
-    }
-    expect(mode.queryMode()).toBe(DefaultMode);
-  });
-
+describe("defaultClickActionMode", () => {
   it("does not answer hasColumnShortcutActions, so the add-column shortcut stays off", () => {
-    expect(getDefaultClickActionMode.hasColumnShortcutActions).toBeUndefined();
+    expect(defaultClickActionMode.hasColumnShortcutActions).toBeUndefined();
   });
 });
 
-describe("queryModeToClickActionMode", () => {
+describe("Mode", () => {
   const clickAction = jest.fn(() => []);
   const queryMode: QueryClickActionsMode = {
     name: "test",
@@ -67,13 +52,21 @@ describe("queryModeToClickActionMode", () => {
     clickAction.mockClear();
   });
 
-  it("wraps the question passed at click time", () => {
-    const getter = queryModeToClickActionMode(queryMode);
+  it("resolves the query mode from the click-time question", () => {
+    const chooseQueryMode = jest.fn(() => queryMode);
+    const mode = new Mode(chooseQueryMode);
     const question = createQuestion();
-    getter({ question }).actionsForClick({}, {});
+    mode.actionsForClick({}, { question });
+    expect(chooseQueryMode).toHaveBeenCalledWith(question);
     expect(clickAction).toHaveBeenCalledWith(
       expect.objectContaining({ question }),
     );
+  });
+
+  it("resolves no actions without a question", () => {
+    const mode = new Mode(() => queryMode);
+    expect(mode.actionsForClick({})).toEqual([]);
+    expect(clickAction).not.toHaveBeenCalled();
   });
 
   describe("hasColumnShortcutActions", () => {
@@ -86,47 +79,55 @@ describe("queryModeToClickActionMode", () => {
       },
     ];
 
+    it("is not defined unless opted in, so the add-column shortcut stays off", () => {
+      const mode = new Mode(() => queryMode);
+      expect(mode.hasColumnShortcutActions).toBeUndefined();
+    });
+
     it("passes the click through to the query mode's actions", () => {
-      const getter = queryModeToClickActionMode(queryMode);
+      const mode = new Mode(() => queryMode, {
+        hasColumnShortcutActions: true,
+      });
       const props = {
         question: createQuestion(),
         clicked: { columnShortcuts: true },
       };
-      getter.hasColumnShortcutActions?.(props);
+      mode.hasColumnShortcutActions?.(props);
       expect(clickAction).toHaveBeenCalledWith(props);
     });
 
     it("answers true when an action offers something for the click", () => {
-      const getter = queryModeToClickActionMode({
-        ...queryMode,
-        clickActions: [clickAction, shortcutAction],
-      });
+      const mode = new Mode(
+        () => ({ ...queryMode, clickActions: [clickAction, shortcutAction] }),
+        { hasColumnShortcutActions: true },
+      );
       const props = {
         question: createQuestion(),
         clicked: { columnShortcuts: true },
       };
-      expect(getter.hasColumnShortcutActions?.(props)).toBe(true);
+      expect(mode.hasColumnShortcutActions?.(props)).toBe(true);
     });
 
     it("answers false when every action comes back empty", () => {
-      const getter = queryModeToClickActionMode(queryMode);
-      const props = {
-        question: createQuestion(),
-        clicked: { columnShortcuts: true },
-      };
-      expect(getter.hasColumnShortcutActions?.(props)).toBe(false);
-    });
-
-    it("answers false when the query mode has no actions at all", () => {
-      const getter = queryModeToClickActionMode({
-        ...queryMode,
-        clickActions: [],
+      const mode = new Mode(() => queryMode, {
+        hasColumnShortcutActions: true,
       });
       const props = {
         question: createQuestion(),
         clicked: { columnShortcuts: true },
       };
-      expect(getter.hasColumnShortcutActions?.(props)).toBe(false);
+      expect(mode.hasColumnShortcutActions?.(props)).toBe(false);
+    });
+
+    it("answers false when the query mode has no actions at all", () => {
+      const mode = new Mode(() => ({ ...queryMode, clickActions: [] }), {
+        hasColumnShortcutActions: true,
+      });
+      const props = {
+        question: createQuestion(),
+        clicked: { columnShortcuts: true },
+      };
+      expect(mode.hasColumnShortcutActions?.(props)).toBe(false);
     });
   });
 });

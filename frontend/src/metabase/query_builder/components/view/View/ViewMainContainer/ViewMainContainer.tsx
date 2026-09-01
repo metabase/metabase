@@ -1,11 +1,10 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import type { Mode } from "metabase/querying/click-actions/Mode";
-import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -30,6 +29,10 @@ import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
+
+const clickActionMode = new Mode(getQueryMode, {
+  hasColumnShortcutActions: true,
+});
 
 interface ViewMainContainerProps {
   question: Question;
@@ -79,7 +82,6 @@ interface ViewMainContainerProps {
   onSetDatabaseId?: (id: DatabaseId) => void;
 
   queryBuilderMode: QueryBuilderMode;
-  mode: Mode;
   showLeftSidebar: boolean;
   showRightSidebar: boolean;
   isLiveResizable: boolean;
@@ -91,7 +93,6 @@ interface ViewMainContainerProps {
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const {
     queryBuilderMode,
-    mode,
     question,
     showLeftSidebar,
     showRightSidebar,
@@ -105,14 +106,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
-
-  // The query mode is stable across Mode instances,
-  // so keying on it keeps the mode prop identity stable through metadata refreshes.
-  const queryMode = mode?.queryMode();
-  const clickActionMode = useMemo(
-    () => (queryMode ? queryModeToClickActionMode(queryMode) : undefined),
-    [queryMode],
-  );
 
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode

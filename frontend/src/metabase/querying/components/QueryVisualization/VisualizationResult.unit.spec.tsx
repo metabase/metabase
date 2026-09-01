@@ -22,10 +22,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import {
-  getDefaultClickActionMode,
-  queryModeToClickActionMode,
-} from "../../click-actions/lib/modes";
+import { Mode } from "../../click-actions/Mode";
+import { defaultClickActionMode } from "../../click-actions/lib/modes";
 import { DefaultMode } from "../../click-actions/modes/DefaultMode";
 
 import { VisualizationResult } from "./VisualizationResult";
@@ -116,7 +114,7 @@ describe("VisualizationResult", () => {
 
   describe("with an explicit mode", () => {
     it("enables column reordering and the light header", async () => {
-      setup({ mode: getDefaultClickActionMode });
+      setup({ mode: defaultClickActionMode });
 
       const header = await screen.findByRole("columnheader", { name: "Total" });
       expect(within(header).getByRole("button")).toHaveAttribute(
@@ -128,8 +126,8 @@ describe("VisualizationResult", () => {
       );
     });
 
-    it("hides the add-column shortcut for the stock mode getter", async () => {
-      setup({ mode: getDefaultClickActionMode });
+    it("hides the add-column shortcut for the stock mode", async () => {
+      setup({ mode: defaultClickActionMode });
 
       await screen.findByRole("columnheader", { name: "Total" });
       expect(
@@ -138,9 +136,11 @@ describe("VisualizationResult", () => {
     });
   });
 
-  describe("with a wrapped query mode", () => {
+  describe("with a query mode that answers hasColumnShortcutActions", () => {
     it("shows the add-column shortcut when the query mode's actions respond", async () => {
-      setup({ mode: queryModeToClickActionMode(DefaultMode) });
+      setup({
+        mode: new Mode(() => DefaultMode, { hasColumnShortcutActions: true }),
+      });
 
       await screen.findByRole("columnheader", { name: "Total" });
       expect(

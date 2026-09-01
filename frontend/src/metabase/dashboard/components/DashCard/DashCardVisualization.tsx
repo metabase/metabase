@@ -6,7 +6,7 @@ import _ from "underscore";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
+import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -175,7 +175,7 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
-    getClickActionMode,
+    clickActionMode,
     isEditing = false,
     isFullscreen = false,
     isEditingParameter,
@@ -573,7 +573,7 @@ export function DashCardVisualization({
             isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
           }
           metadata={metadata}
-          mode={getClickActionMode ?? getDashboardClickActionMode}
+          mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}

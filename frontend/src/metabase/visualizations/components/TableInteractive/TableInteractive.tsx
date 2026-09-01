@@ -68,11 +68,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  VisualizationProps,
-} from "../../types";
+import type { ClickActionsMode, VisualizationProps } from "../../types";
 import {
   getHighlightedTableCellKey,
   getHighlightedTableCells,
@@ -124,7 +120,7 @@ interface TableProps extends VisualizationProps {
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
-  mode?: ClickActionModeGetter | ClickActionsMode;
+  mode?: ClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
@@ -469,24 +465,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
-    const hasColumnShortcutActions =
-      typeof mode === "function" ? mode.hasColumnShortcutActions : undefined;
     if (
       !question ||
-      !hasColumnShortcutActions ||
+      !mode?.hasColumnShortcutActions ||
       !onVisualizationClick ||
       isPivoted
     ) {
       return undefined;
     }
 
-    const hasActions = hasColumnShortcutActions({
+    const hasActions = mode.hasColumnShortcutActions({
       question,
       clicked: {
         columnShortcuts: true,
-        extraData: {
-          isRawTable,
-        },
       },
     });
     if (!hasActions) {
@@ -499,7 +490,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         element: e.currentTarget,
       });
     };
-  }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
+  }, [mode, onVisualizationClick, question, isPivoted]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {

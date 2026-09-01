@@ -42,10 +42,12 @@ import type {
 } from "embedding-sdk-bundle/types/question";
 import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { Box, Group, Stack } from "metabase/ui";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
+
+const staticClickActionMode = getEmbeddingMode({
+  queryMode: EmbeddingSdkStaticMode,
+});
 
 type StaticQuestionBaseProps = PropsWithChildren<
   Pick<
@@ -164,26 +166,12 @@ const StaticQuestionInner = (
 
   const { ref: containerRef, isMobile } = useMobileLayout();
 
-  const getClickActionMode: ClickActionModeGetter = ({
-    question,
-  }: {
-    question: Question;
-  }) => {
-    return (
-      question &&
-      getEmbeddingMode({
-        question,
-        queryMode: EmbeddingSdkStaticMode,
-      })
-    );
-  };
-
   return (
     <SdkQuestion
       questionId={questionId}
       token={token}
       deserializedCard={deserializedCard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={staticClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
       sqlParameters={sqlParameters}

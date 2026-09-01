@@ -7,9 +7,8 @@ import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { PublicDashboardMode } from "metabase/public/PublicDashboardMode";
+import { publicDashboardClickActionMode } from "metabase/public/PublicDashboardMode";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
-import { Mode } from "metabase/querying/click-actions/Mode";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
@@ -82,9 +81,7 @@ export const PublicOrEmbeddedDashboardPage = () => {
           parameterQueryParams={parameterQueryParams}
           cardTitled={true}
           withFooter={true}
-          getClickActionMode={({ question }) =>
-            new Mode(question, PublicDashboardMode)
-          }
+          clickActionMode={publicDashboardClickActionMode}
           navigateToNewCardFromDashboard={null}
           onError={(error) => {
             dispatch(setErrorPage(error));

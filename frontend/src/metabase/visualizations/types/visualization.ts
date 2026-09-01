@@ -28,11 +28,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  ClickObject,
-} from "./click-actions";
+import type { ClickActionsMode, ClickObject } from "./click-actions";
 
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
@@ -164,7 +160,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode;
+  mode?: ClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

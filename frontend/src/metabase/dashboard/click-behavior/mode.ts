@@ -3,9 +3,10 @@ import { ArchivedMode } from "metabase/querying/click-actions/modes/ArchivedMode
 import { DefaultMode } from "metabase/querying/click-actions/modes/DefaultMode";
 import { ListMode } from "metabase/querying/click-actions/modes/ListMode";
 import type {
-  ClickActionModeGetter,
+  ClickActionsMode,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 
@@ -14,17 +15,15 @@ const DashboardDefaultMode: QueryClickActionsMode = {
   clickActions: [...(DefaultMode.clickActions ?? []), DashboardClickAction],
 };
 
-// Mirrors getMode from metabase/querying/click-actions/lib/modes,
-// with the dashboard-owned click-behavior action added for regular dashcards.
-export const getDashboardClickActionMode: ClickActionModeGetter = ({
-  question,
-}) => {
+function getDashboardQueryMode(question: Question): QueryClickActionsMode {
   if (question.isArchived()) {
-    return new Mode(question, ArchivedMode);
+    return ArchivedMode;
   }
+  return question.display() === "list" ? ListMode : DashboardDefaultMode;
+}
 
-  const queryMode =
-    question.display() === "list" ? ListMode : DashboardDefaultMode;
-
-  return new Mode(question, queryMode);
-};
+// Mirrors getQueryMode from metabase/querying/click-actions/lib/modes,
+// with the dashboard-owned click-behavior action added for regular dashcards.
+export const dashboardClickActionMode: ClickActionsMode = new Mode(
+  getDashboardQueryMode,
+);

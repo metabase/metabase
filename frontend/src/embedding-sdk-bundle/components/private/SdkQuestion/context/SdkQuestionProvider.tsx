@@ -45,7 +45,6 @@ import {
 import { useSaveQuestion } from "metabase/query_builder";
 import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -89,7 +88,7 @@ export const SdkQuestionProvider = ({
   withAlerts,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode: userGetClickActionMode,
+  clickActionMode: userClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
   onDrillThrough,
   onVisualizationChange,
@@ -237,21 +236,16 @@ export const SdkQuestionProvider = ({
     return { ...globalPlugins, ...componentPlugins };
   }, [globalPlugins, componentPlugins]);
 
-  const getClickActionMode: ClickActionModeGetter =
-    userGetClickActionMode ??
-    (({ question }: { question: Question }) => {
-      return (
-        question &&
-        getEmbeddingMode({
-          question,
-          queryMode: EmbeddingSdkMode,
-          // Unjustified type cast. FIXME
-          plugins: plugins as InternalMetabasePluginsConfig,
-        })
-      );
-    });
-
-  const mode = (question && getClickActionMode({ question })) ?? null;
+  const mode = useMemo(
+    () =>
+      userClickActionMode ??
+      getEmbeddingMode({
+        queryMode: EmbeddingSdkMode,
+        // Unjustified type cast. FIXME
+        plugins: plugins as InternalMetabasePluginsConfig,
+      }),
+    [userClickActionMode, plugins],
+  );
 
   // Wrap navigateToNewCard to intercept navigation to new card
   const navigateToNewCardWithDrillThrough = useCallback(

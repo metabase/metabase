@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useMemo } from "react";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -59,27 +59,21 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
           DASHBOARD_ACTION.REFRESH_INDICATOR,
         ];
 
-  const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] =
-    useCallback(
-      ({
-        question,
-      }: Parameters<
-        NonNullable<SdkDashboardInnerProps["getClickActionMode"]>
-      >[0]) =>
-        getEmbeddingMode({
-          question,
-          queryMode: createEmbeddingSdkMode({ pushNavigation }),
-          // Unjustified type cast. FIXME
-          plugins: props.drillThroughQuestionProps
-            ?.plugins as InternalMetabasePluginsConfig,
-        }),
-      [pushNavigation, props.drillThroughQuestionProps?.plugins],
-    );
+  const clickActionMode: SdkDashboardInnerProps["clickActionMode"] = useMemo(
+    () =>
+      getEmbeddingMode({
+        queryMode: createEmbeddingSdkMode({ pushNavigation }),
+        // Unjustified type cast. FIXME
+        plugins: props.drillThroughQuestionProps
+          ?.plugins as InternalMetabasePluginsConfig,
+      }),
+    [pushNavigation, props.drillThroughQuestionProps?.plugins],
+  );
 
   return (
     <SdkDashboard
       {...props}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={clickActionMode}
       dashboardActions={dashboardActions}
     />
   );

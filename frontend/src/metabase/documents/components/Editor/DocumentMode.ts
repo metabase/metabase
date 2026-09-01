@@ -1,8 +1,11 @@
+import { Mode } from "metabase/querying/click-actions/Mode";
 import { NativeQueryClickFallback } from "metabase/querying/click-actions/actions/NativeQueryClickFallback";
-import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { ColumnFormattingAction } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type {
+  ClickActionsMode,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 
 const DocumentMode: QueryClickActionsMode = {
   name: "document-mode",
@@ -32,4 +35,7 @@ const DocumentMode: QueryClickActionsMode = {
   ],
 };
 
-export const documentClickActionMode = queryModeToClickActionMode(DocumentMode);
+export const documentClickActionMode: ClickActionsMode = new Mode(
+  () => DocumentMode,
+  { hasColumnShortcutActions: true },
+);
