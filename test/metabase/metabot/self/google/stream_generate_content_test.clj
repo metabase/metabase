@@ -177,6 +177,21 @@
            (sgc/parts->contents
             [{:type :tool-output :id "call-9" :result {:output "orphan"}}])))))
 
+(deftest ^:parallel parts->contents-reasoning-part-dropped-test
+  (testing "a :reasoning part is display-only and contributes no content"
+    (is (= [{:role "user" :parts [{:text "question"}]}
+            {:role "model" :parts [{:text "answer"}]}]
+           (sgc/parts->contents
+            [{:role :user :content "question"}
+             {:type :reasoning :text "thinking..." :id "r1"}
+             {:type :text :text "answer"}]))))
+  (testing "and dropping it does not split the model contents that surrounded it"
+    (is (= [{:role "model" :parts [{:text "first"} {:text "second"}]}]
+           (sgc/parts->contents
+            [{:type :text :text "first"}
+             {:type :reasoning :text "thinking..." :id "r1"}
+             {:type :text :text "second"}])))))
+
 (deftest ^:parallel parts->contents-thought-signature-replay-test
   (testing "a thoughtSignature carried in :provider-metadata is echoed on the replayed functionCall part"
     (is (= [{:role  "model"
@@ -330,6 +345,33 @@
              :tool_choice "auto"
              :schema      {:type "object"}})))))
 
+(deftest ^:parallel request-body-thinking-config-test
+  (testing "a catalog model asks for thought summaries by default"
+    (is (=? {:generationConfig {:thinkingConfig {:includeThoughts true}}}
+            (sgc/request-body {:model "google/gemini-3.5-flash"
+                               :input [{:role :user :content "hi"}]}))))
+  (testing "structured output pins thinking to LOW instead, with or without :reasoning?"
+    (is (=? {:generationConfig {:thinkingConfig {:thinkingLevel "LOW"}}}
+            (sgc/request-body {:model  "google/gemini-3.7-flash"
+                               :input  [{:role :user :content "hi"}]
+                               :schema {:type "object"}})))
+    (is (=? {:generationConfig {:thinkingConfig {:thinkingLevel "LOW"}}}
+            (sgc/request-body {:model      "google/gemini-3.5-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :reasoning? false
+                               :schema     {:type "object"}}))))
+  (testing ":reasoning? false sends no thinkingConfig, leaving the server default"
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:model      "google/gemini-3.6-flash"
+                              :input      [{:role :user :content "hi"}]
+                              :reasoning? false}))))
+  (testing "an off-catalog or absent model gets no thinkingConfig at all"
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:model "google/gemini-2.5-flash"
+                              :input [{:role :user :content "hi"}]})))
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:input [{:role :user :content "hi"}]})))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming event conversion tests.
 ;;; ──────────────────────────────────────────────────────────────────
@@ -438,16 +480,77 @@
                {:type :text :text "Hello world"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
-(deftest ^:parallel thought-parts-ignored-test
-  (testing "thinking summaries are dropped"
+(deftest ^:parallel thought-parts-stream-as-reasoning-test
+  (testing "thinking summaries stream as a reasoning part ahead of the answer text"
     (let [events [{:responseId "r5"
                    :candidates [{:content {:role "model"
                                            :parts [{:thought true :text "reasoning..."}
                                                    {:text "Answer"}]}
                                  :finishReason "STOP"}]}]]
       (is (=? [{:type :start}
+               {:type :reasoning :text "reasoning..."}
                {:type :text :text "Answer"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel thought-text-transitions-close-and-reopen-blocks-test
+  (testing "a thought/text transition closes the one block kind and opens the other"
+    (let [events [{:responseId "r5b"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "t1"}
+                                                   {:text "a1"}
+                                                   {:thought true :text "t2"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta :delta "t1"}
+               {:type :reasoning-end}
+               {:type :text-start}
+               {:type :text-delta :delta "a1"}
+               {:type :text-end}
+               {:type :reasoning-start}
+               {:type :reasoning-delta :delta "t2"}
+               {:type :reasoning-end}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel thought-before-tool-call-closes-reasoning-test
+  (testing "a functionCall closes the open reasoning block before the tool chunks"
+    (let [events [{:responseId "r5c"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "planning..."}
+                                                   {:functionCall     {:name "search" :args {}}
+                                                    :thoughtSignature "sig-1"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta}
+               {:type :reasoning-end}
+               {:type :tool-input-start :providerMetadata {:google {:thoughtSignature "sig-1"}}}
+               {:type :tool-input-delta}
+               {:type :tool-input-available}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel empty-parts-do-not-split-a-reasoning-block-test
+  (testing "an empty thought and a signature-only empty text part emit nothing and close nothing"
+    (let [events [{:responseId "r5d"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "before"}
+                                                   {:thought true :text ""}
+                                                   {:text "" :thoughtSignature "sig-tail"}
+                                                   {:thought true :text " after"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning :text "before after"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel stream-end-closes-open-reasoning-block-test
+  (testing "a stream that ends mid-thought still closes the reasoning block"
+    (let [events [{:responseId "r5e"
+                   :candidates [{:content {:role "model" :parts [{:thought true :text "unfinished"}]}}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta}
+               {:type :reasoning-end}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
 
 (deftest ^:parallel usage-buffered-and-emitted-once-test
   (testing "usageMetadata is buffered last-wins and emitted once at stream end, after content"
