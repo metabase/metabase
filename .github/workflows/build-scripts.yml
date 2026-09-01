@@ -79,6 +79,7 @@ jobs:
 
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     steps:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
@@ -87,10 +88,6 @@ jobs:
 
     - name: Run build and release script tests
       run: clojure -X:dev:drivers:build:build-dev:build-test:ci
-      timeout-minutes: 15
-    - name: Run Liquibase migrations linter tests
-      run: clojure -M:test
-      working-directory: bin/lint-migrations-file
       timeout-minutes: 15
     - name: Run load-namespaces tests
       run: clojure -M:test

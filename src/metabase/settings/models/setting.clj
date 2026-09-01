@@ -339,8 +339,17 @@
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
 
-(defn- prohibits-encryption? [setting-or-name]
-  (= :no (:encryption (resolve-setting setting-or-name))))
+(defn- maybe-resolve-setting
+  "Like [[resolve-setting]] but returns nil for a setting with no code definition (e.g. one written straight to the DB
+  in a test) instead of throwing."
+  [setting-or-name]
+  (try (resolve-setting setting-or-name)
+       (catch clojure.lang.ExceptionInfo e
+         (when-not (::unknown-setting-error (ex-data e))
+           (throw e)))))
+
+(defn- encrypts? [setting-or-name]
+  (not= :no (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -790,10 +799,12 @@
 
 (defn obfuscated-value?
   "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
-  value rather than entering a new one."
+  value rather than entering a new one.
+
+  `(?s)` so the trailing `.` can also match newlines, e.g. JSON file contents that end with a newline."
   [v]
   (when (seq v)
-    (boolean (re-matches #"^\*{10}.{2}$" v))))
+    (boolean (re-matches #"(?s)^\*{10}.{2}$" v))))
 
 (defn obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
@@ -1056,9 +1067,6 @@
 
   - ON for settings marked as `sensitive?`
 
-  - ON for settings with a setter of `:none` (the specific value here doesn't really matter, we just don't want the
-  caller to need to provide a value)
-
   - OFF for types unlikely to contain secrets. As of this writing, that's booleans, numbers, keywords, and timestamps
 
   If none of these conditions are met (a non-`:sensitive?` string/json/csv value you're storing in the database, and
@@ -1073,10 +1081,6 @@
    ;;
    ;; if a setting is `:sensitive?`, default to encrypting it
    (when (:sensitive? setting)
-     :when-encryption-key-set)
-   ;; if a setting isn't stored in the DB, the value doesn't really matter, but provide
-   ;; a default so the caller doesn't have to
-   (when (= (:setter setting) :none)
      :when-encryption-key-set)
    ;; if the setting isn't a type likely to contain secrets, default to plaintext
    (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} (:type setting))
@@ -1719,29 +1723,40 @@
                  (ex-message (:parse-error invalid-setting))))))
 
 (defn migrate-encrypted-settings!
-  "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.
-  This function just goes through all of them, checks to see if a value exists in the database, and re-saves it if
-  so. Toucan will handle decryption on the way out (if necessary) and the new value won't be encrypted.
+  "Reconcile the at-rest encryption of every registered setting's stored value with its declared `:encryption`, in
+  both directions: a `:encryption :no` setting whose row is encrypted is decrypted, and a setting that encrypts whose
+  row is plaintext is encrypted. Rows of unregistered settings are left alone, and whether a value is encrypted is
+  decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape.
 
-  Note that we're completely working around the standard getters/setters here. This should be fine in this case
-  because:
-  - we're only doing anything when a value exists in the database, and
-  - we're setting the value to the exact same value that already exists - just a decrypted version."
+  Runs on every startup, before anything restores the settings cache. The encrypting half is what makes the strict
+  decrypting read survive a downgrade: a boot of an older version decrypts (in this very function, as it existed
+  there) or re-writes as plaintext every row its registry knew as `:encryption :no`, after the one-shot encryption
+  migrations have already run -- and such a row would otherwise fail the strict read and take the whole settings
+  cache down with it. Works around the standard getters/setters deliberately: values are rewritten byte-identical
+  modulo encryption. No-op when MB_ENCRYPTION_SECRET_KEY is not set.
+
+  Runs with the settings cache disabled: any setting consulted while this runs (e.g. `read-only-mode`, which the
+  cloud-migration DML guard reads on every write this issues) is read directly from the DB. Restoring the cache
+  strictly decrypts every row -- including the very rows this function exists to repair -- so going through it here
+  would fail the repair on exactly the state it is repairing."
   []
-  ;; If we don't have an encryption key set, don't bother trying to decrypt anything. If stuff is encrypted in the DB,
-  ;; we can't do anything about it (since we can't decrypt it). If stuff isn't decrypted in the DB, we have nothing to
-  ;; do.
   (when (encryption/default-encryption-enabled?)
-    (let [settings (filter prohibits-encryption? (vals @registered-settings))]
-      (t2/with-transaction [_conn]
-        (doseq [{v :value k :key}
-                (t2/select :setting {:for :update :where [:and
-                                                          [:in :key (map setting-name settings)]
-                                                          ;; these are *definitely* decrypted already, let's not bother looking
-                                                          [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt v)]
-                :when (not= decrypted-v v)]
-          (t2/update! :setting :key k {:value decrypted-v}))))))
+    (binding [config/*disable-setting-cache* true]
+      (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
+        (t2/with-transaction [_conn]
+          (doseq [{v :value k :key}
+                  (t2/select :setting {:for :update :where [:and
+                                                            [:in :key (map setting-name plaintext)]
+                                                            ;; these are *definitely* decrypted already, let's not bother looking
+                                                            [:not [:in :value ["true" "false"]]]]})
+                  :when (encryption/decryptable-string? v)]
+            (t2/update! :setting :key k {:value (encryption/decrypt v)}))
+          (doseq [{v :value k :key}
+                  (t2/select :setting {:for :update :where [:and
+                                                            [:in :key (map setting-name encrypting)]
+                                                            [:!= :value nil]]})
+                  :when (not (encryption/decryptable-string? v))]
+            (t2/update! :setting :key k {:value (encryption/encrypt v)})))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
@@ -1749,13 +1764,10 @@
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting-model))
     setting-model
-    (let [resolved (try (resolve-setting (:key setting-model))
-                        (catch clojure.lang.ExceptionInfo e
-                          (when (not (::unknown-setting-error (ex-data e)))
-                            (throw e))))]
+    (let [resolved (maybe-resolve-setting (:key setting-model))]
       (cond-> setting-model
         (or (nil? resolved)
-            (not (prohibits-encryption? resolved)))
+            (encrypts? resolved))
         (update :value encryption/maybe-encrypt)))))
 
 (t2/define-before-update :model/Setting
@@ -1766,9 +1778,29 @@
   [setting]
   (maybe-encrypt setting))
 
+(defn- decrypt-setting-value-on-read
+  "Decrypt a Setting's `:value` on read. A setting whose `:encryption` is not `:no` is stored encrypted at rest, so it
+  is read strictly with [[encryption/maybe-decrypt]]: a plaintext value — forged via a direct DB write, or a legacy row
+  from before the setting became encrypted — is rejected rather than trusted. A `:no` setting (or one with no code
+  definition, e.g. in tests) is intentionally plaintext, so it is read leniently with
+  [[encryption/maybe-decrypt-accepting-plaintext]], which returns a plaintext value unchanged."
+  [setting]
+  (let [resolved (maybe-resolve-setting (:key setting))
+        decrypt  (if (or (nil? resolved) (not (encrypts? resolved)))
+                   encryption/maybe-decrypt-accepting-plaintext
+                   encryption/maybe-decrypt)]
+    (try
+      (update setting :value decrypt)
+      (catch Throwable e
+        (throw (ex-info (format "Error decrypting setting \"%s\": %s" (:key setting) (ex-message e))
+                        {:setting-key (:key setting)}
+                        e))))))
+
 (t2/define-after-select :model/Setting
   [setting]
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting))
+  ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve or `:value` to decrypt, and don't do
+  ;; any automatic handling of the "encryption-check" special setting used by mdb.encryption.
+  (if (or (nil? (:key setting))
+          (= "encryption-check" (:key setting)))
     setting
-    (update setting :value encryption/maybe-decrypt)))
+    (decrypt-setting-value-on-read setting)))

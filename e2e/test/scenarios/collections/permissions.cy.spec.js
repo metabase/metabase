@@ -1,8 +1,7 @@
-import { onlyOn } from "@cypress/skip-test";
-
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
+import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 

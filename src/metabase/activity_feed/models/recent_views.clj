@@ -29,6 +29,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.batch-processing.core :as grouper]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
@@ -144,6 +145,42 @@
    (duplicate-model-ids user-id context)
    (overflowing-model-buckets user-id context)))
 
+(defn- update-users-recent-views!*
+  "Batch handler for [[update-users-recent-views!]]: inserts the given views and then prunes overflow and
+  duplicates once per affected (user, context) pair."
+  [views]
+  (when (seq views)
+    (try
+      (t2/with-transaction [_conn]
+        (t2/insert! :model/RecentViews
+                    (for [{:keys [user-id model model-id context timestamp]} views]
+                      {:user_id user-id
+                       :model (u/lower-case-en (name model))
+                       :model_id model-id
+                       :context (name context)
+                       :timestamp timestamp}))
+        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
+        ;; pairs first: N views by one user become one set of prune queries instead of N.
+        (let [prune-ids (into #{}
+                              (comp (map (juxt :user-id :context))
+                                    (distinct)
+                                    (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
+                              views)]
+          (when (seq prune-ids)
+            (t2/delete! :model/RecentViews :id [:in prune-ids]))))
+      (catch Exception e
+        (log/error e "Failed to update users recent views")))))
+
+(def ^:private recent-views-interval-seconds 20)
+
+(def ^:private recent-views-queue-capacity 500)
+
+(defonce ^:private recent-views-queue
+  (delay (grouper/start!
+          #'update-users-recent-views!*
+          :capacity recent-views-queue-capacity
+          :interval (* recent-views-interval-seconds 1000))))
+
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id :- [:maybe ms/PositiveInt]
@@ -151,14 +188,11 @@
    model-id :- ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
-    (t2/with-transaction [_conn]
-      (t2/insert! :model/RecentViews {:user_id user-id
-                                      :model (u/lower-case-en (name model))
-                                      :model_id model-id
-                                      :context (name context)})
-      (let [prune-ids (ids-to-prune user-id context)]
-        (when (seq prune-ids)
-          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
+    (grouper/submit! @recent-views-queue {:user-id   user-id
+                                          :model     model
+                                          :model-id  model-id
+                                          :context   context
+                                          :timestamp (t/offset-date-time)})))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
@@ -517,7 +551,10 @@
                                                  [:= nil :coll.namespace]
                                                  ;; exclude instance analytics for selects
                                                  (when (contains? (set context) :selections)
-                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
+                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
+                                               ;; exploration documents are accessible only through their owning Exploration;
+                                               ;; hide them from recents to match search and collection-listing behavior.
+                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
                                    :left-join [[:report_card :rc]
                                                [:and
                                                 ;; only want to join on card_type if it's a card
@@ -526,7 +563,11 @@
                                                [:collection :coll]
                                                [:and
                                                 [:= :rv.model "collection"]
-                                                [:= :coll.id :rv.model_id]]]
+                                                [:= :coll.id :rv.model_id]]
+                                               [:document :doc]
+                                               [:and
+                                                [:= :rv.model "document"]
+                                                [:= :doc.id :rv.model_id]]]
                                    :order-by  [[:rv.timestamp :desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]

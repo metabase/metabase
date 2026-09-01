@@ -1,12 +1,11 @@
 import type { EChartsType } from "echarts/core";
 
-import type { ChartBoundsCoords } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { ChartBoundsCoords, TimelineEventsModel } from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import {
-  arePositionedGroupsEqual,
-  getPositionedTimelineEventGroups,
+  arePositionedClustersEqual,
+  getPositionedTimelineEventClusters,
   getTimelineEventGroupIconName,
 } from "./utils";
 
@@ -15,7 +14,7 @@ const BOUNDS: ChartBoundsCoords = { top: 0, bottom: 100, left: 50, right: 450 };
 const createChartInstance = (
   pixelByDate: Record<string, number | number[]>,
 ): EChartsType =>
-  // Unjustified type cast. FIXME
+  // the positioning code only calls convertToPixel, so a stub suffices
   ({
     convertToPixel: (_finder: unknown, value: string) =>
       pixelByDate[value] ?? NaN,
@@ -51,33 +50,50 @@ describe("TimelineEventsBand utils", () => {
     });
   });
 
-  describe("getPositionedTimelineEventGroups", () => {
+  describe("getPositionedTimelineEventClusters", () => {
     const timelineEventsModel: TimelineEventsModel = [
       {
         date: "2025-01-01T00:00:00Z",
-        events: [createMockTimelineEvent({ id: 1, name: "In range" })],
+        groups: [
+          {
+            date: "2025-01-01T00:00:00Z",
+            events: [createMockTimelineEvent({ id: 1, name: "In range" })],
+          },
+        ],
       },
       {
         date: "2025-02-01T00:00:00Z",
-        events: [
-          createMockTimelineEvent({ id: 2, name: "Cluster a" }),
-          createMockTimelineEvent({ id: 3, name: "Cluster b" }),
+        groups: [
+          {
+            date: "2025-02-01T00:00:00Z",
+            events: [createMockTimelineEvent({ id: 2, name: "Cluster a" })],
+          },
+          {
+            date: "2025-02-02T00:00:00Z",
+            events: [createMockTimelineEvent({ id: 3, name: "Cluster b" })],
+          },
         ],
       },
       {
         date: "2025-03-01T00:00:00Z",
-        events: [createMockTimelineEvent({ id: 4, name: "Out of range" })],
+        groups: [
+          {
+            date: "2025-03-01T00:00:00Z",
+            events: [createMockTimelineEvent({ id: 4, name: "Out of range" })],
+          },
+        ],
       },
     ];
 
-    it("maps groups to pixel positions and drops out-of-range groups", () => {
+    it("maps clusters to member pixel positions and drops out-of-range clusters", () => {
       const chartInstance = createChartInstance({
         "2025-01-01T00:00:00Z": 120,
         "2025-02-01T00:00:00Z": 300,
+        "2025-02-02T00:00:00Z": 320,
         "2025-03-01T00:00:00Z": 999, // beyond bounds.right
       });
 
-      const positioned = getPositionedTimelineEventGroups({
+      const positioned = getPositionedTimelineEventClusters({
         timelineEventsModel,
         chartInstance,
         plotBounds: BOUNDS,
@@ -85,15 +101,49 @@ describe("TimelineEventsBand utils", () => {
       });
 
       expect(positioned).toEqual([
-        { group: timelineEventsModel[0], x: 120 },
-        { group: timelineEventsModel[1], x: 300 },
+        { cluster: timelineEventsModel[0], memberXs: [120] },
+        { cluster: timelineEventsModel[1], memberXs: [300, 320] },
       ]);
     });
 
-    it("drops groups whose pixel position is NaN", () => {
+    it("falls back to the cluster anchor for members that cannot be positioned", () => {
+      const chartInstance = createChartInstance({
+        "2025-01-01T00:00:00Z": 120,
+        "2025-02-01T00:00:00Z": 300,
+        // no entry for the second member of the second cluster
+      });
+
+      const positioned = getPositionedTimelineEventClusters({
+        timelineEventsModel,
+        chartInstance,
+        plotBounds: BOUNDS,
+        xAxisIndex: 0,
+      });
+
+      expect(positioned[1].memberXs).toEqual([300, 300]);
+    });
+
+    it("clamps member positions into the plot bounds", () => {
+      const chartInstance = createChartInstance({
+        "2025-01-01T00:00:00Z": 120,
+        "2025-02-01T00:00:00Z": 440,
+        "2025-02-02T00:00:00Z": 470, // beyond bounds.right
+      });
+
+      const positioned = getPositionedTimelineEventClusters({
+        timelineEventsModel,
+        chartInstance,
+        plotBounds: BOUNDS,
+        xAxisIndex: 0,
+      });
+
+      expect(positioned[1].memberXs).toEqual([440, 450]);
+    });
+
+    it("drops clusters whose pixel position is NaN", () => {
       const chartInstance = createChartInstance({});
 
-      const positioned = getPositionedTimelineEventGroups({
+      const positioned = getPositionedTimelineEventClusters({
         timelineEventsModel,
         chartInstance,
         plotBounds: BOUNDS,
@@ -110,7 +160,7 @@ describe("TimelineEventsBand utils", () => {
         "2025-03-01T00:00:00Z": NaN,
       });
 
-      const positioned = getPositionedTimelineEventGroups({
+      const positioned = getPositionedTimelineEventClusters({
         timelineEventsModel,
         chartInstance,
         plotBounds: BOUNDS,
@@ -118,30 +168,43 @@ describe("TimelineEventsBand utils", () => {
       });
 
       expect(positioned).toHaveLength(1);
-      expect(positioned[0].x).toBe(200);
+      expect(positioned[0].memberXs).toEqual([200]);
     });
   });
 
-  describe("arePositionedGroupsEqual", () => {
-    const group = {
+  describe("arePositionedClustersEqual", () => {
+    const cluster = {
       date: "2025-01-01T00:00:00Z",
-      events: [createMockTimelineEvent({ id: 1 })],
+      groups: [
+        {
+          date: "2025-01-01T00:00:00Z",
+          events: [createMockTimelineEvent({ id: 1 })],
+        },
+      ],
     };
 
-    it("returns true for the same groups at the same positions", () => {
+    it("returns true for the same clusters at the same positions", () => {
       expect(
-        arePositionedGroupsEqual([{ group, x: 120 }], [{ group, x: 120 }]),
+        arePositionedClustersEqual(
+          [{ cluster, memberXs: [120] }],
+          [{ cluster, memberXs: [120] }],
+        ),
       ).toBe(true);
     });
 
-    it("returns false when a position changes", () => {
+    it("returns false when a member position changes", () => {
       expect(
-        arePositionedGroupsEqual([{ group, x: 120 }], [{ group, x: 121 }]),
+        arePositionedClustersEqual(
+          [{ cluster, memberXs: [120] }],
+          [{ cluster, memberXs: [121] }],
+        ),
       ).toBe(false);
     });
 
-    it("returns false when the number of groups changes", () => {
-      expect(arePositionedGroupsEqual([{ group, x: 120 }], [])).toBe(false);
+    it("returns false when the number of clusters changes", () => {
+      expect(
+        arePositionedClustersEqual([{ cluster, memberXs: [120] }], []),
+      ).toBe(false);
     });
   });
 });

@@ -1,6 +1,5 @@
 import type {
   NormalizedCard,
-  NormalizedDashboard,
   NormalizedDatabase,
   NormalizedField,
   NormalizedMeasure,
@@ -25,7 +24,6 @@ export const entityTypeForObject = (
   object ? entityTypeForModel(object.model) : undefined;
 
 export interface EntitiesState {
-  dashboards: Record<string, NormalizedDashboard>;
   databases: Record<string, NormalizedDatabase>;
   schemas: Record<string, NormalizedSchema>;
   tables: Record<string, NormalizedTable>;

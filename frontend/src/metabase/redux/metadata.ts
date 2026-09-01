@@ -3,9 +3,16 @@ import _ from "underscore";
 
 import { databaseApi, fieldApi, segmentApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import type { Dispatch } from "metabase/redux/store";
+import type { Dispatch, State } from "metabase/redux/store";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
-import type { Database, Field, Segment, Table } from "metabase-types/api";
+import type {
+  Database,
+  Field,
+  FieldId,
+  FieldValue,
+  Segment,
+  Table,
+} from "metabase-types/api";
 
 const UPDATE = "metabase/entities/UPDATE";
 
@@ -16,6 +23,19 @@ const UPDATE = "metabase/entities/UPDATE";
 export function updateMetadata(data: unknown, schema: Schema) {
   const payload = normalize(data, schema);
   return { type: UPDATE, payload };
+}
+
+/**
+ * A field's client-accumulated remappings. No endpoint returns these: they are
+ * merged in by `addRemappings` as values are fetched, and one component's fetch
+ * labels values for another, so a component cannot answer this from its own
+ * result.
+ */
+export function getFieldRemappings(
+  state: State,
+  fieldId: FieldId,
+): FieldValue[] {
+  return state.entities.fields[fieldId]?.remappings ?? [];
 }
 
 export const updateSegment =

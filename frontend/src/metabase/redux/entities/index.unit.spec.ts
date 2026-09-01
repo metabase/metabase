@@ -7,7 +7,6 @@ describe("entities reducer", () => {
     const state = reducer(undefined, { type: "@@INIT" });
 
     expect(state).toEqual({
-      dashboards: {},
       databases: {},
       fields: {},
       measures: {},

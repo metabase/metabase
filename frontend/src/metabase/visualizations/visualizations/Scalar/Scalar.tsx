@@ -13,13 +13,15 @@ import {
   getColor,
   getTooltipContent,
 } from "metabase/visualizations/lib/scalar_utils";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type {
-  ComputedVisualizationSettings,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import {
+  type ComputedVisualizationSettings,
+  segmentIsValid,
+} from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";

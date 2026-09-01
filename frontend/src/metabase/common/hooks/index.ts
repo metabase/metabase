@@ -1,4 +1,3 @@
-export * from "./entity-framework";
 export * from "./use-attached-dwh";
 export * from "./use-abortable-query";
 export * from "./use-confirmation";
@@ -11,6 +10,7 @@ export * from "./use-notification-channels";
 export * from "./use-scroll-to-top";
 export * from "./use-sorting-state-change";
 export * from "./use-temp-storage";
+export * from "./use-metadata-toasts";
 export * from "./use-temporary-state";
 export * from "./use-toast";
 export * from "./use-url-with-utm";

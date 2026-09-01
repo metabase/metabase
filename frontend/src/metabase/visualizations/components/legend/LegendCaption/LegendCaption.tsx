@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { IconProps } from "metabase/ui";
 import { Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
-import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
+import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/viz-core";
 
 import { LegendActions } from "../LegendActions";
 

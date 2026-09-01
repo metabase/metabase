@@ -15,7 +15,7 @@ export const createTimelineWithEvents = ({
   events,
 }: {
   timeline: CreateTimelineRequest;
-  events: CreateTimelineEventRequest[];
+  events: Omit<CreateTimelineEventRequest, "timeline_id">[];
 }): {
   timeline: Timeline;
   events: TimelineEvent[];

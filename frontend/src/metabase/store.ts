@@ -8,6 +8,7 @@ import {
 
 import { Api, retryDroppedRefetches } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
+import { metadataHydrationMiddleware } from "metabase/redux/entities/hydration";
 import type { State } from "metabase/redux/store";
 
 // Each app passes its own reducer map, so per-slice types can't be known here.
@@ -28,6 +29,7 @@ export function getStore(
   const middlewares: Middleware[] = [
     Api.middleware,
     retryDroppedRefetches,
+    metadataHydrationMiddleware,
     ...PLUGIN_REDUX_MIDDLEWARES,
     ...extraMiddlewares,
   ];

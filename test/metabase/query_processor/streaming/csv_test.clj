@@ -114,23 +114,30 @@
               ["5" "118.26100000° W" "34.07780000° N"]]
              (parse-and-sort-csv result))))))
 
-(defn- csv-export
-  "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
-  [rows]
+(defn- csv-export-with-cols
+  "Given `ordered-cols` and a seq of result rows, write it as a CSV, then read the CSV back. Includes the header row."
+  [ordered-cols rows]
   (driver/with-driver :h2
     (mt/with-metadata-provider (mt/id)
       (with-open [bos (ByteArrayOutputStream.)
                   os  (BufferedOutputStream. bos)]
         (let [results-writer (qp.si/streaming-results-writer :csv os)]
-          (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
-                                                              {:base_type :type/*}
-                                                              {:base_type :type/*}]}} {})
+          (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} {})
           (doall (map-indexed
                   (fn [i row] (qp.si/write-row! results-writer row i [] {}))
                   rows))
           (qp.si/finish! results-writer {:row_count (count rows)}))
         (let [bytea (.toByteArray bos)]
-          (rest (csv/read-csv (String. bytea))))))))
+          (->> (csv/read-csv (u/strip-bom (String. bytea)))
+               (map vec)))))))
+
+(defn- csv-export
+  "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
+  [rows]
+  (rest (csv-export-with-cols [{:base_type :type/*}
+                               {:base_type :type/*}
+                               {:base_type :type/*}]
+                              rows)))
 
 (deftest csv-export-includes-utf8-bom-test
   (testing "CSV exports start with a UTF-8 BOM so Excel renders non-ASCII chars like £ correctly"
@@ -247,3 +254,14 @@
         (is (= 2 (count lines)) "Should have header and one data row")
         (is (str/includes? (second lines) "\"")
             "Value containing separator should be quoted")))))
+
+(deftest formula-injection-test
+  (testing "cell values that a spreadsheet would evaluate as a formula are neutralized (SEC-763)"
+    (is (= [["'=1+1" "'@SUM(1+1)" "'+cmd|' /C calc'!A0"]
+            ["'-cmd|' /C calc'!A0" "not a formula" "-1,234.56"]]
+           (csv-export [["=1+1" "@SUM(1+1)" "+cmd|' /C calc'!A0"]
+                        ["-cmd|' /C calc'!A0" "not a formula" "-1,234.56"]]))))
+  (testing "column titles are neutralized too, since they can come from attacker-controlled table metadata"
+    (let [result (csv-export-with-cols [{:name "=1+1" :display_name "=1+1" :base_type :type/Text}]
+                                       [["ok"]])]
+      (is (= ["'=1+1"] (first result))))))
