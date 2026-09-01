@@ -202,11 +202,6 @@ jobs:
         artifact-suffix: runner-${{ matrix.runner-index }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
-  # Split out of the driver-test job above so that job's matrix is purely "one entry per
-  # runner" and `strategy.job-total` is therefore the runner count. These tests are tagged
-  # separately, are not part of the partitioned suite, and need the python-runner
-  # container. They keep the same `junit-name`, which is the ci-conductor suite label —
-  # changing it would orphan the suite's quarantine history.
   be-tests-bigquery-transforms-python-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
@@ -233,6 +228,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
+        # This is the same as the cloud-sdk job above to preserve quarantine history in ci-conductor.
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: >-
           :only-tags [:mb/transforms-python-test]

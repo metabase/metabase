@@ -1,58 +1,30 @@
 #!/usr/bin/env bash
 #
-# Run this runner's share of a partitioned backend test suite, as one or more concurrent
-# JVMs. Owns all of the partition arithmetic: a caller says how many runners share the
-# suite and how many JVMs each runner gets, and never writes a partition index by hand.
+# Run this runner's share of a partitioned backend test suite as one or more concurrent
+# JVMs. The caller says how many runners share the suite and how many JVMs each gets.
 #
-# WHY MORE THAN ONE JVM PER RUNNER
-# --------------------------------
-# A driver test process spends nearly all of its wall time waiting on the remote
-# warehouse, not on the runner's CPU. It cannot use that idle capacity by threading
-# harder: `mb.hawk.core` hardcodes `:multithread? :vars`, so namespaces run strictly one
-# at a time and only the `^:parallel` vars inside the current namespace overlap. The
-# BigQuery run that motivated this reported "1033 tests in parallel, 762 single-threaded"
-# — with one namespace in flight, a 4-vCPU runner is mostly idle.
+# WHY MULTIPLE JVMS PER RUNNER
+# ----------------------------
+# Driver tests spend most of their wall time waiting on the remote warehouse, and they
+# can't use the idle CPU by using more threads because some tests mutate global state.
+# A second JVM gets that isolation for free.
 #
-# Flipping hawk to `:multithread? true` is not an option: a var is left single-threaded
-# precisely because it mutates global state, so running two namespaces in one JVM is
-# exactly the interference that marking guards against. A second JVM gets that isolation
-# for free, which is why this parallelises by process.
-#
-# WHAT ALREADY MAKES CONCURRENT PROCESSES SAFE
-# --------------------------------------------
-#   * `-Dmb.jetty.port=0` (`:test` alias in deps.edn) — every process gets its own
-#     OS-assigned port. The alias comment already calls this out as enabling parallel runs.
-#   * `-Dmb.db.in.memory=true` — every process gets its own H2 application DB.
-#   * Warehouse test datasets are content-hash named (`sha__<hash>_<name>`) and both
-#     dataset and table creation swallow 409 ALREADY_EXISTS. That is what already lets
-#     today's matrix legs hit one GCP project at the same time.
-#
-# WHAT IS NOT SAFE TO SHARE
-# -------------------------
-#   * `target/junit` — hawk calls `clean-output-dir!` (a full directory delete) at
-#     `:begin-test-run`, so a JVM reaching that point late would wipe results an earlier
-#     one had already written.
-#   * `logs/test-log.json` — the log4j2 File appender opens it with `append="false"`.
-#
-# Both are resolved the same way: each JVM runs in its own working directory, hardlinked
-# from the checkout so it costs inodes rather than disk, and the outputs are merged back
-# into the workspace when the run finishes. A single-JVM runner skips all of that and runs
-# in the workspace exactly as an unpartitioned run would.
+# Two paths are NOT safe to share:
+#   * `target/junit` — hawk deletes the whole directory at `:begin-test-run`, so a JVM
+#     starting late would wipe an earlier one's results.
+#   * `logs/test-log.json` — the log4j2 File appender truncates it on open.
+# So each JVM runs in its own hardlinked copy of the checkout (inodes, not disk) and
+# outputs are merged back into the workspace afterwards.
 #
 # INPUTS (environment)
 # --------------------
 #   CLOJURE_ALIASES        alias string for `clojure -X`, e.g. dev:ci:ee:ee-dev:drivers:drivers-dev:test
-#   TEST_RUNNER_INDEX      0-based position of THIS runner among the runners sharing the suite
+#   TEST_RUNNER_INDEX      index of this runner among those sharing the suite
 #   TEST_RUNNER_COUNT      how many runners share the suite
-#   TEST_JVMS_PER_RUNNER   concurrent JVMs on each runner (default 1)
+#   TEST_JVMS_PER_RUNNER   concurrent JVMs per runner (default 1)
 #   TEST_HEAP_PER_JVM      -Xmx per JVM, applied only when running more than one
 #
-# The hawk args shared by every JVM (WITHOUT the partition flags) are the positional
-# arguments. They arrive already split by the caller's shell, which is what lets a
-# workflow keep writing `:only '["test" ".clj-kondo/test"]'` — the quoting there is shell
-# quoting, and a value with spaces has to survive as ONE argv entry.
-#
-# Exits non-zero if any JVM does.
+# Exits non-zero if any JVM fails.
 
 set -uo pipefail
 
@@ -68,10 +40,6 @@ die() {
   exit 1
 }
 
-# Validate before computing anything. These are the mistakes a workflow actually makes —
-# adding a matrix entry without bumping the runner count, or copying one driver's block to
-# another and leaving an index behind — and every one of them is silently wrong rather than
-# loudly wrong: the suite would still pass while quietly skipping or double-running a slice.
 [[ "$TEST_RUNNER_INDEX" =~ ^[0-9]+$ ]] || die "TEST_RUNNER_INDEX must be a non-negative integer, got '$TEST_RUNNER_INDEX'"
 [[ "$TEST_RUNNER_COUNT" =~ ^[0-9]+$ ]] || die "TEST_RUNNER_COUNT must be a positive integer, got '$TEST_RUNNER_COUNT'"
 [[ "$TEST_JVMS_PER_RUNNER" =~ ^[0-9]+$ ]] || die "TEST_JVMS_PER_RUNNER must be a positive integer, got '$TEST_JVMS_PER_RUNNER'"
@@ -80,21 +48,19 @@ die() {
 [ "$TEST_RUNNER_INDEX" -lt "$TEST_RUNNER_COUNT" ] ||
   die "runner index $TEST_RUNNER_INDEX is out of range for $TEST_RUNNER_COUNT runner(s) — a matrix entry was added without raising runner-count"
 
-
-
-# The partition plan. Indexes are strided by the runner count rather than handed out in
-# contiguous blocks, so runner 0 of 3 with 2 JVMs takes partitions 0 and 3, runner 1 takes
-# 1 and 4, and so on. hawk partitions in namespace order, so neighbouring partitions have
-# correlated runtimes; a contiguous block would concentrate the slow ones on one runner and
-# that runner would set the job's wall time.
+# Partition indexes are split across runners rather than handed out in contiguous
+# blocks. E.g. with 2 runners and 2 JVMs the first runner gets partition 0 and 2, and
+# the second runner gets partitions 1 and 3. Hawk partitions in namespace order, so
+# neighbouring partitions have similar runtimes — contiguous blocks would group the slow
+# ones together onto one runner.
 PARTITION_TOTAL=$((TEST_RUNNER_COUNT * TEST_JVMS_PER_RUNNER))
 INDEXES=()
 for ((k = 0; k < TEST_JVMS_PER_RUNNER; k++)); do
   INDEXES+=($((TEST_RUNNER_INDEX + k * TEST_RUNNER_COUNT)))
 done
 
-# One JVM: run in the workspace, with no output juggling and no heap override, so a
-# partitioned-but-not-concurrent driver behaves exactly as it did before this script.
+# One JVM: run directly in the workspace with no heap override, exactly as a
+# partitioned run behaved before this script existed.
 if [ "$TEST_JVMS_PER_RUNNER" -eq 1 ]; then
   echo "Running partition ${INDEXES[0]} of $PARTITION_TOTAL"
   exec clojure -X:"$CLOJURE_ALIASES" "${TEST_ARGS[@]}" \
@@ -105,21 +71,19 @@ fi
 
 WORKSPACE="$PWD"
 # Sibling of the checkout: same filesystem (so `cp -al` can hardlink) but outside the
-# repo, so one JVM's directory can never be copied into the next one's.
+# repo, so one JVM's directory never gets copied into another's.
 JVM_DIRS_ROOT="$(dirname "$WORKSPACE")/backend-test-jvms"
 STATUS_DIR="$JVM_DIRS_ROOT/status"
 
 # Merge every JVM's results into the workspace the rest of the job reads from.
 #
-# Per-partition SUBDIRECTORY rather than a flat copy: partitions never share a namespace,
-# so the per-namespace `<ns>.xml` files could be flattened safely, but
-# `mb_hawk_var_less_errors.xml` has a fixed name and JVMs would silently overwrite each
-# other's. Both consumers walk `target/junit` recursively and match on suffix —
-# dorny/test-reporter globs `target/junit/**/*_test.xml`, and ci-conductor's backend
-# adapter uses `readdirSync(dir, {recursive: true})` plus `endsWith()` — so nesting is free.
+# Each partition's junit XML goes into its own subdirectory: `mb_hawk_var_less_errors.xml`
+# has a fixed name, so a flat copy would silently overwrite it. Nesting is safe because
+# both consumers (dorny/test-reporter and ci-conductor's backend adapter) walk
+# `target/junit` recursively and match on filename suffix.
 #
-# Runs from an EXIT trap so a cancelled or timed-out job still publishes the results of
-# whatever finished, instead of reporting a job-shaped hole.
+# Runs from an EXIT trap so a cancelled or timed-out job still publishes whatever
+# finished.
 # shellcheck disable=SC2329  # invoked by the EXIT trap below, which shellcheck can't see.
 merge_outputs() {
   mkdir -p "$WORKSPACE/target/junit" "$WORKSPACE/logs"
@@ -140,10 +104,8 @@ trap merge_outputs EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
 
-# Hardlinked copy of the checkout — ~0.1s and no extra disk for a Metabase-sized tree.
-# `target`, `logs` and `.cpcache` are the paths a run writes to, so they are left out and
-# recreated per JVM; `.git` and `node_modules` are left out because nothing on the test
-# classpath reads them and they are the two most expensive trees to walk.
+# Hardlinked copy of the checkout. Skips the paths a run writes to (`target`, `logs`, `.cpcache`)
+# and the two most expensive trees nothing on the test classpath reads (`.git`, `node_modules`).
 prepare_jvm_dir() {
   local jvm_dir="$1" entry
   rm -rf "$jvm_dir"
@@ -158,17 +120,14 @@ prepare_jvm_dir() {
   done
 }
 
-# Output is prefixed with the partition index so several JVMs interleaving in one job log
-# stay readable. A read loop rather than `sed -u`: line-buffered without a GNU-only flag,
-# so this behaves the same when someone runs the script on a laptop.
+# Prefix output with the partition index so interleaved JVM logs stay readable.
 run_partition() {
   local idx="$1" jvm_dir="$2" rc line
   (
     cd "$jvm_dir" || exit 1
-    # `-J` options land after the aliases' `:jvm-opts`, so these override the `-Xms12g
-    # -Xmx12g` the `:ci` alias sets for a runner running a single JVM. Xms is left small
-    # on purpose: N JVMs sharing one runner should grow into memory on demand rather than
-    # each committing its ceiling up front.
+    # `-J` options land after the aliases' `:jvm-opts`, overriding the `:ci` alias's
+    # `-Xms12g -Xmx12g`. Xms stays small so JVMs sharing a runner grow into memory on
+    # demand rather than each committing its ceiling up front.
     exec clojure -J-Xms512m -J-Xmx"$TEST_HEAP_PER_JVM" -X:"$CLOJURE_ALIASES" \
       "${TEST_ARGS[@]}" \
       :partition/total "$PARTITION_TOTAL" \

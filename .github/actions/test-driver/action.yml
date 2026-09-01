@@ -25,42 +25,27 @@ inputs:
   runner-index:
     required: false
     description: >-
-      0-based position of THIS runner among the runners sharing one partitioned suite,
-      normally the value of a one-dimensional `runner-index` matrix. Setting it turns on
-      partitioning; leaving it unset runs `test-args` as-is. Set `runner-count` with it.
-      See `be-tests-bigquery-cloud-sdk-ee` in `.github/workflows/drivers.yml` for the shape.
+      The index of this runner among those sharing a partitioned suite. See
+      `be-tests-bigquery-cloud-sdk-ee` in `.github/workflows/drivers.yml` for an example.
   runner-count:
     required: false
     description: >-
-      How many runners share the suite. Whenever the matrix is one-entry-per-runner, pass
-      the `strategy.job-total` expression rather than a literal: a literal that drifts ABOVE
-      the real runner count silently drops whole partitions and still reports green, and no
-      amount of validation inside one runner can see that. (A literal that drifts below is
-      caught — the run fails with an explicit out-of-range error.) That also means the
-      matrix must hold nothing but runners; anything unpartitioned belongs in its own job.
-
-      Together with `jvms-per-runner` this is the whole partition plan;
-      `.github/scripts/run-backend-test-jvms.sh` derives `:partition/total` and this
-      runner's `:partition/index` values from it, so no workflow writes a partition number
-      by hand.
+      How many runners share the suite. Recommended to set to `strategy.job-total` rather
+      than a literal so that it doesn't need updating if the `runner-index` matrix changes.
   jvms-per-runner:
     required: false
     default: "1"
     description: >-
-      Concurrent test JVMs on each runner. More than one is worth it for a driver whose
-      tests wait on the warehouse rather than on the runner — see the script for why the
-      extra concurrency has to come from processes rather than threads, and what it
-      isolates. Partition indexes are strided across runners automatically, so raising this
-      needs no other change.
+      Concurrent JVMs per runner. Recommended to raise above 1 for drivers whose tests
+      spend a lot of time waiting on a remote warehouse.
   heap-per-jvm:
     required: false
     default: "4g"
     description: >-
-      `-Xmx` per JVM, applied only when `jvms-per-runner` is more than 1 (a lone JVM keeps
-      the `:ci` alias's `-Xmx12g`, which no longer fits once a runner hosts several).
-      Budget from the runner: reserve ~1G for the OS and ~2G of non-heap per JVM — metaspace
-      for a fully-loaded Metabase plus the Truffle/GraalJS runtime is not small — then
-      divide what's left. On a 16G `ubuntu-latest` that is ~4G each for two JVMs.
+      `-Xmx` per JVM, applied only when `jvms-per-runner` is more than 1 (otherwise the
+      the `:ci` alias's `-Xmx12g` is used). To size it: reserve ~1G for the OS and ~2G
+      of non-heap per JVM, then divide what's left. On a 16G runner that's ~4G each for
+      two JVMs.
   granular-rerun:
     required: false
     default: "true"
@@ -233,8 +218,8 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: ${{ format('test-logs-{0}{1}', github.job, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
-        # Glob, not a fixed name: a single-JVM run writes `logs/test-log.json`, while a
-        # run with several concurrent JVMs merges one `logs/test-log-p<index>.json` per leg.
+        # Glob: a single-JVM run writes `logs/test-log.json`; a multi-JVM run merges one
+        # `logs/test-log-p<index>.json` per JVM.
         path: logs/test-log*.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.
