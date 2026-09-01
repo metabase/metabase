@@ -51,6 +51,19 @@
     (is (not (sql/registered-fn? :two-words)))
     (is (not (safe? {:select [:*] :from [:core_user] :where [:two-words :id 1]})))))
 
+(deftest ^:parallel allow-list-covers-registry-test
+  (testing "every operator Honey SQL knows that isn't a plain identifier is on the allow-list"
+    ;; the guard no longer asks Honey SQL at runtime, so a Honey SQL upgrade that adds an operator -- or a new
+    ;; `sql/register-fn!` of ours -- has to be reflected here, and this is what says so
+    (let [;; namespaced registrations are driver internals, for warehouse queries rather than the app DB, and
+          ;; `:raw`/`:inline` are deliberately gated instead of allowed
+          known    (into #{} (comp (remove namespace) (remove #{:raw :inline}))
+                         (concat @@#'sql/infix-ops (keys @@#'sql/special-syntax)))
+          allowed  @#'honeysql-guard/allowed-keywords
+          rejected (remove #(honeysql-guard/safe-syntax? {:select [[[% 1]]] :from [:core_user]}) known)]
+      (is (= #{} (set (remove allowed rejected)))
+          "Honey SQL operators the guard would reject; add them to allowed-keywords"))))
+
 (deftest ^:parallel symbol-heads-test
   (testing "Honey SQL accepts symbols wherever it accepts keywords, and so does the guard"
     (is (= ["SELECT * FROM t WHERE id NOT IN (?, ?)" 1 2]
