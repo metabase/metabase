@@ -12,11 +12,17 @@ const setup = ({
 } = {}) => {
   fetchMock.get("path:/api/embed-theme", []);
 
-  renderWithProviders(<EmbeddingThemeListingApp showHeading={showHeading} />, {
-    storeInitialState: {
-      currentUser: createMockUser({ is_superuser: true }),
+  renderWithProviders(
+    <EmbeddingThemeListingApp
+      basePath="/embedding/appearance/theme"
+      showHeading={showHeading}
+    />,
+    {
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
     },
-  });
+  );
 };
 
 /**
