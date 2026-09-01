@@ -19,6 +19,12 @@ const setup = ({
   });
 };
 
+/**
+ * The two upsell tests this file used to carry are gone: the component no
+ * longer checks `embedding_simple` or renders UpsellEmbeddingTheme -- its
+ * caller gates it and shows the upsell instead. theme-upsell.cy.spec.ts covers
+ * that end to end, per edition.
+ */
 describe("EmbeddingThemeListingApp", () => {
   it("renders the themes listing", async () => {
     setup();
