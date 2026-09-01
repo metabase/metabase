@@ -148,9 +148,11 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
-  // The theme editor previews the live embed through the app-tier EAJS runtime,
-  // so it stays app tier while its ThemeListing/hooks/utils siblings are
-  // shared. The pattern must precede shared/embedding below: first match wins.
+  // App tier because ResourcePreview imports the EAJS runtime
+  // (embedding-iframe-sdk), and PreviewPanel then EmbeddingThemeEditorApp import
+  // it in turn -- shared cannot import app. The runtime has real module-load
+  // side effects, so this stays app tier rather than becoming shared. Must
+  // precede shared/embedding below: first match wins.
   createElement({
     type: "app",
     name: "theme-editor",
@@ -250,8 +252,10 @@ const elements = [
   createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
-  // Settings-page building blocks, so embedding's shared widgets can compose
-  // them without importing feature/admin.
+  // Settings-page rendering primitives, needed by admin, enterprise and
+  // embedding alike. Not in shared/settings: that module is data only -- api,
+  // selectors and hooks behind a private-by-default barrel -- and reading a
+  // setting value should not drag React components in with it.
   createElement({ type: "shared", name: "settings-components" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
