@@ -197,7 +197,7 @@
       ;; for backward compatibility, append a filter stage only with explicit stage numbers
       (cond-> query (>= stage-number 0) lib/ensure-filter-stage))))
 
-(mu/defn- filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get the filterable columns of `card`'s query at `stage-number`."
   [card         :- :metabase.queries.schema/card
    stage-number :- :int]
