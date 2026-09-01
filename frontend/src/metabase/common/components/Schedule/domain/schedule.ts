@@ -23,7 +23,14 @@ export const SCHEDULE_FIELDS = [
 ] as const satisfies readonly ScheduleField[];
 
 /**
- * Describes each builder type in terms of its fields:
+ * The single source of truth for the shape of every builder type. The table
+ * exists to state the per-type invariants in one place and to have the code
+ * below maintain and guarantee them: normalizing, changing the type and
+ * setting a field all derive what to keep, reset or clear from this table
+ * rather than from ad-hoc rules, and a value that breaks its type's
+ * invariants is rejected instead of being emitted.
+ *
+ * Each type is described in terms of its fields:
  *
  * - `variables` are the fields the user picks in the UI. `unit` names what the
  *   field means for that type, e.g. `schedule_minute` is a minute past the
