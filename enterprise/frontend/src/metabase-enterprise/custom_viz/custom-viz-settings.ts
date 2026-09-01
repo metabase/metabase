@@ -64,8 +64,6 @@ export function sanitizePluginSettings(
     },
   );
 
-  // Validate widgets on every declared setting — reserved ids included — so a bad widget
-  // name is still reported for a setting that is later dropped for using a reserved id.
   assertValidSettingWidgets(objectDefinitions);
 
   const definitions = objectDefinitions.flatMap(
