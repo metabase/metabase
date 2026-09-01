@@ -7,7 +7,7 @@
   (:import
    (com.google.common.net InetAddresses)
    (java.io ByteArrayOutputStream InputStream)
-   (java.net Inet6Address InetAddress URI URL)
+   (java.net Inet6Address InetAddress Proxy Proxy$Type ProxySelector URI URL)
    (java.util Locale)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn SystemDefaultDnsResolver)))
@@ -255,6 +255,27 @@
             addrs
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
+
+(def ^:dynamic *proxy-selector*
+  "The `ProxySelector` [[jvm-proxied-url?]] asks. nil reads `ProxySelector/getDefault` at call time, which is what
+  Apache HttpClient's route planner does; tests bind it rather than installing a selector process-wide."
+  nil)
+
+(defn jvm-proxied-url?
+  "Whether the JVM's proxy configuration -- `-Dhttps.proxyHost` and friends, or `java.net.useSystemProxies` -- puts a
+  proxy in front of `url`.
+
+  This decides whether a `:dns-resolver` can enforce anything. clj-http's default route planner honours the JVM
+  proxy settings, and the connection it then opens is to the *proxy*: the resolver is handed the proxy's hostname,
+  and the target is resolved by the proxy, out of reach. A caller enforcing a network policy has to check the target
+  host itself in that case."
+  [url]
+  (boolean
+   (when-let [^ProxySelector selector (or *proxy-selector* (ProxySelector/getDefault))]
+     (try
+       (some #(not= Proxy$Type/DIRECT (.type ^Proxy %)) (.select selector (URI. (str url))))
+       ;; not a URI the selector can be asked about -- nothing is being proxied on its behalf either
+       (catch Throwable _ false)))))
 
 (def ^DnsResolver ^:private ssrf-safe-dns-resolver
   "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].

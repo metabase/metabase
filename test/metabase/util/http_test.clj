@@ -5,7 +5,7 @@
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)
-   (java.net InetAddress)
+   (java.net InetAddress InetSocketAddress Proxy Proxy$Type ProxySelector)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn InMemoryDnsResolver)))
 
@@ -232,6 +232,23 @@
     (doseq [ip non-public-ips]
       (is (false? (boolean (http/public-address? (InetAddress/getByName ip))))
           (str "should be rejected: " ip)))))
+
+(defn- proxy-selector
+  ^ProxySelector [proxies]
+  (proxy [ProxySelector] []
+    (select [_uri] proxies)
+    (connectFailed [_uri _sa _ioe] nil)))
+
+(deftest ^:parallel jvm-proxied-url?-test
+  (testing "a JVM proxy in front of a URL is reported, so a caller knows its :dns-resolver sees only the proxy"
+    (binding [http/*proxy-selector* (proxy-selector [(Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))])]
+      (is (true? (http/jvm-proxied-url? "https://api.anthropic.com/v1")))
+      (testing "a string that is not a URI is not proxied either"
+        (is (false? (http/jvm-proxied-url? "not a url"))))))
+  (testing "DIRECT, no selector, and an empty answer all mean unproxied"
+    (doseq [proxies [[Proxy/NO_PROXY] []]]
+      (binding [http/*proxy-selector* (proxy-selector proxies)]
+        (is (false? (http/jvm-proxied-url? "https://api.anthropic.com/v1")))))))
 
 (deftest ^:parallel address-allowed-for-network-policy?-test
   (testing "external-only admits only globally reachable addresses"
