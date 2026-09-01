@@ -324,10 +324,20 @@
    accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
+(defn- check-feature
+  "Ask `driver` about one feature, degrading to false (with a log line) if it throws. Puts no bound on how long the
+  driver may take -- callers wrap this in [[u/with-timeout]] at whatever granularity suits them."
+  [driver feature database]
+  (try
+    (driver/database-supports? driver feature database)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
+      false)))
+
 (defn- supports?* [driver feature database]
   (try
     (u/with-timeout supports?-timeout-ms
-      (driver/database-supports? driver feature database))
+      (check-feature driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -377,10 +387,28 @@
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
+(def ^:private features-timeout-ms
+  "Budget for resolving a database's whole feature set. [[supports?]] gives each check its own
+  [[supports?-timeout-ms]]; applying that per feature here meant one future spawn and one blocking handoff for each
+  of the ~90 features, which cost far more than the checks it was guarding. The loop shares one future and one
+  larger budget instead."
+  (* 4 supports?-timeout-ms))
+
 (defn- features* [driver database]
-  (set (for [feature driver/features
-             :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
-         feature)))
+  ;; Accumulate outside the future so a timeout still yields the features resolved before the driver stalled. The
+  ;; old per-feature timeout only ever cost us the one feature that stalled; losing the whole set would be worse
+  ;; than what it did.
+  (let [acc (atom #{})]
+    (try
+      (u/with-timeout features-timeout-ms
+        (doseq [feature driver/features
+                :when   (not (skip-internal-features feature))]
+          (when (check-feature driver feature database)
+            (swap! acc conj feature))))
+      (catch Throwable e
+        (log/error (u/format-color 'red "Failed to check features for database %s: %s"
+                                   (:id database) (ex-message e)))))
+    @acc))
 
 (def ^:private memoized-features*
   (memoize/memo
