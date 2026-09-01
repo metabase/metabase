@@ -615,19 +615,19 @@
    "dataset"           {:db-model :model/Card               :alias :card}
    "document"          {:db-model :model/Document           :alias :document}
    "exploration"       {:db-model :model/Exploration        :alias :exploration}
-   "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
+   "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model_index_value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
    "measure"           {:db-model :model/Measure            :alias :measure}
    "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
    "table"             {:db-model :model/Table              :alias :table}
-   "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}
-   "dashboard-tab"     {:db-model :model/DashboardTab       :alias :dashboard-tab}
+   "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard_card}
+   "dashboard-tab"     {:db-model :model/DashboardTab       :alias :dashboard_tab}
    "dimension"         {:db-model :model/Dimension          :alias :dimension}
-   "permissions-group" {:db-model :model/PermissionsGroup   :alias :permissions-group}
+   "permissions-group" {:db-model :model/PermissionsGroup   :alias :permissions_group}
    "pulse"             {:db-model :model/Pulse              :alias :pulse}
-   "pulse-card"        {:db-model :model/PulseCard          :alias :pulse-card}
-   "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse-channel}
+   "pulse-card"        {:db-model :model/PulseCard          :alias :pulse_card}
+   "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse_channel}
    "timeline"          {:db-model :model/Timeline           :alias :timeline}
    "transform"         {:db-model :model/Transform          :alias :transform}
    "user"              {:db-model :model/User               :alias :user}})

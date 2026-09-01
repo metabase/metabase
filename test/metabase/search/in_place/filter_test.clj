@@ -389,7 +389,7 @@
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
-              [:or [:like [:lower :model-index-value.name] (h2x/like-substring "foo")]]
+              [:or [:like [:lower :model_index_value.name] (h2x/like-substring "foo")]]
               [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query

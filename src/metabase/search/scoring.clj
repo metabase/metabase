@@ -195,12 +195,20 @@
   [search-ctx [column-alias expr]]
   [:* [:inline (search.config/weight search-ctx column-alias)] expr])
 
+(defn score-column-alias
+  "The SQL alias a scorer's score is selected under. Scorer names are kebab-case -- they key the weights in
+  [[metabase.search.config]] and name the scores the API returns -- but an alias is an ident, so it goes into the
+  query snake_cased, with a suffix so a scorer named after the column it reads (`:view-count`, `:data-layer`)
+  doesn't alias over it."
+  [scorer-name]
+  (keyword (str (str/replace (name scorer-name) \- \_) "_score")))
+
 (defn select-items
   "Select expressions for each scorer, plus a :total_score that is the weighted sum of the `scorers`."
   [search-ctx scorers]
   (concat
    (for [[column-alias expr] scorers]
-     [expr column-alias])
+     [expr (score-column-alias column-alias)])
    [[(sum-columns (map (partial weighted-score search-ctx) scorers))
      :total_score]]))
 
@@ -213,7 +221,7 @@
   "Scoring stats for each `index-row`."
   [weights scorers index-row]
   (mapv (fn [k]
-          (let [score  (or (get index-row k) 0)
+          (let [score  (or (get index-row (score-column-alias k)) 0)
                 weight (or (weights k) 0)]
             {:score        score
              :name         k
