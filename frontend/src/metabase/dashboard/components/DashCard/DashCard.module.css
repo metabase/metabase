@@ -18,27 +18,25 @@
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
   border-radius: 0.75rem;
-  box-shadow: 0 0 0 0.5px var(--mb-color-shadow-default);
-  transition: box-shadow 0.15s ease-in-out;
+  border: 1px solid var(--mb-color-border);
+  transition: border-color 0.15s ease-in-out;
 
   &:hover {
-    box-shadow: 0 0 0 0.5px var(--mb-color-border-neutral-strong);
+    border-color: var(--mb-color-border-strong);
   }
 
   &.isAction {
-    box-shadow: none !important;
+    border: none !important;
   }
 
   &.hasHiddenBackground {
     border: 0 !important;
     background: transparent !important;
-    box-shadow: none !important;
   }
 
   &.shouldForceHiddenBackground {
     background: var(--mb-color-background_page-secondary);
     border: none !important;
-    box-shadow: none !important;
 
     &.isEmbeddingSdk {
       background: var(--mb-color-bg-dashboard);

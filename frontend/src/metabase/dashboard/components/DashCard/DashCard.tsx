@@ -359,7 +359,7 @@ function DashCardInner({
         style={(theme) => {
           const { border } = theme.other.dashboard.card;
           if (border) {
-            return { border, boxShadow: "none" };
+            return { border };
           }
         }}
         ref={cardRootRef}

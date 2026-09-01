@@ -137,7 +137,7 @@ export const ScalarSizeTiers = {
             width,
             height,
             borderRadius: 12,
-            boxShadow: "0 0 0 0.5px var(--mb-color-border)",
+            border: "1px solid var(--mb-color-border)",
           }}
         >
           <ChartSkeleton display="scalar" />

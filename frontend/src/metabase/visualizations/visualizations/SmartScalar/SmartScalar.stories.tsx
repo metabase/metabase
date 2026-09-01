@@ -47,7 +47,7 @@ export const Default: StoryFn = () => (
           h={height}
           style={{
             borderRadius: 12,
-            boxShadow: "0 0 0 0.5px var(--mb-color-shadow-default)",
+            border: "1px solid var(--mb-color-border)",
           }}
         >
           <Visualization rawSeries={MOCK_SERIES} showTitle width={width} />
@@ -80,7 +80,7 @@ export const DashcardMultipleComparisons: StoryFn = () => (
           h={height}
           style={{
             borderRadius: 12,
-            boxShadow: "0 0 0 0.5px var(--mb-color-shadow-default)",
+            border: "1px solid var(--mb-color-border)",
           }}
         >
           <Visualization
