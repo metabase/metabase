@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { GeneratedAdhocDashboard } from "metabase/api/ai-streaming/schemas";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -23,6 +22,7 @@ import * as Errors from "metabase/utils/errors";
 import type {
   CollectionId,
   SaveMetabotDashboardResponse,
+  SaveMetabotDashboardTile,
 } from "metabase-types/api";
 
 import { useSaveMetabotDashboardMutation } from "../../api";
@@ -44,13 +44,19 @@ type SaveDashboardValues = {
 };
 
 export function MetabotSaveDashboardModal({
-  dashboard,
   conversationId,
+  dashboardId,
+  name,
+  description,
+  tiles,
   onSaved,
   onClose,
 }: {
-  dashboard: GeneratedAdhocDashboard;
   conversationId: string;
+  dashboardId: string;
+  name: string;
+  description?: string;
+  tiles: SaveMetabotDashboardTile[];
   onSaved: (saved: SaveMetabotDashboardResponse) => void;
   onClose: () => void;
 }) {
@@ -59,24 +65,18 @@ export function MetabotSaveDashboardModal({
 
   const initialValues: SaveDashboardValues = useMemo(
     () => ({
-      name: dashboard.title,
-      description: dashboard.description ?? null,
+      name,
+      description: description ?? null,
       collection_id: initialCollectionId,
     }),
-    [dashboard, initialCollectionId],
+    [name, description, initialCollectionId],
   );
 
   const handleSubmit = async (values: SaveDashboardValues) => {
     const saved = await saveMetabotDashboard({
       conversation_id: conversationId,
-      dashboard_id: dashboard.id,
-      dashboard: {
-        ...values,
-        tiles: dashboard.tiles.map(({ query, ...tile }) => ({
-          ...tile,
-          dataset_query: query,
-        })),
-      },
+      dashboard_id: dashboardId,
+      dashboard: { ...values, tiles },
     }).unwrap();
     onSaved(saved);
   };

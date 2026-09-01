@@ -64,7 +64,7 @@ export function isAdhocDashboardPath(pathname: string) {
   return pathname === ADHOC_DASHBOARD_PATH;
 }
 
-export function isAdhocDashboardId(id: unknown) {
+export function isAdhocDashboardId(id: unknown): id is string {
   return typeof id === "string" && id.startsWith(ADHOC_DASHBOARD_PATH);
 }
 
