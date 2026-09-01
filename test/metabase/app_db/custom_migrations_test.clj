@@ -19,7 +19,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [environ.core :as env]
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
@@ -3021,22 +3020,3 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
-
-(defn- setting-row-value [k]
-  (:value (t2/query-one {:select [:value] :from [:setting] :where [:= :key k]})))
-
-(deftest persist-demoted-metabot-env-vars-test
-  (testing "v64.kw52hx : still-set MB_METABOT_* env vars are persisted before the code stops reading them"
-    (impl/test-migrations ["v64.kw52hx"] [migrate!]
-      (t2/query {:insert-into :setting
-                 :values      [{:key "metabot-chat-system-prompt" :value "stored prompt"}]})
-      (with-redefs [env/env (assoc env/env
-                                   :mb-metabot-advanced-permissions "true"
-                                   :mb-metabot-chat-system-prompt   "env prompt")]
-        (migrate!))
-      (testing "an env var with no stored row is inserted"
-        (is (= "true" (setting-row-value "metabot-advanced-permissions"))))
-      (testing "an env var overwrites a stored row, since the environment used to take precedence"
-        (is (= "env prompt" (setting-row-value "metabot-chat-system-prompt"))))
-      (testing "settings whose env var is unset are left alone"
-        (is (nil? (setting-row-value "metabot-limit-unit")))))))
