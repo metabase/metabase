@@ -205,7 +205,7 @@ describe("Embed flow > Get Code Snippet", () => {
     const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       jwtReady: true,
       initialState: { useExistingUserSession: true },
     });
