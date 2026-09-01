@@ -1374,11 +1374,13 @@
            session
            settings
            system
+           task
            transforms
            util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Document
                     :model/Field
                     :model/Measure
