@@ -29,7 +29,7 @@ import {
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import type { ClickObject } from "metabase/visualizations/types";
+import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
@@ -44,6 +44,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { toHostHoverObject } from "./hover-object";
 import { toPluginSeries, toPluginSettings } from "./plugin-view";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
@@ -622,6 +623,11 @@ function createCustomVizWrapper(
         clickObject && toHostClickObject(clickObject, settings),
       );
 
+    const handleHover = (hoverObject?: HoveredObject | null) =>
+      onHoverChange(
+        hoverObject ? toHostHoverObject(hoverObject, settings) : hoverObject,
+      );
+
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
@@ -633,7 +639,7 @@ function createCustomVizWrapper(
         clickObject: CustomVizClickObject | null,
       ) => void,
       // The plugin API mirrors internal Metabase hover objects with looser types.
-      onHover: onHoverChange as unknown as (
+      onHover: handleHover as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,
     };
