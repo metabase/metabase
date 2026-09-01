@@ -4,7 +4,10 @@
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http])
+  (:import
+   (java.net InetSocketAddress Proxy Proxy$Type ProxySelector)))
 
 (set! *warn-on-reflection* true)
 
@@ -314,6 +317,33 @@
                   (try (llm.settings/llm-request-opts url)
                        (catch clojure.lang.ExceptionInfo e (ex-data e))))
               url))))))
+
+(defn- proxy-selector
+  "A `ProxySelector` that answers `proxies` for every URI, the way a JVM configured with `-Dhttps.proxyHost` does."
+  ^ProxySelector [proxies]
+  (proxy [ProxySelector] []
+    (select [_uri] proxies)
+    (connectFailed [_uri _sa _ioe] nil)))
+
+(deftest llm-request-opts-behind-a-jvm-proxy-test
+  (testing (str "clj-http routes through a JVM-configured proxy, so the connection is opened to the proxy and a "
+                "`:dns-resolver` never sees the target: the target host is checked up front instead")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (binding [u.http/*proxy-selector*
+                (proxy-selector [(Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))])]
+        (testing "the proxy is deployment configuration, so a private one is not judged by the policy"
+          (is (= {:redirect-strategy :none} (llm.settings/llm-request-opts "https://8.8.8.8/v1"))))
+        (testing "and the target behind it still is"
+          (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "10.0.0.1"}
+                  (try (llm.settings/llm-request-opts "http://10.0.0.1/v1")
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+        (testing "a floor loosens the target check for a deployment-controlled endpoint"
+          (is (= {:redirect-strategy :none}
+                 (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1")))))
+      (testing "with the proxy selector answering DIRECT, the resolver does the enforcing as before"
+        (binding [u.http/*proxy-selector* (proxy-selector [Proxy/NO_PROXY])]
+          (is (instance? org.apache.http.conn.DnsResolver
+                         (:dns-resolver (llm.settings/llm-request-opts "http://10.0.0.1/v1")))))))))
 
 (deftest connection-time-network-policy-error-test
   (testing "direct and wrapped DNS policy rejections are recognized and translated to the URL-validation shape"
