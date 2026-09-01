@@ -44,15 +44,6 @@
 
 ;;; Query URL Encoding
 
-(defn ->url-hash
-  "JSON-encode `value` and base64-encode the result for use as a URL fragment
-  the frontend decodes with `b64hash_to_utf8`."
-  [value]
-  (-> value
-      json/encode
-      (.getBytes "UTF-8")
-      codecs/bytes->b64-str))
-
 (defn query->url-hash
   "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash.
   When `display` is provided, includes it so the frontend renders the
@@ -61,8 +52,11 @@
   ([query]
    (query->url-hash query nil))
   ([query display]
-   (->url-hash (cond-> {:dataset_query query}
-                 display (assoc :display (name display))))))
+   (-> (cond-> {:dataset_query query}
+         display (assoc :display (name display)))
+       json/encode
+       (.getBytes "UTF-8")
+       codecs/bytes->b64-str)))
 
 (defn query->question-url
   "Convert a query to a /question# URL.
@@ -188,15 +182,24 @@
      description (assoc :description description))))
 
 (defn dashboard-entity-part
-  "Return a `generated_entity` dashboard data part. `url` is an optional navigation
-  path the FE will route to (e.g. `/auto/dashboard/table/123`); when omitted the FE
-  renders the dashboard inline in the conversation instead of navigating. `title` is
-  a short human label for the inline card, and `id` is an optional entity id."
+  "Return a `generated_entity` dashboard data part. `url` is the navigation path the
+  FE will route to (e.g. `/auto/dashboard/table/123`), `title` is a short human label
+  for the inline link card, and `id` is an optional entity id."
   [{:keys [id title url]}]
   (generated-entity-part
-   (cond-> {:type "dashboard" :title title}
-     url (assoc :url url)
-     id  (assoc :id id))))
+   (cond-> {:type "dashboard" :url url :title title}
+     id (assoc :id id))))
+
+(defn generated-dashboard-part
+  "Return the `generated_entity` data part for a dashboard the agent assembled from
+  conversation charts and queries. Embeds the whole definition — `title`, optional
+  `description`, and positioned `tiles` (each carrying its legacy `query`, `display`
+  and `title`) — so the FE can render it as an entity or route to it as an ad-hoc
+  dashboard, the same way card parts embed their query."
+  [{:keys [id title description tiles]}]
+  (generated-entity-part
+   (cond-> {:type "dashboard" :id id :title title :tiles tiles}
+     description (assoc :description description))))
 
 ;;; Stream Processing Transducers
 
