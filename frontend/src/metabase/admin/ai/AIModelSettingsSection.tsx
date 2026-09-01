@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LlmModelPicker } from "metabase/metabot";
 import { useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Stack } from "metabase/ui";
 
