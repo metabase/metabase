@@ -405,6 +405,7 @@
   DEPRECATED: Prefer using MBQL 5 + [[metabase.lib.types.isa/temporal?]] going forward."
   {:deprecated "0.57.0"}
   [field :- ::snake-cased-type-info]
+  ;; deprecated shim delegating to the equally-deprecated field-is-type?; both go away together
   #_{:clj-kondo/ignore [:deprecated-var]}
   (field-is-type? :type/Temporal field))
 

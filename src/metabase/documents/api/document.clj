@@ -88,6 +88,19 @@
          (:parameters card)))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
+(defn- clone-card!
+  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
+
+  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
+  checks (run permission on the query, parameter source-card and parameter field permissions): the query and
+  parameters come from an existing card row the caller passed a read check on rather than from the request, so the
+  user is not authoring anything -- they may be able to view (and run) the source card without having permission to
+  write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
+  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
+  [card creator]
+  (api/create-check :model/Card {:collection_id (:collection_id card)})
+  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
 
@@ -155,8 +168,8 @@
                 (api/read-check card)
                 (assoc accum
                        (:id card)
-                       (:id (create-card! (assoc card :document_id id :collection_id collection_id)
-                                          @api/*current-user*))))
+                       (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
+                                         @api/*current-user*))))
               {}
               to-clone))))
 
@@ -380,12 +393,12 @@
               ;; collection the caller cannot read. Read-check each card before copying, mirroring
               ;; `clone-cards-in-document!`.
               (api/read-check card)
-              (let [new-card (create-card! (-> card
-                                               (dissoc :id :entity_id :created_at :updated_at :creator_id
-                                                       :public_uuid :made_public_by_id :cache_invalidated_at)
-                                               (assoc :document_id new-document-id
-                                                      :collection_id new-collection-id))
-                                           @api/*current-user*)]
+              (let [new-card (clone-card! (-> card
+                                              (dissoc :id :entity_id :created_at :updated_at :creator_id
+                                                      :public_uuid :made_public_by_id :cache_invalidated_at)
+                                              (assoc :document_id new-document-id
+                                                     :collection_id new-collection-id))
+                                          @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (t2/update! :model/Card (:id new-card)
                               {:archived          (boolean (:archived card))

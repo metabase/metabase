@@ -51,7 +51,6 @@ If you're running Metabase Cloud, you can [contact support](https://www.metabase
 
 ## List of environment variables
 
-
 ### `MB_ADMIN_EMAIL`
 
 - Type: string
@@ -3451,4 +3450,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

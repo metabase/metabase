@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.cache :as cache]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -9,6 +10,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -54,6 +56,21 @@
   (testing "test that we can get the name of a user's personal collection as :user"
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+
+(deftest with-temp-user-evicts-personal-collection-id-cache-test
+  (testing "a temporary User cannot leave its deleted Personal Collection id in the production cache"
+    (let [user-id       (atom nil)
+          collection-id (atom nil)]
+      (mt/with-temp [:model/User {id :id}]
+        (reset! user-id id)
+        (reset! collection-id (@#'collection/user->personal-collection-id id))
+        (is (t2/exists? :model/Collection :id @collection-id)))
+      (is (not (t2/exists? :model/Collection :id @collection-id))
+          "with-temp removed the Personal Collection")
+      (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
+                                meta :clojure.core.memoize/cache)
+                           [(mdb/unique-identifier) @user-id]))
+          "with-temp evicted the stale cache entry"))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"

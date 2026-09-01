@@ -383,11 +383,6 @@
     1 = 2"
   [:= [:inline 1] [:inline 2]])
 
-(defn- escape-like-pattern
-  "Escape characters that have special meaning in a SQL LIKE pattern so they match literally."
-  ^String [^String s]
-  (str/replace s #"([\\%_])" "\\\\$1"))
-
 (defn- search-text-clause
   "Match every token in `search-text` against an item's name or last editor's first or last name."
   [search-text]
@@ -397,7 +392,7 @@
                            not-empty)]
       (into [:and]
             (for [token tokens
-                  :let  [pattern (str "%" (escape-like-pattern token) "%")]]
+                  :let  [pattern (h2x/like-substring token)]]
               [:or
                [:like [:lower :name] pattern]
                [:like [:lower :last_edit_first_name] pattern]

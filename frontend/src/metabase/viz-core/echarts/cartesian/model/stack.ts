@@ -1,0 +1,58 @@
+import _ from "underscore";
+
+import { getObjectKeys } from "metabase/utils/objects";
+
+import type { ComputedVisualizationSettings } from "../../../types";
+
+import type { SeriesModel, StackModel } from "./types";
+
+export const getStackModels = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): StackModel[] => {
+  if (!settings["stackable.stack_type"]) {
+    return [];
+  }
+
+  const visibleSeriesModels = seriesModels.filter(
+    (seriesModel) => seriesModel.visible,
+  );
+
+  const seriesModelsByDisplay = _.groupBy(
+    visibleSeriesModels,
+    (seriesModel) => {
+      const series = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+
+      return series?.display ?? "no-display";
+    },
+  );
+
+  return getObjectKeys(seriesModelsByDisplay)
+    .filter((display) => display === "bar" || display === "area")
+    .map((display) => {
+      const stackSeriesModels = seriesModelsByDisplay[display];
+
+      let axis: "left" | "right";
+      if (settings["stackable.stack_type"] === "normalized") {
+        axis = "left";
+      } else {
+        axis = stackSeriesModels.every(
+          (seriesModel) =>
+            settings.series?.(seriesModel.legacySeriesSettingsObjectKey)
+              ?.axis === "right",
+        )
+          ? "right"
+          : "left";
+      }
+
+      return {
+        axis,
+        display,
+        seriesKeys: seriesModelsByDisplay[display].map(
+          (seriesModel) => seriesModel.dataKey,
+        ),
+      };
+    });
+};

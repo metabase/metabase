@@ -8,9 +8,7 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
-import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
-
-import S from "./EditUserStrategyModal.module.css";
+import { Button, Flex, Modal, Radio, Stack } from "metabase/ui";
 
 interface EditUserStrategyModalProps {
   onClose: () => void;
@@ -104,12 +102,12 @@ export const EditUserStrategyModal = ({
   const strategyOptions = [
     {
       value: "multi-tenant",
-      title: t`Multi tenant`,
+      label: t`Multi tenant`,
       description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
     },
     {
       value: "single-tenant",
-      title: t`Single tenant`,
+      label: t`Single tenant`,
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- in admin settings
       description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
     },
@@ -135,28 +133,10 @@ export const EditUserStrategyModal = ({
                   <Radio.Card
                     key={option.value}
                     value={option.value}
-                    radius="md"
-                    p="md"
-                    className={S.radioCard}
-                  >
-                    <Group wrap="nowrap">
-                      <div>
-                        <Text
-                          fw={700}
-                          fz="lg"
-                          lh="xl"
-                          mb="xs"
-                          className={S.radioCardTitle}
-                        >
-                          {option.title}
-                        </Text>
-
-                        <Text c="text-secondary" fz="sm" lh="lg">
-                          {option.description}
-                        </Text>
-                      </div>
-                    </Group>
-                  </Radio.Card>
+                    label={option.label}
+                    description={option.description}
+                    withIndicator={false}
+                  />
                 ))}
               </Stack>
             </Radio.Group>
