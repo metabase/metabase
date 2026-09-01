@@ -197,10 +197,7 @@ describe("issue 14636", () => {
     cy.visit("/monitor/tasks/list?status=success&task=field+values+scanning");
     cy.wait("@successfulFilteredTasks");
 
-    cy.findByPlaceholderText("Filter by task").should(
-      "have.value",
-      task,
-    );
+    cy.findByPlaceholderText("Filter by task").should("have.value", task);
     getFilterByStatus().should("have.value", "Success");
     cy.findAllByTestId("task").should("have.length", 1);
     cy.findByTestId("task")
