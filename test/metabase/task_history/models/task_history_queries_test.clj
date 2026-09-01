@@ -24,7 +24,24 @@
 
 (deftest ^:parallel raw-splice-lint-test
   (is (= [] (vec (raw-splice/violations)))
-      "Raw-splice params (:sql:/:snip:) in .sql files must match the allowlist exactly."))
+      "Raw-splice params (:sql:/:snip:) and Clojure expressions in .sql files are banned outright."))
+
+(deftest ^:parallel clojure-expr-detection-test
+  (testing "every comment form hugsql treats as a Clojure expression is detected"
+    ;; hugsql.parser skips whitespace after the comment opener before peeking for `~`, so the
+    ;; spaced forms are real expressions and must not slip past the scanner.
+    (doseq [sql ["SELECT\n--~ (str \"1\")\n"
+                 "SELECT\n--   ~ (str \"1\")\n"
+                 "SELECT\n/*~ (str \"1\") ~*/\n"
+                 "SELECT\n/* ~ (str \"1\") ~*/\n"]]
+      (testing (pr-str sql)
+        (is (seq (raw-splice/clojure-exprs sql))))))
+  (testing "a tilde in ordinary SQL is not an expression"
+    (doseq [sql ["SELECT * FROM x WHERE name ~ 'foo'"
+                 "SELECT a # b, c ~ d FROM x"
+                 "-- a comment mentioning the ~ character\nSELECT 1"]]
+      (testing (pr-str sql)
+        (is (nil? (raw-splice/clojure-exprs sql)))))))
 
 (deftest ^:parallel raw-splice-params-disarmed-test
   (testing "raw-splice param types are disarmed process-wide: building a query with one throws"

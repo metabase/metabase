@@ -20,7 +20,30 @@
   unquoted by default) -- each a SQL injection hole. Requiring this ns overrides
   `apply-hugsql-param` for those types to throw at query-build time, so Metabase `.sql` files use
   `:value`/`:value*` only and anything else fails loudly rather than relying on review. Re-arming
-  a type means deleting it from `disarmed-param-types` -- a global, loud diff."
+  a type means deleting it from `disarmed-param-types` -- a global, loud diff.
+
+  Not every param type is a splice, and the distinction is worth stating because it is easy to
+  ban by vibe. Reading `hugsql.parameters`, they fall into three classes:
+
+  - **value**: `:value`/`:v`/`:value*`/`:v*` and `:tuple`/`:t`/`:tuple*`/`:t*` emit only `?`
+    placeholders (`tuple-param` is `value-param-list` wrapped in parens). Structurally incapable
+    of carrying text into a statement, so they are allowed.
+  - **text**: `:sql` puts its value directly in the SQL position; `:i`/`:identifier` quote per the
+    `:quoting` option, which we do not set, so they reduce to `identity`. Both are sinks.
+  - **composition**: `:snip`/`:sqlvec` return the value *as an sqlvec*. Here the param type is not
+    the sink -- the *producer* of that vector is. An sqlvec from a `.sql`-defined snippet is
+    dev-authored; one from `(str ...)` is attacker-authored; they are indistinguishable by the
+    time `apply-hugsql-param` sees them. Banned because that provenance is not checkable at this
+    layer, not because splicing a pre-parsed snippet is inherently unsafe. Lifting the ban needs a
+    provenance mechanism (a marker the `.sql` loader attaches, or symbol-keyed arm vars), not just
+    a decision to trust callers.
+
+  ## Clojure expressions are banned too, and not from here
+
+  `--~ (...)` / `/*~ ... ~*/` in a `.sql` file are worse than any of the above: `hugsql.core/def-expr`
+  builds a string of Clojure source and `load-string`s it, so an expression is arbitrary code
+  execution at query-build time whose return value is also spliced into the SQL text. It is not a
+  param type, so it cannot be disarmed here; `dev.raw-splice` scans for it instead."
   (:require
    [hugsql.parameters :as hugsql.params]
    [toucan2.core :as t2]
@@ -30,8 +53,12 @@
 (set! *warn-on-reflection* true)
 
 (def disarmed-param-types
-  "HugSQL param types that splice raw/unquoted text and are therefore forbidden in Metabase SQL
-  files. Building a query with one throws."
+  "HugSQL param types that splice raw/unquoted text or compose caller-supplied sqlvecs, and are
+  therefore forbidden in Metabase SQL files. Building a query with one throws.
+
+  Deliberately absent: `:value`/`:v`/`:value*`/`:v*` and `:tuple`/`:t`/`:tuple*`/`:t*`. Those emit
+  only `?` placeholders, so they cannot carry text into a statement -- see the ns docstring. The
+  tuple types are unused today but are safe to reach for."
   [:sql :snip :snip* :sqlvec :sqlvec* :i :identifier :i* :identifier*])
 
 (doseq [param-type disarmed-param-types]
