@@ -55,11 +55,11 @@ describe("wrapPluginWidget", () => {
     expect(getWidgetMountPlugin(mount)).toBe(PLUGIN);
   });
 
-  it("mounts into the container with the plugin's own setting id", () => {
+  it("mounts into the container keeping the prefixed DOM id", () => {
     const { container, mountedProps, pluginWidget } = setup();
 
     expect(pluginWidget).toHaveBeenCalledWith(container, mountedProps);
-    expect(mountedProps).toMatchObject({ id: "threshold", value: 1 });
+    expect(mountedProps).toMatchObject({ id: `${PREFIX}threshold`, value: 1 });
   });
 
   it("forwards only the value to onChange", () => {
@@ -113,7 +113,7 @@ describe("wrapPluginWidget", () => {
 
     expect(handle.update).toHaveBeenCalledTimes(1);
     const updatedProps = jest.mocked(handle.update).mock.calls[0][0];
-    expect(updatedProps).toMatchObject({ id: "threshold", value: 2 });
+    expect(updatedProps).toMatchObject({ id: `${PREFIX}threshold`, value: 2 });
 
     getCallback(updatedProps, "onChangeSettings")({ threshold: 3 });
     expect(onChangeSettings).toHaveBeenCalledWith({

@@ -49,18 +49,12 @@ export function wrapPluginWidget(
 }
 
 function toPluginWidgetProps(
-  {
-    id,
-    value,
-    onChange,
-    onChangeSettings,
-    ...extraProps
-  }: CustomVizSettingWidgetProps,
+  { value, onChange, onChangeSettings, ...rest }: CustomVizSettingWidgetProps,
   prefix: string,
 ): PluginWidgetProps {
   return {
-    ...extraProps,
-    id: id.startsWith(prefix) ? id.slice(prefix.length) : id,
+    // `id` stays prefixed: it is the widget's DOM id and must match the host label's `htmlFor`.
+    ...rest,
     value,
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>

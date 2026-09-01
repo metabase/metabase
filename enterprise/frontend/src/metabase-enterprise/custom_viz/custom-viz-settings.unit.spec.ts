@@ -298,7 +298,7 @@ describe("sanitizePluginSettings", () => {
       expect(getWidgetMountPlugin(widget)).toBe(PLUGIN);
     });
 
-    it("delegates mounting to the plugin's shared mount function with the plugin's setting id", () => {
+    it("delegates mounting to the plugin's shared mount function with the prefixed DOM id", () => {
       const { context, calls, handle } = setupMount();
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
@@ -317,7 +317,9 @@ describe("sanitizePluginSettings", () => {
       });
 
       expect(calls).toMatchObject([{ Component: Widget, container }]);
-      expect(calls[0].initialProps).toMatchObject({ id: "customWidget" });
+      expect(calls[0].initialProps).toMatchObject({
+        id: `${PREFIX}customWidget`,
+      });
 
       mountHandle.unmount();
       expect(handle.unmount).toHaveBeenCalledTimes(1);
