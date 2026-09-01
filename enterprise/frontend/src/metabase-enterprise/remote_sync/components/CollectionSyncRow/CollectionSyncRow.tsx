@@ -35,7 +35,6 @@ export const CollectionSyncRow = ({
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
-            size="sm"
             checked={isChecked}
             onChange={(e) => onToggle(collection, e.currentTarget.checked)}
             disabled={!canWrite || isReadOnly}
