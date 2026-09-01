@@ -37,8 +37,8 @@
 ;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
 ;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
 ;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
-;;    any-local, multicast, IPv6 ULA (fc00::/7), IPv4 CGNAT (100.64/10), and non-global IANA
-;;    special-purpose ranges.
+;;    any-local, multicast, IPv6 ULA (fc00::/7), IPv4 CGNAT (100.64/10), non-global IANA
+;;    special-purpose ranges, and IPv6 space IANA has not allocated.
 ;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
 ;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
 ;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
@@ -93,8 +93,10 @@
   ;; Additional IANA special-purpose blocks that are not globally reachable and are not already handled by
   ;; `InetAddress` or the checks in [[public-address?]]. Entries whose registry value is N/A or blank are also refused:
   ;; they do not carry the external-reachability guarantee required by `:external-only`. IPv6 blocks outside 2000::/3
-  ;; (discard-only, local-use translation, segment-routing SIDs, ...) need no entry: everything outside the allocated
+  ;; (discard-only, local-use translation, segment-routing SIDs, ...) need no entry: everything outside the
   ;; global-unicast space is refused wholesale unless listed above.
+  ;; https://www.iana.org/assignments/iana-ipv4-special-registry
+  ;; https://www.iana.org/assignments/iana-ipv6-special-registry
   [(address-prefix "192.0.0.0" 24)       ; IETF protocol assignments
    (address-prefix "192.0.2.0" 24)       ; TEST-NET-1
    (address-prefix "192.88.99.0" 24)     ; deprecated 6to4 relay anycast
@@ -103,15 +105,30 @@
    (address-prefix "203.0.113.0" 24)     ; TEST-NET-3
    (address-prefix "2001::" 23)          ; IETF protocol assignments
    (address-prefix "2001:db8::" 32)      ; documentation
-   (address-prefix "2002::" 16)          ; 6to4
-   (address-prefix "3fff::" 20)])        ; documentation
+   (address-prefix "2002::" 16)])        ; 6to4
+
+(def ^:private reserved-global-unicast-prefixes
+  ;; 2000::/3 is the global-unicast space, but everything in it from 2d00:: up is unallocated: the fifteen blocks
+  ;; the registry marks RESERVED -- which include the 3fff::/20 documentation block -- and the space above them it
+  ;; does not list at all. No ISP routes any of it, so a name resolving there is either a mistake or an internal
+  ;; network squatting on reserved space. Shrink this when IANA allocates from the top of the /3.
+  ;; The smaller unallocated holes below 2d00:: are left alone: they sit between live RIR allocations, which is
+  ;; where the next ones are handed out from, and refusing them would age badly.
+  ;; https://www.iana.org/assignments/ipv6-unicast-address-assignments
+  [(address-prefix "2d00::" 8)
+   (address-prefix "2e00::" 7)
+   (address-prefix "3000::" 4)])
+
+(def ^:private non-global-prefixes
+  "Every prefix `:external-only` refuses, unless [[globally-reachable-special-prefixes]] carves it back out."
+  (into non-global-special-prefixes reserved-global-unicast-prefixes))
 
 (defn public-address?
   "True only for globally reachable unicast IP addresses.
 
   In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
   IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
-  entries. IPv6 addresses outside the allocated global-unicast space (2000::/3) are rejected unless the registry
+  entries. IPv6 addresses outside the *allocated* part of the global-unicast space are rejected unless a registry
   marks them globally reachable: an internal network can route reserved space."
   [^InetAddress addr]
   (let [b     (.getAddress addr)
@@ -131,8 +148,8 @@
                   (and ipv4? (<= 240 b0))))                       ; IPv4 reserved 240.0.0.0/4 + broadcast
          (or (some #(address-in-prefix? addr %) globally-reachable-special-prefixes)
              (and (or ipv4?
-                      (= 0x20 (bit-and b0 0xe0)))                 ; IPv6 allocated global unicast 2000::/3
-                  (not-any? #(address-in-prefix? addr %) non-global-special-prefixes))))))
+                      (= 0x20 (bit-and b0 0xe0)))                 ; IPv6 global unicast 2000::/3
+                  (not-any? #(address-in-prefix? addr %) non-global-prefixes))))))
 
 (defn- private-address?
   "True for addresses that are private but may be intentionally reachable from a self-hosted deployment."
