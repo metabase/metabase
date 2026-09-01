@@ -142,13 +142,6 @@
                  (and (nil? verified) (true? (:assume-email-verified config)))))
         (trusted-email-domain? email (:trusted-email-domains config)))))
 
-(defn- identity-provider-name
-  "The AuthIdentity provider name for this login. Configs may set :identity-provider-name to give each
-   IdP its own identity namespace (e.g. \"oidc-okta\") so (iss, sub) identities from different IdPs
-   sharing one dispatch keyword can't collide with or overwrite each other."
-  [provider config]
-  (or (:identity-provider-name config) (name provider)))
-
 (def ^:private identity-already-linked-failure
   {:success? false
    :error :identity-already-linked
@@ -188,7 +181,7 @@
   "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
    first when the provider's linking policy allows. Returns {:success? true} or a failure map."
   [provider user claims config email]
-  (let [pname (identity-provider-name provider config)
+  (let [pname (auth-identity/identity-provider-name provider config)
         sub   (subject claims)
         iss   (:iss claims)]
     (if (str/blank? sub)
@@ -357,7 +350,7 @@
     ;; JIT provisioning: the token's identity must not already belong to another account
     (not user)
     (cluster-lock/with-cluster-lock ::link-identity
-      (if (linked-to-other-user? (identity-provider-name provider (:oidc-config request))
+      (if (linked-to-other-user? (auth-identity/identity-provider-name provider (:oidc-config request))
                                  nil (subject claims) (:iss claims))
         (do (log/warn "OIDC login rejected: token identity is already linked to an existing user; not provisioning")
             identity-already-linked-failure)

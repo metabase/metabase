@@ -115,8 +115,6 @@
 
 (methodical/defmethod validate :default
   [_provider _auth-identity-data]
-  ;; per-IdP AuthIdentity provider strings (e.g. "oidc-okta") have no registered provider keyword, and
-  ;; the model hooks validate every row on insert/update; validation is opt-in, so no-op rather than throw
   nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
@@ -341,11 +339,12 @@
   []
   [:email :first_name :last_name :sso_source])
 
-(defn- identity-provider-name
-  "AuthIdentity provider name for SSO `user-data`: its :identity-provider-name (set by providers whose
-   dispatch keyword covers several IdPs, e.g. per-key custom OIDC) or the provider keyword's name."
-  [provider user-data]
-  (or (:identity-provider-name user-data) (name provider)))
+(defn identity-provider-name
+  "AuthIdentity provider name for a login: the map's :identity-provider-name (set — in the config and in
+   SSO user-data — by providers whose dispatch keyword covers several IdPs, e.g. per-key custom OIDC) or
+   the provider keyword's name."
+  [provider m]
+  (or (:identity-provider-name m) (name provider)))
 
 (defn- auth-identity-row
   "AuthIdentity row linking `user-id` to the `:provider-id`/`:provider-metadata` carried in SSO `user-data`."
