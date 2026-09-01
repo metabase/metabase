@@ -27,6 +27,7 @@
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (process-userland-query/flush-execution-metadata!)
         ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
         ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
@@ -207,31 +208,42 @@
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test
-  (let [saved-query-execution? (atom false)]
-    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                                  (reset! saved-query-execution? info))]
+  (let [saved-execution-count (atom 0)
+        reduce-started        (promise)
+        release-reduce        (promise)
+        worker-finished       (promise)]
+    (mt/with-dynamic-fn-redefs
+      [process-userland-query/save-execution-metadata!
+       (fn [_info]
+         (swap! saved-execution-count inc))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [status (atom ::not-started)]
-          (binding [qp.pipeline/*canceled-chan* canceled-chan
-                    qp.pipeline/*reduce*        (fn [_rff _metadata rows]
-                                                  (reset! status ::started)
-                                                  (Thread/sleep 1000)
-                                                  (reset! status ::done)
-                                                  (qp.pipeline/*result* rows))]
-            (future
-              (let [futur (future
-                            (process-userland-query (mt/mbql-query venues)))]
-                (is (not= ::done
-                          @status))
-                (Thread/sleep 100)
-                (future-cancel futur)))))
-        (testing "canceled-chan should get get a :cancel message"
-          (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
-            (is (= 'canceled-chan
-                   (if (= port canceled-chan) 'canceled-chan 'timeout))
-                "port")
-            (is (= ::qp.pipeline/cancel
-                   val)
-                "val")))
-        (testing "No QueryExecution should get saved when a query is canceled"
-          (is (not @saved-query-execution?)))))))
+        ;; The interrupt must land inside `*run*`'s `try` for it to publish `::cancel`.
+        ;; Synchronize on entry to `*reduce*`; canceling during earlier query setup bypasses
+        ;; that handler and makes this test race.
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*reduce*        (fn [_rff _metadata _rows]
+                                                (deliver reduce-started true)
+                                                ;; Keep `*run*` active until the cancellation interrupt arrives.
+                                                @release-reduce)]
+          (let [query-future (future
+                               (try
+                                 (process-userland-query (mt/mbql-query venues))
+                                 (finally
+                                   (deliver worker-finished true))))]
+            (try
+              (is (true? (deref reduce-started 10000 ::timed-out))
+                  "query should reach *reduce* before the 10-second timeout")
+              (future-cancel query-future)
+              (testing "canceled-chan receives ::cancel"
+                (is (= ::qp.pipeline/cancel
+                       (first (a/alts!! [canceled-chan (a/timeout 2000)])))))
+              ;; Wait for the middleware to unwind before checking side effects outside
+              ;; the cancellation handler.
+              (is (true? (deref worker-finished 10000 ::timed-out))
+                  "query worker should exit after cancellation")
+              (testing "cancellation does not save a QueryExecution"
+                (is (zero? @saved-execution-count)))
+              (finally
+                (future-cancel query-future)
+                ;; Release the worker if cancellation fails to interrupt the deref.
+                (deliver release-reduce nil)))))))))

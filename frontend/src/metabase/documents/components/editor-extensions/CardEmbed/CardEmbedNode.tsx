@@ -18,6 +18,7 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -37,7 +38,6 @@ import {
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
   Ellipsified,
@@ -48,16 +48,16 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getDatasetError } from "metabase/visualizations/lib/errors";
-import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getDatasetError,
+  getVisualizationTransformed,
+  isTimeseries,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
@@ -854,6 +854,7 @@ export const CardEmbedComponent = memo(
                       isEditing={false}
                       isDashboard={false}
                       isDocument={true}
+                      customVizLoadingView={<CardEmbedLoadingState />}
                       showTitle={false}
                       error={datasetError?.message}
                       errorIcon={datasetError?.icon}

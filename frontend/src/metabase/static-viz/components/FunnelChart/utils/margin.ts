@@ -3,7 +3,7 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import type { FunnelDatum } from "metabase/visualizations/lib/funnel/types";
+import type { FunnelDatum } from "metabase/viz-core";
 
 import type { FunnelSettings } from "../types";
 

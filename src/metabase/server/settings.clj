@@ -35,7 +35,7 @@ x.com")
 
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public
@@ -43,10 +43,10 @@ x.com")
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    ""
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :export?    true)
 
 (defsetting csp-img-enabled

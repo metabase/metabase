@@ -5,8 +5,9 @@ import {
   VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { registerVisualization } from "metabase/visualizations";
+import { Box, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 
 import { SmartScalar } from "./SmartScalar";
 import { mockSeries } from "./tests/test-mocks";
@@ -26,11 +27,115 @@ const MOCK_ROWS = [
 const MOCK_SERIES = mockSeries({
   rows: MOCK_ROWS,
   insights: [{ unit: "month", col: "Count" }],
+  name: "Last invoice",
 });
+
+// spec card sizes: size-200, size-300, and size-400 tiers
+const CARD_SIZES = [
+  { width: 256, height: 126 },
+  { width: 345, height: 170 },
+  { width: 433, height: 214 },
+];
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
-    <Visualization rawSeries={MOCK_SERIES} width={500} />
+    <Flex gap="lg" align="flex-start" p="lg">
+      {CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width}
+          h={height}
+          style={{
+            borderRadius: 12,
+            border: "1px solid var(--mb-color-border)",
+          }}
+        >
+          <Visualization rawSeries={MOCK_SERIES} showTitle width={width} />
+        </Box>
+      ))}
+    </Flex>
+  </VisualizationWrapper>
+);
+
+const MOCK_MULTI_COMPARISON_SERIES = mockSeries({
+  rows: MOCK_ROWS,
+  insights: [{ unit: "month", col: "Count" }],
+  name: "Last invoice",
+  comparisonTypes: [
+    { id: "1", type: "previousPeriod" },
+    { id: "2", type: "periodsAgo", value: 2 },
+    { id: "3", type: "staticNumber", value: 90, label: "Target" },
+  ],
+});
+
+// dashboards show the compact row with a "+N" badge; the extra comparisons
+// live in the hover panel
+export const DashcardMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Flex gap="lg" align="flex-start" p="lg">
+      {CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width}
+          h={height}
+          style={{
+            borderRadius: 12,
+            border: "1px solid var(--mb-color-border)",
+          }}
+        >
+          <Visualization
+            rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+            showTitle
+            width={width}
+          />
+        </Box>
+      ))}
+    </Flex>
+  </VisualizationWrapper>
+);
+
+// a single comparison on a full-page question renders inline with the trend
+// symbol and the full comparison value
+export const QueryBuilderSingleComparison: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization rawSeries={MOCK_SERIES} width={800} isQueryBuilder />
+    </Box>
+  </VisualizationWrapper>
+);
+
+// several comparisons on a full-page question render as a date line plus the
+// full list — no hover panel needed
+export const QueryBuilderMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization
+        rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+        width={800}
+        isQueryBuilder
+      />
+    </Box>
+  </VisualizationWrapper>
+);
+
+// public/embedded question views get the same treatment as the query builder
+export const StandaloneQuestionSingleComparison: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization rawSeries={MOCK_SERIES} width={800} isStandaloneQuestion />
+    </Box>
+  </VisualizationWrapper>
+);
+
+export const StandaloneQuestionMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization
+        rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+        width={800}
+        isStandaloneQuestion
+      />
+    </Box>
   </VisualizationWrapper>
 );
 
@@ -50,7 +155,9 @@ export const EmbeddingTheme: StoryFn = () => {
 
   return (
     <SdkVisualizationWrapper theme={theme}>
-      <Visualization rawSeries={MOCK_SERIES} width={500} />
+      <Box w={433} h={214}>
+        <Visualization rawSeries={MOCK_SERIES} width={433} />
+      </Box>
     </SdkVisualizationWrapper>
   );
 };

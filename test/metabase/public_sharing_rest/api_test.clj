@@ -10,6 +10,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -30,7 +31,6 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -94,6 +94,9 @@
 
 (def ^:private encryption-test-secret-key "public-uuid-encryption-test-key")
 
+(use-fixtures :once
+  (encryption-tu/with-encrypted-app-db-fixture (encryption/secret-key->hash encryption-test-secret-key)))
+
 (defn- raw-public-uuid
   "Read the `public_uuid` column straight from the DB (raw ciphertext), bypassing the model's decrypting transform."
   [model id]
@@ -124,7 +127,7 @@
     (testing "sharing encrypts the uuid at rest and derives the prefix"
       (t2/update! model id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
-        (is (encryption/possibly-encrypted-string? raw) "public_uuid is stored as ciphertext")
+        (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
         (is (= uuid (encryption/maybe-decrypt raw)) "and decrypts back to the uuid"))
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
@@ -143,26 +146,26 @@
       (is (nil? (raw-public-uuid-prefix model id)))
       (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
 
-(deftest card-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized card-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {id :id} {}]
         (assert-public-uuid-lifecycle! :model/Card id)))))
 
-(deftest dashboard-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized dashboard-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (assert-public-uuid-lifecycle! :model/Dashboard id)))))
 
-(deftest document-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized document-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document {id :id} {:name "Signature Doc"}]
         (assert-public-uuid-lifecycle! :model/Document id)))))
 
-(deftest action-public-uuid-encryption-lifecycle-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized action-public-uuid-encryption-lifecycle-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-actions [{action-id :action-id} {}]
@@ -170,9 +173,9 @@
           (t2/update! :model/Action action-id {:public_uuid nil})
           (assert-public-uuid-lifecycle! :model/Action action-id))))))
 
-(deftest public-uuid-resolves-via-endpoint-test
+(deftest ^:synchronized public-uuid-resolves-via-endpoint-test
   (testing "GET /api/public/... resolves a shared entity by its uuid through the prefix lookup"
-    (encryption-test/with-secret-key encryption-test-secret-key
+    (encryption-tu/with-encrypted-app-db
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-card [{uuid :public_uuid, card-id :id}]
           (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid))))))
@@ -190,8 +193,8 @@
           "a plaintext public_uuid forged via raw SQL fails the strict read instead of resolving")
       (set-raw-public-uuid! model id nil))))
 
-(deftest forged-plaintext-public-uuid-does-not-resolve-test
-  (encryption-test/with-secret-key encryption-test-secret-key
+(deftest ^:synchronized forged-plaintext-public-uuid-does-not-resolve-test
+  (encryption-tu/with-encrypted-app-db
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {card-id :id} {}]
         (assert-forged-plaintext-does-not-resolve! :model/Card card-id))
@@ -1490,6 +1493,146 @@
                                (param-values-url :card field-filter-uuid
                                                  (:field-values param-keys) "bar"))))))))))))
 
+(deftest card-param-fields-public-columns-test
+  (testing "GET /api/public/card/:uuid :param_fields only carry the public Field columns"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card card (assoc (shared-obj)
+                                               :dataset_query
+                                               (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}}")
+                                                   (lib/with-template-tags
+                                                     {"category" {:id           "_CATEGORY_"
+                                                                  :name         "category"
+                                                                  :display-name "Category"
+                                                                  :type         :dimension
+                                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                  :widget-type  :id}})))]
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :dimensions         []}]}
+                 (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card)))))))))))
+
+(deftest dashboard-param-fields-public-columns-test
+  (testing "GET /api/public/dashboard/:uuid :param_fields only carry the public Field columns"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Dashboard     dashboard (assoc (shared-obj)
+                                                             :parameters [{:id   "_CATEGORY_ID_"
+                                                                           :name "Category ID"
+                                                                           :slug "category_id"
+                                                                           :type :id}])
+                       :model/Card          card      {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                       :model/DashboardCard _         {:dashboard_id       (u/the-id dashboard)
+                                                       :card_id            (u/the-id card)
+                                                       :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                                                             :card_id      (u/the-id card)
+                                                                             :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]}]
+          (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                   :table_id           (mt/id :venues)
+                                   :display_name       "Category ID"
+                                   :base_type          "type/Integer"
+                                   :name               "CATEGORY_ID"
+                                   :semantic_type      "type/FK"
+                                   :has_field_values   "none"
+                                   :fk_target_field_id (mt/id :categories :id)
+                                   :dimensions         []}]}
+                 (:param_fields (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))))))))))
+
+(deftest card-param-fields-nested-fields-public-columns-test
+  (testing "GET /api/public/card/:uuid nested :param_fields Fields only carry the public Field columns too"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp              (mt/metadata-provider)
+            venues-id       {:id                 (mt/id :venues :id)
+                             :table_id           (mt/id :venues)
+                             :display_name       "ID"
+                             :base_type          "type/BigInteger"
+                             :name               "ID"
+                             :semantic_type      "type/PK"
+                             :has_field_values   "none"
+                             :fk_target_field_id nil}
+            venues-name     {:id                 (mt/id :venues :name)
+                             :table_id           (mt/id :venues)
+                             :display_name       "Name"
+                             :base_type          "type/Text"
+                             :name               "NAME"
+                             :semantic_type      "type/Name"
+                             :has_field_values   "list"
+                             :fk_target_field_id nil}
+            venues-category {:id                 (mt/id :venues :category_id)
+                             :table_id           (mt/id :venues)
+                             :display_name       "Category ID"
+                             :base_type          "type/Integer"
+                             :name               "CATEGORY_ID"
+                             :semantic_type      "type/FK"
+                             :has_field_values   "none"
+                             :fk_target_field_id (mt/id :categories :id)}
+            categories-name {:id                 (mt/id :categories :name)
+                             :table_id           (mt/id :categories)
+                             :display_name       "Name"
+                             :base_type          "type/Text"
+                             :name               "NAME"
+                             :semantic_type      "type/Name"
+                             :has_field_values   "list"
+                             :fk_target_field_id nil}]
+        (mt/with-temp [:model/Dimension dimension {:field_id                (mt/id :venues :category_id)
+                                                   :name                    "Category"
+                                                   :type                    :external
+                                                   :human_readable_field_id (mt/id :categories :name)}
+                       :model/Card      card      (assoc (shared-obj)
+                                                         :dataset_query
+                                                         (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{id}} AND {{category}}")
+                                                             (lib/with-template-tags
+                                                               {"id"       {:id           "_ID_"
+                                                                            :name         "id"
+                                                                            :display-name "ID"
+                                                                            :type         :dimension
+                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                            :widget-type  :id}
+                                                                "category" {:id           "_CATEGORY_"
+                                                                            :name         "category"
+                                                                            :display-name "Category"
+                                                                            :type         :dimension
+                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                            :widget-type  :id}})))]
+          (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
+            (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
+                    :_CATEGORY_ [(assoc venues-category
+                                        :dimensions [{:id                      (:id dimension)
+                                                      :entity_id               (:entity_id dimension)
+                                                      :field_id                (mt/id :venues :category_id)
+                                                      :name                    "Category"
+                                                      :type                    "external"
+                                                      :human_readable_field_id (mt/id :categories :name)
+                                                      :human_readable_field    categories-name}])]}
+                   (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))))
+
+(deftest dashboard-param-fields-unmapped-template-tag-test
+  (testing "GET /api/public/dashboard/:uuid :param_fields never carry entries for a native card's template tags that
+            have no matching dashboard parameter"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Dashboard     dash (assoc (shared-obj) :parameters [])
+                       :model/Card          card {:dataset_query (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{category}}")
+                                                                     (lib/with-template-tags
+                                                                       {"category" {:id           "_TAG_CATEGORY_"
+                                                                                    :name         "category"
+                                                                                    :display-name "Category"
+                                                                                    :type         :dimension
+                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :widget-type  :id}}))}
+                       :model/DashboardCard _    {:dashboard_id       (:id dash)
+                                                  :card_id            (:id card)
+                                                  :parameter_mappings []}]
+          (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
+            (is (= [] (:parameters response)))
+            (is (= {} (:param_fields response)))))))))
+
 (deftest dashboard-field-params-field-names-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp
@@ -1515,9 +1658,7 @@
                                 :fk_target_field_id nil,
                                 :dimensions (),
                                 :id (mt/id :categories :name)
-                                :target nil,
                                 :display_name "Name",
-                                :name_field nil,
                                 :base_type "type/Text"}]}}
               (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
       (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
