@@ -1,10 +1,14 @@
+import type { ClickObject as PluginClickObject } from "custom-viz";
+
 import type {
   ClickObject,
   ComputedVisualizationSettings,
 } from "metabase/visualizations/types";
 
+export type { PluginClickObject };
+
 export function toHostClickObject(
-  clickObject: ClickObject,
+  clickObject: PluginClickObject,
   settings: ComputedVisualizationSettings,
 ): ClickObject {
   return {

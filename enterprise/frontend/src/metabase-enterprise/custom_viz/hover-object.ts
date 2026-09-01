@@ -1,10 +1,14 @@
+import type { HoverObject as PluginHoverObject } from "custom-viz";
+
 import type {
   ComputedVisualizationSettings,
   HoveredObject,
 } from "metabase/visualizations/types";
 
+export type { PluginHoverObject };
+
 export function toHostHoverObject(
-  hoverObject: HoveredObject,
+  hoverObject: PluginHoverObject,
   settings: ComputedVisualizationSettings,
 ): HoveredObject {
   return {

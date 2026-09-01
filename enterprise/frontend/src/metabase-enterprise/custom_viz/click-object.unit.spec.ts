@@ -1,7 +1,7 @@
 import type { ClickObject } from "metabase/visualizations/types";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import { toHostClickObject } from "./click-object";
+import { type PluginClickObject, toHostClickObject } from "./click-object";
 
 describe("toHostClickObject", () => {
   const column = createMockColumn({ name: "count" });
@@ -10,7 +10,7 @@ describe("toHostClickObject", () => {
   it("keeps the documented click fields", () => {
     const element = document.createElement("div");
     const event = new MouseEvent("click");
-    const clicked: ClickObject = {
+    const clicked: PluginClickObject = {
       value: 42,
       column,
       dimensions: [{ value: "a", column }],
