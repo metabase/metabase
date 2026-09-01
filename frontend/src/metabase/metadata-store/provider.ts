@@ -1,6 +1,7 @@
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
+import * as LibMetric from "metabase-lib/metric";
 import type { DatabaseId } from "metabase-types/api";
 
 import { type MetadataSelectorOpts, getMetadata } from "./selectors";
@@ -32,6 +33,37 @@ export const useMetadataProvider = (
   opts?: MetadataSelectorOpts,
 ): Lib.MetadataProvider =>
   useSelector((state) => selectMetadataProvider(state, databaseId, opts));
+
+/**
+ * Metric providers span databases, so they take no database id.
+ *
+ * Unlike `Lib.metadataProvider`, `LibMetric.metadataProvider` builds a fresh
+ * provider on every call, and each one carries its own cache. Memoise on the
+ * `Metadata` object so a provider survives as long as the metadata behind it.
+ */
+const metricProviders = new WeakMap<Lib.Metadata, LibMetric.MetadataProvider>();
+
+export const selectMetricMetadataProvider = (
+  state: State,
+): LibMetric.MetadataProvider => {
+  const metadata = getMetadata(state);
+  const cached = metricProviders.get(metadata);
+
+  if (cached) {
+    return cached;
+  }
+
+  const provider = LibMetric.metadataProvider(metadata);
+  metricProviders.set(metadata, provider);
+
+  return provider;
+};
+
+/**
+ * `selectMetricMetadataProvider` for components.
+ */
+export const useMetricMetadataProvider = (): LibMetric.MetadataProvider =>
+  useSelector(selectMetricMetadataProvider);
 
 const UNFILTERED_OPTS: MetadataSelectorOpts = {
   includeHiddenTables: true,
