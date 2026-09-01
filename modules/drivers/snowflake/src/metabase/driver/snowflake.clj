@@ -778,6 +778,15 @@
   [driver t]
   (sql.qp/->honeysql driver (t/offset-date-time t)))
 
+;;; Snowflake treats `\` inside a string literal as an escape introducer -- `\'` is an escaped single quote and `\\`
+;;; an escaped backslash (https://docs.snowflake.com/en/sql-reference/data-types-text). The generic `[:sql String]`
+;;; implementation only doubles the single quotes, which leaves a value containing `\'` (or ending in `\`) free to
+;;; terminate the literal one quote early. Snowflake accepts both escape forms, so use `:ansi+backslashes`: doubling
+;;; the backslash means it can never escape our closing quote.
+(defmethod sql.qp/inline-value [:snowflake String]
+  [_driver ^String s]
+  (sql.u/quote-literal s :ansi+backslashes))
+
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (driver-api/with-metadata-provider (u/the-id database)
@@ -1171,7 +1180,11 @@
   255)
 
 (defn get-string-filter-arg
-  "Generate the argument to match in the string filters. It's based on sql.qp/generate-pattern."
+  "Generate the argument to match in the string filters. It's based on sql.qp/generate-pattern.
+
+  Unlike `sql.qp/generate-pattern` this does no escaping: these filters compile to Snowflake's native scalar
+  functions rather than `LIKE`, so there is no pattern to escape, and the value has to stay verbatim to bind
+  correctly as a `?` parameter. Escaping the value for an inline compile is [[sql.qp/inline-value]]'s job."
   [driver
    [type opts val :as arg]
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
