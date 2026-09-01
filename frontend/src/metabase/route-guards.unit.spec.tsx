@@ -1,12 +1,20 @@
 import { type Context, createContext } from "react";
+import { Route } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { metabaseReduxContext } from "metabase/redux/context";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { AdminPath } from "metabase/redux/store";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import { isBackendOnlyPath } from "./route-guards";
+import { CanAccessSettings, isBackendOnlyPath } from "./route-guards";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -62,6 +70,53 @@ describe("route-guards", () => {
 
       expect(selectorState.auth.VAL_ONLY_IN_THIS_CTX).toBe(false);
       expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("CanAccessSettings", () => {
+    const DATABASES_PATH: AdminPath = {
+      name: "Databases",
+      path: "/admin/databases",
+      key: "databases",
+    };
+
+    const Protected = () => <div>protected</div>;
+    const Unauthorized = () => <div>unauthorized</div>;
+
+    const setup = (paths: AdminPath[]) =>
+      renderWithProviders(
+        <>
+          <Route component={CanAccessSettings}>
+            <Route path="/admin/databases" component={Protected} />
+          </Route>
+          <Route path="/unauthorized" component={Unauthorized} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: false }),
+            settings: createMockSettingsState({ "has-user-setup": true }),
+            admin: createMockAdminState({
+              app: createMockAdminAppState({ paths }),
+            }),
+          }),
+          withRouter: true,
+          initialRoute: "/admin/databases",
+        },
+      );
+
+    it("lets a non-admin through when a permission grant left them an admin path", async () => {
+      const { history } = setup([DATABASES_PATH]);
+
+      expect(await screen.findByText("protected")).toBeInTheDocument();
+      expect(history?.getCurrentLocation().pathname).toBe("/admin/databases");
+    });
+
+    it("redirects a non-admin with no admin paths to /unauthorized", async () => {
+      const { history } = setup([]);
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
     });
   });
 

@@ -69,9 +69,11 @@ describe("TableBrowser", () => {
       expect(screen.getByText("foo")).toBeInTheDocument();
     });
 
-    expect(
-      fetchMock.callHistory.calls("path:/api/database/1/metadata"),
-    ).toHaveLength(1);
+    const metadataCalls = fetchMock.callHistory.calls(
+      "path:/api/database/1/metadata",
+    );
+    expect(metadataCalls).toHaveLength(1);
+    expect(metadataCalls[0].url).toContain("skip_fields=true");
     expect(
       fetchMock.callHistory.calls("path:/api/database/1/schema/"),
     ).toHaveLength(0);

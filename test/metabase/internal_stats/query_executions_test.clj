@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest testing is]]
    [java-time.api :as t]
    [metabase.internal-stats.query-executions :as sut]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -19,6 +20,9 @@
 
 (deftest query-execution-24h-filtering-test
   (mt/initialize-if-needed! :db)
+  ;; `QueryExecution`s are written in batches on a background thread, so rows from earlier tests can land between the
+  ;; `before` and `after` snapshots below and inflate the `:internal` counts.
+  (process-userland-query/flush-execution-metadata!)
   (t/with-clock (t/mock-clock 1583351015000)
     (let [before (sut/query-executions-all-time-and-last-24h)
           one-year-ago-defaults (assoc query-execution-defaults

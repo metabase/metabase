@@ -26,17 +26,22 @@
 
 (defmethod specialization/batch-upsert! :postgres [table entries]
   (when (seq entries)
-    (t2/query
-     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized. Note
-     ;; that the entries are not guaranteed to be homogeneous - some may be missing nullable columns. So we need to
-     ;; get the keys from *all* the entries.
-     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
-       {:insert-into   table
-        :values        entries
-        :on-conflict   [:model :model_id]
-        :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
-                                  {:allow-subquery true})}))))
+    ;; The nested transaction becomes a savepoint when the caller is already in a transaction, so a failed INSERT
+    ;; (a concurrent index swap can drop the tracked table between the tracking check and the statement) cannot
+    ;; poison the caller's transaction: after an error Postgres refuses every later statement until the whole
+    ;; transaction rolls back.
+    (t2/with-transaction [_conn]
+      (t2/query
+       ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized. Note
+       ;; that the entries are not guaranteed to be homogeneous - some may be missing nullable columns. So we need to
+       ;; get the keys from *all* the entries.
+       (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
+             excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+         {:insert-into   table
+          :values        entries
+          :on-conflict   [:model :model_id]
+          :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                                    {:allow-subquery true})})))))
 
 (defmethod specialization/base-query :postgres
   [active-table search-term search-ctx select-items]

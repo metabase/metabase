@@ -63,10 +63,15 @@ export const getTableUrl = (table: Table, metadata?: Metadata): string => {
 
 export const TableBrowser = _.compose(
   Tables.loadList({
-    query: (_state: State, props: TableBrowserContainerProps) => ({
-      dbId: getDatabaseId(props, { includeVirtual: true }),
-      schemaName: getSchemaName(props),
-    }),
+    query: (_state: State, props: TableBrowserContainerProps) => {
+      const dbId = getDatabaseId(props, { includeVirtual: true });
+      const schemaName = getSchemaName(props);
+      // Schema-less databases are listed via GET /api/database/:id/metadata,
+      // which returns every field of every table unless skip_fields is set.
+      return dbId != null && schemaName == null
+        ? { dbId, schemaName, skip_fields: true }
+        : { dbId, schemaName };
+    },
     reloadInterval: getReloadInterval,
   }),
   connect((state: State, props: TableBrowserContainerProps) => ({

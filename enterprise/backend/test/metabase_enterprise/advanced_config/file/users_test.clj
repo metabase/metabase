@@ -34,8 +34,11 @@
         (is (= 1
                (t2/count :model/User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists, with merged login attributes"
-        (let [hashed-password          (fn [] (t2/select-one-fn :password :model/User :email "cam+config-file-test@metabase.com"))
-              salt                     (fn [] (t2/select-one-fn :password_salt :model/User :email "cam+config-file-test@metabase.com"))
+        (let [pw-credentials           (fn [] (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                :user_id (t2/select-one-pk :model/User :email "cam+config-file-test@metabase.com")
+                                                                :provider "password"))
+              hashed-password          (fn [] (:password_hash (pw-credentials)))
+              salt                     (fn [] (:password_salt (pw-credentials)))
               original-hashed-password (hashed-password)]
           (binding [advanced-config.file/*config* {:version 1
                                                    :config  {:users [{:first_name       "Cam"
@@ -116,13 +119,15 @@
         (testing "Create a User if it does not already exist"
           (is (= :ok
                  (advanced-config.file/initialize!)))
-          (let [user (t2/select-one [:model/User :first_name :last_name :email :password_salt :password]
-                                    :email "cam+config-file-password-test@metabase.com")]
+          (let [user (t2/select-one [:model/User :id :first_name :last_name :email]
+                                    :email "cam+config-file-password-test@metabase.com")
+                {:keys [password_hash password_salt]} (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                        :user_id (:id user) :provider "password")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"
                            :email      "cam+config-file-password-test@metabase.com"}
                           user))
-            (is (u.password/verify-password "1234cans" (:password_salt user) (:password user))))))
+            (is (u.password/verify-password "1234cans" password_salt password_hash)))))
       (finally
         (t2/delete! :model/User :email "cam+config-file-password-test@metabase.com")))))
 

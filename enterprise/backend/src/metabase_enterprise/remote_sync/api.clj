@@ -96,10 +96,10 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force]}] :- [:map
-                                       [:message {:optional true} ms/NonBlankString]
-                                       [:branch {:optional true} ms/NonBlankString]
-                                       [:force {:optional true} :boolean]]
+   {:keys [message branch force]} :- [:map
+                                      [:message {:optional true} ms/NonBlankString]
+                                      [:branch {:optional true} ms/NonBlankString]
+                                      [:force {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")

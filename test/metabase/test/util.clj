@@ -393,7 +393,6 @@
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
             :email (u.random/random-email)
-            :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})})
 
@@ -466,6 +465,7 @@
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
+  :encryption :no
   :setter :none
   :default "abc")
 

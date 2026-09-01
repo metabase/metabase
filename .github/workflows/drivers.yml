@@ -55,7 +55,7 @@ concurrency:
 # ci-conductor (secrets: inherit is already set on the drivers call in
 # run-tests.yml). See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
   # passed as inputs to each job so that turning either on is one line, not one line per driver.
@@ -481,22 +481,15 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 0
           - name: Driver Tests Part 2
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -540,6 +533,10 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
+  # there's no need for this to be a completely separate job; it should be
+  # just another test or set of tests inside metabase.driver.databricks-test,
+  # but for the time being let's just get rid of the full duplication and just
+  # run the tests that are affected by the multi-catalog behavior.
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
@@ -549,27 +546,10 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - name: Driver Tests Part 1
+          - name: Driver Tests
             test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+              :only metabase.driver.databricks-test
               :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -1144,9 +1124,20 @@ jobs:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
         job:
-          - name: Driver Tests
+          # Split because the unpartitioned Driver Tests job was running ~40 minutes of tests against
+          # `timeout-minutes: 50` (checkout and prepare-backend take the rest), and Postgres Latest was
+          # timing out.
+          - name: Driver Tests Part 1
             test-args: >-
               :only-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 0
+            exclude-tag: ':mb/transforms-python-test'
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
             exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
@@ -1331,17 +1322,44 @@ jobs:
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
-          - name: Redshift (Excluding Upload Tests) Part 1
+          # `:partition/*` balances on test-var count, so it cannot break up a block of namespaces that is
+          # cheap in vars and expensive in seconds. The `metabase-enterprise.*` driver tests are exactly that:
+          # ~10% of the vars and ~40% of the wall clock, and they sort ahead of `metabase.*`, so a plain 2-way
+          # split hands one job the whole block and times out. Splitting on the namespace pattern first puts
+          # them in their own pair of jobs, and each pair then partitions by count within a comparable cost.
+          # The two patterns are exhaustive over the default `:namespace-pattern` -- every namespace lands in
+          # exactly one of them -- so nothing stops running when a namespace is added.
+          - name: Redshift EE (Excluding Upload Tests) Part 1
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
               :partition/total 2
               :partition/index 0
-          - name: Redshift (Excluding Upload Tests) Part 2
+          - name: Redshift EE (Excluding Upload Tests) Part 2
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
+          - name: Redshift OSS (Excluding Upload Tests) Part 1
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift OSS (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
@@ -1790,29 +1808,29 @@ jobs:
   drivers-tests-result:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
-      - be-tests-h2
       - be-tests-athena-ee
-      # these are not reliable, but we want to run them anyway to gather data about failures
-      # - be-tests-snowflake-ee
-      # - be-tests-bigquery-cloud-sdk-ee
-      - be-tests-druid-ee
+      - be-tests-bigquery-cloud-sdk-ee
+      - be-tests-clickhouse-ee
       - be-tests-databricks-ee
+      - be-tests-databricks-multi-catalog-ee
+      - be-tests-druid-ee
       - be-tests-druid-jdbc-ee
-      - be-tests-mysql-mariadb
+      - be-tests-h2
+      - be-tests-h2-oss
       - be-tests-mongo
-      - be-tests-mongo-ssl
       - be-tests-mongo-sharded-cluster-ee
+      - be-tests-mongo-ssl
+      - be-tests-mysql-mariadb
       - be-tests-oracle
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
+      - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
+      - be-tests-vertica-ee
       # - be-tests-starburst-ee
-      # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
-      # - be-tests-vertica-ee
-      - be-tests-clickhouse-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result

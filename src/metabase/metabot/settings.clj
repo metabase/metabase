@@ -25,24 +25,22 @@
   :export?    true)
 
 (defsetting metabot-name
-  (deferred-tru "The display name for Metabot.")
+  (deferred-tru "The display name for Metabot, shown throughout the Metabase UI.")
   :type       :string
   :default    "Metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-icon
-  (deferred-tru "The icon for Metabot.")
+  (deferred-tru "The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).")
   :type       :string
   :default    "metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-show-illustrations
   (deferred-tru "Whether to show Metabot illustrations in the UI.")
@@ -51,38 +49,34 @@
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-nlq-system-prompt
-  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-sql-system-prompt
-  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
