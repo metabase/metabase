@@ -28,13 +28,13 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "bun run type-check && vite build && cp -r src/templates dist/templates",
+    "build": "vite build && cp -r src/templates dist/templates",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "dev": "vite build --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "oxlint src/",
-    "release": "bun run build && np",
+    "release": "bun run type-check && bun run build && np",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.fixtures.json"
