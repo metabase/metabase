@@ -21,6 +21,7 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  type IconProps,
   Tooltip,
   useMantineTheme,
 } from "metabase/ui";
@@ -96,11 +97,10 @@ export const ScalarValue = ({
   );
 };
 
-const TITLE_HREF_PLACEHOLDER = "#";
-
 interface ScalarTitleProps {
   children: ReactNode;
   description?: string | null;
+  icon?: IconProps | null;
   getHref?: () => string | undefined;
   onSelectTitle?: () => void;
 }
@@ -108,12 +108,11 @@ interface ScalarTitleProps {
 export const ScalarTitle = ({
   children,
   description,
+  icon,
   getHref,
   onSelectTitle,
 }: ScalarTitleProps) => {
-  const [href, setHref] = useState(
-    getHref ? TITLE_HREF_PLACEHOLDER : undefined,
-  );
+  const [href, setHref] = useState(() => getHref?.());
   const computeHref = useCallback(() => {
     if (getHref) {
       setHref(getHref());
@@ -132,6 +131,15 @@ export const ScalarTitle = ({
       maw="100%"
       data-testid="scalar-title"
     >
+      {icon && (
+        <Icon
+          className={S.titleIcon}
+          name={icon.name}
+          color={icon.color}
+          size={icon.size}
+          tooltip={icon.tooltip}
+        />
+      )}
       <Box fz="md" lh="md" fw={700} c="text-primary" ta="center" miw={0}>
         {onSelectTitle ? (
           <LegendLabel
@@ -140,6 +148,8 @@ export const ScalarTitle = ({
             onClick={onSelectTitle}
             onFocus={computeHref}
             onMouseEnter={computeHref}
+            onMouseDown={computeHref}
+            onTouchStart={computeHref}
           >
             {title}
           </LegendLabel>
@@ -186,7 +196,6 @@ export const ScalarActionButtons = ({
       pos="absolute"
       top={tier.menuOffset.top}
       right={tier.menuOffset.right}
-      className={S.actionButtons}
       data-testid="scalar-action-buttons"
       {...props}
     >

@@ -883,3 +883,45 @@ function getComparisonDescShortStr({
   }
   return getPeriodAbbreviation(dateUnit);
 }
+
+export const getChangeSign = (percentChange: number | undefined) => {
+  if (percentChange == null || percentChange === 0) {
+    return "";
+  }
+  return percentChange < 0 ? "-" : "+";
+};
+
+export interface ComparisonDisplay {
+  isChanged: boolean;
+  isMissing: boolean;
+  signedPercent: string;
+  valueDisplay: SmartScalarDisplayValue;
+  sentimentColor: `${ChangeColorName}-strong` | null;
+  symbolDirection: ChangeArrowType | "no_change" | null;
+}
+
+export function getComparisonDisplay(
+  comparison: ComparisonResult,
+  formatOptions: ColumnSettings,
+  { compact = true }: { compact?: boolean } = {},
+): ComparisonDisplay {
+  const { changeType, changeArrowIconName, changeColorName } = comparison;
+  const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
+  const isMissing = changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
+  const isSame = changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE;
+  const sign = isChanged ? getChangeSign(comparison.percentChange) : "";
+
+  return {
+    isChanged,
+    isMissing,
+    signedPercent: `${sign}${comparison.display.percentChange}`,
+    valueDisplay: isChanged
+      ? formatValue(comparison.comparisonValue, { ...formatOptions, compact })
+      : isMissing
+        ? comparison.display.comparisonValue
+        : null,
+    sentimentColor:
+      changeColorName != null ? (`${changeColorName}-strong` as const) : null,
+    symbolDirection: changeArrowIconName ?? (isSame ? "no_change" : null),
+  };
+}

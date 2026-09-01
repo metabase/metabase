@@ -28,21 +28,36 @@
       ;; no row has id -1: a resolved-but-empty scope matches no rows
       [:= column -1])))
 
+(defn destination-db-ids
+  "Returns the subset of `db-ids` that back a destination (routed) database.
+
+  Destinations are routing internals reachable only through their router database, so typed-schema
+  generation excludes anything backed by one -- the same rule Metabot's resource guard enforces (see
+  `metabase.metabot.tools.resources/check-resource-database`)."
+  [db-ids]
+  (when (seq db-ids)
+    (t2/select-fn-set :id :model/Database :id [:in db-ids] :router_database_id [:not= nil])))
+
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.
 
   Metrics, models and saved questions are backed by cards. They need
-  the same visibility, archived, database and collection filters."
+  the same visibility, archived, database and collection filters, and exclude cards backed by a
+  destination (routed) database -- see [[destination-db-ids]]."
   [card-type database-ids collection-ids]
-  (->> (t2/select :model/Card
-                  {:where    (cond-> [:and
-                                      [:= :type (name card-type)]
-                                      [:= :archived false]
-                                      (collection/visible-collection-filter-clause :collection_id)]
-                               database-ids (conj (scope-filter-clause database-ids :database_id))
-                               collection-ids (conj (scope-filter-clause collection-ids :collection_id)))
-                   :order-by [[:name :asc] [:id :asc]]})
-       (filter mi/can-read?)))
+  (let [cards (->> (t2/select :model/Card
+                              {:where    (cond-> [:and
+                                                  [:= :type (name card-type)]
+                                                  [:= :archived false]
+                                                  (collection/visible-collection-filter-clause :collection_id)]
+                                           database-ids (conj (scope-filter-clause database-ids :database_id))
+                                           collection-ids (conj (scope-filter-clause collection-ids :collection_id)))
+                               :order-by [[:name :asc] [:id :asc]]})
+                   (filter mi/can-read?))
+        destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
+    (if (seq destination-ids)
+      (remove #(contains? destination-ids (:database_id %)) cards)
+      cards)))
 
 (defn aggregation-result-column-with-metadata-provider
   "Returns an aggregation result column using an existing metadata provider."

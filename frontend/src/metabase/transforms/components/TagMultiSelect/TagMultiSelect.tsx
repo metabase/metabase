@@ -6,7 +6,7 @@ import {
   useCreateTransformTagMutation,
   useListTransformTagsQuery,
 } from "metabase/api/transform-tag";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   ActionIcon,
   Icon,

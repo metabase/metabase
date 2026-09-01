@@ -5,13 +5,13 @@ import { useUpdateTableMutation } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
   DataSourceInput,
   EntityTypeInput,
   UserInput,
 } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   Box,

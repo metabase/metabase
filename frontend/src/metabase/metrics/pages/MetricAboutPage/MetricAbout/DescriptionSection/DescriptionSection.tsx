@@ -8,9 +8,9 @@ import {
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";

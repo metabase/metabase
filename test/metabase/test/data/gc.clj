@@ -5,8 +5,7 @@
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [metabase.test.data.interface :as tx]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +35,7 @@
                  (str/split (or drivers "") #",")))
       default-drivers))
 
-(defn- census
+(defn- census!
   "Datasets on each of a driver's servers, best effort: a count we cannot take must not cost us the sweep.
 
   Runs on its own thread, which is why the skip is bound here rather than around the whole job: a `binding` does not
@@ -47,23 +46,24 @@
     (try
       (tx/count-datasets driver)
       (catch Exception e
-        (log/errorf "[%s] could not count datasets: %s" (name driver) (ex-message e))
+        (tx/print-progress! driver "could not count datasets: %s" (ex-message e))
         {}))))
 
 (defn- log-census!
   "One line per driver before anything is deleted, so a run that is killed partway still says what it was up against."
   [driver->counts]
   (doseq [[driver counts] driver->counts]
-    (log/infof "[%s] %s dataset(s) before sweep%s"
-               (name driver)
-               (if (empty? counts) "unknown" (reduce + 0 (remove nil? (vals counts))))
-               (if (empty? counts)
-                 ""
-                 (str " — " (str/join ", " (for [[server n] (sort-by key counts)]
-                                             (format "%s: %s" server (if (nil? n) "unknown" n))))))))
-  (log/infof "%s dataset(s) before sweep, across %d driver(s)"
-             (reduce + 0 (for [counts (vals driver->counts), n (vals counts) :when (some? n)] n))
-             (count driver->counts)))
+    (tx/print-progress! driver "%s dataset(s) before sweep%s"
+                        (if (empty? counts) "unknown" (reduce + 0 (remove nil? (vals counts))))
+                        (if (empty? counts)
+                          ""
+                          (str " — " (str/join ", " (for [[server n] (sort-by key counts)]
+                                                      (format "%s: %s" server (if (nil? n) "unknown" n))))))))
+  (let [known (for [counts (vals driver->counts), n (vals counts) :when (some? n)] n)]
+    (tx/print-progress! "gc" "%s dataset(s) before sweep, across %d driver(s)"
+                        ;; "0" would read as an empty account rather than as a census nothing could answer
+                        (if (seq known) (reduce + 0 known) "unknown")
+                        (count driver->counts))))
 
 (defn- sweep-driver!
   "Sweep one driver and take a census of what is left, each best effort. A driver that cannot connect at all, or a
@@ -77,11 +77,11 @@
                       (vec (tx/gc-orphans! driver options))
                       (catch Exception e
                         [{:name nil, :status :failed, :error (ex-message e)}]))
-          remaining (census driver)
+          remaining (census! driver)
           {deleted :deleted, failed :failed} (group-by :status results)]
-      (log/infof "[%s] %d deleted, %d failed" (name driver) (count deleted) (count failed))
+      (tx/print-progress! driver "%d deleted, %d failed" (count deleted) (count failed))
       (doseq [{dataset-name :name, :keys [error]} failed]
-        (log/errorf "[%s] %s: %s" (name driver) (or dataset-name "<server unreachable>") error))
+        (tx/print-progress! driver "FAILED %s: %s" (or dataset-name "<server unreachable>") error))
       {:driver    (name driver)
        :deleted   (vec deleted)
        :failed    (vec failed)
@@ -149,7 +149,7 @@
     (spit (io/file dir "report.md") markdown)
     (when-let [summary-file (System/getenv "GITHUB_STEP_SUMMARY")]
       (spit summary-file markdown :append true))
-    (log/infof "Wrote sweep report to %s" dir)))
+    (tx/print-progress! "gc" "wrote sweep report to %s" dir)))
 
 (defn gc-orphans!
   "Sweep orphaned test data from each driver's shared cloud account.
@@ -176,7 +176,7 @@
     (let [swept  (let [ds (parse-drivers drivers)]
                    ;; drivers share nothing, so the job costs the slowest one rather than the sum of all three
                    (cp/with-shutdown! [pool (cp/threadpool (count ds))]
-                     (let [before (zipmap ds (doall (cp/pmap pool census ds)))]
+                     (let [before (zipmap ds (doall (cp/pmap pool census! ds)))]
                        (log-census! before)
                        (doall (cp/pmap pool #(sweep-driver! % (get before %) options) ds)))))
           report (build-report options swept)]

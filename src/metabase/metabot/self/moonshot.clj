@@ -40,7 +40,7 @@
       500 (tru "Moonshot returned an internal server error")
       (tru "Moonshot API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "Moonshot models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
