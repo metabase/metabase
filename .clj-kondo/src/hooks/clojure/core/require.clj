@@ -73,6 +73,7 @@
 
 (defn- lint-require* [node current-ns config]
   (let [[_require & args]    (:children node)
+        ;; Keywords such as `:reload` and `:reload-all` are options, not namespace dependencies.
         namespace-nodes     (remove keyword-node? args)
         static-nodes        (filter quoted-require? namespace-nodes)
         required-namespaces (->> (keep unwrap-require static-nodes)
