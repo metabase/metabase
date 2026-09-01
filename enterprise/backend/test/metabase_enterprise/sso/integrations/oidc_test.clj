@@ -199,12 +199,13 @@
   "Dynamic var to control the email returned by the group sync mock."
   "oidc-group-user@example.com")
 
-;; Mock that returns claims with group membership
+;; Mock that returns claims with group membership. The sub is derived from the email: one sub asserted
+;; for several different users is exactly what identity linking rejects.
 (methodical/defmethod auth-identity/authenticate :provider/test-oidc-with-groups
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success?    true
-     :claims      (merge {:sub            "test-oidc-provider-id"
+     :claims      (merge {:sub            (str "sub-" *group-sync-email*)
                           :iss            "https://test.idp.example.com"
                           :email          *group-sync-email*
                           :email_verified true}
@@ -212,7 +213,7 @@
      :user-data   {:email      *group-sync-email*
                    :first_name "OIDC"
                    :last_name  "GroupUser"}
-     :provider-id "test-oidc-provider-id"}
+     :provider-id (str "sub-" *group-sync-email*)}
     {:success?     :redirect
      :redirect-url "https://test.idp.example.com/authorize"
      :state        "test-state"
