@@ -615,9 +615,8 @@ export const Icons: Record<IconName, React.VFC> = {
   eye_filled: eye_component,
 };
 
-// Unjustified type cast. FIXME
-export const iconNames = Object.keys(Icons) as unknown as IconName[];
+const iconSet = new Set(Object.keys(Icons));
 
-export const isValidIconName = (name: unknown): name is IconName =>
-  // Unjustified type cast. FIXME
-  iconNames.includes(name as IconName);
+export const isValidIconName = (name: unknown): name is IconName => {
+  return typeof name === "string" && iconSet.has(name);
+};

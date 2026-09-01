@@ -1,5 +1,4 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,26 +7,16 @@ import {
 } from "metabase/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
+import { useDismissNotification } from "metabase/nav/components/ProductNotifications";
 import { useSelector } from "metabase/redux";
 import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 
 import { isAffected } from "../../utils";
 
-const DISMISSED_KEY = "security-center-promo-dismissed";
-
-function useDismissed() {
-  const [dismissed, setDismissedState] = useState(
-    () => localStorage.getItem(DISMISSED_KEY) === "true",
-  );
-
-  const dismiss = useCallback(() => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-    setDismissedState(true);
-  }, []);
-
-  return { dismissed, dismiss };
-}
+// This card is dismissed through the shared, per-user in-app notification dismissal list,
+// so a dismissal syncs across the user's browsers/devices.
+const SECURITY_CENTER_PROMO_NOTIFICATION_ID = "security-center-promo";
 
 export function SecurityCenterPromoCard() {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -37,7 +26,7 @@ export function SecurityCenterPromoCard() {
     useGetChannelInfoQuery(isAdmin ? undefined : skipToken);
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
     useListSecurityAdvisoriesQuery(isAdmin ? undefined : skipToken);
-  const { dismissed, dismiss } = useDismissed();
+  const { dismissedIds, dismiss } = useDismissNotification();
 
   // The promo links to /admin/security-center, so only admins should see it.
   if (!isAdmin) {
@@ -67,7 +56,7 @@ export function SecurityCenterPromoCard() {
     return null;
   }
 
-  if (dismissed) {
+  if ((dismissedIds ?? []).includes(SECURITY_CENTER_PROMO_NOTIFICATION_ID)) {
     return null;
   }
 
@@ -86,7 +75,7 @@ export function SecurityCenterPromoCard() {
       body={t`Metabase's Security Center can send you alerts via email or Slack immediately about security vulnerabilities.`}
       linkText={t`Set up security alerts`}
       linkTo="/admin/security-center?open=notifications"
-      onDismiss={dismiss}
+      onDismiss={() => dismiss(SECURITY_CENTER_PROMO_NOTIFICATION_ID)}
     />
   );
 }

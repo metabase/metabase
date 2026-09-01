@@ -1,0 +1,95 @@
+{
+  "notifications": [
+    {
+       "id": "test-1",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "",
+         "end_date": "",
+         "min_version": "",
+         "max_version": "",
+         "edition": ""
+       },
+       "icon": "warning",
+       "title": "This is really important",
+       "content": "You must visit [this page](https://www.metabase.com/version-support) to learn important information."
+    },
+    {
+       "id": "eol-57-2026-09-01",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "2026-08-01",
+         "end_date": "",
+         "min_version": "",
+         "max_version": "v0.57.99",
+         "edition": ""
+       },
+       "title": "This Metabase version is no longer supported",
+       "content": "This version of Metabase has reached its end of life. Please upgrade to a [supported version](https://www.metabase.com/version-support) to continue receiving important security and feature updates."
+    },
+    {
+       "id": "eol-59-2026-09-01",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "2026-09-01",
+         "end_date": "",
+         "min_version": "v0.59.0",
+         "max_version": "v0.59.99",
+         "edition": ""
+       },
+       "title": "This Metabase version is no longer supported",
+       "content": "This version of Metabase has reached its end of life. Please upgrade to a [supported version](https://www.metabase.com/version-support) to continue receiving important security and feature updates."
+    },
+    {
+       "id": "eol-60-2026-09-01",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "2026-09-01",
+         "end_date": "",
+         "min_version": "v0.60.0",
+         "max_version": "v0.60.99",
+         "edition": ""
+       },
+       "title": "This Metabase version is no longer supported",
+       "content": "This version of Metabase has reached its end of life. Please upgrade to a [supported version](https://www.metabase.com/version-support) to continue receiving important security and feature updates."
+    },
+    {
+       "id": "eol-61-2026-09-01",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "2026-09-01",
+         "end_date": "",
+         "min_version": "v0.61.0",
+         "max_version": "v0.61.99",
+         "edition": ""
+       },
+       "title": "This Metabase version is no longer supported",
+       "content": "This version of Metabase has reached its end of life. Please upgrade to a [supported version](https://www.metabase.com/version-support) to continue receiving important security and feature updates."
+    },
+    {
+       "id": "eol-62-2026-09-01",
+       "schemaVersion": 1,
+       "conditions": {
+         "admin": true,
+         "cloud": "",
+         "start_date": "2026-09-01",
+         "end_date": "",
+         "min_version": "v0.62.0",
+         "max_version": "v0.62.99",
+         "edition": ""
+       },
+       "title": "This Metabase version is no longer supported",
+       "content": "This version of Metabase has reached its end of life. Please upgrade to a [supported version](https://www.metabase.com/version-support) to continue receiving important security and feature updates."
+    }
+  ]
+}

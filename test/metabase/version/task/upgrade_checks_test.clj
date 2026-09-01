@@ -1,8 +1,10 @@
 (ns metabase.version.task.upgrade-checks-test
   (:require
    [clj-http.fake :as http-fake]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.task.core :as task]
    [metabase.version.settings :as version.settings]
    [metabase.version.task.upgrade-checks :as upgrade-checks]))
 
@@ -34,3 +36,11 @@
           :query-params {}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info)))))))
+
+(deftest triggers-check-on-startup-test
+  (testing "init! fires an immediate version check on startup"
+    (let [triggered (atom nil)]
+      (with-redefs [task/schedule-task! (fn [_job _trigger] nil)
+                    task/trigger-now!   (fn [job-key] (reset! triggered job-key))]
+        (task/init! :metabase.version.task.upgrade-checks/CheckForNewVersions)
+        (is (str/includes? (str @triggered) "metabase.task.upgrade-checks.job"))))))

@@ -64,4 +64,7 @@
                  (triggers/with-schedule
                   ;; run twice a day
                   (cron/cron-schedule (format "0 %d %d,%d * * ? *" rand-minute rand-hour-1 rand-hour-2))))]
-    (task/schedule-task! job trigger)))
+    (task/schedule-task! job trigger)
+    ;; also fetch once on startup so a freshly-started instance has current version info without
+    ;; waiting for the next scheduled run (a cron trigger does not fire immediately)
+    (task/trigger-now! (jobs/key job-key))))
