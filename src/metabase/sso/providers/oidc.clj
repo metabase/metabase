@@ -166,12 +166,22 @@
                   (or (nil? stored-iss) (= stored-iss iss)))))
          (t2/select :model/AuthIdentity :provider [:in provider-names] :provider_id sub))))
 
+(def ^:private link-identity-lock-shards
+  "Bounded: metabase_cluster_lock rows are never deleted, so lock names must not grow per identity."
+  32)
+
+(defn- link-identity-lock
+  "Cluster-lock keyword for (iss, sub), sharded so unrelated logins don't all serialize on one lock."
+  [sub iss]
+  (keyword "metabase.sso.providers.oidc"
+           (str "link-identity-" (mod (hash [sub iss]) link-identity-lock-shards))))
+
 (defn- with-identity-link-check*
   "Serialize the ownership check for (iss, sub) across `provider-names` with the write `f` performs; the
    uniqueness is check-then-write only (iss lives in metadata JSON, so no DB constraint can enforce it).
    Returns [[identity-already-linked-failure]] when the identity belongs to a user other than `user-id`."
   [provider-names user-id sub iss f]
-  (cluster-lock/with-cluster-lock ::link-identity
+  (cluster-lock/with-cluster-lock (link-identity-lock sub iss)
     (if (linked-to-other-user? provider-names user-id sub iss)
       (do (log/warnf "OIDC login rejected: token identity is already linked to a different user%s"
                      (if user-id (str " than " user-id) ""))
