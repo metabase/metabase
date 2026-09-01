@@ -7,7 +7,7 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { getMetadata } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
@@ -48,10 +48,7 @@ export function DataStep({
       state,
     );
     const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = Lib.metadataProvider(
-      databaseId,
-      getMetadata(state),
-    );
+    const metadataProvider = selectMetadataProvider(state, databaseId);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       const newQuery = Lib.queryFromTableOrCardMetadata(

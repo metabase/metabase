@@ -17,7 +17,7 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
-import { getMetadata } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { Icon, TextInput } from "metabase/ui";
@@ -93,10 +93,7 @@ export function NotebookDataPicker({
       state,
     );
     const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = Lib.metadataProvider(
-      databaseId,
-      getMetadata(state),
-    );
+    const metadataProvider = selectMetadataProvider(state, databaseId);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);

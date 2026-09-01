@@ -1,5 +1,4 @@
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TableId } from "metabase-types/api";
@@ -11,17 +10,17 @@ const STAGE_INDEX = -1;
 
 type QueryClauseDisplayProps = {
   definition: DatasetQuery;
+  /** Unused. The prop threads down from RevisionItem, which still passes it. */
   tableId: TableId;
   clauseType: DefinitionType;
 };
 
 export function QueryClauseDisplay({
   definition,
-  tableId,
   clauseType,
 }: QueryClauseDisplayProps) {
-  const metadata = useSelector(getMetadata);
-  const query = getQuery(definition, tableId, metadata);
+  const metadataProvider = useMetadataProvider(definition?.database ?? null);
+  const query = getQuery(definition, metadataProvider);
 
   if (!query) {
     return null;
@@ -49,18 +48,11 @@ export function QueryClauseDisplay({
 
 function getQuery(
   definition: DatasetQuery | undefined,
-  tableId: TableId | undefined,
-  metadata: ReturnType<typeof getMetadata>,
+  metadataProvider: Lib.MetadataProvider,
 ) {
-  if (!definition) {
+  if (!definition?.database) {
     return undefined;
   }
 
-  const databaseId = definition.database;
-  if (!databaseId) {
-    return undefined;
-  }
-
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   return Lib.fromJsQuery(metadataProvider, definition);
 }
