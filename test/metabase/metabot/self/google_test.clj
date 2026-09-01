@@ -31,15 +31,17 @@
            "\n-----END PRIVATE KEY-----\n"))))
 
 (defn- test-service-account-json
-  "A structurally valid service account key JSON for `project-id`."
-  [project-id]
-  (json/encode {:type           "service_account"
-                :project_id     project-id
-                :private_key_id "test-key-id"
-                :private_key    @test-private-key-pem
-                :client_email   (str "metabot-test@" project-id ".iam.gserviceaccount.com")
-                :client_id      "123456789012345678901"
-                :token_uri      "https://oauth2.googleapis.com/token"}))
+  "A structurally valid service account key JSON for `project-id`; Google's `token_uri` unless given one."
+  ([project-id]
+   (test-service-account-json project-id "https://oauth2.googleapis.com/token"))
+  ([project-id token-uri]
+   (json/encode (cond-> {:type           "service_account"
+                         :project_id     project-id
+                         :private_key_id "test-key-id"
+                         :private_key    @test-private-key-pem
+                         :client_email   (str "metabot-test@" project-id ".iam.gserviceaccount.com")
+                         :client_id      "123456789012345678901"}
+                  token-uri (assoc :token_uri token-uri)))))
 
 ;;; The adapter serves a request from the credentials of the connection behind it. These tests bind the
 ;;; `llm-google-*` settings, which are the environment-configured form of that connection, so the calls below
@@ -249,6 +251,36 @@
                  :status-code 400
                  :error-code  :invalid-project-id}
                 (ex-data e)))))))
+
+(deftest service-account-key-token-uri-pinned-test
+  (testing (str "the credential library posts to the key's token_uri to mint an access token, before any "
+                "request the network policy guards, so a key naming anything but Google's OAuth endpoint is refused")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (doseq [token-uri ["http://169.254.169.254/latest/meta-data/"
+                         "https://127.0.0.1/token"
+                         "https://evil.example.com/token"
+                         "http://oauth2.googleapis.com/token"
+                         ;; the whole URI is pinned, not just its origin
+                         "https://accounts.google.com/not-a-token-endpoint"
+                         "https://oauth2.googleapis.com:8443/token"
+                         "https://oauth2.googleapis.com/token?x=1"
+                         "https://oauth2.googleapis.com/token/../../evil"]]
+        (testing token-uri
+          (is (=? {:api-error   true
+                   :status-code 400
+                   :error-code  :invalid-service-account-key}
+                  (try (list-models {:model       "google/gemini-3.5-flash"
+                                     :credentials {:service-account-key (test-service-account-json "p" token-uri)
+                                                   :project-id          "my-project"}})
+                       nil
+                       (catch Exception e (ex-data e)))))))))
+  (testing "Google's current and legacy token endpoints, and the library default when the key names none, parse"
+    (doseq [token-uri ["https://oauth2.googleapis.com/token"
+                       "https://accounts.google.com/o/oauth2/token"
+                       nil]]
+      (testing (pr-str token-uri)
+        (is (instance? ServiceAccountCredentials
+                       (#'google/parse-service-account-credentials (test-service-account-json "p" token-uri))))))))
 
 (deftest google-raw-service-account-json-project-id-rejected-test
   (testing "the project ID carried by a service account key JSON is validated as well"

@@ -195,6 +195,25 @@
          (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
                                                   :location            "US Central"})))))
 
+(deftest validate-config!-base-url-network-policy-test
+  (testing "every provider's base URL is checked against llm-allowed-networks"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (doseq [[type config] [["anthropic" {:api-key "sk-ant-valid"}]
+                             ["openai"    {:api-key "sk-valid"}]
+                             ["vllm"      {}]
+                             ["azure"     {:api-key "azure-key" :deployment-name "gpt-4.1-mini"}]]]
+        (testing type
+          (is (=? {:status-code 400 :field :base-url}
+                  (try (llm.provider/validate-config! type (assoc config :base-url "http://127.0.0.1:8000"))
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (nil? (llm.provider/validate-config! type (assoc config :base-url "https://8.8.8.8/v1"))))))))
+  (testing "under :allow-all a loopback base URL is fine, but it still has to be an http(s) URL"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (nil? (llm.provider/validate-config! "vllm" {:base-url "http://127.0.0.1:8000/v1"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"must start with http"
+           (llm.provider/validate-config! "vllm" {:base-url "127.0.0.1:8000/v1"}))))))
+
 (deftest validate-config!-select-options-test
   (testing "a select field's value must be one of its options"
     (is (thrown-with-msg?

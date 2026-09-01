@@ -5,14 +5,14 @@
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)
-   (java.net InetAddress)
+   (java.net InetAddress InetSocketAddress Proxy Proxy$Type ProxySelector)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn InMemoryDnsResolver)))
 
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel host-allowed-external-only-test
-  (testing "external-only allows only globally-routable addresses"
+  (testing "external-only allows only globally reachable addresses"
     (are [host expected] (= expected (http/host-allowed-for-network-policy? :external-only host))
       "https://example.com"    true
       "8.8.8.8"                true
@@ -139,33 +139,92 @@
    "93.184.216.34"
    "100.63.255.255"                ; one below the CGNAT 100.64.0.0/10 range
    "100.128.0.0"                   ; one above the CGNAT range
+   "192.0.0.9"                     ; globally reachable exception inside 192.0.0.0/24
+   "192.0.0.10"
+   "192.31.196.1"                  ; AS112-v4
+   "192.52.193.1"                  ; AMT
+   "192.175.48.1"                  ; direct delegation AS112 service
+   "198.17.255.255"                ; one below the benchmarking range
+   "198.20.0.0"                    ; one above the benchmarking range
+   "64:ff9b::1"                    ; globally reachable IPv4/IPv6 translation prefix
+   "2000::1"                       ; bottom of the allocated global-unicast space 2000::/3
+   "2c0f:ffff::1"                  ; top of the allocated global-unicast space
+   "2001:1::1"                     ; globally reachable exceptions inside 2001::/23
+   "2001:1::2"
+   "2001:1::3"
+   "2001:3::1"
+   "2001:4:112::1"
+   "2001:20::1"
+   "2001:30::1"
+   "2001:200::1"                   ; first /32 beyond 2001::/23
+   "2620:4f:8000::1"               ; direct delegation AS112 service
    "2606:4700:4700::1111"])        ; public IPv6
 
+(def ^:private non-global-special-ips
+  ["192.0.0.0"                    ; IETF protocol assignments
+   "192.0.0.8"
+   "192.0.0.11"
+   "192.0.0.255"
+   "192.0.2.0"                    ; TEST-NET-1
+   "192.0.2.255"
+   "192.88.99.1"                  ; deprecated 6to4 relay anycast
+   "192.88.99.2"
+   "198.18.0.0"                   ; benchmarking
+   "198.19.255.255"
+   "198.51.100.1"                 ; TEST-NET-2
+   "203.0.113.1"                  ; TEST-NET-3
+   "64:ff9b:1::1"                 ; local-use IPv4/IPv6 translation
+   "100::1"                       ; discard-only
+   "100:0:0:1::1"                 ; dummy IPv6 prefix
+   "2001::1"                      ; non-global entry inside IETF protocol assignments
+   "2001:1::4"                    ; outside the globally reachable /128 exceptions
+   "2001:2::1"                    ; benchmarking
+   "2001:10::1"                   ; deprecated ORCHID
+   "2001:db8::1"                  ; documentation
+   "2002::1"                      ; 6to4
+   "5f00::1"                      ; segment-routing SIDs
+   "1::1"                         ; reserved IPv6 space outside 2000::/3
+   "4000::1"
+   "6000::1"
+   "8000::1"
+   "e000::1"])
+
+(def ^:private reserved-global-unicast-ips
+  ;; inside 2000::/3, but above the part IANA has allocated
+  ["2d00::1"
+   "2e00::1"
+   "3000::1"
+   "3ffe::1"
+   "3fff::1"                      ; documentation
+   "3fff:1000::1"                 ; just past the documentation block, still reserved
+   "3fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"])
+
 (def ^:private non-public-ips
-  ["127.0.0.1"                     ; loopback
-   "169.254.169.254"              ; link-local (cloud metadata)
-   "10.1.2.3"                     ; RFC1918
-   "172.16.0.1"
-   "172.31.255.255"
-   "192.168.0.1"
-   "0.0.0.0"                      ; any-local
-   "224.0.0.1"                    ; multicast
-   "100.64.0.1"                   ; CGNAT
-   "100.127.255.255"              ; CGNAT (top)
-   "::1"                          ; IPv6 loopback
-   "fe80::1"                      ; IPv6 link-local
-   "fc00::1"                      ; IPv6 ULA (fc)
-   "fd12:3456::1"                 ; IPv6 ULA (fd)
-   "ff02::1"                      ; IPv6 multicast
-   "0.1.2.3"                      ; "this network" 0.0.0.0/8
-   "0.255.255.255"
-   "240.0.0.1"                    ; reserved 240.0.0.0/4
-   "255.255.255.255"              ; limited broadcast (inside 240.0.0.0/4)
-   "::ffff:127.0.0.1"             ; IPv4-mapped loopback
-   "::ffff:10.0.0.1"])            ; IPv4-mapped RFC1918
+  (into ["127.0.0.1"               ; loopback
+         "169.254.169.254"        ; link-local (cloud metadata)
+         "10.1.2.3"               ; RFC1918
+         "172.16.0.1"
+         "172.31.255.255"
+         "192.168.0.1"
+         "0.0.0.0"                ; any-local
+         "224.0.0.1"              ; multicast
+         "100.64.0.1"             ; CGNAT
+         "100.127.255.255"        ; CGNAT (top)
+         "::1"                    ; IPv6 loopback
+         "fe80::1"                ; IPv6 link-local
+         "fc00::1"                ; IPv6 ULA (fc)
+         "fd12:3456::1"           ; IPv6 ULA (fd)
+         "ff02::1"                ; IPv6 multicast
+         "0.1.2.3"                ; "this network" 0.0.0.0/8
+         "0.255.255.255"
+         "240.0.0.1"              ; reserved 240.0.0.0/4
+         "255.255.255.255"        ; limited broadcast (inside 240.0.0.0/4)
+         "::ffff:127.0.0.1"       ; IPv4-mapped loopback
+         "::ffff:10.0.0.1"]       ; IPv4-mapped RFC1918
+        (concat non-global-special-ips reserved-global-unicast-ips)))
 
 (deftest ^:parallel public-address?-test
-  (testing "globally-routable addresses are allowed"
+  (testing "globally reachable addresses are allowed"
     (doseq [ip public-ips]
       (is (true? (boolean (http/public-address? (InetAddress/getByName ip))))
           (str "should be public: " ip))))
@@ -174,8 +233,25 @@
       (is (false? (boolean (http/public-address? (InetAddress/getByName ip))))
           (str "should be rejected: " ip)))))
 
+(defn- proxy-selector
+  ^ProxySelector [proxies]
+  (proxy [ProxySelector] []
+    (select [_uri] proxies)
+    (connectFailed [_uri _sa _ioe] nil)))
+
+(deftest ^:parallel jvm-proxied-url?-test
+  (testing "a JVM proxy in front of a URL is reported, so a caller knows its :dns-resolver sees only the proxy"
+    (binding [http/*proxy-selector* (proxy-selector [(Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))])]
+      (is (true? (http/jvm-proxied-url? "https://api.anthropic.com/v1")))
+      (testing "a string that is not a URI is not proxied either"
+        (is (false? (http/jvm-proxied-url? "not a url"))))))
+  (testing "DIRECT, no selector, and an empty answer all mean unproxied"
+    (doseq [proxies [[Proxy/NO_PROXY] []]]
+      (binding [http/*proxy-selector* (proxy-selector proxies)]
+        (is (false? (http/jvm-proxied-url? "https://api.anthropic.com/v1")))))))
+
 (deftest ^:parallel address-allowed-for-network-policy?-test
-  (testing "external-only admits only globally-routable addresses"
+  (testing "external-only admits only globally reachable addresses"
     (doseq [ip public-ips]
       (is (true? (http/address-allowed-for-network-policy? :external-only (InetAddress/getByName ip))) ip))
     (doseq [ip non-public-ips]
@@ -186,6 +262,9 @@
       (is (true? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName ip))) ip)))
   (testing "allow-private still refuses loopback, link-local, any-local and multicast"
     (doseq [ip ["127.0.0.1" "::1" "169.254.169.254" "fe80::1" "0.0.0.0" "224.0.0.1" "ff02::1"]]
+      (is (false? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName ip))) ip)))
+  (testing "allow-private does not admit other non-global special-purpose ranges"
+    (doseq [ip non-global-special-ips]
       (is (false? (http/address-allowed-for-network-policy? :allow-private (InetAddress/getByName ip))) ip)))
   (testing "loopback-and-private admits loopback and the private ranges"
     (doseq [ip ["127.0.0.1" "127.0.1.5" "::1" "10.1.2.3" "192.168.0.1" "100.64.0.1" "fc00::1"]]
@@ -226,7 +305,16 @@
       (is (thrown-with-msg? ExceptionInfo #"non-permitted"
                             (.resolve ^DnsResolver (http/network-policy-dns-resolver :external-only) "rebind.example")))
       (is (= 1 (alength ^"[Ljava.net.InetAddress;"
-                (.resolve ^DnsResolver (http/network-policy-dns-resolver :allow-private) "rebind.example")))))))
+                (.resolve ^DnsResolver (http/network-policy-dns-resolver :allow-private) "rebind.example"))))))
+  (testing "the resolver refuses non-global special-purpose addresses under both restricted policies"
+    (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                           (.add "benchmark.example"
+                                                 (into-array [(InetAddress/getByName "198.18.0.1")])))]
+      (doseq [policy [:external-only :allow-private]]
+        (is (thrown-with-msg? ExceptionInfo #"non-permitted"
+                              (.resolve ^DnsResolver (http/network-policy-dns-resolver policy)
+                                        "benchmark.example"))
+            (str policy))))))
 
 (deftest ^:parallel fetch-bytes-blocks-without-network-test
   (testing "blocked URLs return nil at the validation gate, never reaching the network"

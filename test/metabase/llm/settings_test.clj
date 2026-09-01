@@ -4,7 +4,10 @@
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http])
+  (:import
+   (java.net InetSocketAddress Proxy Proxy$Type ProxySelector)))
 
 (set! *warn-on-reflection* true)
 
@@ -195,6 +198,170 @@
       (testing "is a no-op for blank / nil URLs (lets normal not-configured handling run)"
         (is (nil? (llm.settings/assert-llm-host-allowed! nil)))
         (is (nil? (llm.settings/assert-llm-host-allowed! "")))))))
+
+;;; ----------------------------------------- llm-allowed-networks Tests -----------------------------------------
+
+(deftest llm-allowed-networks-default-test
+  ;; the raw binding clears any stored value, so the default is what is under test
+  (mt/with-temporary-raw-setting-values [llm-allowed-networks nil]
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
+      (testing "with nothing configured only public addresses are allowed, hosted or not"
+        (mt/with-premium-features #{}
+          (is (= :external-only (llm.settings/llm-allowed-networks))))
+        (mt/with-premium-features #{:hosting}
+          (is (= :external-only (llm.settings/llm-allowed-networks))))))
+    (testing "the environment can loosen it"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (is (= :allow-all (llm.settings/llm-allowed-networks))))
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+        (is (= :allow-private (llm.settings/llm-allowed-networks)))))
+    (testing "a value that is not one of the policies fails closed"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
+        (is (= :external-only (llm.settings/llm-allowed-networks)))))
+    (testing "it is not settable: nobody loosens it through the API"
+      (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all)))))
+  (testing "a value that reached the application database some other way is ignored"
+    (mt/with-temporary-raw-setting-values [llm-allowed-networks "allow-all"]
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
+        (is (= :external-only (llm.settings/llm-allowed-networks)))))))
+
+(deftest network-policy-floor-test
+  (testing "a deployment-controlled endpoint's floor can only loosen the configured policy"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (= :external-only (llm.settings/network-policy)))
+      (is (= :external-only (llm.settings/network-policy nil)))
+      (is (= :allow-private (llm.settings/network-policy :allow-private))))
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (= :allow-all (llm.settings/network-policy :allow-private))))))
+
+(deftest llm-url-problem-test
+  ;; IP literals throughout: `host-allowed-for-network-policy?` resolves hostnames through real DNS
+  (testing "under :external-only, internal addresses are refused and public ones are not"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (doseq [url ["http://127.0.0.1:8000/v1"
+                   "http://[::1]:8000/v1"
+                   "http://169.254.169.254/latest/meta-data/"
+                   "http://10.0.0.1/v1"
+                   "http://192.168.1.1/v1"]]
+        (is (some? (llm.settings/llm-url-problem url)) url))
+      (is (nil? (llm.settings/llm-url-problem "https://8.8.8.8/v1")))))
+  (testing "the message tells a self-hosted operator which setting to change, and a Cloud admin that there is none"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-premium-features #{}
+        (is (= (str "The base URL host 10.0.0.1 is on a network Metabase is not allowed to connect to. "
+                    "Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private network, "
+                    "or allow-all for one on this machine.")
+               (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))
+      (mt/with-premium-features #{:hosting}
+        (is (= (str "The base URL host 10.0.0.1 is on a private network. "
+                    "Metabase Cloud can only connect to LLM providers on the public internet.")
+               (llm.settings/llm-url-problem "http://10.0.0.1/v1"))))))
+  (testing "under :allow-private, private networks pass but loopback and link-local still do not"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+      (is (nil? (llm.settings/llm-url-problem "http://10.0.0.1/v1")))
+      (is (some? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
+      (is (some? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
+  (testing "the two-argument form takes the policy to enforce"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (nil? (llm.settings/llm-url-problem :allow-private "http://10.0.0.1/v1")))
+      (is (some? (llm.settings/llm-url-problem :allow-private "http://127.0.0.1/v1")))))
+  (testing "under :allow-all, anything reachable goes"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (nil? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
+      (is (nil? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
+  (testing "a URL that is not http(s), or has no host, is refused under any policy"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (doseq [url ["api.openai.com/v1" "ftp://8.8.8.8/v1" "file:///etc/passwd" "http://" "not a url"]]
+        (is (re-find #"must start with http" (llm.settings/llm-url-problem url)) url))))
+  (testing "credentials in the URL are refused under any policy: they would ride along into error messages"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (re-find #"username or password" (llm.settings/llm-url-problem "https://svc:s3cret@8.8.8.8/v1")))))
+  (testing "a blank URL is not a problem here: the not-configured handling covers it"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (nil? (llm.settings/llm-url-problem nil)))
+      (is (nil? (llm.settings/llm-url-problem "  "))))))
+
+(deftest llm-request-opts-test
+  ;; IP literals throughout: the resolver goes through real DNS
+  (let [resolver (fn [& args] (:dns-resolver (apply llm.settings/llm-request-opts args)))]
+    (testing "redirects are disabled under every network policy"
+      (doseq [policy ["external-only" "allow-private" "allow-all"]]
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks policy]
+          (is (= :none (:redirect-strategy (llm.settings/llm-request-opts "https://8.8.8.8/v1")))))))
+    (testing "under :external-only the request gets the policy resolver; no lookup happens here"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (is (instance? org.apache.http.conn.DnsResolver (resolver "http://127.0.0.1:8000/v1")))
+        (testing "and it is the resolver that refuses an address the policy does not permit"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"non-permitted"
+               (.resolve ^org.apache.http.conn.DnsResolver (resolver "http://127.0.0.1:8000/v1") "127.0.0.1")))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"non-permitted"
+               (.resolve ^org.apache.http.conn.DnsResolver (resolver "http://10.0.0.1/v1") "10.0.0.1"))))
+        (testing "a floor loosens it for a deployment-controlled endpoint"
+          (is (= 1 (alength ^"[Ljava.net.InetAddress;"
+                    (.resolve ^org.apache.http.conn.DnsResolver (resolver :allow-private "http://10.0.0.1/v1")
+                              "10.0.0.1")))))))
+    (testing "under :allow-all there is no policy resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (is (= {:redirect-strategy :none}
+               (llm.settings/llm-request-opts "http://127.0.0.1:8000/v1")))))
+    (testing "a URL that is not usable at all is refused up front, naming the host but not what else it carried"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (doseq [url ["https://svc:s3cret@8.8.8.8/v1" "8.8.8.8/v1"]]
+          (is (=? {:status-code 400
+                   :status      400
+                   :api-error   true
+                   :error-code  :llm-host-not-allowed
+                   :llm-host    "8.8.8.8"}
+                  (try (llm.settings/llm-request-opts url)
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              url))))))
+
+(defn- proxy-selector
+  "A `ProxySelector` that answers `proxies` for every URI, the way a JVM configured with `-Dhttps.proxyHost` does."
+  ^ProxySelector [proxies]
+  (proxy [ProxySelector] []
+    (select [_uri] proxies)
+    (connectFailed [_uri _sa _ioe] nil)))
+
+(deftest llm-request-opts-behind-a-jvm-proxy-test
+  (testing (str "clj-http routes through a JVM-configured proxy, so the connection is opened to the proxy and a "
+                "`:dns-resolver` never sees the target: the target host is checked up front instead")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (binding [u.http/*proxy-selector*
+                (proxy-selector [(Proxy. Proxy$Type/HTTP (InetSocketAddress. "10.0.0.9" 3128))])]
+        (testing "the proxy is deployment configuration, so a private one is not judged by the policy"
+          (is (= {:redirect-strategy :none} (llm.settings/llm-request-opts "https://8.8.8.8/v1"))))
+        (testing "and the target behind it still is"
+          (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "10.0.0.1"}
+                  (try (llm.settings/llm-request-opts "http://10.0.0.1/v1")
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+        (testing "a floor loosens the target check for a deployment-controlled endpoint"
+          (is (= {:redirect-strategy :none}
+                 (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1")))))
+      (testing "with the proxy selector answering DIRECT, the resolver does the enforcing as before"
+        (binding [u.http/*proxy-selector* (proxy-selector [Proxy/NO_PROXY])]
+          (is (instance? org.apache.http.conn.DnsResolver
+                         (:dns-resolver (llm.settings/llm-request-opts "http://10.0.0.1/v1")))))))))
+
+(deftest connection-time-network-policy-error-test
+  (testing "direct and wrapped DNS policy rejections are recognized and translated to the URL-validation shape"
+    (doseq [cause [(ex-info "blocked address" {:ssrf true})
+                   (ex-info "HTTP client wrapper" {} (ex-info "blocked address" {:ssrf true}))]]
+      (is (true? (llm.settings/llm-network-policy-error? cause)))
+      (is (=? {:status-code 400
+               :status      400
+               :api-error   true
+               :error-code  :llm-host-not-allowed
+               :llm-host    "rebound.example"}
+              (try (llm.settings/rethrow-if-llm-network-policy-error!
+                    cause "https://rebound.example/v1")
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+  (testing "unrelated failures pass through the recognizer"
+    (let [e (ex-info "provider down" {:status 503})]
+      (is (false? (llm.settings/llm-network-policy-error? e)))
+      (is (nil? (llm.settings/rethrow-if-llm-network-policy-error! e "https://example.com"))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 

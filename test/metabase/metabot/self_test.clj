@@ -24,6 +24,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
@@ -176,6 +177,70 @@
                                {:connection-timeout 100 :socket-timeout 200})
             (is (= 100 (:connection-timeout @captured)))
             (is (= 200 (:socket-timeout @captured)))))))))
+
+(deftest request-enforces-llm-allowed-networks-test
+  ;; IP literals throughout: the resolver goes through real DNS. `resolving` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  (let [captured  (atom nil)
+        resolving (fn [{:keys [url] :as opts}]
+                    (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts) (.resolve (u.http/->hostname url)))
+                    (reset! captured opts)
+                    {:status 200 :body ""})
+        req       {:method :get :url "/v1/models"}
+        rejected  (fn [auth]
+                    (try (self.core/request auth req)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+    (testing "under :external-only"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (testing "a base URL on an internal network is refused when the connection resolves it"
+            (is (=? {:status-code 400
+                     :status      400
+                     :api-error   true
+                     :error-code  :llm-host-not-allowed
+                     :llm-host    "127.0.0.1"}
+                    (rejected {:url "http://127.0.0.1:9" :headers {}}))))
+          (testing "a public base URL goes out with the policy resolver on the connection"
+            (self.core/request {:url "https://8.8.8.8" :headers {}} req)
+            (is (= "https://8.8.8.8/v1/models" (:url @captured)))
+            (is (= :none (:redirect-strategy @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))
+          (testing "the managed AI proxy's floor allows private addresses under the default policy"
+            (self.core/request {:url "http://10.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://10.0.0.1:9/v1/models" (:url @captured))))
+          (testing "but still refuses loopback"
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                    (rejected {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private})))))
+        (testing "a URL that is not http(s) is refused before any request is made"
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] (is false "http/request should not be called"))]
+            (is (=? {:status-code 400 :error-code :llm-host-not-allowed :llm-host "8.8.8.8"}
+                    (rejected {:url "8.8.8.8" :headers {}})))))))
+    (testing "under :allow-all an internal base URL goes out on clj-http's default resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (mt/with-dynamic-fn-redefs [http/request resolving]
+          (self.core/request {:url "http://127.0.0.1:9" :headers {}} req)
+          (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+          (is (not (contains? @captured :dns-resolver)))
+          (testing "and the AI proxy's floor does not tighten that: a proxy on this machine is reachable"
+            (self.core/request {:url "http://127.0.0.1:9" :headers {} :network-policy-floor :allow-private} req)
+            (is (= "http://127.0.0.1:9/v1/models" (:url @captured)))
+            (is (not (contains? @captured :dns-resolver)))))))))
+
+(deftest resolve-auth-tags-proxy-auth-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "an environment-supplied proxy URL carries the private-network floor"
+      (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "http://proxy.internal/"]
+        (is (=? {:url                  "http://proxy.internal/anthropic"
+                 :network-policy-floor :allow-private}
+                (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)))))
+    (testing "a stored proxy URL gets the default policy: no floor"
+      (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.internal/"]
+        (let [auth (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} true)]
+          (is (= "http://proxy.internal/anthropic" (:url auth)))
+          (is (not (contains? auth :network-policy-floor))))
+        (is (= {:url "https://api.anthropic.com"}
+               (self.core/resolve-auth "anthropic" "Anthropic" {:url "https://api.anthropic.com"} false)))))))
 
 (deftest call-llm-prompt-cache-key-test
   (llm.tu/with-default-connections

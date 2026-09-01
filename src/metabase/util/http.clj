@@ -7,7 +7,7 @@
   (:import
    (com.google.common.net InetAddresses)
    (java.io ByteArrayOutputStream InputStream)
-   (java.net Inet6Address InetAddress URI URL)
+   (java.net Inet6Address InetAddress Proxy Proxy$Type ProxySelector URI URL)
    (java.util Locale)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn SystemDefaultDnsResolver)))
@@ -37,7 +37,8 @@
 ;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
 ;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
 ;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
-;;    any-local, multicast, IPv6 ULA (fc00::/7), and IPv4 CGNAT (100.64/10).
+;;    any-local, multicast, IPv6 ULA (fc00::/7), IPv4 CGNAT (100.64/10), non-global IANA
+;;    special-purpose ranges, and IPv6 space IANA has not allocated.
 ;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
 ;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
 ;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
@@ -50,26 +51,105 @@
 (def ^:private blocked-fetch-hosts #{"localhost" "metadata" "metadata.google.internal"})
 (def ^:private blocked-fetch-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
 
+(defn- address-prefix
+  [address prefix-length]
+  (let [bytes (.getAddress ^InetAddress (InetAddresses/forString address))]
+    (assert (<= 0 prefix-length (* 8 (alength bytes))))
+    [bytes prefix-length]))
+
+(defn- address-in-prefix?
+  [^InetAddress addr [network prefix-length]]
+  (let [address-bytes    (.getAddress addr)
+        ^bytes network  network
+        whole-byte-count (quot prefix-length 8)
+        remaining-bits   (mod prefix-length 8)]
+    (and (= (alength address-bytes) (alength network))
+         (loop [i 0]
+           (or (= i whole-byte-count)
+               (and (= (aget address-bytes i) (aget network i))
+                    (recur (inc i)))))
+         (or (zero? remaining-bits)
+             (let [mask (bit-and 0xff (bit-shift-left 0xff (- 8 remaining-bits)))]
+               (= (bit-and (aget address-bytes whole-byte-count) mask)
+                  (bit-and (aget network whole-byte-count) mask)))))))
+
+(def ^:private globally-reachable-special-prefixes
+  ;; More-specific exceptions inside the broad non-global prefixes below. Keep this aligned with the IANA IPv4 and
+  ;; IPv6 Special-Purpose Address Registries' "Globally Reachable" column.
+  ;; https://www.iana.org/assignments/iana-ipv4-special-registry
+  ;; https://www.iana.org/assignments/iana-ipv6-special-registry
+  [(address-prefix "192.0.0.9" 32)       ; PCP anycast
+   (address-prefix "192.0.0.10" 32)      ; TURN anycast
+   (address-prefix "64:ff9b::" 96)       ; IPv4/IPv6 translation (NAT64 well-known prefix)
+   (address-prefix "2001:1::1" 128)      ; PCP anycast
+   (address-prefix "2001:1::2" 128)      ; TURN anycast
+   (address-prefix "2001:1::3" 128)      ; DNS-SD service registration anycast
+   (address-prefix "2001:3::" 32)        ; AMT
+   (address-prefix "2001:4:112::" 48)    ; AS112-v6
+   (address-prefix "2001:20::" 28)       ; ORCHIDv2
+   (address-prefix "2001:30::" 28)])     ; Drone Remote ID protocol entity tags
+
+(def ^:private non-global-special-prefixes
+  ;; Additional IANA special-purpose blocks that are not globally reachable and are not already handled by
+  ;; `InetAddress` or the checks in [[public-address?]]. Entries whose registry value is N/A or blank are also refused:
+  ;; they do not carry the external-reachability guarantee required by `:external-only`. IPv6 blocks outside 2000::/3
+  ;; (discard-only, local-use translation, segment-routing SIDs, ...) need no entry: everything outside the
+  ;; global-unicast space is refused wholesale unless listed above.
+  ;; https://www.iana.org/assignments/iana-ipv4-special-registry
+  ;; https://www.iana.org/assignments/iana-ipv6-special-registry
+  [(address-prefix "192.0.0.0" 24)       ; IETF protocol assignments
+   (address-prefix "192.0.2.0" 24)       ; TEST-NET-1
+   (address-prefix "192.88.99.0" 24)     ; deprecated 6to4 relay anycast
+   (address-prefix "198.18.0.0" 15)      ; benchmarking
+   (address-prefix "198.51.100.0" 24)    ; TEST-NET-2
+   (address-prefix "203.0.113.0" 24)     ; TEST-NET-3
+   (address-prefix "2001::" 23)          ; IETF protocol assignments
+   (address-prefix "2001:db8::" 32)      ; documentation
+   (address-prefix "2002::" 16)])        ; 6to4
+
+(def ^:private reserved-global-unicast-prefixes
+  ;; 2000::/3 is the global-unicast space, but everything in it from 2d00:: up is unallocated: the fifteen blocks
+  ;; the registry marks RESERVED -- which include the 3fff::/20 documentation block -- and the space above them it
+  ;; does not list at all. No ISP routes any of it, so a name resolving there is either a mistake or an internal
+  ;; network squatting on reserved space. Shrink this when IANA allocates from the top of the /3.
+  ;; The smaller unallocated holes below 2d00:: are left alone: they sit between live RIR allocations, which is
+  ;; where the next ones are handed out from, and refusing them would age badly.
+  ;; https://www.iana.org/assignments/ipv6-unicast-address-assignments
+  [(address-prefix "2d00::" 8)
+   (address-prefix "2e00::" 7)
+   (address-prefix "3000::" 4)])
+
+(def ^:private non-global-prefixes
+  "Every prefix `:external-only` refuses, unless [[globally-reachable-special-prefixes]] carves it back out."
+  (into non-global-special-prefixes reserved-global-unicast-prefixes))
+
 (defn public-address?
-  "True only for globally-routable unicast IP addresses (rejects loopback, link-local, site-local,
-  any-local, multicast, IPv6 unique-local fc00::/7, IPv4 CGNAT 100.64.0.0/10, IPv4 \"this network\"
-  0.0.0.0/8, and IPv4 reserved 240.0.0.0/4 -- which includes the 255.255.255.255 broadcast address)."
+  "True only for globally reachable unicast IP addresses.
+
+  In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
+  IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
+  entries. IPv6 addresses outside the *allocated* part of the global-unicast space are rejected unless a registry
+  marks them globally reachable: an internal network can route reserved space."
   [^InetAddress addr]
   (let [b     (.getAddress addr)
         ipv4? (= 4 (alength b))
         b0    (bit-and (aget b 0) 0xff)]
-    (not (or (.isLoopbackAddress addr)
-             (.isLinkLocalAddress addr)
-             (.isSiteLocalAddress addr)
-             (.isAnyLocalAddress addr)
-             (.isMulticastAddress addr)
-             (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
-                  (= 0xfc (bit-and (aget b 0) 0xfe)))
-             (and ipv4?                                      ; IPv4 CGNAT 100.64.0.0/10
-                  (= 100 b0)
-                  (<= 64 (bit-and (aget b 1) 0xff) 127))
-             (and ipv4? (zero? b0))                          ; IPv4 "this network" 0.0.0.0/8
-             (and ipv4? (<= 240 b0))))))                     ; IPv4 reserved 240.0.0.0/4 + broadcast
+    (and (not (or (.isLoopbackAddress addr)
+                  (.isLinkLocalAddress addr)
+                  (.isSiteLocalAddress addr)
+                  (.isAnyLocalAddress addr)
+                  (.isMulticastAddress addr)
+                  (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
+                       (= 0xfc (bit-and (aget b 0) 0xfe)))
+                  (and ipv4?                                      ; IPv4 CGNAT 100.64.0.0/10
+                       (= 100 b0)
+                       (<= 64 (bit-and (aget b 1) 0xff) 127))
+                  (and ipv4? (zero? b0))                          ; IPv4 "this network" 0.0.0.0/8
+                  (and ipv4? (<= 240 b0))))                       ; IPv4 reserved 240.0.0.0/4 + broadcast
+         (or (some #(address-in-prefix? addr %) globally-reachable-special-prefixes)
+             (and (or ipv4?
+                      (= 0x20 (bit-and b0 0xe0)))                 ; IPv6 global unicast 2000::/3
+                  (not-any? #(address-in-prefix? addr %) non-global-prefixes))))))
 
 (defn- private-address?
   "True for addresses that are private but may be intentionally reachable from a self-hosted deployment."
@@ -86,7 +166,7 @@
 (defn address-allowed-for-network-policy?
   "Whether `addr` is allowed by `policy`.
 
-  `:external-only` allows only globally routable public addresses.
+  `:external-only` allows only globally reachable public addresses.
   `:allow-private` adds private, unique-local and carrier-grade NAT addresses.
   `:loopback-and-private` allows *only* loopback plus those same private ranges
   `:allow-all` imposes no address restriction."
@@ -175,6 +255,27 @@
             addrs
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
+
+(def ^:dynamic *proxy-selector*
+  "The `ProxySelector` [[jvm-proxied-url?]] asks. nil reads `ProxySelector/getDefault` at call time, which is what
+  Apache HttpClient's route planner does; tests bind it rather than installing a selector process-wide."
+  nil)
+
+(defn jvm-proxied-url?
+  "Whether the JVM's proxy configuration -- `-Dhttps.proxyHost` and friends, or `java.net.useSystemProxies` -- puts a
+  proxy in front of `url`.
+
+  This decides whether a `:dns-resolver` can enforce anything. clj-http's default route planner honours the JVM
+  proxy settings, and the connection it then opens is to the *proxy*: the resolver is handed the proxy's hostname,
+  and the target is resolved by the proxy, out of reach. A caller enforcing a network policy has to check the target
+  host itself in that case."
+  [url]
+  (boolean
+   (when-let [^ProxySelector selector (or *proxy-selector* (ProxySelector/getDefault))]
+     (try
+       (some #(not= Proxy$Type/DIRECT (.type ^Proxy %)) (.select selector (URI. (str url))))
+       ;; not a URI the selector can be asked about -- nothing is being proxied on its behalf either
+       (catch Throwable _ false)))))
 
 (def ^DnsResolver ^:private ssrf-safe-dns-resolver
   "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].

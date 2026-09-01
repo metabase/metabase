@@ -11,6 +11,10 @@
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
 (events/derive! :event/semantic-search-hnsw-enabled :metabase/event)
 
+(defn- normalize-base-url
+  [value]
+  (some-> value str/trim not-empty))
+
 (defsetting ee-embedding-provider
   (deferred-tru "The registered embedding provider to use")
   :encryption :when-encryption-key-set
@@ -74,6 +78,15 @@
   :visibility :settings-manager
   :default    nil
   :export?    false
+  ;; Normalize on read as well as write: environment values and rows persisted by older versions bypass the setter.
+  :getter     (fn []
+                (normalize-base-url
+                 (setting/get-value-of-type :string :ee-embedding-service-base-url)))
+  :setter     (fn [new-value]
+                (let [new-value (normalize-base-url new-value)]
+                  (when-let [problem (llm-settings/llm-url-problem new-value)]
+                    (throw (ex-info problem {:status-code 400})))
+                  (setting/set-value-of-type! :string :ee-embedding-service-base-url new-value)))
   :doc        false)
 
 (defsetting ee-embedding-service-api-key

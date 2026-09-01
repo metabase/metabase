@@ -9,7 +9,8 @@
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -453,6 +454,32 @@
                (mt/user-http-request :crowberto :post 400 "llm/providers"
                                      {:type "evilai" :config {:api-key "whatever"}}))))
       (is (= [] (llm.provider/connections))))))
+
+(deftest create-rejects-a-base-url-on-a-blocked-network-before-calling-the-provider-test
+  (testing (str "verifying credentials fetches the provider's model catalog from the base URL, so a base URL "
+                "on a network the policy forbids is refused before that request is made")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [& _] (is false "should reject before verifying credentials"))]
+          (let [create #(mt/user-http-request :crowberto :post 400 "llm/providers"
+                                              {:type   "anthropic"
+                                               :config {:api-key  "sk-ant-valid"
+                                                        :base-url "http://127.0.0.1:9"}})]
+            (testing "self-hosted, the message names the setting to change"
+              (mt/with-premium-features #{}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a network Metabase is not allowed to "
+                                       "connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on "
+                                       "your private network, or allow-all for one on this machine.")
+                         :field   "base-url"}
+                        (create)))))
+            (testing "on Cloud there is no setting to change, and the message says so"
+              (mt/with-premium-features #{:hosting}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a private network. "
+                                       "Metabase Cloud can only connect to LLM providers on the public internet.")
+                         :field   "base-url"}
+                        (create))))))
+          (is (= [] (llm.provider/connections))))))))
 
 (deftest create-suffixes-a-colliding-key-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-first"})]]
@@ -1175,3 +1202,25 @@
                    :type   "metabase"
                    :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+(deftest settings-api-cannot-store-a-base-url-on-a-blocked-network-test
+  (testing (str "the connection list is a setting in its own right, so writing the raw JSON through the settings "
+                "API has to be refused the way the connection endpoints refuse it")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (let [conn #(connection "vllm" "vllm" {:base-url %})]
+          (is (=? {:message #".*127\.0\.0\.1 is on a network.*"
+                   :field   "base-url"}
+                  (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
+                                        {:value [(conn "http://127.0.0.1:8000/v1")]})))
+          (is (= [] (vec (llm.provider/stored-connections))))
+          (testing "a base URL the policy permits still saves"
+            (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                  {:value [(conn "https://8.8.8.8/v1")]})
+            (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
+          (testing "and an entry already stored does not block an edit to a different connection"
+            (mt/with-temporary-raw-setting-values [llm-providers (json/encode [(conn "http://127.0.0.1:8000/v1")])]
+              (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
+                                    {:value [(conn "http://127.0.0.1:8000/v1")
+                                             (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
+              (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))))))))

@@ -56,6 +56,7 @@
                      :docs-url    "https://console.anthropic.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -73,6 +74,7 @@
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -90,6 +92,7 @@
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -107,6 +110,7 @@
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -124,6 +128,7 @@
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -140,6 +145,7 @@
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -159,6 +165,7 @@
                      :docs-url    "https://platform.deepseek.com/api_keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -229,6 +236,7 @@
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
+                     :validate  llm.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -249,6 +257,7 @@
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -299,11 +308,14 @@
     :default-model nil
     :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
-                     :placeholder "http://vllm.internal:8000/v1"
-                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                     :placeholder "https://vllm.example.com/v1"
+                     :help        (deferred-tru (str "Your server''s OpenAI-compatible API. It should end in /v1. "
+                                                     "Metabase must be able to reach it: self-hosted, a server on your "
+                                                     "private network or on this machine needs MB_LLM_ALLOWED_NETWORKS."))}
                     {:key      :api-key
                      :label    (deferred-tru "API key")
                      :type     :password
@@ -401,8 +413,14 @@
       (when (every? some? parts)
         (str/join "/" parts)))))
 
+(defn- validate-field-value!
+  "Run one field's `:validate` hook against the value `config` supplies for it, if it has both."
+  [{:keys [key validate]} config]
+  (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
+    (throw (ex-info (str problem) {:status-code 400 :field key}))))
+
 (defn- validate-field!
-  [type-name {:keys [key label required? prefix default options validate]} config]
+  [type-name {:keys [key label required? prefix default options] :as field} config]
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
@@ -413,8 +431,7 @@
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
-    (when-let [problem (and value validate (validate value))]
-      (throw (ex-info (str problem) {:status-code 400 :field key})))))
+    (validate-field-value! field config)))
 
 (defn- validate-config-field!
   "Run [[validate-field!]]'s checks for the single field `field-key` of `type-name` against `config`."
@@ -675,6 +692,26 @@
   (boolean
    (when-let [{:keys [type config]} (connection conn-key)]
      (config-complete? type config))))
+
+(defn validate-changed-connections!
+  "Run the per-field `:validate` hooks over every connection in `conns` that is not already stored verbatim. This is
+  the [[metabase.llm.settings/llm-providers]] setter, so a base URL the network policy refuses cannot be saved by
+  writing the connection list straight through `PUT /api/setting/llm-providers` or `config.yml` rather than through
+  the connection API.
+
+  Only the `:validate` hooks, and only on what changed. Required fields, prefixes and options are the connection
+  API's business: demanding them of every write here would break `config.yml` provisioning and the single-provider
+  settings, which legitimately fill a connection in one field at a time. Skipping the connections that are already
+  stored keeps an entry saved before its URL was refused -- or before this check existed -- from blocking an edit to
+  a different connection.
+
+  A connection of an unknown type has no fields to check, the same as everywhere else a hand-written list is read."
+  [conns]
+  (let [unchanged (set (stored-connections))]
+    (doseq [{:keys [type config] :as conn} (filter map? conns)
+            :when (not (contains? unchanged conn))
+            field (:fields (provider-type type))]
+      (validate-field-value! field config))))
 
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
