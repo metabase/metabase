@@ -1,7 +1,5 @@
 import { registerAction } from "echarts/core";
 
-// Dispatch this on a chart instance to ask what it actually painted; the answer
-// comes back as `DATA_VISIBILITY_EVENT` on the same instance.
 export const DATA_VISIBILITY_ACTION = "metabaseCheckDataVisibility";
 export const DATA_VISIBILITY_EVENT = "metabaseDataVisibility";
 
@@ -25,9 +23,22 @@ type ExtensionApi = Parameters<NonNullable<ActionHandler>>[2];
 type CoordinateSystem = ReturnType<
   ExtensionApi["getCoordinateSystems"]
 >[number];
+type CoordinateAxis = ReturnType<
+  NonNullable<CoordinateSystem["getAxes"]>
+>[number];
 type SeriesView = ReturnType<ExtensionApi["getViewOfSeriesModel"]>;
 
 type PlotArea = { x: number; y: number; width: number; height: number };
+
+// A clipped mark can touch the plot edge with nothing actually visible.
+const EDGE_TOLERANCE = 0.5;
+
+// ECharts declares this on Axis2D but doesn't export it from "echarts/core".
+type CartesianAxis = { toGlobalCoord(coord: number): number };
+
+const isCartesianAxis = (
+  axis: CoordinateAxis,
+): axis is CoordinateAxis & CartesianAxis => "toGlobalCoord" in axis;
 
 // `getRect()` lives on the concrete Grid but not on the CoordinateSystemMaster
 // interface, so the plot box is rebuilt from the span of its two axes.
@@ -36,18 +47,23 @@ const getPlotArea = (coordinateSystem: CoordinateSystem): PlotArea | null => {
   const xAxis = axes?.find((axis) => axis.dim === "x");
   const yAxis = axes?.find((axis) => axis.dim === "y");
 
-  if (!xAxis || !yAxis) {
+  if (!xAxis || !yAxis || !isCartesianAxis(xAxis) || !isCartesianAxis(yAxis)) {
     return null;
   }
 
-  const [left, right] = xAxis.getExtent();
-  const [top, bottom] = yAxis.getExtent();
+  // Axis extents are coordinate-system-local; element bounds are global.
+  const xExtent = xAxis.getExtent();
+  const yExtent = yAxis.getExtent();
+  const left = xAxis.toGlobalCoord(xExtent[0]);
+  const right = xAxis.toGlobalCoord(xExtent[1]);
+  const top = yAxis.toGlobalCoord(yExtent[0]);
+  const bottom = yAxis.toGlobalCoord(yExtent[1]);
 
   return {
-    x: Math.min(left, right),
-    y: Math.min(top, bottom),
-    width: Math.abs(right - left),
-    height: Math.abs(bottom - top),
+    x: Math.min(left, right) + EDGE_TOLERANCE,
+    y: Math.min(top, bottom) + EDGE_TOLERANCE,
+    width: Math.abs(right - left) - EDGE_TOLERANCE * 2,
+    height: Math.abs(bottom - top) - EDGE_TOLERANCE * 2,
   };
 };
 
@@ -65,8 +81,6 @@ const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
     }
 
     const bounds = element.getBoundingRect().clone();
-    // zrender types `transform` as always present, but it is null until the
-    // element has been laid out.
     if (element.transform) {
       bounds.applyTransform(element.transform);
     }
