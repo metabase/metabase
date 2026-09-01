@@ -69,9 +69,11 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   >;
 
   /**
-   * This function should throw if the visualization cannot be rendered with given data and settings.
+   * Optional. Throw here if the visualization cannot be rendered with the given data and
+   * settings; Metabase shows the thrown message to the user. When omitted, the
+   * visualization is always considered renderable.
    */
-  checkRenderable: (
+  checkRenderable?: (
     series: Series,
     settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
