@@ -1762,12 +1762,14 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     return json.dumps(result)
 
 def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
-    """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only DuckDB's
-    parser consumes it (try-cast operator). So a JDBC parameter followed by a cast
-    (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in non-DuckDB
-    dialects. To work around this we rewrite `?::` to `? ::` for non-DuckDB dialects (#81373).
+    """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only Databricks'
+    parser consumes it (the `expr?::type` try-cast operator). So a JDBC parameter followed by a
+    cast (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in every
+    other dialect. To work around this we rewrite `?::` to `? ::` outside Databricks (#81373).
+    Databricks is left alone so its native try-cast operator keeps parsing; a bare `?::type`
+    placeholder cast there fails either way, since the operator needs a left operand.
     """
-    if dialect == "duckdb" or "?::" not in sql:
+    if dialect == "databricks" or "?::" not in sql:
         return sql
     try:
         tokens = sqlglot.tokenize(sql, read=dialect)
