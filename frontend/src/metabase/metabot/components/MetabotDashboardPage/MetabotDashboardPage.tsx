@@ -14,10 +14,7 @@ import { Box, Center, Stack, Text, Title } from "metabase/ui";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import {
-  getDatasetError,
-  getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
