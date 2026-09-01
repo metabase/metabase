@@ -1,5 +1,5 @@
 /**
- * Generates docs/_includes/data/nav.yml from a docs.metabase.github.io nav file, for
+ * Generates docs/util/data/nav.yml from a docs.metabase.github.io nav file, for
  * .github/workflows/docs-nav-seed.yml.
  *
  * Reads the nav file at SOURCE_FILE and rewrites every "url:" value with two transforms:
@@ -27,7 +27,7 @@ if (!SOURCE_FILE || !URL_PREFIX) {
   );
 }
 
-const destPath = "docs/_includes/data/nav.yml";
+const destPath = "docs/util/data/nav.yml";
 
 function transformUrl(url: string): string {
   const stripped = url.startsWith(URL_PREFIX!)
@@ -43,7 +43,7 @@ const transformed = content.replace(
   (_match, prefix, url, suffix) => `${prefix}${transformUrl(url)}${suffix}`,
 );
 
-mkdirSync("docs/_includes/data", { recursive: true });
+mkdirSync("docs/util/data", { recursive: true });
 writeFileSync(destPath, transformed);
 
 process.stdout.write(`Generated ${destPath} from ${SOURCE_FILE}\n`);

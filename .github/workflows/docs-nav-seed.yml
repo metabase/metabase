@@ -1,11 +1,11 @@
-name: Seed docs/_includes/data/nav.yml (one-off)
+name: Seed docs/util/data/nav.yml (one-off)
 
-# One-off migration: creates docs/_includes/data/nav.yml on each target branch, seeded from
+# One-off migration: creates docs/util/data/nav.yml on each target branch, seeded from
 # docs.metabase.github.io's per-version nav file. After this merges everywhere, that file
 # becomes the source of truth for doc nav, and docs.metabase.github.io generates its versioned
 # copies from it instead of the other way around (https://github.com/metabase/docs.metabase.github.io/pull/1315).
 #
-# Safe to re-run: any branch that already has docs/_includes/data/nav.yml, or that already has an
+# Safe to re-run: any branch that already has docs/util/data/nav.yml, or that already has an
 # open add-docs-nav-yml-<branch> seed branch/PR, is skipped.
 on:
   push:
@@ -66,9 +66,9 @@ jobs:
       - name: Skip if already seeded or in progress
         id: check
         run: |
-          if [ -f docs/_includes/data/nav.yml ]; then
+          if [ -f docs/util/data/nav.yml ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "docs/_includes/data/nav.yml already exists on $TARGET_BRANCH, skipping"
+            echo "docs/util/data/nav.yml already exists on $TARGET_BRANCH, skipping"
           elif git ls-remote --exit-code --heads origin "$SEED_BRANCH" > /dev/null; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "$SEED_BRANCH already exists, skipping (a seed PR is likely already open)"
@@ -114,8 +114,8 @@ jobs:
           git config user.email github-actions@github.com
 
           git checkout -b "$SEED_BRANCH"
-          git add docs/_includes/data/nav.yml
-          git commit -m "Add docs/_includes/data/nav.yml (seeded from docs.metabase.github.io)"
+          git add docs/util/data/nav.yml
+          git commit -m "Add docs/util/data/nav.yml (seeded from docs.metabase.github.io)"
           git push -u origin "$SEED_BRANCH"
 
       - name: Open pull request
@@ -126,8 +126,8 @@ jobs:
           gh pr create \
             --base "$TARGET_BRANCH" \
             --head "$SEED_BRANCH" \
-            --title "Add docs/_includes/data/nav.yml for $TARGET_BRANCH" \
-            --body "One-off seed of \`docs/_includes/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Auto-generated via https://github.com/metabase/metabase/pull/81703." \
+            --title "Add docs/util/data/nav.yml for $TARGET_BRANCH" \
+            --body "One-off seed of \`docs/util/data/nav.yml\`, migrated from docs.metabase.github.io's \`$SOURCE_FILE\` with the \`$URL_PREFIX\` URL prefix stripped so links are relative to the docs root. Auto-generated via https://github.com/metabase/metabase/pull/81703." \
             --label "no-backport" \
             --label "ci:skip" \
             --assignee bpander
