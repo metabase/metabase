@@ -49,7 +49,10 @@ export function generatedCard(card: GeneratedCardLink) {
   return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
 }
 
-export function generatedDashboard(dashboard: GeneratedDashboardLink) {
+export function generatedDashboard(
+  dashboard: GeneratedDashboardLink,
+  conversationId?: string,
+) {
   if ("url" in dashboard) {
     return dashboard.url;
   }
@@ -60,15 +63,22 @@ export function generatedDashboard(dashboard: GeneratedDashboardLink) {
       ...tile,
       dataset_query: query,
     })),
+    metabot:
+      conversationId != null
+        ? { conversation_id: conversationId, dashboard_id: dashboard.id }
+        : undefined,
   });
 }
 
-export function generatedEntity(entity: GeneratedEntityLink) {
+export function generatedEntity(
+  entity: GeneratedEntityLink,
+  { conversationId }: { conversationId?: string } = {},
+) {
   switch (entity.type) {
     case "card":
       return generatedCard(entity);
     case "dashboard":
-      return generatedDashboard(entity);
+      return generatedDashboard(entity, conversationId);
   }
 }
 

@@ -17,6 +17,7 @@ import {
   DASHBOARD_EDITING_ACTIONS,
   DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -83,7 +84,10 @@ function DashboardAppInner({ location }: { location: Location }) {
 export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
-const ADHOC_DASHBOARD_ACTIONS = () => DASHBOARD_DISPLAY_ACTIONS;
+const ADHOC_DASHBOARD_ACTIONS = () => [
+  DASHBOARD_ACTION.SAVE_ADHOC_DASHBOARD,
+  ...DASHBOARD_DISPLAY_ACTIONS,
+];
 
 function getRouteDashboardId(location: Location, slug: string | undefined) {
   if (!isAdhocDashboardPath(location.pathname)) {
