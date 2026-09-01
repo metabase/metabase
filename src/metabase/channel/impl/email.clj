@@ -1,7 +1,7 @@
 (ns metabase.channel.impl.email
   (:require
    [clojure.string :as str]
-   [hiccup.core :refer [html]]
+   [hiccup.core :refer [h html]]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
@@ -100,7 +100,8 @@
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
           heading-text    (:text part)
           style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
-      {:content (str (html [:h2 {:style style} heading-text])
+      ;; hiccup 1 doesn't escape strings and :content reaches `{{{computed.dashboard_content}}}` as-is
+      {:content (str (html [:h2 {:style style} (h heading-text)])
                      rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))

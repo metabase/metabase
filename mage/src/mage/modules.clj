@@ -1,7 +1,5 @@
 (ns mage.modules
   (:require
-   ^:clj-kondo/ignore
-   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -97,6 +95,7 @@
      auth-identity
      auth-provider
      batch-processing
+     bug-reporting
      channel
      classloader
      collections
@@ -329,35 +328,6 @@
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
-;;; driver quarantine
-
-(def ^:private ci-test-config-url
-  "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
-
-(defn- read-ci-test-config []
-  (json/parse-string (slurp ci-test-config-url) keyword))
-
-(defn- quarantined-drivers []
-  (-> (read-ci-test-config)
-      (get-in [:ignored :drivers] [])
-      (->> (mapcat #(or (get driver-directory->drivers %)
-                        [(keyword %)])))
-      (set)))
-
-(defn- effective-quarantined-drivers
-  "Set of quarantined drivers to actually enforce for this run.
-
-   The quarantine list is fetched on the fly from a remote file (ci-test-config.json, see
-   [[quarantined-drivers]]). We intentionally IGNORE it on `master` and `release-*` branches:
-   there, every driver must run and gate, so a stray remote quarantine entry can't silently
-   disable a driver's tests (nor raise a quarantine-conflict, which would fail a push demanding
-   a PR-only break-quarantine label). On PR/feature branches the quarantine is honored, subject
-   to the break-quarantine-<driver> label."
-  [is-master-or-release]
-  (if is-master-or-release
-    #{}
-    (quarantined-drivers)))
-
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
@@ -383,9 +353,6 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
-  (str "break-quarantine-" (name driver)))
-
 (defn run-driver-label [driver]
   (str "ci:run-" (name driver)))
 
@@ -403,14 +370,13 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose? only-driver]}
+   {:keys [is-master-or-release pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
-   quarantined-drivers
    updated]
   (cond
     ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
-    ;; that driver and nothing else -- not H2/Postgres, and not the skip list, since asking for a job by
-    ;; name is a stronger signal than any rule below.
+    ;; that driver and nothing else -- not even H2/Postgres, since asking for a job by name is a
+    ;; stronger signal than any rule below.
     only-driver
     (if (= driver only-driver)
       {:should-run true
@@ -436,59 +402,46 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers — skipped unless a break-quarantine-<driver> label is present.
-    ;; On master/release this set is empty (see [[effective-quarantined-drivers]]), so quarantine is
-    ;; ignored there and we fall through to Priority 5.
-    (contains? quarantined-drivers driver)
-    (do
-      (when verbose?
-        (println "Driver" (name driver) "is quarantined; checking for '" (break-quarantine-label driver) "' label...."))
-      (if (contains? pr-labels (break-quarantine-label driver))
-        {:should-run true
-         :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
-        {:should-run false
-         :reason "driver is quarantined"}))
-
-    ;; Priority 5: Master/release branch - all (non-quarantined) drivers run
+    ;; Priority 4: Master/release branch - all drivers run
     is-master-or-release
     {:should-run true
      :reason "master/release branch"}
 
-    ;; Priority 6: Cloud driver + ci:run-all-cloud-drivers label
+    ;; Priority 5: Cloud driver + ci:run-all-cloud-drivers label
     (and (contains? cloud-drivers driver)
          (contains? pr-labels "ci:run-all-cloud-drivers"))
     {:should-run true
      :reason "ci:run-all-cloud-drivers label"}
 
-    ;; Priority 7: Cloud driver + its files changed
+    ;; Priority 6: Cloud driver + its files changed
     (and (contains? cloud-drivers driver)
          (contains? particular-driver-changed? driver))
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
+    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
          (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 9: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
     (and (contains? cloud-drivers driver)
          driver-deps-affected?)
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 10: Cloud driver, no relevant changes → skip
+    ;; Priority 9: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 11: Driver deps affected by shared code changes
+    ;; Priority 10: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 12: Self-hosted driver, not affected
+    ;; Priority 11: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
@@ -518,12 +471,7 @@
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
-             :verbose? (not github-output-only?)
              :only-driver only-driver}
-        ;; On master/release we drop the remote quarantine list entirely (see
-        ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
-        ;; quarantine-conflict is raised.
-        quarantined (effective-quarantined-drivers is-master-or-release)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
@@ -531,24 +479,13 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
+                          (assoc (driver-decision driver ctx effective-driver-affected? updated)
                                  :driver driver))
-                        all-drivers)
-        ;; Check for quarantined drivers with file changes but no break-quarantine label
-        quarantined-with-changes (into #{}
-                                       (filter (fn [driver]
-                                                 (and (contains? quarantined driver)
-                                                      (contains? particular-driver-changed? driver)
-                                                      (not (contains? (:pr-labels ctx)
-                                                                      (break-quarantine-label driver))))))
-                                       all-drivers)]
+                        all-drivers)]
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
-      (do
-        (doseq [{:keys [driver should-run]} decisions]
-          (println (str (name driver) "-should-run=" should-run)))
-        (doseq [driver quarantined-with-changes]
-          (println (str (name driver) "-quarantine-conflict=true"))))
+      (doseq [{:keys [driver should-run]} decisions]
+        (println (str (name driver) "-should-run=" should-run)))
       (do
         ;; Print module analysis summary
         (println "")
@@ -573,15 +510,7 @@
             (println (str (name driver) "-should-run=true")))
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
-            (println (str (name driver) "-should-run=false"))))
-        ;; Output quarantine conflict warnings with colors
-        (when (seq quarantined-with-changes)
-          (println "")
-          (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
-          (println (c/red "=== Quarantine Conflicts ==="))
-          (doseq [driver quarantined-with-changes]
-            (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
-            (println (str (name driver) "-quarantine-conflict=true"))))))
+            (println (str (name driver) "-should-run=false"))))))
     (u/exit 0)))
 
 (defn -main

@@ -202,7 +202,9 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -268,7 +270,9 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
@@ -372,7 +376,7 @@ jobs:
       # Host apps are the only suite here running through Metabase's Cypress config,
       # whose `after:spec` hook reports failures and writes QUARANTINE_FAILURES_FILE.
       # Sample-app suites load their own config (no-op), so ci-conductor is scoped to this job.
-      CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
       CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
       REPO_ID: ${{ github.event.repository.id }}

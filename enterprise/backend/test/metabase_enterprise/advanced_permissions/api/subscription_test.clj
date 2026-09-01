@@ -77,6 +77,36 @@
                   (get-form 200)
                   (test-pulse 200))))))))))
 
+(deftest pulse-raw-email-recipient-diff-test
+  (testing "PUT /api/pulse/:id — adding a raw-email recipient requires subscription permissions, also when the
+            channel already has other raw-email recipients"
+    (with-subscription-disabled-for-all-users!
+      (mt/with-user-in-groups [group {:name "New Group"}
+                               user  [group]]
+        (mt/with-temp [:model/Pulse        pulse {:creator_id (u/the-id user)}
+                       :model/PulseChannel _     {:pulse_id      (:id pulse)
+                                                  :channel_type  :email
+                                                  :schedule_type :daily
+                                                  :schedule_hour 12
+                                                  :enabled       true
+                                                  :details       {:emails ["old@external.com"]}}]
+          ;; :monitoring passes the endpoint's top-level gate; without :subscription the user may update the
+          ;; pulse but must not be able to add recipients
+          (perms/grant-application-permissions! group :monitoring)
+          (mt/with-premium-features #{:advanced-permissions}
+            (let [update-recipients (fn [status recipients]
+                                      (mt/user-http-request user :put status (format "pulse/%d" (:id pulse))
+                                                            {:channels [{:enabled       true
+                                                                         :channel_type  "email"
+                                                                         :schedule_type "daily"
+                                                                         :schedule_hour 12
+                                                                         :recipients    recipients}]}))]
+              (testing "keeping the existing raw-email recipient is allowed"
+                (update-recipients 200 [{:email "old@external.com"}]))
+              (testing "adding a new raw-email recipient is rejected"
+                (update-recipients 403 [{:email "old@external.com"}
+                                        {:email "new@external.com"}])))))))))
+
 (deftest send-time-attachment-perm-drift-test
   (testing "Subscription attachments are gated by the subscription creator's send-time download perms (GH #71696)"
     ;; Regression test for PR #66827. The bug: result-attachment used (:creator_id card) — the card author —

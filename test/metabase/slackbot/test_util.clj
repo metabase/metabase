@@ -3,6 +3,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
@@ -46,13 +47,14 @@
    :size        100})
 
 (defmacro with-ensure-encryption
-  "Use the existing encryption key if one is configured, otherwise set a test key.
-   Avoids conflicts with encrypted settings in the DB that were written with the real key."
+  "Use the existing encryption key if one is configured, otherwise run against the namespace's prepared encrypted app
+   DB (see [[metabase.app-db.encryption-test-util/with-encrypted-app-db]]). Reading a setting under an active key
+   strictly decrypts it, so an isolated, already-encrypted app DB keeps that read from tripping over a plaintext
+   setting left in the shared app DB by another namespace."
   [& body]
   `(if (encryption/default-encryption-enabled?)
      (do ~@body)
-     (with-redefs [encryption/default-secret-key test-encryption-key]
-       ~@body)))
+     (encryption-tu/with-encrypted-app-db ~@body)))
 
 (defmacro with-slackbot-setup
   "Wrap body with all required settings for slackbot to be fully configured.

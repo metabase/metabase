@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
@@ -74,6 +75,10 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                  ;; does) so no encrypted column is left plaintext for the strict model reads
+                  ;; the update and dump below trigger
+                  (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
                   (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})
                   (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
@@ -119,6 +124,9 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                  ;; does), otherwise the dump would hold data under an absent sentinel and its setup would refuse
+                  (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
                   (t2/insert! :model/Database {:engine          "h2"
                                                :name            "normal-db"
                                                :details         {:db "/tmp/test.db"}

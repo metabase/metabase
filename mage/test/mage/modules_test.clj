@@ -14,8 +14,7 @@
   (merge {:is-master-or-release false
           :pr-labels #{}
           :skip false
-          :particular-driver-changed? #{}
-          :verbose? false}
+          :particular-driver-changed? #{}}
          opts))
 
 ;;; =============================================================================
@@ -27,18 +26,16 @@
     (doseq [driver [:h2 :postgres :mysql-mariadb :bigquery]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:only-driver :bigquery})
-                                                 false     ; driver-deps-affected?
-                                                 #{}       ; skipped
-                                                 #{})]     ; updated
+                                                 false   ; driver-deps-affected?
+                                                 #{})]   ; updated
         (is (= (= :bigquery driver) (:should-run result))
             (str driver " should run only when it is the requested driver"))))))
 
 (deftest only-driver-beats-every-other-rule
-  (testing "the requested driver runs even when the CI config skips it and the workflow says skip"
+  (testing "the requested driver runs even when the workflow says skip"
     (let [result (mage.modules/driver-decision :snowflake
                                                (make-ctx {:only-driver :snowflake, :skip true})
                                                false
-                                               #{:snowflake} ; skipped by CI config
                                                #{})]
       (is (true? (:should-run result)))
       (is (= "requested via --only-driver=snowflake" (:reason result)))))
@@ -46,7 +43,6 @@
     (let [result (mage.modules/driver-decision :h2
                                                (make-ctx {:only-driver :snowflake})
                                                false
-                                               #{}
                                                #{})]
       (is (false? (:should-run result)))
       (is (= "--only-driver=snowflake requested instead" (:reason result))))))
@@ -60,68 +56,15 @@
       (is (nil? (#'mage.modules/parse-only-driver blank))))))
 
 ;;; =============================================================================
-;;; Priority 4: Quarantine (respected on PR branches, ignored on master/release)
+;;; Driver directory -> test job mapping
 ;;; =============================================================================
 
-(deftest quarantined-driver-skips
-  (testing "Quarantined driver is skipped"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {})
-                                               false ; driver-module-affected?
-                                               #{:mysql} ; quarantined
-                                               #{})] ; updated
-      (is (false? (:should-run result)))
-      (is (= "driver is quarantined" (:reason result))))))
-
-(deftest quarantined-driver-with-break-label-runs
-  (testing "Quarantined driver runs when break-quarantine label is present"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:pr-labels #{"break-quarantine-mysql"}})
-                                               false
-                                               #{:mysql}
-                                               #{})]
-      (is (true? (:should-run result)))
-      (is (re-find #"break-quarantine-mysql" (:reason result))))))
-
-(deftest effective-quarantine-ignored-on-master-and-release
-  (testing "the remote quarantine list is dropped on master/release, but honored on PR branches"
-    (is (= #{} (#'mage.modules/effective-quarantined-drivers true))
-        "master/release: nothing is quarantined")
-    (with-redefs [mage.modules/quarantined-drivers (constantly #{:databricks})]
-      (is (= #{:databricks} (#'mage.modules/effective-quarantined-drivers false))
-          "PR/feature branch: quarantined drivers are honored"))))
-
-(deftest quarantined-driver-runs-on-master
-  (testing "a driver quarantined in the remote config still runs (and gates) on master/release"
-    ;; Production clears the quarantine set on master/release via effective-quarantined-drivers,
-    ;; so the decision falls through Priority 4 to Priority 5.
-    (let [quarantined (#'mage.modules/effective-quarantined-drivers true)
-          result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:is-master-or-release true})
-                                               true ; driver-deps-affected?
-                                               quarantined
-                                               #{})] ; updated
-      (is (true? (:should-run result)))
-      (is (= "master/release branch" (:reason result))))))
-
-(deftest quarantine-config-names-are-translated
-  (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
-    (testing "directory names are translated to internal keywords"
-      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping).
-      ;; Use a PR/feature branch here, since quarantine is ignored on master/release.
-      (let [result (mage.modules/driver-decision :bigquery
-                                                 (make-ctx {:is-master-or-release false})
-                                                 false
-                                                 #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
-                                                 #{})]
-        (is (false? (:should-run result)))
-        (is (= "driver is quarantined" (:reason result)))))
-    (testing "the driver-directory->drivers mapping contains expected translations"
-      ;; Verify the mapping exists and has expected entries
-      (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
-          "bigquery-cloud-sdk should map to [:bigquery]")
-      (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
-          "mongo should map to multiple test jobs"))))
+(deftest driver-directory-names-map-to-test-jobs
+  (testing "a driver directory maps to the driver keyword(s) whose jobs it feeds"
+    (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
+        "bigquery-cloud-sdk should map to [:bigquery]")
+    (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
+        "mongo should map to multiple test jobs")))
 
 ;;; =============================================================================
 ;;; Priority 1: Global skip
@@ -132,22 +75,11 @@
     (doseq [driver [:h2 :postgres :mysql :mongo :athena :bigquery]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:skip true})
-                                                 true ; even if affected
-                                                 #{} ; quarantined
+                                                 true  ; even if affected
                                                  #{})] ; updated
         (is (false? (:should-run result))
             (str driver " should be skipped"))
         (is (= "workflow skip (no backend changes)" (:reason result)))))))
-
-(deftest global-skip-beats-quarantine
-  (testing "Global skip takes priority over quarantine"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:skip true})
-                                               false
-                                               #{:mysql}
-                                               #{})]
-      (is (false? (:should-run result)))
-      (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
 ;;; Priority 2: H2 and Postgres always run
@@ -159,7 +91,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:is-master-or-release false})
                                                  false ; driver module not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should always run"))
@@ -171,7 +102,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:skip true})
                                                  false
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (false? (:should-run result))
             (str driver " should be skipped on global skip"))
@@ -187,7 +117,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:pr-labels #{"ci:run-all-drivers"}})
                                                  false ; not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run with ci:run-all-drivers"))
@@ -198,7 +127,6 @@
     (let [result (mage.modules/driver-decision :mysql
                                                (make-ctx {:pr-labels #{"ci:run-mysql"}})
                                                false
-                                               #{} ; quarantined
                                                #{})] ; updated
       (is (true? (:should-run result)))
       (is (= "ci:run-mysql label" (:reason result))))))
@@ -208,66 +136,43 @@
     (let [result (mage.modules/driver-decision :mongo
                                                (make-ctx {:pr-labels #{"ci:run-mysql"}})
                                                false
-                                               #{} ; quarantined
                                                #{})] ; updated
       (is (false? (:should-run result))))))
 
-(deftest ci-run-all-drivers-overrides-quarantine
-  (testing "ci:run-all-drivers overrides quarantine"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:pr-labels #{"ci:run-all-drivers"}})
-                                               false
-                                               #{:mysql} ; quarantined
-                                               #{})] ; updated
-      (is (true? (:should-run result)))
-      (is (= "ci:run-all-drivers label" (:reason result))))))
-
-(deftest ci-run-specific-driver-overrides-quarantine
-  (testing "ci:run-<driver> overrides quarantine"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:pr-labels #{"ci:run-mysql"}})
-                                               false
-                                               #{:mysql} ; quarantined
-                                               #{})] ; updated
-      (is (true? (:should-run result)))
-      (is (= "ci:run-mysql label" (:reason result))))))
-
 ;;; =============================================================================
-;;; Priority 5: Master/release branch
+;;; Priority 4: Master/release branch
 ;;; =============================================================================
 
 (deftest master-branch-runs-all-drivers
   (testing "All drivers run on master/release branch"
-    ;; H2/Postgres hit priority 2 first, others hit priority 5
+    ;; H2/Postgres hit priority 2 first, others hit priority 4
     (doseq [driver [:mysql :mongo :athena :bigquery :snowflake]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:is-master-or-release true})
                                                  false ; even if not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run on master"))
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 11: Driver deps affected (self-hosted only)
+;;; Priority 10: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 11
+    ;; H2/Postgres hit priority 2 first, others hit priority 10
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
-                                                 true ; driver-deps-affected
-                                                 #{} ; quarantined
+                                                 true  ; driver-deps-affected
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run when driver module affected"))
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 6-10: Cloud driver special rules
+;;; Priority 5-9: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
@@ -276,7 +181,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:pr-labels #{"ci:run-all-cloud-drivers"}})
                                                  false ; not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run with label"))
@@ -287,7 +191,6 @@
     (let [result (mage.modules/driver-decision :athena
                                                (make-ctx {:particular-driver-changed? #{:athena}})
                                                false
-                                               #{} ; quarantined
                                                #{})] ; updated
       (is (true? (:should-run result)))
       (is (re-find #"driver files changed" (:reason result))))))
@@ -300,7 +203,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  false       ; not affected
-                                                 #{}         ; quarantined
                                                  #{module})] ; updated
         (is (true? (:should-run result))
             (str driver " should run when query-processor updated"))
@@ -313,7 +215,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  true  ; driver-deps-affected
-                                                 #{}   ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run when driver deps affected"))
@@ -325,14 +226,13 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  false ; not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (false? (:should-run result))
             (str driver " should skip without changes"))
         (is (= "no relevant changes for cloud driver" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 12: Self-hosted drivers
+;;; Priority 11: Self-hosted drivers
 ;;; =============================================================================
 
 (deftest self-hosted-driver-not-affected-skips
@@ -342,7 +242,6 @@
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  false ; not affected
-                                                 #{} ; quarantined
                                                  #{})] ; updated
         (is (false? (:should-run result))
             (str driver " should skip when not affected"))

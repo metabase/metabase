@@ -100,11 +100,11 @@
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (when session-timezone
-         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
-               query-settings  (new QuerySettings)]
-           (.setOption query-settings "session_timezone" session-timezone)
-           (.setDefaultQuerySettings clickhouse-conn query-settings)))
+       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+             query-settings (new QuerySettings)]
+         (when session-timezone
+           (.serverSetting query-settings "session_timezone" session-timezone))
+         (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
@@ -247,10 +247,18 @@
   ;; filenames as table/column names. But its an approximation
   206)
 
+(defn- escape-ident
+  ;; Backslash-escape rather than double the backtick: ClickHouse identifiers follow string-literal escaping, where
+  ;; a preceding backslash would defeat quote-doubling.
+  [s]
+  (-> s
+      (str/replace "\\" "\\\\")
+      (str/replace "`" "\\`")))
+
 (defn- quote-name [s]
   (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
         parts (filter identity (str/split (name s) #"\."))]
-    (str/join "." (map #(str "`" % "`") parts))))
+    (str/join "." (map #(str "`" (escape-ident %) "`") parts))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,

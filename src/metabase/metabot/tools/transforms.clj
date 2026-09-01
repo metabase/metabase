@@ -88,7 +88,10 @@
     (add-output {:structured_output (transforms/get-transform transform_id)}
                 format-transform-details-output)
     (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+      (if (= 403 (:status-code (ex-data e)))
+        ;; A permission refusal is an answer for the agent, not a tool failure -- relay the standard message.
+        {:output (ex-message e) :status-code 403}
+        (metabot.tools.u/handle-agent-error e)))))
 
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])

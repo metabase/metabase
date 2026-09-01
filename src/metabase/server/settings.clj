@@ -34,7 +34,7 @@ x.com")
 
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public

@@ -22,6 +22,7 @@
     :made_public_by_id
     :metabase_version
     :public_uuid
+    :public_uuid_prefix
     :updated_at
     :view_count})
 

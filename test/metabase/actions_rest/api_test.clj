@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -226,6 +227,36 @@
                                 (mt/user-http-request :rasta :post 403 url params)))
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
+(deftest action-query-db-differs-from-declared-db-test
+  (testing "a query action cannot execute against a database other than the one its query targets"
+    (mt/dataset test-data
+      (let [target-db-id (mt/id)]                          ;; the DB the malicious query really targets; actions OFF here
+        (mt/dataset time-test-data
+          (mt/with-actions-enabled                         ;; actions enabled only on the model's DB (time-test-data)
+            (let [model-db-id (mt/id)]
+              (is (not= model-db-id target-db-id))
+              (mt/with-temp [:model/Card model {:type          :model
+                                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                (let [;; declare :database_id as the model's own (enabled) DB to try to pass every enablement gate...
+                      ;; ...while the query points at target-db-id, whose actions are disabled.
+                      action {:type          :query
+                              :model_id      (:id model)
+                              :database_id   model-db-id
+                              :name          "sneaky cross db action"
+                              :dataset_query {:type     "native"
+                                              :database target-db-id
+                                              :native   {:query "update people set source = 'pwned' where id = 1"}}
+                              :parameters    []}
+                      created (mt/user-http-request :crowberto :post 200 "action" action)]
+                  (testing "the declared database_id is overwritten with the query's real database on save"
+                    (is (= target-db-id (:database_id created))))
+                  (testing "execution is blocked because actions are disabled on the query's real DB"
+                    (is (partial= {:message "Actions are not enabled."
+                                   :data    {:database-id target-db-id}}
+                                  (mt/user-http-request :crowberto :post 400
+                                                        (format "action/%s/execute" (:id created))
+                                                        {:parameters {}})))))))))))))
+
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
     (mt/with-actions-enabled
@@ -421,6 +452,56 @@
               (is (=? {:errors {:model_id "Valid Card ID"}
                        :specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query" :name "test"}))))))))))
+
+(deftest native-query-action-requires-native-permission-test
+  (testing "creating or updating a native query action requires native query permission on the database"
+    (mt/with-actions-enabled
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-model-cleanup [:model/Action]
+          (perms.test-util/with-restored-data-perms!
+            (mt/with-temp [:model/Card {model-id :id}
+                           {:type          :model
+                            :dataset_query (mt/mbql-query users)
+                            ;; personal collection so a non-admin has write permission on the model
+                            :collection_id (:id (collection/user->personal-collection (mt/user->id :rasta)))}]
+              (let [native-action   {:name          "native example"
+                                     :type          "query"
+                                     :model_id      model-id
+                                     :database_id   (mt/id)
+                                     :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                      "update users set name = 'foo' where id = {{x}}")
+                                     :parameters    [{:id "x" :type "number"}]}
+                    implicit-action {:name       "implicit example"
+                                     :type       "implicit"
+                                     :model_id   model-id
+                                     :kind       "row/create"
+                                     :parameters [{:id "id" :type "number"}]}
+                    set-native!     (fn [level]
+                                      (perms/set-database-permission! (perms/all-users-group) (mt/id)
+                                                                      :perms/create-queries level))]
+                (testing "without native permission, creating a native query action is rejected"
+                  (set-native! :query-builder)
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 "action" native-action))))
+                (testing "an implicit (non-native) action is unaffected by native permission"
+                  (is (=? {:type "implicit"}
+                          (mt/user-http-request :rasta :post 200 "action" implicit-action))))
+                (testing "with native permission, creating a native query action succeeds"
+                  (set-native! :query-builder-and-native)
+                  (let [created (mt/user-http-request :rasta :post 200 "action" native-action)]
+                    (is (=? {:type "query"} created))
+                    (testing "without native permission, updating to a native query is rejected"
+                      (set-native! :query-builder)
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :put 403 (str "action/" (:id created))
+                                                   {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                     "update users set name = 'bar' where id = {{x}}")}))))
+                    (testing "with native permission, updating to a native query succeeds"
+                      (set-native! :query-builder-and-native)
+                      (is (=? {:type "query"}
+                              (mt/user-http-request :rasta :put 200 (str "action/" (:id created))
+                                                    {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                      "update users set name = 'baz' where id = {{x}}")}))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |

@@ -12,6 +12,7 @@ import type {
   CollectionItemModel,
   CollectionNamespace,
   Group,
+  Tenant,
   User,
 } from "metabase-types/api";
 
@@ -33,8 +34,25 @@ export type TenantCollectionPathItem = {
   is_tenant_dashboard?: boolean;
 };
 
+export type UseListActiveTenantsResult = {
+  data: Tenant[] | undefined;
+  isLoading: boolean;
+  error: unknown;
+};
+
+type UseListActiveTenantsOptions = {
+  skip?: boolean;
+};
+
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
+  useListActiveTenants: (
+    _options?: UseListActiveTenantsOptions,
+  ): UseListActiveTenantsResult => ({
+    data: undefined,
+    isLoading: false,
+    error: undefined,
+  }),
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
   CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
@@ -103,6 +121,9 @@ const getDefaultPluginTenants = () => ({
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
+  useListActiveTenants: (
+    options?: UseListActiveTenantsOptions,
+  ) => UseListActiveTenantsResult;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
     canAccessTenantSpecificCollections: boolean;

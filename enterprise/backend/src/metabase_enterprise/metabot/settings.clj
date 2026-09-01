@@ -39,6 +39,7 @@
 
 (defsetting ai-usage-max-retention-days
   (deferred-tru "Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.")
+  :encryption :no
   :visibility :internal
   :setter     :none
   :audit      :never

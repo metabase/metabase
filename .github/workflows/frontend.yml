@@ -28,7 +28,7 @@ env:
   # Consumed by the report-failures-to-ci-conductor step in fe-tests-unit. Absent
   # (e.g. fork PRs without secret access) the reporter no-ops. Matches the other
   # suite workflows (backend, drivers, e2e, app-db, semantic-search).
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
