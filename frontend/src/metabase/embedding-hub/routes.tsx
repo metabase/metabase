@@ -1,4 +1,3 @@
-import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
@@ -43,6 +42,11 @@ const embeddingHubTenancyPage = () =>
 const embeddingHubAppearancePage = () =>
   import("./pages").then(({ EmbeddingHubAppearancePage }) => ({
     Component: EmbeddingHubAppearancePage,
+  }));
+
+const embeddingHubThemeEditorPage = () =>
+  import("./pages").then(({ EmbeddingHubThemeEditorPage }) => ({
+    Component: EmbeddingHubThemeEditorPage,
   }));
 
 const setupPermissionsAndTenantsPage = () =>
@@ -99,14 +103,7 @@ export function getEmbeddingHubRoutes() {
         <Route path="appearance">
           <Route index lazy={embeddingHubAppearancePage} />
           <Route path="theme">
-            <Route
-              path=":themeId"
-              element={
-                <EmbeddingThemeEditorApp
-                  basePath={Urls.embeddingHubAppearance()}
-                />
-              }
-            />
+            <Route path=":themeId" lazy={embeddingHubThemeEditorPage} />
           </Route>
         </Route>
       </Route>
