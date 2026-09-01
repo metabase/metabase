@@ -1,6 +1,7 @@
 import type { BaseWidgetProps, WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
+import { clone } from "metabase/utils/clone";
 import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -55,7 +56,8 @@ function toPluginWidgetProps(
   return {
     // `id` stays prefixed: it is the widget's DOM id and must match the host label's `htmlFor`.
     ...rest,
-    value,
+    // Clone so a widget mutating an object-valued setting in place can't write through to host state.
+    value: clone(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
       onChangeSettings(

@@ -1,7 +1,7 @@
 import type { WidgetMount, WidgetMountHandle } from "custom-viz";
 
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
-import { isFunction } from "metabase-types/guards";
+import { isFunction, isObject } from "metabase-types/guards";
 
 import {
   getWidgetMountPlugin,
@@ -119,6 +119,37 @@ describe("wrapPluginWidget", () => {
     expect(onChangeSettings).toHaveBeenCalledWith({
       [`${PREFIX}threshold`]: 3,
     });
+  });
+
+  it("clones the value so a widget can't mutate host state in place", () => {
+    const handle: WidgetMountHandle<WidgetProps> = {
+      update: jest.fn(),
+      unmount: jest.fn(),
+    };
+    const pluginWidget = jest.fn<
+      WidgetMountHandle<WidgetProps>,
+      Parameters<WidgetMount>
+    >(() => handle);
+    const hostValue = { min: 1 };
+
+    wrapPluginWidget(
+      pluginWidget,
+      PLUGIN,
+      PREFIX,
+    )(document.createElement("div"), {
+      id: `${PREFIX}threshold`,
+      value: hostValue,
+      onChange: jest.fn(),
+      onChangeSettings: jest.fn(),
+    });
+
+    const mountedValue = pluginWidget.mock.calls[0][1].value;
+    if (!isObject(mountedValue)) {
+      throw new Error("Expected the widget to receive the object value");
+    }
+    mountedValue.min = 99;
+
+    expect(hostValue.min).toBe(1);
   });
 
   it("delegates unmount", () => {
