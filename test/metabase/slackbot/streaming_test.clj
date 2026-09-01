@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -21,7 +22,9 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -271,7 +274,7 @@
                     :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest streaming-response-includes-feedback-blocks-test
+(deftest ^:synchronized streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -312,7 +315,7 @@
                 :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
                @posted-message))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-on-messages-test
   (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
             for metabase/ prefixed provider"
     (tu/with-slackbot-setup
@@ -339,7 +342,7 @@
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
-(deftest slackbot-streaming-seeds-state-from-db-test
+(deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
   (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -377,7 +380,7 @@
                   (is (= {:queries {:q1 {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
 
-(deftest slackbot-streaming-records-streamed-error-test
+(deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
             so conversation-state does not later replay a failed turn's partial state (BOT-522)"
     (tu/with-slackbot-setup
@@ -402,7 +405,7 @@
                 (is (not= ::timeout opts))
                 (is (= {:message "boom"} (:error opts)))))))))))
 
-(deftest slackbot-streaming-persists-failed-conversations-test
+(deftest ^:synchronized slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
             start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
@@ -426,7 +429,7 @@
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
-(deftest slackbot-streaming-never-writes-pii-columns-test
+(deftest ^:synchronized slackbot-streaming-never-writes-pii-columns-test
   (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
     (mt/with-premium-features #{:audit-app}
       (tu/with-slackbot-setup
@@ -455,7 +458,7 @@
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
             for direct BYOK provider"
     (tu/with-slackbot-setup

@@ -9,7 +9,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
-   [oidc-provider.store :as oidc.store]))
+   [oidc-provider.store :as oidc.store]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,8 +101,10 @@
     (when-let [provider (get-provider)]
       (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
         (let [expiry (:expiry token-data)]
-          (when (or (nil? expiry)
-                    (t/after? (t/instant expiry) (t/instant)))
+          (when (and (or (nil? expiry)
+                         (t/after? (t/instant expiry) (t/instant)))
+                     ;; Fail closed if the issuing client is gone (SEC-863).
+                     (t2/exists? :model/OAuthClient :client_id (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               {:user-id user-id
                :scopes  (or (some->> (:scope token-data) (into #{})) #{})})))))))

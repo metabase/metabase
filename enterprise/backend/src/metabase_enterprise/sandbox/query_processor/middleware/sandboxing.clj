@@ -33,6 +33,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   ;; caches inferred result_metadata onto the sandbox Card row; a write the metadata provider can't do
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

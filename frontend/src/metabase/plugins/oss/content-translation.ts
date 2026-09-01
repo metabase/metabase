@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import type {
+  ContentTranslationFunction,
+  TranslatableSingleSeries,
+} from "metabase/content-translation/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { HoveredObject } from "metabase/visualizations/types";
-import type { Series } from "metabase-types/api";
+import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
 
 const getDefaultPluginContentTranslation = () => ({
@@ -33,7 +35,7 @@ const getDefaultPluginContentTranslation = () => ({
     locale: string;
   }): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
-  useTranslateSeries: (obj: Series) => obj,
+  useTranslateSeries: <T extends TranslatableSingleSeries>(obj: T[]) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>
     a.localeCompare(b),
 });

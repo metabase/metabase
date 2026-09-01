@@ -300,6 +300,15 @@
             :initial-exception-message (ex-message e-before)}
            e-after))
 
+(defn- isolate-write!
+  "Run `f` directly unless already in a transaction, in which case use a savepoint so the caller can catch an error
+  without aborting the enclosing transaction."
+  [f]
+  (if (mdb/in-transaction?)
+    (t2/with-transaction [_conn]
+      (f))
+    (f)))
+
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
@@ -311,7 +320,9 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
+    (let [upsert! (fn [t]
+                    (isolate-write! #(specialization/batch-upsert! t entries))
+                    t)]
       (try
         (upsert! table-name)
         (catch InterruptedException ie
@@ -322,7 +333,7 @@
           (if (and (table-not-found-exception? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
-                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
                 (try
                   (upsert! refreshed-table-name)
                   (catch InterruptedException ie
@@ -411,8 +422,9 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                      ;; Race conditions with table being deleted, especially in tests.
+                   ;; The table can disappear after we read its name, especially during tests.
+                   {search-model (try (isolate-write!
+                                       #(t2/delete! table-name :model search-model :model_id [:in (set ids)]))
                                       (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))

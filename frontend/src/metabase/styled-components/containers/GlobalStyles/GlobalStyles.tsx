@@ -15,7 +15,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import { useMantineTheme } from "metabase/ui";
 import { getSitePath } from "metabase/utils/dom";
 import { getFontFamilyValue } from "metabase/utils/fonts";
-import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
 

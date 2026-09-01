@@ -5,6 +5,7 @@
 
 (defsetting support-access-grant-email
   (deferred-tru "Email to grant temporary access to for support")
+  :encryption :when-encryption-key-set
   :type :string
   :visibility :internal
   :export? false
@@ -15,6 +16,7 @@
 
 (defsetting support-access-grant-first-name
   (deferred-tru "First name of the support user")
+  :encryption :no
   :type :string
   :visibility :internal
   :export? false
@@ -25,6 +27,7 @@
 
 (defsetting support-access-grant-last-name
   (deferred-tru "Last name of the support user")
+  :encryption :no
   :type :string
   :visibility :internal
   :export? false
