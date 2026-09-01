@@ -286,6 +286,23 @@
               (is (= {:type "collection" :id (:id coll)}
                      (get-in part [:data :destination]))))))))))
 
+(deftest save-generated-dashboard-with-saved-card-tile-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card existing {:name "Existing" :dataset_query (mt/mbql-query venues)}]
+        (let [memory  (doto (dashboard-memory)
+                        (swap! assoc-in [:state :dashboards "d-1" :tiles]
+                               [{:card_id (:id existing) :title "Existing" :row 0 :col 0 :size_x 12 :size_y 6}
+                                {:chart_id "c-1" :title "Venues by price" :row 0 :col 12 :size_x 12 :size_y 6}]))
+              result  (save-dashboard! memory {:target_type "collection" :collection_id (:id coll)})
+              dash-id (get-in result [:structured-output :dashboard-id])]
+          (testing "a saved-question tile is placed as-is instead of creating a new question"
+            (is (= [(:id existing)]
+                   (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dash-id :card_id (:id existing))))
+            (is (= ["Venues by price"]
+                   (t2/select-fn-vec :name :model/Card :dashboard_id dash-id)))))))))
+
 (deftest save-generated-dashboard-stamps-card-origin-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card :model/Dashboard]

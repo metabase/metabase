@@ -201,6 +201,7 @@ export interface MetabotState {
   titlePollingConversationIds: string[];
   debugMode: boolean;
   savedChartCardIds: Record<string, number>;
+  savedDashboardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

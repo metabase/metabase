@@ -5,6 +5,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 
+import { type AdhocDashboardTile, adhocDashboard } from "./dashboards";
 import { serializedQuestion } from "./questions";
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {
@@ -17,10 +18,24 @@ type GeneratedCardLink = {
   display?: CardDisplayType;
 };
 
-type GeneratedDashboardLink = {
+type GeneratedXrayDashboardLink = {
   type: "dashboard";
   url: string;
 };
+
+type GeneratedAdhocDashboardLink = {
+  type: "dashboard";
+  id: string;
+  title: string;
+  description?: string;
+  tiles: Array<
+    Omit<AdhocDashboardTile, "dataset_query"> & { query: DatasetQuery }
+  >;
+};
+
+type GeneratedDashboardLink =
+  | GeneratedXrayDashboardLink
+  | GeneratedAdhocDashboardLink;
 
 type GeneratedEntityLink = GeneratedCardLink | GeneratedDashboardLink;
 
@@ -34,12 +49,26 @@ export function generatedCard(card: GeneratedCardLink) {
   return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
 }
 
+export function generatedDashboard(dashboard: GeneratedDashboardLink) {
+  if ("url" in dashboard) {
+    return dashboard.url;
+  }
+  return adhocDashboard({
+    name: dashboard.title,
+    description: dashboard.description,
+    tiles: dashboard.tiles.map(({ query, ...tile }) => ({
+      ...tile,
+      dataset_query: query,
+    })),
+  });
+}
+
 export function generatedEntity(entity: GeneratedEntityLink) {
   switch (entity.type) {
     case "card":
       return generatedCard(entity);
     case "dashboard":
-      return entity.url;
+      return generatedDashboard(entity);
   }
 }
 
