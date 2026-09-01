@@ -478,7 +478,7 @@ function NotebookGeneratedQueryCard({
             {t`Run`}
           </Button>
         </Flex>
-        <Box mx={{ base: "-md", sm: "-xl" }} my={{ base: "-md", sm: "-xl" }}>
+        <Box mx={{ base: "-lg", sm: "-xxl" }} my={{ base: "-lg", sm: "-xxl" }}>
           <Notebook
             question={question}
             isDirty={false}

@@ -64,7 +64,7 @@ export const ClickActionsView = ({
                 }}
               />
             ))}
-            {withBottomDivider && <Divider mx="-lg" my="sm" />}
+            {withBottomDivider && <Divider mx="-xl" my="sm" />}
           </ClickActionsViewSection>
         );
       })}

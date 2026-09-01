@@ -121,7 +121,7 @@ const TimelineCardInner = ({
         />
       </Flex>
       {isExpanded && (
-        <Box my="lg" mx="-lg">
+        <Box my="lg" mx="-xl">
           {events.map((event) => (
             <EventCard
               key={event.id}
