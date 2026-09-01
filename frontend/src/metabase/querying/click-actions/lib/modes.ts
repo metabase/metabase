@@ -1,6 +1,7 @@
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type {
   ClickActionModeGetter,
+  ClickActionProps,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -29,14 +30,17 @@ export const getDefaultClickActionMode: ClickActionModeGetter = ({
 /**
  * Adapts a bare QueryClickActionsMode to Visualization's mode prop:
  * the getter wraps the clicked question per click,
- * and advertises the query mode's actions for hosts that probe them (see ClickActionModeGetter).
+ * and answers hasColumnShortcutActions from the query mode's legacy actions (see ClickActionModeGetter).
  */
 export function queryModeToClickActionMode(
   queryMode: QueryClickActionsMode,
 ): ClickActionModeGetter {
   return Object.assign(
     ({ question }: { question: Question }) => new Mode(question, queryMode),
-    { clickActions: queryMode.clickActions },
+    {
+      hasColumnShortcutActions: (props: ClickActionProps) =>
+        queryMode.clickActions.some((action) => action(props)?.length > 0),
+    },
   );
 }
 

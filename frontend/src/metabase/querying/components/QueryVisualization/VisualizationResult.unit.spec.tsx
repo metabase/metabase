@@ -22,7 +22,11 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getDefaultClickActionMode } from "../../click-actions/lib/modes";
+import {
+  getDefaultClickActionMode,
+  queryModeToClickActionMode,
+} from "../../click-actions/lib/modes";
+import { DefaultMode } from "../../click-actions/modes/DefaultMode";
 
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
@@ -122,6 +126,26 @@ describe("VisualizationResult", () => {
       expect(within(header).getByTestId("header-cell")).not.toHaveClass(
         "outline-header-variant",
       );
+    });
+
+    it("hides the add-column shortcut for the stock mode getter", async () => {
+      setup({ mode: getDefaultClickActionMode });
+
+      await screen.findByRole("columnheader", { name: "Total" });
+      expect(
+        screen.queryByRole("button", { name: "Add column" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("with a wrapped query mode", () => {
+    it("shows the add-column shortcut when the query mode's actions respond", async () => {
+      setup({ mode: queryModeToClickActionMode(DefaultMode) });
+
+      await screen.findByRole("columnheader", { name: "Total" });
+      expect(
+        screen.getByRole("button", { name: "Add column" }),
+      ).toBeInTheDocument();
     });
   });
 });

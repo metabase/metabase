@@ -1,5 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type {
+  LegacyDrill,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -46,6 +49,10 @@ describe("getDefaultClickActionMode", () => {
     }
     expect(mode.queryMode()).toBe(DefaultMode);
   });
+
+  it("does not answer hasColumnShortcutActions, so the add-column shortcut stays off", () => {
+    expect(getDefaultClickActionMode.hasColumnShortcutActions).toBeUndefined();
+  });
 });
 
 describe("queryModeToClickActionMode", () => {
@@ -69,8 +76,57 @@ describe("queryModeToClickActionMode", () => {
     );
   });
 
-  it("advertises the query mode's clickActions for hosts that probe them", () => {
-    const getter = queryModeToClickActionMode(queryMode);
-    expect(getter.clickActions).toBe(queryMode.clickActions);
+  describe("hasColumnShortcutActions", () => {
+    const shortcutAction: LegacyDrill = ({ question }) => [
+      {
+        name: "column-shortcut",
+        section: "new-column",
+        buttonType: "horizontal",
+        question: () => question,
+      },
+    ];
+
+    it("passes the click through to the query mode's actions", () => {
+      const getter = queryModeToClickActionMode(queryMode);
+      const props = {
+        question: createQuestion(),
+        clicked: { columnShortcuts: true },
+      };
+      getter.hasColumnShortcutActions?.(props);
+      expect(clickAction).toHaveBeenCalledWith(props);
+    });
+
+    it("answers true when an action offers something for the click", () => {
+      const getter = queryModeToClickActionMode({
+        ...queryMode,
+        clickActions: [clickAction, shortcutAction],
+      });
+      const props = {
+        question: createQuestion(),
+        clicked: { columnShortcuts: true },
+      };
+      expect(getter.hasColumnShortcutActions?.(props)).toBe(true);
+    });
+
+    it("answers false when every action comes back empty", () => {
+      const getter = queryModeToClickActionMode(queryMode);
+      const props = {
+        question: createQuestion(),
+        clicked: { columnShortcuts: true },
+      };
+      expect(getter.hasColumnShortcutActions?.(props)).toBe(false);
+    });
+
+    it("answers false when the query mode has no actions at all", () => {
+      const getter = queryModeToClickActionMode({
+        ...queryMode,
+        clickActions: [],
+      });
+      const props = {
+        question: createQuestion(),
+        clicked: { columnShortcuts: true },
+      };
+      expect(getter.hasColumnShortcutActions?.(props)).toBe(false);
+    });
   });
 });

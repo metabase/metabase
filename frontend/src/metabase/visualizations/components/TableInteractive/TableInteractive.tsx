@@ -469,34 +469,36 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
+    const hasColumnShortcutActions =
+      typeof mode === "function" ? mode.hasColumnShortcutActions : undefined;
     if (
       !question ||
-      !mode?.clickActions ||
+      !hasColumnShortcutActions ||
       !onVisualizationClick ||
       isPivoted
     ) {
       return undefined;
     }
 
-    for (const action of mode.clickActions) {
-      const res = action({
-        question,
-        clicked: {
-          columnShortcuts: true,
-          extraData: {
-            isRawTable,
-          },
+    const hasActions = hasColumnShortcutActions({
+      question,
+      clicked: {
+        columnShortcuts: true,
+        extraData: {
+          isRawTable,
         },
-      });
-      if (res?.length > 0) {
-        return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-          onVisualizationClick({
-            columnShortcuts: true,
-            element: e.currentTarget,
-          });
-        };
-      }
+      },
+    });
+    if (!hasActions) {
+      return undefined;
     }
+
+    return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      onVisualizationClick({
+        columnShortcuts: true,
+        element: e.currentTarget,
+      });
+    };
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {

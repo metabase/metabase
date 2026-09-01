@@ -18,10 +18,11 @@ export type ClickActionModeGetter = ((data: {
   question: Question;
 }) => ClickActionsMode) & {
   /**
-   * Getters wrapping a QueryClickActionsMode can advertise its legacy actions,
-   * so hosts (TableInteractive's add-column shortcut) can probe them without resolving the mode.
+   * Answers whether the wrapped query mode has legacy actions for the given click.
+   * Only queryModeToClickActionMode defines it,
+   * so TableInteractive's add-column shortcut stays off for every other mode.
    */
-  clickActions?: LegacyDrill[];
+  hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
 };
 
 export type {
@@ -223,8 +224,6 @@ export interface ClickActionsMode {
     settings?: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[];
-  /** See ClickActionModeGetter. A resolved mode may advertise them the same way. */
-  clickActions?: LegacyDrill[];
 }
 
 export function isClickActionsMode(value: unknown): value is ClickActionsMode {
