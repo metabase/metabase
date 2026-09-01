@@ -572,6 +572,8 @@
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
 
+;; Unused: the EE stale module now runs a static HugSQL statement rather than dispatching here.
+;; See the `metabase.staleness.core` docstring before deleting or reviving this.
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
   ^:allow-subquery {:select [:report_dashboard.id
