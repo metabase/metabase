@@ -14,6 +14,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -35,6 +37,24 @@
 (set! *warn-on-reflection* true)
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
+
+(def ^:private llm-provider-fixture-schema
+  ;; Keep the outer map closed; config keys are allowlisted below before persistence.
+  [:map {:closed true}
+   [:key ms/NonBlankString]
+   [:type ms/NonBlankString]
+   [:name ms/NonBlankString]
+   [:config [:map-of :keyword [:maybe :string]]]])
+
+(defn- validate-llm-provider-fixture!
+  [{:keys [type config]}]
+  (let [provider-type (llm.provider/provider-type type)
+        known-fields  (into (set (:stored-config-fields provider-type)) (map :key) (:fields provider-type))
+        unknown-fields (remove known-fields (keys config))]
+    (api/check-400 provider-type (str "Unknown provider type " (pr-str type) "."))
+    (api/check-400 (empty? unknown-fields)
+                   (str "Unknown " type " provider config fields: " (pr-str (vec unknown-fields)) "."))
+    (llm.provider/validate-config! type config)))
 
 (defn- assert-h2 [app-db]
   (assert (= (:db-type app-db) :h2)
@@ -252,6 +272,16 @@
   (session.api/reset-throttlers-for-testing!)
   (reset-mfa-throttlers-for-testing!)
   {:success true})
+
+(api.macros/defendpoint :put "/llm-providers" :- :nil
+  "Replace the stored LLM provider connections without probing their credentials. E2E tests use fake credentials and
+  mock provider responses, so they cannot seed their fixtures through the production provider API."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:sequential llm-provider-fixture-schema]]]]
+  (run! validate-llm-provider-fixture! value)
+  (llm.settings/set-llm-providers! (vec value))
+  nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

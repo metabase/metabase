@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
@@ -587,18 +588,40 @@
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
 ;;; Connections are managed through the `/api/llm/providers` endpoints instead.
 
+(def ^:dynamic *allow-llm-provider-write*
+  "Whether a trusted provider API operation may persist [[llm-providers]] during an HTTP request."
+  false)
+
 (defsetting llm-providers
   (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
   :type       :json
   :default    []
   :encryption :when-encryption-key-set
   :sensitive? true
-  :visibility :settings-manager
+  :visibility :internal
   :export?    false
   :audit      :no-value
+  :setter     (fn [new-value]
+                ;; Startup configuration and backend callers have no current request. During one, only the dedicated
+                ;; provider API may write the backing setting; the generic settings API cannot perform its validation
+                ;; or prove that secrets accompanying a base-URL change were freshly supplied.
+                (when (and (request.current/current-request)
+                           (not *allow-llm-provider-write*))
+                  (throw (ex-info (tru "Manage LLM provider connections through the provider connection settings.")
+                                  {:status-code 400
+                                   :api-error   true
+                                   :error-code  :llm-providers-direct-write-forbidden})))
+                (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
+
+(defn set-llm-providers!
+  "Allow the provider API and testing-only fixture endpoint to persist connections. Other HTTP paths must not write
+  the backing setting directly."
+  [providers]
+  (binding [*allow-llm-provider-write* true]
+    (llm-providers! providers)))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

@@ -19,6 +19,7 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -302,6 +303,9 @@
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "vllm"
     :label         (deferred-tru "vLLM")
+    ;; The probe adds :model-reasoning to the stored config. It is learned rather than entered in the form, but
+    ;; stored-config validation must allow it.
+    :stored-config-fields [:model-reasoning]
     ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
     ;; new connection starts on comes from the catalog that connecting fetches (see
     ;; [[metabase.metabot.self.vllm/list-models]]).
@@ -628,6 +632,38 @@
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
     (into [] (map annotate) (stored-connections))))
 
+(defonce ^:private warned-captured-base-urls
+  (atom #{}))
+
+(defn- drop-captured-base-url
+  "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
+  URL that came from the app DB, leaving the type's default to stand in.
+
+  [[assert-base-url-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
+  caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
+  all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
+  Deciding it again here makes the rule hold whichever order the two arrived in.
+
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
+  rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
+  URL has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+
+  Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
+  instance is configured with but is not using."
+  [{conn-key :key :keys [type source config] :as conn} env-config]
+  (if-not (and (= :db source)
+               (u/trimmed-string (:base-url config))
+               (not (contains? env-config :base-url))
+               (some #(contains? env-config %) (secret-field-keys type)))
+    conn
+    (do
+      (when-not (contains? @warned-captured-base-urls [conn-key (:base-url config)])
+        (swap! warned-captured-base-urls conj [conn-key (:base-url config)])
+        (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
+                        "environment, so its base URL has to as well. Set %s to keep using it.")
+                   conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))
+      (update conn :config dissoc :base-url))))
+
 (defn connections
   "Every connection this instance can use, in admin-facing order.
 
@@ -637,6 +673,9 @@
   instead of doing nothing, and everything the environment does not supply stays editable. `:env-fields` names the
   config keys the environment owns, and `:env-vars` the variables supplying them, so the form can disable exactly
   those inputs.
+
+  The one field that does not simply stay editable is a stored base URL the environment's secret would travel to:
+  see [[drop-captured-base-url]].
 
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
@@ -648,6 +687,7 @@
                              ;; only a same-typed overlay applies: the fields describe this provider type's config
                              (if (and overlay (= type (:type overlay)))
                                (-> conn
+                                   (drop-captured-base-url env-config)
                                    (update :config merge env-config)
                                    (update :env-vars (fnil into (sorted-set)) (vals vars))
                                    (assoc :env-fields (set (keys env-config))))
@@ -691,7 +731,7 @@
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -809,6 +849,67 @@
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
 
+(defn assert-base-url-change-authorized!
+  "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
+
+  `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
+  registry defaults and normalization are applied here before comparing their base URLs. `submitted-config` is the
+  unmerged client input, so an omitted secret or one echoed back masked does not count as fresh. `env-fields` names
+  values the client cannot re-supply and gets a more actionable error. `legacy-setting?` says the caller is a
+  one-setting-at-a-time API that cannot submit the URL and credentials together."
+  ([type-name old-config new-config submitted-config env-fields]
+   (assert-base-url-change-authorized! type-name old-config new-config submitted-config env-fields nil))
+  ([type-name old-config new-config submitted-config env-fields {:keys [legacy-setting?]}]
+   (let [old-config      (with-field-defaults type-name old-config)
+         new-config      (with-field-defaults type-name new-config)
+         secret-keys     (secret-field-keys type-name)
+         carried-secrets (filter #(u/trimmed-string (get new-config %)) secret-keys)
+         env-fields      (set env-fields)
+         fresh-secret?   (fn [field]
+                           (let [value (u/trimmed-string (get submitted-config field))]
+                             (and (not (contains? env-fields field))
+                                  value
+                                  (not (setting/obfuscated-value? value)))))
+         missing-secrets (remove fresh-secret? carried-secrets)]
+     (when (and (not= (:base-url old-config) (:base-url new-config))
+                (seq missing-secrets))
+       (let [env-secret? (some env-fields missing-secrets)]
+         (throw (ex-info (cond
+                           env-secret?
+                           (tru "This connection''s credentials come from environment variables. Change its base URL there too.")
+
+                           legacy-setting?
+                           (tru "Use the provider connection settings to change the base URL and enter the credentials again.")
+
+                           :else
+                           (tru "Enter this connection''s credentials again to point it at a different base URL."))
+                         {:status-code 400
+                          :api-error   true
+                          :error-code  :llm-base-url-change-requires-credentials
+                          :field       :base-url
+                          :secrets     (mapv name missing-secrets)})))))))
+
+(defn- assert-credential-write-authorized!
+  "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
+
+  [[assert-base-url-change-authorized!]] binds the two together from the base URL's side. This is the other side:
+  the per-provider settings write one field at a time, so a credential entered here arrives with no sight of where
+  it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
+  connection on a custom URL takes its credentials.
+
+  A base URL the environment supplies needs no such treatment: the operator chose it."
+  [type-name field {:keys [config env-fields]}]
+  (when (contains? (secret-field-keys type-name) field)
+    (let [base-url (:base-url (with-field-defaults type-name config))]
+      (when (and base-url
+                 (not= base-url (:base-url (with-field-defaults type-name {})))
+                 (not (contains? (set env-fields) :base-url)))
+        (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
+                        {:status-code 400
+                         :api-error   true
+                         :error-code  :llm-credential-change-requires-connection-settings
+                         :field       field}))))))
+
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
   configures, creating the connection when a non-blank value arrives for one that does not exist yet; blank clears
@@ -821,7 +922,8 @@
         group-type       (:type (get single-provider-settings conn-key))
         value            (u/trimmed-string new-value)
         stored           (stored-connections)
-        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
+        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))
+        live             (connection conn-key)]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
     ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
     ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
@@ -830,6 +932,26 @@
             (setting/obfuscated-value? value))
       (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
       (do
+        (when (request.current/current-request)
+          (if (= field :base-url)
+            (do
+              (when (contains? (:env-fields live) field)
+                ;; Persisting an inert value underneath the environment overlay would make it live if the operator
+                ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
+                ;; earlier.
+                (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
+                                {:status-code 400
+                                 :api-error   true
+                                 :error-code  :llm-base-url-is-env-managed
+                                 :field       :base-url})))
+              (let [current-config (or (:config live) {})
+                    new-config     (if value
+                                     (assoc current-config field value)
+                                     (dissoc current-config field))]
+                (assert-base-url-change-authorized! group-type current-config new-config {field value}
+                                                    (:env-fields live) {:legacy-setting? true})))
+            (when value
+              (assert-credential-write-authorized! group-type field live))))
         (when value
           (validate-config-field! group-type field {field value}))
         (cond
