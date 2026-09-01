@@ -2200,7 +2200,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
@@ -2421,6 +2420,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
