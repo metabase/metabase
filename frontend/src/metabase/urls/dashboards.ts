@@ -2,17 +2,42 @@ import slugg from "slugg";
 
 import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
+import { ADHOC_DASHBOARD_PATH } from "metabase/utils/dashboard";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  CardDisplayType,
   DashCardId,
   DashboardId,
   DashboardTabId,
+  DatasetQuery,
 } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
+
+export type AdhocDashboardTile = {
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+  chart_id?: string;
+  card_id?: number;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type AdhocDashboardDefinition = {
+  name: string;
+  description?: string;
+  tiles: AdhocDashboardTile[];
+};
+
+export function adhocDashboard(definition: AdhocDashboardDefinition) {
+  return `${ADHOC_DASHBOARD_PATH}#${utf8_to_b64url(JSON.stringify(definition))}`;
+}
 
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;

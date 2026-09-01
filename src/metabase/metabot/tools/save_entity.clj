@@ -16,6 +16,7 @@
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.generated-dashboard :as generated-dashboard]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
@@ -158,64 +159,33 @@
        :link             (str "metabase://document/" document-id)})))
 
 (defn- resolve-tile
-  [{:keys [chart_id query_id title row col size_x size_y]}]
+  [{:keys [chart_id query_id card_id title row col size_x size_y]}]
   (merge {:name title :row row :col col :size_x size_x :size_y size_y :chart-id chart_id}
-         (if chart_id
-           (resolve-chart chart_id)
-           (let [query (get (shared/current-queries-state) query_id)]
-             (when-not query
-               (agent-error!
-                (tru "The dashboard tile \"{0}\" references query `{1}`, which no longer exists in this conversation."
-                     title query_id)))
-             {:dataset_query (links/->legacy-mbql query)
-              :display       :table}))))
+         (cond
+           card_id  {:card-id card_id}
+           chart_id (resolve-chart chart_id)
+           :else    (let [query (get (shared/current-queries-state) query_id)]
+                      (when-not query
+                        (agent-error!
+                         (tru "The dashboard tile \"{0}\" references query `{1}`, which no longer exists in this conversation."
+                              title query_id)))
+                      {:dataset_query (links/->legacy-mbql query)
+                       :display       :table}))))
 
 (defn- save-generated-dashboard!
   [{:keys [dashboard destination description] dashboard-name :name}]
   (when-not (= (:target_type destination) "collection")
     (agent-error!
      (tru "A generated dashboard can only be saved to a collection. Use a `collection` destination.")))
-  (let [collection-id   (if (contains? destination :collection_id)
-                          (:collection_id destination)
-                          (personal-collection-id))
-        tiles           (mapv resolve-tile (:tiles dashboard))
-        _               (run! #(query-perms/check-run-permissions-for-query (:dataset_query %)) tiles)
-        _               (api/create-check :model/Dashboard {:collection_id collection-id})
-        conversation-id (shared/current-conversation-id)
-        [dash cards]    (t2/with-transaction [_conn]
-                          (let [dash  (first (t2/insert-returning-instances!
-                                              :model/Dashboard
-                                              {:name          dashboard-name
-                                               :description   description
-                                               :parameters    []
-                                               :creator_id    api/*current-user-id*
-                                               :collection_id collection-id}))
-                                cards (vec (for [tile tiles]
-                                             (let [card (queries/create-card!
-                                                         {:name                   (:name tile)
-                                                          :dataset_query          (:dataset_query tile)
-                                                          :display                (:display tile)
-                                                          :visualization_settings {}
-                                                          :dashboard_id           (:id dash)}
-                                                         {:id api/*current-user-id*}
-                                                         :delay-event
-                                                         false)]
-                                               (t2/insert! :model/DashboardCard
-                                                           {:dashboard_id (:id dash)
-                                                            :card_id      (:id card)
-                                                            :row          (:row tile)
-                                                            :col          (:col tile)
-                                                            :size_x       (:size_x tile)
-                                                            :size_y       (:size_y tile)})
-                                               (when (and conversation-id (:chart-id tile))
-                                                 (t2/update! (t2/table-name :model/Card) (:id card)
-                                                             {:metabot_conversation_id conversation-id
-                                                              :metabot_chart_id        (:chart-id tile)}))
-                                               card)))]
-                            [dash cards]))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (doseq [card cards]
-      (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
+  (let [collection-id (if (contains? destination :collection_id)
+                        (:collection_id destination)
+                        (personal-collection-id))
+        {dash :dashboard} (generated-dashboard/materialize!
+                           {:name            dashboard-name
+                            :description     description
+                            :collection-id   collection-id
+                            :tiles           (mapv resolve-tile (:tiles dashboard))
+                            :conversation-id (shared/current-conversation-id)})]
     {:dashboard        dash
      :destination      {:type "collection" :id collection-id}
      :destination-name (collection-name collection-id)

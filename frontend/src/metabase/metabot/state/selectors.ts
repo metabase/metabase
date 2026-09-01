@@ -53,6 +53,12 @@ export const getSavedChartCardId = createSelector(
     metabotState.savedChartCardIds[entityId],
 );
 
+export const getSavedDashboardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedDashboardIds[entityId],
+);
+
 export const getMetabotReactionsState = createSelector(
   getMetabotState,
   (state) => state.reactions,

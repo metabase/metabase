@@ -626,6 +626,50 @@
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))))))))
 
+(deftest record-saved-dashboard-test
+  (testing "POST /api/metabot/conversations/:id/saved-dashboard materializes the dashboard, its questions, and their layout"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Collection {coll-id :id} {}]
+          (let [created (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                              {:dashboard_id "d-1"
+                                               :dashboard    {:name          "Ops overview"
+                                                              :description   "Key ops charts."
+                                                              :collection_id coll-id
+                                                              :tiles         [{:title         "Venues by price"
+                                                                               :display       "bar"
+                                                                               :dataset_query (venues-query)
+                                                                               :row 0 :col 0 :size_x 12 :size_y 6
+                                                                               :chart_id      "c-1"}
+                                                                              {:title         "All venues"
+                                                                               :display       "table"
+                                                                               :dataset_query (venues-query)
+                                                                               :row 0 :col 12 :size_x 12 :size_y 6}]}})
+                cards   (t2/select :model/Card :dashboard_id (:id created) {:order-by [[:id :asc]]})]
+            (is (= {:name "Ops overview" :description "Key ops charts." :collection_id coll-id}
+                   (select-keys created [:name :description :collection_id])))
+            (is (= [["Venues by price" :bar convo-id "c-1"] ["All venues" :table nil nil]]
+                   (map (juxt :name :display :metabot_conversation_id :metabot_chart_id) cards)))
+            (is (= [{:row 0 :col 0 :size_x 12 :size_y 6} {:row 0 :col 12 :size_x 12 :size_y 6}]
+                   (map #(t2/select-one [:model/DashboardCard :row :col :size_x :size_y]
+                                        :dashboard_id (:id created) :card_id (:id %))
+                        cards))))))))
+  (testing "a non-participant cannot save a dashboard into the conversation"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (mt/user-http-request :lucky :post 403
+                                (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                {:dashboard_id "d-1"
+                                 :dashboard    {:name  "x"
+                                                :tiles [{:title "t" :display "table" :dataset_query (venues-query)
+                                                         :row 0 :col 0 :size_x 12 :size_y 6}]}})
+          (is (zero? (t2/count :model/Dashboard :name "x"))))))))
+
 (deftest record-saved-entity-collection-mismatch-test
   (testing "an explicit collection_id that doesn't match the dashboard's own collection 400s"
     (let [user-id (mt/user->id :crowberto)]

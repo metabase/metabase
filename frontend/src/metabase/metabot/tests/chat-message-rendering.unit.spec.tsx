@@ -12,6 +12,7 @@ import {
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { GeneratedAdhocDashboard } from "metabase/api/ai-streaming/schemas";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotAgentChatMessage,
@@ -32,6 +33,7 @@ import {
 } from "metabase/metabot/tests/utils";
 import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { createMockState } from "metabase/redux/store/mocks";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -241,22 +243,41 @@ describe("AgentMessage", () => {
   });
 
   describe("generated_entity dashboard", () => {
-    it("renders a plain title for a generated dashboard without a url", () => {
+    it("links a generated dashboard entity to the ad-hoc dashboard page built from its tiles", () => {
+      const dashboard: GeneratedAdhocDashboard = {
+        type: "dashboard",
+        id: "dash-1",
+        title: "Ops overview",
+        description: "Key ops charts.",
+        tiles: [
+          {
+            title: "Venues by price",
+            display: "bar",
+            query: createMockStructuredDatasetQuery(),
+            row: 0,
+            col: 0,
+            size_x: 12,
+            size_y: 6,
+          },
+        ],
+      };
       setup({
         id: "d1",
         role: "agent",
         type: "data_part",
-        part: {
-          type: "data-generated_entity",
-          data: { type: "dashboard", id: "dash-1", title: "Ops overview" },
-        },
+        part: { type: "data-generated_entity", data: dashboard },
       });
 
+      expect(
+        screen.getByRole("link", { name: "Open dashboard" }),
+      ).toHaveAttribute("href", Urls.generatedDashboard(dashboard));
+      expect(Urls.generatedDashboard(dashboard)).toMatch(
+        /^\/dashboard\/adhoc#/,
+      );
       expect(screen.getByText("Ops overview")).toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
 
-    it("renders a link to the ad-hoc dashboard page when the part has a url", () => {
+    it("links an x-ray dashboard entity to its navigation url", () => {
       setup({
         id: "d1",
         role: "agent",
@@ -265,17 +286,16 @@ describe("AgentMessage", () => {
           type: "data-generated_entity",
           data: {
             type: "dashboard",
-            id: "dash-1",
-            title: "Ops overview",
-            url: "/dashboard/adhoc#abc123",
+            title: "Orders X-ray",
+            url: "/auto/dashboard/table/1",
           },
         },
       });
 
       expect(
         screen.getByRole("link", { name: "Open dashboard" }),
-      ).toHaveAttribute("href", "/dashboard/adhoc#abc123");
-      expect(screen.getByText("Ops overview")).toBeInTheDocument();
+      ).toHaveAttribute("href", "/auto/dashboard/table/1");
+      expect(screen.getByText("Orders X-ray")).toBeInTheDocument();
     });
   });
 

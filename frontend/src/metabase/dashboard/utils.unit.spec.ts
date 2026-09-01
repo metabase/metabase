@@ -15,8 +15,9 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import type { AdhocDashboardDefinition } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import { getDashboardType } from "metabase/utils/dashboard";
-import { utf8_to_b64 } from "metabase/utils/encoding";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -881,7 +882,7 @@ describe("Dashboard utils", () => {
 });
 
 describe("expandAdhocDashboard", () => {
-  const definition = {
+  const definition: AdhocDashboardDefinition = {
     name: "Ops overview",
     description: "Key ops charts.",
     tiles: [
@@ -896,7 +897,7 @@ describe("expandAdhocDashboard", () => {
       },
     ],
   };
-  const dashId = `/dashboard/adhoc#${utf8_to_b64(JSON.stringify(definition))}`;
+  const dashId = Urls.adhocDashboard(definition);
 
   it("is detected as the adhoc dashboard type", () => {
     expect(getDashboardType(dashId)).toBe("adhoc");

@@ -47,8 +47,10 @@ export function isTransientId(id: unknown) {
   return typeof id === "string" && /\/auto\/dashboard/.test(id);
 }
 
+export const ADHOC_DASHBOARD_PATH = "/dashboard/adhoc";
+
 export function isAdhocDashboardId(id: unknown) {
-  return typeof id === "string" && id.startsWith("/dashboard/adhoc");
+  return typeof id === "string" && id.startsWith(ADHOC_DASHBOARD_PATH);
 }
 
 export function getDashboardType(id: unknown) {

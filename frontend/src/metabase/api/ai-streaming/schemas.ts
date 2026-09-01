@@ -93,12 +93,36 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboard = {
+export type GeneratedDashboardTile = {
+  title: string;
+  display: CardDisplayType;
+  query: DatasetQuery;
+  chart_id?: string;
+  card_id?: number;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type GeneratedXrayDashboard = {
   type: "dashboard";
   id?: string;
   title: string;
-  url?: string;
+  url: string;
 };
+
+export type GeneratedAdhocDashboard = {
+  type: "dashboard";
+  id: string;
+  title: string;
+  description?: string;
+  tiles: GeneratedDashboardTile[];
+};
+
+export type GeneratedDashboard =
+  | GeneratedXrayDashboard
+  | GeneratedAdhocDashboard;
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 

@@ -99,6 +99,7 @@ export const {
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
   markChartSaved,
+  markDashboardSaved,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -578,10 +579,6 @@ export const sendAgentRequest = createAsyncThunk<
                 }
 
                 const path = Urls.generatedEntity(part.data);
-                if (path == null) {
-                  pushDataPart({ type: "data_part", part });
-                  return;
-                }
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
@@ -599,6 +596,14 @@ export const sendAgentRequest = createAsyncThunk<
                     markChartSaved({
                       entityId: part.data.chart_id,
                       cardId: part.data.card_id,
+                    }),
+                  );
+                }
+                if (part.data.dashboard_id != null) {
+                  dispatch(
+                    markDashboardSaved({
+                      entityId: part.data.chart_id,
+                      dashboardId: part.data.dashboard_id,
                     }),
                   );
                 }
