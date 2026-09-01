@@ -256,7 +256,7 @@ describe("AgentMessage", () => {
       expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
 
-    it("renders a link to the generated-dashboard page when the part has a url", () => {
+    it("renders a link to the ad-hoc dashboard page when the part has a url", () => {
       setup({
         id: "d1",
         role: "agent",
@@ -267,17 +267,14 @@ describe("AgentMessage", () => {
             type: "dashboard",
             id: "dash-1",
             title: "Ops overview",
-            url: "/metabot/conversation/convo-1/dashboard/dash-1",
+            url: "/dashboard/adhoc#abc123",
           },
         },
       });
 
       expect(
         screen.getByRole("link", { name: "Open dashboard" }),
-      ).toHaveAttribute(
-        "href",
-        "/metabot/conversation/convo-1/dashboard/dash-1",
-      );
+      ).toHaveAttribute("href", "/dashboard/adhoc#abc123");
       expect(screen.getByText("Ops overview")).toBeInTheDocument();
     });
   });

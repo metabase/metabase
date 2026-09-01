@@ -28,6 +28,7 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
+  expandAdhocDashboard,
   expandInlineDashboard,
   fetchDataOrError,
   getAllDashboardCards,
@@ -366,7 +367,11 @@ export const fetchCardDataAction = createAsyncThunk<
           ignore_cache: ignoreCache,
         }),
       )) as Dataset | { error: unknown };
-    } else if (dashboardType === "transient" || dashboardType === "inline") {
+    } else if (
+      dashboardType === "transient" ||
+      dashboardType === "inline" ||
+      dashboardType === "adhoc"
+    ) {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
         runAdhocDatasetQuery(
@@ -827,6 +832,8 @@ export const fetchDashboard = createAsyncThunk(
             dashboard_id: dashId,
           })),
         };
+      } else if (dashboardType === "adhoc") {
+        result = expandAdhocDashboard(String(dashId));
       } else if (dashboardType === "inline") {
         // HACK: this is horrible but the easiest way to get "inline" dashboards up and running
         // pass the dashboard in as dashboardId, and replace the id with [object Object] because
