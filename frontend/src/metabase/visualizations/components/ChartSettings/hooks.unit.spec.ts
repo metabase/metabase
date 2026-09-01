@@ -64,6 +64,25 @@ describe("useChartSettingsState", () => {
     );
   });
 
+  it("keeps a non-custom display's stored settings untouched (no renormalization)", () => {
+    const series = [
+      createMockSingleSeries({
+        display: "table",
+        visualization_settings: {
+          column_settings: {
+            '["ref",["field",1,null]]': { column_title: "One" },
+          },
+        },
+      }),
+    ];
+
+    const { result } = setup({ series });
+
+    expect(result.current.chartSettings).toBe(
+      series[0].card.visualization_settings,
+    );
+  });
+
   it("reads a legacy non-namespaced custom viz key under its namespaced key", () => {
     const series = [
       createMockSingleSeries({

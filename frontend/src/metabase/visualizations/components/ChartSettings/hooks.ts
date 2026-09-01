@@ -22,6 +22,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 export type UseChartSettingsStateProps = {
   settings?: VisualizationSettings;
@@ -47,14 +48,21 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
+  const display = series[0]?.card?.display;
   const visualization = getVisualizationRaw(series);
-  const chartSettings = useMemo(
-    () => settings || getStoredSettingsForSeries(series),
+  const chartSettings = useMemo(() => {
+    if (settings) {
+      return settings;
+    }
+    // Only custom viz needs the stored-settings migration; other displays keep reading
+    // their raw settings so an unrelated edit doesn't rewrite their stored shape.
+    return isCustomVizDisplay(display)
+      ? getStoredSettingsForSeries(series)
+      : series[0].card.visualization_settings;
     // getStoredSettingsForSeries reads the registry internally; `visualization`
     // forces a recompute once an async custom viz plugin registers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [series, settings, visualization],
-  );
+  }, [series, settings, display, visualization]);
 
   const handleChangeSettings = useCallback(
     (changedSettings: VisualizationSettings, question?: Question) => {
