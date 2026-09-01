@@ -230,9 +230,12 @@
                                        (filter (fn [[_ _ ref]]
                                                  (and (vector? ref) (= (first ref) :aggregation))))
                                        (:order-by stage))
+        ;; Null-pad missing breakouts as `CAST(NULL AS <breakout-db-type>)` — plain `NULL` in a
+        ;; UNION ALL branch trips BigQuery, which infers untyped nulls as INT64 and then rejects the
+        ;; union against a TIMESTAMP or STRING sibling column.
         typed-null               (fn [i]
-                                   (if-let [info (h2x/type-info (nth breakout-hsql i))]
-                                     (h2x/with-type-info nil info)
+                                   (if-let [db-type (h2x/database-type (nth breakout-hsql i))]
+                                     (h2x/cast db-type nil)
                                      nil))
         ;; Shared prefix (source, joins, filter, CTEs) — everything except the per-branch shape.
         shared-base              (dissoc honeysql-form :select :select-distinct :group-by :order-by :limit)
