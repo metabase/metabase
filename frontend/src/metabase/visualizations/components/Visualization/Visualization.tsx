@@ -20,11 +20,9 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
-import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
@@ -93,6 +91,7 @@ import {
   VisualizationRoot,
 } from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
+import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
 
 type StateDispatchProps = {
@@ -150,6 +149,8 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
+  /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
+  customVizLoadingView?: ReactNode;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   editSummary?: () => void;
@@ -1085,8 +1086,8 @@ export default _.compose(
         PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
       if (customVizLoading) {
-        if (props.isDocument) {
-          return <CardEmbedLoadingState />;
+        if (props.customVizLoadingView) {
+          return <>{props.customVizLoadingView}</>;
         }
 
         if (props.isDashboard) {

@@ -17,12 +17,12 @@ import {
 } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getMetadata } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
