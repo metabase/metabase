@@ -8,12 +8,7 @@ import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
-import type {
-  Collection,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
-  TimelineEvent,
-} from "metabase-types/api";
+import type { Collection, TimelineEventData } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
@@ -39,21 +34,19 @@ function NewEventWithTimelineModalContainer(
   );
 
   const onSubmit = async (
-    values: Partial<TimelineEvent>,
+    values: TimelineEventData,
     collection?: Collection,
   ) => {
     if (!collection) {
       return;
     }
     const timeline = await createTimeline(
-      // Unjustified type cast. FIXME
-      getDefaultTimeline(collection) as CreateTimelineRequest,
+      getDefaultTimeline(collection),
     ).unwrap();
-    // Unjustified type cast. FIXME
     await createTimelineEvent({
       ...values,
       timeline_id: timeline.id,
-    } as CreateTimelineEventRequest).unwrap();
+    }).unwrap();
     navigate(Urls.timelinesInCollection(collection));
   };
 

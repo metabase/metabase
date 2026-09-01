@@ -45,7 +45,7 @@ const fromSets = ({
 // Returns the settings object itself so selectors memoized on it stay stable.
 export const getRecordedTimelineEventsVisibility = (
   settings: VisualizationSettings | undefined,
-): VisualizationSettings | undefined =>
+): TimelineEventsVisibility | undefined =>
   settings?.["timeline.selected_timeline_ids"] != null ? settings : undefined;
 
 const getActiveEvents = (timeline: Timeline) =>

@@ -41,17 +41,9 @@ import {
 const NO_EVENTS: TimelineEvent[] = [];
 const NO_EVENT_IDS: TimelineEventId[] = [];
 
-const areArraysEqual = (a: unknown, b: unknown) =>
-  Array.isArray(a) &&
-  Array.isArray(b) &&
-  a.length === b.length &&
-  a.every((item, index) => item === b[index]);
-
-// The per-dashcard selectors below are already cached, so the list only needs
-// its own identity to stay stable when the set of eligible cards is unchanged.
-const createArraySelector = createSelectorCreator({
+const createShallowEqualResultSelector = createSelectorCreator({
   memoize: lruMemoize,
-  memoizeOptions: { resultEqualityCheck: areArraysEqual },
+  memoizeOptions: { resultEqualityCheck: shallowEqual },
 });
 
 export const getDashboardCollectionId = (state: State) =>
@@ -96,11 +88,6 @@ export const getIsTimelineEventsDashCard = createCachedSelector(
     xAxis != null,
 )((_state, dashcardId) => dashcardId);
 
-const createStableEventsSelector = createSelectorCreator({
-  memoize: lruMemoize,
-  memoizeOptions: { resultEqualityCheck: shallowEqual },
-});
-
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
   [getTransformedTimelines, getDashCardTimelineEventsVisibility],
   (timelines, visibility): TimelineEvent[] => {
@@ -109,7 +96,7 @@ export const getDashCardVisibleTimelineEvents = createCachedSelector(
   },
 )({
   keySelector: (_state, dashcardId) => dashcardId,
-  selectorCreator: createStableEventsSelector,
+  selectorCreator: createShallowEqualResultSelector,
 });
 
 // Scoped to the events sidebar rather than cleared by every action that closes
@@ -128,7 +115,7 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-export const getTimelineEventsDashCardIds = createArraySelector(
+export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
   [getCurrentDashcards, (state: State) => state],
   (dashcards, state) =>
     dashcards
