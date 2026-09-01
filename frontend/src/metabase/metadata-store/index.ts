@@ -12,9 +12,11 @@ export type { MetadataSelectorOpts } from "./selectors";
 
 export {
   selectMetadataProvider,
+  selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
   useMetadataProvider,
+  useMetadataProviderFactory,
   useMetadataProviderUnfiltered,
   useMetricMetadataProvider,
 } from "./provider";
