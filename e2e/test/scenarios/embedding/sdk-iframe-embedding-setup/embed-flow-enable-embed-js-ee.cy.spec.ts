@@ -4,7 +4,7 @@ import {
   openSharingMenu,
 } from "e2e/support/helpers";
 
-import { getEmbedSidebar } from "./helpers";
+import { clickNewEmbedButton, getEmbedSidebar } from "./helpers";
 
 const { H } = cy;
 
@@ -13,7 +13,6 @@ const DATA_BY_EMBEDDING_TYPE = {
     path: "/embedding/security",
     token: null,
     authMethodLabel: "Guest",
-    cardTestId: "guest-embeds-setting-card",
     cardText:
       "To continue, enable embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-modular",
@@ -25,7 +24,6 @@ const DATA_BY_EMBEDDING_TYPE = {
     path: "/embedding/security",
     token: "bleeding-edge",
     authMethodLabel: "Metabase account (SSO)",
-    cardTestId: "sdk-setting-card",
     cardText:
       "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-modular",
@@ -50,7 +48,6 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
         authMethodLabel,
         embeddingSettingName,
         showTermsSettingName,
-        cardTestId,
         cardText,
         tooltipText,
       } = value;
@@ -67,11 +64,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.visit(path);
 
-        cy.findAllByTestId(cardTestId)
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         cy.findByLabelText(authMethodLabel).click();
 
@@ -127,11 +120,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.visit(path);
 
-        cy.findAllByTestId(cardTestId)
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         cy.findByLabelText(authMethodLabel).click();
 
@@ -156,11 +145,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
 
         cy.visit(path);
 
-        cy.findAllByTestId(cardTestId)
-          .first()
-          .within(() => {
-            cy.findByText("New embed").click();
-          });
+        clickNewEmbedButton();
 
         cy.findByLabelText(authMethodLabel).click();
 
