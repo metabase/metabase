@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *ratchets-file*
-  "The budgets file, relative to the repo root."
+  "The budgets file, relative to the repo root. Rebind it to read a file elsewhere, such as a merge stage."
   ".clj-kondo/ratchets.edn")
 
 (defn- read-ratchets-form
@@ -37,37 +37,55 @@
                         {:file *ratchets-file*})))
       form)))
 
+(def ^:private empty-policies
+  {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+
+(defn validate-policies
+  "`ratchets` when each policy field it carries has the right shape: `:ignore-counts` maps linters to a
+  non-negative integer or `:unlimited`, `:config-counts` maps linters to a non-negative integer, and
+  `:comment-exempt` is a set. Every linter named anywhere must be a keyword.
+  Throws otherwise, so a malformed file can never be read as a set of removals."
+  [ratchets]
+  (let [{:keys [ignore-counts config-counts comment-exempt]} (merge empty-policies ratchets)]
+    (when-not (map? ignore-counts)
+      (throw (ex-info ":ignore-counts must be a map of linter policies"
+                      {:ignore-counts ignore-counts})))
+    (doseq [[linter policy] ignore-counts]
+      (when-not (or (= policy :unlimited)
+                    (and (integer? policy) (not (neg? policy))))
+        (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
+                                linter (pr-str policy))
+                        {:linter linter, :policy policy}))))
+    (when-not (map? config-counts)
+      (throw (ex-info ":config-counts must be a map of linter budgets"
+                      {:config-counts config-counts})))
+    (doseq [[linter budget] config-counts]
+      (when-not (and (integer? budget) (not (neg? budget)))
+        (throw (ex-info (format "%s has invalid config budget %s; expected a non-negative integer"
+                                linter (pr-str budget))
+                        {:linter linter, :budget budget}))))
+    (when-not (set? comment-exempt)
+      (throw (ex-info ":comment-exempt must be a set of linters"
+                      {:comment-exempt comment-exempt})))
+    ;; the merge keys on (str linter) and renders the same way, so a non-keyword name would be rewritten
+    ;; as a keyword, collide with one, or produce a file that no longer reads back
+    (doseq [linter (concat (keys ignore-counts) (keys config-counts) comment-exempt)]
+      (when-not (keyword? linter)
+        (throw (ex-info (format "%s is not a linter name; policies and exemptions are keyed by keyword"
+                                (pr-str linter))
+                        {:linter linter}))))
+    ratchets))
+
 (defn read-ratchets
   "Parsed contents of [[*ratchets-file*]], with empty defaults for omitted keys.
-  Throws when the file is missing; only an explicit `{:disabled true}` opts out of enforcement."
+  Throws when the file is missing or a policy field is malformed (see [[validate-policies]]); only an
+  explicit `{:disabled true}` opts out of enforcement."
   []
   (let [file (io/file *ratchets-file*)]
     (when-not (.exists file)
       (throw (ex-info (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement")
                       {:file *ratchets-file*})))
-    (let [ratchets (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
-                          (read-ratchets-form file))]
-      (when-not (map? (:ignore-counts ratchets))
-        (throw (ex-info ":ignore-counts must be a map of linter policies"
-                        {:ignore-counts (:ignore-counts ratchets)})))
-      (doseq [[linter policy] (:ignore-counts ratchets)]
-        (when-not (or (= policy :unlimited)
-                      (and (integer? policy) (not (neg? policy))))
-          (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
-                                  linter (pr-str policy))
-                          {:linter linter, :policy policy}))))
-      (when-not (map? (:config-counts ratchets))
-        (throw (ex-info ":config-counts must be a map of linter budgets"
-                        {:config-counts (:config-counts ratchets)})))
-      (doseq [[linter budget] (:config-counts ratchets)]
-        (when-not (and (integer? budget) (not (neg? budget)))
-          (throw (ex-info (format "%s has invalid config budget %s; expected a non-negative integer"
-                                  linter (pr-str budget))
-                          {:linter linter, :budget budget}))))
-      (when-not (set? (:comment-exempt ratchets))
-        (throw (ex-info ":comment-exempt must be a set of linters"
-                        {:comment-exempt (:comment-exempt ratchets)})))
-      ratchets)))
+    (validate-policies (merge empty-policies (read-ratchets-form file)))))
 
 (defn disabled?
   "Whether `ratchets` (default: [[read-ratchets]]) explicitly disables the ratchets."
@@ -570,6 +588,88 @@
                           (sort-by str comment-exempt))
                 "}"))
          "}\n")))
+
+(def ^:private absent
+  "Stands in for a policy map entry that a stage doesn't have."
+  ::absent)
+
+(defn- stricter
+  "The policy allowing fewer suppressions: a missing entry allows none, and any integer bound is stricter
+  than `:unlimited`."
+  [a b]
+  (cond
+    (or (= a absent) (= b absent)) absent
+    (= a :unlimited)               b
+    (= b :unlimited)               a
+    :else                          (min a b)))
+
+(defn- merge-counts
+  "Three-way merge a policy map. A one-sided change wins over an unchanged base.
+  Concurrent changes take the [[stricter]] policy, so budgets can only tighten through a merge."
+  [base ours theirs]
+  (sorted-by-str
+   (for [linter (into (set (keys base)) (concat (keys ours) (keys theirs)))
+         :let   [base-value   (get base linter absent)
+                 ours-value   (get ours linter absent)
+                 theirs-value (get theirs linter absent)
+                 merged       (cond
+                                (= ours-value theirs-value) ours-value
+                                (= ours-value base-value)   theirs-value
+                                (= theirs-value base-value) ours-value
+                                :else                       (stricter ours-value theirs-value))]
+         :when  (not= merged absent)]
+     [linter merged])))
+
+(defn- merge-exemptions
+  "Three-way merge the `:comment-exempt` set: the side that changed a linter's membership wins.
+  Independent of the count policies, since a justification exemption says nothing about how many ignores
+  a linter may have."
+  [base ours theirs]
+  (into #{}
+        (filter (fn [linter]
+                  (let [ours?   (contains? ours linter)
+                        theirs? (contains? theirs linter)]
+                    (if (= ours? theirs?)
+                      ours?
+                      (not (contains? base linter))))))
+        (into (set base) (concat ours theirs))))
+
+(def ^:private merge-fields
+  #{:ignore-counts :config-counts :comment-exempt})
+
+(defn- validate-merge-shape
+  "`ratchets` when it contains only the policy fields and `:disabled`, and each policy field passes
+  [[validate-policies]]; throws otherwise."
+  [ratchets]
+  (when-not (map? ratchets)
+    (throw (ex-info (str "a ratchet stage must be a map of policies, not " (pr-str ratchets))
+                    {:stage ratchets})))
+  (let [unexpected (set (keys (apply dissoc ratchets :disabled merge-fields)))]
+    (when (seq unexpected)
+      (throw (ex-info (str "unsupported ratchet fields: " (pr-str unexpected))
+                      {:fields unexpected}))))
+  (validate-policies ratchets))
+
+(defn merge-ratchets
+  "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
+  Every stage is validated first, even when a disabled stage decides the result: a target that
+  explicitly disables ratchets stays disabled, and an incoming disabled form leaves `ours` as it is.
+  Otherwise `:ignore-counts` and `:config-counts` merge with [[merge-counts]] and `:comment-exempt`
+  with [[merge-exemptions]]."
+  [base ours theirs]
+  (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
+    (cond
+      (disabled? ours)   {:disabled true}
+      (disabled? theirs) ours
+      :else              {:ignore-counts  (merge-counts (:ignore-counts base {})
+                                                        (:ignore-counts ours {})
+                                                        (:ignore-counts theirs {}))
+                          :config-counts  (merge-counts (:config-counts base {})
+                                                        (:config-counts ours {})
+                                                        (:config-counts theirs {}))
+                          :comment-exempt (merge-exemptions (:comment-exempt base #{})
+                                                            (:comment-exempt ours #{})
+                                                            (:comment-exempt theirs #{}))})))
 
 (defn lowered-counts
   "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
