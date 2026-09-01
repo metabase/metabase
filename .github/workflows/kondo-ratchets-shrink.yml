@@ -144,10 +144,10 @@ jobs:
         # GITHUB_TOKEN reviews as github-actions[bot], a different identity from the automation user that
         # owns the PR, so the approval counts; a user cannot approve their own PR. Reviews survive a push,
         # so approving an already-open PR again is harmless and keeps a reopened one covered.
-        uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
-        with:
-          github-token: ${{ github.token }}
-          number: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.deliver.outputs.pr || steps.compare.outputs.pr }}
+        run: gh pr review --approve "$PR_NUMBER"
       # Armed only against the commit this run pushed or compared: the branch name is fixed, and anyone
       # with push access could otherwise collect this run's approval for their own commit.
       - name: Enable auto-merge
