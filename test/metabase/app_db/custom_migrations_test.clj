@@ -3160,10 +3160,10 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
-(deftest populate-setting-details-test
-  (testing "PopulateSettingDetails moves every setting's value into the JSON envelope `details` holds"
+(deftest backfill-setting-details-test
+  (testing "BackfillSettingDetails moves every setting's value into the JSON envelope `details` holds"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-      (impl/test-migrations ["v64.azhrnr" "v64.qk4wm2"] [migrate!]
+      (impl/test-migrations ["v58.2026-09-01T00:00:00" "v58.2026-09-01T00:00:01"] [migrate!]
         (let [rows    {"site-name"          "My Metabase"
                        ;; the two rows the Setting model never writes move like any other
                        "encryption-check"   (str (random-uuid))

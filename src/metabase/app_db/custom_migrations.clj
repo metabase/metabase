@@ -2468,7 +2468,7 @@
                                :from   [:secret]
                                :where  [:!= :value nil]}))))
 
-(define-migration PopulateSettingDetails
+(define-migration BackfillSettingDetails
   (doseq [{k :key v :value} (t2/query {:select [:key :value] :from [:setting]})
           :when (seq v)]
     ;; encryption wraps the envelope exactly as it wrapped the bare value, so a row encrypted at rest stays encrypted
