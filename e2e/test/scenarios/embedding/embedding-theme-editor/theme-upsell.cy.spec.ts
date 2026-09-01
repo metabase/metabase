@@ -11,11 +11,10 @@ describe("scenarios > embedding > themes > upsell", () => {
       cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.log("upsell copy matches the Figma");
@@ -58,11 +57,10 @@ describe("scenarios > embedding > themes > upsell", () => {
       cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -176,11 +174,10 @@ describe("scenarios > embedding > themes > upsell", () => {
       cy.visit("/embedding/appearance");
 
       cy.log("nav label has no upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("not.exist");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("not.exist");
 
       H.main().within(() => {
         cy.log("upsell copy is absent");

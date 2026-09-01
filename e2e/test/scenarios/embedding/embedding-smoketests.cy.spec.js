@@ -323,5 +323,5 @@ function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
 }
 
 function mainPage() {
-  return cy.findByTestId("admin-layout-content");
+  return cy.findByTestId("embedding-hub-main");
 }

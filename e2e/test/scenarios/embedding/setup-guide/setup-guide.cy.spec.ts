@@ -14,16 +14,16 @@ describe("scenarios - setup guide", () => {
       H.activateToken("pro-cloud");
     });
 
-    it("Contains setup guide in sidebar", () => {
+    it("Contains the setup guide in the hub nav", () => {
       cy.visit("/embedding/security");
 
-      cy.findByTestId("admin-layout-sidebar")
-        .findByText("Setup guide")
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Get started" })
         .should("exist")
         .click();
 
-      cy.findByTestId("admin-layout-content")
-        .findByRole("heading", { name: "Embedding setup guide" })
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("heading", { name: "Get started with Metabase Embedding" })
         .should("exist");
     });
 
@@ -31,7 +31,7 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Create a dashboard' card");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Create a dashboard")
         .click();
 
@@ -57,7 +57,7 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Connect a database' card");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
         .click();
 
@@ -89,13 +89,13 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("'Connect a database' should not be marked as done");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
         .closest("button")
         .findByText("Done")
         .should("not.exist");
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
         .click();
 
@@ -122,7 +122,7 @@ describe("scenarios - setup guide", () => {
       cy.wait("@getChecklist");
 
       cy.log("'Connect a database' should be marked as done");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
         .closest("button")
         .scrollIntoView()
@@ -133,7 +133,7 @@ describe("scenarios - setup guide", () => {
     it('"Get embed snippet" card should take you to the embed flow', () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
         .click();
 
@@ -151,14 +151,14 @@ describe("scenarios - setup guide", () => {
       cy.visit("/embedding/get-started");
 
       cy.log("step should not be marked as done at first");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
         .closest("button")
         .findByText("Done")
         .should("not.exist");
 
       cy.log("open embed wizard");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
         .click();
 
@@ -189,7 +189,7 @@ describe("scenarios - setup guide", () => {
       H.modal().first().findByLabelText("Close").click();
 
       cy.log("step should be marked as done");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
         .closest("button")
         .findByText("Done", { timeout: 10_000 })
@@ -305,7 +305,7 @@ describe("scenarios - setup guide", () => {
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Configure data permissions and enable tenants")
         .click();
 
@@ -385,7 +385,7 @@ describe("scenarios - setup guide", () => {
       cy.log("create an x-ray dashboard via the embedding setup guide");
       cy.visit("/embedding/get-started");
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Create a dashboard")
         .click();
 
@@ -699,7 +699,7 @@ describe("scenarios - setup guide", () => {
         });
 
         cy.log("Configure data permissions step should be done");
-        cy.findByTestId("admin-layout-content")
+        cy.findByTestId("embedding-hub-main")
           .findByText("Configure data permissions and enable tenants")
           .closest("button")
           .scrollIntoView()
@@ -1399,7 +1399,7 @@ describe("scenarios - setup guide", () => {
         expect(body["jwt-enabled"]).to.equal(false);
       });
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
@@ -1407,7 +1407,7 @@ describe("scenarios - setup guide", () => {
         .icon("lock")
         .should("be.visible");
 
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Embed in production with SSO")
         .closest("button")
         .findByText("Complete the other steps to unlock")
@@ -1880,7 +1880,7 @@ describe("scenarios - setup guide", () => {
       cy.url().should("not.include", "/sso");
 
       cy.log("'Configure SSO' card should be marked as done");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Configure SSO")
         .closest("button")
         .scrollIntoView()
@@ -1888,7 +1888,7 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
 
       cy.log("'Embed in production with SSO' should now be unlocked");
-      cy.findByTestId("admin-layout-content")
+      cy.findByTestId("embedding-hub-main")
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
