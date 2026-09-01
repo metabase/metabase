@@ -117,11 +117,6 @@ const automaticDashboardApp = () =>
     /* webpackChunkName: "automatic-dashboard" */ "metabase/dashboard/containers/AutomaticDashboardApp"
   ).then(({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }));
 
-const adhocDashboardApp = () =>
-  import(
-    /* webpackChunkName: "adhoc-dashboard" */ "metabase/dashboard/containers/AdhocDashboardApp"
-  ).then(({ AdhocDashboardApp }) => ({ Component: AdhocDashboardApp }));
-
 const metricsViewerPage = () =>
   import(
     /* webpackChunkName: "metrics-viewer" */ "metabase/metrics-viewer"
@@ -392,7 +387,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 }),
               },
 
-              { path: "dashboard/adhoc", lazy: adhocDashboardApp },
+              { path: "dashboard/adhoc", lazy: dashboardApp },
 
               {
                 path: "dashboard/:slug",
