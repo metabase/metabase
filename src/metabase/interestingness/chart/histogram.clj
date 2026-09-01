@@ -69,13 +69,19 @@
                 (+ x-prev (* t (- x-curr x-prev)))))
             (recur (inc i))))))))
 
+(def ^:private estimated-percentiles
+  "The percentiles [[compute-estimated-percentiles]] estimates, and the field each lands under. A
+  fixed set under named fields rather than a map keyed by the integer percentile: the set never
+  varies, and integer map keys have no JSON representation (these stats are persisted as JSON)."
+  [[:p25 25] [:p50 50] [:p75 75] [:p90 90] [:p95 95] [:p99 99]])
+
 (defn- compute-estimated-percentiles
   "Compute estimated percentiles from binned data using cumulative interpolation."
   [sorted-xs cum-counts total]
-  (let [pcts [25 50 75 90 95 99]]
-    (zipmap pcts
-            (mapv #(cumulative-percentile sorted-xs cum-counts total (/ (double %) 100.0))
-                  pcts))))
+  (into {}
+        (map (fn [[field pct]]
+               [field (cumulative-percentile sorted-xs cum-counts total (/ (double pct) 100.0))]))
+        estimated-percentiles))
 
 ;;; -------------------------------------------- Structural Metrics ---------------------------------------------------
 
@@ -147,14 +153,14 @@
              max-x        (last sorted-xs)
              ;; Distribution estimates
              percentiles  (compute-estimated-percentiles sorted-xs cum-counts total)
-             q1           (get percentiles 25)
-             med          (get percentiles 50)
-             q3           (get percentiles 75)
+             q1           (:p25 percentiles)
+             med          (:p50 percentiles)
+             q3           (:p75 percentiles)
              ;; Shape metrics (weighted)
              wskew        (when (>= n min-shape-metrics-points)
-                            (stats.u/nan->nil (or (weighted-skewness sorted-xs sorted-ys total wmean wstd) ##NaN)))
+                            (stats.u/finite->nil (or (weighted-skewness sorted-xs sorted-ys total wmean wstd) ##NaN)))
              wkurt        (when (>= n min-shape-metrics-points)
-                            (stats.u/nan->nil (or (weighted-kurtosis sorted-xs sorted-ys total wmean wstd) ##NaN)))
+                            (stats.u/finite->nil (or (weighted-kurtosis sorted-xs sorted-ys total wmean wstd) ##NaN)))
              ;; Structural metrics
              max-count    (apply max sorted-ys)
              mode-idx     (.indexOf ^java.util.List sorted-ys max-count)

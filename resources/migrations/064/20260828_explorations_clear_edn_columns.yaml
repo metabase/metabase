@@ -1,0 +1,47 @@
+## Clear the explorations columns that held Clojure data as EDN, now that they hold JSON
+##
+## The rollback is deliberately empty: explorations is unreleased, so no build that reads these
+## columns as EDN is in anyone's hands, and the values are gone either way.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.expljson
+      author: nvoxland
+      comment: Clear the explorations EDN columns, now that they hold JSON
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: query_plan_transcript
+                  value: "NULL"
+            where: query_plan_transcript IS NOT NULL
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+            where: data_access_token IS NOT NULL
+        - update:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+            where: data_access_token IS NOT NULL
+        - update:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "NULL"
+            where: data_access_token IS NOT NULL
+        - update:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: chart_stats
+                  value: "NULL"
+            where: chart_stats IS NOT NULL
+      rollback: # No released version of this, so no don't need to worry about rollback

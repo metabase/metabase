@@ -52,7 +52,8 @@
    [:max number?]
    [:mean number?]
    [:median number?]
-   [:std-dev number?]
+   ;; nil for a single-point series: no deviation to report (see `util/finite->nil`)
+   [:std-dev [:maybe number?]]
    [:range number?]])
 
 (mr/def ::time-range
@@ -160,6 +161,7 @@
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
   [:map
+   [:name :string]
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -179,7 +181,7 @@
   [:map
    [:chart-type [:= :time-series]]
    [:series-count :int]
-   [:series [:map-of :string ::time-series-series-stats]]
+   [:series [:sequential ::time-series-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::category-stat
@@ -192,6 +194,7 @@
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
   [:map
+   [:name :string]
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -204,7 +207,7 @@
   [:map
    [:chart-type [:= :categorical]]
    [:series-count :int]
-   [:series [:map-of :string ::categorical-series-stats]]
+   [:series [:sequential ::categorical-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::regression-stats
@@ -217,6 +220,7 @@
 (mr/def ::scatter-series-stats
   "Statistics for a single scatter series."
   [:map
+   [:name :string]
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
@@ -233,7 +237,7 @@
   [:map
    [:chart-type [:= :scatter]]
    [:series-count :int]
-   [:series [:map-of :string ::scatter-series-stats]]])
+   [:series [:sequential ::scatter-series-stats]]])
 
 (mr/def ::histogram-summary
   "Weighted summary statistics estimated from binned histogram data."
@@ -242,10 +246,22 @@
    [:weighted-std-dev number?]
    [:data-range number?]])
 
+(mr/def ::estimated-percentiles
+  "The fixed percentile set [[metabase.interestingness.chart.histogram]] estimates. Named fields
+  rather than a map keyed by the integer percentile: the set never varies, and integer map keys have
+  no JSON representation. Empty when the histogram has no data to interpolate from."
+  [:map
+   [:p25 {:optional true} number?]
+   [:p50 {:optional true} number?]
+   [:p75 {:optional true} number?]
+   [:p90 {:optional true} number?]
+   [:p95 {:optional true} number?]
+   [:p99 {:optional true} number?]])
+
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
   [:map
-   [:estimated-percentiles [:map-of :int number?]]
+   [:estimated-percentiles ::estimated-percentiles]
    [:estimated-quartiles [:map
                           [:q1 number?]
                           [:median number?]
@@ -267,6 +283,8 @@
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
   [:map
+   ;; the series' display name, carried on the entry rather than used as a map key
+   [:name :string]
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]
@@ -279,7 +297,7 @@
   [:map
    [:chart-type [:= :histogram]]
    [:series-count :int]
-   [:series [:map-of :string ::histogram-series-stats]]])
+   [:series [:sequential ::histogram-series-stats]]])
 
 (mr/def ::unknown-stats
   "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."

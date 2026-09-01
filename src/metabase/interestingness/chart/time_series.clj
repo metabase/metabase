@@ -51,7 +51,7 @@
   and can flatly contradict each other — the source of labels like
   'strongly increasing (-97.9% overall)'. When the slope direction disagrees in
   *sign* with the change the reader actually sees, or when the series is so noisy
-  that its swings dwarf its mean (CV ≥ 1.0), report `:no-clear-trend` rather than
+  that its swings dwarf its mean (CV >= 1.0), report `:no-clear-trend` rather than
   asserting a direction.
 
   Note we deliberately do NOT suppress on moderate CV: a clean, wide ramp
@@ -81,7 +81,7 @@
         end-val (last values-vec)
         mean-val (dfn/mean values)
         std-dev (dfn/standard-deviation values)
-        cv (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))
+        cv (or (stats.u/finite->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
         change-pct (stats.u/percentage-change start-val end-val)]
     {:direction (reconcile-direction (slope-to-direction slope mean-val n) change-pct cv)
      :overall-change-pct change-pct
@@ -109,7 +109,7 @@
   [values]
   (let [mean-val (dfn/mean values)
         std-dev (dfn/standard-deviation values)
-        cv (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))
+        cv (or (stats.u/finite->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
         values-vec (vec values)
         pct-changes (for [i (range 1 (count values-vec))
                           :let [prev (nth values-vec (dec i))

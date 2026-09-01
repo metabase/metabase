@@ -12,9 +12,9 @@
   restrict the user there — absence is itself a lens, not a wildcard; see
   [[data-access-compatible?]]:
 
-      {:sandbox       {table-id <digest>}   ; per touched table; absent key => not sandboxed there
-       :impersonation {db-id    <digest>}   ; absent => not impersonated on that db
-       :routing       {db-id    <digest>}}  ; absent => sees the router db (admins / __METABASE_ROUTER__)
+      {:sandbox       [[table-id <digest>] ...]   ; per touched table; absent => not sandboxed there
+       :impersonation [[db-id    <digest>]]        ; absent => not impersonated on that db
+       :routing       [[db-id    <digest>]]}       ; absent => sees the router db (admins / __METABASE_ROUTER__)
 
   Each per-dimension contributor is a `defenterprise` owned by its EE module (OSS => nil, so OSS
   tokens are empty and everyone is compatible). They use `:feature :none` so a sandboxed /
@@ -22,7 +22,7 @@
   unavailable — fail closed, never leak.
 
   Each contributor's raw value is replaced by a [[digest]] of it before it leaves this namespace.
-  A token is persisted verbatim (`stored_result.data_access_token`, plaintext EDN) and the raw
+  A token is persisted verbatim (`stored_result.data_access_token`, plaintext JSON) and the raw
   values can contain sensitive information for sandbox contributors and others.
   Nothing here needs to read those values back so a one-way digest keeps the
   gate's semantics exactly while keeping the values out of a table whose rows outlive the attributes
@@ -34,8 +34,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [clojure.edn :as edn]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -90,17 +90,17 @@
   Each contributor's raw value is [[digest]]ed here, so a raw sandbox attribute / role never reaches
   a caller and never lands in `stored_result.data_access_token`."
   [{:keys [database-id table-ids]}]
-  (let [sandbox (into {}
-                      (keep (fn [table-id]
-                              (when-let [t (sandbox-token-for-table table-id)]
-                                [table-id (digest t)])))
-                      table-ids)
+  (let [sandbox (vec (sort-by first
+                              (keep (fn [table-id]
+                                      (when-let [t (sandbox-token-for-table table-id)]
+                                        [table-id (digest t)]))
+                                    table-ids)))
         imp     (when database-id (impersonation-token-for-db database-id))
         routing (when database-id (routing-token-for-db database-id))]
     (cond-> {}
       (seq sandbox) (assoc :sandbox sandbox)
-      imp           (assoc :impersonation {database-id (digest imp)})
-      routing       (assoc :routing {database-id (digest routing)}))))
+      imp           (assoc :impersonation [[database-id (digest imp)]])
+      routing       (assoc :routing [[database-id (digest routing)]]))))
 
 (defn data-access-compatible?
   "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`:
@@ -120,23 +120,20 @@
   (= creator-token viewer-token))
 
 (defn- token-in
-  "Serialize a token as EDN. JSON can't be used: the token is keyed by integer table-id /
-  database-id, and JSON mangles non-string map keys. `nil` is stored as SQL NULL rather than the
-  string \"nil\"."
+  "Serialize a token as JSON. `nil` is stored as SQL NULL rather than the string \"null\"."
   [v]
   (when (some? v)
-    (pr-str v)))
+    (json/encode v)))
 
 (defn- token-out
-  "Read a token back. Reader tags are refused rather than dispatched — this parses a column, and
-  nothing legitimately writes a tagged literal into one. An unreadable blob decodes to `nil`, which
-  every gate built on [[data-access-compatible?]] denies to non-superusers: fail closed, never widen
-  access on a parse error. Logged at ERROR because a write path that persisted an unreadable token
-  is a bug, and the denial it causes is otherwise hard to trace."
+  "Read a token back. An unreadable blob decodes to `nil`, which every gate built on
+  [[data-access-compatible?]] denies to non-superusers: fail closed, never widen access on a parse
+  error. Logged at ERROR because a write path that persisted an unreadable token is a bug, and the
+  denial it causes is otherwise hard to trace."
   [s]
   (when (string? s)
     (try
-      (edn/read-string {:readers {} :default (fn [_tag v] v)} s)
+      (json/decode+kw s)
       (catch Throwable e
         (log/error e "Failed to parse a stored data_access_token; the read gate will deny non-admins")
         nil))))

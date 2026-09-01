@@ -1,17 +1,16 @@
 (ns metabase.permissions.data-access-token-test
   (:require
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
-(def ^:private sandbox-ca {:sandbox {10 "d-ca"}})
-(def ^:private sandbox-ny {:sandbox {10 "d-ny"}})
-(def ^:private role-ro    {:impersonation {5 {:role "ro"}}})
-(def ^:private role-rw    {:impersonation {5 {:role "rw"}}})
-(def ^:private dest-a     {:routing {7 {:destination-db-id 100}}})
-(def ^:private dest-b     {:routing {7 {:destination-db-id 200}}})
+(def ^:private sandbox-ca {:sandbox [[10 "d-ca"]]})
+(def ^:private sandbox-ny {:sandbox [[10 "d-ny"]]})
+(def ^:private role-ro    {:impersonation [[5 "d-ro"]]})
+(def ^:private role-rw    {:impersonation [[5 "d-rw"]]})
+(def ^:private dest-a     {:routing [[7 "d-100"]]})
+(def ^:private dest-b     {:routing [[7 "d-200"]]})
 (def ^:private unrestricted {})
 
 (deftest data-access-compatible?-sandbox-test
@@ -67,15 +66,13 @@
 
 (deftest data-access-compatible?-multi-table-sandbox-test
   (let [compatible? data-access-token/data-access-compatible?
-        creator {:sandbox {10 "d-ca"
-                           20 "d-west"}}]
+        creator {:sandbox [[10 "d-ca"] [20 "d-west"]]}]
     (testing "viewer must match on EVERY touched table"
       (is (true?  (compatible? creator creator)))
       ;; matches table 10, unsandboxed on 20 -> blocked (no relaxation for absence)
-      (is (false? (compatible? creator {:sandbox {10 "d-ca"}})))
+      (is (false? (compatible? creator {:sandbox [[10 "d-ca"]]})))
       ;; matches table 10 but a different sandbox on table 20 -> blocked
-      (is (false? (compatible? creator {:sandbox {10 "d-ca"
-                                                  20 "d-east"}}))))))
+      (is (false? (compatible? creator {:sandbox [[10 "d-ca"] [20 "d-east"]]}))))))
 
 (deftest data-access-compatible?-oss-test
   (testing "two empty (OSS / unrestricted) tokens are always compatible -> no gating"
@@ -103,7 +100,7 @@
    :routing {:destination-db-id 100}})
 
 (deftest data-access-token-does-not-retain-raw-lens-values-test
-  (testing "the token is persisted as plaintext EDN on stored_result.data_access_token, so no raw
+  (testing "the token is persisted as plaintext JSON on stored_result.data_access_token, so no raw
            sandbox attribute value (potentially PII), GTAP card id, or warehouse role may survive in it"
     (let [printed (pr-str (token-for ca-lens))]
       (doseq [secret ["State" "CA" "CustomerEmail" "person@example.com" "analyst_ro"]]
@@ -115,11 +112,11 @@
            can still reason per table-id and per db-id"
     (let [token (token-for ca-lens)]
       (is (= #{:sandbox :impersonation :routing} (set (keys token))))
-      (is (= #{10} (set (keys (:sandbox token)))))
+      (is (= [10] (mapv first (:sandbox token))))
       (testing "a sandbox entry is a bare digest, same shape as the other dimensions"
-        (is (string? (get-in token [:sandbox 10]))))
-      (is (= #{5} (set (keys (:impersonation token)))))
-      (is (= #{5} (set (keys (:routing token))))))))
+        (is (string? (second (first (:sandbox token))))))
+      (is (= [5] (mapv first (:impersonation token))))
+      (is (= [5] (mapv first (:routing token)))))))
 
 (deftest data-access-token-digest-is-stable-and-discriminating-test
   (testing "a digest is deterministic — the creator's stored token and a later viewer's freshly
@@ -153,8 +150,35 @@
         (is (false? (data-access-token/data-access-compatible? creator (token-for {}))))
         (is (false? (data-access-token/data-access-compatible? (token-for {}) creator)))))))
 
-(deftest data-access-token-is-edn-round-trippable-test
-  (testing "stored_result serializes the token with pr-str and reads it back with a reader-less
-           edn/read-string, so every value in it must survive that round trip"
-    (let [token (token-for ca-lens)]
-      (is (= token (edn/read-string {:readers {} :default (fn [_tag v] v)} (pr-str token)))))))
+(defn- transform-in  [token] ((:in data-access-token/data-access-token-transform) token))
+(defn- transform-out [s]     ((:out data-access-token/data-access-token-transform) s))
+
+(deftest data-access-token-is-json-round-trippable-test
+  (testing "the token is persisted as JSON and read back identically. Nothing in it needs translating
+           on the way out: each dimension is a vector of `[target-id digest]` pairs, so the ids stay
+           integers through the round trip — which matters, because the gate is bare `=`"
+    (doseq [token [(token-for ca-lens) sandbox-ca role-ro dest-a unrestricted
+                   {:sandbox [[10 "d-ca"] [20 "d-west"]]}]]
+      (let [stored (transform-in token)]
+        (is (string? stored))
+        (is (= token (transform-out stored)) (pr-str token))))))
+
+(deftest data-access-token-nil-is-sql-null-test
+  (testing "nil is stored as SQL NULL rather than the string \"null\", and an empty (unrestricted)
+           token stays an empty map — nil and {} are not interchangeable to the gate"
+    (is (nil? (transform-in nil)))
+    (is (nil? (transform-out nil)))
+    (is (= {} (transform-out (transform-in {}))))))
+
+(deftest data-access-token-sandbox-order-is-stable-test
+  (testing "the sandbox pairs are sorted by table-id. The token is built from an unordered set of
+           table-ids in one process and compared against one built in another, and the gate is bare
+           `=` — an order that depended on set iteration would deny at random"
+    (let [token (do-with-lens {:sandbox [1 "2026-01-01T00:00Z" {"State" "CA"}]}
+                              #(data-access-token/data-access-token
+                                {:database-id 5 :table-ids #{30 10 20}}))]
+      (is (= [10 20 30] (mapv first (:sandbox token)))))))
+
+(deftest data-access-token-unparseable-reads-as-nil-test
+  (testing "an unparseable blob fails closed"
+    (is (nil? (transform-out "{not json ][")))))
