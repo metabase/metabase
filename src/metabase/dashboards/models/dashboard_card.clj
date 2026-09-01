@@ -29,12 +29,52 @@
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
+(defn- ensure-integer-link-card-id
+  [id]
+  (when-not (integer? id)
+    (throw (ex-info "Link card entity id must be an integer"
+                    {:status-code 400, :id id})))
+  id)
+
+(defn- validate-link-card-entity-id
+  "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
+  entity is looked up on read, so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (when-let [id (get-in dashcard [:visualization_settings :link :entity :id])]
+    (ensure-integer-link-card-id id))
+  dashcard)
+
+(defn- validate-click-behavior-target-ids
+  "Require click-behavior target ids to be integers before they are stored. They are later used as entity ids
+  (e.g. by the dependency backfill), so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (let [viz (:visualization_settings dashcard)]
+    (doseq [cb (cons (:click_behavior viz)
+                     (map (comp :click_behavior val) (:column_settings viz)))
+            :let [id (:targetId cb)]
+            :when (some? id)]
+      (when-not (integer? id)
+        (throw (ex-info "Click behavior target id must be an integer"
+                        {:status-code 400, :id id})))))
+  dashcard)
+
+(defn- validate-dashcard-on-write
+  [dashcard]
+  (-> dashcard
+      validate-link-card-entity-id
+      validate-click-behavior-target-ids))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (merge {:parameter_mappings     []
-          :visualization_settings {}
-          :inline_parameters      []}
-         dashcard))
+  (-> (merge {:parameter_mappings     []
+              :visualization_settings {}
+              :inline_parameters      []}
+             dashcard)
+      validate-dashcard-on-write))
+
+(t2/define-before-update :model/DashboardCard
+  [dashcard]
+  (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
@@ -323,13 +363,6 @@
 
 (def ^:private link-card-models
   (set (keys serdes/link-card-model->toucan-model)))
-
-(defn- ensure-integer-link-card-id
-  [id]
-  (when-not (integer? id)
-    (throw (ex-info "Link card entity id must be an integer"
-                    {:status-code 400, :id id})))
-  id)
 
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."

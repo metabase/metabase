@@ -40,10 +40,12 @@
    ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
+;; CLI entry point: stdout/stderr is the user interface
 #_{:clj-kondo/ignore [:discouraged-var]}
 (def ^:private output!
   "Alias for println so the lint suppression stays in one place."
@@ -132,6 +134,9 @@
   Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
   [write?]
   (mdb/setup-db-without-migrations!)
+  ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
+  ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
+  (embeddings.startup/ensure-in-process-provider!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
                        :metabot-scope (metabot-scope/internal-metabot-scope)

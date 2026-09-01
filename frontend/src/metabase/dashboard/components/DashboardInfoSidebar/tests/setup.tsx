@@ -54,7 +54,6 @@ export async function setup({
     }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      dashboards: [dashboard],
     }),
   });
 

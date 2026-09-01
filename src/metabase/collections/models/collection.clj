@@ -685,6 +685,11 @@
      (some-> user-id user->personal-collection u/the-id))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
+   ;;
+   ;; TODO (Chris 2026-08-18) -- The claim that Personal Collections cannot be deleted does not hold when a
+   ;; transaction rolls back: the collection disappears while its ID remains cached for the rest of the TTL.
+   ;; Tests evict this cache at the `with-temp` boundary (see [[metabase.test.util]]). Production has no
+   ;; equivalent boundary and would need an after-rollback hook alongside the commit hooks.
    :ttl/threshold (* 60 60 1000)))
 
 (mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
@@ -1363,6 +1368,38 @@
       (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
         (filter-eligible-dependents direct-dependents)))))
 
+(defn ineligible-dependencies
+  "Finds dependencies of a model that are not eligible for remote sync, along with the context needed to
+   explain why. Uses spec-based eligibility rules which account for special cases like snippets
+   (eligible when Library is synced, not by collection).
+
+  Takes model (the model to check dependencies for).
+
+  Returns a vector of maps, one per ineligible dependency:
+
+    {:model \"Card\", :id 412, :instance <row>}
+
+  `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`.
+  It falls out of the traversal that [[non-remote-synced-dependencies]] already runs, so reporting it
+  costs no extra queries."
+  [{:keys [id] :as model}]
+  (if (t2/exists? :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
+    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
+      (into []
+            (for [m (collectable-models)
+                  :let [model-name (name m)
+                        descendant-ids (set (get descendants model-name))]
+                  :when (seq descendant-ids)
+                  :let [instances (select-for-eligibility-check m descendant-ids)
+                        by-id (into {} (map (juxt :id identity)) instances)
+                        eligibility-map (remote-sync/batch-model-eligible? m instances)]
+                  [inst-id eligible?] eligibility-map
+                  :when (not eligible?)]
+              {:model    model-name
+               :id       inst-id
+               :instance (get by-id inst-id)})))
+    []))
+
 (defn non-remote-synced-dependencies
   "Finds dependencies of a model that are not eligible for remote sync.
    Uses spec-based eligibility rules which account for special cases like
@@ -1370,21 +1407,10 @@
 
   Takes model (the model to check dependencies for).
 
-  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync."
-  [{:keys [id] :as model}]
-  (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
-      (apply set/union
-             (for [m (collectable-models)
-                   :let [key (name m)
-                         descendant-ids (set (get descendants key))]
-                   :when (seq descendant-ids)]
-               (let [instances (select-for-eligibility-check m descendant-ids)
-                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
-                 (into #{}
-                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
-                       eligibility-map)))))
-    #{}))
+  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync.
+  See [[ineligible-dependencies]] for the same set with the containing collection attached."
+  [model]
+  (into #{} (map :id) (ineligible-dependencies model)))
 
 (defn check-non-remote-synced-dependencies
   "Checks if a model has non-remote-synced-dependencies and throws if it does.
@@ -2150,11 +2176,24 @@
                                {["Dashboard" dash-id] {"Collection" id}}))
         cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:and
                                                                                    [:= :collection_id id]
-                                                                                   (when skip-archived [:not :archived])]})]
+                                                                                   (when skip-archived [:not :archived])
+                                                                                   ;; Cards materialized by an exploration
+                                                                                   ;; Summary ride with that Summary, which is
+                                                                                   ;; excluded just below. Listing them here
+                                                                                   ;; would make them export targets whose
+                                                                                   ;; Document dependency is absent.
+                                                                                   [:or
+                                                                                    [:= :document_id nil]
+                                                                                    [:in :document_id
+                                                                                     ^:allow-subquery {:select [:id]
+                                                                                                       :from   [:document]
+                                                                                                       :where  [:= :exploration_id nil]}]]]})]
                                {["Card" card-id] {"Collection" id}}))
         documents (when config/ee-available?
                     (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                               [:and [:= :collection_id id]
+                                                                               ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
+                                                                               [:= :exploration_id nil]
                                                                                (when skip-archived [:not :archived])]})]
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and

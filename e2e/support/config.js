@@ -41,6 +41,10 @@ const {
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
+const {
+  sideEffectFreeModulesPlugin,
+} = require("../../frontend/build/shared/esbuild/side-effect-free-modules-plugin");
+
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
 // The Cypress config process runs with cwd = this file's directory
 // (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
@@ -239,7 +243,11 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        plugins: [
+          NodeModulesPolyfillPlugin(),
+          assetsResolverPlugin,
+          sideEffectFreeModulesPlugin,
+        ],
         sourcemap: "inline",
       }),
     );

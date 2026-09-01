@@ -1,0 +1,31 @@
+import { Canvas, Meta } from "@storybook/blocks";
+import { RingProgress } from "./";
+import * as RingProgressStories from "./RingProgress.stories";
+
+<Meta of={RingProgressStories} />
+
+# RingProgress
+
+Our themed wrapper around [Mantine RingProgress](https://mantine.dev/core/ring-progress/).
+
+Set `roundCaps` to round the ends of the filled arc; it is flat by default.
+
+## Docs
+
+- [Mantine RingProgress Docs](https://mantine.dev/core/ring-progress/)
+
+## Examples
+
+<Canvas of={RingProgressStories.Default} />
+
+### With a label
+
+<Canvas of={RingProgressStories.WithLabel} />
+
+### Small
+
+<Canvas of={RingProgressStories.Small} />
+
+### Multiple sections
+
+<Canvas of={RingProgressStories.MultipleSections} />

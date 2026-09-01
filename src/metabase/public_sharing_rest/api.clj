@@ -12,11 +12,14 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -32,7 +35,6 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -62,8 +64,33 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
+(defn- blank-dataset-query
+  "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
+  filters, aggregations, template tags, etc.) are never exposed to the general public. MBQL queries keep only their
+  source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
+  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
+  [query]
+  (if (lib/native? query)
+    (lib/native-query query "-")
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+                        (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
+      (reduce lib/aggregate
+              (lib/query query source)
+              (repeatedly (count (lib/aggregations query -1)) lib/count))
+      (lib/native-query query "-"))))
+
+(defn keep-param-fields-for-parameters
+  "Keep only the `:param_fields` entries keyed by the ids of the object's own `:parameters`. Entries keyed by anything
+  else — e.g. a native card's template-tag id with no matching parameter — have no widget to power, so they fail
+  closed."
+  [card-or-dashboard]
+  (m/update-existing card-or-dashboard :param_fields
+                     #(select-keys % (into #{} (map :id) (:parameters card-or-dashboard)))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
@@ -74,22 +101,27 @@
     (mi/instance
      :model/Card
      (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
-         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
+         (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
+                       :dataset_query])
+         (update :dataset_query (fn [query]
+                                  (cond-> query
+                                    (seq query) blank-dataset-query)))
+         params/remove-param-fields-non-public-columns))))
 
 (defn public-card
-  "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
-  public. Throws a 404 if the Card doesn't exist."
-  [& conditions]
+  "Return the public Card with the given `card-id` (plus any extra key-value `conditions`), removing all columns that
+  should not be visible to the general public. Throws a 404 if the Card doesn't exist."
+  [card-id & conditions]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
                                              :visualization_settings :card_schema]
-                              :archived false, conditions))
-        remove-card-non-public-columns
+                              :id card-id, :archived false, conditions))
         combine-parameters-and-template-tags
-        (t2/hydrate :param_fields))))
+        (t2/hydrate :param_fields)
+        keep-param-fields-for-parameters
+        remove-card-non-public-columns)))
 
-(defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
+(defn- card-with-uuid [uuid] (public-card (public-sharing/public-uuid->id :model/Card uuid)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -174,7 +206,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))]
+  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -248,14 +280,16 @@
         (select-keys action-public-keys))))
 
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
-  "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
-  general public. Throws a 404 if the Dashboard doesn't exist."
-  [& conditions]
+  "Return the public Dashboard with the given `dashboard-id` (plus any extra key-value `conditions`), removing all
+  columns that should not be visible to the general public. Throws a 404 if the Dashboard doesn't exist."
+  [dashboard-id & conditions]
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
-    (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
+    (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :id dashboard-id, :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
+        keep-param-fields-for-parameters
+        params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
@@ -267,7 +301,7 @@
                                                        (remove-card-non-public-columns series))))
                                    (m/update-existing :action public-action))))))))
 
-(defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
+(defn- dashboard-with-uuid [uuid] (public-dashboard (public-sharing/public-uuid->id :model/Dashboard uuid)))
 
 (defn- dashboard-with-uuid-for-param-values
   "Light Dashboard fetch for the public param-value endpoints. Unlike [[dashboard-with-uuid]]/[[public-dashboard]] it
@@ -275,7 +309,7 @@
   `dashboard-param-remapped-value` only need `:resolved-params`, which they hydrate themselves. Matches how the embed
   param-value endpoints fetch the Dashboard."
   [uuid]
-  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false)))
+  (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -346,7 +380,7 @@
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
@@ -376,7 +410,7 @@
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
@@ -400,7 +434,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
+  (let [dashboard-id (api/check-404 (public-sharing/public-uuid->id :model/Dashboard uuid))]
     (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
     (actions/fetch-values
      (api/check-404 (actions/dashcard->action dashcard-id))
@@ -436,7 +470,7 @@
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
         (public-sharing.validation/check-public-sharing-enabled)
-        (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
+        (let [dashboard-id (api/check-404 (public-sharing/public-uuid->id :model/Dashboard uuid))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
@@ -488,7 +522,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
+  (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
     (actions/check-actions-enabled! action)
     (public-action action)))
 
@@ -508,7 +542,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-values card param-key))))
 
@@ -523,7 +557,7 @@
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-values card param-key query))))
 
@@ -538,7 +572,7 @@
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
@@ -628,7 +662,7 @@
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
@@ -678,7 +712,7 @@
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
-          (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
+          (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
             (actions/check-actions-enabled! action)
             (analytics/track-event! :snowplow/action
                                     {:event     :action-executed
@@ -707,14 +741,12 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card       (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.tiles/process-tiles-query-for-card card parameters zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -734,17 +766,15 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
-        dashcard   (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card       (api/check-404 (t2/select-one :model/Card card-id))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card      (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                  parameters zoom x y lat-field lon-field))))
+                                                  parameters zoom x y latField lonField))))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 
@@ -764,9 +794,9 @@
   consistent experience with public dashboards. This also allows us to filter sensitive fields from all cards at
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
-  [& conditions]
-  (let [document     (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
-                                               :archived false, conditions))
+  [document-id]
+  (let [document     (-> (api/check-404 (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+                                                       :id document-id, :archived false))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
                          (t2/hydrate :cards))
         embedded-ids (set (prose-mirror/card-ids document))]
@@ -786,8 +816,7 @@
 
   Returns the loaded `:model/Card` entity so the caller can thread it downstream without re-selecting it."
   [uuid card-id]
-  (let [document (api/check-404 (t2/select-one [:model/Document :id :document :content_type]
-                                               :public_uuid uuid :archived false))]
+  (let [document (api/check-404 (t2/select-one [:model/Document :id :document :content_type] :id (public-sharing/public-uuid->id :model/Document uuid)))]
     (api/check-404 (when (contains? (set (prose-mirror/card-ids document)) card-id)
                      (t2/select-one :model/Card :id card-id :document_id (:id document) :archived false)))))
 
@@ -804,7 +833,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [document (public-document :public_uuid uuid)]
+  (let [document (public-document (public-sharing/public-uuid->id :model/Document uuid))]
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 

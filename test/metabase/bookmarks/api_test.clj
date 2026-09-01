@@ -77,6 +77,55 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
       (is (= [card-id] (map :item_id (mt/user-http-request :rasta :get 200 "bookmark")))))))
 
+(defn- bookmarked-items
+  "Set of [type item_id] pairs currently returned by GET /api/bookmark for `user`."
+  [user]
+  (set (map (juxt :type :item_id) (mt/user-http-request user :get 200 "bookmark"))))
+
+(deftest bookmark-hidden-when-collection-read-revoked-test
+  (testing "GET /api/bookmark re-checks read permission at read time: revoking a collection read grant (no archiving)
+            hides bookmarks of items in that collection (SEC-669)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection  {coll-id :id :as coll} {:name "Readable"}
+                     :model/Card        {card-id :id} {:name "Secret Card" :collection_id coll-id}
+                     :model/Dashboard   {dash-id :id} {:name "Secret Dashboard" :collection_id coll-id}
+                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id coll-id}
+                     :model/Exploration {expl-id :id} {:name "Secret Exploration" :collection_id coll-id}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        ;; rasta bookmarks each item (including the collection itself) while access is granted; POST read-check passes.
+        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id]
+                            ["exploration" expl-id] ["collection" coll-id]]]
+          (mt/user-http-request :rasta :post 200 (format "bookmark/%s/%d" model id)))
+        (testing "happy path: all bookmarks are visible while access is granted"
+          (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id]
+                   ["exploration" expl-id] ["collection" coll-id]}
+                 (bookmarked-items :rasta))))
+        (testing "after revoking read access (nothing archived), none of the bookmarks are returned"
+          (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+          (is (= #{} (bookmarked-items :rasta))))))))
+
+(deftest bookmark-hidden-when-item-moved-to-unreadable-collection-test
+  (testing "GET /api/bookmark omits a bookmark once its item is moved into a collection the user cannot read (SEC-669)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection  {readable-id :id :as readable} {:name "Readable"}
+                     :model/Collection  {hidden-id :id}                {:name "Hidden"}
+                     :model/Card        {card-id :id} {:name "Secret Card" :collection_id readable-id}
+                     :model/Dashboard   {dash-id :id} {:name "Secret Dashboard" :collection_id readable-id}
+                     :model/Document    {doc-id :id}  {:name "Secret Document" :collection_id readable-id}
+                     :model/Exploration {expl-id :id} {:name "Secret Exploration" :collection_id readable-id}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
+        (doseq [[model id] [["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["exploration" expl-id]]]
+          (mt/user-http-request :rasta :post 200 (format "bookmark/%s/%d" model id)))
+        (is (= #{["card" card-id] ["dashboard" dash-id] ["document" doc-id] ["exploration" expl-id]}
+               (bookmarked-items :rasta)))
+        (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
+          ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
+          (t2/update! :model/Card card-id {:collection_id hidden-id})
+          (t2/update! :model/Dashboard dash-id {:collection_id hidden-id})
+          (t2/update! :model/Document doc-id {:collection_id hidden-id})
+          (t2/update! :model/Exploration expl-id {:collection_id hidden-id})
+          (is (= #{} (bookmarked-items :rasta))))))))
+
 (deftest bookmark-card-type-tracks-current-card-type-test
   (testing "GET /api/bookmark's card_type reflects the card's current type after it changes (e.g. Turn into a model)"
     (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]

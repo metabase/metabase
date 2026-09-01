@@ -130,15 +130,6 @@ describe("Metabot UI", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should track Metabot chart explainer", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.findByLabelText("Explain this chart").should("be.visible").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metabot_explain_chart_clicked",
-      });
-    });
-
     describe("Metabot chat", () => {
       beforeEach(() => {
         cy.visit("/");
@@ -229,7 +220,6 @@ describe("Metabot in full-app embedding", () => {
     });
 
     H.appBar().icon("metabot").should("be.visible");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 
   it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
@@ -245,7 +235,6 @@ describe("Metabot in full-app embedding", () => {
 
     cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 

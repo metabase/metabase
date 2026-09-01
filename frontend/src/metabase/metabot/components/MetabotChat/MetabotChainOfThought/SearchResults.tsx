@@ -95,7 +95,7 @@ export const SearchResultsList = ({
     return null;
   }
   return (
-    <div className={S.resultsList}>
+    <div className={cx(S.resultsList, S.nested)}>
       {step.searchResults.results.map((result, i) => (
         <SearchResultRow
           key={`${result.type}-${result.id}`}

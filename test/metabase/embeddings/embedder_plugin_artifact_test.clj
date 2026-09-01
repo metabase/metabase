@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.core.core :as core]
    [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.plugins.impl :as plugins]
    [metabase.plugins.initialize :as plugin-initialize])
   (:import
@@ -12,11 +12,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private requested-model
+(def ^:private retrieval-model
+  "What semantic search and Library retrieval ask for."
   {:provider   "in-process"
    :model-name "Snowflake/snowflake-arctic-embed-xs"})
 
-(def ^:private requested-minilm-model
+(def ^:private complexity-model
+  "What the data-complexity score's synonym axis asks for. Mean-pooled — unlike the cls-pooled retrieval model —
+  so it exercises a different translator configuration."
   {:provider   "in-process"
    :model-name "sentence-transformers/all-MiniLM-L6-v2"})
 
@@ -65,6 +68,61 @@
       (java.util.Collections/singletonList Proxy/NO_PROXY))
     (connectFailed [_uri _socket-address _exception])))
 
+(defn- check-platform-support!
+  "Which platforms the bundled natives claim to support, driven through the catalog's private probes."
+  []
+  (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
+        os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
+        arch-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
+        detect-libc-var (ns-resolve 'metabase-enterprise.embedder.catalog 'detect-linux-libc)
+        detect-libc     (var-get detect-libc-var)
+        glibc-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'glibc-version)
+        supported-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'supported-glibc-version?)
+        supported-version? (var-get supported-version-var)]
+    (is (= :unknown (detect-libc false nil)) "unreadable process maps fail closed")
+    (is (= :musl (detect-libc true nil)))
+    (is (= :musl (detect-libc false "/lib/ld-musl-x86_64.so.1")))
+    (is (= :glibc (detect-libc false "/usr/lib64/ld-2.28.so")))
+    (is (= :glibc (detect-libc false "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"))
+        "the Ubuntu 24.04 loader layout is recognized")
+    (is (= :glibc (detect-libc false "/usr/lib/x86_64-linux-gnu/libc.so.6")))
+    (is (false? (supported-version? "2.33")))
+    (is (true? (supported-version? "2.34")))
+    (is (true? (supported-version? "2.39")))
+    (is (false? (supported-version? nil)))
+    (with-redefs-fn {libc-var (constantly :glibc)
+                     os-var   (constantly "linux")
+                     glibc-version-var (constantly "2.34")}
+      #(is (true? (:ready? (embeddings.provider/readiness retrieval-model)))))
+    (with-redefs-fn {libc-var (constantly :unknown)
+                     os-var   (constantly "linux")
+                     glibc-version-var (constantly "2.39")}
+      #(is (true? (:ready? (embeddings.provider/readiness retrieval-model)))
+           "the authoritative glibc API probe survives an inconclusive process map"))
+    (with-redefs-fn {libc-var (constantly :glibc)
+                     os-var   (constantly "linux")
+                     glibc-version-var (constantly "2.33")}
+      #(do
+         (is (= {:provider "in-process" :ready? false :reason :unsupported-libc-version}
+                (embeddings.provider/readiness retrieval-model)))
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported-libc-version"
+                               (embeddings.provider/resolve-model retrieval-model)))))
+    (doseq [[unsupported-libc probed-glibc-version] [[:musl "2.39"]
+                                                     [:unknown nil]]]
+      (with-redefs-fn {libc-var (constantly unsupported-libc)
+                       os-var   (constantly "linux")
+                       glibc-version-var (constantly probed-glibc-version)}
+        #(do
+           (is (= {:provider "in-process" :ready? false :reason :unsupported-libc}
+                  (embeddings.provider/readiness retrieval-model)))
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported-libc"
+                                 (embeddings.provider/resolve-model retrieval-model))))))
+    (with-redefs-fn {os-var   (constantly "mac os x")
+                     arch-var (constantly "avx2")}
+      #(is (= {:provider "in-process" :ready? false :reason :unsupported-platform}
+              (embeddings.provider/readiness retrieval-model))
+           "the tokenizer artifact has no Intel macOS native library"))))
+
 (defn- check-missing-architecture!
   "A catalog entry with no export for this architecture must fail rather than hash a nil sha256 into a
   well-formed but meaningless embedding-space id."
@@ -80,18 +138,18 @@
                                      (catch clojure.lang.ExceptionInfo e e)))))
            "a catalog entry missing this architecture's export fails instead of hashing nil"))))
 
-(deftest ^:sequential plugin-artifact-smoke-test
+(deftest ^:synchronized plugin-artifact-smoke-test
   (if-not (= "true" (System/getenv "MB_EMBEDDER_ARTIFACT_TEST"))
     (testing "artifact smoke is enabled only in its dedicated CI process"
       (is true))
     (let [pre-plugin-thread
           (isolated-thread-call
-           #(hash-map :readiness (embeddings.provider/readiness requested-model)
-                      :resolved  (embeddings.provider/resolve-model requested-model)))]
+           #(hash-map :readiness (embeddings.provider/readiness retrieval-model)
+                      :resolved  (embeddings.provider/resolve-model retrieval-model)))]
       (plugins/load-plugins!)
       ;; Non-driver plugins are registered eagerly but initialized only when a feature selects them. The provider
       ;; registration lives in the plugin init namespace, so activate this artifact explicitly before exercising it.
-      (plugin-initialize/load-plugin! core/embedder-plugin-name)
+      (plugin-initialize/load-plugin! embeddings.startup/embedder-plugin-name)
       (testing "the implementation was activated through its jar manifest"
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
@@ -105,15 +163,15 @@
           (is (nil? (find-ns 'metabase-enterprise.embedder.model))
               "catalog access from an old worker thread remains lazy")))
       (testing "the built artifact contains a ready, immutable model space"
-        (is (true? (:ready? (embeddings.provider/readiness requested-model))))
+        (is (true? (:ready? (embeddings.provider/readiness retrieval-model))))
         (is (= {:provider "in-process" :ready? false :reason :vector-dimensions-mismatch}
                (embeddings.provider/readiness
-                (assoc requested-model :vector-dimensions 768))))
+                (assoc retrieval-model :vector-dimensions 768))))
         (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}"
-                        (:embedding-space-id (embeddings.provider/resolve-model requested-model))))
+                        (:embedding-space-id (embeddings.provider/resolve-model retrieval-model))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has 384 dimensions"
                               (embeddings.provider/resolve-model
-                               (assoc requested-model :vector-dimensions 768))))
+                               (assoc retrieval-model :vector-dimensions 768))))
         (let [architecture-var (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
               os-var           (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
               libc-var         (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
@@ -123,7 +181,7 @@
                                                   os-var           (constantly "linux")
                                                   libc-var         (constantly :glibc)
                                                   glibc-version-var (constantly "2.34")}
-                                   #(embeddings.provider/resolve-model requested-model)))
+                                   #(embeddings.provider/resolve-model retrieval-model)))
               normal  (mapv (comp :embedding-space-id resolve-for) ["arm64" "avx2"])
               bounded (binding [*print-length* 1
                                 *print-level* 1
@@ -135,66 +193,28 @@
               "architecture-specific exports intentionally have distinct embedding spaces"))
         (let [model-spec-var (ns-resolve 'metabase-enterprise.embedder.catalog 'model-spec)
               model-spec-fn  (var-get model-spec-var)
-              spec           (model-spec-fn (:model-name requested-model))
-              normal         (embeddings.provider/resolve-model requested-model)
+              spec           (model-spec-fn (:model-name retrieval-model))
+              normal         (embeddings.provider/resolve-model retrieval-model)
               reordered      (update spec :runtime #(into (array-map) (reverse %)))
               equivalent     (with-redefs-fn {model-spec-var (constantly reordered)}
-                               #(embeddings.provider/resolve-model requested-model))]
+                               #(embeddings.provider/resolve-model retrieval-model))]
           (is (= (:embedding-space-id normal) (:embedding-space-id equivalent))
               "equivalent catalog map order does not change model identity")
-          (check-missing-architecture! requested-model))
-        (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
-              os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
-              detect-libc-var (ns-resolve 'metabase-enterprise.embedder.catalog 'detect-linux-libc)
-              detect-libc     (var-get detect-libc-var)
-              glibc-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'glibc-version)
-              supported-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'supported-glibc-version?)
-              supported-version? (var-get supported-version-var)]
-          (is (= :unknown (detect-libc false nil)) "unreadable process maps fail closed")
-          (is (= :musl (detect-libc true nil)))
-          (is (= :musl (detect-libc false "/lib/ld-musl-x86_64.so.1")))
-          (is (= :glibc (detect-libc false "/usr/lib64/ld-2.28.so")))
-          (is (= :glibc (detect-libc false "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"))
-              "the Ubuntu 24.04 loader layout is recognized")
-          (is (= :glibc (detect-libc false "/usr/lib/x86_64-linux-gnu/libc.so.6")))
-          (is (false? (supported-version? "2.33")))
-          (is (true? (supported-version? "2.34")))
-          (is (true? (supported-version? "2.39")))
-          (is (false? (supported-version? nil)))
-          (with-redefs-fn {libc-var (constantly :glibc)
-                           os-var   (constantly "linux")
-                           glibc-version-var (constantly "2.34")}
-            #(is (true? (:ready? (embeddings.provider/readiness requested-model)))))
-          (with-redefs-fn {libc-var (constantly :unknown)
-                           os-var   (constantly "linux")
-                           glibc-version-var (constantly "2.39")}
-            #(is (true? (:ready? (embeddings.provider/readiness requested-model)))
-                 "the authoritative glibc API probe survives an inconclusive process map"))
-          (with-redefs-fn {libc-var (constantly :glibc)
-                           os-var   (constantly "linux")
-                           glibc-version-var (constantly "2.33")}
-            #(do
-               (is (= {:provider "in-process" :ready? false :reason :unsupported-libc-version}
-                      (embeddings.provider/readiness requested-model)))
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported-libc-version"
-                                     (embeddings.provider/resolve-model requested-model)))))
-          (doseq [[unsupported-libc probed-glibc-version] [[:musl "2.39"]
-                                                           [:unknown nil]]]
-            (with-redefs-fn {libc-var (constantly unsupported-libc)
-                             os-var   (constantly "linux")
-                             glibc-version-var (constantly probed-glibc-version)}
-              #(do
-                 (is (= {:provider "in-process" :ready? false :reason :unsupported-libc}
-                        (embeddings.provider/readiness requested-model)))
-                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported-libc"
-                                       (embeddings.provider/resolve-model requested-model)))))))
-        (let [os-var   (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
-              arch-var (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)]
-          (with-redefs-fn {os-var   (constantly "mac os x")
-                           arch-var (constantly "avx2")}
-            #(is (= {:provider "in-process" :ready? false :reason :unsupported-platform}
-                    (embeddings.provider/readiness requested-model))
-                 "the tokenizer artifact has no Intel macOS native library"))))
+          (check-missing-architecture! retrieval-model))
+        (check-platform-support!))
+      (testing "the same artifact serves the complexity score's model in its own vector space"
+        (is (true? (:ready? (embeddings.provider/readiness complexity-model))))
+        (is (= {:provider "in-process" :ready? false :reason :vector-dimensions-mismatch}
+               (embeddings.provider/readiness (assoc complexity-model :vector-dimensions 1024))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has 384 dimensions"
+                              (embeddings.provider/resolve-model
+                               (assoc complexity-model :vector-dimensions 1024))))
+        (let [resolved (embeddings.provider/resolve-model complexity-model)]
+          (is (= 384 (:vector-dimensions resolved)))
+          (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
+          (is (not= (:embedding-space-id (embeddings.provider/resolve-model retrieval-model))
+                    (:embedding-space-id resolved))
+              "the two bundled models must never share an embedding space")))
       (testing "the artifact bounds local inference batches before loading the runtime"
         (let [model-fn-var (ns-resolve 'metabase-enterprise.embedder.plugin 'model-fn)
               batch-sizes  (atom [])]
@@ -203,7 +223,7 @@
                            (fn [_model-name texts]
                              (swap! batch-sizes conj (count texts))
                              (mapv (fn [_] (float-array 384)) texts)))}
-            #(embeddings.provider/embed-texts requested-model (repeat 65 "text")))
+            #(embeddings.provider/embed-texts retrieval-model (repeat 65 "text")))
           (is (= [32 32 1] @batch-sizes))
           (is (nil? (find-ns 'metabase-enterprise.embedder.model)))))
       (testing "real inference runs through the plugin jar"
@@ -214,17 +234,23 @@
             (let [[dog puppy invoice]
                   (await-thread!
                    (isolated-thread-call
-                    #(embeddings.provider/embed-texts requested-model ["dog" "puppy" "invoice"])))
-                  minilm-embeddings
-                  (await-thread!
-                   (isolated-thread-call
-                    #(embeddings.provider/embed-texts requested-minilm-model ["dog" "invoice"])))]
+                    #(embeddings.provider/embed-texts retrieval-model ["dog" "puppy" "invoice"])))]
               (is (some? (find-ns 'metabase-enterprise.embedder.model)))
               (is (= [384 384 384] (mapv alength [dog puppy invoice])))
-              (is (> (cosine dog puppy) (cosine dog invoice)))
-              (is (= [384 384] (mapv alength minilm-embeddings)))
-              (is (every? #(< (Math/abs (- 1.0 (magnitude %))) 1.0e-5) minilm-embeddings)
-                  "MiniLM produces normalized 384-dimensional embeddings"))
+              (is (> (cosine dog puppy) (cosine dog invoice))))
+            (testing "the complexity-score model infers from the same loaded artifact"
+              (let [[monthly-active-users daily-active-users invoice]
+                    (await-thread!
+                     (isolated-thread-call
+                      #(embeddings.provider/embed-texts
+                        complexity-model
+                        ["monthly active users" "daily active users" "invoice"])))]
+                (is (= [384 384 384] (mapv alength [monthly-active-users daily-active-users invoice])))
+                (is (every? #(< (Math/abs (- 1.0 (magnitude %))) 1.0e-5)
+                            [monthly-active-users daily-active-users invoice])
+                    "MiniLM produces normalized embeddings")
+                (is (> (cosine monthly-active-users daily-active-users)
+                       (cosine monthly-active-users invoice)))))
             (finally
               (ProxySelector/setDefault original-proxy)))
           (is (empty? @network-attempts) "bundled inference performs no outbound requests"))))))

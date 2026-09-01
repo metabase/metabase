@@ -5,7 +5,7 @@ description: Asking the user a short clarifying question with ask_for_sql_clarif
 tools: [ask_for_sql_clarification]
 priority: 50
 ---
-Ask the user a short clarifying question when their request is genuinely ambiguous. The `question` text is inserted as a SQL comment at the user's cursor — so this is a small-surface input for *short prose only*, not a delivery channel.
+Ask the user a short clarifying question when their request is genuinely ambiguous. The `question` text comes back as the tool's text output and ends the turn — nothing is inserted into the editor or into the user's SQL. Keep it to *short prose only*; this is not a delivery channel.
 
 **Use only for:**
 - Structural ambiguity where picking wrong would produce a fundamentally different query (e.g. "Top by revenue or order count?", "By customer or by account?").
@@ -16,5 +16,6 @@ Ask the user a short clarifying question when their request is genuinely ambiguo
 - Judgement calls you can resolve yourself. Pick a reasonable default, deliver the query via `create_sql_query`, and flag the assumption in the explanation that accompanies the query.
 - Anything discovery (`search`, `read_resource`) can answer.
 
-**Argument:**
-- `question` — one short sentence, phrased as a question, no SQL.
+**Arguments:**
+- `question` (required) — one short sentence, phrased as a question, no SQL.
+- `options` (optional) — the concrete choices you're asking between, e.g. `["by revenue", "by order count"]`. They're appended to the question as a bulleted list, so use them when the answer is a small closed set and leave them out for open-ended questions.

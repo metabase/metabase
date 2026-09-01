@@ -27,7 +27,6 @@ export function AiToolCell(props: AiToolCellProps) {
     <Flex align="center" justify="center" gap="xs" w="100%">
       <Checkbox
         aria-label={t`Allow ${group.name} user group to access ${toolLabel} AI tool.`}
-        size="sm"
         checked={isChecked}
         // Admin group is always enabled and can't be changed
         disabled={isAdminGroup}

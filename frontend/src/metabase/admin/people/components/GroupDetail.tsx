@@ -8,6 +8,7 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
@@ -57,9 +58,7 @@ export const GroupDetail = ({
         ),
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      setAlertMessage(errorMessage);
+      setAlertMessage(getErrorMessage(error));
     }
   };
 

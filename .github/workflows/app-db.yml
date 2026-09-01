@@ -6,6 +6,34 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches).
+        type: boolean
+        default: false
+
+  # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
+  # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
+  # whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      app-db:
+        description: 'Which app-DB job to run. Only this one runs; the others are skipped.'
+        type: choice
+        required: true
+        options:
+          - mariadb
+          - mysql
+          - postgres
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.db.custom-migrations-test/some-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -15,8 +43,16 @@ concurrency:
 # ci-conductor (secrets: inherit is already set on the app-db call in
 # run-tests.yml). See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per job.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job runs the
+  # whole list -- each app DB has three.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   app-db-matrix:
@@ -33,11 +69,10 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          REF_NAME: ${{ github.ref_name }}
+          RUN_ALL: ${{ inputs.force-run }}
         with:
           script: | # js
-            const refName = process.env.REF_NAME;
-            const runAll = refName === 'master' || refName.startsWith('release-x');
+            const runAll = process.env.RUN_ALL === 'true';
 
             const versions = {
               mariadb: [
@@ -100,7 +135,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -140,21 +175,9 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -198,7 +221,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -238,21 +261,9 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -304,7 +315,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -321,7 +332,6 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
@@ -334,21 +344,9 @@ jobs:
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres

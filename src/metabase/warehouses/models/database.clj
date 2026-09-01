@@ -50,14 +50,14 @@
    (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
-  {:details                        mi/transform-encrypted-json
-   :write_data_details             mi/transform-encrypted-json
-   :admin_details                  mi/transform-encrypted-json
+  {:details                        (mi/transform-encrypted-json "metabase_database.details")
+   :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
+   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
    :start_of_week                  mi/transform-keyword
-   :settings                       mi/transform-encrypted-json
+   :settings                       (mi/transform-encrypted-json "metabase_database.settings")
    :dbms_version                   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
@@ -533,11 +533,12 @@
   [engine database keys-to-check]
   (when-not (exempt-audit-db? database)
     (when-let [engine (some-> engine keyword)]
-      (doseq [k     keys-to-check
-              :let  [details (get database k)]
-              :when (map? details)]
-        (driver.u/validate-connection-hosts! engine (cond->> details
-                                                      (not= k :details) (merge (:details database))))))))
+      (driver.u/with-database-network-policy database
+        (doseq [k     keys-to-check
+                :let  [details (get database k)]
+                :when (map? details)]
+          (driver.u/validate-connection-hosts! engine (cond->> details
+                                                        (not= k :details) (merge (:details database)))))))))
 
 (t2/define-before-update :model/Database
   [database]

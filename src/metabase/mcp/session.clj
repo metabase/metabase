@@ -19,6 +19,7 @@
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -77,8 +78,8 @@
     (str (UUID. high low))))
 
 (def ^:private ui-credential-lifetime-seconds
-  "Lifetime of a rendered MCP Apps UI credential. This is deliberately short: the
-   credential is delivered to an iframe through a resource response."
+  "Lifetime of an MCP Apps UI credential. The server sends the credential in
+   private tool-result metadata."
   300)
 
 (defn- base64url-encode [^String value]
@@ -128,6 +129,14 @@
 (def ^:private session-payload-version
   "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
   1)
+
+(mr/def ::session-payload
+  "The unsigned client-capability hint carried in the second segment of an `Mcp-Session-Id`: the
+   payload version and whether the client can render MCP Apps UI. Server-minted and only echoed back
+   by clients; validated before we read its `:ui` flag, which is the only thing relayed onward."
+  [:map
+   [:v  :int]
+   [:ui :boolean]])
 
 (def ^:private max-session-id-length
   "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
@@ -187,9 +196,9 @@
         (cond
           (and payload-map?
                known-version?
-               (boolean? (:ui decoded-payload)))
+               (mr/validate ::session-payload decoded-payload))
           {:extended true
-           :payload  decoded-payload}
+           :payload  (select-keys decoded-payload [:ui])}
 
           ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
           ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.

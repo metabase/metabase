@@ -3,6 +3,8 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { fieldApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import CS from "metabase/css/core/index.css";
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
@@ -24,7 +26,6 @@ import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
@@ -422,7 +423,7 @@ export const setParameterMapping = createThunkAction(
     cardId: CardId | null,
     target: ParameterTarget | null,
   ) => {
-    return (dispatch, getState) => {
+    return async (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
       const dashcards = Object.values(getDashcards(getState()));
@@ -461,9 +462,10 @@ export const setParameterMapping = createThunkAction(
           (p) => p.id === parameterId,
         );
         if (parameter?.type === "id") {
+          const type = await resolveIdParameterType(dispatch, target);
           updateParameter(dispatch, getState, parameterId, (p) => ({
             ...p,
-            type: resolveIdParameterType(getState, target),
+            type,
             // Preserve sectionId so getParameterType() still returns "id" for
             // UI purposes (column compatibility, widget rendering) even though
             // the QP-facing type is now concrete.
@@ -481,10 +483,10 @@ export const setParameterMapping = createThunkAction(
  * refs (reads base-type from the field ref options). Falls back to "number/="
  * since most PKs are numeric.
  */
-function resolveIdParameterType(
-  getState: GetState,
+async function resolveIdParameterType(
+  dispatch: Dispatch,
   target: ParameterTarget,
-): string {
+): Promise<string> {
   const fieldRef = target[1];
   if (!Array.isArray(fieldRef) || fieldRef[0] !== "field") {
     return "number/=";
@@ -492,9 +494,15 @@ function resolveIdParameterType(
 
   const fieldIdOrName = fieldRef[1];
 
-  // By-ID: look up the field from the metadata store
+  // By-ID: the target can be an FK-linked field the card never returns, so ask
+  // the API for it rather than reading the card's result metadata.
   if (typeof fieldIdOrName === "number") {
-    const field = getMetadata(getState()).field(fieldIdOrName);
+    const field = await runRtkEndpoint(
+      { id: fieldIdOrName },
+      dispatch,
+      fieldApi.endpoints.getField,
+      { forceRefetch: false },
+    ).catch(() => null);
     if (field) {
       return isNumericBaseType(field) ? "number/=" : "string/=";
     }

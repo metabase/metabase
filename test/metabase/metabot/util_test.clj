@@ -4,7 +4,7 @@
    [metabase.metabot.util :as metabot.u]))
 
 (deftest ^:parallel extract-sql-content-native-test
-  (testing "extracts SQL from normalized pMBQL and legacy query shapes"
+  (testing "extracts SQL from normalized MBQL 5 and legacy query shapes"
     (are [expected query] (= expected (metabot.u/extract-sql-content query))
       "SELECT 1" {:stages [{:lib/type :mbql.stage/native
                             :native   "SELECT 1"}]}

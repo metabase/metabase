@@ -13,7 +13,7 @@
 (defn- llm-setting-values
   [setting-keys]
   (into {}
-        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt value)]))
+        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt-accepting-plaintext value)]))
         (t2/query {:select [:key :value] :from :setting :where [:in :key setting-keys]})))
 
 (defn- insert-llm-settings!
@@ -146,6 +146,26 @@
         (is (= {"llm-metabot-provider" "anthropic/claude-opus-4-1"}
                (llm-setting-values ["llm-metabot-provider"])))))))
 
+(deftest rollback-llm-provider-settings-drops-a-post-migration-type-test
+  (testing "v64.7qmx3p : a provider type added after this migration is not in its frozen table, so a rollback has
+            nowhere to put it — the versions this rolls back to cannot serve that provider either"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
+      (migrate!)
+      (t2/query {:update :setting
+                 :set    {:value (encryption/maybe-encrypt
+                                  (json/encode [{:key    "deepseek"
+                                                 :type   "deepseek"
+                                                 :name   "DeepSeek"
+                                                 :config {:api-key "sk-deepseek"}}]))}
+                 :where  [:= :key "llm-providers"]})
+      (insert-llm-settings! {"llm-metabot-provider" "deepseek/deepseek-v4-flash"})
+      (migrate! :down 63)
+      (testing "the credential is dropped rather than written to a setting nothing reads"
+        (is (= {} (llm-setting-values ["llm-deepseek-api-key"]))))
+      (testing "and the reference naming it falls back to the default rather than pointing at a provider that is gone"
+        (is (= {} (llm-setting-values ["llm-metabot-provider"])))))))
+
 (deftest rollback-llm-provider-settings-encrypts-only-secrets-test
   (testing "v64.7qmx3p : the downgrade encrypts what the pre-migration code stored encrypted, and nothing else"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
@@ -164,7 +184,7 @@
                                                       "llm-metabot-provider"]]}))]
           (testing "the API key is sensitive, so it comes back as ciphertext"
             (is (not= "sk-ant-stored" (get raw "llm-anthropic-api-key")))
-            (is (= "sk-ant-stored" (encryption/maybe-decrypt (get raw "llm-anthropic-api-key")))))
+            (is (= "sk-ant-stored" (encryption/maybe-decrypt-accepting-plaintext (get raw "llm-anthropic-api-key")))))
           (testing "settings declared :encryption :no come back as the plaintext they were declared to hold"
             (is (= "https://self-hosted.example" (get raw "llm-anthropic-api-base-url")))
             (is (= "anthropic/claude-opus-4-1" (get raw "llm-metabot-provider")))))))))

@@ -473,78 +473,6 @@ describe("issue 55687", () => {
   });
 });
 
-describe("issue 58371", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
-      display_name: null,
-    });
-
-    const baseQuestion = {
-      name: "Base Question",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [
-          [
-            "aggregation-options",
-            ["count-where", ["=", ["field", PRODUCTS.TITLE, null], "OK"]],
-            { "display-name": "Aggregation with Dash-in-name" },
-          ],
-        ],
-        breakout: [["field", PRODUCTS.ID, null]],
-      },
-    };
-
-    H.createQuestion(baseQuestion, { wrapId: true }).then((questionId) => {
-      const questionDetails = {
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": `card__${questionId}`,
-              alias: "Other Question",
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Other Question" }],
-              ],
-            },
-          ],
-          expressions: {
-            Foo: [
-              "+",
-              0,
-              [
-                "field",
-                "count_where",
-                {
-                  "base-type": "type/Float",
-                  "join-alias": "Other Question",
-                },
-              ],
-            ],
-          },
-        },
-      };
-
-      H.createQuestion(questionDetails, { visitQuestion: true });
-    });
-
-    H.openNotebook();
-  });
-
-  it("should allow using names with a dash in them from joined tables (metabase#58371)", () => {
-    H.getNotebookStep("expression").findByText("Foo").click();
-    H.CustomExpressionEditor.value().should(
-      "eq",
-      "0 + [Other Question → Aggregation with Dash-in-name]",
-    );
-  });
-});
-
 describe("Issue 58230", () => {
   beforeEach(() => {
     H.restore();
@@ -584,27 +512,6 @@ describe("issue 57674", () => {
     cy.signInAsNormalUser();
     H.openOrdersTable({ mode: "notebook" });
   });
-
-  // TODO: re-enable this test once we have a fix for metabase#61264
-  it(
-    "should show an error when using a case or if expression with mismatched types (metabase#57674)",
-    { tags: "@skip" },
-    () => {
-      H.getNotebookStep("data").button("Custom column").click();
-
-      H.CustomExpressionEditor.clear();
-      H.popover().findByText("Types are incompatible.").should("not.exist");
-
-      H.CustomExpressionEditor.type(
-        'case([Total] > 100, [Created At], "foo")',
-        {
-          allowFastSet: true,
-        },
-      ).blur();
-
-      H.popover().findByText("Types are incompatible.").should("be.visible");
-    },
-  );
 
   it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();

@@ -465,6 +465,23 @@
               (is (= 0.8 (:progress (nth @progress-calls 3))))
               (is (= 0.95 (:progress (nth @progress-calls 4)))))))))))
 
+(deftest import!-runs-a-single-reindex-inside-the-task-test
+  (testing "a full import runs exactly one reindex, synchronous on H2 and asynchronous elsewhere"
+    (mt/dataset test-data
+      (mt/db)
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                             {:sync_task_type "import"
+                                              :initiated_by   (mt/user->id :rasta)})
+            calls   (atom [])]
+        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& {:as opts}]
+                                                      (swap! calls conj opts)
+                                                      nil)]
+          (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source))
+                                     task-id
+                                     :force? true)]
+            (is (= :success (:status result)))))
+        (is (= [{:async? (not= :h2 (app-db/db-type))}] @calls))))))
+
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
     (mt/dataset test-data
@@ -1490,6 +1507,26 @@ serdes/meta:
               "Should include detailed conflict information")
           (is (some #(= :library-conflict (:type %)) (:conflict-details result))
               "Should have library-conflict type in details"))))))
+
+(deftest remove-unsynced!-preserves-exploration-documents-test
+  (testing "remove-unsynced! does not delete local exploration documents in remote-synced collections (UXW-4091)"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced"
+                                                    :location "/"
+                                                    :is_remote_synced true}
+                   :model/User {user-id :id} {:email "explo-preserve@example.com"}
+                   :model/Exploration {explo-id :id} {:name "Explo" :creator_id user-id}
+                   :model/Document {plain-doc-id :id} {:name "Plain Doc"
+                                                       :creator_id user-id
+                                                       :collection_id coll-id}
+                   :model/Document {explo-doc-id :id} {:name "Exploration Doc"
+                                                       :creator_id user-id
+                                                       :collection_id coll-id
+                                                       :exploration_id explo-id}]
+      (#'impl/remove-unsynced! [coll-id] {:by-entity-id {}})
+      (is (not (t2/exists? :model/Document :id plain-doc-id))
+          "plain doc should be deleted because it's not in the imported set")
+      (is (t2/exists? :model/Document :id explo-doc-id)
+          "exploration doc should be preserved by the :exploration_id condition"))))
 
 (deftest import!-transforms-conflict-test
   (testing "import! detects transforms conflict when local has transforms and import has transforms"

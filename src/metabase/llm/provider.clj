@@ -21,7 +21,8 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,6 +46,7 @@
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
+    :mini-model    "claude-haiku-4-5-20251001"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -61,6 +63,7 @@
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
     :default-model "gpt-5.4"
+    :mini-model    "gpt-5.4-mini"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -77,6 +80,7 @@
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
+    :mini-model    "anthropic/claude-haiku-4.5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -93,6 +97,7 @@
    {:type          "mistral"
     :label         (deferred-tru "Mistral")
     :default-model "mistral-medium-3-5"
+    :mini-model    "mistral-medium-3-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -109,6 +114,7 @@
    {:type          "zai"
     :label         (deferred-tru "Z.AI")
     :default-model "glm-5.2"
+    :mini-model    "glm-5.2"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -125,6 +131,7 @@
    {:type          "moonshot"
     :label         (deferred-tru "Moonshot AI")
     :default-model "kimi-k3"
+    :mini-model    "kimi-k3"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -138,6 +145,25 @@
                      :advanced? true
                      :default   "https://api.moonshot.ai/v1"
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
+   {:type          "deepseek"
+    :label         (deferred-tru "DeepSeek")
+    :default-model "deepseek-v4-pro"
+    :mini-model    "deepseek-v4-flash"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     ;; No `:prefix`: DeepSeek keys carry the same `sk-` an OpenAI key does, so matching on it
+                     ;; would claim OpenAI keys while rejecting nothing.
+                     :required?   true
+                     :placeholder "sk-..."
+                     :docs-url    "https://platform.deepseek.com/api_keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.deepseek.com"
+                     :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -146,11 +172,17 @@
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
-    ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
-    ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
-    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+    ;; here, and connecting validates the credentials against the model chosen in the connection form with a probe.
+    ;; Which of them a project can actually reach depends on its location.
+    :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
+                    {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
+                    {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
+                    {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
+                    {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -238,6 +270,7 @@
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
+    :mini-model    "anthropic.claude-haiku-4-5"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
                      :type        :password
@@ -258,6 +291,25 @@
                      :type      :password
                      :advanced? true
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
+   {:type          "vllm"
+    :label         (deferred-tru "vLLM")
+    ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
+    ;; new connection starts on comes from the catalog that connecting fetches (see
+    ;; [[metabase.metabot.self.vllm/list-models]]).
+    :default-model nil
+    :fields        [{:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :required?   true
+                     :placeholder "http://vllm.internal:8000/v1"
+                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                    {:key      :api-key
+                     :label    (deferred-tru "API key")
+                     :type     :password
+                     ;; not required: a server started without --api-key takes no key, and a base URL on its own
+                     ;; is a complete configuration
+                     :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -328,6 +380,14 @@
   models are deployment names the admin chooses)."
   [type-name]
   (:default-model (provider-type type-name)))
+
+(defn mini-model
+  "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
+  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
+  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
+  provider, which serves one benchmarked model."
+  [type-name]
+  (:mini-model (provider-type type-name)))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -455,6 +515,9 @@
    "moonshot"   {:type     "moonshot"
                  :settings {:api-key  {:setting :llm-moonshot-api-key :credential? true}
                             :base-url {:setting :llm-moonshot-api-base-url}}}
+   "deepseek"   {:type     "deepseek"
+                 :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
+                            :base-url {:setting :llm-deepseek-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
@@ -472,7 +535,27 @@
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
                             :session-token     {:setting :llm-bedrock-session-token}
-                            :region            {:setting :llm-bedrock-region}}}})
+                            :region            {:setting :llm-bedrock-region}}}
+   "vllm"       {:type     "vllm"
+                 ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
+                 ;; no key, so the URL alone brings a usable connection into existence
+                 :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
+                            :api-key  {:setting :llm-vllm-api-key}}}})
+
+(defn connection-env-vars
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
+
+  Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
+  its own, is the only one today. Setting these is the supported way to configure a single connection without writing
+  JSON into [[metabase.llm.settings/llm-providers]]."
+  [type-name]
+  (when-let [{:keys [settings]} (get single-provider-settings type-name)]
+    (not-empty
+     (into {}
+           (keep (fn [{field-key :key}]
+                   (when-let [setting-kw (get-in settings [field-key :setting])]
+                     [field-key (setting/env-var-name setting-kw)])))
+           (:fields (provider-type type-name))))))
 
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
@@ -728,18 +811,23 @@
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
-    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
-    (when-not (setting/obfuscated-value? value)
-      (when value
-        (validate-config-field! group-type field {field value}))
-      (cond
-        idx   (set-connections! (update-in stored [idx :config]
-                                           (fn [config]
-                                             (if value (assoc config field value) (dissoc config field)))))
-        value (set-connections! (conj stored {:key    conn-key
-                                              :type   group-type
-                                              :name   (str (:label (provider-type group-type)))
-                                              :config {field value}}))))))
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
+    ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
+    ;; padding in transit matches only trimmed
+    (if (or (setting/obfuscated-value? new-value)
+            (setting/obfuscated-value? value))
+      (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
+      (do
+        (when value
+          (validate-config-field! group-type field {field value}))
+        (cond
+          idx   (set-connections! (update-in stored [idx :config]
+                                             (fn [config]
+                                               (if value (assoc config field value) (dissoc config field)))))
+          value (set-connections! (conj stored {:key    conn-key
+                                                :type   group-type
+                                                :name   (str (:label (provider-type group-type)))
+                                                :config {field value}})))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 

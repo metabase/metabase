@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
@@ -29,6 +32,9 @@ title: Driver interface changelog
 - `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
@@ -58,11 +64,14 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
-- `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
-  `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
 
-- The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
-  changed; please update your implementations accordingly.
+  - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+    `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+  - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+    changed; please update your implementations accordingly.
 
 ## Metabase 0.63.0
 

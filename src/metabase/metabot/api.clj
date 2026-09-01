@@ -24,7 +24,9 @@
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -213,7 +215,10 @@
             thrown     (volatile! nil)
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
-                              (cond-> {:message-id external-id}
+                              (cond-> {:message-id external-id
+                                       :context-window-tokens
+                                       (metabot.self/context-window-tokens
+                                        (metabot.settings/llm-metabot-provider))}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try

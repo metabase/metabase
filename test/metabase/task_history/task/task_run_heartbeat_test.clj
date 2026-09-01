@@ -17,7 +17,7 @@
 (deftest send-heartbeat-updates-own-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "send-heartbeat! updates updated_at for runs belonging to current process"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
                                                     :entity_id    1
@@ -52,7 +52,7 @@
 (deftest send-heartbeat-ignores-completed-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "send-heartbeat! does NOT update runs that are already completed"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
                                                     :entity_id    1
@@ -75,7 +75,7 @@
 (deftest mark-orphaned-runs-marks-old-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "mark-orphaned-runs! marks runs with old updated_at as :abandoned"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
                                                     :entity_id    1
@@ -91,7 +91,7 @@
 (deftest mark-orphaned-runs-ignores-recent-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "mark-orphaned-runs! does NOT mark runs with recent updated_at"
-      (let [recent-time (t/minus (t/offset-date-time) (t/minutes 30))]
+      (let [recent-time (t/truncate-to (t/minus (t/offset-date-time) (t/minutes 30)) :millis)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
                                                     :entity_id    1
@@ -107,7 +107,7 @@
 (deftest mark-orphaned-runs-ignores-completed-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "mark-orphaned-runs! does NOT mark already-completed runs"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
                                                     :entity_id    1
@@ -123,7 +123,7 @@
 (deftest mark-orphaned-runs-marks-long-running-runs-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "mark-orphaned-runs! marks runs older than 24 hours even with recent heartbeat"
-      (let [very-old-time (t/minus (t/offset-date-time) (t/hours 30))
+      (let [very-old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 30)) :millis)
             recent-time   (t/offset-date-time)]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
@@ -144,7 +144,7 @@
 (deftest mark-orphaned-tasks-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "mark-orphaned-tasks! marks started tasks belonging to orphaned runs"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun     {run-id :id} {:run_type     :sync
                                                         :entity_type  :database
                                                         :entity_id    1
@@ -165,7 +165,7 @@
 (deftest mark-orphaned-tasks-ignores-completed-tasks-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "mark-orphaned-tasks! does NOT mark already-completed tasks"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         (mt/with-temp [:model/TaskRun     {run-id :id} {:run_type     :sync
                                                         :entity_type  :database
                                                         :entity_id    1
@@ -211,7 +211,7 @@
 (deftest full-heartbeat-cycle-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "full heartbeat cycle: heartbeat, orphan detection, task cleanup"
-      (let [old-time (t/minus (t/offset-date-time) (t/hours 3))]
+      (let [old-time (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)]
         ;; Create runs: one from current process (should get heartbeat), one from dead process (should be orphaned)
         (mt/with-temp [:model/TaskRun     {live-run-id :id}  {:run_type     :sync
                                                               :entity_type  :database

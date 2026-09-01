@@ -9,9 +9,7 @@ import {
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Center, Loader } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
@@ -21,24 +19,20 @@ import {
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
+import { DATABASE_TABLES_QUERY } from "../../selectors/data-permissions/databases";
 import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
-const EMPTY_DATABASE_LIST: Database[] = [];
 
 export function DataPermissionsPage() {
   const params = useParams<{ databaseId: string }>();
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
-  const databases = useSelector(
-    (state) =>
-      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
-  );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
   );
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
-  const diff = useSelector((state) => getDiff(state, { databases, groups }));
+  const diff = useSelector((state) => getDiff(state, { groups }));
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
@@ -62,12 +56,7 @@ export function DataPermissionsPage() {
 
   const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
     params.databaseId !== undefined
-      ? {
-          id: Number(params.databaseId),
-          include_hidden: true,
-          remove_inactive: true,
-          skip_fields: true,
-        }
+      ? { id: Number(params.databaseId), ...DATABASE_TABLES_QUERY }
       : skipToken,
   );
 

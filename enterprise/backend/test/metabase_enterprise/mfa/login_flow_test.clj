@@ -225,7 +225,7 @@
       (mt/with-temporary-setting-values [mfa-enforcement          enforcement
                                          mfa-requirement-deadline deadline]
         (mt/with-model-cleanup [:model/AuthIdentity]
-          (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
+          (mt/with-temp [:model/User {user-id :id, email :email} {}]
             (t2/insert! :model/AuthIdentity {:user_id      user-id
                                              :provider     "totp"
                                              :confirmed_at (t/instant)
@@ -249,7 +249,7 @@
                                            :required (t/minus (t/offset-date-time) (t/days 12))]]]
       (mt/with-temporary-setting-values [mfa-enforcement          enforcement
                                          mfa-requirement-deadline deadline]
-        (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
+        (mt/with-temp [:model/User {user-id :id, email :email} {}]
           (let [new-password (str "New-" (random-uuid))
                 resp         (mt/client :post 200 "session/reset_password"
                                         {:token    (auth-identity/create-password-reset! user-id)

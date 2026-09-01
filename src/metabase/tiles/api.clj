@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; tile API field refs are still legacy MBQL; keep the legacy schema until the MBQL 5 port above
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -129,7 +130,7 @@
   [:schema
    {:decode/api (fn [field]
                   (when (string? field)
-                    (let [deserialized (json/decode+kw field)]
+                    (let [deserialized (json/decode field)]
                       (when (sequential? deserialized)
                         (mbql.normalize/normalize deserialized)))))}
    [:ref ::mbql.s/field]])
@@ -137,7 +138,10 @@
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
   [query      :- ::lib.schema/query
    legacy-ref :- ::legacy-ref]
-  (lib/metadata query (lib/->mbql5 legacy-ref)))
+  (let [field (lib/metadata query (lib/->mbql5 legacy-ref))]
+    (api/check-400 (not (:fk-field-id field))
+                   (tru "Fields referenced via implicit joins are not supported."))
+    field))
 
 (mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.
@@ -202,7 +206,7 @@
   [:schema
    {:decode/api (fn [s]
                   (when (string? s)
-                    (let [deserialized (json/decode+kw s)]
+                    (let [deserialized (json/decode s)]
                       (when (map? deserialized)
                         (lib-be/normalize-query deserialized)))))}
    [:ref ::lib.schema/query]])

@@ -18,6 +18,9 @@
 (def ^:private configured-anthropic
   (connection "anthropic" "anthropic" {:api-key "sk-ant-test"}))
 
+(def ^:private configured-google
+  (connection "google" "google" {:oauth-access-token "ya29.test" :project-id "my-project"}))
+
 (defn- do-with-connections!
   [conns thunk]
   (mt/with-temporary-setting-values [llm-providers conns]
@@ -29,8 +32,11 @@
 
 (defn- do-with-selected-model!
   [model-ref thunk]
-  (mt/with-temporary-raw-setting-values [llm-metabot-provider model-ref]
-    (thunk)))
+  ;; Env vars outrank raw setting values, so mask any MB_LLM_METABOT_PROVIDER the host
+  ;; carries (dev machines pin one in mise.local.toml) before selecting the model.
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+    (mt/with-temporary-raw-setting-values [llm-metabot-provider model-ref]
+      (thunk))))
 
 (defmacro ^:private with-selected-model
   [model-ref & body]
@@ -184,16 +190,75 @@
   (testing "only anthropic and openai models that stream reasoning report support"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
-                       (connection "bedrock" "bedrock")]
+                       (connection "bedrock" "bedrock")
+                       (connection "google" "google")]
       (doseq [[model-ref expected]
-              {"anthropic/claude-sonnet-4-6"       true
-               "anthropic/claude-haiku-4-5"        false
-               "openai/gpt-5.4"                    true
-               "openai/gpt-4o"                     false
-               "bedrock/anthropic.claude-opus-4-8" false}]
+              {"anthropic/claude-sonnet-4-6"                true
+               "anthropic/claude-haiku-4-5"                 false
+               "openai/gpt-5.4"                             true
+               "openai/gpt-4o"                              false
+               "bedrock/anthropic.claude-opus-4-8"          false
+               ;; google serves both wire families; only its Claude models stream reasoning back
+               "google/anthropic/claude-sonnet-4-6"         true
+               "google/anthropic/claude-haiku-4-5@20251001" false
+               "google/google/gemini-3.5-flash"             false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
+
+(deftest metabot-supports-fast-mode-test
+  (testing "only BYOK anthropic connections serving a fast-capable model report support"
+    (with-connections [(connection "anthropic" "anthropic")
+                       (connection "bedrock" "bedrock")
+                       (connection "openai" "openai")]
+      (doseq [[model-ref expected]
+              {"anthropic/claude-opus-5"           true
+               "anthropic/claude-opus-4-8"         true
+               "anthropic/claude-opus-4-7"         false
+               "anthropic/claude-sonnet-4-6"       false
+               "bedrock/anthropic.claude-opus-4-8" false
+               "openai/gpt-5.4"                    false}]
+        (testing model-ref
+          (with-selected-model model-ref
+            (is (= expected (metabot.settings/llm-metabot-supports-fast-mode?))))))))
+  (testing "the managed connection reports no support even for a fast-capable model"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (with-connections [(connection "metabase" "metabase")]
+        (with-selected-model "metabase/anthropic/claude-opus-5"
+          (is (false? (metabot.settings/llm-metabot-supports-fast-mode?))))))))
+
+(deftest metabot-supports-reasoning-vllm-test
+  (testing "vLLM answers from what the connect-time probe recorded on the connection, since neither its catalog
+           nor its model names carry a reasoning field"
+    (doseq [recorded ["true" "false"]]
+      (testing (str "recorded " recorded)
+        (with-connections [(connection "vllm" "vllm" {:base-url        "http://vllm.internal:8000/v1"
+                                                      :model-reasoning recorded})]
+          (with-selected-model "vllm/vllm-test"
+            (is (= (= "true" recorded) (metabot.settings/llm-metabot-supports-reasoning?))))))))
+  (testing "an unprobed server defaults to the non-reasoning renderer rather than guessing"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
+(deftest metabot-configured-with-a-keyless-vllm-connection-test
+  (testing "a vLLM server started without --api-key is a complete configuration: the base URL is the credential"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (true? (metabot.settings/llm-metabot-configured?))))))
+  (testing "and a connection carrying only a key is not"
+    (with-connections [(connection "vllm" "vllm" {:api-key "local-dev-key"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+
+(deftest metabot-provider-keeps-slashes-in-a-vllm-model-test
+  (testing "a served model named after its Hugging Face repo keeps its slashes — everything after the first
+           segment is the model"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        (metabot.settings/llm-metabot-provider! "vllm/mlx-community/Qwen3-14B-4bit")
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit"}
+                (#'metabot.self/parse-provider-model (metabot.settings/llm-metabot-provider))))))))
 
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
@@ -279,6 +344,35 @@
            clojure.lang.ExceptionInfo #"Invalid Azure model"
            (metabot.settings/llm-metabot-provider! "azure/anthropic/a/b"))))))
 
+(deftest validate-metabot-provider-google-model-format-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "accepts a publisher-qualified model"
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+        (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
+        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a model with no publisher: the connection key is not one, so this names the model \"gemini-3.5-flash\""
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/gemini-3.5-flash\""
+           (metabot.settings/llm-metabot-provider! "google/gemini-3.5-flash"))))))
+
+(deftest validate-metabot-provider-google-rejects-an-unsupported-publisher-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a publisher this provider does not serve"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/evilai/some-model\""
+           (metabot.settings/llm-metabot-provider! "google/evilai/some-model"))))))
+
+(deftest validate-metabot-provider-google-rejects-a-slash-in-the-model-id-test
+  (with-connections [configured-anthropic configured-google]
+    (testing "rejects a model ID with a slash in it, which is not one path segment"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Google model \"google/anthropic/a/b\""
+           (metabot.settings/llm-metabot-provider! "google/anthropic/a/b"))))))
+
 (deftest validate-metabot-provider-managed-model-allow-list-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (with-connections [configured-anthropic (connection "metabase" "metabase")]
@@ -301,6 +395,61 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Model name is required"
              (metabot.settings/llm-metabot-provider! "metabase/")))))))
+
+(deftest llm-mini-model-defaults-to-the-metabot-connections-mini-model-test
+  (testing "with nothing stored, quick tasks run on the fastest model of the connection Metabot uses"
+    (mt/with-temporary-raw-setting-values [llm-mini-model nil]
+      (with-connections [configured-anthropic
+                         (connection "openai" "openai" {:api-key "sk-openai"})]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
+        (testing "including a second connection of the same type, which keeps its own key"
+          (with-selected-model "openai/gpt-5.4"
+            (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))))
+
+(deftest llm-mini-model-falls-back-to-the-metabot-model-test
+  (mt/with-temporary-raw-setting-values [llm-mini-model nil]
+    (testing "provider types with no mini model fall through to the model Metabot itself uses"
+      (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
+                                                      :base-url "https://my-resource.services.ai.azure.com/openai"})]
+        (with-selected-model "azure/openai/my-gpt-deployment"
+          (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-mini-model))))))
+    (testing "so does a model reference naming a connection that does not exist"
+      (with-connections []
+        (with-selected-model "gone/some-model"
+          (is (= "gone/some-model" (metabot.settings/llm-mini-model))))))))
+
+(deftest llm-mini-model-explicit-value-wins-test
+  (with-connections [configured-anthropic]
+    (with-selected-model "anthropic/claude-sonnet-4-6"
+      (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
+        (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-mini-model))))
+      (testing "and clearing it returns to the derived mini model"
+        (mt/with-temporary-setting-values [llm-mini-model nil]
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+
+(deftest explicit-mini-model-reports-only-what-was-set-test
+  (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"
+    (with-connections [configured-anthropic]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (mt/with-temporary-setting-values [llm-mini-model nil]
+          (is (nil? (metabot.settings/explicit-mini-model)))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
+        (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
+          (is (= "anthropic/claude-opus-4-8" (metabot.settings/explicit-mini-model))))))))
+
+(deftest llm-mini-model-is-validated-like-the-metabot-model-test
+  (with-connections [configured-anthropic
+                     (connection "azure" "azure" {:api-key  "azure-key"
+                                                  :base-url "https://my-resource.services.ai.azure.com/openai"})]
+    (testing "rejects a reference with no model"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Model name is required"
+           (metabot.settings/llm-mini-model! "anthropic"))))
+    (testing "applies the azure deployment-name rules"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Azure model"
+           (metabot.settings/llm-mini-model! "azure/gemini/some-deployment"))))))
 
 (deftest ai-usage-max-retention-days-default-test
   (testing "defaults to 180 days when no env var is set"

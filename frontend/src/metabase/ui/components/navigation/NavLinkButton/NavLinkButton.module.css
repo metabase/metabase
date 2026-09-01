@@ -1,0 +1,21 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1rem;
+  min-height: 1rem;
+  padding: 0 var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-brand);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+
+  &[aria-disabled="true"] {
+    color: var(--mb-color-text-disabled);
+    cursor: default;
+  }
+}

@@ -21,12 +21,7 @@ import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(

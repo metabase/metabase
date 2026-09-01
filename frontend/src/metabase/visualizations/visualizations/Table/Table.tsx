@@ -5,15 +5,13 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
-import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
-  isPivoted as _isPivoted,
-  getTitleForColumn,
-} from "metabase/visualizations/lib/settings/column";
+  type VisibleTableData,
+  getVisibleTableData,
+} from "metabase/visualizations/lib/visible-table-data";
+import { isPivoted as _isPivoted, getTitleForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import type { DatasetData } from "metabase-types/api";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type { VisualizationProps } from "../../types";
@@ -23,11 +21,6 @@ import { TABLE_DEFINITION } from "./definition";
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
 }
-
-type TableData = Pick<
-  DatasetData,
-  "cols" | "rows" | "results_timezone" | "rows_truncated"
->;
 
 function TableComponent(props: TableProps) {
   const {
@@ -40,42 +33,11 @@ function TableComponent(props: TableProps) {
 
   const question = useSyncedQuestion(series, metadata);
 
-  const data = useMemo<TableData>(() => {
-    const [{ data }] = series;
-
-    if (_isPivoted(series, settings)) {
-      const pivotIndex = data.cols.findIndex(
-        (col) => col.name === settings["table.pivot_column"],
-      );
-      const cellIndex = data.cols.findIndex(
-        (col) => col.name === settings["table.cell_column"],
-      );
-      const normalIndex = data.cols.findIndex(
-        (col, index) => index !== pivotIndex && index !== cellIndex,
-      );
-      return DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex, settings);
-    }
-
-    const { cols, rows, results_timezone, rows_truncated } = data;
-    const columnSettings = settings["table.columns"] ?? [];
-    const columnIndexes = findColumnIndexesForColumnSettings(
-      cols,
-      columnSettings,
-    ).filter(
-      (columnIndex, settingIndex) =>
-        columnIndex >= 0 &&
-        (isShowingDetailsOnlyColumns ||
-          (cols[columnIndex].visibility_type !== "details-only" &&
-            columnSettings[settingIndex].enabled)),
-    );
-
-    return {
-      cols: columnIndexes.map((i) => cols[i]),
-      rows: rows.map((row) => columnIndexes.map((i) => row[i])),
-      results_timezone,
-      rows_truncated,
-    };
-  }, [series, settings, isShowingDetailsOnlyColumns]);
+  const data = useMemo<VisibleTableData>(
+    () =>
+      getVisibleTableData({ series, settings, isShowingDetailsOnlyColumns }),
+    [series, settings, isShowingDetailsOnlyColumns],
+  );
 
   const getColumnTitle = useCallback(
     (columnIndex: number) =>

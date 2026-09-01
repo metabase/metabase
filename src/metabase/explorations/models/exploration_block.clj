@@ -54,35 +54,9 @@
    (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
-(defn enrich-with-card-group
-  "Look up `:group` for `dim` (a group dimension snapshot) on a `card-dim-by-id` map (the
-  metric Card's `:dimensions` snapshot indexed by id) and `assoc` it onto the dim. Returns
-  `dim` unchanged when no group is recorded. The group label is metadata authored on the
-  Card's dimension; it doesn't live on the snapshot, so any consumer that wants to render it
-  needs this lookup."
-  [dim card-dim-by-id]
-  (if-let [group (get-in card-dim-by-id [(:dimension-id dim) :group])]
-    (assoc dim :group group)
-    dim))
-
-(defn- thread-blocks [thread-id]
-  (t2/select :model/ExplorationBlock
-             :exploration_thread_id thread-id
-             {:order-by [[:position :asc] [:id :asc]]}))
-
-(defn selected-metric-names
-  "Distinct names of the metric Cards selected across `thread-id`'s blocks, in authoring order."
-  [thread-id]
-  (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) (thread-blocks thread-id)))
-        names    (when (seq card-ids)
-                   (t2/select-pk->fn :name [:model/Card :id :name] :id [:in card-ids]))]
-    (keep names card-ids)))
-
-(defn selected-dimension-names
-  "Distinct display names (falling back to the raw `dimension-id`) of the dimensions
-  selected across `thread-id`'s blocks, in authoring order."
-  [thread-id]
-  (->> (thread-blocks thread-id)
-       (mapcat :dimensions)
-       (keep (fn [d] (or (:display-name d) (:dimension-id d))))
-       distinct))
+(defn dimension-label
+  "User-facing label for a dimension: the curated `:display-name` when set, else the raw
+  `:dimension-id` (block snapshots) or `:name` (metric Card dimensions). Returns nil when
+  none of those are present."
+  [dim]
+  (or (:display-name dim) (:dimension-id dim) (:name dim)))

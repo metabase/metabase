@@ -10,12 +10,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
-(defenterprise remove-impersonation-keys
-  "Pre-processing middleware. Removes the internal `:impersonation/*` keys from the top-level query."
-  :feature :none
-  [query]
-  (dissoc query :impersonation/role :impersonation/admin? :impersonation/allow-write?))
-
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
   and adds an impersonation role key to the query for non-admin users. Currently used solely for caching."

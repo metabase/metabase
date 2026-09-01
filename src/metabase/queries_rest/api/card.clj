@@ -33,6 +33,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -266,6 +267,7 @@
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
+                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))
@@ -398,7 +400,7 @@
                                      (update :where conj [:not [:in :id exclude-ids]])
 
                                      query
-                                     (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+                                     (update :where conj [:like :%lower.name (h2x/like-substring query)])
 
                                      ;; add a little buffer to the page to account for cards that are not
                                      ;; compatible + do not have permissions to read
@@ -900,37 +902,61 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(defn- serve-cached-stored-result
+  "Cached branch of the card-query endpoint. Loads the stored_result, runs the cached-read
+  perm gate, and returns the cached Dataset shape — same shape as a live query response, so
+  the FE doesn't care which path served the data.
+
+  The read-check on the URL card authorizes only snapshots actually materialized for that
+  card, so the (card, stored_result) pairing must exist in `stored_result_use` — otherwise
+  any readable card would serve as a skeleton key for arbitrary client-supplied snapshot
+  ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
+  [card-id stored-result-id sort]
+  (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
+  (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
+    (queries/assert-can-view-card-snapshots! card-id)
+    (api/check-404 (queries/cached-dataset sr sort))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
-  "Run the query associated with a Card."
+  "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
+  and optionally re-sorts the rows via the `sort` body param."
   [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview]}
+   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
    :- [:map
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+       [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+       [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
+       [:sort               {:optional true}
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         card             (api/check-404 (t2/select-one :model/Card resolved-card-id))]
-    (when dashboard_id
-      (api/read-check :model/Dashboard dashboard_id))
-    (qp.card/process-query-for-card
-     card :api
-     :parameters parameters
-     :ignore-cache ignore_cache
-     :dashboard-id dashboard_id
-     :card-transform (cond
-                       ;; Collection previews start from the aggregate so no usable default stays scalar
-                       collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                metric-card-without-query-breakouts)
-                       dashboard_id       qp.dashboard/card-with-default-metric-dimension)
-     :context (cond
-                collection_preview :collection
-                dashboard_id       :dashboard
-                :else              :question)
-     :middleware   {:process-viz-settings? false})))
+    (if stored_result_id
+      (do
+        (api/read-check card)
+        (serve-cached-stored-result resolved-card-id stored_result_id sort))
+      (do
+        (when dashboard_id
+          (api/read-check :model/Dashboard dashboard_id))
+        (qp.card/process-query-for-card
+         card :api
+         :parameters parameters
+         :ignore-cache ignore_cache
+         :dashboard-id dashboard_id
+         :card-transform (cond
+                           ;; Collection previews start from the aggregate so no usable default stays scalar
+                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
+                                                    metric-card-without-query-breakouts)
+                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
+         :context (cond
+                    collection_preview :collection
+                    dashboard_id       :dashboard
+                    :else              :question)
+         :middleware   {:process-viz-settings? false})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -13,33 +13,37 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn create-session-with-auth-tracking!
-  "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity."
+  "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity.
+
+  The session row and its `login_history` row are written in one transaction: `login_history.session_id` has a foreign
+  key to `core_session`, so a concurrent session delete (e.g. a password change, which invalidates the user's sessions)
+  must not be able to remove the freshly-created session between the two inserts and break that reference."
   ([user device-info provider mfa-auth-identity-id]
-   (let [user-id          (u/the-id user)
-         auth-identity    (t2/select-one [:model/AuthIdentity :id :expires_at]
-                                         :user_id user-id
-                                         :provider (name provider))
+   (let [user-id (u/the-id user)
+         provider-str (name provider)
+         auth-identity (t2/select-one [:model/AuthIdentity :id :expires_at]
+                                      :user_id user-id
+                                      :provider provider-str)
          auth-identity-id (:id auth-identity)
-         session-key      (str (random-uuid))
-         session-id       (string/random-string 12)
-         session          (t2/insert-returning-instance! :model/Session
-                                                         ;; Without setting the ID here we can't return an instance
-                                                         ;; on MySQL
-                                                         :id session-id
-                                                         :user_id user-id
-                                                         :auth_identity_id auth-identity-id
-                                                         :session_key session-key
-                                                         :expires_at (:expires_at auth-identity)
-                                                         :mfa_auth_identity_id mfa-auth-identity-id)]
-     (when provider
-       (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider)
-       (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))
-     (when device-info
-       (login-history/record-login-history! session-id user device-info))
+         session-key (str (random-uuid))
+         session-id (string/random-string 12)
+         session (t2/with-transaction [_]
+                   (u/prog1 (t2/insert-returning-instance! :model/Session
+                                                           ;; Without setting the ID here we can't return an instance
+                                                           ;; on MySQL
+                                                           :id session-id
+                                                           :user_id user-id
+                                                           :auth_identity_id auth-identity-id
+                                                           :session_key session-key
+                                                           :expires_at (:expires_at auth-identity)
+                                                           :mfa_auth_identity_id mfa-auth-identity-id)
+                            (when provider-str
+                              (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
+                              (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))
+                            (when device-info
+                              (login-history/record-login-history! session-id user device-info))))]
      (assoc session
-            :key  session-key
-            :type (if (some-> (request/current-request) request/embedded?)
-                    :full-app-embed
-                    :normal))))
+            :key session-key
+            :type (if (some-> (request/current-request) request/embedded?) :full-app-embed :normal))))
   ([user device-info provider]
    (create-session-with-auth-tracking! user device-info provider nil)))

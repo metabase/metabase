@@ -795,6 +795,35 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
+(deftest collection-items-card-permission-checks-do-not-scale-with-card-count-test
+  (testing "listing a collection's cards issues no per-card query (#78848)"
+    ;; `:can_write` hydration runs `mi/can-write?` on every row, which since Cards became
+    ;; Document-scopable has to know each Card's `document_id`. If the listing query does not
+    ;; select that column, `parent-document-id` resolves it from the primary key instead — one
+    ;; extra `SELECT` per Card. Compare two collection sizes rather than asserting a fixed budget,
+    ;; so the test pins the *shape* (constant) and not an incidental number.
+    (let [items!     (fn [coll-id]
+                       (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items")
+                                             :models "card"))
+          call-count (fn [n]
+                       (mt/with-temp [:model/Collection {coll-id :id} {}]
+                         (doseq [i (range n)]
+                           (t2/insert! :model/Card
+                                       {:name                   (str "n1q card " i)
+                                        :type                   :question
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :collection_id          coll-id
+                                        :database_id            (mt/id)
+                                        :dataset_query          (mt/mbql-query venues)
+                                        :display                "table"
+                                        :visualization_settings {}}))
+                         ;; warm any lazily-initialized caches the first request would otherwise pay for
+                         (items! coll-id)
+                         (t2/with-call-count [cc]
+                           (items! coll-id)
+                           (cc))))]
+      (is (= (call-count 2) (call-count 6))))))
+
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
@@ -3914,4 +3943,40 @@
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
           (is (some? item))
-          (is (nil? (:last-edit-info item))))))))
+          (is (nil? (:last-edit-info item))))))
+    (testing "Document attached to an exploration bumps the exploration's last-edit-info"
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration e    {:name          "DocBumped"
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id coll)}
+                     :model/Document    doc  {:name           "notes"
+                                              :collection_id  (:id coll)
+                                              :creator_id     (mt/user->id :crowberto)
+                                              :exploration_id (:id e)
+                                              :document       {:type "doc" :content []}}]
+        ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
+        ;; Insert directly so we control timestamps — within a `with-temp` transaction
+        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; identical timestamps and tiebreak non-deterministically.
+        (let [t (java.time.OffsetDateTime/now)]
+          (t2/insert! :model/Revision
+                      {:model       "Exploration"
+                       :model_id    (:id e)
+                       :user_id     (mt/user->id :crowberto)
+                       :object      (revision/serialize-instance :model/Exploration (:id e)
+                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :timestamp   (.minusSeconds t 60)
+                       :is_creation true})
+          (t2/insert! :model/Revision
+                      {:model     "Document"
+                       :model_id  (:id doc)
+                       :user_id   (mt/user->id :rasta)
+                       :object    (revision/serialize-instance :model/Document (:id doc)
+                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :timestamp t}))
+        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
+                                                                  (str "collection/" (:id coll) "/items")))
+                                     (:id e))]
+          (is (some? item))
+          (is (= (mt/user->id :rasta)
+                 (-> item :last-edit-info :id))))))))

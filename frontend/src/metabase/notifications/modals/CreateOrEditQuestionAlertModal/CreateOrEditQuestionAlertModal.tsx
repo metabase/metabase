@@ -10,7 +10,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
+import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
 import {
   canAccessSettings,
@@ -19,6 +19,7 @@ import {
 } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
+  alertHasValidTarget,
   alertIsValid,
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
@@ -294,6 +295,7 @@ export const CreateOrEditQuestionAlertModal = ({
   }
 
   const isValid = alertIsValid(notification, channelSpec);
+  const hasValidTarget = alertHasValidTarget(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
   const hasError = errorCreating || errorUpdating;
 
@@ -441,6 +443,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Button
           variant="outline"
           color="core-brand"
+          disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
         >
@@ -450,7 +453,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "feedback-negative" : "core-brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

@@ -1,30 +1,25 @@
 import cx from "classnames";
-import dayjs from "dayjs";
 import { Component } from "react";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getError,
-  getLoading,
-  getTable,
-  getTableQuestions,
-} from "../selectors";
-import type { StubbedTable } from "../types";
+import { getTable, getTableQuestions } from "../selectors";
+import type { ReferenceLoadingProps, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
 const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
@@ -46,8 +41,6 @@ const mapStateToProps = (
 ) => ({
   table: getTable(state, props),
   entities: getTableQuestions(state, props),
-  loading: getLoading(state),
-  loadingError: getError(state),
   metadata: getMetadata(state),
 });
 
@@ -67,7 +60,6 @@ class TableQuestions extends Component<TableQuestionsProps> {
       <div>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
-          type="questions"
           headerIcon="table2"
         />
         <LoadingAndErrorWrapper
@@ -112,4 +104,11 @@ class TableQuestions extends Component<TableQuestionsProps> {
 export default connect(
   mapStateToProps,
   // Unjustified type cast. FIXME
-)(TableQuestions as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableQuestions as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

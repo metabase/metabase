@@ -219,6 +219,7 @@
          :all-scores
          :dataset_query
          :document
+         :document_id
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -424,7 +425,13 @@
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
-        (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
+        (cond-> (t2/instance-of? :model/Collection instance) map-collection)
+        ;; The Card search spec filters `[:= :this.document_id nil]`, so nothing Document-scoped is
+        ;; ever indexed and every Card result is known not to belong to one. Say so on the instance:
+        ;; the permission checks below consult `document_id` (a Document-scoped Card is gated by its
+        ;; Document), and an instance that merely *omits* it makes that resolve one from the primary
+        ;; key instead — one extra query per result row.
+        (cond-> (t2/instance-of? :model/Card instance) (assoc :document_id nil)))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's

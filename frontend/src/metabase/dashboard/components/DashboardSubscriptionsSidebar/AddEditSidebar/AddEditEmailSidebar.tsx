@@ -4,24 +4,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Schedule } from "metabase/common/components/Schedule";
-import type {
-  ScheduleChangeProp,
-  ScheduleValue,
-} from "metabase/common/components/Schedule/types";
-import {
-  getScheduleDefaultsWithoutHour,
-  toScheduleSettings,
-} from "metabase/common/components/Schedule/utils";
+import type { ScheduleValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { canAccessSettings, getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
+import {
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
@@ -32,6 +29,7 @@ import {
   type ChannelSpec,
   type Dashboard,
   DataPermissionValue,
+  type DraftDashboardSubscription,
   type ScheduleSettings,
   type User,
 } from "metabase-types/api";

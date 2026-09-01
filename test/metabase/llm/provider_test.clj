@@ -1,5 +1,6 @@
 (ns metabase.llm.provider-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
@@ -85,6 +86,48 @@
                                       {:access-key-id     (setting/obfuscate-value "AKIAIOSFODNN7EXAMPLE")
                                        :secret-access-key "rotated-secret"
                                        :region            "us-west-1"})))))
+
+(deftest ^:parallel merge-config-preserves-a-masked-multi-line-secret-test
+  (testing (str "a service account key file is JSON that ends with a newline, so its mask straddles a line break — "
+                "echoing it back still has to keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (is (= {:auth-method         "service-account-key"
+              :service-account-key key-file}
+             (llm.provider/merge-config "google"
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key key-file}
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key (setting/obfuscate-value key-file)}))))))
+
+(deftest set-single-provider-setting!-ignores-a-masked-multi-line-secret-test
+  (testing (str "the setter trims before storing, but the mask of a newline-terminated secret only matches "
+                "untrimmed — echoing it back must keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (setting/obfuscate-value key-file))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-ignores-a-whitespace-padded-mask-test
+  (testing "a mask that picked up surrounding whitespace in transit is still an echo, not a new value"
+    (let [key-file "{\"type\": \"service_account\", \"project_id\": \"my-project\"}"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (str " " (setting/obfuscate-value key-file) " "))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-stores-a-fresh-value-test
+  (testing "a freshly entered value still replaces the stored one"
+    (let [old-key "{\"type\": \"service_account\", \"project_id\": \"old-project\"}"
+          new-key "{\"type\": \"service_account\", \"project_id\": \"new-project\"}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key old-key})]]
+        (llm.settings/llm-google-service-account-key! new-key)
+        (testing "trimmed, the way the setter has always stored"
+          (is (= (str/trim new-key) (llm.settings/llm-google-service-account-key))))))))
 
 (deftest validate-config!-test
   (testing "an unknown provider type is rejected"
@@ -218,6 +261,13 @@
                   "connection without one still counts as complete")
       (is (true? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
                                                          :base-url "https://r.services.ai.azure.com/openai"})))))
+  (testing "vLLM needs a base URL, and its API key is optional — a server started without --api-key takes none"
+    (is (true? (llm.provider/config-complete? "vllm" {:base-url "http://vllm.internal:8000/v1"})))
+    (is (true? (llm.provider/config-complete? "vllm" {:base-url "http://vllm.internal:8000/v1"
+                                                      :api-key  "local-dev-key"})))
+    (is (false? (llm.provider/config-complete? "vllm" {:api-key "local-dev-key"})))
+    (is (false? (llm.provider/config-complete? "vllm" {:base-url "  "})))
+    (is (false? (llm.provider/config-complete? "vllm" nil))))
   (testing "bedrock needs both AWS keys, and neither the region nor the session token"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))
@@ -256,6 +306,17 @@
                :config {:api-key "sk-ant-db"}
                :source :db}]
              (llm.provider/connections)))))
+  (testing "stored and env-derived connections are merged, stored first"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-openai-api-key "sk-env"]
+        (is (= [["anthropic" :db] ["openai" :env]]
+               (map (juxt :key :source) (llm.provider/connections)))))))
+  (testing "the whole stored list is read-only when it comes from the environment"
+    (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
+      (is (= [["anthropic" :env]]
+             (map (juxt :key :source) (llm.provider/connections)))))))
+
+(deftest connections-synthesized-from-the-environment-test
   (testing "the single-provider environment variables synthesize read-only connections keyed by provider type"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
@@ -272,11 +333,29 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (is (= [] (llm.provider/connections))))))
-  (testing "stored and env-derived connections are merged, stored first"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-openai-api-key "sk-env"]
-        (is (= [["anthropic" :db] ["openai" :env]]
-               (map (juxt :key :source) (llm.provider/connections)))))))
+  (testing "vLLM's base URL is its credential, so it alone synthesizes a connection"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-vllm-api-base-url "http://vllm.internal:8000/v1"]
+        (is (= [{:key        "vllm"
+                 :type       "vllm"
+                 :name       "vLLM"
+                 :source     :env
+                 :env-vars   #{"MB_LLM_VLLM_API_BASE_URL"}
+                 :env-fields #{:base-url}
+                 :config     {:base-url "http://vllm.internal:8000/v1"}}]
+               (llm.provider/connections))))
+      (testing "and a key on its own does not: it authenticates nothing without a server to send it to"
+        (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "local-dev-key"]
+          (is (= [] (llm.provider/connections)))))))
+  (testing "a metabase/ reference pinned by the environment synthesizes the managed connection it names"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (=? [{:key "metabase" :type "metabase" :source :env}]
+                (llm.provider/connections)))
+        (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
+                (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6")))))))
+
+(deftest connections-shadowed-by-the-environment-test
   (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                   {:api-key  "sk-ant-db"
@@ -296,18 +375,7 @@
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
-               (llm.provider/credentials "anthropic"))))))
-  (testing "a metabase/ reference pinned by the environment synthesizes the managed connection it names"
-    (mt/with-temporary-setting-values [llm-providers []]
-      (mt/with-temp-env-var-value! [mb-llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
-        (is (=? [{:key "metabase" :type "metabase" :source :env}]
-                (llm.provider/connections)))
-        (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
-                (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6"))))))
-  (testing "the whole stored list is read-only when it comes from the environment"
-    (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
-      (is (= [["anthropic" :env]]
-             (map (juxt :key :source) (llm.provider/connections)))))))
+               (llm.provider/credentials "anthropic")))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
@@ -433,7 +501,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
+             "vllm" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -450,6 +519,7 @@
     (is (= #{:api-key} (llm.provider/secret-field-keys "anthropic")))
     (is (= #{:api-key} (llm.provider/secret-field-keys "azure")))
     (is (= #{:access-key-id :secret-access-key :session-token} (llm.provider/secret-field-keys "bedrock")))
+    (is (= #{:api-key} (llm.provider/secret-field-keys "vllm")))
     (testing "google's service account key is a file field, but it is the whole credential"
       (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
@@ -460,13 +530,35 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
+            "deepseek"   "deepseek-v4-pro"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
+            ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
+            ;; its probe exercised
+            "vllm"       nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
+  (testing (str "every type's mini model, which short utility calls like conversation titles fall back to. A type "
+                "that grows a mini model, or loses one, has to be spelled out here — a missing `:mini-model` reads "
+                "as nil and quietly sends titles to the full-size model instead.")
+    (is (= {"anthropic"  "claude-haiku-4-5-20251001"
+            "openai"     "gpt-5.4-mini"
+            "openrouter" "anthropic/claude-haiku-4.5"
+            "mistral"    "mistral-medium-3-5"
+            "zai"        "glm-5.2"
+            "moonshot"   "kimi-k3"
+            "deepseek"   "deepseek-v4-flash"
+            "google"     nil
+            "azure"      nil
+            "bedrock"    "anthropic.claude-haiku-4-5"
+            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            "vllm"       nil
+            "metabase"   nil}
+           (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
+    (is (nil? (llm.provider/mini-model "evilai"))))
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))

@@ -134,7 +134,7 @@ export const SearchResults = ({
                   }
                 }
               }}
-              variant="default"
+              variant="primary"
             />
           </Box>
         );

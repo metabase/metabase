@@ -6,7 +6,7 @@
   padding: 0.5rem 0.75rem;
   font-weight: bold;
   border: none;
-  border-radius: var(--default-button-border-radius);
+  border-radius: var(--mantine-radius-sm);
   background-color: color-mix(
     in srgb,
     var(--view-button-color) 20%,

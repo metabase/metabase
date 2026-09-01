@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import { dayjs } from "metabase/dayjs";
 
 import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
 

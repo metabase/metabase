@@ -34,7 +34,6 @@ import type {
   LlmProviderType,
 } from "metabase-types/api";
 
-import { LlmModelPicker } from "./LlmModelPicker";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { getAddableProviderTypes } from "./addable-provider-types";
@@ -162,8 +161,6 @@ export function AIProviderList() {
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
       </Stack>
-
-      {hasConnections && <LlmModelPicker />}
 
       {(isAdding || editing) && (
         <ProviderConnectionModal

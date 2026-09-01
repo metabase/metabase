@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.explorations.query-plan.variants-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.variants :as variants]
    [metabase.lib.core :as lib]
@@ -59,19 +60,19 @@
                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                        (lib/aggregate (lib/count))))})
 
-(defn- orders-count-by-month-card
-  "Count metric on ORDERS broken out by CREATED_AT month — carries the temporal
-  breakout that `time-facet` and `per-value-time-series` resolve their time
-  axis from."
+(defn- orders-count-with-default-time-dim-card
+  "Count metric on ORDERS with a curated default CREATED_AT dimension — the
+  curated default that `time-facet` and `per-value-time-series` resolve their
+  time axis from."
   [card-id]
-  (let [mp (mt/metadata-provider)]
-    {:id            card-id
-     :dataset_query (lib/->legacy-MBQL
-                     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/count))
-                         (lib/breakout (lib/with-temporal-bucket
-                                         (lib.metadata/field mp (mt/id :orders :created_at))
-                                         :month))))}))
+  (-> (orders-count-card card-id)
+      (assoc :dimensions         [{:id             "d-created-at"
+                                   :display-name   "Created At"
+                                   :effective-type :type/DateTimeWithLocalTZ
+                                   :status         :status/active
+                                   :default        true}]
+             :dimension_mappings [{:dimension-id "d-created-at"
+                                   :target       [:field (mt/id :orders :created_at) nil]}])))
 
 (def ^:private created-at-dim
   {:dimension-id   "d-created-at"
@@ -144,7 +145,7 @@
   (testing "time-facet orders by date desc then metric desc,
             so a fired cap keeps the most recent months across all dim values"
     (let [ctx {:mp      (mt/metadata-provider)
-               :card    (orders-count-by-month-card 9000005)
+               :card    (orders-count-with-default-time-dim-card 9000005)
                :target  (orders-category-target)
                :dim     category-dim
                :segment nil
@@ -170,7 +171,7 @@
 (deftest per-value-time-series-cap-test
   (testing "per-value-time-series carries a date-desc row cap (it previously had none)"
     (let [ctx {:mp      (mt/metadata-provider)
-               :card    (orders-count-by-month-card 9000006)
+               :card    (orders-count-with-default-time-dim-card 9000006)
                :target  (orders-category-target)
                :dim     category-dim
                :segment nil
@@ -320,6 +321,107 @@
         (discover (mt/user->id :rasta))
         (is (= 2 @calls)
             "a repeat for the same user still hits the cache")))))
+
+;; ---------------------------------------------------------------------------
+;; Uniform binning across segment variants
+;; ---------------------------------------------------------------------------
+
+(def ^:private rating-dim
+  {:dimension-id   "d-rating"
+   :display-name   "Rating"
+   :effective-type :type/Float
+   :semantic-type  :type/Score})
+
+(defn- rating-target []
+  [:field (mt/id :products :rating) nil])
+
+(defn- resolve-segment
+  "Full segment metadata for `segment-id`, resolved the way the runner's
+  `build-row-context` does — via `lib/available-segments` on the card query."
+  [mp card segment-id]
+  (let [q (lib/query mp (:dataset_query card))]
+    (some #(when (= segment-id (:id %)) %) (lib/available-segments q))))
+
+(defn- breakout-binning
+  "The breakout's binning options, trimmed to the strategy keys — the full map
+  carries an opaque `:metadata-fn` closure that breaks value equality."
+  [q]
+  (select-keys (lib/binning (first (lib/breakouts q)))
+               [:strategy :bin-width :num-bins]))
+
+(defn- products-segment-definition
+  "Inner legacy-MBQL segment `:definition` filtering PRODUCTS, built through lib.
+  `build-filter` takes a metadata provider and returns the filter clause."
+  [build-filter]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        (lib/filter (build-filter mp))
+        lib/->legacy-MBQL
+        :query)))
+
+(deftest default-segment-uniform-binning-test
+  (testing "a segment that range-filters the binned dim gets the same pinned bin width as its
+            unsegmented sibling — segments must not re-derive bins over their narrowed domain"
+    (mt/with-temp [:model/Segment {seg-id :id} {:name       "Highly rated products"
+                                                :table_id   (mt/id :products)
+                                                :definition (products-segment-definition
+                                                             (fn [mp]
+                                                               (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4)))}]
+      (let [mp      (mt/metadata-provider)
+            card    (products-count-card 9000201)
+            segment (resolve-segment mp card seg-id)
+            ctx     {:mp mp :card card :target (rating-target) :dim rating-dim :segment nil :params {}}
+            q-all   (variants/dataset-query "default" ctx)
+            q-seg   (variants/dataset-query "default" (assoc ctx :segment segment))]
+        (is (some? segment))
+        (is (=? {:strategy :bin-width, :bin-width number?}
+                (breakout-binning q-all))
+            "default numeric binning is pinned to an explicit width")
+        (is (= (breakout-binning q-all) (breakout-binning q-seg)))
+        (testing "the QP resolves the same width for both charts, and the segmented chart's bins
+                  sit on the unsegmented chart's grid"
+          (let [res-all (qp/process-query q-all)
+                res-seg (qp/process-query q-seg)
+                info    (fn [res] (-> res :data :cols first :binning_info
+                                      (select-keys [:binning_strategy :bin_width])))
+                starts  (fn [res] (into #{} (map first) (-> res :data :rows)))]
+            (is (=? {:binning_strategy :bin-width, :bin_width number?}
+                    (info res-all)))
+            (is (= (info res-all) (info res-seg)))
+            (is (set/subset? (starts res-seg) (starts res-all)))))))))
+
+(defn- highly-rated-count-card
+  "Count metric on PRODUCTS scoped to `rating >= 4` in the card query itself — a
+  base filter shared by every variant, so it should keep narrowing the bins."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    {:id            card-id
+     :dataset_query (lib/->legacy-MBQL
+                     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/aggregate (lib/count))
+                         (lib/filter (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4))))}))
+
+(deftest default-card-filter-still-narrows-binning-test
+  (testing "a range filter in the metric card's own query still narrows the pinned width — only
+            the per-segment filter is excluded from the bin computation"
+    (mt/with-temp [:model/Segment {seg-id :id} {:name       "Cheap products"
+                                                :table_id   (mt/id :products)
+                                                :definition (products-segment-definition
+                                                             (fn [mp]
+                                                               (lib/< (lib.metadata/field mp (mt/id :products :price)) 30)))}]
+      (let [mp       (mt/metadata-provider)
+            base-ctx {:mp mp :target (rating-target) :dim rating-dim :segment nil :params {}}
+            q-full   (variants/dataset-query "default" (assoc base-ctx :card (products-count-card 9000202)))
+            card     (highly-rated-count-card 9000203)
+            segment  (resolve-segment mp card seg-id)
+            q-all    (variants/dataset-query "default" (assoc base-ctx :card card))
+            q-seg    (variants/dataset-query "default" (assoc base-ctx :card card :segment segment))]
+        (is (some? segment))
+        (is (= (breakout-binning q-all) (breakout-binning q-seg))
+            "a segment on another column doesn't change the width")
+        (is (< (:bin-width (breakout-binning q-all))
+               (:bin-width (breakout-binning q-full)))
+            "the card's own filter still narrows the domain, giving finer bins than the unfiltered metric")))))
 
 (deftest cached-discovery-key-is-stable-across-query-rebuilds-test
   (testing "the cache key is stable across per-row query rebuilds, so the discovery query runs once —"
