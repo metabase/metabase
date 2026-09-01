@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
-   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.v2.registry :as v2.registry]
@@ -55,8 +54,7 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata, the
-   scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query).
-   The v1 resource scopes stay in the union until the v1 surface retires."
+   scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query)."
   []
   (-> (sorted-set)
       ;; agent-api scopes from defendpoint metadata
@@ -66,9 +64,7 @@
       ;; mcp v2 tool scopes
       (into (v2.registry/registered-scopes))
       ;; mcp v2 ui-resource scopes
-      (into (v2.resources/resource-scopes))
-      ;; v1 resource scopes (retire with the v1 surface)
-      (into (mcp.resources/resource-scopes))))
+      (into (v2.resources/resource-scopes))))
 
 (defn v2-scopes
   "The scopes the v2 MCP surface itself gates on: its tool registry's scopes plus its resource

@@ -153,16 +153,15 @@ Requests can be sent individually or as a JSON-RPC batch. The server responds wi
 
 The implementation lives in these files:
 
-- **[`api.clj`](api.clj)** - The HTTP handler. Parses JSON-RPC requests, validates authentication and session headers,
-  enforces origin checks (DNS rebinding protection), and dispatches to the appropriate method. Supports both JSON and
-  SSE response formats.
+- **[`transport.clj`](transport.clj)** - The HTTP transport. Parses JSON-RPC requests, validates authentication and
+  session headers, enforces origin checks (DNS rebinding protection), and dispatches to the appropriate method.
+  Supports both JSON and SSE response formats.
 
-- **[`tools.clj`](tools.clj)** - Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
-  metadata, checks scopes, and routes tool calls through synthetic Agent API requests.
+- **[`v2/api.clj`](v2/api.clj)** - The tool surface handler. Wires the transport to the v2 tool + resource registries
+  and defines method dispatch (`tools/list`, `tools/call`, `resources/list`, `resources/read`, `ping`).
 
-- **[`resources.clj`](resources.clj)** - MCP resource registry and handlers. Holds documentation resources (like
-  the `construct_query` reference) keyed by URI, with scope-based access control on `resources/list` and
-  `resources/read`.
+- **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
+  checks scopes, validates arguments, dispatches calls, and records usage.
 
 - **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
   `::unrestricted` sentinel for session-based auth.

@@ -16,7 +16,7 @@
 (def endpoint-paths
   "Every path that serves MCP, including aliases kept for back-compat with existing client configs:
    `/api/mcp` predates the canonical name, and `/api/metabase-mcp/v2` is where the current tool
-   surface lived while it shipped behind a flag. All of them serve the same surface, so a client
+   surface shipped while it was behind a flag. All of them now serve the same surface, so a client
    pointed at any one of them keeps working."
   #{canonical-path
     "/api/mcp"

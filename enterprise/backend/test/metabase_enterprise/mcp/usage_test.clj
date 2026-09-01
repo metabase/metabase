@@ -5,8 +5,9 @@
   :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.usage :as usage]
+   [metabase.mcp.v2.api :as v2.api]
+   [metabase.mcp.v2.registry :as v2.registry]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -265,20 +266,18 @@
 ;;; ---------------------------------------- call-tool instrumentation --------------------------------------
 
 (deftest ^:parallel call-tool-records-error-when-handler-throws-test
-  (testing "a handler that throws (rather than returning error content) still records an error row,
-           then the exception is rethrown so the client still sees the failure"
+  (testing "a v2 tool handler that throws still records an error row, and the client sees a
+           (redacted) error rather than a silent success"
     (mt/with-premium-features #{:audit-app}
-      (let [sid  (str "throw-session-" (mt/random-name))
-            tool (str "boom-" (mt/random-name))]
+      (let [sid (str "throw-session-" (mt/random-name))]
         (try
-          (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
-                                      (fn [& _] (throw (ex-info "kaboom" {})))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
-                                  (mcp.tools/call-tool #{} sid tool {}))))
-          (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+          (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw (ex-info "kaboom" {})))]
+            (let [result (v2.registry/call-tool #{"agent:content:read"} sid "ping_v2" {})]
+              (is (:isError result) "the client sees an error result")))
+          (let [row (t2/select-one :model/McpToolCallLog :tool_name "ping_v2")]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))
-          (finally (cleanup-calls! :tool_name tool)))))))
+          (finally (cleanup-calls! :tool_name "ping_v2")))))))
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
 
@@ -355,12 +354,11 @@
                          (test.users/username->token :crowberto)
                          :post "mcp"
                          {:request-options {:headers {"mcp-session-id" sid}}}
-                         (jsonrpc "tools/call" {:name "read_resource"
-                                                :arguments {:uris ["metabase://databases"]}} 2))]
+                         (jsonrpc "tools/call" {:name "ping_v2" :arguments {}} 2))]
           (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :tool_name "read_resource" :client_version ver)]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "ping_v2" :client_version ver)]
               (is (some? row))
               (is (= "success" (:status row)))
               (is (= crowberto (:user_id row)))
