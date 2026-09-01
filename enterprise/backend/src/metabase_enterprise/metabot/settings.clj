@@ -59,5 +59,4 @@
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :can-read-from-env? false)
+  :feature    :ai-controls)

@@ -1740,6 +1740,17 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
 
+### `MB_METABOT_ADVANCED_PERMISSIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-advanced-permissions`.
+- [Configuration file name](./config-file.md): `metabot-advanced-permissions`
+
+Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
