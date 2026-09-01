@@ -371,6 +371,7 @@
     [:database-type  {:optional true} [:maybe :string]]
     [:active         {:optional true} :boolean]
     [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
+    [:data-sensitivity {:optional true} [:maybe ::column.data-sensitivity]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be
     ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
