@@ -115,6 +115,14 @@
           (is (contains? identifiers "active-viz"))
           (is (not (contains? identifiers "disabled-viz")))
           (is (not (contains? identifiers "error-viz"))))))
+    (testing "/list skips a legacy plugin whose identifier contains \":\" (would collide with another plugin's settings prefix)"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
+                                               :display_name "Colon Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "colon-hash"}]
+        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
+          (is (not (contains? identifiers "colon:viz"))))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
