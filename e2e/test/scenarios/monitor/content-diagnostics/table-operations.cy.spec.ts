@@ -158,7 +158,7 @@ describe("scenarios > monitor > content diagnostics > table operations", () => {
     cy.findByTestId("content-diagnostics-sidebar").should("be.visible");
 
     cy.log("switching tabs clears the search, the filters and the sidebar");
-    cy.findByRole("tab", { name: /Sparse/ }).click();
+    cy.findByRole("link", { name: "Sparse" }).click();
     cy.wait("@findings");
 
     cy.findByTestId("content-diagnostics-sidebar").should("not.exist");

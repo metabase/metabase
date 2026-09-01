@@ -1,8 +1,7 @@
 const { H } = cy;
 
-import dayjs from "dayjs";
-
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { dayjs } from "metabase/dayjs";
 
 import {
   markStale,
