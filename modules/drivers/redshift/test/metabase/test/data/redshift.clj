@@ -1,14 +1,17 @@
 (ns ^:mb/driver-tests metabase.test.data.redshift
-  "We use a single redshift database for all test runs in CI, so to isolate test runs and test databases we:
-   1. Use a unique session schema for the test run (unique-session-schema), and only sync tables in that schema.
-   2. Prefix table names with the database name, and for each database we only sync tables with the matching prefix.
+  "One Redshift database serves every test run, so a dataset is a schema within it, named by its
+  dataset id and holding only its own tables. A Database's `:schema-filters-patterns` then names one
+  literal schema, which Redshift pushes into the catalog query.
 
    e.g.
    H2 Tests                                          | Redshift Tests
    --------------------------------------------------+------------------------------------------------
-   `test-data`            PUBLIC.VENUES.ID           | <unique-session-schema>.test_data_venues.id
-   `test-data`            PUBLIC.CHECKINS.USER_ID    | <unique-session-schema>.test_data_checkins.user_id
-   `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
+   `test-data`            PUBLIC.VENUES.ID           | <dataset-schema>.test_data_venues.id
+   `test-data`            PUBLIC.CHECKINS.USER_ID    | <dataset-schema>.test_data_checkins.user_id
+   `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <dataset-schema>.sad_toucan_incidents.timestamp
+
+  [[unique-session-schema]] survives alongside them as this run's scratch space, which upload and
+  transform tests create tables in. It holds no dataset."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -21,13 +24,14 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-store :as dataset-store]
+   [metabase.test.data.dataset-store.registry :as dataset-store.registry]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -377,46 +381,12 @@
   ;; you create the tables with upper-case characters.
   (u/lower-case-en s))
 
-(mu/defmethod tx/dataset-already-loaded? :redshift
-  [driver :- :keyword
-   dbdef  :- [:map
-              [:database-name     :string]
-              [:table-definitions [:sequential
-                                   [:map
-                                    [:table-name :string]]]]]]
-  (or
-   ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
-   ;; can consider the dataset to already be loaded
-   (empty? (:table-definitions dbdef))
-   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
-   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
-   (let [session-schema (unique-session-schema)
-         tabledef       (first (:table-definitions dbdef))
-         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
-         probe!         (fn []
-                          (sql-jdbc.execute/do-with-connection-with-options
-                           driver jdbc-spec {:write? false}
-                           (fn [^java.sql.Connection conn]
-                             (jdbc/query {:connection conn} [probe-sql])
-                             true)))]
-     (try
-       (probe!)
-       (catch com.amazon.redshift.util.RedshiftException e
-         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
-           false
-           (throw e)))
-       (catch Exception e
-         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
-         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
-         (Thread/sleep 1000)
-         (try
-           (probe!)
-           (catch com.amazon.redshift.util.RedshiftException e2
-             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
-               false
-               (throw e2)))))))))
+;; The default SQL JDBC implementation drops each table in turn and leaves the schema and the
+;; store's tracking row behind. Going through the store makes the whole dataset go, and makes the
+;; store stop reporting one that is gone.
+(defmethod tx/destroy-db! :redshift
+  [driver dbdef]
+  (dataset-store/delete-dbdef! (dataset-store.registry/store-for driver) dbdef))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]

@@ -19,7 +19,6 @@
      still being safe for long-running test suites. Old-format datasets (without hour) are deleted after more than 1
      day for backwards compatibility. Cleanup is done once the first time we create a test dataset in this process,
      i.e. done in [[metabase.test.data.interface/before-run]].
-     See [[metabase.test.data.snowflake/delete-old-datasets-if-needed!]] for example.
 
   See this Slack thread for more info
   https://metaboat.slack.com/archives/CKZEMT1MJ/p1676659086280609?thread_ts=1676656964.624609&cid=CKZEMT1MJ or ask

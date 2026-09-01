@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.dataset-store :as dataset-store]
+   [metabase.test.data.dataset-store.registry :as dataset-store.registry]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -14,10 +15,7 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
-   [metabase.util.log :as log])
-  (:import
-   (java.sql PreparedStatement ResultSet)))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,15 +41,9 @@
                               :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
-;; in CI use a completely different set of databases for each run and tear down
-;; all of them when the job completes; see after-run below.
-(defonce dataset-prefix (str (rand-int 9999999)))
-
 (defn- already-qualified? [database-name]
   (and (string? database-name)
-       (or (str/starts-with? database-name "isolate_")
-           (str/starts-with? database-name "sha_")
-           (str/starts-with? database-name dataset-store/id-prefix))))
+       (str/starts-with? database-name dataset-store/id-prefix)))
 
 (defn qualified-db-name
   "Physical database holding a dataset's tables.
@@ -108,96 +100,6 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
-;;; --------------------------------- Cleanup ----------------------------------
-
-(defmethod tx/after-run :snowflake [_driver]
-  (let [spec (no-db-connection-spec)
-        query "select name from metabase_test_tracking.PUBLIC.datasets
-                where name like 'isolate_%s%%'"]
-    (doseq [{:keys [name]} (jdbc/query spec [(format query dataset-prefix)])]
-      (jdbc/query spec
-                  ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" name])
-      (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
-
-(defn- old-dataset-names
-  "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in a while or are not tracked and too old"
-  []
-  (let [days-ago -5
-        ;; tracked UNION ALL untracked
-        ;; NB. currently appears that the second half never shows anything; all
-        ;; datasets currently appear to be tracked.
-        query "select name from metabase_test_tracking.PUBLIC.datasets
-                where accessed_at < dateadd(day, ?, current_timestamp())"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
-                                               [query days-ago]))))
-
-;;; --------------------------------- Destruction ----------------------------------
-;;;
-;;; The whole-orchestration entry point ([[delete-old-test-data!]]) is the glue
-;;; and gets called from `tx/create-db!`.
-
-(defn- with-write-stmt!
-  "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
-  close everything. Centralizes the boilerplate so the per-resource drop fns
-  don't repeat it."
-  [f & args]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       (apply f stmt args)))))
-
-(defn- drop-old-datasets!
-  "Drop test datasets (databases) prefixed by `sha_` that too old."
-  []
-  (when-let [old-datasets (not-empty (old-dataset-names))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [dataset-name old-datasets]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old dataset:" dataset-name)
-          (try
-            (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-            (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                   dataset-name))
-            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
-
-(defn- delete-old-test-data!
-  "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
-   accessed in a while."
-  []
-  ;; the printlns are on purpose because we want them to show up when running tests, even on CI, to make sure this
-  ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
-  ;; intended -- Cam
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] deleting old test data...")
-  ;; disabling this temporarily as it has caused very difficult-to-debug failures
-  ;; in CI. even tho the datasets *have* been accessed recently, they are still
-  ;; being deleted and reinserted, with race conditions that cause some data to be
-  ;; inserted three times. this does mean that if datasets change, old versions
-  ;; will not be cleaned up automatically and will need to be manually GCed.
-  ;; local testing shows that identifying old datasets works correctly, but
-  ;; sometimes randomly in CI it seems to decide that datasets are old and
-  ;; deletes them even tho they are not old.
-  #_(drop-old-datasets!))
-
-(defonce ^:private deleted-old-test-data?
-  (atom false))
-
-(defn- delete-old-test-data-if-needed!
-  "Call [[delete-old-test-data!]], only if we haven't done so already."
-  []
-  (when (compare-and-set! deleted-old-test-data? false true)
-    (delete-old-test-data!)))
-
 (defn set-current-user-timezone!
   "Snowflake defaults to America/Los_Angeles; tests expect UTC. Must be set before loading data, or
   timestamps land in the wrong zone."
@@ -214,8 +116,6 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old test data (datasets)
-    (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -223,18 +123,13 @@
     ;; now call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
+;; No guard against dropping the shared `test-data` dataset any more. Deleting one is safe: its id
+;; is a hash of its contents, so the next caller rebuilds exactly what was there and the store's
+;; claim means only one of them does the work. Dropping it here rather than through the store is
+;; what was never safe.
 (defmethod tx/destroy-db! :snowflake
-  [_driver dbdef]
-  (when (= "test-data" (:database-name dbdef))
-    (throw (Exception. "tried to delete test-data dataset.")))
-  (let [database-name (qualified-db-name dbdef)
-        sql           (format "DROP DATABASE \"%s\";" database-name)]
-    (log/infof "[Snowflake] %s" sql)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "[Snowflake] destroy database " database-name (:database-name dbdef))
-    (jdbc/query (no-db-connection-spec)
-                ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
-    (jdbc/execute! (no-db-connection-spec) [sql])))
+  [driver dbdef]
+  (dataset-store/delete-dbdef! (dataset-store.registry/store-for driver) dbdef))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
@@ -259,104 +154,13 @@
 ;; Load each chunk without wrapping it in a transaction: on Snowflake `setAutoCommit` and `commit` are each a server
 ;; round trip, so the default per-chunk transaction turns one INSERT into three. [[load-data/create-db!]] has already
 ;; put this connection in autocommit mode, so the rows still land. No atomicity is lost - every chunk committed
-;; separately anyway, and [[dataset-rows-ok?!]] is what catches a half-loaded dataset and forces a reload.
+;; separately anyway, and the store does not mark a dataset ready until the load returns.
 (defmethod load-data/do-insert! :snowflake
   [driver conn table-identifier rows]
   (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))
 
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
-
-(defn- setup-tracking-db!
-  "Idempotently create test tracking database"
-  [conn driver]
-  (with-open [^PreparedStatement setup-1 (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;"
-                                          [])
-              ^PreparedStatement setup-2 (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          "CREATE TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.datasets (hash TEXT, name TEXT, accessed_at TIMESTAMP_TZ, access_note TEXT)"
-                                          [])
-              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
-              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
-    nil))
-
-(defonce ^:private set-up-tracking-db?
-  (atom false))
-
-(defn- setup-tracking-db-if-needed!
-  "Call [[setup-tracking-db!]], only if we haven't done so already.
-
-  Both of its statements are server round trips, and nothing drops `metabase_test_tracking` while a run is in
-  progress, so once they have succeeded they only need repeating in the next process."
-  [conn driver]
-  (when-not @set-up-tracking-db?
-    (setup-tracking-db! conn driver)
-    (reset! set-up-tracking-db? true)))
-
-(defn- database-exists?!
-  [conn driver db-def]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       driver
-                                       conn
-                                       "SHOW DATABASES LIKE ?"
-                                       [(qualified-db-name db-def)])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-    (some-> rs resultset-seq first)))
-
-(defn- dataset-rows-ok?! [conn {:keys [table-definitions] :as dataset}]
-  ;; sometimes for unknown reasons we get datasets double- or triple-inserted
-  ;; and we have not been able to determine why. if a dataset has too many rows,
-  ;; treat it as if it hasn't been loaded and force it to be reloaded.
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       :snowflake conn
-                                       (format "SHOW TABLES IN DATABASE \"%s\""
-                                               (qualified-db-name dataset)) [])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
-    (let [table-names (set (map :table-name table-definitions))
-          db-tables (->> (resultset-seq rs)
-                         ;; there are some other tables of unknown source in there
-                         ;; like "g_inspector_ji_f9f65557_e249_4543_ab34_9e"
-                         (filter #(table-names (:name %))))
-          db-row-counts (zipmap (map :name db-tables) (map :rows db-tables))
-          dataset-row-counts (zipmap (map :table-name table-definitions)
-                                     (map (comp count :rows) table-definitions))]
-      (= db-row-counts dataset-row-counts))))
-
-(defmethod tx/dataset-already-loaded? :snowflake
-  [driver db-def]
-  ;; check and see if ANY tables are loaded for the current catalog
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (and (database-exists?! conn driver db-def)
-          (dataset-rows-ok?! conn db-def)))))
-
-(defmethod tx/track-dataset :snowflake
-  [driver db-def]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (setup-tracking-db-if-needed! conn driver)
-     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
-                                               "  USING (select ? as hash, ? as name, current_timestamp() as accessed_at, ? as access_note) as n on d.hash = n.hash"
-                                               "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
-                                          [(tx/hash-dataset db-def)
-                                           (qualified-db-name db-def)
-                                           (tx/tracking-access-note)])
-                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-       (some-> rs resultset-seq doall)))))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
@@ -429,39 +233,15 @@
     (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
 
 (comment
-  (let [test-data (tx/get-dataset-definition (data.impl/resolve-dataset-definition
-                                              *ns* 'test-data))]
-    (tx/dataset-already-loaded? :snowflake test-data))
+  ;; What this account has actually been asked to drop lately.
   (jdbc/query (no-db-connection-spec) ["SELECT query_text, end_time
                                         FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
                                         WHERE query_text LIKE 'DROP DATABASE %'
                                         ORDER BY end_time DESC limit 64"])
-  (old-dataset-names)
-  (drop-old-datasets!)
-  (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
-  ;; Tracked databases ordered by age
-  (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age
-         from metabase_test_tracking.PUBLIC.datasets d
-         inner join metabase_test_tracking.information_schema.databases i on i.database_name = d.name
-         order by 5 asc"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :name :diff :age :accessed_at :created))))
-
-  ;; Tracked DBs that are not in snowflake
-  (->> ["select name, accessed_at from metabase_test_tracking.PUBLIC.datasets d
-       where d.name not in (select database_name from metabase_test_tracking.information_schema.databases)
-       order by accessed_at"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :name :accessed_at))))
-
-  ;; DBs in snowflake that are not tracked
-  (->> ["select database_name, created from metabase_test_tracking.information_schema.databases  d
-         where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
-         and d.database_name like 'sha_%'
-         -- and created < dateadd(day, -2, current_timestamp())
-         order by created"]
-       (jdbc/reducible-query (no-db-connection-spec))
-       (into [] (map (juxt :database_name :created)))))
+  ;; Every dataset the store knows about, oldest first.
+  (into [] (jdbc/reducible-query (no-db-connection-spec)
+                                 ["select id, state, created_at
+                                   from metabase_dataset_store.PUBLIC.datasets order by created_at"])))
 
 (defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
 

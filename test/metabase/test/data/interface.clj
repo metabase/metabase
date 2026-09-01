@@ -12,7 +12,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -113,7 +112,10 @@
                [:native-ddl {:optional true} [:sequential :any]]
                ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
-               [:disable-fk-checks {:optional true} :boolean]]]]
+               [:disable-fk-checks {:optional true} :boolean]
+               ;; Set by [[temp-database-definition]]. Read by the DatasetStore naming rule, which is
+               ;; why it lives on the definition rather than being decided at the call site.
+               [:temp? {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -139,6 +141,23 @@
 (def hash-dataset
   "Provides a consistent hash for the DatabaseDefinition"
   (memoize/ttl hash-dataset*))
+
+(defn temp-database-definition
+  "`database-definition` marked as belonging to one test, which is expected to destroy it when it
+  finishes.
+
+  The random suffix is what makes each invocation's data its own -- every driver needs that, and
+  most have nothing else. Drivers with a DatasetStore additionally name the result so the warehouse
+  can expire it, as a backstop for a test that dies before its cleanup runs."
+  [database-definition]
+  (-> (get-dataset-definition database-definition)
+      (update :database-name #(str % "-" (u.random/random-name)))
+      (assoc-in [:options :temp?] true)))
+
+(defn temp-database-definition?
+  "Whether `database-definition` came from [[temp-database-definition]]."
+  [database-definition]
+  (true? (get-in database-definition [:options :temp?])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
@@ -629,17 +648,6 @@
                        ~value
                        (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
        ~@body)))
-
-(defmulti track-dataset
-  "Track the creation or the usage of the database.
-   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
-  {:arglists '([driver dbdef]) :added "0.56.0"}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod track-dataset ::test-extensions
-  [_driver _dbdef]
-  nil)
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
@@ -1300,15 +1308,3 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
-
-(defn tracking-access-note
-  "Generic tracking access note"
-  []
-  (if (:ci env/env)
-    (format "CI: %s %s %s"
-            (str t/*testing-vars*)
-            (get env/env :github-actor)
-            (get env/env :github-head-ref))
-    (format "DEV: %s %s"
-            (str t/*testing-vars*)
-            (:user env/env))))

@@ -238,6 +238,43 @@
                 (tx/db-qualified-table-name
                  (:database-name (dataset-store/dataset-id-dbdef (dbdef "other-data"))) "venues"))))))
 
+(deftest temp-database-definition-gets-the-temp-prefix-test
+  (let [temp    (tx/temp-database-definition (dbdef "test-data"))
+        renamed (dataset-store/dataset-id-dbdef temp)]
+    (testing "a definition marked temporary is named for expiry, not for sharing"
+      (is (str/starts-with? (:database-name renamed) dataset-store/temp-id-prefix)))
+    (testing "still derived from the definition, so a caller holding only that can name it again"
+      (is (= renamed (dataset-store/dataset-id-dbdef temp))))
+    (testing "the mark is what changes the id, not the random suffix it also adds"
+      (is (not= (:database-name renamed)
+                (:database-name (dataset-store/dataset-id-dbdef (assoc temp :options {}))))))))
+
+(deftest delete-dbdef-test
+  (let [{:keys [store]} (test-world)
+        s               (store {})
+        original        (dbdef "test-data")]
+    (testing "deletes the dataset a load of the same definition created"
+      (is (= :created (dataset-store/create-dataset!
+                       s (:database-name (dataset-store/dataset-id-dbdef original)) original)))
+      (is (= :deleted (dataset-store/delete-dbdef! s original)))
+      (is (nil? (dataset-store/describe-dataset
+                 s (:database-name (dataset-store/dataset-id-dbdef original))))))
+    (testing "a definition that was never loaded is absent, not an error"
+      (is (= :absent (dataset-store/delete-dbdef! s (dbdef "never-loaded")))))
+    (testing "refuses to delete a dataset another caller is still materializing"
+      (let [{:keys [store]} (test-world)
+            entered         (promise)
+            release         (promise)
+            builder         (store {:owner "builder" :load-fn (fn [_ _] (deliver entered true) @release)})
+            other           (store {:owner "other"})
+            dataset-id      (:database-name (dataset-store/dataset-id-dbdef original))
+            build           (future (dataset-store/create-dataset! builder dataset-id original))]
+        @entered
+        (is (= :in-progress (dataset-store/delete-dbdef! other original)))
+        (deliver release true)
+        (is (= :created @build))
+        (is (= :ready (:state (dataset-store/describe-dataset other dataset-id))))))))
+
 (deftest create-dataset-and-wait-test
   (testing "waits out the caller holding the claim, then reports what it found"
     (let [{:keys [store]} (test-world)

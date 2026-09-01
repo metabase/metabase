@@ -9,6 +9,7 @@
    [diehard.core :as dh]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.lru-ttl-cache :as lru-ttl]))
 
 (set! *warn-on-reflection* true)
@@ -26,13 +27,15 @@
 
   Naming is caller policy: a caller wanting datasets that are not shared -- because it intends to
   write to them -- supplies its own id instead."
-  [dbdef]
-  (str id-prefix
-       (tx/hash-dataset dbdef)
-       "_"
-       ;; Normalized here rather than per adapter: BigQuery rejects a dataset id containing anything
-       ;; but word characters, and Redshift folds identifiers to lower case regardless.
-       (-> (:database-name dbdef) u/lower-case-en (str/replace #"-" "_"))))
+  ([dbdef]
+   (default-dataset-id id-prefix dbdef))
+  ([prefix dbdef]
+   (str prefix
+        (tx/hash-dataset dbdef)
+        "_"
+        ;; Normalized here rather than per adapter: BigQuery rejects a dataset id containing anything
+        ;; but word characters, and Redshift folds identifiers to lower case regardless.
+        (-> (:database-name dbdef) u/lower-case-en (str/replace #"-" "_")))))
 
 (def temp-id-prefix
   "Prefix borne by ids from [[temp-dataset-id]].
@@ -57,11 +60,19 @@
   Every physical name a driver derives -- database, schema, and table alike -- comes from
   `:database-name`, so renaming it at the top of a load is what puts the content hash into all of
   them without threading the definition through name resolution. Idempotent, since the id is itself
-  a database name that must hash to itself."
+  a database name that must hash to itself.
+
+  A dbdef from [[metabase.test.data.interface/temp-database-definition]] gets [[temp-id-prefix]]
+  instead. Still content-addressed rather than minted: `tx/destroy-db!` runs in a test's `finally`
+  holding the definition and nothing else, so the id has to be recoverable from it. Uniqueness comes
+  from the random suffix that marking already put on the database name."
   [dbdef]
   (if (str/starts-with? (:database-name dbdef) id-prefix)
     dbdef
-    (assoc dbdef :database-name (default-dataset-id dbdef))))
+    (assoc dbdef :database-name (default-dataset-id (if (tx/temp-database-definition? dbdef)
+                                                      temp-id-prefix
+                                                      id-prefix)
+                                                    dbdef))))
 
 (defprotocol DatasetStore
   "Create, delete, and enumerate datasets on a warehouse shared by concurrent, mutually unaware
@@ -149,6 +160,22 @@
       (throw (ex-info "Timed out waiting for another caller to finish creating a dataset"
                       {:dataset-id dataset-id, :timeout-ms timeout-ms}))
       result)))
+
+(defn delete-dbdef!
+  "Delete whatever dataset `dbdef` names, resolving the id exactly as a load does.
+
+  The seam for [[metabase.test.data.interface/destroy-db!]], whose callers hold a definition rather
+  than an id and mostly never passed through the rename in `default-get-or-create-database!`.
+  Dropping the physical dataset behind the store's back would leave a tracking row claiming a
+  dataset that is gone, which the next caller believes.
+
+  Returns what [[delete-dataset!]] returns."
+  [store dbdef]
+  (let [dataset-id (:database-name (dataset-id-dbdef dbdef))
+        result     (delete-dataset! store dataset-id)]
+    (when (= :in-progress result)
+      (log/warnf "Not deleting %s: another caller holds the claim on it" dataset-id))
+    result))
 
 (def ^:private seen-dataset-ttl-ms
   "How long this JVM trusts its own memory of a dataset being present.

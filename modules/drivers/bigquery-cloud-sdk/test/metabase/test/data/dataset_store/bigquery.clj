@@ -137,6 +137,15 @@
                   (bq.tx/project-id)
                   dataset-id))
 
+(defn- expiration-days
+  "Days after which BigQuery expires a dataset's tables, or nil to keep them indefinitely.
+
+  Read off the id rather than off which method is creating it: [[dataset-store/temp-id-prefix]] is
+  what says a dataset is disposable, whoever minted it."
+  [dataset-id]
+  (when (str/starts-with? dataset-id dataset-store/temp-id-prefix)
+    temp-dataset-expiration-days))
+
 (defn- criteria->where [{:keys [id-prefix state created-before]}]
   (let [clauses (cond-> []
                   ;; STARTS_WITH rather than LIKE: dataset ids contain `_`, a LIKE wildcard.
@@ -171,7 +180,7 @@
         (try
           ;; A stolen claim may leave a half-written dataset behind, so start from nothing.
           (drop-dataset! dataset-id)
-          (create-dataset-container! dataset-id nil)
+          (create-dataset-container! dataset-id (expiration-days dataset-id))
           (materialize! dataset-id dbdef)
           (if (mark-ready! tracking-dataset dataset-id)
             :created
@@ -190,7 +199,7 @@
       ;; The claim always succeeds -- the id was just minted. Taking it anyway is what puts the row
       ;; in the tracking table, which is how a sweeper finds this dataset if its owner dies first.
       (claim-for-create! tracking-dataset lease-seconds dataset-id)
-      (create-dataset-container! dataset-id temp-dataset-expiration-days)
+      (create-dataset-container! dataset-id (expiration-days dataset-id))
       (materialize! dataset-id dbdef)
       (mark-ready! tracking-dataset dataset-id)
       dataset-id))

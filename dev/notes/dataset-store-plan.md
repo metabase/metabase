@@ -364,6 +364,42 @@ The two lifetimes it leaves:
 Cost accepted: nothing can answer "which datasets are actually in use". If that is ever needed, it
 is a query-log question, not a reason to write on every dataset load.
 
+**Q6 — Is `tx/destroy-db!` part of the port? — DECIDED: yes.**
+
+It has to be. `create-dataset!` and `delete-dataset!` are the only two operations that may touch a
+dataset, and a `tx/destroy-db!` that drops the physical thing directly leaves a tracking row saying
+`ready` for a dataset that is gone — which the next caller believes, because believing the tracking
+table is the whole point of it.
+
+The three store drivers' `tx/destroy-db!` now resolve their store and call
+[[metabase.test.data.dataset-store/delete-dbdef!]]. That helper re-derives the dataset id from the
+definition, because `destroy-db!`'s callers hold a definition and nothing else — they run in a test's
+`finally`, far from the rename in `default-get-or-create-database!`.
+
+Two consequences worth writing down:
+
+- Snowflake's `(throw (Exception. "tried to delete test-data"))` guard is **gone**. Under
+  content-addressing, deleting the shared dataset is safe — the next caller rebuilds it exactly, and
+  the claim means one of them does the work. Dropping it *outside* the store was the unsafe part,
+  and that is what changed. `date_bucketing_test` depends on being able to delete and rebuild a
+  shared dataset when its time-relative data goes stale.
+- `tx/create-db!` is **not** routed through the store, so the two doors are not symmetric. Checked
+  rather than assumed: no store driver reaches a direct `tx/create-db!` call site today
+  (`::field-comments-sync` is h2/postgres/starburst; Redshift declares no `:actions`; Snowflake and
+  BigQuery set `:test/dynamic-dataset-loading` to false). Routing it too would mean extracting
+  BigQuery's loading body, since its adapter calls `tx/create-db!` polymorphically and would recurse.
+  Worth doing the day a store driver needs one; not worth it on unverifiable ground now.
+
+**Temp datasets are named, not minted, when they come in through a definition.**
+[[metabase.test.data.interface/temp-database-definition]] marks a definition as belonging to one
+test. `dataset-id-dbdef` then gives it [[temp-id-prefix]] while keeping it content-addressed, so the
+`finally` that holds only the definition can still name the dataset to delete. Uniqueness comes from
+the random suffix the mark also adds — which is what those callers were already doing by hand.
+
+`create-temp-isolated-dataset!` keeps minting its own id, for the direct `with-temp-dataset` path
+where no `:model/Database` is involved. BigQuery reads the expiry off the id prefix rather than off
+which method created the dataset, so both paths get the backstop.
+
 ---
 
 ## 5b. What must melt away
@@ -371,30 +407,34 @@ is a query-log question, not a reason to write on every dataset load.
 Acceptance criteria. Each of these exists only to paper over the missing coordination primitive; if
 they are still here at the end, the primitive is not doing its job.
 
-| Bandaid | Where |
-|---|---|
-| `unique-prefix` / `unique-session-schema` per-instance-per-hour namespacing | `test_util/unique_prefix.clj`, `redshift.clj:65` |
-| Snowflake's CI-only `isolate_<rand-int>` branch, `(defonce dataset-prefix (rand-int 9999999))`, and the `already-qualified?` special case | `snowflake.clj:47-60` |
-| Snowflake `after-run` sweeping `isolate_%` — needed only because of the row above | `snowflake.clj:108` |
-| `DROP SCHEMA IF EXISTS … CASCADE` before `CREATE SCHEMA` — defensive against a leaked previous run | `redshift.clj:262` |
-| `dataset-lock` / `dataset-locks` — in-process `ReentrantReadWriteLock`, invisible to the jobs that actually collide | `get_or_create.clj:29,~66` |
-| `deleted-old-datasets?` / `deleted-old-test-data?` once-per-process CAS guards | `bigquery_cloud_sdk.clj`, `snowflake.clj` |
-| `session-init-time` + `reload-data-if-needed!` comparing `:created_at` against process start | `get_or_create.clj` |
-| `tx/dataset-already-loaded?` as a separate call — the TOCTOU's other half | `interface.clj:513` |
-| Both commented-out reapers — these come *back* | `snowflake.clj:308`, `bigquery_cloud_sdk.clj:591` |
+| Bandaid | Where | Status |
+|---|---|---|
+| `unique-prefix` / `unique-session-schema` per-instance-per-hour namespacing | `test_util/unique_prefix.clj`, `redshift.clj:66` | **Partly.** No dataset is named through it any more. `unique-session-schema` survives as this run's *scratch* schema, which upload and transform tests create tables in — a real need, not coordination. |
+| Snowflake's CI-only `isolate_<rand-int>` branch, `(defonce dataset-prefix (rand-int 9999999))`, and the `already-qualified?` special case | `snowflake.clj` | **Gone.** `already-qualified?` now recognises only the store's own prefix. |
+| Snowflake `after-run` sweeping `isolate_%` | `snowflake.clj` | **Gone**, along with the names it swept. |
+| `DROP SCHEMA IF EXISTS … CASCADE` before `CREATE SCHEMA` — defensive against a leaked previous run | `redshift.clj` | **Stands.** It guards the scratch schema, which is still per-run and still leakable. |
+| `dataset-lock` / `dataset-locks` — in-process `ReentrantReadWriteLock`, invisible to the jobs that actually collide | `get_or_create.clj:30,36` | **Stands.** Now redundant for store drivers — the claim is the real lock — but it still serves every other driver. |
+| `deleted-old-datasets?` / `deleted-old-test-data?` once-per-process CAS guards | `bigquery_cloud_sdk.clj`, `snowflake.clj` | **Gone**, with the reapers they guarded. |
+| `session-init-time` + `reload-data-if-needed!` comparing `:created_at` against process start | `get_or_create.clj:33` | **Stands**, for the same reason as `dataset-lock`. |
+| `tx/dataset-already-loaded?` as a separate call — the TOCTOU's other half | `interface.clj` | **Gone for all three store drivers.** The multimethod remains for drivers that have no store; `create-dataset!` answers the question and acts on the answer atomically. |
+| `tx/track-dataset` + `tx/tracking-access-note` — the "record a use" extension point | `interface.clj`, `get_or_create.clj:431` | **Gone entirely.** With Q5 no driver implemented it, so every call hit an inert default. Removed along with its one call site. |
+| Both commented-out reapers | `snowflake.clj`, `bigquery_cloud_sdk.clj` | **Deleted, not revived.** Age-based reaping is deliberately a separate body of work; see Q5 and Q6. |
+| BigQuery's `recently-tracked-hashes` debounce | `bigquery_cloud_sdk.clj` | **Gone.** It existed to make a per-use write affordable; Q5 removed the write. |
 
-**Not on this list, deliberately:** BigQuery's `recently-tracked-hashes` debounce is a legitimate
-performance decorator, not a bandaid. The `mb__isolation_*` sweeps target production workspace
-isolation, a real feature under test, not test coordination.
+Still standing, and the biggest one left:
+
+| `:test/dynamic-dataset-loading` forced to `false` for Snowflake ("too much contention here causing
+unreliable tests") and BigQuery. This is the plainest statement in the tree that dataset creation
+could not be coordinated. The store is what makes it safe to turn back on — but doing so changes
+which tests run on which drivers, so it is a CI-capacity decision to take once the store has been
+exercised against a live warehouse, not part of this change.
 
 **One honest residual.** Per-run namespacing is doing two jobs, and only one is a bandaid:
 
 - *Coordination* — "another job might be building this concurrently." Dies with the claim.
-- *Write isolation* — tests that mutate their data need a private copy. Legitimate, survives.
-
-After the fix, per-run namespacing stops being the default and becomes a deliberate choice for
-writable datasets only; the shared immutable `sha_` path stops needing it entirely. This is the
-gold/work split in `[[project_bq_test_infra_plan]]` arrived at from the other direction.
+- *Write isolation* — tests that mutate their data need a private copy. Legitimate, survives, and is
+  now expressed by [[metabase.test.data.interface/temp-database-definition]] rather than by each
+  caller stapling a random string onto a database name.
 
 ---
 

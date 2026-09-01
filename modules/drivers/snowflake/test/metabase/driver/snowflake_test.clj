@@ -442,7 +442,6 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
-      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"

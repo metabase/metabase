@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.test.data.interface/track-dataset`, the test multimethod added in 0.56.0 for shared cloud
+  databases to record dataset use, has been removed along with `tx/tracking-access-note`. Nothing
+  records dataset use any more: test dataset ids are content-addressed, so deleting a dataset only
+  ever costs the work of rebuilding it identically. Drivers that implemented `track-dataset` should
+  drop the implementation.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
