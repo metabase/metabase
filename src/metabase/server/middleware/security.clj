@@ -347,12 +347,29 @@
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(def ^:private csp-unsafe-char-re
+  "Chars that let an embedding-origin token escape the `frame-ancestors` directive: `;` (starts a
+   directive), `,` (starts a policy), and control chars (CR/LF header injection). Ordinary
+   whitespace is already removed by tokenizing on it."
+  #"[;,\p{Cntrl}]")
+
+(defn- valid-embedding-origins
+  "Drop any embedding-origin token with a CSP-structural char, so the rest can be spliced into
+   `frame-ancestors`/`X-Frame-Options` without injecting a directive. nil if none remain."
+  [raw]
+  (some->> (str/split (or raw "") #"\s+")
+           (remove str/blank?)
+           (remove #(re-find csp-unsafe-char-re %))
+           seq
+           (str/join " ")))
+
 (defn- interactive-embedding-origins
-  "The configured interactive-embedding app origins, when interactive embedding is
-   enabled; otherwise nil."
+  "The configured interactive-embedding app origins (validated to structurally-safe origins),
+   when interactive embedding is enabled; otherwise nil."
   []
   (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-       (setting/get-value-of-type :string :embedding-app-origins-interactive)))
+       (valid-embedding-origins
+        (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
