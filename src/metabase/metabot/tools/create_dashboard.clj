@@ -14,9 +14,11 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,12 +86,21 @@
 (defn- agent-error! [msg]
   (throw (ex-info msg {:agent-error? true :status-code 400})))
 
-(defn- validate-tile! [{:keys [chart_id query_id] :as tile}]
-  (when (= (some? chart_id) (some? query_id))
+(defn- readable-card [card-id]
+  (let [card (t2/select-one :model/Card :id card-id :archived false)]
+    (when-not (and card (mi/can-read? card))
+      (agent-error!
+       (tru "No saved question found with id `{0}` that you can read. Find questions with `search` first."
+            card-id)))
+    card))
+
+(defn- validate-tile! [{:keys [chart_id query_id card_id] :as tile}]
+  (when-not (= 1 (count (filter some? [chart_id query_id card_id])))
     (agent-error!
-     (tru "Each tile must reference exactly one of `chart_id` or `query_id`. Tile `{0}` references {1}."
-          (:title tile)
-          (if chart_id "both" "neither"))))
+     (tru "Each tile must reference exactly one of `chart_id`, `query_id`, or `card_id`. Tile `{0}` does not."
+          (:title tile))))
+  (when card_id
+    (readable-card card_id))
   (when (and chart_id (not (contains? (shared/current-charts-state) chart_id)))
     (agent-error!
      (tru "No generated chart found with id `{0}`. Available charts: [{1}]."
@@ -105,6 +116,7 @@
   [:map {:closed true}
    [:chart_id {:optional true} [:maybe :string]]
    [:query_id {:optional true} [:maybe :string]]
+   [:card_id {:optional true} [:maybe :int]]
    [:title [:string {:min 1}]]
    [:width [:int {:min 1 :max 24}]]
    [:height [:int {:min 1 :max 20}]]])
@@ -115,37 +127,37 @@
    [:description {:optional true} [:maybe :string]]
    [:tiles [:vector {:min 1} tile-schema]]])
 
-(defn- tile->state [{:keys [chart_id query_id title row col size_x size_y]}]
+(defn- tile->state [{:keys [chart_id query_id card_id title row col size_x size_y]}]
   (cond-> {:title title :row row :col col :size_x size_x :size_y size_y}
     chart_id (assoc :chart_id chart_id)
-    query_id (assoc :query_id query_id)))
+    query_id (assoc :query_id query_id)
+    card_id  (assoc :card_id card_id)))
 
-(defn- tile->definition [{:keys [chart_id query_id title row col size_x size_y]}]
-  (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
-        query (if chart
-                (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))
-                (get (shared/current-queries-state) query_id))]
-    (when-not query
-      (agent-error!
-       (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
-            (or chart_id query_id))))
-    {:title         title
-     :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
-                        (some-> (get-in chart [:chart_config :display_type]) name)
-                        "table")
-     :dataset_query (links/->legacy-mbql query)
-     :row           row
-     :col           col
-     :size_x        size_x
-     :size_y        size_y}))
-
-(defn- dashboard-url [dashboard-name description positioned-tiles]
-  (str "/dashboard/adhoc#"
-       (streaming/->url-hash
-        (cond-> {:name  dashboard-name
-                 :tiles (mapv tile->definition positioned-tiles)}
-          description (assoc :description description)))))
+(defn- tile->definition [{:keys [chart_id query_id card_id title row col size_x size_y]}]
+  (let [position {:row row :col col :size_x size_x :size_y size_y}]
+    (if card_id
+      (let [card (readable-card card_id)]
+        (merge {:title   title
+                :display (name (:display card))
+                :query   (links/->legacy-mbql (:dataset_query card))
+                :card_id card_id}
+               position))
+      (let [chart (when chart_id (get (shared/current-charts-state) chart_id))
+            query (if chart
+                    (or (first (:queries chart))
+                        (get (shared/current-queries-state) (:query_id chart)))
+                    (get (shared/current-queries-state) query_id))]
+        (when-not query
+          (agent-error!
+           (tru "The chart `{0}` has no resolvable query; recreate it before adding it to a dashboard."
+                (or chart_id query_id))))
+        (merge (cond-> {:title   title
+                        :display (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
+                                     (some-> (get-in chart [:chart_config :display_type]) name)
+                                     "table")
+                        :query   (links/->legacy-mbql query)}
+                 chart_id (assoc :chart_id chart_id))
+               position)))))
 
 (mu/defn ^{:tool-name "create_dashboard"
            :scope     scope/agent-dashboard-create}
@@ -154,8 +166,11 @@
 
   Provide `tiles` in the exact order they should appear on the dashboard — the layout
   fills the grid top-left to bottom-right following your order. Each tile references
-  exactly one of a `chart_id` (from `create_chart`) or a `query_id` (from a query tool),
-  and has a short human-friendly `title`.
+  exactly one of a `chart_id` (from `create_chart`), a `query_id` (from a query tool),
+  or a `card_id` (the numeric id of an existing saved question, model, or metric you
+  found with `search` or `read_resource`), and has a short human-friendly `title`.
+  Saved questions are added as-is and stay linked to the original; charts and queries
+  from this conversation become new questions when the dashboard is saved.
 
   For each tile, suggest a size with `width` (grid columns, out of 24 total) and
   `height` (grid rows). Sizes are relative hints expressing how much space a tile
@@ -180,8 +195,7 @@
           dashboard    (cond-> {:dashboard_id dashboard-id
                                 :name         dashboard-name
                                 :tiles        (mapv tile->state positioned)}
-                         description (assoc :description description))
-          url          (dashboard-url dashboard-name description positioned)]
+                         description (assoc :description description))]
       (when shared/*memory-atom*
         (swap! shared/*memory-atom* memory/set-dashboard dashboard-id dashboard))
       {:output            (str "<result>\nCreated dashboard \"" dashboard-name "\" with "
@@ -190,8 +204,11 @@
                                "not saved anywhere yet — offer to save it with `save_entity` "
                                "when the user asks. Do not fabricate a link to it.\n</instructions>")
        :structured-output (assoc dashboard :result-type :dashboard)
-       :data-parts        [(streaming/dashboard-entity-part
-                            {:id dashboard-id :title dashboard-name :url url})]})
+       :data-parts        [(streaming/generated-dashboard-part
+                            {:id          dashboard-id
+                             :title       dashboard-name
+                             :description description
+                             :tiles       (mapv tile->definition positioned)})]})
     (catch Exception e
       (log/errorf "Error creating dashboard: %s" (ex-message e))
       (if (:agent-error? (ex-data e))

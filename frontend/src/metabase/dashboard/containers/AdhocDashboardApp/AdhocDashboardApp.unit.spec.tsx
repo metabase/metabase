@@ -5,7 +5,8 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { utf8_to_b64 } from "metabase/utils/encoding";
+import type { AdhocDashboardDefinition } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
@@ -13,7 +14,7 @@ import { AdhocDashboardApp } from "./AdhocDashboardApp";
 
 registerVisualizations();
 
-const definition = {
+const definition: AdhocDashboardDefinition = {
   name: "Ops overview",
   description: "Key ops charts.",
   tiles: [
@@ -46,7 +47,7 @@ const setup = () => {
     <Route path="/dashboard/adhoc" element={<AdhocDashboardApp />} />,
     {
       withRouter: true,
-      initialRoute: `/dashboard/adhoc#${utf8_to_b64(JSON.stringify(definition))}`,
+      initialRoute: Urls.adhocDashboard(definition),
       storeInitialState: {
         dashboard: createMockDashboardState(),
       },

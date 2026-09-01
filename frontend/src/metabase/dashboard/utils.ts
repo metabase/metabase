@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import type { AdhocDashboardDefinition } from "metabase/urls";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -27,7 +28,6 @@ import type {
   BaseDashboardCard,
   CacheableDashboard,
   Card,
-  CardDisplayType,
   CardId,
   ClickBehavior,
   ColumnSettings,
@@ -86,22 +86,6 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
     })),
   };
 }
-
-export type AdhocDashboardTile = {
-  title: string;
-  display: CardDisplayType;
-  dataset_query: DatasetQuery;
-  row: number;
-  col: number;
-  size_x: number;
-  size_y: number;
-};
-
-export type AdhocDashboardDefinition = {
-  name: string;
-  description?: string;
-  tiles: AdhocDashboardTile[];
-};
 
 // An "adhoc" dashboard id is a `/dashboard/adhoc#<base64 JSON>` path carrying its
 // whole definition, mirroring `/question#<hash>` urls. It expands into the same

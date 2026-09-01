@@ -137,6 +137,13 @@ export const metabot = createSlice({
     ) => {
       state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
     },
+    markDashboardSaved: (
+      state,
+      action: PayloadAction<{ entityId: string; dashboardId: number }>,
+    ) => {
+      state.savedDashboardIds[action.payload.entityId] =
+        action.payload.dashboardId;
+    },
     // CONVERSATION REDUCERS
     setConversationTitle: convoReducer(
       (convo, action: ConvoPayloadAction<{ title: string }>) => {

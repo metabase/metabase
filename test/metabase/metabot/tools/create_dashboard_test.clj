@@ -1,21 +1,11 @@
 (ns metabase.metabot.tools.create-dashboard-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.create-dashboard :as create-dashboard]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]
-   [metabase.util.json :as json])
-  (:import
-   (java.util Base64)))
-
-(defn- decode-url-hash [url]
-  (-> (subs url (inc (str/index-of url "#")))
-      (->> (.decode (Base64/getDecoder)))
-      (String. "UTF-8")
-      json/decode+kw))
+   [metabase.test :as mt]))
 
 (defn- tile [title width height]
   {:title title :width width :height height})
@@ -98,21 +88,50 @@
              (get-in @memory [:state :dashboards dashboard-id])))
       (is (= (get-in @memory [:state :dashboards])
              (get-in @memory [:turn-state :dashboards]))))
-    (testing "emits a generated_entity dashboard data part linking to the ad-hoc dashboard page"
-      (let [part-data (get-in result [:data-parts 0 :data])]
-        (is (= {:type "dashboard" :id dashboard-id :title "Ops overview"}
-               (dissoc part-data :url)))
-        (is (str/starts-with? (:url part-data) "/dashboard/adhoc#"))))
-    (testing "the url hash carries the full self-contained dashboard definition"
-      (let [payload (decode-url-hash (get-in result [:data-parts 0 :data :url]))]
-        (is (= "Ops overview" (:name payload)))
-        (is (= "Key ops charts." (:description payload)))
-        (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 6}
+    (testing "emits a generated_entity dashboard part embedding the full definition, not a url"
+      (let [part (first (:data-parts result))
+            data (:data part)]
+        (is (= "generated_entity" (:data-type part)))
+        (is (= {:type        "dashboard"
+                :id          dashboard-id
+                :title       "Ops overview"
+                :description "Key ops charts."}
+               (dissoc data :tiles)))
+        (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 6 :chart_id "c-1"}
                 {:title "All venues" :display "table" :row 0 :col 12 :size_x 12 :size_y 9}]
-               (map #(dissoc % :dataset_query) (:tiles payload))))
-        (is (every? #(map? (:dataset_query %)) (:tiles payload)))))
+               (map #(dissoc % :query) (:tiles data))))
+        (is (every? #(map? (:query %)) (:tiles data)))))
     (testing "tells the model the dashboard is not saved yet"
       (is (re-find #"not saved anywhere yet" (:output result))))))
+
+(deftest create-dashboard-saved-card-tile-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card card {:name          "Saved venues"
+                                     :display       :line
+                                     :dataset_query (mt/mbql-query venues)}]
+      (let [result (create! (chart-memory)
+                            {:name  "Mixed"
+                             :tiles [{:card_id (:id card) :title "Saved venues" :width 12 :height 6}
+                                     {:chart_id "c-1" :title "Venues by price" :width 12 :height 6}]})
+            dashboard-id (get-in result [:structured-output :dashboard_id])
+            tiles        (get-in result [:data-parts 0 :data :tiles])]
+        (testing "an existing saved question can be a tile, stored by its card id"
+          (is (= {:title "Saved venues" :row 0 :col 0 :size_x 12 :size_y 6 :card_id (:id card)}
+                 (first (get-in result [:structured-output :tiles])))))
+        (testing "the entity tile embeds the card's query and display so it renders ad hoc"
+          (is (= {:title "Saved venues" :display "line" :card_id (:id card)
+                  :row 0 :col 0 :size_x 12 :size_y 6}
+                 (dissoc (first tiles) :query)))
+          (is (map? (:query (first tiles)))))
+        (is (string? dashboard-id))))))
+
+(deftest create-dashboard-unknown-card-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [result (create! (chart-memory)
+                          {:name  "Broken"
+                           :tiles [{:card_id Integer/MAX_VALUE :title "Missing" :width 12 :height 6}]})]
+      (is (nil? (:data-parts result)))
+      (is (re-find #"No saved question found" (:output result))))))
 
 (deftest create-dashboard-unknown-chart-test
   (let [result (create! (chart-memory)
