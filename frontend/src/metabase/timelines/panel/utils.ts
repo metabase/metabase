@@ -52,7 +52,7 @@ export const filterTimelinesByXAxis = (
 ): Timeline[] => {
   const domain = xAxis?.domain;
   if (!domain) {
-    return filterTimelineEvents(timelines, () => true);
+    return getNonEmptyTimelines(timelines);
   }
   const interval = xAxis?.interval ?? null;
   return filterTimelineEvents(timelines, (event) =>

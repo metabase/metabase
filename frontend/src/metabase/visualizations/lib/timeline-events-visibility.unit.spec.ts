@@ -75,6 +75,15 @@ const incidents = createMockTimeline({
   events: [outage],
 });
 
+// An event created on a brand-new timeline arrives before the timeline
+// list is refetched.
+const unfetchedEvent = createMockTimelineEvent({
+  id: 41,
+  timeline_id: 4,
+  name: "First event",
+  timestamp: "2027-06-25T00:00:00Z",
+});
+
 const timelines = [releases, marketing, incidents];
 const context = timelines;
 
@@ -287,17 +296,8 @@ describe("toggling a timeline the caller only partly knows about", () => {
 });
 
 describe("showing an event of a timeline that is not loaded yet", () => {
-  // An event created on a brand-new timeline arrives before the timeline
-  // list is refetched.
-  const newEvent = createMockTimelineEvent({
-    id: 41,
-    timeline_id: 4,
-    name: "First event",
-    timestamp: "2027-06-25T00:00:00Z",
-  });
-
   it("shows the timeline the event belongs to", () => {
-    expect(showTimelineEvents({}, [newEvent], context)).toEqual({
+    expect(showTimelineEvents({}, [unfetchedEvent], context)).toEqual({
       [SELECTED]: [4],
       [EXCLUDED]: [],
     });
@@ -305,17 +305,17 @@ describe("showing an event of a timeline that is not loaded yet", () => {
 
   it("keeps the events already shown", () => {
     const visibility = showTimelineEvents({}, [rc1], context);
-    expect(showTimelineEvents(visibility, [newEvent], context)).toEqual({
+    expect(showTimelineEvents(visibility, [unfetchedEvent], context)).toEqual({
       [SELECTED]: [1, 4],
       [EXCLUDED]: [rc2.id],
     });
   });
 
   it("hiding it records the event without collapsing the timeline", () => {
-    const visibility = showTimelineEvents({}, [newEvent], context);
-    expect(hideTimelineEvents(visibility, [newEvent], context)).toEqual({
+    const visibility = showTimelineEvents({}, [unfetchedEvent], context);
+    expect(hideTimelineEvents(visibility, [unfetchedEvent], context)).toEqual({
       [SELECTED]: [4],
-      [EXCLUDED]: [newEvent.id],
+      [EXCLUDED]: [unfetchedEvent.id],
     });
   });
 });
@@ -348,13 +348,7 @@ describe("showing a created event", () => {
   });
 
   it("shows the timeline when it is not loaded yet", () => {
-    const firstEvent = createMockTimelineEvent({
-      id: 41,
-      timeline_id: 4,
-      name: "First event",
-      timestamp: "2027-06-25T00:00:00Z",
-    });
-    expect(showCreatedTimelineEvent({}, firstEvent, context)).toEqual({
+    expect(showCreatedTimelineEvent({}, unfetchedEvent, context)).toEqual({
       [SELECTED]: [4],
       [EXCLUDED]: [],
     });
