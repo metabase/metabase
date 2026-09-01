@@ -9,6 +9,7 @@ import { useDispatch } from "metabase/redux";
 import {
   hideTimelineEvents,
   hideTimelines,
+  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -47,6 +48,10 @@ export const useTimelineEventsHandlers = ({
       onHideTimeline: (timeline: Timeline) =>
         updateVisibility((visibility, timelines) =>
           hideTimelines(visibility, [timeline.id], timelines),
+        ),
+      onEventCreated: (event: TimelineEvent) =>
+        updateVisibility((visibility, timelines) =>
+          showCreatedTimelineEvent(visibility, event, timelines),
         ),
       onSelectEvents: (events: TimelineEvent[]) =>
         dispatch(

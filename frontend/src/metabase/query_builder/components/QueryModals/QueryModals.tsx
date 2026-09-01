@@ -26,7 +26,7 @@ import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
 import { setArchivedQuestion } from "../../actions";
-import { showTimelineEvents } from "../../actions/timelines";
+import { showCreatedTimelineEvent } from "../../actions/timelines";
 import { updateUrl } from "../../actions/url";
 import {
   getQuestionWithoutComposing,
@@ -330,7 +330,7 @@ export function QueryModals({
         <TimelineEventModals
           modal={getTimelineEventModalState(modal, modalContext)}
           collectionId={question.collectionId() ?? null}
-          onEventCreated={(event) => dispatch(showTimelineEvents([event]))}
+          onEventCreated={(event) => dispatch(showCreatedTimelineEvent(event))}
           onClose={onCloseModal}
         />
       );

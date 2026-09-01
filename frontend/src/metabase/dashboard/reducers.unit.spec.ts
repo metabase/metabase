@@ -11,10 +11,13 @@ import {
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   fetchCardDataAction,
+  fetchDashboard,
   selectTimelineEvents,
+  setDashCardTimelineEventsVisibility,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 import { dashboardReducers as reducer } from "./reducers";
+import { timelineEvents } from "./reducers-typed";
 
 const TEST_DASHBOARD = createMockDashboard();
 
@@ -462,12 +465,28 @@ describe("dashboard reducers", () => {
       expect(state.timelineEvents.selection).toBeNull();
     });
 
+    const overriddenState = () =>
+      reducer(
+        selectedState(),
+        setDashCardTimelineEventsVisibility({
+          1: { "timeline.selected_timeline_ids": [10] },
+        }),
+      );
+
     it("resets when dashboard editing starts", () => {
-      const state = reducer(selectedState(), {
+      const state = reducer(overriddenState(), {
         type: SET_EDITING_DASHBOARD,
         payload: TEST_DASHBOARD,
       });
       expect(state.timelineEvents).toEqual({ overrides: {}, selection: null });
+    });
+
+    it("drops the session overrides when the dashboard is refetched", () => {
+      const state = timelineEvents(overriddenState().timelineEvents, {
+        type: fetchDashboard.fulfilled.type,
+      });
+      expect(state.overrides).toEqual({});
+      expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
     });
   });
 });

@@ -24,6 +24,8 @@ import {
   getTimelineEventsDashCardIds,
 } from "./selectors";
 
+const NO_EVENTS: TimelineEvent[] = [];
+
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
   const hasEventsDashCards = useSelector(
@@ -57,7 +59,7 @@ export const useDashCardTimelineEvents = (
   );
 
   const timelineEvents = useSelector((state) =>
-    isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : undefined,
+    isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : NO_EVENTS,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
