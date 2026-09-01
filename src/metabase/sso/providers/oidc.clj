@@ -147,35 +147,55 @@
    :error :identity-already-linked
    :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
 
+(defn- provider-names
+  "AuthIdentity provider names that may hold identities for this login: the per-IdP name plus, when
+   configured, the shared legacy name that pre-migration rows still live under."
+  [pname config]
+  (if-let [legacy (:legacy-provider-name config)]
+    [pname legacy]
+    [pname]))
+
 (defn linked-to-other-user?
-  "True if (provider, iss, sub) is already linked to a user other than `user-id` (nil: linked to anyone).
-   Rows without a stored iss count. `provider` is a keyword or AuthIdentity provider-name string."
-  [provider user-id sub iss]
+  "True if (iss, sub) is already linked to a user other than `user-id` (nil: linked to anyone) under any
+   of the AuthIdentity `provider-names`. Rows without a stored iss count."
+  [provider-names user-id sub iss]
   (boolean
    (some (fn [row]
            (and (not= (:user_id row) user-id)
                 (let [stored-iss (get-in row [:metadata :iss])]
                   (or (nil? stored-iss) (= stored-iss iss)))))
-         (t2/select :model/AuthIdentity :provider (name provider) :provider_id sub))))
+         (t2/select :model/AuthIdentity :provider [:in provider-names] :provider_id sub))))
+
+(defn- with-identity-link-check*
+  "Serialize the ownership check for (iss, sub) across `provider-names` with the write `f` performs; the
+   uniqueness is check-then-write only (iss lives in metadata JSON, so no DB constraint can enforce it).
+   Returns [[identity-already-linked-failure]] when the identity belongs to a user other than `user-id`."
+  [provider-names user-id sub iss f]
+  (cluster-lock/with-cluster-lock ::link-identity
+    (if (linked-to-other-user? provider-names user-id sub iss)
+      (do (log/warnf "OIDC login rejected: token identity is already linked to a different user%s"
+                     (if user-id (str " than " user-id) ""))
+          identity-already-linked-failure)
+      (f))))
 
 (defn link-identity!
   "Point `user-id`'s single AuthIdentity row for `provider` (a keyword or provider-name string, unique per
-   user+provider) at (iss, sub). Returns {:success? true}, or a failure map when that identity is already
-   linked to another user."
-  [provider user-id auth-identity sub iss]
-  ;; the uniqueness of (provider, sub, iss) is check-then-write only (iss lives in metadata JSON, so no DB
-  ;; constraint can enforce it); serialize the check and write cluster-wide
-  (cluster-lock/with-cluster-lock ::link-identity
-    (if (linked-to-other-user? provider user-id sub iss)
-      (do (log/warnf "OIDC login rejected: token identity is already linked to a different user than %d" user-id)
-          identity-already-linked-failure)
-      (do (if auth-identity
-            (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider_id sub})
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    (name provider)
-                                             :provider_id sub
-                                             :metadata    {:iss iss}}))
-          {:success? true}))))
+   user+provider) at (iss, sub); `auth-identity` is the row to repoint (nil inserts one). Returns
+   {:success? true}, or a failure map when that identity is already linked to another user under any of
+   `check-names` (default: just `provider`'s)."
+  ([provider user-id auth-identity sub iss]
+   (link-identity! provider [(name provider)] user-id auth-identity sub iss))
+  ([provider check-names user-id auth-identity sub iss]
+   (with-identity-link-check* check-names user-id sub iss
+     (fn []
+       (if auth-identity
+         (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider    (name provider)
+                                                                  :provider_id sub})
+         (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                          :provider    (name provider)
+                                          :provider_id sub
+                                          :metadata    {:iss iss}}))
+       {:success? true}))))
 
 (defn- verify-or-link-identity!
   "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
@@ -188,7 +208,8 @@
       {:success? false
        :error :invalid-token
        :message "ID token is missing the sub claim"}
-      (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider pname)
+      (let [names (provider-names pname config)
+            auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider pname)
             ;; rows written before per-IdP provider names live under the shared :legacy-provider-name; this
             ;; user's row with the same sub (and no conflicting iss) is the same identity — migrate it in place
             legacy-identity (when-not auth-identity
@@ -207,13 +228,11 @@
 
           ;; rows created before iss tracking have no :iss in metadata; a matching sub backfills it
           (and same-sub? (nil? stored-iss))
-          (do (auth-identity/merge-metadata! auth-identity {:iss iss})
-              {:success? true})
+          (link-identity! pname names (:id user) auth-identity sub iss)
 
           legacy-identity
           (do (log/infof "OIDC login: migrating user %d's legacy identity to provider %s" (:id user) pname)
-              (auth-identity/merge-metadata! legacy-identity {:iss iss} {:provider pname})
-              {:success? true})
+              (link-identity! pname names (:id user) legacy-identity sub iss))
 
           (and stored-sub (= stored-iss iss))
           (do (log/warnf "OIDC login rejected: token subject does not match the identity linked to user %d" (:id user))
@@ -227,7 +246,7 @@
           (do (when stored-sub
                 (log/infof "OIDC login: relinking user %d from %s to the token's identity" (:id user)
                            (if stored-iss (str "issuer " stored-iss) "a legacy identity without issuer")))
-              (link-identity! pname (:id user) auth-identity sub iss))
+              (link-identity! pname names (:id user) auth-identity sub iss))
 
           :else
           (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
@@ -347,14 +366,18 @@
      :error :invalid-token
      :message "ID token claims are missing"}
 
-    ;; JIT provisioning: the token's identity must not already belong to another account
+    ;; JIT provisioning pins the new account's email to the token's (iss, sub), so it follows the same
+    ;; linking policy as an existing account, and the identity must not already belong to another account
     (not user)
-    (cluster-lock/with-cluster-lock ::link-identity
-      (if (linked-to-other-user? (auth-identity/identity-provider-name provider (:oidc-config request))
-                                 nil (subject claims) (:iss claims))
-        (do (log/warn "OIDC login rejected: token identity is already linked to an existing user; not provisioning")
-            identity-already-linked-failure)
-        (next-method provider request)))
+    (let [config (:oidc-config request)
+          pname  (auth-identity/identity-provider-name provider config)]
+      (if-not (may-auto-link? claims config (get-in request [:user-data :email]))
+        (do (log/warn "OIDC login rejected: the token cannot establish a link for a new account; not provisioning")
+            {:success? false
+             :error :account-linking-required
+             :message "Metabase couldn't verify your email address, so an account can't be created for it. Please contact your administrator."})
+        (with-identity-link-check* (provider-names pname config) nil (subject claims) (:iss claims)
+          #(next-method provider request))))
 
     ;; a disabled account must not (re)link an identity; the session layer would only refuse the login
     ;; after the link had already been rewritten

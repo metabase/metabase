@@ -108,13 +108,10 @@
   (fn [provider _auth-identity-data]
     provider))
 
-(methodical/defmethod validate ::provider
-  [_provider _auth-identity-data]
-  ;; Default: no validation (SSO providers typically don't need credential validation)
-  nil)
-
 (methodical/defmethod validate :default
   [_provider _auth-identity-data]
+  ;; No validation by default: it's opt-in, and per-IdP provider names (e.g. "oidc-okta") have no
+  ;; registered provider keyword at all
   nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------

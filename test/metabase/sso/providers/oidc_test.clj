@@ -529,6 +529,77 @@
           (finally
             (t2/delete! :model/User :email email)))))))
 
+(deftest login-jit-follows-linking-policy-test
+  (testing "JIT provisioning is refused when the token could not have linked an existing account either"
+    (let [email "jit-unverified@example.com"]
+      (try
+        (let [result (login-with-claims! (assoc base-claims :email email) test-config)]
+          (is (false? (:success? result)))
+          (is (= :account-linking-required (:error result)))
+          (is (nil? (t2/select-one :model/User :email email)) "No account should be provisioned"))
+        (finally
+          (t2/delete! :model/User :email email)))))
+  (testing "A trusted email domain allows JIT provisioning without email_verified"
+    (let [email "jit-trusted@example.com"]
+      (try
+        (let [config (assoc test-config :trusted-email-domains ["example.com"])
+              result (login-with-claims! (assoc base-claims :email email) config)]
+          (is (true? (:success? result)))
+          (is (some? (t2/select-one :model/User :email email))))
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(deftest login-backfill-checks-other-users-test
+  (testing "A legacy nil-iss row cannot claim an iss already held by another user's row for the same sub"
+    (mt/with-temp [:model/User owner {:email "iss-owner@example.com"}
+                   :model/AuthIdentity _ {:user_id (:id owner)
+                                          :provider "oidc"
+                                          :provider_id "user123"
+                                          :metadata {:iss "https://provider.example.com"}}
+                   :model/User user {:email "nil-iss@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "oidc"
+                                                    :provider_id "user123"}]
+      (let [result (login-with-claims! (assoc base-claims
+                                              :email "nil-iss@example.com"
+                                              :email_verified true)
+                                       test-config)]
+        (is (false? (:success? result)))
+        (is (= :identity-already-linked (:error result)))
+        (is (nil? (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:metadata :iss]))
+            "The iss must not be backfilled")))))
+
+(deftest login-legacy-rows-visible-to-conflict-checks-test
+  (testing "An identity held by another user's unmigrated legacy row cannot be linked or provisioned"
+    (mt/with-temp [:model/User owner {:email "legacy-owner@example.com"}
+                   :model/AuthIdentity _ {:user_id (:id owner)
+                                          :provider "custom-oidc"
+                                          :provider_id "user123"}
+                   :model/User user {:email "claimant@example.com"}]
+      (let [config (assoc test-config
+                          :identity-provider-name "oidc-okta"
+                          :legacy-provider-name "custom-oidc")]
+        (testing "linking to an existing account"
+          (let [result (login-with-claims! (assoc base-claims
+                                                  :email "claimant@example.com"
+                                                  :email_verified true)
+                                           config)]
+            (is (false? (:success? result)))
+            (is (= :identity-already-linked (:error result)))
+            (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "oidc-okta")))))
+        (testing "JIT provisioning"
+          (let [email "legacy-jit@example.com"]
+            (try
+              (let [result (login-with-claims! (assoc base-claims
+                                                      :email email
+                                                      :email_verified true)
+                                               config)]
+                (is (false? (:success? result)))
+                (is (= :identity-already-linked (:error result)))
+                (is (nil? (t2/select-one :model/User :email email))))
+              (finally
+                (t2/delete! :model/User :email email)))))))))
+
 (deftest login-disabled-account-test
   (testing "A disabled account is rejected before any identity (re)link is written"
     (mt/with-temp [:model/User user {:email "disabled@example.com" :is_active false}

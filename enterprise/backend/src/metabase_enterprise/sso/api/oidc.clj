@@ -17,10 +17,14 @@
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private trusted-email-domains-schema
-  "\"*\" or a dotted hostname, optionally with a leading @. Only \"*\" is a wildcard: matching is exact,
-   so reject strings like \"*.mycompany.com\" that would otherwise be stored and silently never match."
-  [:sequential [:re {:error/message "must be an email domain such as mycompany.com, or *"}
-                #"^\s*@?(\*|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,})\s*$"]])
+  "\"*\" or a hostname per [[u/domain?]], with optional whitespace/leading @ (normalized away at match
+   time). Only \"*\" is a wildcard: matching is exact, so reject strings like \"*.mycompany.com\" that
+   would otherwise be stored and silently never match."
+  [:sequential [:fn {:error/message "must be an email domain such as mycompany.com, or *"}
+                (fn [s]
+                  (and (string? s)
+                       (let [s (-> s str/trim (str/replace #"^@" ""))]
+                         (or (= s "*") (u/domain? s)))))]])
 
 (def ^:private group-sync-schema
   [:map {:closed true}

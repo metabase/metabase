@@ -152,10 +152,18 @@
    where the user is already signed in and linking is their explicit action."
   [provider user-id claims]
   (let [sub (some-> (:sub claims) str)]
-    (if-not (and user-id (not (str/blank? sub)))
+    (cond
+      (not user-id)
+      {:success? false
+       :error :authentication-required
+       :message "Account linking requires an authenticated session"}
+
+      (str/blank? sub)
       {:success? false
        :error :invalid-token
        :message "ID token is missing the sub claim"}
+
+      :else
       (oidc/link-identity! provider user-id
                            (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name)
                            sub (:iss claims)))))

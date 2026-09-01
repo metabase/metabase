@@ -381,6 +381,37 @@
         (is (false? (:success? result)))
         (is (= :authentication-required (:error result)))))))
 
+(deftest link-only-mode-callback-requires-session-test
+  (testing "A link-only callback whose Metabase session expired reports :authentication-required"
+    (mt/with-temporary-setting-values
+      [slack-connect-enabled true
+       slack-connect-client-id "test-client-id"
+       slack-connect-client-secret "test-secret"
+       slack-connect-authentication-mode "link-only"]
+      (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                  (fn [_issuer] slack-discovery-doc)
+                                  oidc.state/validate-oidc-callback
+                                  (fn [_request _state _provider & _opts]
+                                    {:valid? true :nonce "test-nonce" :redirect "/"})
+                                  http/post
+                                  (fn [_url _opts]
+                                    {:status 200
+                                     :body {:id_token "valid-token" :access_token "access-token-123"}})
+                                  oidc.tokens/validate-id-token
+                                  (fn [_token _config _nonce]
+                                    {:valid? true
+                                     :claims {:sub "U_EXPIRED"
+                                              :iss "https://slack.com"
+                                              :aud "test-client-id"
+                                              :email "expired-session@example.com"}})]
+        (let [result (auth-identity/login! :provider/slack-connect
+                                           {:code "test-code"
+                                            :state "test-state"
+                                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
+                                            :authenticated-user (delay nil)})]
+          (is (false? (:success? result)))
+          (is (= :authentication-required (:error result))))))))
+
 (deftest link-only-mode-creates-auth-identity-test
   (testing "Link-only mode creates AuthIdentity for the authenticated user"
     (mt/with-temporary-setting-values

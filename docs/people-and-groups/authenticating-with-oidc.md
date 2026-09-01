@@ -120,7 +120,7 @@ Accounts linked before Metabase started tracking links per provider get their ex
 
 If your IdP doesn't send the `email_verified` claim, people with existing accounts that aren't linked yet won't be able to log in after upgrading until you either turn on that claim at the IdP or add your domains to **Trusted email domains** (see below).
 
-New accounts created by [auto-provisioning](#user-provisioning) get linked on their first login. If the token's identity is already linked to an existing account, Metabase rejects the login instead of creating a second account for it (this can happen when someone's email address changes at the IdP).
+New accounts created by [auto-provisioning](#user-provisioning) follow the same rules: Metabase only creates the account when the token could also have linked it (a verified email or a trusted domain), and rejects the login if the token's identity is already linked to an existing account (this can happen when someone's email address changes at the IdP).
 
 To change how Metabase links existing accounts, go to **Admin settings** > **Authentication** > **OIDC** > **Account linking**:
 
