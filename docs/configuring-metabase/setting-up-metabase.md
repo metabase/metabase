@@ -86,7 +86,7 @@ Once you're done here simply follow the link to **Take me to Metabase**. And if 
 
 If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
 
-The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md).
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](../ai/mcp.md).
 
 ## Getting started with Metabase
 
