@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { entityTypeForObject } from "metabase/redux/store/entities";
+import { entityTypeForObject } from "metabase/schema";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {

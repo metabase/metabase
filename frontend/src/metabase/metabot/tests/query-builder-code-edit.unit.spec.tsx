@@ -26,6 +26,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
+import { getMetabotState } from "../state";
 import { sendAgentRequest } from "../state/actions";
 
 import {
@@ -179,7 +180,8 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore.getState().metabot.conversations[conversationId]?.messages,
+      getMetabotState(typedStore.getState()).conversations[conversationId]
+        ?.messages,
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

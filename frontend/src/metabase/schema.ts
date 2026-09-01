@@ -2,7 +2,6 @@
 
 import { schema } from "normalizr";
 
-import { entityTypeForObject } from "metabase/redux/store/entities";
 import { checkNotNull } from "metabase/utils/types";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -22,6 +21,19 @@ import type {
   Segment,
   Table,
 } from "metabase-types/api";
+
+// backend returns model = "card" instead of "question"
+export const entityTypeForModel = (model: string): string => {
+  if (model === "card" || model === "dataset" || model === "metric") {
+    return "questions";
+  }
+  return `${model}s`;
+};
+
+export const entityTypeForObject = (
+  object?: { model: string } | null,
+): string | undefined =>
+  object ? entityTypeForModel(object.model) : undefined;
 
 export const QuestionSchema = new schema.Entity<Card>("questions");
 export const CollectionSchema = new schema.Entity<Collection>("collections");

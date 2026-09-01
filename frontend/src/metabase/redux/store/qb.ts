@@ -1,4 +1,3 @@
-import type { QueryModalType } from "metabase/querying/constants";
 import type { Widget } from "metabase/viz-core";
 import type {
   Card,
@@ -9,6 +8,22 @@ import type {
   ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
+
+export type QueryModalType =
+  | "save"
+  | "add-to-dashboard"
+  | "move"
+  | "clone"
+  | "archive"
+  | "create-alert"
+  | "save-question-before-embed"
+  | "turn-into-dataset"
+  | "can-not-create-model"
+  | "new-event"
+  | "edit-event"
+  | "move-event"
+  | "preview-query"
+  | "question-embed";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "columns" | "metadata";

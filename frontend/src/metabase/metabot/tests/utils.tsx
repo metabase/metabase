@@ -49,6 +49,7 @@ import {
   type MetabotAgentId,
   type MetabotState,
   fixedMetabotAgentIds,
+  getMetabotState,
   metabotReducer,
   setVisible,
 } from "../state";
@@ -60,7 +61,7 @@ import {
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
 
-type MetabotStoreLike = { getState: () => { metabot: MetabotState } };
+type MetabotStoreLike = { getState: () => { metabot: unknown } };
 
 const agentIn = (state: MetabotState, agentId: MetabotAgentId) =>
   checkNotNull(state.agents[agentId]);
@@ -71,12 +72,16 @@ const convoIn = (state: MetabotState, conversationId: string) =>
 export const conversationIdForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
-) => agentIn(store.getState().metabot, agentId).conversationId;
+) => agentIn(getMetabotState(store.getState()), agentId).conversationId;
 
 export const convoForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
-) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+) =>
+  convoIn(
+    getMetabotState(store.getState()),
+    conversationIdForAgent(store, agentId),
+  );
 
 // make ids easer to address than production's random uuids
 export const testConversationId = (agentId: MetabotAgentId) =>

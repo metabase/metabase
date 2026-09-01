@@ -5,7 +5,7 @@ import { useState } from "react";
 import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { metabotActions } from "metabase/metabot/state";
+import { getMetabotState, metabotActions } from "metabase/metabot/state";
 import {
   createTestMetabotState,
   lastReqBody,
@@ -446,21 +446,25 @@ describe("useMetabot", () => {
       });
 
       expect(
-        store.getState().metabot?.conversations?.[conversationId]?.messages
-          .length,
+        getMetabotState(store.getState()).conversations[conversationId]
+          ?.messages.length,
       ).toBe(0);
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.[conversationId]?.messages
-            .length,
+          getMetabotState(store.getState()).conversations[conversationId]
+            ?.messages.length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
