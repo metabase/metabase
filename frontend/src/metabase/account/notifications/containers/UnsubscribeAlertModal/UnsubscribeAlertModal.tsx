@@ -8,10 +8,10 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { getUser } from "metabase/current-user";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import type { Notification, User } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";

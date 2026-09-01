@@ -14,18 +14,23 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
-import { registerVisualization, visualizations } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { registerVisualization, visualizations } from "metabase/viz-core";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
+import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -40,12 +45,9 @@ import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
 
-// Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
-// bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   CustomVizPluginId,
-  { identifier: string; hash: string | null }
+  { identifier: VisualizationDisplay; hash: string | null }
 >();
 
 const failedPluginHashes = new Map<
@@ -57,6 +59,11 @@ const failedPluginHashes = new Map<
 // dev reloads.
 const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
 const loadAppliedSeqByPluginId = new Map<CustomVizPluginId, number>();
+
+const inFlightPluginLoads = new Map<
+  CustomVizPluginId,
+  { hash: string | null; promise: Promise<VisualizationDisplay | null> }
+>();
 
 /**
  * Remove a previously-loaded custom-viz display from the global
@@ -305,18 +312,43 @@ class BundleFetchError extends Error {
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
-): Promise<string | null> {
-  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
-  const existing = loadedPlugins.get(plugin.id);
+): Promise<VisualizationDisplay | null> {
   const currentHash = plugin.bundle_hash ?? null;
-  if (
-    existing &&
-    existing.hash === currentHash &&
-    !plugin.dev_bundle_url &&
-    !cacheBustSuffix
-  ) {
+  const isFreshLoadForced = Boolean(
+    plugin.dev_bundle_url || options.cacheBustSuffix,
+  );
+
+  if (isFreshLoadForced) {
+    return fetchAndRegisterCustomVizPlugin(plugin, options);
+  }
+
+  const existing = loadedPlugins.get(plugin.id);
+  if (existing && existing.hash === currentHash) {
     return existing.identifier;
   }
+
+  const inFlight = inFlightPluginLoads.get(plugin.id);
+  if (inFlight && inFlight.hash === currentHash) {
+    return inFlight.promise;
+  }
+
+  const promise = fetchAndRegisterCustomVizPlugin(plugin, options);
+  inFlightPluginLoads.set(plugin.id, { hash: currentHash, promise });
+  try {
+    return await promise;
+  } finally {
+    if (inFlightPluginLoads.get(plugin.id)?.promise === promise) {
+      inFlightPluginLoads.delete(plugin.id);
+    }
+  }
+}
+
+async function fetchAndRegisterCustomVizPlugin(
+  plugin: CustomVizPluginRuntime,
+  options: LoadCustomVizPluginOptions,
+): Promise<VisualizationDisplay | null> {
+  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
+  const currentHash = plugin.bundle_hash ?? null;
 
   ensureVizApi();
 
@@ -454,6 +486,62 @@ export async function loadCustomVizPlugin(
     }
     failedPluginHashes.set(plugin.id, currentHash);
     return null;
+  }
+}
+
+/**
+ * Imperatively load (and register) the plugin backing a `custom:*` display,
+ * if it is installed and enabled. Never rejects.
+ */
+export async function loadCustomVizPluginForDisplay(
+  dispatch: DispatchFn,
+  display: string,
+  {
+    sandboxMode,
+    onMessage,
+  }: {
+    sandboxMode?: SandboxMode;
+    onMessage?: (toast: ToastArgs) => void;
+  } = {},
+): Promise<LoadCustomVizPluginForDisplayResult> {
+  if (!isCustomVizDisplay(display)) {
+    return { status: "unavailable" };
+  }
+
+  const action = dispatch(
+    customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
+  );
+
+  try {
+    const plugins = await action.unwrap();
+    const plugin = plugins.find(
+      (plugin) => getCustomPluginIdentifier(plugin) === display,
+    );
+
+    if (!plugin) {
+      onMessage?.({
+        icon: "warning_triangle_filled",
+        iconColor: "feedback-warning",
+        message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
+      });
+      return { status: "unavailable" };
+    }
+
+    const loadedDisplay = await loadCustomVizPlugin(plugin, {
+      onMessage,
+      sandboxMode,
+    });
+    return loadedDisplay
+      ? { status: "loaded", display: loadedDisplay }
+      : { status: "unavailable" };
+  } catch (error) {
+    console.error(
+      t`Failed to look up the plugin for custom visualization "${display}":`,
+      error,
+    );
+    return { status: "error" };
+  } finally {
+    action.unsubscribe();
   }
 }
 

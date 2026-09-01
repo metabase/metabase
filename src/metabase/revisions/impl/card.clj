@@ -1,11 +1,15 @@
 (ns metabase.revisions.impl.card
   (:require
    [metabase.queries.core :as queries]
-   [metabase.revisions.models.revision :as revision]))
+   [metabase.revisions.models.revision :as revision]
+   [toucan2.core :as t2]))
 
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at
     :created_at
+    :embedding_params
+    :embedding_type
+    :enable_embedding
     :creator_id
     :dimension_mappings
     :dimensions
@@ -23,6 +27,7 @@
     :metabot_chart_id
     :metabot_conversation_id
     :public_uuid
+    :public_uuid_prefix
     :updated_at
     :view_count})
 
@@ -33,8 +38,14 @@
                           (contains? serialized-card :dataset) (-> (dissoc :dataset)
                                                                    (assoc :type (if (:dataset serialized-card) :model :question)))
                           ;; Add the default `:card_schema` if it's missing.
-                          (not (:card_schema serialized-card)) (assoc :card_schema queries/starting-card-schema-version))]
-    ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
+                          (not (:card_schema serialized-card)) (assoc :card_schema queries/starting-card-schema-version))
+        restored        (apply dissoc serialized-card excluded-columns-for-card-revision)]
+    (queries/check-new-parameter-source-card-permissions "card" id (:parameters restored))
+    (queries/maybe-unverify! (t2/hydrate (t2/select-one :model/Card :id id)
+                                         [:moderation_reviews :moderator_details])
+                             restored
+                             {:id user-id})
+    ((get-method revision/revert-to-revision! :default) model id user-id restored)))
 
 (defn- model?
   "Returns true if `card` is a model."

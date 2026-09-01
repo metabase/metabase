@@ -82,7 +82,7 @@
   `lib/prepare-for-serialization` so the metadata provider — a record
   holding caching atoms that Nippy can't freeze — is stripped before
   serialization. Without this prep, Nippy chokes on the `Atom` inside the
-  mp the moment we hand it a qp-result whose input query is a pMBQL value
+  mp the moment we hand it a qp-result whose input query is a MBQL 5 value
   with `:lib/metadata` still attached."
   ^bytes [qp-result]
   (qp/do-with-serialization
@@ -185,11 +185,11 @@
               [:= :id thread-id]
               [:= :analysis_started_at nil]
               [:= :canceled_at nil]
-              [:not-exists {:select [1]
-                            :from   [:exploration_query]
-                            :where  [:and
-                                     [:= :exploration_thread_id thread-id]
-                                     [:= :status "pending"]]}]]})))
+              [:not-exists ^:allow-subquery {:select [1]
+                                             :from   [:exploration_query]
+                                             :where  [:and
+                                                      [:= :exploration_thread_id thread-id]
+                                                      [:= :status "pending"]]}]]})))
 
 (defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`

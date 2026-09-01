@@ -21,6 +21,7 @@ export type QuarantineEntry = {
   test_suite: string;
   test_path: string;
   file_path: string;
+  permalink: string;
 };
 
 /**
@@ -77,27 +78,27 @@ export function matchKey(opts: {
 export function compareFailedToQuarantine(
   failedTests: FailedTest[],
   quarantineEntries: QuarantineEntry[],
-): { quarantined: FailedTest[]; unquarantined: FailedTest[] } {
-  const quarantinedKeys = new Set(
+): { quarantined: QuarantineEntry[]; unquarantined: FailedTest[] } {
+  const quarantinedByKeys = new Map(
     quarantineEntries.map((q) =>
-      matchKey({
+      [matchKey({
         filePath: q.file_path,
         testPath: q.test_path,
         testName: q.test_name,
-      }),
+      }), q],
     ),
   );
-  const quarantined: FailedTest[] = [];
+  const quarantined: QuarantineEntry[] = [];
   const unquarantined: FailedTest[] = [];
   for (const test of failedTests) {
-    const isQuarantined = quarantinedKeys.has(
+    const quarantineEntry = quarantinedByKeys.get(
       matchKey({
         filePath: test.file_path,
         testPath: test.test_path,
         testName: test.test_name,
       }),
     );
-    (isQuarantined ? quarantined : unquarantined).push(test);
+    quarantineEntry ? quarantined.push(quarantineEntry) : unquarantined.push(test);
   }
   return { quarantined, unquarantined };
 }
@@ -244,6 +245,18 @@ function title(test: FailedTest): string {
   return test.test_path ? `${test.test_path} › ${test.test_name}` : test.test_name;
 }
 
+/**
+ * Fallback to building a search link for a given test if we don't have a permalink,
+ * expected if this test isn't on the quarantine list. Properly escape all the special
+ * characters.
+ */
+export function testSearchUrl(
+  baseUrl: string,
+  test: FailedTest | QuarantineEntry,
+): string {
+  return `${baseUrl.replace(/\/+$/, "")}/tests?${new URLSearchParams({ q: test.test_name })}`;
+}
+
 /** Print the verdict (+ dry-run footer) and return the gate result. */
 function finish(opts: {
   shouldFail: boolean;
@@ -346,10 +359,16 @@ export async function checkQuarantineGate(opts: {
   for (const test of quarantined) {
     log(`  🔒 quarantined      ${title(test)}`);
     log(`                      ↳ ${test.file_path ?? "(no file)"}`);
+    log(
+      `                      ↳ View test in CI Conductor: ${test.permalink || testSearchUrl(baseUrl, test)}`,
+    );
   }
   for (const test of unquarantined) {
     log(`  🚨 NOT quarantined  ${title(test)}`);
-    log(`                      ↳ ${test.file_path ?? "(no file)"}`);
+    log(`                      ↳ ${test.file_path ?? "(no file)"}`); 
+    log(
+      `                      ↳ View test in CI Conductor: ${testSearchUrl(baseUrl, test)}`,
+    );
   }
 
   return finish({

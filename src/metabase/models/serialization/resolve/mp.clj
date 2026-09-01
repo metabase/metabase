@@ -332,7 +332,7 @@
       (when (resolve/entity-id? entity-id)
         (serdes/lookup-by-id 'Segment entity-id)))
     (card-by-id [_ card-id]
-      (when card-id
+      (when (int? card-id)
         ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
         ;; transforming the entire dataset_query just to export one stable identifier.
         ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select

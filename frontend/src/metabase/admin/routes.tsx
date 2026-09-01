@@ -464,7 +464,7 @@ export const getRoutes = (
         {PLUGIN_SECURITY_CENTER.isEnabled && (
           <Route
             path="security-center"
-            element={<PLUGIN_SECURITY_CENTER.SecurityCenterPage />}
+            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
           />
         )}
 

@@ -5,7 +5,6 @@
 
   https://platform.kimi.ai/docs"
   (:require
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -41,13 +40,18 @@
       500 (tru "Moonshot returned an internal server error")
       (tru "Moonshot API error (HTTP {0})" status))))
 
-(def ^:private supported-models
-  "Moonshot models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "Moonshot models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
   The `kimi-k2.7-code` models the catalog also carries are coding models, not agent models, and are excluded."
-  {"kimi-k2.6" "Kimi K2.6"
-   "kimi-k3"   "Kimi K3"})
+  {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
+   "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-only-models
   "Models whose catalog entry reports `supports_thinking_type: \"only\"`: thinking cannot be turned off, so sending
@@ -72,9 +76,8 @@
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "moonshot" "Moonshot"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-moonshot-api-key)))]
-                                    {:url     (llm/llm-moonshot-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -97,7 +100,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (supported-models id)})))}))
+                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
 (mu/defn moonshot-request-body
   "Build the Chat Completions request body for an LLM request.
@@ -123,8 +126,10 @@
 
 (mu/defn moonshot-raw
   "Perform a streaming request to the Moonshot Chat Completions API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -135,10 +140,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-moonshot-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "moonshot" "Moonshot"
                                           (when api-key
-                                            {:url     (llm/llm-moonshot-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth

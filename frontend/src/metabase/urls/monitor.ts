@@ -109,6 +109,22 @@ export function monitorAiAuditingMcp() {
   return `${monitorAiAuditing()}/mcp`;
 }
 
+export function monitorAiAuditingMcpUsage() {
+  return `${monitorAiAuditingMcp()}/usage`;
+}
+
+export function monitorAiAuditingMcpEvents() {
+  return `${monitorAiAuditingMcp()}/events`;
+}
+
 export function monitorAiAuditingCli() {
   return `${monitorAiAuditing()}/cli`;
+}
+
+export function monitorAiAuditingCliUsage() {
+  return `${monitorAiAuditingCli()}/usage`;
+}
+
+export function monitorAiAuditingCliCalls() {
+  return `${monitorAiAuditingCli()}/calls`;
 }

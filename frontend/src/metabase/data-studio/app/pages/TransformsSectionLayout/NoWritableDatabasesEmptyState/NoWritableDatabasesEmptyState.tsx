@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { Button, Center, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";

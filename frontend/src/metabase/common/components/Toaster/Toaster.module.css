@@ -1,0 +1,132 @@
+.toast {
+  position: relative;
+  bottom: -0.625rem;
+  overflow-x: hidden;
+  min-width: 18.75rem;
+  max-width: 31.25rem;
+  width: fit-content;
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mb-color-tooltip-background);
+
+  /* Radius from Figma, no matching step in Mantine. */
+  border-radius: 0.75rem;
+  box-shadow: var(--mantine-shadow-sm);
+  opacity: 0;
+  transition: all 200ms ease-out;
+}
+
+/* Hide the Notification's colored side line. */
+.toast::before {
+  display: none;
+}
+
+[data-mantine-color-scheme="dark"] .toast {
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+}
+
+.toast[data-show] {
+  bottom: 0;
+  opacity: 1;
+}
+
+.toast[data-fixed] {
+  position: fixed;
+  bottom: 0.625rem;
+  left: 1.25rem;
+}
+
+.toast[data-fixed][data-show] {
+  bottom: 1.25rem;
+}
+
+.icon {
+  width: auto;
+  height: auto;
+  margin-right: var(--mantine-spacing-sm);
+  background-color: transparent;
+  color: var(--mb-color-tooltip-text);
+}
+
+.body {
+  min-width: 0;
+  margin-right: 0;
+}
+
+.message {
+  line-height: var(--mantine-line-height-lg);
+  overflow-wrap: anywhere;
+}
+
+.button {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: bold;
+  line-height: var(--mantine-line-height-lg);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.button:disabled {
+  background-color: var(--mb-color-button-on_dark-disabled);
+  color: var(--mb-color-button-label-on_dark-disabled);
+  border: none;
+  box-shadow: none;
+  cursor: default;
+}
+
+.primary {
+  background-color: var(--mb-color-button-on_dark-primary-default);
+  color: var(--mb-color-button-label-on_dark-primary);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-primary-hover);
+}
+
+.primary:active:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-primary-pressed);
+}
+
+.secondary {
+  background-color: var(--mb-color-button-on_dark-secondary-default);
+  color: var(--mb-color-button-label-on_dark-secondary);
+  border: 0.5px solid var(--mb-color-border-on_dark);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-secondary-hover);
+}
+
+.secondary:active:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-secondary-pressed);
+}
+
+.dismiss {
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 0;
+  min-height: 0;
+  flex-shrink: 0;
+  margin-left: var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-tooltip-text);
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+.toast[data-has-actions] .dismiss {
+  margin-left: var(--mantine-spacing-md);
+}
+
+.dismiss:hover {
+  background-color: var(--mb-color-button-on_dark-secondary-hover);
+  color: var(--mb-color-tooltip-text);
+}
+
+.dismiss:active {
+  background-color: var(--mb-color-button-on_dark-secondary-pressed);
+}

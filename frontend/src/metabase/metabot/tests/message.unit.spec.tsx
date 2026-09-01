@@ -110,33 +110,42 @@ describe("metabot > message", () => {
   });
 });
 
-const truncatedResponse: SSEEvent[] = [
-  { type: "start", messageId: "msg_truncated" },
+const incompleteResponse = (
+  finishReason: "length" | "tool-calls",
+): SSEEvent[] => [
+  { type: "start", messageId: "msg_incomplete" },
   { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "Here is the start of a long answer" },
   { type: "text-end", id: "t1" },
-  { type: "finish", finishReason: "length" },
+  { type: "finish", finishReason },
 ];
 
 describe("metabot > finish reason", () => {
-  describe("length", () => {
+  describe.each([
+    ["length", /was cut off/, /Pick up exactly where you left off/],
+    [
+      "tool-calls",
+      /paused after reaching its step limit/,
+      /Continue working on my last request/,
+    ],
+  ] as const)("%s", (finishReason, alertRe, resumePromptRe) => {
     it("should keep the partial text and offer to continue", async () => {
       setup();
-      mockAgentEndpoint({ events: truncatedResponse });
+      mockAgentEndpoint({ events: incompleteResponse(finishReason) });
 
       await enterChatMessage("Tell me everything");
 
       await assertConversation([
         ["user", "Tell me everything"],
         ["agent", "Here is the start of a long answer"],
-        ["agent", /was cut off/],
+        ["agent", alertRe],
       ]);
       expect(await continueResponseButton()).toBeInTheDocument();
     });
 
     it("should send a continuation user turn when continue is clicked", async () => {
       setup();
-      mockAgentEndpoint({ events: truncatedResponse });
+      mockAgentEndpoint({ events: incompleteResponse(finishReason) });
       await enterChatMessage("Tell me everything");
 
       const continuationSpy = mockAgentEndpoint({
@@ -154,18 +163,18 @@ describe("metabot > finish reason", () => {
       await assertConversation([
         ["user", "Tell me everything"],
         ["agent", "Here is the start of a long answer"],
-        ["agent", /was cut off/],
-        ["user", /Your last response was cut off/],
+        ["agent", alertRe],
+        ["user", resumePromptRe],
         ["agent", "and here is the rest."],
       ]);
       expect((await lastReqBody(continuationSpy))?.message).toMatch(
-        /Pick up exactly where you left off/,
+        resumePromptRe,
       );
     });
 
     it("should not offer continue on earlier turns", async () => {
       setup();
-      mockAgentEndpoint({ events: truncatedResponse });
+      mockAgentEndpoint({ events: incompleteResponse(finishReason) });
       await enterChatMessage("Tell me everything");
       expect(await continueResponseButton()).toBeInTheDocument();
 

@@ -5,9 +5,9 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -274,7 +274,7 @@
         originator-id          (or user-id api/*current-user-id*)
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
-                                 (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
+                                 (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
         user-external-id       (or user-external-id (str (random-uuid)))
         assistant-external-id  (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
@@ -339,7 +339,7 @@
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
   [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
-  (let [ai-proxy?             (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+  (let [ai-proxy?             (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
@@ -353,7 +353,8 @@
 
 ;;; ---------------------------------------- Conversation state ----------------------------------------
 
-(defn- replayable-assistant-row?
+(defn replayable-assistant-row?
+  "Is `row` an assistant message a later turn may replay?"
   [{:keys [error finished] :as row}]
   (and (assistant-row? row)
        (nil? error)

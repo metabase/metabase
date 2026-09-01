@@ -12,17 +12,17 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  ConcreteTableId,
   DatabaseEntityId,
   Group,
   GroupsPermissions,
   PermissionEntityId,
+  PermissionsDatabase,
   SchemaEntityId,
 } from "metabase-types/api";
 
 import { DataPermission, DataPermissionValue } from "../types";
+import { tableToTableEntityId } from "../utils/metadata";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
@@ -182,7 +182,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: DatabaseEntityId | SchemaEntityId,
-  database: Database,
+  database: PermissionsDatabase,
   value: DataPermissionValue,
 ) {
   // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Can view'
@@ -269,7 +269,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
 // warn the user that the access to raw queries will be revoked as well.
 // This warning will only be shown if the user is editing the permissions of individual tables.
 export function getRevokingAccessToAllTablesWarningModal(
-  database: Database,
+  database: PermissionsDatabase,
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: PermissionEntityId,
@@ -291,12 +291,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     ) !== DataPermissionValue.NO
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.getTables().map((table) => ({
-      databaseId: table.db_id,
-      schemaName: table.schema_name || "",
-      // Unjustified type cast. FIXME
-      tableId: table.id as ConcreteTableId,
-    }));
+    const allTableEntityIds = (database.tables ?? []).map(tableToTableEntityId);
 
     // Show the warning only if user tries to revoke access to the very last table of all schemas
     const afterChangesNoAccessToAnyTable = _.every(

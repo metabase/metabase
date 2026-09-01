@@ -7,8 +7,11 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
@@ -135,31 +138,53 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (log/error "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)} (ex-message e))
-      (format-simple-entity entity))))
+      (let [status-code (:status-code (ex-data e))]
+        (cond
+          (= 403 status-code)
+          (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
+                          (:type entity) (:id entity))
+              nil)
+
+          ;; A 404 is always an intentional, expected signal here (from api/check-404), never an
+          ;; accidental failure -- either the entity plainly doesn't exist, or (per
+          ;; check-resource-database) it's a routing-internal destination database masquerading as
+          ;; "not found" so as not to disclose its existence. Neither warrants an ERROR log; both
+          ;; still render best-effort from the caller's own claimed fields, same as before.
+          (= 404 status-code)
+          (do (log/debugf "Falling back to simple rendering for an unresolvable viewing-context entity: %s %s"
+                          (:type entity) (:id entity))
+              (format-simple-entity entity))
+
+          :else
+          (do (log/error "Error fetching entity details for viewing context"
+                         {:type (:type entity) :id (:id entity)}
+                         (ex-message e))
+              (format-simple-entity entity)))))))
 
 (defmethod format-entity "table"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:entity-type :table
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-table-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:entity-type :model
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :model
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/model->xml))
 
 (defn- format-chart-config-ids
@@ -202,16 +227,18 @@
     (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
-                      #(entity-details/get-report-details {:report-id (:id entity)
-                                                           :with-field-values? false})
+                      #(do (resources-tools/check-card-resource-database (:id entity))
+                           (entity-details/get-report-details {:report-id (:id entity)
+                                                               :with-field-values? false}))
                       llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a metric:"
-                    #(entity-details/get-metric-details {:metric-id (:id entity)
-                                                         :with-field-values? false})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-metric-details {:metric-id (:id entity)
+                                                             :with-field-values? false}))
                     llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"
@@ -249,11 +276,92 @@
                                                (map format-entity)
                                                te/lines)))))
 
+(def ^:private exported-table-id-keys
+  [:source-table :source_table])
+
+(def ^:private exported-card-id-keys
+  [:source-card :source_card :card-id :card_id])
+
+(def ^:private exported-field-id-keys
+  [:source-field :metabase.models.visualization-settings/param-mapping-source])
+
+(defn- exported-entity-ids
+  [normalized]
+  (let [ids (fn [ks node] (into #{} (comp (map #(get node %)) (filter pos-int?)) ks))]
+    (reduce
+     (fn [acc node]
+       (cond
+         (map? node)
+         (-> acc
+             (update :table into (ids exported-table-id-keys node))
+             (update :card  into (ids exported-card-id-keys node))
+             (update :field into (ids exported-field-id-keys node)))
+
+         (and (vector? node) (not (map-entry? node)))
+         (case (keyword (first node))
+           (:field :field-id) (update acc :field into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
+           :metric            (update acc :card into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
+           acc)
+
+         :else acc))
+     {:table #{} :card #{} :field #{}}
+     (tree-seq coll? seq normalized))))
+
+(defn- native-stage?
+  [normalized]
+  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
+                 (tree-seq coll? seq normalized))))
+
+(defn- native-sql-table-ids
+  [normalized]
+  (try
+    (into #{}
+          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
+          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
+    (catch Exception e
+      (log/debugf "Could not analyze a viewing-context native query for permission gating: %s"
+                  (ex-message e))
+      #{})))
+
+(defn- sandbox-visible-fields?
+  [field-id->table-id]
+  (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
+    (every? (fn [[field-id table-id]]
+              (if-let [allowed (get restricted table-id)]
+                (contains? allowed field-id)
+                true))
+            field-id->table-id)))
+
+(defn- queryable-normalized-query
+  [query]
+  (let [raw-database-id (and (map? query) (:database query))]
+    (when (pos-int? raw-database-id)
+      (try
+        (let [normalized  (lib-be/normalize-query query)
+              database-id (:database normalized)]
+          (when (and (pos-int? database-id)
+                     (mi/can-query? :model/Database database-id))
+            (let [{:keys [table card field]} (exported-entity-ids normalized)
+                  field-table (metabot.perms/field-id->table-id field)
+                  table-ids   (cond-> (into (set table) (vals field-table))
+                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
+              (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
+                         (sandbox-visible-fields? field-table)
+                         (every? #(mi/can-read? :model/Card %) card))
+                [normalized (lib-be/application-database-metadata-provider database-id)]))))
+        (catch Exception e
+          (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
+                      (ex-message e))
+          nil)))))
+
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
   lives in [[llm-shape/export-query-for-llm]]."
   [source]
-  (llm-shape/export-query-for-llm (:query source)))
+  (let [query (:query source)]
+    (when (or (not (and (map? query) (:database query)))
+              (queryable-normalized-query query))
+      (llm-shape/export-query-for-llm query))))
 
 (defn- transform-source-type
   [source]

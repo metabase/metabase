@@ -23,7 +23,7 @@
    month :- ms/PositiveInt]
   (let [date-part (fn [part-key part-value]
                     (if (= (mdb/db-type) :postgres)
-                      [:= [:date_part [:inline (name part-key)] :started_at] [:inline part-value]]
+                      [:= [:date_part ^:allow-raw-sql [:inline (name part-key)] :started_at] [:inline part-value]]
                       [:= [part-key :started_at] [:inline part-value]]))
         results   (t2/select :query_execution
                              {:order-by [[:started_at :desc]]

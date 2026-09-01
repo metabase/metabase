@@ -5,7 +5,6 @@
 
   https://docs.z.ai/api-reference/llm/chat-completion"
   (:require
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -35,10 +34,15 @@
       500 (tru "Z.AI returned an internal server error")
       (tru "Z.AI API error (HTTP {0})" status))))
 
-(def ^:private supported-models
-  "Z.AI models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "Z.AI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"glm-5.2" "GLM-5.2"})
+  {"glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- supported-model?
   "Whether a `/models` catalog entry is one of the [[supported-models]]."
@@ -59,9 +63,8 @@
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "zai" "Z.AI"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-zai-api-key)))]
-                                    {:url     (llm/llm-zai-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -81,7 +84,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id] :as model}]
-                         {:id id :display_name (or (:name model) (supported-models id))})))}))
+                         {:id id :display_name (or (:name model) (get-in supported-models [id :display-name]))})))}))
 
 (mu/defn zai-request-body
   "Build the Chat Completions request body for an LLM request.
@@ -95,8 +98,10 @@
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for Z.AI and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -107,10 +112,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-zai-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "zai" "Z.AI"
                                           (when api-key
-                                            {:url     (llm/llm-zai-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth

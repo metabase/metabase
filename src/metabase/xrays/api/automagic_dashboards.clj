@@ -5,9 +5,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
@@ -56,7 +58,19 @@
    (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
-  (comp json/decode+kw codecs/bytes->str codec/base64-decode))
+  (comp json/decode codecs/bytes->str codec/base64-decode))
+
+(mr/def ::cell-query
+  "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
+  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
+  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is
+  and fails validation, surfacing as a clean 400."
+  [:schema
+   {:decode/api (fn [s]
+                  (if (string? s)
+                    (try (decode-base64-json s) (catch Exception _ s))
+                    s))}
+   [:ref ::ads/root.cell-query]])
 
 (mr/def ::base-64-encoded-json
   "form-encoded base-64-encoded JSON"
@@ -135,7 +149,7 @@
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]
-  (let [query (lib-be/normalize-query query)]
+  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
                         {:dataset_query query}))))
@@ -248,11 +262,12 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (map
-     (fn [{:keys [table_id id]}]
-       {:linked-table-id table_id
-        :linked-field-id id})
-     (t2/select :model/Field :fk_target_field_id field-id))))
+    (let [fields (t2/hydrate (t2/select :model/Field :fk_target_field_id field-id) :table)]
+      (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+      (for [{:keys [table_id id] :as field} fields
+            :when (mi/can-read? field)]
+        {:linked-table-id table_id
+         :linked-field-id id}))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."
@@ -386,12 +401,12 @@
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ::entity-id-or-query]
-                                                      [:cell-query         ::base-64-encoded-json]]
+                                                      [:cell-query         ::cell-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show       (coerce-show show)
-                                                     :cell-query (decode-base64-json cell-query)})))
+                                                     :cell-query cell-query})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -405,13 +420,13 @@
                                                                                 [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
-                                                                                [:cell-query         ::base-64-encoded-json]]
+                                                                                [:cell-query         ::cell-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
                                                      :dashboard-template ["table" prefix dashboard-template]
-                                                     :cell-query         (decode-base64-json cell-query)})))
+                                                     :cell-query         cell-query})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -491,7 +506,7 @@
         dashboard (automagic-dashboards.core/automagic-analysis left {:show         (coerce-show show)
                                                                       :query-filter nil
                                                                       :comparison?  true})]
-    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -522,4 +537,4 @@
         dashboard (automagic-dashboards.core/automagic-analysis left {:show               (coerce-show show)
                                                                       :dashboard-template ["table" prefix dashboard-template]
                                                                       :query-filter       nil})]
-    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})))

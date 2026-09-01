@@ -19,7 +19,7 @@ import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QueryEditorBody } from "./QueryEditorBody";
 import { QueryEditorVisualization } from "./QueryEditorVisualization";
 
-type QueryEditorProps = {
+export type QueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
@@ -196,7 +196,6 @@ export function QueryEditor({
             convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
             onConvertToNativeClick={convertToNative}
             readOnly={uiOptions?.readOnly}
-            disableDefaultLimit={uiOptions?.disableDefaultLimit}
           />
         )}
       </Flex>

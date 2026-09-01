@@ -16,6 +16,7 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
@@ -1078,7 +1079,7 @@
 
 ;;; in the future when we remove all the roundtripping that happens inside of the QP then we can remove this test
 ;;; entirely.
-(deftest ^:parallel additional-keys-should-survive-preprocessing-test
+(deftest ^:parallel additional-keys-do-not-survive-preprocessing-test
   (driver/with-driver :h2
     (let [query (lib/query
                  meta/metadata-provider
@@ -1096,12 +1097,12 @@
                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :fk-field-id  %product-id
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
-      (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
-               [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
-              (match/match-many (-> query
-                                    add/add-alias-info
-                                    qp.preprocess/preprocess)
-                [:expression & _] &match))))))
+      (is (= [nil nil]
+             (map (fn [[_tag opts]] (not-empty (select-keys opts [::add/source-table ::add/desired-alias])))
+                  (match/match-many (-> query
+                                        add/add-alias-info
+                                        qp.preprocess/preprocess)
+                    [:expression & _] &match)))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Make sure remapped columns are given correct aliases and escaped correctly for drivers like Oracle"

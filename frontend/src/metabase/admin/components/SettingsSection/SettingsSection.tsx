@@ -1,11 +1,13 @@
 import type React from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   Box,
   type BoxProps,
   Stack,
   type StackProps,
   Text,
+  type TextProps,
   Title,
   type TitleProps,
 } from "metabase/ui";
@@ -52,28 +54,30 @@ export function SettingsSection({
 export function SettingsPageWrapper({
   title,
   description,
+  descriptionProps,
   children,
   ...stackProps
 }: {
   title?: React.ReactNode;
   description?: React.ReactNode;
+  descriptionProps?: TextProps;
   children: React.ReactNode;
 } & Omit<StackProps, "title">) {
   return (
     <Stack gap="lg" {...stackProps}>
       {(title || description) && (
-        <Box>
+        <Stack gap="sm">
           {title && (
-            <Title order={1} display="flex" style={{ alignItems: "center" }}>
+            <Title order={1} display="flex" className={CS.alignCenter}>
               {title}
             </Title>
           )}
           {description && (
-            <Text c="text-secondary" maw="40rem">
+            <Text c="text-secondary" lh={1.5} maw="40rem" {...descriptionProps}>
               {description}
             </Text>
           )}
-        </Box>
+        </Stack>
       )}
       {children}
     </Stack>

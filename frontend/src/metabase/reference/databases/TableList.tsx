@@ -16,11 +16,10 @@ import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getHasSingleSchema,
-  getLoading,
   getTablesByDatabase,
 } from "../selectors";
+import type { ReferenceLoadingProps } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -36,8 +35,6 @@ const mapStateToProps = (
   database: getDatabase(state, props),
   entities: getTablesByDatabase(state, props),
   hasSingleSchema: getHasSingleSchema(state, props),
-  loading: getLoading(state),
-  loadingError: getError(state),
 });
 
 interface TableLike {
@@ -107,7 +104,6 @@ class TableList extends Component<TableListProps> {
       <div data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
-          type="tables"
           headerIcon="database"
         />
         <LoadingAndErrorWrapper
@@ -149,4 +145,11 @@ class TableList extends Component<TableListProps> {
 export default connect(
   mapStateToProps,
   // Unjustified type cast. FIXME
-)(TableList as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableList as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

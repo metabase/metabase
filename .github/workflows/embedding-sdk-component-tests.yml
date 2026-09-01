@@ -8,7 +8,7 @@ env:
   TERM: xterm
   TZ: US/Pacific # to make Node match the instance tz
   MB_EDITION: "ee"
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}
   COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -72,6 +72,21 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # run-tests.yml compiles it in parallel with the uberjar build, so downloading is ~10x faster than compiling here.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
@@ -149,7 +164,8 @@ jobs:
              await core.summary.addRaw(summary).write();
 
   decide-target-ref:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       target-ref: ${{ steps.get-target-ref.outputs.value }}
     steps:
@@ -244,6 +260,13 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # The checked-out tree is the previous commit, which the current run's CLJS artifact was not built from,
+      # so compile from source instead of downloading.
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

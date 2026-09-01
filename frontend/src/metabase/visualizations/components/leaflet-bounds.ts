@@ -1,7 +1,7 @@
 import type { Feature } from "geojson";
 import L from "leaflet";
 
-import { computeMinimalBoundsCoordinates } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBoundsCoordinates } from "metabase/viz-core";
 
 // Builds an `L.LatLngBounds` from the leaflet-free bounds coordinates. Lives in
 // its own (leaflet-importing) module so the only consumers are the lazily

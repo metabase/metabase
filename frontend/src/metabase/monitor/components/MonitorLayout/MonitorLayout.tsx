@@ -2,7 +2,6 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   type MonitorSection,
   trackMonitorSectionClicked,
@@ -13,6 +12,7 @@ import {
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
 } from "metabase/common/monitor/selectors";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   AreaLayout,
   AreaTab,

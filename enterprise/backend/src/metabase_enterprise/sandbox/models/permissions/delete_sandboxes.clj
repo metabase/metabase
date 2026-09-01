@@ -16,7 +16,8 @@
       ;; DB-level change (keyword like :unrestricted) → delete all sandboxes for this group+db
       (keyword? view-data-changes) true
       :else
-      (let [schema-changes (get view-data-changes schema)]
+      (let [schema-changes (or (get view-data-changes (or schema ""))
+                               (get view-data-changes schema))]
         (cond
           (nil? schema-changes)     false
           ;; Schema-level change → delete all sandboxes for this group+db+schema

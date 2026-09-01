@@ -3,9 +3,7 @@ import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
-import { isNotNull } from "metabase/utils/types";
-import { visualizations } from "metabase/visualizations";
-import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
+import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetData,
@@ -83,7 +81,9 @@ export async function runQuestionQuerySdk(
               ),
             ),
           )
-        ).filter(isNotNull),
+        ).flatMap((result) =>
+          result.status === "loaded" ? [result.display] : [],
+        ),
       );
 
     // The query and the custom-viz load are independent, so run them

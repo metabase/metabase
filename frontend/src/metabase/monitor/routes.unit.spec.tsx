@@ -101,14 +101,20 @@ jest.mock("metabase/monitor/tools/components/Logs", () => {
 jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
   JobInfoApp: () => <div data-testid="jobs-page">{"Jobs"}</div>,
 }));
-jest.mock("metabase/monitor/tools/components/ModelPersistenceLogJobs", () => ({
-  ModelPersistenceLogPage: () => (
-    <div data-testid="model-persistence-log-page">
-      {"Model persistence log"}
-    </div>
-  ),
-  ModelPersistenceLogJobModal: () => null,
-}));
+jest.mock(
+  "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs",
+  () => ({
+    ModelPersistenceLogPage: () => (
+      <div data-testid="model-persistence-log-page">
+        {"Model persistence log"}
+      </div>
+    ),
+  }),
+);
+jest.mock(
+  "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobModal",
+  () => ({ ModelPersistenceLogJobModal: () => null }),
+);
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
 }));
@@ -198,7 +204,7 @@ describe("monitor routes", () => {
   it("resolves every lazy page", async () => {
     const loaders = lazyLoaders(getMonitorRoutes());
 
-    expect(loaders).toHaveLength(8);
+    expect(loaders).toHaveLength(15);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

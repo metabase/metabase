@@ -38,9 +38,9 @@
         :when model]
     [:and
      [:= :entity_type (name etype)]
-     [:in :entity_id {:select [:id]
-                      :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn etype (if (= etype :collection) :id :collection_id))}]]))
+     [:in :entity_id ^:allow-subquery {:select [:id]
+                                       :from   [(t2/table-name model)]
+                                       :where  (coll-pred-fn etype (if (= etype :collection) :id :collection_id))}]]))
 
 (def eligible-collection-where
   "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
@@ -77,9 +77,9 @@
   [collection-id-col]
   [:or
    [:= collection-id-col nil]
-   [:in collection-id-col {:select [:id]
-                           :from   [(t2/table-name :model/Collection)]
-                           :where  eligible-collection-where}]])
+   [:in collection-id-col ^:allow-subquery {:select [:id]
+                                            :from   [(t2/table-name :model/Collection)]
+                                            :where  eligible-collection-where}]])
 
 ;;; ----------------------------- entity-type multimethod dispatch (shared) -----------------------------
 ;;; What the serve/scan multimethods dispatch on: a module-local `hierarchy` (keeping bare entity-type

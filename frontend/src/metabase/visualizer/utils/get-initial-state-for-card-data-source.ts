@@ -1,14 +1,14 @@
 import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
-import { isCartesianChart } from "metabase/visualizations";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
-import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
+  type ComputedVisualizationSettings,
+  getComputedSettingsForSeries,
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
-} from "metabase/visualizations/shared/settings/cartesian-chart";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  getSeriesWithDisplay,
+  isCartesianChart,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {

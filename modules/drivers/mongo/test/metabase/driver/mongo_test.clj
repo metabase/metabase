@@ -748,7 +748,7 @@
               (qp/process-query
                {:database (mt/id)
                 :type     :native
-                :native   {:projections [:count]
+                :native   {:projections ["count"]
                            :query       [{"$project" {"price" "$price"}}
                                          {"$match" {"price" {"$eq" 1}}}
                                          {"$group" {"_id" nil, "count" {"$sum" 1}}}

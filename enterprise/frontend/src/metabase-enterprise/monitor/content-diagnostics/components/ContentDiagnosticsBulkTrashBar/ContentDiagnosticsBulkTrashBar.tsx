@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import {
   BulkActionBar,
-  BulkActionDangerButton,
+  BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
@@ -144,9 +144,9 @@ export function ContentDiagnosticsBulkTrashBar({
           count,
         )}
       >
-        <BulkActionDangerButton onClick={() => setIsConfirmOpen(true)}>
+        <BulkActionButton danger onClick={() => setIsConfirmOpen(true)}>
           {trashCopy.actionLabel}
-        </BulkActionDangerButton>
+        </BulkActionButton>
       </BulkActionBar>
       <ConfirmModal
         opened={isConfirmOpen}

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
+import { hasFeature } from "metabase/databases";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -70,7 +71,7 @@ export function initializePlugin() {
       database,
     ) => [
       ...options,
-      ...(database.hasFeature("connection-impersonation")
+      ...(hasFeature(database, "connection-impersonation")
         ? [IMPERSONATED_PERMISSION_OPTION]
         : []),
       BLOCK_PERMISSION_OPTION,

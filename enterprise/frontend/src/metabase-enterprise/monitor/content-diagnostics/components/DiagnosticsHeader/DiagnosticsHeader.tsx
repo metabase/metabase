@@ -2,15 +2,15 @@ import { memo } from "react";
 import { c, t } from "ttag";
 
 import {
-  type MonitorHeaderTab,
-  MonitorHeaderTabs,
-} from "metabase/monitor/components/MonitorHeaderTabs";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
-  const tabs: MonitorHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: c("Navigation tab for content that hasn't been used recently")
         .t`Stale`,
@@ -49,7 +49,7 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   return (
     <Stack gap="lg">
       <MonitorHeaderTitle>{t`Content diagnostics`}</MonitorHeaderTitle>
-      <MonitorHeaderTabs tabs={tabs} />
+      <PillTabNavigation tabs={tabs} />
     </Stack>
   );
 });

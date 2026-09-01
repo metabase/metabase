@@ -1,22 +1,18 @@
 import { t } from "ttag";
 
-import { getSankeyChartColumns } from "metabase/visualizations/echarts/graph/sankey/model/dataset";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
+  ChartSettingsError,
+  type ComputedVisualizationSettings,
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import { findSensibleSankeyColumns } from "metabase/visualizations/lib/utils";
-import {
+  findSensibleSankeyColumns,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+  getSankeyChartColumns,
+  metricSetting,
+} from "metabase/viz-core";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
@@ -34,7 +30,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.source,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     getSection: () => t`Data`,
@@ -44,7 +41,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.target,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.target,
   }),
   ...metricSetting("sankey.value", {
     getSection: () => t`Data`,
@@ -54,7 +52,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.metric,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.metric,
   }),
   "sankey.node_align": {
     getSection: () => t`Display`,
@@ -124,7 +123,6 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
-  usesEChartsRenderer: true,
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),

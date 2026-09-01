@@ -85,6 +85,7 @@ export type MetabotAgentTurnIncompleteMessage = {
   role: "agent";
   type: "turn_incomplete";
   finishReason: Exclude<FinishReason, "stop" | "error">;
+  contextWindowFull?: boolean;
   externalId?: string;
 };
 
@@ -164,24 +165,34 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-export interface MetabotConverstationState {
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
+
+export interface MetabotConversationState {
   conversationId: string;
-  loadId: string;
   title: string | undefined;
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
+  hasMessagedInSession: boolean;
   messages: MetabotChatMessage[];
-  visible: boolean;
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   activeChainId: string | undefined;
+  lastTokenUsage?: MetabotContextUsage;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;
   };
+}
+
+export interface MetabotAgentState {
+  conversationId: string;
+  visible: boolean;
 }
 
 export const fixedMetabotAgentIds = [
@@ -195,7 +206,8 @@ type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 
 export interface MetabotState {
-  conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
+  conversations: Record<string, MetabotConversationState | undefined>;
+  agents: Partial<Record<MetabotAgentId, MetabotAgentState>>;
   reactions: MetabotReactionsState;
   titlePollingConversationIds: string[];
   debugMode: boolean;

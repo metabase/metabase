@@ -1,4 +1,3 @@
-import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
   Card,
   CardId,
@@ -33,7 +32,6 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -77,7 +75,6 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
-        onQueryStarted: hydrateMetadataStore([QuestionSchema]),
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -87,7 +84,6 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
@@ -96,7 +92,6 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest & RtkCacheKeyed>({
         query: ({ cardId, dashboardId, ...body }) => ({
@@ -172,7 +167,6 @@ export const cardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
-        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
         query: ({ file, collection_id }) => {
@@ -225,7 +219,6 @@ export const cardApi = Api.injectEndpoints({
 
           return invalidateTags(error, tags);
         },
-        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({

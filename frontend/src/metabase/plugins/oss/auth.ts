@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
 import type { User, UserId } from "metabase-types/api";
 
 import type { GetAuthProviders } from "../types";
@@ -18,9 +21,9 @@ const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
   UserProvisioningSettings: PluginPlaceholder,
-  SettingsSAMLForm: PluginPlaceholder,
-  SettingsJWTForm: PluginPlaceholder,
-  SettingsOIDCForm: PluginPlaceholder,
+  settingsSAMLForm: pluginPlaceholderRoute,
+  settingsJWTForm: pluginPlaceholderRoute,
+  settingsOIDCForm: pluginPlaceholderRoute,
   // Unjustified type cast. FIXME
   providers: [] as GetAuthProviders[],
 });
