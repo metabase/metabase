@@ -378,7 +378,7 @@
     (let [order-id (meta/id :orders)
           sql      "SELECT * FROM orders"]
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
-                                                          {:tables [{:table_id order-id}]})]
+                                                          {:tables [{:table-id order-id}]})]
         (let [parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                      (sql-output "s1" sql (meta/id) (native-query sql))]
               rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
@@ -417,9 +417,9 @@
                                                           ;; production extractor passes a query, not raw SQL
                                                           (let [sql (lib/raw-native-query query)]
                                                             (cond
-                                                              (= sql outer-sql) {:tables [{:table_id orders-id}]}
+                                                              (= sql outer-sql) {:tables [{:table-id orders-id}]}
                                                               (= sql inner-sql) (do (reset! inner-tables true)
-                                                                                    {:tables [{:table_id people-id}]})
+                                                                                    {:tables [{:table-id people-id}]})
                                                               :else             {:tables []})))]
         (let [parts [(sql-input "s1" "create_sql_query"
                                 {:database_id (meta/id) :sql_query outer-sql})
@@ -529,7 +529,7 @@
   (testing "write_transform_sql walks the suggested transform's native query"
     (let [orders-id (meta/id :orders)
           sql       "SELECT * FROM orders"]
-      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table_id orders-id}]})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1")
                      (transform-sql-output "t1" (meta/id) (native-query sql))]
               rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
@@ -541,7 +541,7 @@
     (let [orders-id (meta/id :orders)
           people-id (meta/id :people)
           sql       "SELECT * FROM orders"]
-      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table_id orders-id}]})]
+      (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1"
                                           {:source_tables [{:alias "o" :table_id orders-id
                                                             :schema "PUBLIC" :database_id (meta/id)}
@@ -556,7 +556,7 @@
 
 (deftest ^:parallel transform-sql-errored-output-skipped-test
   (testing "an errored write_transform_sql output yields no rows"
-    (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table_id (meta/id :orders)}]})]
+    (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id (meta/id :orders)}]})]
       (let [parts [(transform-sql-input "t1")
                    (-> (transform-sql-output "t1" (meta/id) (native-query "SELECT 1"))
                        (assoc :error "boom"))]]
@@ -617,7 +617,7 @@
           people-id (meta/id :people)
           sql       "SELECT * FROM people"]
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
-                                                          {:tables [{:table_id people-id}]})]
+                                                          {:tables [{:table-id people-id}]})]
         (let [parts [(notebook-input "n1")
                      (notebook-output "n1" (table-query orders-id))
                      (sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})

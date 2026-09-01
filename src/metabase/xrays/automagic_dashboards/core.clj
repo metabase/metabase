@@ -929,17 +929,17 @@
 
 (defn- load-tables-with-enhanced-table-stats
   "Add a stats field to each provided table with the following data:
-  - num_fields: The number of Fields in each table
-  - list_like: Is this field 'list like'
+  - num-fields: The number of Fields in each table
+  - list-like?: Is this field 'list like'
 
   Filters out tables that are link-tables"
   [clauses]
   (->>
    (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-               [:ts.count :num_fields]
+               [:ts.count :num-fields]
                [[:and
                  [:>= :ts.count 2]
-                 [:= :ts.count_non_pks 1]] :list_like]]
+                 [:= :ts.count_non_pks 1]] :list-like?]]
               {:inner-join [[^:allow-subquery {:select   [:f.table_id
                                                           [:%count.* "count"]
                                                           [[:count [:case [:or [:not= :semantic_type "type/PK"]
@@ -956,7 +956,7 @@
                              [:> :ts.count 0]
                              [:!= :ts.count :ts.count_pks_and_fks]]]
                :where (into [:and] clauses)})
-   (map #(update % :list_like (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
+   (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."
@@ -995,8 +995,8 @@
                    {:url                     (format "%stable/%s" public-endpoint (u/the-id table))
                     :title                   (:short-name root)
                     :score                   (+ (math/sq (:specificity dashboard-template))
-                                                (math/log (:num_fields table))
-                                                (if (:list_like table)
+                                                (math/log (:num-fields table))
+                                                (if (:list-like? table)
                                                   -10
                                                   0))
                     :description             (:description dashboard)

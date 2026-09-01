@@ -540,7 +540,7 @@
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [:model/User :model/Collection]
     ;; insert all the users
-    (let [max-id (:max_id (t2/select-one [:model/User [:%max.id :max_id]]))
+    (let [max-id (:max-id (t2/select-one [:model/User [:%max.id :max-id]]))
           user-ids (range (inc max-id) (inc (+ num-users max-id)))
           values (map #(assoc (mt/with-temp-defaults :model/User)
                               :date_joined :%now

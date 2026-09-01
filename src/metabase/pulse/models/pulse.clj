@@ -346,7 +346,7 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query (merge {:select-distinct [:p.* [[:lower :p.name] :lower_name]]
+   (let [query (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                        :from            [[:pulse :p]]
                        :where           [:and
                                          [:not= :p.alert_condition nil]
@@ -355,7 +355,7 @@
                                            [:or
                                             [:= :p.creator_id user-id]
                                             [:= :pcr.user_id user-id]])]
-                       :order-by        [[:lower_name :asc]]}
+                       :order-by        [[:lower-name :asc]]}
                       (when user-id
                         {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
                                      [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))]
@@ -372,7 +372,7 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {:select-distinct [:p.* [[:lower :p.name] :lower_name]]
+  (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                :from            [[:pulse :p]]
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
@@ -396,10 +396,10 @@
                                     [:or
                                      [:= :p.creator_id user-id]
                                      [:= :pcr.user_id user-id]]])]
-               :order-by        [[:lower_name :asc]]}]
+               :order-by        [[:lower-name :asc]]}]
     (for [pulse (query-as :model/Pulse query)]
       (-> pulse
-          (dissoc :lower_name)
+          (dissoc :lower-name)
           hydrate-notification
           notification->pulse))))
 

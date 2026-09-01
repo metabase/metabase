@@ -221,11 +221,11 @@
               (update :value keyword))))
    (t2/reducible-query
     {:select   [[:perm_type :type]
-                :group_id
+                [:group_id :group-id]
                 [:perm_value :value]
-                :db_id
+                [:db_id :db-id]
                 [:schema_name :schema]
-                :table_id]
+                [:table_id :table-id]]
      :from     [(t2/table-name :model/DataPermissions)]
      :where    [:and
                 (when perm-type [:= :perm_type (u/qualified-name perm-type)])
@@ -243,9 +243,9 @@
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
   db-level `[perm-type]` or table-level `[perm-type schema table-id]` path."
-  [perm-map {:keys [schema table_id value] perm-type :type}]
-  (let [path (if table_id
-               [perm-type (or schema "") table_id]
+  [perm-map {:keys [schema table-id value] perm-type :type}]
+  (let [path (if table-id
+               [perm-type (or schema "") table-id]
                [perm-type])]
     (assoc-in perm-map path value)))
 
@@ -265,7 +265,7 @@
                      (cond-> graph (seq perm-map) (assoc-in path perm-map)))))
         [graph last-path perm-map]
         (reduce (fn [[graph last-path perm-map] row]
-                  (let [row-path [(:group_id row) (:db_id row)]]
+                  (let [row-path [(:group-id row) (:db-id row)]]
                     (if (= row-path last-path)
                       ;; same (group, db) as the previous row: keep accumulating
                       [graph last-path (add-perm perm-map row)]

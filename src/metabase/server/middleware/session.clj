@@ -14,7 +14,6 @@
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -119,11 +118,11 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:session.user_id :metabase_user_id]
-                            [:user.is_superuser :is_superuser]
-                            [:user.is_data_analyst :is_data_analyst]
-                            [:user.locale :user_locale]
-                            [:auth_identity.provider :auth_provider]]
+       (cond-> {:select    [[:session.user_id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
+                            [:user.locale :user-locale]
+                            [:auth_identity.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
                             [:tenant] [:= :tenant.id :user.tenant_id]
@@ -147,7 +146,7 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is_group_manager])
+           [:pgm.is_group_manager :is-group-manager?])
           (sql.helpers/left-join
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
@@ -160,11 +159,11 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase_user_id]
-                            [:api_key.key :api_key]
-                            [:user.is_superuser :is_superuser]
-                            [:user.is_data_analyst :is_data_analyst]
-                            [:user.locale :user_locale]]
+       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
+                            [:api_key.key :api-key]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
+                            [:user.locale :user-locale]]
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
@@ -174,7 +173,7 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is_group_manager])
+           [:pgm.is_group_manager :is-group-manager?])
           (sql.helpers/left-join
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
@@ -187,10 +186,10 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:user.id :metabase_user_id]
-                            [:user.is_superuser :is_superuser]
-                            [:user.is_data_analyst :is_data_analyst]
-                            [:user.locale :user_locale]]
+       (cond-> {:select    [[:user.id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
+                            [:user.locale :user-locale]]
                 :from      [[:core_user :user]]
                 :where     [:and
                             [:= :user.is_active true]
@@ -199,26 +198,11 @@
          enable-advanced-permissions?
          (->
           (sql.helpers/select
-           [:pgm.is_group_manager :is_group_manager])
+           [:pgm.is_group_manager :is-group-manager?])
           (sql.helpers/left-join
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
-
-(def ^:private column-label->info-key
-  "The queries above alias in snake_case, which is what the app-DB HoneySQL guard allows through; the request keys
-  they feed are the kebab-case ones of [[::request.schema/current-user-info]]."
-  {:metabase_user_id :metabase-user-id
-   :is_superuser     :is-superuser?
-   :is_data_analyst  :is-data-analyst?
-   :user_locale      :user-locale
-   :auth_provider    :auth-provider
-   :api_key          :api-key
-   :is_group_manager :is-group-manager?})
-
-(defn- ->current-user-info
-  [row]
-  (some-> row (set/rename-keys column-label->info-key)))
 
 (defn- valid-session-key?
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
@@ -242,7 +226,6 @@
                           (when (seq anti-csrf-token)
                             [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
-              ->current-user-info
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
@@ -286,7 +269,6 @@
       (let [user-info (-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                (premium-features/enable-advanced-permissions?))
                                               [(api-key/prefix api-key)]))
-                          ->current-user-info
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
@@ -325,7 +307,6 @@
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
         (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?))
                                     [user-id]))
-                ->current-user-info
                 (m/update-existing :is-group-manager? boolean)
                 (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
 

@@ -273,8 +273,8 @@
                          :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
-                         [:card.collection_id :entity_coll_id]
-                         [:mr.status :moderated_status]
+                         [:card.collection_id :entity-coll-id]
+                         [:mr.status :moderated-status]
                          [:collection.id :collection_id]
                          [:collection.name :collection_name]
                          [:collection.authority_level :collection_authority_level]]
@@ -304,8 +304,8 @@
 
   Careful: the root collection will have a nil `collection_id` and a nil `collection_name`. We return false when the
   collection has a `collection_id`, and a nil `collection_name`."
-  [{:keys [collection_id entity_coll_id]}]
-  (not (and entity_coll_id (nil? collection_id))))
+  [{:keys [collection_id entity-coll-id]}]
+  (not (and entity-coll-id (nil? collection_id))))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
@@ -328,7 +328,7 @@
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
-     :moderated_status (:moderated_status card)
+     :moderated_status (:moderated-status card)
      :parent_collection (fill-parent-coll card)}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
@@ -346,7 +346,7 @@
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
-     :moderated_status (:moderated_status dataset)
+     :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
 
 (defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
@@ -362,7 +362,7 @@
      :result_metadata (:result_metadata metric)
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
-     :moderated_status (:moderated_status metric)
+     :moderated_status (:moderated-status metric)
      :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
@@ -377,11 +377,11 @@
                          :dash.name
                          :dash.description
                          :dash.archived
-                         [:dash.collection_id :entity_coll_id]
+                         [:dash.collection_id :entity-coll-id]
                          [:c.id :collection_id]
                          [:c.name :collection_name]
                          [:c.authority_level :collection_authority_level]
-                         [:mr.status :moderated_status]]
+                         [:mr.status :moderated-status]]
                 :from [[:report_dashboard :dash]]
                 :where [:in :dash.id dashboard-ids]
                 :left-join [[:moderation_review :mr]
@@ -404,7 +404,7 @@
      :model :dashboard
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
-     :moderated_status (:moderated_status dashboard)
+     :moderated_status (:moderated-status dashboard)
      :parent_collection (fill-parent-coll dashboard)}))
 
 ;; ================== Recent Collections ==================
@@ -449,9 +449,9 @@
     (t2/select :model/Table
                {:select [:t.id :t.name :t.description
                          :t.display_name :t.active :t.visibility_type :t.schema
-                         [:db.name :database_name]
+                         [:db.name :database-name]
                          [:db.id :db_id]
-                         [:db.initial_sync_status :initial_sync_status]]
+                         [:db.initial_sync_status :initial-sync-status]]
                 :from [[:metabase_table :t]]
                 :where [:and
                         [:or
@@ -464,7 +464,7 @@
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
     (when (and (not= "hidden" (:visibility_type table))
-               (:database_name table)
+               (:database-name table)
                (:active table)
                (mi/can-read? table))
       {:id model_id
@@ -476,8 +476,8 @@
        :timestamp (str timestamp)
        :table_schema (:schema table)
        :database {:id (:db_id table)
-                  :name (:database_name table)
-                  :initial_sync_status (:initial_sync_status table)}})))
+                  :name (:database-name table)
+                  :initial_sync_status (:initial-sync-status table)}})))
 
 (def ^:private query-context->recent-context
   {:views      "view"
@@ -564,7 +564,7 @@
                                {:select [:d.id
                                          :d.name
                                          :d.archived
-                                         [:d.collection_id :entity_coll_id]
+                                         [:d.collection_id :entity-coll-id]
                                          [:c.id :collection_id]
                                          [:c.name :collection_name]
                                          [:c.authority_level :collection_authority_level]]

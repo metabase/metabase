@@ -237,7 +237,7 @@
            (t/after? (:last_used_at field-values)
                      cutoff)
            ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
-           (t/after? (t2/select-one-fn :max_last_used_at [:model/FieldValues [[:max :last_used_at] :max_last_used_at]]
+           (t/after? (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                                        {:where [:= :field_id (:field_id field-values)]})
                      cutoff))))))
 

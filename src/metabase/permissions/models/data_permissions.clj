@@ -952,11 +952,11 @@
   (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
     (let [data-perms    (t2/select :model/DataPermissions
-                                   {:select [[:p.perm_type :perm_type]
-                                             [:p.group_id :group_id]
+                                   {:select [[:p.perm_type :perm-type]
+                                             [:p.group_id :group-id]
                                              [:p.perm_value :value]
-                                             [:p.db_id :db_id]
-                                             [:p.table_id :table_id]]
+                                             [:p.db_id :db-id]
+                                             [:p.table_id :table-id]]
                                     :from [[:permissions_group_membership :pgm]]
                                     :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                                            [:data_permissions :p]   [:= :p.group_id :pg.id]]
@@ -964,10 +964,10 @@
                                             [:= :pgm.user_id user-id]
                                             (when db-id [:= :db_id db-id])
                                             (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
-          path->perms     (group-by (fn [{:keys [db_id perm_type table_id]}]
-                                      (if table_id
-                                        [db_id perm_type table_id]
-                                        [db_id perm_type]))
+          path->perms     (group-by (fn [{:keys [db-id perm-type table-id]}]
+                                      (if table-id
+                                        [db-id perm-type table-id]
+                                        [db-id perm-type]))
                                     data-perms)
           coalesced-perms (reduce-kv
                            (fn [result path perms]

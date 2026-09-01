@@ -63,7 +63,7 @@
       (assoc
        ;; this relies on the corresponding scorer, which is not great coupling.
        ;; ideally we would make per-user computed attributes part of the spec itself.
-       :bookmark   (pos? (get index-row (search.scoring/score-column-alias :bookmarked) 0))
+       :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
       ;; internal permission signal (published tables) — never surfaced in API responses

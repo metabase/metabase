@@ -964,7 +964,7 @@
   (let [models (map model->model&pk models)
         model->old-max-id (into {} (for [[model pk] models
                                          :let [conditions (with-max-model-id-additional-conditions model)]]
-                                     [model (:max_id (t2/select-one [model [[:max pk] :max_id]]
+                                     [model (:max-id (t2/select-one [model [[:max pk] :max-id]]
                                                                     {:where (or conditions true)}))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")

@@ -101,9 +101,9 @@
           (let [rerun-cutoff (duration-ago config)]
             ^:allow-subquery {:nest
                               ^:allow-subquery {:select   [[:q.query :query]
-                                                           [:qc.query_hash :cache_hash]
-                                                           [:qe.card_id :card_id]
-                                                           [:qe.dashboard_id :dashboard_id]
+                                                           [:qc.query_hash :cache-hash]
+                                                           [:qe.card_id :card-id]
+                                                           [:qe.dashboard_id :dashboard-id]
                                                            [[:count :q.query_hash] :count]]
                                                 :from     [[(t2/table-name :model/Query) :q]]
                                                 :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
@@ -128,15 +128,15 @@
                                                               [:not= :qe.context (name :cache-refresh)]]
                                                              [:= :qe.parameterized false])]
                                                 :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]
-    {:select [:u.query :u.cache_hash :u.card_id :u.dashboard_id :u.count]
+    {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
      :from   [[^:allow-subquery {:union queries} :u]]}))
 
 (defn- select-parameterized-queries
-  "Given a list of parameterized query definitions from the Query table with additional :count and :card_id keys,
+  "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,
   selects the 10 most common queries for each card ID that we should rerun."
   [parameterized-queries]
   (apply concat
-         (-> (group-by :card_id parameterized-queries)
+         (-> (group-by :card-id parameterized-queries)
              (update-vals
               (fn [queries]
                 (->> queries
@@ -157,7 +157,7 @@
   to re-run them before the cache has been refreshed. "
   [queries]
   (doseq [batch (partition 1000 1000 nil queries)]
-    (t2/delete! :model/QueryCache :query_hash [:in (map :cache_hash batch)])))
+    (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
@@ -165,7 +165,7 @@
   []
   (if-let [queries (seq (duration-queries-to-rerun))]
     (let [refresh-defs (->> queries
-                            (group-by (juxt :card_id :dashboard_id))
+                            (group-by (juxt :card-id :dashboard-id))
                             (map (fn [[[card-id dashboard-id] queries]]
                                    {:card-id card-id
                                     :dashboard-id dashboard-id
@@ -182,7 +182,7 @@
   "HoneySQL query for finding the the base query definition we should run for a card ID (i.e. the unparameterized
   query)."
   [card-id]
-  {:select [:q.query [:qe.card_id :card_id]]
+  {:select [:q.query [:qe.card_id :card-id]]
    :from   [[(t2/table-name :model/Query) :q]]
    :join   [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
    :where  [:and
@@ -199,7 +199,7 @@
 
 (defn- scheduled-parameterized-queries-to-rerun-honeysql
   [card-id rerun-cutoff]
-  {:select   [:q.query [:qe.card_id :card_id]]
+  {:select   [:q.query [:qe.card_id :card-id]]
    :from     [[(t2/table-name :model/Query) :q]]
    :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
    :where    [:and

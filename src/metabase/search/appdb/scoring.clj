@@ -11,11 +11,6 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn score-column-alias
-  "The SQL alias a scorer's score is selected under; see [[metabase.search.scoring/score-column-alias]]."
-  [scorer-name]
-  (search.scoring/score-column-alias scorer-name))
-
 (defn all-scores
   "Score stats for each scorer"
   [weights scorers index-row]

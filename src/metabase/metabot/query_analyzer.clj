@@ -68,7 +68,7 @@
    (table-reference db-id nil table))
   ([db-id schema table]
    (t2/select-one :model/QueryTable
-                  {:select [[:t.id :table_id] [:t.name :table] [:t.schema :schema]]
+                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                    :from   [[(t2/table-name :model/Table) :t]]
                    :where  [:and
                             [:= :t.db_id db-id]
@@ -104,7 +104,7 @@
    tables
    (when (seq tables)
      (t2/select :model/QueryTable
-                {:select [[:t.id :table_id] [:t.name :table] [:t.schema :schema]]
+                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                  :from   [[(t2/table-name :model/Table) :t]]
                  :where  [:and
                           [:= :t.db_id db-id]

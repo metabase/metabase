@@ -90,7 +90,7 @@
           (do (record-extraction-warning! :native-parse)
               (log/warnf "tables-for-native error: %s" (:error result))
               #{})
-          (into #{} (keep :table_id) (:tables result))))
+          (into #{} (keep :table-id) (:tables result))))
       (catch Exception e
         (record-extraction-warning! :native-parse)
         (log/warnf "Failed to extract tables from native SQL: %s" (ex-message e))

@@ -1,6 +1,5 @@
 (ns metabase.request.session
   (:require
-   [clojure.set :as set]
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.request.schema :as request.schema]
@@ -64,17 +63,13 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (some-> (t2/select-one [:model/User
-                            [:id :metabase_user_id]
-                            [:is_superuser :is_superuser]
-                            [:is_data_analyst :is_data_analyst]
-                            [:locale :user_locale]
-                            :settings]
-                           :id current-user-id)
-            (set/rename-keys {:metabase_user_id :metabase-user-id
-                              :is_superuser     :is-superuser?
-                              :is_data_analyst  :is-data-analyst?
-                              :user_locale      :user-locale}))))
+    (t2/select-one [:model/User
+                    [:id :metabase-user-id]
+                    [:is_superuser :is-superuser?]
+                    [:is_data_analyst :is-data-analyst?]
+                    [:locale :user-locale]
+                    :settings]
+                   :id current-user-id)))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

@@ -429,10 +429,10 @@
   [:id :name :created_at :updated_at])
 
 (defmethod columns-for-model "indexed-entity" [_]
-  [[:model_index_value.name     :name]
-   [:model_index_value.model_pk :id]
-   [:model_index.pk_ref         :pk_ref]
-   [:model_index.id             :model_index_id]
+  [[:model-index-value.name     :name]
+   [:model-index-value.model_pk :id]
+   [:model-index.pk_ref         :pk_ref]
+   [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
    [:collection.type            :collection_type]
    [:model.collection_id        :collection_id]
@@ -650,9 +650,9 @@
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:model_index :model_index]
-                             [:= :model_index.id :model_index_value.model_index_id])
-      (sql.helpers/left-join [:report_card :model] [:= :model_index.model_id :model.id])
+      (sql.helpers/left-join [:model_index :model-index]
+                             [:= :model-index.id :model-index-value.model_index_id])
+      (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
       (add-model-index-permissions-clause search-ctx)))
 
