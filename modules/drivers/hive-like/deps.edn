@@ -9,7 +9,7 @@
   ;; massive Hadoop/Hive transitive dependency tree.
   org.apache.hive/hive-jdbc                          {:mvn/version "4.2.0"}
 
-  org.apache.hive/hive-common                        {:mvn/version "4.2.0"
+  org.apache.hive/hive-common                        {:mvn/version "4.2.1"
                                                       :exclusions [com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
                                                                    com.tdunning/json
