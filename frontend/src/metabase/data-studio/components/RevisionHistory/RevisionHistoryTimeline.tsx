@@ -7,7 +7,7 @@ import { getUserId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Center, Stack, Text, Timeline } from "metabase/ui";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
-import type { RevisionEntityType, TableId } from "metabase-types/api";
+import type { RevisionEntityType } from "metabase-types/api";
 
 import { RevisionItem } from "./RevisionItem";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
@@ -15,7 +15,6 @@ import type { DefinitionType, RevisionActionDescriptor } from "./types";
 type RevisionHistoryTimelineProps = {
   entityType: RevisionEntityType;
   entityId: number;
-  tableId: TableId;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
   definitionType: DefinitionType;
@@ -24,7 +23,6 @@ type RevisionHistoryTimelineProps = {
 export function RevisionHistoryTimeline({
   entityType,
   entityId,
-  tableId,
   getActionDescription,
   definitionLabel,
   definitionType,
@@ -69,7 +67,6 @@ export function RevisionHistoryTimeline({
           <RevisionItem
             key={revision.id}
             revision={revision}
-            tableId={tableId}
             userColor={userColorAssignments[String(revision.user.id)]}
             getActionDescription={getActionDescription}
             definitionLabel={definitionLabel}

@@ -1,7 +1,7 @@
 import { useMetadataProvider } from "metabase/metadata-store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import { ClausePill } from "./ClausePill";
 import type { DefinitionType } from "./types";
@@ -10,8 +10,6 @@ const STAGE_INDEX = -1;
 
 type QueryClauseDisplayProps = {
   definition: DatasetQuery;
-  /** Unused. The prop threads down from RevisionItem, which still passes it. */
-  tableId: TableId;
   clauseType: DefinitionType;
 };
 
