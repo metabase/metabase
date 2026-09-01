@@ -1,33 +1,41 @@
 #!/usr/bin/env bun
 /**
- * Ensures generated API types (frontend/src/metabase-types/openapi/) exist,
- * as fresh as cheaply possible.
- * Runs in 2 modes:
- *   1. --tolerant (for postinstall) skips everything when types are already up to date
- *   2. strict mode: exits non-zero if types are not up to date
+ * Ensures generated API types (frontend/src/metabase-types/openapi/) exist
+ * and represent the complete Enterprise API.
  *
- * Fallback chain:
- *   1. Running backend (GET /api/docs/openapi.json) — the only source reflecting
- *        uncommitted schema changes
- *   2. Existing types on disk —  unless the committed spec is newer (you
- *        just pulled someone else's API change)
- *   3. Committed spec under frontend/build/openapi/spec
- *   4. Nothing found -> --tolerant exits with 0 / strict exits with 1
+ * Source selection:
+ *   1. Running EE backend — use its live document, including evaluated schema changes
+ *   2. Running OSS backend — reload saved local changes with the EE classpath to produce a complete document
+ *   3. No backend — bundle the committed EE specification
+ *
+ * --tolerant is used by postinstall and may keep existing types when they appear current.
  */
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
+  renameSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 
+import {
+  type GenerationSource,
+  createGenerationSource,
+  createSpecHash,
+  getOpenApiEdition,
+  parseGenerationSource,
+} from "./generation-source";
+
 const SPEC_PATH = ".tmp/openapi/openapi.json";
 const SPLIT_SPEC_DIR = "frontend/build/openapi/spec";
 const SPLIT_SPEC_PATH = `${SPLIT_SPEC_DIR}/openapi.json`;
-const TYPES_PATH = "frontend/src/metabase-types/openapi/types.gen.d.ts";
+const TYPES_DIR = "frontend/src/metabase-types/openapi";
+const TYPES_PATH = `${TYPES_DIR}/types.gen.d.ts`;
+const GENERATION_SOURCE_PATH = `${TYPES_DIR}/.generation.json`;
 const BACKEND_URL = `http://localhost:${process.env.MB_JETTY_PORT ?? 3000}/api/docs/openapi.json`;
 
 const tolerant = process.argv.includes("--tolerant");
@@ -58,8 +66,6 @@ function newestModificationTime(dir: string): number {
   return newest;
 }
 
-// Pulling someone else's API change rewrites files in the committed spec, which leaves
-// them newer than the types generated before the pull.
 function committedSpecIsNewerThanTypes(): boolean {
   if (!existsSync(SPLIT_SPEC_PATH) || !existsSync(TYPES_PATH)) {
     return false;
@@ -67,28 +73,42 @@ function committedSpecIsNewerThanTypes(): boolean {
   return newestModificationTime(SPLIT_SPEC_DIR) > statSync(TYPES_PATH).mtimeMs;
 }
 
-async function fetchSpecFromBackend(): Promise<boolean> {
+function readGenerationSource(): GenerationSource | undefined {
+  if (!existsSync(GENERATION_SOURCE_PATH)) {
+    return undefined;
+  }
+
+  try {
+    return parseGenerationSource(readFileSync(GENERATION_SOURCE_PATH, "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+function writeGenerationSource(specContents: string) {
+  const source = createGenerationSource("ee", specContents);
+  const temporaryPath = `${GENERATION_SOURCE_PATH}.${process.pid}.tmp`;
+  mkdirSync(TYPES_DIR, { recursive: true });
+  writeFileSync(temporaryPath, `${JSON.stringify(source, null, 2)}\n`);
+  renameSync(temporaryPath, GENERATION_SOURCE_PATH);
+}
+
+async function fetchSpecFromBackend(): Promise<string | undefined> {
   try {
     const response = await fetch(BACKEND_URL, {
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) {
-      return false;
+      return undefined;
     }
+
     const body = await response.text();
-    // sanity check: we got an OpenAPI document, not some other app on this port
-    if (!("openapi" in JSON.parse(body))) {
-      return false;
-    }
-    mkdirSync(dirname(SPEC_PATH), { recursive: true });
-    writeFileSync(SPEC_PATH, body);
-    return true;
+    return getOpenApiEdition(body) ? body : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-// --tolerant runs from postinstall, where a non-zero exit fails `bun install` itself.
 function finish(status: number): never {
   if (status !== 0 && tolerant) {
     log(
@@ -99,14 +119,63 @@ function finish(status: number): never {
   process.exit(status);
 }
 
+function generateTypesFromCurrentSpec(): never {
+  let specContents: string;
+  try {
+    specContents = readFileSync(SPEC_PATH, "utf8");
+  } catch {
+    log(`error: OpenAPI document not found at ${SPEC_PATH}`);
+    finish(1);
+  }
+
+  if (getOpenApiEdition(specContents) !== "ee") {
+    log(
+      "error: refusing to generate incomplete API types from an OSS document",
+    );
+    finish(1);
+  }
+
+  const specHash = createSpecHash(specContents);
+  const source = readGenerationSource();
+  if (
+    existsSync(TYPES_PATH) &&
+    source?.edition === "ee" &&
+    source.specHash === specHash
+  ) {
+    log("generated API types already match the complete OpenAPI document");
+    finish(0);
+  }
+
+  const status = runScript("types:generate");
+  if (status === 0) {
+    writeGenerationSource(specContents);
+  }
+  finish(status);
+}
+
 function generateFromCommittedSpec(): never {
-  log(
-    "generating types from the committed spec (frontend/build/openapi/spec) — start the backend if you need types for schema changes on your branch",
-  );
+  if (!existsSync(SPLIT_SPEC_PATH)) {
+    log(`error: committed OpenAPI spec not found at ${SPLIT_SPEC_PATH}`);
+    finish(1);
+  }
+
+  log("generating types from the committed complete OpenAPI spec");
   const bundleStatus = runScript("openapi:bundle");
-  return finish(
-    bundleStatus === 0 ? runScript("types:generate") : bundleStatus,
+  if (bundleStatus !== 0) {
+    finish(bundleStatus);
+  }
+  generateTypesFromCurrentSpec();
+}
+
+function generateFromLocalSources(): never {
+  log(
+    "running backend exposes OSS routes only — generating the complete OpenAPI document from local source",
   );
+  const generateStatus = runScript("openapi:generate");
+  if (generateStatus !== 0) {
+    finish(generateStatus);
+  }
+  generateTypesFromCurrentSpec();
 }
 
 const typesExist = existsSync(TYPES_PATH);
@@ -117,35 +186,15 @@ if (tolerant && typesExist && !typesAreBehindCommittedSpec) {
   process.exit(0);
 }
 
-if (await fetchSpecFromBackend()) {
-  log(`fetched OpenAPI spec from running backend (${BACKEND_URL})`);
-  finish(runScript("types:generate"));
+const backendSpec = await fetchSpecFromBackend();
+if (backendSpec) {
+  if (getOpenApiEdition(backendSpec) === "ee") {
+    mkdirSync(dirname(SPEC_PATH), { recursive: true });
+    writeFileSync(SPEC_PATH, backendSpec);
+    log(`fetched complete OpenAPI spec from running backend (${BACKEND_URL})`);
+    generateTypesFromCurrentSpec();
+  }
+  generateFromLocalSources();
 }
 
-if (typesAreBehindCommittedSpec) {
-  log("committed spec is newer than your generated types — refreshing from it");
-  generateFromCommittedSpec();
-}
-
-if (typesExist) {
-  log(
-    "⚠ backend not running — keeping existing generated API types (may be stale; start the backend or re-run `bun run types:ensure` to refresh)",
-  );
-  process.exit(0);
-}
-
-if (existsSync(SPLIT_SPEC_PATH)) {
-  generateFromCommittedSpec();
-}
-
-if (tolerant) {
-  log(
-    `⚠ no generated API types and no committed spec at ${SPLIT_SPEC_PATH} — they will be generated on the first \`bun run dev\` / \`bun run type-check\` (or run \`bun run types:ensure\` manually).`,
-  );
-  process.exit(0);
-}
-
-log(
-  `error: no running backend, no existing types, and no committed spec at ${SPLIT_SPEC_PATH}`,
-);
-process.exit(1);
+generateFromCommittedSpec();
