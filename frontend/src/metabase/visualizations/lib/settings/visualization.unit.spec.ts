@@ -403,6 +403,7 @@ describe("getStoredSettingsForSeries", () => {
         settings: {
           [`${PREFIX}threshold`]: { widget: "number" },
           [`${PREFIX}card.title`]: { widget: "input" },
+          [`${PREFIX}graph.goal_value`]: { widget: "number" },
         },
       });
     });
@@ -436,6 +437,14 @@ describe("getStoredSettingsForSeries", () => {
       expect(
         getStoredSettingsForSeries(customVizSeries({ "card.title": "Title" })),
       ).toEqual({ "card.title": "Title" });
+    });
+
+    it("never adopts or erases a host setting the plugin declares an id for", () => {
+      const series = customVizSeries({ "graph.goal_value": 100 });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        "graph.goal_value": 100,
+      });
     });
 
     it("returns the stored settings as is when there is nothing to adopt", () => {

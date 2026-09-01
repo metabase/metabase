@@ -121,6 +121,20 @@ export function getStoredSettingsForSeries(
   return storedSettings;
 }
 
+const HOST_SETTING_KEYS_WITHOUT_DOT: ReadonlySet<string> = new Set([
+  "click_behavior",
+  "column",
+  "column_settings",
+  "series_settings",
+]);
+
+// A pre-namespacing plugin setting was stored under the plugin's own id. Never adopt a key that
+// names one of Metabase's own settings (dotted keys like `graph.goal_value`, or the ones above) —
+// a plugin must not capture or erase host settings by declaring a colliding id.
+function isHostSettingKey(key: string): boolean {
+  return key.includes(".") || HOST_SETTING_KEYS_WITHOUT_DOT.has(key);
+}
+
 function migrateLegacyCustomVizSettings(
   storedSettings: VisualizationSettings,
   prefix: string,
@@ -130,7 +144,11 @@ function migrateLegacyCustomVizSettings(
     .filter((key) => key.startsWith(prefix))
     .map((key) => [key, key.slice(prefix.length)] as const)
     .filter(([, legacyKey]) => {
-      return !(legacyKey in definitions) && legacyKey in storedSettings;
+      return (
+        !(legacyKey in definitions) &&
+        !isHostSettingKey(legacyKey) &&
+        legacyKey in storedSettings
+      );
     });
 
   if (legacyKeys.length === 0) {
