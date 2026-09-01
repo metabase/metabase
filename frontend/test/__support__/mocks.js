@@ -29,7 +29,7 @@ global.window.ResizeObserver = class ResizeObserver {
 jest.mock("metabase/analytics");
 
 jest.mock("@uiw/react-codemirror", () => {
-  const { forwardRef, useEffect, useState } = jest.requireActual("react");
+  const { forwardRef, useState } = jest.requireActual("react");
 
   const MockEditor = forwardRef((props, ref) => {
     const {
@@ -45,9 +45,11 @@ jest.mock("@uiw/react-codemirror", () => {
       ...rest
     } = props;
     const [value, setValue] = useState(props.value ?? "");
-    useEffect(() => {
+    const [syncedValue, setSyncedValue] = useState(props.value);
+    if (props.value !== syncedValue) {
+      setSyncedValue(props.value);
       setValue(props.value ?? "");
-    }, [props.value]);
+    }
     return (
       // @ts-expect-error: some props types are different on CodeMirror
       <textarea
